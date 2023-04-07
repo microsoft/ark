@@ -2,6 +2,7 @@ MKDIR   := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARKDIR  := $(MKDIR)
 CUDIR   := /usr/local/cuda
 MPIDIR  := /usr/local/mpi
+KAHYPAR ?= 0
 
 CXX      := g++
 CXXFLAGS := -std=c++14 -Wall -g -O3
@@ -10,6 +11,7 @@ INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
 INCLUDE  += -I $(MPIDIR)/include
 LDLIBS   := -lcuda -lnvidia-ml -lnvrtc -lpthread -lrt -libverbs -lnuma
 LDFLAGS  := -L $(CUDIR)/lib64/stubs -Wl,-rpath,$(CUDIR)/lib64
+MACROS   :=
 
 BDIR ?= $(ARKDIR)/build
 
@@ -18,7 +20,10 @@ BSRC_NET := net_ib.cc
 BSRC_GPU := gpu_mem.cc gpu_buf.cc gpu_comm_sw.cc gpu_mgr.cc
 BSRC_GPU += gpu_kernel.cc gpu_compile.cc
 BSRC_SCHED := sched_op.cc sched_opseq.cc sched_codegen.cc sched_opgraph.cc sched_profiler.cc sched_tile.cc
-BSRC_SCHED_SCHED := sched_default.cc sched_simple.cc sched_kahypar.cc
+BSRC_SCHED_SCHED := sched_default.cc sched_simple.cc
+ifeq ($(KAHYPAR),1)
+BSRC_SCHED_SCHED += sched_kahypar.cc
+endif
 BSRC_UNITTEST := unittest_utils.cc
 
 BSRC_OPS := ops_common.cc ops_config.cc ops_test_utils.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
@@ -56,17 +61,22 @@ SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc
 SOBJ := $(patsubst %.cc,$(BDIR)/samples/%.o,$(SSRC))
 SBIN := $(patsubst %.o,%,$(SOBJ))
 
+ifeq ($(KAHYPAR),1)
 KHP_BDIR := $(BDIR)/third_party/kahypar
 KHP_SO := $(KHP_BDIR)/kahypar/build/install/lib/libkahypar.so
 KHP_SO += $(KHP_BDIR)/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0
+MACROS += -DUSE_KAHYPAR
+else
+KHP_SO :=
+endif
 
 CPPSOURCES := $(shell find $(ARKDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -not -path "*/build/*" -not -path "*/third_party/*" -not -path "*/tests/*")
 
-.PHONY: all build third_party submodules kahypar cutlass samples unittest clean
+.PHONY: all build third_party submodules cutlass samples unittest clean
 
 all: build unittest
 
-third_party: kahypar cutlass | submodules
+third_party: cutlass | submodules
 
 build: $(BOBJ)
 unittest: $(UBIN)
@@ -75,8 +85,8 @@ samples: $(SBIN)
 submodules:
 	@git submodule update --init --recursive
 
-kahypar: | submodules
-	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
+# kahypar: | submodules
+# 	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
 
 cutlass: | submodules
 

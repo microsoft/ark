@@ -22,9 +22,11 @@ Executor::Executor(const int gpu_id_, int rank_, int world_size_,
     if (get_env().scheduler == "Default") {
         this->sched = new DefaultScheduler{gpu_id_, rank_, world_size_, model};
     }
+#ifdef USE_KAHYPAR
     if (get_env().scheduler == "Kahypar") {
         this->sched = new KahyparScheduler{gpu_id_, rank_, world_size_, model};
     }
+#endif // USE_KAHYPAR
 
     this->ctx = this->sched->create_context(name);
     this->stream = this->ctx->create_stream();
