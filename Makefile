@@ -91,10 +91,10 @@ submodules:
 cutlass: | submodules
 
 cpplint:
-	clang-format -style=file --verbose --Werror --dry-run $(CPPSOURCES)
+	clang-format-12 -style=file --verbose --Werror --dry-run $(CPPSOURCES)
 
 cpplint-autofix:
-	clang-format -style=file --verbose --Werror -i $(CPPSOURCES)
+	clang-format-12 -style=file --verbose --Werror -i $(CPPSOURCES)
 
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)

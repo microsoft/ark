@@ -17,12 +17,12 @@ extern __shared__ int _ARK_SMEM[];
 #include "comm.h"
 #include "comm_mm.h"
 #include "im2col.h"
-#include "transpose.h"
 #include "matmul.h"
 #include "reduce.h"
 #include "sleep.h"
 #include "smem.h"
 #include "sync.h"
+#include "transpose.h"
 
 #endif // ARK_KERNELS_H_
 #endif // __CUDACC__

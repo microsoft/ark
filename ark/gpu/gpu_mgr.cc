@@ -171,8 +171,8 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
         href[i] = 0;
     }
     // Use the CPU-side software communication stack.
-    this->comm_sw = new GpuCommSw{
-        name_, gpu_mgr_->gpu_id, rank_, world_size_, &data_mem, &sc_rc_mem};
+    this->comm_sw = new GpuCommSw{name_,       gpu_mgr_->gpu_id, rank_,
+                                  world_size_, &data_mem,        &sc_rc_mem};
     assert(this->comm_sw != nullptr);
 }
 
