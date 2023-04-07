@@ -1,0 +1,6 @@
+# Build temp files
+build/
+
+# VS Code
+.vscode/
+.settings/
