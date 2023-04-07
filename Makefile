@@ -72,7 +72,7 @@ endif
 
 CPPSOURCES := $(shell find $(ARKDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -not -path "*/build/*" -not -path "*/third_party/*" -not -path "*/tests/*")
 
-.PHONY: all build third_party submodules cutlass samples unittest clean
+.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest clean
 
 all: build unittest
 
@@ -85,10 +85,13 @@ samples: $(SBIN)
 submodules:
 	@git submodule update --init --recursive
 
-# kahypar: | submodules
-# 	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
+kahypar: | submodules
+	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
 
 cutlass: | submodules
+
+gpudma: | submodules
+	@ARKDIR=$(ARKDIR) ./scripts/build_gpudma.sh
 
 cpplint:
 	clang-format-12 -style=file --verbose --Werror --dry-run $(CPPSOURCES)
