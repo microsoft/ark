@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifdef __CUDACC__
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_

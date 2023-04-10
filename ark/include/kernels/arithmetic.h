@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifndef ARK_KERNELS_ARITHMETIC_H_
 #define ARK_KERNELS_ARITHMETIC_H_
 

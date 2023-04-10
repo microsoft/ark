@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifndef ARK_DIMS_H_
 #define ARK_DIMS_H_
 

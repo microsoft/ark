@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifndef ARK_GPU_BUF_H_
 #define ARK_GPU_BUF_H_
 

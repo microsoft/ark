@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifndef ARK_SCHED_OPSEQ_H_
 #define ARK_SCHED_OPSEQ_H_
 

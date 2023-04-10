@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 // Simple mixed-precision matrix multiplication (C = A x B).
 // Assume `A` is in column-major and `B` is in row-major.
 // CAUTION: `m` and `n` should be even numbers!
