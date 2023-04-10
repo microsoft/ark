@@ -1,3 +1,5 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 MKDIR   := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARKDIR  := $(MKDIR)
 CUDIR   := /usr/local/cuda
