@@ -28,7 +28,7 @@ Any use of third-party trademarks or logos are subject to those third-party's po
 
 ## Citations
 
-If you use this project in your research, please cite our NSDI'23 paper:
+If you use this project in your research, please cite our [NSDI'23 paper]:
 
 ```bibtex
 @inproceedings{HwangPSQCX23,
@@ -44,3 +44,5 @@ If you use this project in your research, please cite our NSDI'23 paper:
   publisher = {{USENIX} Association},
 }
 ```
+
+[NSDI'23 paper]: https://www.usenix.org/conference/nsdi23/presentation/hwang
