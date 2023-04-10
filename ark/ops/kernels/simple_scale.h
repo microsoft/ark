@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #include "ark_kernels.h"
 // CAUTION: len should be even.
 extern "C" __global__ void simple_scale(ark::half *y, ark::half *x, float val,

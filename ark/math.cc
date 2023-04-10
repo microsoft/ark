@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #include "ark/math.h"
 #include "ark/logging.h"
 

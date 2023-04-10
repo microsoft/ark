@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef ARK_KAHYPAR_H_
 #define ARK_KAHYPAR_H_
 

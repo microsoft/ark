@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #include "ark/executor.h"
 #include "ark/init.h"
 #include "ark/ops/ops_test_utils.h"

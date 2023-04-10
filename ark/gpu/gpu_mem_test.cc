@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #include "ark/gpu/gpu_logging.h"
 #include "ark/gpu/gpu_mem.h"
 #include "ark/init.h"

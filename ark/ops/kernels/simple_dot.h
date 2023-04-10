@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #include "ark_kernels.h"
 // CAUTION: len should be even.
 extern "C" __global__ void simple_dot(float *c, ark::half *a, ark::half *b,

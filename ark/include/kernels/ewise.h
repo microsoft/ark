@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef ARK_KERNELS_EWISE_H_
 #define ARK_KERNELS_EWISE_H_
 

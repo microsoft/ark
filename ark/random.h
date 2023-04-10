@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef ARK_RANDOM_H_
 #define ARK_RANDOM_H_
 

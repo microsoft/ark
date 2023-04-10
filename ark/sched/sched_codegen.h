@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef ARK_SCHED_CODEGEN_H_
 #define ARK_SCHED_CODEGEN_H_
 #include "ark/gpu/gpu_kernel.h"

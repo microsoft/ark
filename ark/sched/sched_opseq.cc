@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 // #include <algorithm>
 
 #include "ark/sched/sched_opseq.h"

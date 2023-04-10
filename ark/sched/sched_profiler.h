@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef _ARK_SCHED_PROFILER_H_
 #define _ARK_SCHED_PROFILER_H_
 

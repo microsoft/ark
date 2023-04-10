@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 // #include <fstream>
 
 #include "ark/executor.h"

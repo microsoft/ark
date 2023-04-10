@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef ARK_UNITTEST_UNITTEST_UTILS_H_
 #define ARK_UNITTEST_UNITTEST_UTILS_H_
 

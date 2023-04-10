@@ -1,5 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 #ifndef ARK_IPC_ENTRY_H_
 #define ARK_IPC_ENTRY_H_
 
