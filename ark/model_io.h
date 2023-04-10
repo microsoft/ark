@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_MODEL_IO_H_
 #define ARK_MODEL_IO_H_
 

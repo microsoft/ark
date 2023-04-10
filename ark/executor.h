@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_EXECUTOR_H_
 #define ARK_EXECUTOR_H_
 

@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_OPS_CONFIGS_H_
 #define ARK_OPS_CONFIGS_H_
 

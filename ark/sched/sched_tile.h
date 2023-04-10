@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef _ARK_SCHED_TILE_H_
 #define _ARK_SCHED_TILE_H_
 #include "ark/sched/sched_opseq.h"

@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #include "ark/init.h"
 #include "ark/ipc/ipc_coll.h"
 #include "ark/process.h"

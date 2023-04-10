@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_OPS_TEST_UTILS_H_
 #define ARK_OPS_TEST_UTILS_H_
 

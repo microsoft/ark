@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #include <cassert>
 
 #include "ark/gpu/gpu_buf.h"

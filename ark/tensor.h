@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_TENSOR_H_
 #define ARK_TENSOR_H_
 

@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_LOGGING_H_
 #define ARK_LOGGING_H_
 

@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 // Example usage of KaHyPar interface in ARK.
 // Environment variable `ARK_ROOT` should be set to run.
 // `LD_LIBRARY_PATH` should include `$ARK_ROOT/lib` directory.

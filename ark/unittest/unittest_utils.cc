@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>

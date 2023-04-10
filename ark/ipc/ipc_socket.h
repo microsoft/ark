@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_IPC_IPC_SOCKET_H_
 #define ARK_IPC_IPC_SOCKET_H_
 

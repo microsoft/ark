@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_CPU_TIMER_H_
 #define ARK_CPU_TIMER_H_
 

@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #include "ark/tensor.h"
 #include "ark/logging.h"
 #include "ark/math.h"

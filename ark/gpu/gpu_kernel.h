@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #ifndef ARK_GPU_KERNEL_H_
 #define ARK_GPU_KERNEL_H_
 

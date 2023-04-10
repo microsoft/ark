@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 #include "ark/env.h"
 #include "ark/init.h"
 #include "ark/ipc/ipc_hosts.h"
