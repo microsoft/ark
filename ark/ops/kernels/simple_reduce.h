@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #include "ark_kernels.h"
 // CAUTION: n*m should be even.
 extern "C" __global__ void simple_reduce(ark::half *y, ark::half *x,

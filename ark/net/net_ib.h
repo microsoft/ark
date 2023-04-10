@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifndef ARK_NET_IB_H_
 #define ARK_NET_IB_H_
 

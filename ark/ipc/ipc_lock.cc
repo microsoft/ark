@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #include <cassert>
 
 #include "ark/ipc/ipc_lock.h"

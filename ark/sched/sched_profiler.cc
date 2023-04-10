@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #include "third_party/json/json.h"
 #include <algorithm>
 #include <cassert>

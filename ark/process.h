@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #ifndef ARK_PROCESS_H_
 #define ARK_PROCESS_H_
 

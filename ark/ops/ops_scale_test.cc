@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #include "ark/executor.h"
 #include "ark/gpu/gpu_kernel.h"
 #include "ark/init.h"
