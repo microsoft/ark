@@ -39,7 +39,7 @@ if [ $? != 0 ]; then
 fi
 
 KAHYPAR_BUILD_PATH="$ARKDIR/build/third_party/kahypar"
-KAHYPAR_INI_PATH="$ARKDIR/cut_kKaHyPar_dissertation.ini"
+KAHYPAR_INI_PATH="$ARKDIR/third_party/kahypar/config/cut_kKaHyPar_dissertation.ini"
 
 # Include files.
 INCLUDE="$ARKDIR/ark/include/kernels \
@@ -47,8 +47,8 @@ $ARKDIR/third_party/cutlass/include/cutlass"
 
 # Library files.
 LIB="${KAHYPAR_BUILD_PATH}/kahypar/build/install/lib/libkahypar.so \
-$KAHYPAR_BUILD_PATH/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0"
-
+$KAHYPAR_BUILD_PATH/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0 \
+$ARKDIR/build/lib/libark.so"
 # Test whether all files exist in build.
 for path in $INCLUDE $LIB; do
     test -e $path

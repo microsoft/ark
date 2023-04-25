@@ -8,7 +8,7 @@ MPIDIR  := /usr/local/mpi
 KAHYPAR ?= 0
 
 CXX      := g++
-CXXFLAGS := -std=c++14 -Wall -g -O3
+CXXFLAGS := -std=c++14 -Wall -g -O3 -fPIC
 INCLUDE  := -I $(CUDIR)/include -I $(ARKDIR) -I $(ARKDIR)/third_party
 INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
 INCLUDE  += -I $(MPIDIR)/include
@@ -75,13 +75,16 @@ endif
 
 CPPSOURCES := $(shell find $(ARKDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -not -path "*/build/*" -not -path "*/third_party/*" -not -path "*/tests/*")
 
+LIBNAME   := libark.so
+LIBTARGET := $(BDIR)/lib/$(LIBNAME)
+
 .PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest clean
 
 all: build unittest
 
-third_party: cutlass | submodules
+third_party: cutlass kahypar | submodules
 
-build: $(BOBJ)
+build: $(BOBJ) lib
 unittest: $(UBIN)
 samples: $(SBIN)
 
@@ -112,8 +115,12 @@ $(BDIR)/%.o: %.cc | third_party
 	@mkdir -p $(@D)
 	$(CXX) -o $@ $(CXXFLAGS) $(INCLUDE) -c $< $(MACROS)
 
+lib: $(BOBJ)
+	@mkdir -p $(BDIR)/lib
+	$(CXX) -shared -o $(LIBTARGET) $(BOBJ)
+
 install:
 	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) ./scripts/install.sh
 
 clean:
-	rm -rf $(BDIR)/ark $(BDIR)/samples
+	rm -rf $(BDIR)/ark $(BDIR)/samples $(BDIR)/lib
