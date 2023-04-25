@@ -59,8 +59,9 @@ USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
-SSRC := all_reduce.cc transformer_dp.cc transformer_pp.cc gpu_comm.cc
-SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc
+# SSRC := all_reduce.cc transformer_dp.cc transformer_pp.cc gpu_comm.cc
+# SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc
+SSRC := ffn.cc
 SOBJ := $(patsubst %.cc,$(BDIR)/samples/%.o,$(SSRC))
 SBIN := $(patsubst %.o,%,$(SOBJ))
 
@@ -108,8 +109,8 @@ cpplint-autofix:
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
-$(SBIN): %: %.o $(BOBJ) | third_party
-	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(BOBJ) $(KHP_SO) $(LDLIBS) -lmpi
+$(SBIN): %: %.o $(LIBTARGET) | third_party
+	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(LIBTARGET) $(KHP_SO) $(LDLIBS) -lmpi
 
 $(BDIR)/%.o: %.cc | third_party
 	@mkdir -p $(@D)
