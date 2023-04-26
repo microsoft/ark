@@ -83,7 +83,7 @@ LIBTARGET := $(BDIR)/lib/$(LIBNAME)
 
 all: build unittest
 
-third_party: cutlass kahypar | submodules
+third_party: cutlass | submodules
 
 build: $(BOBJ) lib
 unittest: $(UBIN)

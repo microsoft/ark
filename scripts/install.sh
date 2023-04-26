@@ -45,10 +45,16 @@ KAHYPAR_INI_PATH="$ARKDIR/third_party/kahypar/config/cut_kKaHyPar_dissertation.i
 INCLUDE="$ARKDIR/ark/include/kernels \
 $ARKDIR/third_party/cutlass/include/cutlass"
 
+USE_KAHYPAR=${USE_KAHYPAR:-false}
+if $USE_KAHYPAR; then
 # Library files.
-LIB="${KAHYPAR_BUILD_PATH}/kahypar/build/install/lib/libkahypar.so \
-$KAHYPAR_BUILD_PATH/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0 \
-$ARKDIR/build/lib/libark.so"
+    LIB="${KAHYPAR_BUILD_PATH}/kahypar/build/install/lib/libkahypar.so \
+    $KAHYPAR_BUILD_PATH/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0 \
+    $ARKDIR/build/lib/libark.so"
+else
+    LIB="$ARKDIR/build/lib/libark.so"
+fi
+
 # Test whether all files exist in build.
 for path in $INCLUDE $LIB; do
     test -e $path
@@ -64,8 +70,10 @@ ex "rsync -ar $INCLUDE $ARK_ROOT/include"
 ck
 ex "rsync -ar $LIB $ARK_ROOT/lib"
 ck
-ex "rsync -a $KAHYPAR_INI_PATH $ARK_ROOT"
-ck
+if $USE_KAHYPAR; then
+    ex "rsync -a $KAHYPAR_INI_PATH $ARK_ROOT"
+    ck
+fi
 
 test -e $ARK_ROOT/hostfile
 if [ $? != 0 ]; then
