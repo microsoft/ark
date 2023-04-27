@@ -1,6 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+ARK_MAJOR := 0
+ARK_MINOR := 1
+ARK_PATCH := 0
+
 MKDIR   := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARKDIR  := $(MKDIR)
 CUDIR   := /usr/local/cuda
@@ -77,7 +81,7 @@ endif
 CPPSOURCES := $(shell find $(ARKDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -not -path "*/build/*" -not -path "*/third_party/*" -not -path "*/tests/*")
 
 LIBNAME   := libark.so
-LIBTARGET := $(BDIR)/lib/$(LIBNAME)
+LIBTARGET := $(BDIR)/lib/$(LIBNAME).$(ARK_MAJOR).$(ARK_MINOR).$(ARK_PATCH)
 
 .PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest clean
 
@@ -119,6 +123,7 @@ $(BDIR)/%.o: %.cc | third_party
 lib: $(BOBJ)
 	@mkdir -p $(BDIR)/lib
 	$(CXX) -shared -o $(LIBTARGET) $(BOBJ)
+	ln -sf $(LIBTARGET) $(BDIR)/lib/$(LIBNAME)
 
 install:
 	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) ./scripts/install.sh

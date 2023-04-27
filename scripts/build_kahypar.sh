@@ -1,7 +1,7 @@
+#!/usr/bin/env bash
+
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
-
-#!/usr/bin/env bash
 
 perr() {
     >&2 echo "ERROR: $1"
