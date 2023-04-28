@@ -6,7 +6,7 @@ ARK_MINOR := 1
 ARK_PATCH := 0
 
 MKDIR   := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-ARKDIR  := $(MKDIR)
+ARKDIR  := $(patsubst %/,%,$(MKDIR))
 CUDIR   := /usr/local/cuda
 MPIDIR  := /usr/local/mpi
 KAHYPAR ?= 0
@@ -78,18 +78,25 @@ else
 KHP_SO :=
 endif
 
-CPPSOURCES := $(shell find $(ARKDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -not -path "*/build/*" -not -path "*/third_party/*" -not -path "*/tests/*")
+LIBHEADERS := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(h|hpp)' -not -path '*/ark/include/kernels*')
+CPPSOURCES := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
 
 LIBNAME   := libark.so
+LIBSO     := $(BDIR)/lib/$(LIBNAME)
 LIBTARGET := $(BDIR)/lib/$(LIBNAME).$(ARK_MAJOR).$(ARK_MINOR).$(ARK_PATCH)
 
-.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest clean
+INCHEADERS := $(shell find $(ARKDIR)/ark/include/kernels -regextype posix-extended -regex '.*\.(h|hpp)')
+CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regextype posix-extended -regex '.*\.(h|hpp)')
+INCTARGET  := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
+INCTARGET  += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
+
+.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest cpplint cpplint-autofix install clean
 
 all: build unittest
 
 third_party: cutlass | submodules
 
-build: $(BOBJ) lib
+build: $(BOBJ) $(LIBTARGET) $(INCTARGET)
 unittest: $(UBIN)
 samples: $(SBIN)
 
@@ -116,17 +123,25 @@ $(UBIN): %: %.o $(BOBJ) | third_party
 $(SBIN): %: %.o $(LIBTARGET) | third_party
 	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(LIBTARGET) $(KHP_SO) $(LDLIBS) -lmpi
 
-$(BDIR)/%.o: %.cc | third_party
+$(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)
 	$(CXX) -o $@ $(CXXFLAGS) $(INCLUDE) -c $< $(MACROS)
 
-lib: $(BOBJ)
-	@mkdir -p $(BDIR)/lib
+$(LIBTARGET): $(BOBJ)
+	@mkdir -p $(@D)
 	$(CXX) -shared -o $(LIBTARGET) $(BOBJ)
-	ln -sf $(LIBTARGET) $(BDIR)/lib/$(LIBNAME)
+	ln -sf $(LIBTARGET) $(LIBSO)
+
+$(BDIR)/include/%: $(ARKDIR)/ark/include/%
+	@mkdir -p $(@D)
+	cp $< $@
+
+$(BDIR)/include/kernels/cutlass/%: $(ARKDIR)/third_party/cutlass/include/cutlass/% | cutlass
+	@mkdir -p $(@D)
+	cp $< $@
 
 install:
-	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) ./scripts/install.sh
+	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) BDIR=$(BDIR) ./scripts/install.sh
 
 clean:
-	rm -rf $(BDIR)/ark $(BDIR)/samples $(BDIR)/lib
+	rm -rf $(BDIR)
