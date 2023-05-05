@@ -5,8 +5,8 @@ ARK_MAJOR := 0
 ARK_MINOR := 1
 ARK_PATCH := 0
 
-MKDIR   := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-ARKDIR  := $(patsubst %/,%,$(MKDIR))
+MKDIR   := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+ARKDIR  := $(MKDIR)
 CUDIR   := /usr/local/cuda
 MPIDIR  := /usr/local/mpi
 KAHYPAR ?= 0
