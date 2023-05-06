@@ -1,7 +1,7 @@
+#!/usr/bin/env bash
+
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
-
-#!/usr/bin/env bash
 
 perr() {
     >&2 echo "ERROR: $1"
@@ -15,7 +15,7 @@ ex() {
 ck() {
     ret=$?
     if [ $ret != 0 ]; then
-        perr "$ret"
+        perr "$1 ($ret)"
         exit 1
     fi
 }
@@ -39,15 +39,20 @@ if [ $? != 0 ]; then
 fi
 
 KAHYPAR_BUILD_PATH="$ARKDIR/build/third_party/kahypar"
-KAHYPAR_INI_PATH="$ARKDIR/cut_kKaHyPar_dissertation.ini"
+KAHYPAR_INI_PATH="$ARKDIR/third_party/kahypar/config/cut_kKaHyPar_dissertation.ini"
 
 # Include files.
-INCLUDE="$ARKDIR/ark/include/kernels \
-$ARKDIR/third_party/cutlass/include/cutlass"
+INCLUDE="$BDIR/include"
 
 # Library files.
-LIB="${KAHYPAR_BUILD_PATH}/kahypar/build/install/lib/libkahypar.so \
-$KAHYPAR_BUILD_PATH/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0"
+LIB="$BDIR/lib"
+USE_KAHYPAR=${USE_KAHYPAR:-false}
+if $USE_KAHYPAR; then
+    KAHYPAR_LIB="${KAHYPAR_BUILD_PATH}/kahypar/build/install/lib/libkahypar.so \
+    $KAHYPAR_BUILD_PATH/boost_1_69_0/stage/lib/libboost_program_options.so.1.69.0"
+else
+    KAHYPAR_LIB=""
+fi
 
 # Test whether all files exist in build.
 for path in $INCLUDE $LIB; do
@@ -60,12 +65,16 @@ mkdir -p $ARK_ROOT/include
 mkdir -p $ARK_ROOT/lib
 
 # Copy files into the install directory.
-ex "rsync -ar $INCLUDE $ARK_ROOT/include"
+ex "rsync -ar --delete $INCLUDE/* $ARK_ROOT/include"
 ck
-ex "rsync -ar $LIB $ARK_ROOT/lib"
+ex "rsync -ar --delete $LIB/* $ARK_ROOT/lib"
 ck
-ex "rsync -a $KAHYPAR_INI_PATH $ARK_ROOT"
-ck
+if $USE_KAHYPAR; then
+    ex "rsync -a $KAHYPAR_INI_PATH $ARK_ROOT"
+    ck
+    ex "rsync -a $KAHYPAR_LIB $ARK_ROOT/lib"
+    ck
+fi
 
 test -e $ARK_ROOT/hostfile
 if [ $? != 0 ]; then

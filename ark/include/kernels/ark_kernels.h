@@ -22,7 +22,6 @@ extern __shared__ int _ARK_SMEM[];
 #include "im2col.h"
 #include "matmul.h"
 #include "reduce.h"
-#include "sleep.h"
 #include "smem.h"
 #include "sync.h"
 #include "transpose.h"

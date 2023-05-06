@@ -1,14 +1,18 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-MKDIR   := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+ARK_MAJOR := 0
+ARK_MINOR := 1
+ARK_PATCH := 0
+
+MKDIR   := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 ARKDIR  := $(MKDIR)
 CUDIR   := /usr/local/cuda
 MPIDIR  := /usr/local/mpi
 KAHYPAR ?= 0
 
 CXX      := g++
-CXXFLAGS := -std=c++14 -Wall -g -O3
+CXXFLAGS := -std=c++14 -Wall -g -O3 -fPIC
 INCLUDE  := -I $(CUDIR)/include -I $(ARKDIR) -I $(ARKDIR)/third_party
 INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
 INCLUDE  += -I $(MPIDIR)/include
@@ -60,7 +64,8 @@ UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
 SSRC := all_reduce.cc transformer_dp.cc transformer_pp.cc gpu_comm.cc
-SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc
+SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc 
+
 SOBJ := $(patsubst %.cc,$(BDIR)/samples/%.o,$(SSRC))
 SBIN := $(patsubst %.o,%,$(SOBJ))
 
@@ -73,15 +78,25 @@ else
 KHP_SO :=
 endif
 
-CPPSOURCES := $(shell find $(ARKDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -not -path "*/build/*" -not -path "*/third_party/*" -not -path "*/tests/*")
+LIBHEADERS := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(h|hpp)' -not -path '*/ark/include/kernels*')
+CPPSOURCES := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
 
-.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest clean
+LIBNAME   := libark.so
+LIBSO     := $(BDIR)/lib/$(LIBNAME)
+LIBTARGET := $(BDIR)/lib/$(LIBNAME).$(ARK_MAJOR).$(ARK_MINOR).$(ARK_PATCH)
+
+INCHEADERS := $(shell find $(ARKDIR)/ark/include/kernels -regextype posix-extended -regex '.*\.(h|hpp)')
+CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regextype posix-extended -regex '.*\.(h|hpp)')
+INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
+INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
+
+.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest cpplint cpplint-autofix install clean
 
 all: build unittest
 
 third_party: cutlass | submodules
 
-build: $(BOBJ)
+build: $(BOBJ) $(LIBTARGET) $(INCTARGETS)
 unittest: $(UBIN)
 samples: $(SBIN)
 
@@ -92,9 +107,10 @@ kahypar: | submodules
 	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
 
 cutlass: | submodules
+	cd third_party && $(MAKE) cutlass
 
 gpudma: | submodules
-	@ARKDIR=$(ARKDIR) ./scripts/build_gpudma.sh
+	cd third_party && $(MAKE) gpudma
 
 cpplint:
 	clang-format-12 -style=file --verbose --Werror --dry-run $(CPPSOURCES)
@@ -105,15 +121,29 @@ cpplint-autofix:
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
-$(SBIN): %: %.o $(BOBJ) | third_party
-	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(BOBJ) $(KHP_SO) $(LDLIBS) -lmpi
+$(SBIN): %: %.o $(LIBTARGET) | third_party
+	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(LIBTARGET) $(KHP_SO) $(LDLIBS) -lmpi
 
-$(BDIR)/%.o: %.cc | third_party
+$(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)
 	$(CXX) -o $@ $(CXXFLAGS) $(INCLUDE) -c $< $(MACROS)
 
+$(LIBTARGET): $(BOBJ)
+	@mkdir -p $(@D)
+	$(CXX) -shared -o $(LIBTARGET) $(BOBJ)
+	ln -sf $(LIBTARGET) $(LIBSO)
+
+$(BDIR)/include/%: $(ARKDIR)/ark/include/%
+	@mkdir -p $(@D)
+	cp $< $@
+
+$(BDIR)/include/kernels/cutlass/%: $(ARKDIR)/third_party/cutlass/include/cutlass/% | cutlass
+	@mkdir -p $(@D)
+	cp $< $@
+
 install:
-	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) ./scripts/install.sh
+	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) BDIR=$(BDIR) ./scripts/install.sh
 
 clean:
-	rm -rf $(BDIR)/ark $(BDIR)/samples
+	rm -rf $(BDIR)
+	cd third_party && $(MAKE) clean

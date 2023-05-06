@@ -1,0 +1,41 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+--- implicit_gemm_wgrad_fusion_multistage.h
++++ implicit_gemm_wgrad_fusion_multistage.h
+@@ -73,6 +73,8 @@
+ #include "cutlass/gemm/warp/scale_bias_tile_iterator.h"
+ #include "cutlass/conv/warp/scale_bias_relu_transform.h"
+ 
++#include "sync.h"
++
+ /////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ namespace cutlass {
+@@ -551,7 +553,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed. 
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -674,7 +676,7 @@ public:
+ 
+           // Waits until kStages-2 stages of cp.async have committed
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+           // Move to the next stage
+           iterator_A.advance();
+@@ -715,7 +717,7 @@ public:
+     // Insert fence and wait for all outstanding cp.async operations to commit.
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+   }
+ };
