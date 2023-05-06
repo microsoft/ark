@@ -87,8 +87,8 @@ LIBTARGET := $(BDIR)/lib/$(LIBNAME).$(ARK_MAJOR).$(ARK_MINOR).$(ARK_PATCH)
 
 INCHEADERS := $(shell find $(ARKDIR)/ark/include/kernels -regextype posix-extended -regex '.*\.(h|hpp)')
 CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regextype posix-extended -regex '.*\.(h|hpp)')
-INCTARGET  := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
-INCTARGET  += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
+INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
+INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
 
 .PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest cpplint cpplint-autofix install clean
 
@@ -96,7 +96,7 @@ all: build unittest
 
 third_party: cutlass | submodules
 
-build: $(BOBJ) $(LIBTARGET) $(INCTARGET)
+build: $(BOBJ) $(LIBTARGET) $(INCTARGETS)
 unittest: $(UBIN)
 samples: $(SBIN)
 
@@ -107,9 +107,10 @@ kahypar: | submodules
 	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
 
 cutlass: | submodules
+	cd third_party && $(MAKE) cutlass
 
 gpudma: | submodules
-	@ARKDIR=$(ARKDIR) ./scripts/build_gpudma.sh
+	cd third_party && $(MAKE) gpudma
 
 cpplint:
 	clang-format-12 -style=file --verbose --Werror --dry-run $(CPPSOURCES)
@@ -145,3 +146,4 @@ install:
 
 clean:
 	rm -rf $(BDIR)
+	cd third_party && $(MAKE) clean

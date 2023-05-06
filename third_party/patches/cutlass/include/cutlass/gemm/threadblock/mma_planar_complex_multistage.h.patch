@@ -1,0 +1,32 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+--- mma_planar_complex_multistage.h
++++ mma_planar_complex_multistage.h
+@@ -47,6 +47,8 @@
+ #include "cutlass/gemm/gemm.h"
+ #include "cutlass/gemm/threadblock/mma_planar_complex_base.h"
+ 
++#include "sync.h"
++
+ /////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ namespace cutlass {
+@@ -482,7 +484,7 @@ public:
+ 
+     // Blocks until all but kStages-2 cp.async stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -575,7 +577,7 @@ public:
+ 
+           // Blocks until all but kStages-2 cp.async stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+           // Move to the next stage
+           iterator_A_real.add_tile_offset({0, 1});

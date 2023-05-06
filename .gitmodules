@@ -9,4 +9,3 @@
 [submodule "third_party/gpudma"]
 	path = third_party/gpudma
 	url = https://github.com/karakozov/gpudma
-	ignore = dirty
