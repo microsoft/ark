@@ -65,9 +65,9 @@ mkdir -p $ARK_ROOT/include
 mkdir -p $ARK_ROOT/lib
 
 # Copy files into the install directory.
-ex "rsync -ar $INCLUDE/* $ARK_ROOT/include"
+ex "rsync -ar --delete $INCLUDE/* $ARK_ROOT/include"
 ck
-ex "rsync -ar $LIB/* $ARK_ROOT/lib"
+ex "rsync -ar --delete $LIB/* $ARK_ROOT/lib"
 ck
 if $USE_KAHYPAR; then
     ex "rsync -a $KAHYPAR_INI_PATH $ARK_ROOT"
