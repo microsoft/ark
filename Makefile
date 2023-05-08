@@ -63,8 +63,7 @@ USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
-SSRC := all_reduce.cc transformer_dp.cc transformer_pp.cc gpu_comm.cc
-SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc 
+SSRC := ffn_dp.cc
 
 SOBJ := $(patsubst %.cc,$(BDIR)/samples/%.o,$(SSRC))
 SBIN := $(patsubst %.o,%,$(SOBJ))
