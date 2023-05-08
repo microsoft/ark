@@ -7,18 +7,24 @@ ARK_PATCH := 0
 
 MKDIR   := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 ARKDIR  := $(MKDIR)
-CUDIR   := /usr/local/cuda
-MPIDIR  := /usr/local/mpi
+CUDIR   ?= /usr/local/cuda
+
+DEBUG   ?= 0
 KAHYPAR ?= 0
 
 CXX      := g++
-CXXFLAGS := -std=c++14 -Wall -Wextra -g -O3 -fPIC
+CXXFLAGS := -std=c++14 -Wall -Wextra -fPIC
 INCLUDE  := -I $(CUDIR)/include -I $(ARKDIR) -I $(ARKDIR)/third_party
 INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
-INCLUDE  += -I $(MPIDIR)/include
 LDLIBS   := -lcuda -lnvidia-ml -lnvrtc -lpthread -lrt -libverbs -lnuma
 LDFLAGS  := -L $(CUDIR)/lib64/stubs -Wl,-rpath,$(CUDIR)/lib64
 MACROS   :=
+
+ifeq ($(DEBUG),1)
+CXXFLAGS += -g -O0
+else
+CXXFLAGS += -O3
+endif
 
 BDIR ?= $(ARKDIR)/build
 
@@ -63,7 +69,7 @@ USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
-ESRC := ffn.cc
+ESRC := ffn/ffn.cc
 
 EOBJ := $(patsubst %.cc,$(BDIR)/examples/%.o,$(ESRC))
 EBIN := $(patsubst %.o,%,$(EOBJ))
