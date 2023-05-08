@@ -118,15 +118,16 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
     return unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_copy_bidir_internal(int mat_length)
+ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
+    ark::DimType mat_length)
 {
     int iter = ITER;
-    int mat_size = mat_length * mat_length * sizeof(half_t);
+    ark::DimType mat_size = mat_length * mat_length * sizeof(half_t);
     char *send_data0 = (char *)malloc(mat_size);
-    for (int i = 0; i < mat_size; i++)
+    for (ark::DimType i = 0; i < mat_size; i++)
         send_data0[i] = std::rand() % 256;
     char *send_data1 = (char *)malloc(mat_size);
-    for (int i = 0; i < mat_size; i++)
+    for (ark::DimType i = 0; i < mat_size; i++)
         send_data1[i] = std::rand() % 256;
     ark::unittest::spawn_process([=]() {
         Model m;
