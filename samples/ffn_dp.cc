@@ -345,7 +345,7 @@ int main(int argc, const char **argv)
             Trainer trainer{model, dims, batch_size, gpu_id, num_gpus};
             trainer.init_data();
             // train the model.
-            trainer.train(1, 1);
+            trainer.train(10, 1);
             trainer.print_tensors(trainer.exe);
             return 0;
         }));

@@ -121,7 +121,8 @@ $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
 $(SBIN): %: %.o $(LIBTARGET) | third_party
-	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(LIBTARGET) $(KHP_SO) $(LDLIBS) -lmpi
+	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
+#$(CXX) -o $@ $(LDFLAGS) -L$(BDIR)/lib $< $(KHP_SO) -lark $(LDLIBS)
 
 $(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)
