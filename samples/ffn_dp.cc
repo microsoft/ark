@@ -101,8 +101,9 @@ class FFN_Model
 {
   public:
     //
-    FFN_Model(int dim_model, TensorType dtype, Model &model, int layer_num)
-        : model{model}
+    FFN_Model(int dim_model, TensorType dtype, Model &model, int layer_num,
+              int num_gpus, int gpu_id)
+        : model{model}, num_gpus{num_gpus}, gpu_id{gpu_id}
     {
         for (int i = 0; i < layer_num; ++i) {
             FullyConnectedLayer layer{dim_model, dim_model, dtype, model};
@@ -132,6 +133,23 @@ class FFN_Model
             LOG(DEBUG, "backward layer: ", i);
             grad = layers[i].backward(grad);
         }
+        DimType grads_size = 0;
+        vector<Tensor *> grads;
+
+        for (auto &layer : layers) {
+            for (auto &param : layer.params) {
+                grads.push_back(layer.grads[param]);
+                grads_size += layer.grads[param]->size();
+            }
+        }
+
+        // All-reduce gradients
+        if (num_gpus > 1) {
+            Tensor *gradients = model.tensor({1, grads_size, 1, 1}, FP16);
+            Tensor *idn = model.identity(gradients, {grads});
+
+            model.all_reduce(idn, gpu_id, num_gpus);
+        }
     }
 
     void print_tensors(Executor *exe)
@@ -148,8 +166,10 @@ class FFN_Model
     vector<FullyConnectedLayer> layers;
     //
     Tensor *model_input;
-
     //
+    int num_gpus;
+    //
+    int gpu_id;
 };
 
 class LossFn
@@ -215,7 +235,8 @@ class Trainer
   public:
     Trainer(Model &model, int dim_input, int batch_size, int gpu_id,
             int num_gpus)
-        : ffn_model{dim_input, FP16, model, 2}, model{model}, loss_fn{model},
+        : ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id}, model{model},
+          loss_fn{model},
           batch_size{batch_size}, num_gpus{num_gpus}, gpu_id{gpu_id}
     {
         input = model.tensor({batch_size, dim_input}, FP16);
@@ -346,7 +367,7 @@ int main(int argc, const char **argv)
             trainer.init_data();
             // train the model.
             trainer.train(10, 1);
-            trainer.print_tensors(trainer.exe);
+            // trainer.print_tensors(trainer.exe);
             return 0;
         }));
     }

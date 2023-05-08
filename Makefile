@@ -79,6 +79,7 @@ endif
 
 LIBHEADERS := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(h|hpp)' -not -path '*/ark/include/kernels*')
 CPPSOURCES := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
+CPPSOURCES += $(shell find $(ARKDIR)/samples -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
 
 LIBNAME   := libark.so
 LIBSO     := $(BDIR)/lib/$(LIBNAME)
