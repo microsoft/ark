@@ -63,10 +63,10 @@ USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
-SSRC := ffn_dp.cc
+ESRC := ffn.cc
 
-SOBJ := $(patsubst %.cc,$(BDIR)/samples/%.o,$(SSRC))
-SBIN := $(patsubst %.o,%,$(SOBJ))
+EOBJ := $(patsubst %.cc,$(BDIR)/examples/%.o,$(ESRC))
+EBIN := $(patsubst %.o,%,$(EOBJ))
 
 ifeq ($(KAHYPAR),1)
 KHP_BDIR := $(BDIR)/third_party/kahypar
@@ -79,7 +79,7 @@ endif
 
 LIBHEADERS := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(h|hpp)' -not -path '*/ark/include/kernels*')
 CPPSOURCES := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
-CPPSOURCES += $(shell find $(ARKDIR)/samples -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
+CPPSOURCES += $(shell find $(ARKDIR)/examples -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
 
 LIBNAME   := libark.so
 LIBSO     := $(BDIR)/lib/$(LIBNAME)
@@ -90,7 +90,7 @@ CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regext
 INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
 INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
 
-.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest cpplint cpplint-autofix install clean
+.PHONY: all build third_party submodules kahypar cutlass gpudma examples unittest cpplint cpplint-autofix install clean
 
 all: build unittest
 
@@ -98,7 +98,7 @@ third_party: cutlass | submodules
 
 build: $(BOBJ) $(LIBTARGET) $(INCTARGETS)
 unittest: $(UBIN)
-samples: $(SBIN)
+examples: $(EBIN)
 
 submodules:
 	@git submodule update --init --recursive
@@ -121,7 +121,7 @@ cpplint-autofix:
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
-$(SBIN): %: %.o $(LIBTARGET) | third_party
+$(EBIN): %: %.o $(LIBTARGET) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 #$(CXX) -o $@ $(LDFLAGS) -L$(BDIR)/lib $< $(KHP_SO) -lark $(LDLIBS)
 
