@@ -118,7 +118,8 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
     return unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_copy_bidir_internal(ark::DimType mat_length)
+ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
+    ark::DimType mat_length)
 {
     int iter = ITER;
     ark::DimType mat_size = mat_length * mat_length * sizeof(half_t);
