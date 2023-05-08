@@ -32,8 +32,8 @@ struct OpTile
 // Configurations for execution of an operation.
 struct OpConfig
 {
-    unsigned int num_warps = 0;
-    unsigned int smem_bytes = 0;
+    int num_warps = 0;
+    int smem_bytes = 0;
     std::vector<OpTile> in_deps_tiles;
     std::vector<OpTile> out_deps_tiles;
     bool sync_pre = false;

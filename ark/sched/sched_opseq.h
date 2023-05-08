@@ -46,11 +46,11 @@ class SchedOpSeq
     {
         return seq_fdims;
     }
-    const unsigned int get_num_warps() const
+    int get_num_warps() const
     {
         return num_warps;
     }
-    const unsigned int get_smem_bytes() const
+    int get_smem_bytes() const
     {
         return smem_bytes;
     }
@@ -58,23 +58,23 @@ class SchedOpSeq
     {
         return tdims;
     }
-    const int get_tdims_size() const
+    int get_tdims_size() const
     {
         return tdims[0] * tdims[1] * tdims[2];
     }
-    const int get_tdim_x() const
+    int get_tdim_x() const
     {
         return tdims[2];
     }
-    const int get_tdim_y() const
+    int get_tdim_y() const
     {
         return tdims[1];
     }
-    const int get_tdim_z() const
+    int get_tdim_z() const
     {
         return tdims[0];
     }
-    const int get_tdim_xz() const
+    int get_tdim_xz() const
     {
         return tdims[0] * tdims[2];
     }
@@ -86,8 +86,8 @@ class SchedOpSeq
     const int id;
     std::vector<SchedOp> seq;
     std::vector<std::pair<int, int>> seq_fdims;
-    unsigned int num_warps = 0;
-    unsigned int smem_bytes = 0;
+    int num_warps = 0;
+    int smem_bytes = 0;
     std::array<int, 3> tdims = {{0, 0, 0}};
 };
 

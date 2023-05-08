@@ -38,9 +38,9 @@ struct BufInfo
 class SchedulerBase
 {
   public:
-    SchedulerBase(const int gpu_id, int rank_, int world_size_,
-                  unsigned int wps_ = 16)
-        : gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_}, world_size{world_size_}
+    SchedulerBase(const int gpu_id, int rank_, int world_size_, int wps_ = 16)
+        : gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_},
+          world_size{world_size_}, wps{wps_}
     {
     }
     // create context on gpu for the model
@@ -73,14 +73,14 @@ class SchedulerBase
 
     int rank;
     int world_size;
-    unsigned int wps;
+    int wps;
 };
 
 class SimpleScheduler : public SchedulerBase
 {
   public:
     SimpleScheduler(const int gpu_id, int rank_, int world_size_,
-                    const Model &model, unsigned int wps_ = 16);
+                    const Model &model, int wps_ = 16);
     void create_sched_opseq(const Model &model, const GpuInfo &gpu_info);
 
     // create context on gpu for the model
@@ -135,7 +135,7 @@ class DefaultScheduler : public SchedulerBase
 {
   public:
     DefaultScheduler(const int gpu_id, int rank_, int world_size_,
-                     const Model &model, unsigned int wps = 16);
+                     const Model &model, int wps = 16);
 
     std::vector<std::string> schedule();
     GpuMgrCtx *create_context(const std::string &name);

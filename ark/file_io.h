@@ -14,7 +14,7 @@ bool is_exist(const std::string &path);
 bool is_dir(const std::string &path);
 bool is_file(const std::string &path);
 int create_dir(const std::string &path);
-int clear_dir(const std::string &path);
+// int clear_dir(const std::string &path);
 std::vector<std::string> list_dir(const std::string &path);
 
 std::string read_file(const std::string &path);

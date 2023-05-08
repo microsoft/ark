@@ -20,9 +20,13 @@ namespace ark {
 
 float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx)
 {
+    const int probe_iter = 10;
+
     glk->load();
     GpuState ret = glk->launch(ctx->create_stream(), false);
-    const int probe_iter = 10;
+    if (ret != CUDA_SUCCESS) {
+        LOGERR("launch() failed with error code ", ret);
+    }
 
     int test_iter = probe_iter * 1e2 / 1;
     if (test_iter == 0)
@@ -103,7 +107,7 @@ static string prof_name(const SchedTileSet &ts)
 }
 
 // convert SchedTileDepth to Sched
-vector<Sched> gen_sched(SchedTileDepth *tile_depths, unsigned int wps)
+vector<Sched> gen_sched(SchedTileDepth *tile_depths, int wps)
 {
     vector<Sched> scheds;
     int sm_b = 0;
@@ -120,9 +124,8 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, unsigned int wps)
             for (auto &tile : tileset.tiles) {
                 int id = tile.id;
                 SchedOpSeq *opseq = const_cast<ark::SchedOpSeq *>(tile.opseq);
-                DimType tnum = opseq->get_tdims_size();
+                // DimType tnum = opseq->get_tdims_size();
                 DimType wnum = opseq->get_num_warps();
-                DimType num;
                 th_e = th_b + wnum * 32;
                 if (th_e > wps * 32) {
                     th_b = 0;

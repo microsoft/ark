@@ -55,8 +55,8 @@ bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
 {
     assert(op != nullptr);
     assert(cfg != nullptr);
-    unsigned int wn = cfg->num_warps;
-    unsigned int sb = cfg->smem_bytes;
+    int wn = cfg->num_warps;
+    int sb = cfg->smem_bytes;
     int dx = 0;
     int dy = 0;
     int dz = 0;

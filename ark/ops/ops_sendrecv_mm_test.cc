@@ -13,11 +13,11 @@
 using namespace std;
 using namespace ark;
 #define ITER 1000
-ark::unittest::State test_sendrecv_mm_copy_internal(int mat_length)
+ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 {
-    int mat_size = mat_length * mat_length * sizeof(half_t);
+    ark::DimType mat_size = mat_length * mat_length * sizeof(half_t);
     char *send_data0 = (char *)malloc(mat_size);
-    for (int i = 0; i < mat_size; i++)
+    for (ark::DimType i = 0; i < mat_size; i++)
         send_data0[i] = std::rand() % 256;
     int iter = ITER;
     ark::unittest::spawn_process([=]() {

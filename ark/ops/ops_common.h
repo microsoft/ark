@@ -79,6 +79,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(OpPrecType, {
 typedef enum
 {
     OP_ARG_INT,
+    OP_ARG_INT64,
     OP_ARG_UINT64,
     OP_ARG_BOOL,
     OP_ARG_FLOAT
@@ -87,7 +88,8 @@ typedef enum
 // clang-format off
 NLOHMANN_JSON_SERIALIZE_ENUM(OpArgType, {
     {OP_ARG_INT, "i32"},
-    {OP_ARG_UINT64, "i64"},
+    {OP_ARG_INT64, "i64"},
+    {OP_ARG_UINT64, "u64"},
     {OP_ARG_BOOL, "bool"},
     {OP_ARG_FLOAT, "f32"},
 })
@@ -97,6 +99,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(OpArgType, {
 struct OpArg
 {
     OpArg(int arg);
+    OpArg(DimType arg);
     OpArg(uint64_t arg);
     OpArg(bool arg);
     OpArg(float arg);

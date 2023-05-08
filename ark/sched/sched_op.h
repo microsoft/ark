@@ -20,9 +20,9 @@ class SchedOp
     {
         return op;
     }
-    const unsigned int get_num_warps() const
+    int get_num_warps() const
     {
-        return cfg->num_warps;
+        return const_cast<OpConfig *>(cfg)->num_warps;
     }
     const Dims &get_tnums() const
     {

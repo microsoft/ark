@@ -12,11 +12,12 @@
 using namespace std;
 
 //
-void test_im2col_internal(unsigned int n, unsigned int h, unsigned int w,
-                          unsigned int c, int kernel_height, int kernel_width,
-                          int stride_height, int stride_width, int pad_height,
-                          int pad_width, int dilation_height,
-                          int dilation_width)
+void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
+                          ark::DimType c, ark::DimType kernel_height,
+                          ark::DimType kernel_width, ark::DimType stride_height,
+                          ark::DimType stride_width, ark::DimType pad_height,
+                          ark::DimType pad_width, ark::DimType dilation_height,
+                          ark::DimType dilation_width)
 {
     //
     ark::Model model;
@@ -50,37 +51,37 @@ void test_im2col_internal(unsigned int n, unsigned int h, unsigned int w,
     half_t *gt =
         (half_t *)calloc(tns_y->shape_bytes() / sizeof(half_t), sizeof(half_t));
     UNITTEST_NE(gt, (half_t *)nullptr);
-    unsigned int patch_num_height =
+    ark::DimType patch_num_height =
         (h - kernel_height + 2 * pad_height) / stride_height + 1;
-    unsigned int patch_num_width =
+    ark::DimType patch_num_width =
         (w - kernel_width + 2 * pad_width) / stride_width + 1;
-    unsigned int mdim = patch_num_height * patch_num_width;
-    unsigned int inner_dim = kernel_height * kernel_width * c;
-    for (unsigned int nidx = 0; nidx < inner_dim; ++nidx) {
-        for (unsigned int midx = 0; midx < patch_num_height * patch_num_width;
+    ark::DimType mdim = patch_num_height * patch_num_width;
+    ark::DimType inner_dim = kernel_height * kernel_width * c;
+    for (ark::DimType nidx = 0; nidx < inner_dim; ++nidx) {
+        for (ark::DimType midx = 0; midx < patch_num_height * patch_num_width;
              ++midx) {
-            unsigned int channel_idx = nidx / (kernel_height * kernel_width);
-            unsigned int per_channel_patch_idx = midx;
-            unsigned int per_channel_patch_pos_width =
+            ark::DimType channel_idx = nidx / (kernel_height * kernel_width);
+            ark::DimType per_channel_patch_idx = midx;
+            ark::DimType per_channel_patch_pos_width =
                 (per_channel_patch_idx % patch_num_width) * stride_width;
-            unsigned int per_channel_patch_pos_height =
+            ark::DimType per_channel_patch_pos_height =
                 (per_channel_patch_idx / patch_num_width) * stride_height;
-            unsigned int per_patch_elem_idx =
+            ark::DimType per_patch_elem_idx =
                 nidx % (kernel_height * kernel_width);
-            unsigned int per_patch_elem_pos_width =
+            ark::DimType per_patch_elem_pos_width =
                 per_patch_elem_idx % kernel_width;
-            unsigned int per_patch_elem_pos_height =
+            ark::DimType per_patch_elem_pos_height =
                 per_patch_elem_idx / kernel_width;
-            unsigned int elem_width = per_channel_patch_pos_width +
+            ark::DimType elem_width = per_channel_patch_pos_width +
                                       per_patch_elem_pos_width - pad_width;
-            unsigned int elem_height = per_channel_patch_pos_height +
+            ark::DimType elem_height = per_channel_patch_pos_height +
                                        per_patch_elem_pos_height - pad_height;
 
             if (elem_height < 0 || elem_height >= h || elem_width < 0 ||
                 elem_width >= w) {
                 gt[midx + nidx * mdim] = half_t(0);
             } else {
-                unsigned int elem_idx =
+                ark::DimType elem_idx =
                     elem_width + elem_height * w + channel_idx * h * w;
                 gt[midx + nidx * mdim] = data_x.get()[elem_idx];
             }

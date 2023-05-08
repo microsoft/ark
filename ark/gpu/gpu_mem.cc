@@ -28,7 +28,10 @@ static int mem_expose(GpuMemExposalInfo *info, GpuPtr addr, uint64_t bytes)
     if (fd < 0) {
         return errno;
     }
-    gpudma_lock_t lock = {.handle = 0, .addr = addr, .size = bytes};
+    gpudma_lock_t lock;
+    lock.handle = 0;
+    lock.addr = addr;
+    lock.size = bytes;
     if (ioctl(fd, IOCTL_GPUMEM_LOCK, &lock) < 0) {
         return errno;
     }

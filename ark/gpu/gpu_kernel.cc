@@ -65,7 +65,7 @@ GpuKernel::~GpuKernel()
                 free(this->params[i]);
             }
         }
-        free(this->params);
+        delete this->params;
         this->params = nullptr;
     }
 }

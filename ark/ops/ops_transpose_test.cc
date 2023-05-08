@@ -10,8 +10,10 @@
 #include "ark/unittest/unittest_utils.h"
 
 template <typename T>
-void test_transpose_internal(ark::TensorType type, int n, int c, int h, int w,
-                             int pn, int pc, int ph, int pw)
+void test_transpose_internal(ark::TensorType type, ark::DimType n,
+                             ark::DimType c, ark::DimType h, ark::DimType w,
+                             ark::DimType pn, ark::DimType pc, ark::DimType ph,
+                             ark::DimType pw)
 {
     ark::Model model;
     ark::Tensor *tns_in = model.tensor({n, c, h, w}, type);
@@ -37,25 +39,25 @@ void test_transpose_internal(ark::TensorType type, int n, int c, int h, int w,
     exe.tensor_memcpy(res, tns_out, n * c * h * w * sizeof(T));
 
     // int on = tns_in->shape[pn];
-    int oc = tns_in->shape[pc];
-    int oh = tns_in->shape[ph];
-    int ow = tns_in->shape[pw];
+    ark::DimType oc = tns_in->shape[pc];
+    ark::DimType oh = tns_in->shape[ph];
+    ark::DimType ow = tns_in->shape[pw];
 
     // Check results.
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < c; ++j) {
-            for (int k = 0; k < h; ++k) {
-                for (int l = 0; l < w; ++l) {
+    for (ark::DimType i = 0; i < n; ++i) {
+        for (ark::DimType j = 0; j < c; ++j) {
+            for (ark::DimType k = 0; k < h; ++k) {
+                for (ark::DimType l = 0; l < w; ++l) {
                     ark::Dims axis{i, j, k, l};
                     ark::Dims new_axis;
                     new_axis[0] = axis[pn];
                     new_axis[1] = axis[pc];
                     new_axis[2] = axis[ph];
                     new_axis[3] = axis[pw];
-                    int in_idx = i * c * h * w + j * h * w + k * w + l;
-                    int res_idx = new_axis[0] * oc * oh * ow +
-                                  new_axis[1] * oh * ow + new_axis[2] * ow +
-                                  new_axis[3];
+                    ark::DimType in_idx = i * c * h * w + j * h * w + k * w + l;
+                    ark::DimType res_idx = new_axis[0] * oc * oh * ow +
+                                           new_axis[1] * oh * ow +
+                                           new_axis[2] * ow + new_axis[3];
                     UNITTEST_TRUE(in_idx < n * c * h * w);
                     UNITTEST_TRUE(res_idx < n * c * h * w);
                     UNITTEST_EQ(in_ptr[in_idx], res[res_idx]);

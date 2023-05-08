@@ -12,7 +12,7 @@ MPIDIR  := /usr/local/mpi
 KAHYPAR ?= 0
 
 CXX      := g++
-CXXFLAGS := -std=c++14 -Wall -g -O3 -fPIC
+CXXFLAGS := -std=c++14 -Wall -Wextra -g -O3 -fPIC
 INCLUDE  := -I $(CUDIR)/include -I $(ARKDIR) -I $(ARKDIR)/third_party
 INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
 INCLUDE  += -I $(MPIDIR)/include
