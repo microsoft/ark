@@ -59,7 +59,9 @@ int ipc_shm_open_blocking(const char *name)
         close(ifd);
         return fd;
     }
-    pollfd pfd = {.fd = ifd, .events = POLLIN};
+    pollfd pfd;
+    pfd.fd = ifd;
+    pfd.events = POLLIN;
     char ibuf[1024] __attribute__((aligned(__alignof__(inotify_event))));
     for (;;) {
         int poll_num = poll(&pfd, 1, -1);

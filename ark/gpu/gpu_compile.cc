@@ -83,9 +83,8 @@ const string nvrtc_compile(const string &ark_root, const string &arch,
     // Write the result PTX file.
     return string(ptx);
 }
-#endif // (ARK_USE_NVRTC)
 
-const string link(const string &ark_root, const vector<string> &ptxs)
+const string link(const vector<string> &ptxs)
 {
     unsigned int buflen = 8192;
     char *infobuf = new char[buflen];
@@ -134,6 +133,8 @@ const string link(const string &ark_root, const vector<string> &ptxs)
     delete[] errbuf;
     return ret;
 }
+
+#endif // (ARK_USE_NVRTC)
 
 const string gpu_compile(const vector<string> &codes,
                          const GpuArchType &arch_type, unsigned int max_reg_cnt,

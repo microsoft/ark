@@ -35,7 +35,7 @@ struct SchedPerf
         regs_num = r;
         score = s;
     }
-    const bool is_set() const
+    bool is_set() const
     {
         return elapsed > 0 && regs_num > 0;
     }
@@ -54,13 +54,12 @@ struct SchedOpSeqPerf
     std::map<const SchedOpSeq *, SchedPerf> mixed;
 };
 
-std::vector<Sched> gen_sched(SchedTileDepth *tile_depths, unsigned int wps);
+std::vector<Sched> gen_sched(SchedTileDepth *tile_depths, int wps);
 
 class SchedProfiler
 {
   public:
-    SchedProfiler(GpuMgr *gpu_mgr, unsigned int wps)
-        : gpu_mgr{gpu_mgr}, wps{wps}
+    SchedProfiler(GpuMgr *gpu_mgr, int wps) : gpu_mgr{gpu_mgr}, wps{wps}
     {
     }
     void profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
@@ -68,9 +67,9 @@ class SchedProfiler
     float profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx);
 
     GpuMgr *gpu_mgr;
-    unsigned int wps;
+    int wps;
     const std::string wps_prof_cache_path = "wps_prof_cache.json";
-    std::map<unsigned int, std::map<const SchedOpSeq *, SchedOpSeqPerf>>
+    std::map<int, std::map<const SchedOpSeq *, SchedOpSeqPerf>>
         wps_prof_results;
 };
 

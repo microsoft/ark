@@ -39,9 +39,9 @@ struct SchedTileSet
     }
     SchedTileSet(std::initializer_list<SchedTile> tiles, SchedTileSetType type);
 
-    const unsigned int get_num_warps() const
+    int get_num_warps() const
     {
-        unsigned int sum = 0;
+        int sum = 0;
         for (auto &t : tiles)
             sum += t.opseq->get_num_warps();
         return sum;
@@ -60,23 +60,23 @@ struct SchedTileDepth
                       SchedTileSetType type);
     void clear();
 
-    const unsigned int get_num_sm() const
+    int get_num_sm() const
     {
-        return (unsigned int)sms.size();
+        return (int)sms.size();
     }
-    const unsigned int get_num_warps() const
+    int get_num_warps() const
     {
-        unsigned int max_num_warps = 0;
+        int max_num_warps = 0;
         for (auto &sm : sms) {
             for (auto &ts : sm) {
-                unsigned int nw = ts.get_num_warps();
+                int nw = ts.get_num_warps();
                 if (nw > max_num_warps)
                     max_num_warps = nw;
             }
         }
         return max_num_warps;
     }
-    const bool is_full() const
+    bool is_full() const
     {
         for (auto &sm : sms) {
             if (sm.size() == 0)

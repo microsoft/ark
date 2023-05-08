@@ -13,8 +13,8 @@ using namespace std;
 
 //
 template <typename T>
-void test_add_internal(ark::TensorType type, unsigned int bs, unsigned int n,
-                       unsigned int m)
+void test_add_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
+                       ark::DimType m)
 {
     string kernel_name;
     if (type == ark::FP32) {
@@ -28,7 +28,7 @@ void test_add_internal(ark::TensorType type, unsigned int bs, unsigned int n,
     ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
     ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_add", 0, 1);
 
-    unsigned int len = m * n;
+    ark::DimType len = m * n;
     ark::GpuBuf *buf_a = ctx->mem_alloc(bs * len * sizeof(T));
     ark::GpuBuf *buf_b = ctx->mem_alloc(len * sizeof(T));
     ark::GpuBuf *buf_c = ctx->mem_alloc(bs * len * sizeof(T));

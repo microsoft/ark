@@ -16,8 +16,7 @@
 
 namespace ark {
 
-IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_,
-                     bool try_create)
+IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
     : ip{ip_}, port{port_}, create{create_}, server{nullptr}
 {
     struct sockaddr_in addr;

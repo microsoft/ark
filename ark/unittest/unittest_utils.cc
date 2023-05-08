@@ -13,7 +13,7 @@
 using namespace std;
 
 // Grep SIGALRM and exit.
-static void sigalrm_timeout_handler(int sig)
+static void sigalrm_timeout_handler(int)
 {
     signal(SIGALRM, SIG_IGN);
     UNITTEST_FEXIT("timeout");

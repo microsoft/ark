@@ -220,13 +220,12 @@ void DefaultScheduler::configure_gpu_buf()
 }
 
 DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
-                                   const Model &model, unsigned int wps_)
+                                   const Model &model, int wps_)
     : SchedulerBase(gpu_id, rank_, world_size_, wps_), scg{buf_trans, 108, wps_,
                                                            world_size_}
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    unsigned int min_wps =
-        gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
+    int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
     this->opt_model = this->optimize_model(model);
     this->op_graph =
@@ -511,7 +510,8 @@ void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
     sort(depth.begin(), depth.end(), dec_num_warps);
     DimType warps_remain = 0;
     for (auto &opseq : depth) {
-        warps_remain += opseq->get_tdims_size() * opseq->get_num_warps();
+        warps_remain +=
+            (DimType)opseq->get_tdims_size() * (DimType)opseq->get_num_warps();
     }
     LOG(DEBUG, warps_remain, " warps in depth");
     DimType sidx = 0;
@@ -619,7 +619,6 @@ void DefaultScheduler::schedule_depth_comm(vector<SchedOpSeq *> &depth,
     for (auto &opseq : depth) {
         DimType tnum = opseq->get_tdims_size();
         DimType wnum = opseq->get_num_warps();
-        DimType tidx = 0;
         LOG(DEBUG, "  op", opseq->get_id(), ": tnum ", tnum, " wnum ", wnum);
 
         DimType th_b = widx * 32;

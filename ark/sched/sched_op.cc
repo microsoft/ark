@@ -331,7 +331,7 @@ const string SchedOp::func_string_im2col() const
     CHECK(this->op->in_deps.size() == 1);
     CHECK(this->op->args.size() == 8);
     for (int i = 0; i < 8; ++i) {
-        CHECK(this->op->args[i].type == OP_ARG_INT);
+        CHECK(this->op->args[i].type == OP_ARG_INT64);
     }
 
     const Tensor *tns_in = this->op->in_deps[0];

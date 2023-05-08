@@ -11,6 +11,10 @@ OpArg::OpArg(int arg) : type{OP_ARG_INT}, val{new int{arg}}
 {
     assert(this->val != nullptr);
 }
+OpArg::OpArg(DimType arg) : type{OP_ARG_INT64}, val{new DimType{arg}}
+{
+    assert(this->val != nullptr);
+}
 OpArg::OpArg(uint64_t arg) : type{OP_ARG_UINT64}, val{new uint64_t{arg}}
 {
     assert(this->val != nullptr);
@@ -27,6 +31,8 @@ OpArg::OpArg(const OpArg &arg) : type{arg.type}
 {
     if (this->type == OP_ARG_INT) {
         this->val = new int{*(int *)arg.val};
+    } else if (this->type == OP_ARG_INT64) {
+        this->val = new DimType{*(DimType *)arg.val};
     } else if (this->type == OP_ARG_UINT64) {
         this->val = new uint64_t{*(uint64_t *)arg.val};
     } else if (this->type == OP_ARG_BOOL) {
@@ -39,6 +45,8 @@ OpArg::~OpArg()
 {
     if (this->type == OP_ARG_INT) {
         delete static_cast<int *>(this->val);
+    } else if (this->type == OP_ARG_INT64) {
+        delete static_cast<DimType *>(this->val);
     } else if (this->type == OP_ARG_UINT64) {
         delete static_cast<uint64_t *>(this->val);
     } else if (this->type == OP_ARG_BOOL) {
@@ -57,6 +65,8 @@ bool operator<(const OpArg &oa1, const OpArg &oa2)
     switch (oa1.type) {
     case OP_ARG_INT:
         return *(int *)oa1.val < *(int *)oa2.val;
+    case OP_ARG_INT64:
+        return *(DimType *)oa1.val < *(DimType *)oa2.val;
     case OP_ARG_UINT64:
         return *(uint64_t *)oa1.val < *(uint64_t *)oa2.val;
     case OP_ARG_BOOL:
@@ -77,6 +87,8 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
     switch (oa1.type) {
     case OP_ARG_INT:
         return *(int *)oa1.val == *(int *)oa2.val;
+    case OP_ARG_INT64:
+        return *(DimType *)oa1.val == *(DimType *)oa2.val;
     case OP_ARG_UINT64:
         return *(uint64_t *)oa1.val == *(uint64_t *)oa2.val;
     case OP_ARG_BOOL:
@@ -95,6 +107,8 @@ void to_json(nlohmann::json &j, const OpArg &oparg)
     };
     if (oparg.type == OP_ARG_INT) {
         j.emplace("val", *static_cast<int *>(oparg.val));
+    } else if (oparg.type == OP_ARG_INT64) {
+        j.emplace("val", *static_cast<DimType *>(oparg.val));
     } else if (oparg.type == OP_ARG_UINT64) {
         j.emplace("val", *static_cast<uint64_t *>(oparg.val));
     } else if (oparg.type == OP_ARG_BOOL) {
@@ -109,6 +123,8 @@ void from_json(const nlohmann::json &j, OpArg &oparg)
     j.at("type").get_to(oparg.type);
     if (oparg.type == OP_ARG_INT) {
         oparg.val = new int{j.at("val").get<int>()};
+    } else if (oparg.type == OP_ARG_INT64) {
+        oparg.val = new DimType{j.at("val").get<DimType>()};
     } else if (oparg.type == OP_ARG_UINT64) {
         oparg.val = new uint64_t{j.at("val").get<uint64_t>()};
     } else if (oparg.type == OP_ARG_BOOL) {

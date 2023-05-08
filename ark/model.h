@@ -59,9 +59,10 @@ class Model
                    Tensor *output = nullptr, DimType splitk = 1,
                    bool is_relu = false, const std::string &name = "linear",
                    int gran_lev = -1);
-    Tensor *im2col(Tensor *input, int kernel_height, int kernel_width,
-                   int stride_height, int stride_width, int pad_height,
-                   int pad_width, int dilation_height, int dilation_width,
+    Tensor *im2col(Tensor *input, DimType kernel_height, DimType kernel_width,
+                   DimType stride_height, DimType stride_width,
+                   DimType pad_height, DimType pad_width,
+                   DimType dilation_height, DimType dilation_width,
                    Tensor *output = nullptr,
                    const std::string &name = "im2col");
     Tensor *conv2d(Tensor *input, DimType in_channels, DimType out_channels,

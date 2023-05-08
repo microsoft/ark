@@ -77,8 +77,8 @@ NetIbQp::NetIbQp(void *qp_, int port_)
 NetIbQp::~NetIbQp()
 {
     // IB resources should be freed by NetIbMgr.
-    free(this->wrs);
-    free(this->sges);
+    delete reinterpret_cast<struct ibv_send_wr *>(this->wrs);
+    delete reinterpret_cast<struct ibv_sge *>(this->sges);
 }
 
 int NetIbQp::init()
@@ -299,7 +299,7 @@ NetIbMgr::~NetIbMgr()
         ibv_destroy_cq((struct ibv_cq *)this->cq);
     }
     ibv_close_device((struct ibv_context *)this->ctx);
-    free(this->wcs);
+    delete reinterpret_cast<struct ibv_wc *>(this->wcs);
 }
 
 NetIbQp *NetIbMgr::create_qp(int port)

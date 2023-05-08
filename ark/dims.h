@@ -19,7 +19,7 @@ enum
 
 const std::string shape_str(const std::vector<DimType> &shape);
 
-// Up-to-4-dimensional vector.
+// Up-to-`DIMS_LEN`-dimensional vector.
 struct Dims
 {
     Dims(DimType d0 = NO_DIM, DimType d1 = NO_DIM, DimType d2 = NO_DIM,
@@ -41,6 +41,8 @@ struct Dims
     {
         return data[idx];
     }
+
+    constexpr Dims &operator=(const Dims &) = default;
 
     friend bool operator==(const Dims &a, const Dims &b);
     friend bool operator!=(const Dims &a, const Dims &b);

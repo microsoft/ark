@@ -14,8 +14,8 @@ class OpGraphNode
 {
   public:
     OpGraphNode(int id, const Op *op, const OpConfig *cfg,
-                const std::string name)
-        : opseq{id, op, cfg}
+                const std::string &name_)
+        : opseq{id, op, cfg}, name{name_}
     {
     }
     // Inward dependencies.
@@ -26,6 +26,8 @@ class OpGraphNode
     int depth = -1;
     //
     SchedOpSeq opseq;
+    //
+    const std::string name;
 };
 
 void to_json(nlohmann::json &j, const OpGraphNode &ogn);

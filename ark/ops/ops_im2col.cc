@@ -8,10 +8,12 @@ using namespace std;
 
 namespace ark {
 
-Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
-                      int stride_height, int stride_width, int pad_height,
-                      int pad_width, int dilation_height, int dilation_width,
-                      Tensor *output, const string &name)
+Tensor *Model::im2col(Tensor *input, DimType kernel_height,
+                      DimType kernel_width, DimType stride_height,
+                      DimType stride_width, DimType pad_height,
+                      DimType pad_width, DimType dilation_height,
+                      DimType dilation_width, Tensor *output,
+                      const string &name)
 {
     assert(input != nullptr);
     DimType n, c, h, w;
@@ -43,8 +45,8 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
     } else {
         LOGERR("unsupported input data type: ", type_str(input->type));
     }
-    int out_h = (h + 2 * pad_height - kernel_height) / stride_height + 1;
-    int out_w = (w + 2 * pad_width - kernel_width) / stride_width + 1;
+    DimType out_h = (h + 2 * pad_height - kernel_height) / stride_height + 1;
+    DimType out_w = (w + 2 * pad_width - kernel_width) / stride_width + 1;
     assert((out_h > 0) && (out_w > 0));
     DimType out_m = out_h * out_w;
     DimType inner_dim = c * kernel_height * kernel_width;

@@ -30,8 +30,7 @@ class IpcSocket
         int cnt;
     };
 
-    IpcSocket(const std::string &ip_, int port_, bool create_ = true,
-              bool try_create = false);
+    IpcSocket(const std::string &ip_, int port_, bool create_ = true);
     ~IpcSocket();
 
     State add_item(const std::string &name, void *data, int size);
