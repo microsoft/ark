@@ -23,6 +23,7 @@ class Executor
     void compile();
     void launch();
     void run(int iter);
+    void wait();
     float stop();
     GpuBuf *get_gpu_buf(Tensor *tns) const;
     Tensor *get_tensor(Tensor *tns) const;

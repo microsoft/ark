@@ -295,6 +295,7 @@ class Trainer
             // we only print the loss every print_interval iterations for debug.
             for (int i = 0; i < iter; ++i) {
                 exe->run(1);
+                exe->wait();
                 if (i % print_interval == 0) {
                     float loss = get_loss();
                     cout << "iter: " << i << ", loss: " << loss << endl;

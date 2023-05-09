@@ -82,6 +82,12 @@ void Executor::run(int iter)
     this->glk->run(iter);
 }
 
+// Wait for the previous run to finish.
+void Executor::wait()
+{
+    this->glk->wait();
+}
+
 // Stop the model and return the elapsed time in milliseconds.
 // Once this is called, we need to call `launch()` again to run the model again.
 float Executor::stop()
