@@ -87,7 +87,7 @@ class FullyConnectedLayer
         LOG(DEBUG, "input: ", input->name);
         print_tensor(input, exe);
         // print the parameters.
-        for (int i = 0; i < params.size(); ++i) {
+        for (size_t i = 0; i < params.size(); ++i) {
             LOG(DEBUG, "param: ", params[i]->name);
             print_tensor(params[i], exe);
         }
@@ -121,7 +121,7 @@ class FFN_Model
     //
     Tensor *forward(Tensor *input = nullptr)
     {
-        for (int i = 0; i < layers.size(); ++i) {
+        for (size_t i = 0; i < layers.size(); ++i) {
             LOG(DEBUG, "forward layer: ", i);
             input = layers[i].forward(input);
         }
@@ -156,7 +156,7 @@ class FFN_Model
 
     void print_tensors(Executor *exe)
     {
-        for (int i = 0; i < layers.size(); ++i) {
+        for (size_t i = 0; i < layers.size(); ++i) {
             LOG(DEBUG, "layer: ", i);
             layers[i].print_tensors(exe);
         }
@@ -237,7 +237,7 @@ class Trainer
   public:
     Trainer(Model &model, int dim_input, int batch_size, int gpu_id,
             int num_gpus)
-        : ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id}, model{model},
+        : model{model}, ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id}, 
           loss_fn{model},
           batch_size{batch_size}, num_gpus{num_gpus}, gpu_id{gpu_id}
     {
@@ -344,32 +344,132 @@ class Trainer
         this->loss_fn.print_tensors(exe);
     }
 
+    Model &model;
     Tensor *loss_tensor, *input, *ground_truth, *output;
     Tensor *grad_output;
     Tensor *grad_loss;
     FFN_Model ffn_model;
     LossFn loss_fn;
-    Model &model;
     Executor *exe;
     int batch_size;
     int num_gpus;
     int gpu_id;
 };
 
+struct Args
+{
+    int batch_size;
+    int dims;
+    int num_gpus;
+    int iterations;
+    int print_interval;
+    int seed;
+    bool verbose;
+};
+
+Args parse_args(int argc, const char **argv)
+{
+    string prog = argv[0];
+    vector<string> args(argv + 1, argv + argc);
+
+    auto print_help = [&prog]() {
+        cerr << "Usage: " << prog << " [options]\n"
+             << "Options:\n"
+             << "  -h, --help\t\t\tPrint this help message\n"
+             << "  -b, --batch-size <int>\t\tBatch size\n"
+             << "  -d, --dims <int>\t\tDimensions\n"
+             << "  -g, --num-gpus <int>\t\tNumber of GPUs\n"
+             << "  -i, --iter <int>\t\tNumber of iterations\n"
+             << "  -p, --print-interval <int>\tPrint interval\n"
+             << "  -s, --seed <int>\t\tRandom seed\n"
+             << "  -v, --verbose\t\t\tVerbose output\n";
+        exit(0);
+    };
+
+    Args ret;
+
+    // Default arguments
+    ret.batch_size = 1;
+    ret.dims = 64;
+    ret.num_gpus = 1;
+    ret.iterations = 10;
+    ret.print_interval = 1;
+    ret.seed = 0;
+    ret.verbose = false;
+
+    for (auto it = args.begin(); it != args.end(); ++it) {
+        if (*it == "-h" || *it == "--help") {
+            print_help();
+        } else if (*it == "-b" || *it == "--batch-size") {
+            if (++it == args.end()) {
+                cerr << "Error: missing argument for " << *(it-1) << endl;
+                exit(1);
+            }
+            ret.batch_size = stoi(*it);
+        } else if (*it == "-d" || *it == "--dims") {
+            if (++it == args.end()) {
+                cerr << "Error: missing argument for " << *(it-1) << endl;
+                exit(1);
+            }
+            ret.dims = stoi(*it);
+        } else if (*it == "-g" || *it == "--num-gpus") {
+            if (++it == args.end()) {
+                cerr << "Error: missing argument for " << *(it-1) << endl;
+                exit(1);
+            }
+            ret.num_gpus = stoi(*it);
+        } else if (*it == "-i" || *it == "--iter") {
+            if (++it == args.end()) {
+                cerr << "Error: missing argument for " << *(it-1) << endl;
+                exit(1);
+            }
+            ret.iterations = stoi(*it);
+        } else if (*it == "-p" || *it == "--print-interval") {
+            if (++it == args.end()) {
+                cerr << "Error: missing argument for " << *(it-1) << endl;
+                exit(1);
+            }
+            ret.print_interval = stoi(*it);
+        } else if (*it == "-s" || *it == "--seed") {
+            if (++it == args.end()) {
+                cerr << "Error: missing argument for " << *(it-1) << endl;
+                exit(1);
+            }
+            ret.seed = stoi(*it);
+        } else if (*it == "-v" || *it == "--verbose") {
+            ret.verbose = true;
+        } else {
+            cerr << "Error: unknown option " << *it << endl;
+            print_help();
+        }
+    }
+
+    return ret;
+}
+
 int main(int argc, const char **argv)
 {
-    int batch_size = 1;
-    int num_gpus = 1;
-    int dims = 64;
+    Args args = parse_args(argc, argv);
+
+    cout << "--" << endl
+         << "batch_size=" << args.batch_size << endl
+         << "dims=" << args.dims << endl
+         << "num_gpus=" << args.num_gpus << endl
+         << "iterations=" << args.iterations << endl
+         << "print_interval=" << args.print_interval << endl
+         << "seed=" << args.seed << endl
+         << "verbose=" << args.verbose << endl
+         << "--" << endl;
+
     vector<int> pids;
-    for (int gpu_id = 0; gpu_id < (int)num_gpus; ++gpu_id) {
+    for (int gpu_id = 0; gpu_id < args.num_gpus; ++gpu_id) {
         pids.emplace_back(proc_spawn([&] {
             Model model;
 
-            Trainer trainer{model, dims, batch_size, gpu_id, num_gpus};
+            Trainer trainer{model, args.dims, args.batch_size, gpu_id, args.num_gpus};
             trainer.init_data();
             // train the model.
-            trainer.train(10, 1);
+            trainer.train(args.iterations, args.print_interval);
             // trainer.print_tensors(trainer.exe);
             return 0;
         }));
