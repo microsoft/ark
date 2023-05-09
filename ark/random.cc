@@ -15,7 +15,7 @@ namespace ark {
 // Initialize the random number generator.
 void srand(int seed)
 {
-    if (seed == 0) {
+    if (seed == -1) {
         ::srand(time(0) + getpid() + gettid());
     } else {
         ::srand(seed);

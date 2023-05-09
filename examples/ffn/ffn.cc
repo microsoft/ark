@@ -258,7 +258,6 @@ class Trainer
     void init_data()
     {
         // init the input and ground_truth.
-        ark::srand();
         auto data_input = range_halfs(this->input->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->input, data_input.get(),
                            this->input->shape_bytes());
@@ -394,7 +393,7 @@ Args parse_args(int argc, const char **argv)
     ret.num_gpus = 1;
     ret.iterations = 10;
     ret.print_interval = 1;
-    ret.seed = 0;
+    ret.seed = -1;
     ret.verbose = false;
 
     for (auto it = args.begin(); it != args.end(); ++it) {
@@ -464,8 +463,9 @@ int main(int argc, const char **argv)
     vector<int> pids;
     for (int gpu_id = 0; gpu_id < args.num_gpus; ++gpu_id) {
         pids.emplace_back(proc_spawn([&] {
-            Model model;
+            ark::srand(args.seed);
 
+            Model model;
             Trainer trainer{model, args.dims, args.batch_size, gpu_id, args.num_gpus};
             trainer.init_data();
             // train the model.

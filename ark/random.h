@@ -8,7 +8,7 @@
 
 namespace ark {
 
-void srand(int seed = 0);
+void srand(int seed = -1);
 int rand();
 
 const std::string rand_anum(size_t len);
