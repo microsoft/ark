@@ -1,29 +1,82 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark.h"
 #include <cassert>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <vector>
-
-#include "ark/executor.h"
-#include "ark/logging.h"
-#include "ark/model_io.h"
-#include "ark/ops/ops_test_utils.h"
-#include "ark/process.h"
-
+// #include "ark/logging.h"
+// #include "ark/ops/ops_test_utils.h"
 using namespace std;
 using namespace ark;
+
+// Spawn a process that runs `func`. Returns PID of the spawned process.
+int proc_spawn(const function<int()> &func)
+{
+    pid_t pid = fork();
+    if (pid < 0) {
+        return -1;
+    } else if (pid == 0) {
+        int ret = func();
+        std::exit(ret);
+    }
+    return (int)pid;
+}
+
+// Wait for a spawned process with PID `pid`.
+// Return -1 on any unexpected failure, otherwise return the exit status.
+int proc_wait(int pid)
+{
+    int status;
+    if (waitpid(pid, &status, 0) == -1) {
+        return -1;
+    }
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+    return -1;
+}
+
+// Wait for multiple child processes.
+// Return 0 on success, -1 on any unexpected failure, otherwise the first seen
+// non-zero exit status.
+int proc_wait(const vector<int> &pids)
+{
+    int ret = 0;
+    for (auto &pid : pids) {
+        int status;
+        if (waitpid(pid, &status, 0) == -1) {
+            LOG(WARN, "waitpid failed (", errno, ")");
+            return -1;
+        }
+        int r;
+        if (WIFEXITED(status)) {
+            r = WEXITSTATUS(status);
+        } else if (WIFSIGNALED(status)) {
+            LOG(WARN, "PID ", pid, " exited by signal ", WTERMSIG(status));
+            r = -1;
+        } else {
+            r = -1;
+        }
+        if ((ret == 0) && (r != 0)) {
+            ret = r;
+        }
+    }
+    return ret;
+}
 
 void print_tensor(Tensor *tensor, Executor *exe)
 {
     cout << "tensor: " << tensor->name << endl;
-    ark::GpuBuf *buf_tns = exe->get_gpu_buf(tensor);
     size_t tensor_size = tensor->shape_bytes();
     half_t *data = (half_t *)malloc(tensor_size);
-    ark::gpu_memcpy(data, buf_tns, tensor_size);
+    exe->tensor_memcpy(data, tensor, tensor_size);
     for (int i = 0; i < tensor->size(); ++i) {
         cout << data[i] << " ";
     }
@@ -84,11 +137,11 @@ class FullyConnectedLayer
 
     void print_tensors(Executor *exe)
     {
-        LOG(DEBUG, "input: ", input->name);
+        printf("input: %s\n", input->name);
         print_tensor(input, exe);
         // print the parameters.
         for (size_t i = 0; i < params.size(); ++i) {
-            LOG(DEBUG, "param: ", params[i]->name);
+            printf("param: %s\n", params[i]->name);
             print_tensor(params[i], exe);
         }
     }
@@ -122,7 +175,7 @@ class FFN_Model
     Tensor *forward(Tensor *input = nullptr)
     {
         for (size_t i = 0; i < layers.size(); ++i) {
-            LOG(DEBUG, "forward layer: ", i);
+            printf("forward layer: %d\n", i);
             input = layers[i].forward(input);
         }
         return input;
@@ -132,7 +185,7 @@ class FFN_Model
     void backward(Tensor *grad)
     {
         for (int i = layers.size() - 1; i >= 0; --i) {
-            LOG(DEBUG, "backward layer: ", i);
+            printf("backward layer: %d\n", i);
             grad = layers[i].backward(grad);
         }
         DimType grads_size = 0;
@@ -157,7 +210,7 @@ class FFN_Model
     void print_tensors(Executor *exe)
     {
         for (size_t i = 0; i < layers.size(); ++i) {
-            LOG(DEBUG, "layer: ", i);
+            printf("layer: %d\n", i);
             layers[i].print_tensors(exe);
         }
     }
@@ -184,7 +237,7 @@ class LossFn
     Tensor *forward(Tensor *output, Tensor *ground_truth)
     {
         this->output = output;
-        LOG(DEBUG, "loss forward");
+        printf("loss forward");
         neg_ground_truth =
             model.tensor(ground_truth->shape, ground_truth->type);
         neg_ground_truth = model.scale(ground_truth, -1, neg_ground_truth);
@@ -192,7 +245,6 @@ class LossFn
         model.add(output, neg_ground_truth, diff);
         diff1 = model.tensor(diff->shape, diff->type);
         model.scale(diff, 1, diff1);
-        LOG(DEBUG, "diff: ", diff->shape);
         loss_tensor = model.tensor(diff->shape, diff->type);
         model.mul(diff, diff1, loss_tensor);
         return loss_tensor;
@@ -200,7 +252,7 @@ class LossFn
 
     Tensor *backward(Tensor *loss_tensor)
     {
-        LOG(DEBUG, "loss backward");
+        printf("loss backward");
         grad_diff = model.tensor(diff->shape, diff->type);
         model.mul(loss_tensor, diff, grad_diff);
         return grad_diff;
@@ -208,19 +260,19 @@ class LossFn
 
     void print_tensors(Executor *exe)
     {
-        LOG(DEBUG, "loss_fn.output: ");
+        printf("loss_fn.output: ");
         print_tensor(this->output, exe);
-        LOG(DEBUG, "loss_fn.neg_ground_truth: ");
+        printf("loss_fn.neg_ground_truth: ");
         print_tensor(this->neg_ground_truth, exe);
-        LOG(DEBUG, "loss_fn.diff: ");
+        printf("loss_fn.diff: ");
         print_tensor(this->diff, exe);
-        LOG(DEBUG, "loss_fn.diff1: ");
+        printf("loss_fn.diff1: ");
         print_tensor(this->diff1, exe);
-        LOG(DEBUG, "loss_fn.neg_ground_truth: ");
+        printf("loss_fn.neg_ground_truth: ");
         print_tensor(this->neg_ground_truth, exe);
-        LOG(DEBUG, "loss_fn.loss_tensor: ");
+        printf("loss_fn.loss_tensor: ");
         print_tensor(this->loss_tensor, exe);
-        LOG(DEBUG, "loss_fn.grad_diff: ");
+        printf("loss_fn.grad_diff: ");
         print_tensor(this->grad_diff, exe);
     }
     Tensor *output;
@@ -237,7 +289,7 @@ class Trainer
   public:
     Trainer(Model &model, int dim_input, int batch_size, int gpu_id,
             int num_gpus)
-        : model{model}, ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id}, 
+        : model{model}, ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id},
           loss_fn{model},
           batch_size{batch_size}, num_gpus{num_gpus}, gpu_id{gpu_id}
     {
@@ -261,19 +313,19 @@ class Trainer
         auto data_input = range_halfs(this->input->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->input, data_input.get(),
                            this->input->shape_bytes());
-        // LOG(DEBUG, "input: ");
+        // printf( "input: ");
         // print_tensor(this->input, this->exe);
         auto data_ground_truth =
             range_halfs(this->ground_truth->shape_bytes(), 2, 0);
         exe->tensor_memcpy(this->ground_truth, data_ground_truth.get(),
                            this->ground_truth->shape_bytes());
-        // LOG(DEBUG, "ground_truth: ");
+        // printf( "ground_truth: ");
         // print_tensor(this->ground_truth, this->exe);
         // init the grad_loss with 1.
         auto data_grad_loss = range_halfs(this->grad_loss->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->grad_loss, data_grad_loss.get(),
                            this->grad_loss->shape_bytes());
-        // LOG(DEBUG, "grad_loss: ");
+        // printf( "grad_loss: ");
         // print_tensor(this->grad_loss, this->exe);
         // init all the parameters of the model with random values.
         for (auto &layer : ffn_model.layers) {
@@ -307,11 +359,9 @@ class Trainer
 
     float get_loss()
     {
-        ark::GpuBuf *buf_tns = exe->get_gpu_buf(this->loss_tensor);
         size_t tensor_size = this->loss_tensor->shape_bytes();
         half_t *loss = (half_t *)malloc(tensor_size);
-
-        ark::gpu_memcpy(loss, buf_tns, tensor_size);
+        exe->tensor_memcpy(loss, this->loss_tensor, tensor_size);
         float loss_sum = 0;
         for (int i = 0; i < this->loss_tensor->size(); ++i) {
             loss_sum += (float)loss[i];
@@ -329,17 +379,17 @@ class Trainer
 
     void print_tensors(Executor *exe)
     {
-        LOG(DEBUG, "loss_tensor: ");
+        printf("loss_tensor: ");
         print_tensor(this->loss_tensor, exe);
-        LOG(DEBUG, "input: ");
+        printf("input: ");
         print_tensor(this->input, exe);
-        LOG(DEBUG, "output: ");
+        printf("output: ");
         print_tensor(this->output, exe);
-        LOG(DEBUG, "ground_truth: ");
+        printf("ground_truth: ");
         print_tensor(this->ground_truth, exe);
-        LOG(DEBUG, "ffn_model: ");
+        printf("ffn_model: ");
         this->ffn_model.print_tensors(exe);
-        LOG(DEBUG, "loss_fn: ");
+        printf("loss_fn: ");
         this->loss_fn.print_tensors(exe);
     }
 
@@ -401,37 +451,37 @@ Args parse_args(int argc, const char **argv)
             print_help();
         } else if (*it == "-b" || *it == "--batch-size") {
             if (++it == args.end()) {
-                cerr << "Error: missing argument for " << *(it-1) << endl;
+                cerr << "Error: missing argument for " << *(it - 1) << endl;
                 exit(1);
             }
             ret.batch_size = stoi(*it);
         } else if (*it == "-d" || *it == "--dims") {
             if (++it == args.end()) {
-                cerr << "Error: missing argument for " << *(it-1) << endl;
+                cerr << "Error: missing argument for " << *(it - 1) << endl;
                 exit(1);
             }
             ret.dims = stoi(*it);
         } else if (*it == "-g" || *it == "--num-gpus") {
             if (++it == args.end()) {
-                cerr << "Error: missing argument for " << *(it-1) << endl;
+                cerr << "Error: missing argument for " << *(it - 1) << endl;
                 exit(1);
             }
             ret.num_gpus = stoi(*it);
         } else if (*it == "-i" || *it == "--iter") {
             if (++it == args.end()) {
-                cerr << "Error: missing argument for " << *(it-1) << endl;
+                cerr << "Error: missing argument for " << *(it - 1) << endl;
                 exit(1);
             }
             ret.iterations = stoi(*it);
         } else if (*it == "-p" || *it == "--print-interval") {
             if (++it == args.end()) {
-                cerr << "Error: missing argument for " << *(it-1) << endl;
+                cerr << "Error: missing argument for " << *(it - 1) << endl;
                 exit(1);
             }
             ret.print_interval = stoi(*it);
         } else if (*it == "-s" || *it == "--seed") {
             if (++it == args.end()) {
-                cerr << "Error: missing argument for " << *(it-1) << endl;
+                cerr << "Error: missing argument for " << *(it - 1) << endl;
                 exit(1);
             }
             ret.seed = stoi(*it);
@@ -466,7 +516,8 @@ int main(int argc, const char **argv)
             ark::srand(args.seed);
 
             Model model;
-            Trainer trainer{model, args.dims, args.batch_size, gpu_id, args.num_gpus};
+            Trainer trainer{model, args.dims, args.batch_size, gpu_id,
+                            args.num_gpus};
             trainer.init_data();
             // train the model.
             trainer.train(args.iterations, args.print_interval);

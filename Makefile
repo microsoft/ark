@@ -91,7 +91,7 @@ LIBNAME   := libark.so
 LIBSO     := $(BDIR)/lib/$(LIBNAME)
 LIBTARGET := $(BDIR)/lib/$(LIBNAME).$(ARK_MAJOR).$(ARK_MINOR).$(ARK_PATCH)
 
-INCHEADERS := $(shell find $(ARKDIR)/ark/include/kernels -regextype posix-extended -regex '.*\.(h|hpp)')
+INCHEADERS := $(shell find $(ARKDIR)/ark/include/ -regextype posix-extended -regex '.*\.(h|hpp)')
 CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regextype posix-extended -regex '.*\.(h|hpp)')
 INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
 INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
