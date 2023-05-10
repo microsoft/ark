@@ -52,14 +52,12 @@ int proc_wait(const vector<int> &pids)
     for (auto &pid : pids) {
         int status;
         if (waitpid(pid, &status, 0) == -1) {
-            LOG(WARN, "waitpid failed (", errno, ")");
             return -1;
         }
         int r;
         if (WIFEXITED(status)) {
             r = WEXITSTATUS(status);
         } else if (WIFSIGNALED(status)) {
-            LOG(WARN, "PID ", pid, " exited by signal ", WTERMSIG(status));
             r = -1;
         } else {
             r = -1;
@@ -137,11 +135,9 @@ class FullyConnectedLayer
 
     void print_tensors(Executor *exe)
     {
-        printf("input: %s\n", input->name);
         print_tensor(input, exe);
         // print the parameters.
         for (size_t i = 0; i < params.size(); ++i) {
-            printf("param: %s\n", params[i]->name);
             print_tensor(params[i], exe);
         }
     }
@@ -513,7 +509,7 @@ int main(int argc, const char **argv)
     vector<int> pids;
     for (int gpu_id = 0; gpu_id < args.num_gpus; ++gpu_id) {
         pids.emplace_back(proc_spawn([&] {
-            ark::srand(args.seed);
+            // ark::srand(args.seed);
 
             Model model;
             Trainer trainer{model, args.dims, args.batch_size, gpu_id,
