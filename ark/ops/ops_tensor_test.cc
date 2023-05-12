@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/gpu/gpu_buf.h"
+#include "ark/gpu/gpu_mgr.h"
 #include "ark/include/ark.h"
 #include "ark/init.h"
 #include "ark/ops/ops_test_utils.h"

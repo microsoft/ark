@@ -12,6 +12,7 @@
 #include "vector_types.h"
 #include "cutlass/half.h"
 // clang-format on
+#include "ark/gpu/gpu_buf.h"
 #include "ark/include/ark.h"
 #include "ark/random.h"
 
