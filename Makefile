@@ -137,7 +137,7 @@ $(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 
 $(LIBTARGET): $(BOBJ)
 	@mkdir -p $(@D)
-	$(CXX) -shared -o $(LIBTARGET) $(BOBJ)
+	$(CXX) -shared -o $(LIBTARGET) $(BOBJ) $(LDLIBS) $(LDFLAGS)
 	ln -sf $(LIBTARGET) $(LIBSO)
 
 $(BDIR)/include/%: $(ARKDIR)/ark/include/%
