@@ -14,7 +14,6 @@
 // clang-format on
 #include "ark/gpu/gpu_buf.h"
 #include "ark/include/ark.h"
-#include "ark/random.h"
 
 // Return a random value array.
 template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)

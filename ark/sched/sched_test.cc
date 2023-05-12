@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 
 #include "ark/gpu/gpu_kernel.h"
+#include "ark/include/ark.h"
 #include "ark/init.h"
 #include "ark/logging.h"
 #include "ark/ops/ops_test_utils.h"
-#include "ark/random.h"
 #include "ark/sched/sched.h"
 #include "ark/unittest/unittest_utils.h"
 

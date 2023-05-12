@@ -6,7 +6,6 @@
 #include "ark/init.h"
 #include "ark/logging.h"
 #include "ark/ops/ops_test_utils.h"
-#include "ark/random.h"
 #include "ark/unittest/unittest_utils.h"
 
 template <typename T>

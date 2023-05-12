@@ -5,8 +5,8 @@
 #include <iostream>
 
 #include "ark/file_io.h"
+#include "ark/include/ark.h"
 #include "ark/ops/ops_test_utils.h"
-#include "ark/random.h"
 
 using namespace std;
 

@@ -509,7 +509,7 @@ int main(int argc, const char **argv)
     vector<int> pids;
     for (int gpu_id = 0; gpu_id < args.num_gpus; ++gpu_id) {
         pids.emplace_back(proc_spawn([&] {
-            // ark::srand(args.seed);
+            ark::srand(args.seed);
 
             Model model;
             Trainer trainer{model, args.dims, args.batch_size, gpu_id,

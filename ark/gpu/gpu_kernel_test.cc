@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 #include "ark/gpu/gpu_kernel.h"
+#include "ark/include/ark.h"
 #include "ark/init.h"
 #include "ark/process.h"
-#include "ark/random.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;

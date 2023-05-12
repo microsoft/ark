@@ -14,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 typedef cutlass::half_t half_t;
@@ -28,6 +29,13 @@ std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
 // Return a float range array.
 std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
                                       float diff = 1.0f);
+
+namespace ark {
+void srand(int seed = -1);
+int rand();
+
+const std::string rand_anum(size_t len);
+} // namespace ark
 
 namespace ark {
 

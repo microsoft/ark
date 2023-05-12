@@ -128,8 +128,8 @@ $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
 $(EBIN): %: %.o $(LIBTARGET) | third_party
-	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
-#$(CXX) -o $@ $(LDFLAGS) -L$(BDIR)/lib $< $(KHP_SO) -lark $(LDLIBS)
+# $(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
+	$(CXX) -o $@ $(LDFLAGS) -L$(BDIR)/lib $< $(KHP_SO) -lark $(LDLIBS)
 
 $(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)

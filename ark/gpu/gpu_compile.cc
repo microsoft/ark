@@ -13,7 +13,7 @@
 
 #include "ark/gpu/gpu_compile.h"
 #include "ark/gpu/gpu_logging.h"
-#include "ark/random.h"
+#include "ark/include/ark.h"
 #include "ark/threading.h"
 
 #define ARK_USE_NVRTC 0
