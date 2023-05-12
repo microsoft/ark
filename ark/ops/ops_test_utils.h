@@ -16,8 +16,6 @@
 #include "ark/include/ark.h"
 #include "ark/random.h"
 
-typedef cutlass::half_t half_t;
-
 // Return a random value array.
 template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
 {
@@ -28,18 +26,6 @@ template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
     }
     return std::unique_ptr<T[]>(ret);
 }
-
-// Return a random half_t array.
-std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
-// Return a random float array.
-std::unique_ptr<float[]> rand_floats(size_t num, float max_val);
-// Return a half_t range array.
-std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
-                                      float diff = 1.0f);
-// Return a float range array.
-std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
-                                      float diff = 1.0f);
-
 //
 float error_rate(half_t a, half_t b);
 float error_rate(float a, float b);

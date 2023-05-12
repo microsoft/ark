@@ -190,43 +190,43 @@ bool Tensor::is_sequential() const
 ////////////////////////////////////////////////////////////////////////////////
 
 //
-void to_json(nlohmann::json &j, const TensorBuf &tbuf)
-{
-    j = nlohmann::json{
-        {"id", tbuf.id},
-        {"bytes", tbuf.bytes},
-        {"immutable", tbuf.immutable},
-    };
-}
+// void to_json(nlohmann::json &j, const TensorBuf &tbuf)
+// {
+//     j = nlohmann::json{
+//         {"id", tbuf.id},
+//         {"bytes", tbuf.bytes},
+//         {"immutable", tbuf.immutable},
+//     };
+// }
+
+// //
+// void from_json(const nlohmann::json &j, TensorBuf &tbuf)
+// {
+//     j.at("id").get_to(tbuf.id);
+//     j.at("bytes").get_to(tbuf.bytes);
+//     j.at("immutable").get_to(tbuf.immutable);
+// }
 
 //
-void from_json(const nlohmann::json &j, TensorBuf &tbuf)
-{
-    j.at("id").get_to(tbuf.id);
-    j.at("bytes").get_to(tbuf.bytes);
-    j.at("immutable").get_to(tbuf.immutable);
-}
+// void to_json(nlohmann::json &j, const Tensor &tns)
+// {
+//     j = nlohmann::json{
+//         {"id", tns.id},       {"buf_id", tns.buf->id},    {"type", tns.type},
+//         {"shape", tns.shape}, {"ldims", tns.ldims},       {"offs", tns.offs},
+//         {"pads", tns.pads},   {"exported", tns.exported},
+//     };
+// }
 
-//
-void to_json(nlohmann::json &j, const Tensor &tns)
-{
-    j = nlohmann::json{
-        {"id", tns.id},       {"buf_id", tns.buf->id},    {"type", tns.type},
-        {"shape", tns.shape}, {"ldims", tns.ldims},       {"offs", tns.offs},
-        {"pads", tns.pads},   {"exported", tns.exported},
-    };
-}
-
-//
-void from_json(const nlohmann::json &j, Tensor &tns)
-{
-    j.at("id").get_to(tns.id);
-    j.at("type").get_to(tns.type);
-    j.at("shape").get_to(tns.shape);
-    j.at("ldims").get_to(tns.ldims);
-    j.at("offs").get_to(tns.offs);
-    j.at("pads").get_to(tns.pads);
-    j.at("exported").get_to(tns.exported);
-}
+// //
+// void from_json(const nlohmann::json &j, Tensor &tns)
+// {
+//     j.at("id").get_to(tns.id);
+//     j.at("type").get_to(tns.type);
+//     j.at("shape").get_to(tns.shape);
+//     j.at("ldims").get_to(tns.ldims);
+//     j.at("offs").get_to(tns.offs);
+//     j.at("pads").get_to(tns.pads);
+//     j.at("exported").get_to(tns.exported);
+// }
 
 } // namespace ark

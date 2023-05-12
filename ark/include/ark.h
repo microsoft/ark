@@ -7,7 +7,7 @@
 #include "vector_types.h"
 #include "cutlass/half.h"
 // clang-format on
-#include "third_party/json/json.h"
+// #include "third_party/json/json.h"
 #include <array>
 #include <iostream>
 #include <list>
@@ -15,6 +15,19 @@
 #include <memory>
 #include <set>
 #include <vector>
+
+typedef cutlass::half_t half_t;
+
+// Return a random half_t array.
+std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
+// Return a random float array.
+std::unique_ptr<float[]> rand_floats(size_t num, float max_val);
+// Return a half_t range array.
+std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
+                                      float diff = 1.0f);
+// Return a float range array.
+std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
+                                      float diff = 1.0f);
 
 namespace ark {
 
@@ -61,8 +74,8 @@ struct Dims
     DimType data[DIMS_LEN];
 };
 
-void to_json(nlohmann::json &j, const Dims &dims);
-void from_json(const nlohmann::json &j, Dims &dims);
+// void to_json(nlohmann::json &j, const Dims &dims);
+// void from_json(const nlohmann::json &j, Dims &dims);
 
 // TensorBuf refers to a data array that
 // can be shared by multiple tensors.
@@ -76,8 +89,8 @@ struct TensorBuf
     bool immutable = false;
 };
 
-void to_json(nlohmann::json &j, const TensorBuf &tbuf);
-void from_json(const nlohmann::json &j, TensorBuf &tbuf);
+// void to_json(nlohmann::json &j, const TensorBuf &tbuf);
+// void from_json(const nlohmann::json &j, TensorBuf &tbuf);
 
 // Type of tensor data.
 typedef enum
@@ -88,12 +101,12 @@ typedef enum
 } TensorType;
 
 // clang-format off
-NLOHMANN_JSON_SERIALIZE_ENUM(TensorType,
-{
-    {FP16, "f16"},
-    {FP32, "f32"},
-    {INT32, "i32"},
-})
+// NLOHMANN_JSON_SERIALIZE_ENUM(TensorType,
+// {
+//     {FP16, "f16"},
+//     {FP32, "f32"},
+//     {INT32, "i32"},
+// })
 // clang-format on
 
 // Tensor is a view of a TensorBuf.
@@ -348,8 +361,8 @@ class Model
     std::map<std::string, int> name_cnts;
 };
 
-void to_json(nlohmann::json &j, const Model &model);
-void from_json(const nlohmann::json &j, Model &model);
+// void to_json(nlohmann::json &j, const Model &model);
+// void from_json(const nlohmann::json &j, Model &model);
 
 // class GpuMgrCtx;
 // class SchedulerBase;
