@@ -30,14 +30,31 @@ std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
 std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
                                       float diff = 1.0f);
 
+//
+float error_rate(half_t a, half_t b);
+float error_rate(float a, float b);
+
+// Return mean squared error and max error rate between two matrices.
+std::pair<float, float> cmp_matrix(half_t *ground_truth, half_t *res,
+                                   unsigned int m, unsigned int n,
+                                   unsigned int bs = 1, unsigned int lm = 0,
+                                   unsigned int ln = 0, bool print = false);
+std::pair<float, float> cmp_matrix(float *ground_truth, float *res,
+                                   unsigned int m, unsigned int n,
+                                   unsigned int bs = 1, unsigned int lm = 0,
+                                   unsigned int ln = 0, bool print = false);
+
+//
+void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
+                  unsigned int lm, unsigned int ln);
+void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
+                  unsigned int lm, unsigned int ln);
+
 namespace ark {
 void srand(int seed = -1);
 int rand();
 
 const std::string rand_anum(size_t len);
-} // namespace ark
-
-namespace ark {
 
 typedef long long int DimType;
 

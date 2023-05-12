@@ -26,26 +26,6 @@ template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
     return std::unique_ptr<T[]>(ret);
 }
 //
-float error_rate(half_t a, half_t b);
-float error_rate(float a, float b);
-
-// Return mean squared error and max error rate between two matrices.
-std::pair<float, float> cmp_matrix(half_t *ground_truth, half_t *res,
-                                   unsigned int m, unsigned int n,
-                                   unsigned int bs = 1, unsigned int lm = 0,
-                                   unsigned int ln = 0, bool print = false);
-std::pair<float, float> cmp_matrix(float *ground_truth, float *res,
-                                   unsigned int m, unsigned int n,
-                                   unsigned int bs = 1, unsigned int lm = 0,
-                                   unsigned int ln = 0, bool print = false);
-
-//
-void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
-                  unsigned int lm, unsigned int ln);
-void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
-                  unsigned int lm, unsigned int ln);
-
-//
 std::string get_kernel_code(const std::string &name);
 
 // Return mean squared error and max error rate between two matrices.
