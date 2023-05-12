@@ -7,7 +7,7 @@
 #include "vector_types.h"
 #include "cutlass/half.h"
 // clang-format on
-
+#include "third_party/json/json.h"
 #include <array>
 #include <iostream>
 #include <list>
@@ -15,38 +15,6 @@
 #include <memory>
 #include <set>
 #include <vector>
-typedef cutlass::half_t half_t;
-
-// Return a random half_t array.
-std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
-// Return a random float array.
-std::unique_ptr<float[]> rand_floats(size_t num, float max_val);
-// Return a half_t range array.
-std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
-                                      float diff = 1.0f);
-// Return a float range array.
-std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
-                                      float diff = 1.0f);
-
-//
-float error_rate(half_t a, half_t b);
-float error_rate(float a, float b);
-
-// Return mean squared error and max error rate between two matrices.
-std::pair<float, float> cmp_matrix(half_t *ground_truth, half_t *res,
-                                   unsigned int m, unsigned int n,
-                                   unsigned int bs = 1, unsigned int lm = 0,
-                                   unsigned int ln = 0, bool print = false);
-std::pair<float, float> cmp_matrix(float *ground_truth, float *res,
-                                   unsigned int m, unsigned int n,
-                                   unsigned int bs = 1, unsigned int lm = 0,
-                                   unsigned int ln = 0, bool print = false);
-
-//
-void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
-                  unsigned int lm, unsigned int ln);
-void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
-                  unsigned int lm, unsigned int ln);
 
 namespace ark {
 
@@ -57,6 +25,8 @@ enum
     DIMS_LEN = 4,
     NO_DIM = -1
 };
+
+const std::string shape_str(const std::vector<DimType> &shape);
 
 // Up-to-`DIMS_LEN`-dimensional vector.
 struct Dims
@@ -91,10 +61,11 @@ struct Dims
     DimType data[DIMS_LEN];
 };
 
-// void to_json(nlohmann::json &j, const Dims &dims);
-// void from_json(const nlohmann::json &j, Dims &dims);
+void to_json(nlohmann::json &j, const Dims &dims);
+void from_json(const nlohmann::json &j, Dims &dims);
 
-// TensorBuf refers to a data array that can be shared by multiple tensors.
+// TensorBuf refers to a data array that
+// can be shared by multiple tensors.
 struct TensorBuf
 {
     TensorBuf(const DimType &bytes = 0, int id = -1);
@@ -105,8 +76,8 @@ struct TensorBuf
     bool immutable = false;
 };
 
-// void to_json(nlohmann::json &j, const TensorBuf &tbuf);
-// void from_json(const nlohmann::json &j, TensorBuf &tbuf);
+void to_json(nlohmann::json &j, const TensorBuf &tbuf);
+void from_json(const nlohmann::json &j, TensorBuf &tbuf);
 
 // Type of tensor data.
 typedef enum
@@ -116,22 +87,25 @@ typedef enum
     INT32,
 } TensorType;
 
-// // clang-format off
-// NLOHMANN_JSON_SERIALIZE_ENUM(TensorType, {
-//     {FP16, "f16"},
-//     {FP32, "f32"},
-//     {INT32, "i32"},
-// })
+// clang-format off
+NLOHMANN_JSON_SERIALIZE_ENUM(TensorType,
+{
+    {FP16, "f16"},
+    {FP32, "f32"},
+    {INT32, "i32"},
+})
 // clang-format on
 
 // Tensor is a view of a TensorBuf.
 //
-// Illustration of a single axis of a tensor:
+// Illustration of a single axis of a
+// tensor:
 //
-// 0           off                                                        ldim
+// 0           off ldim
 // |------------|-------------shape-------------|---------------------------|
 //               <----------------------------->
-//                  data range of this tensor
+//                  data range of this
+//                  tensor
 //
 struct Tensor
 {
@@ -206,6 +180,14 @@ typedef enum
     OP_PREC_FP16,
     OP_PREC_FP32,
 } OpPrecType;
+
+// Type of hardware architecture support.
+typedef enum
+{
+    OP_ARCH_CUDA_70,
+    OP_ARCH_CUDA_80,
+} OpArchType;
+
 // Type of operation argument.
 typedef enum
 {
@@ -366,7 +348,18 @@ class Model
     std::map<std::string, int> name_cnts;
 };
 
-// Convenience class for executing a model.
+void to_json(nlohmann::json &j, const Model &model);
+void from_json(const nlohmann::json &j, Model &model);
+
+// class GpuMgrCtx;
+// class SchedulerBase;
+// class GpuLoopKernel;
+// class GpuStream;
+// class GpuBuf;
+class ExecutorMember;
+class GpuBuf;
+// Convenience class for executing a
+// model.
 class Executor
 {
   public:
@@ -379,7 +372,7 @@ class Executor
     void run(int iter);
     void wait();
     float stop();
-    // GpuBuf *get_gpu_buf(Tensor *tns) const;
+    GpuBuf *get_gpu_buf(Tensor *tns) const;
     Tensor *get_tensor(Tensor *tns) const;
     void tensor_memcpy(Tensor *tns, const void *src, size_t bytes);
     void tensor_memcpy(void *dst, Tensor *src, size_t bytes);
@@ -389,6 +382,7 @@ class Executor
     const int gpu_id;
     const int rank;
     const int world_size;
+    std::unique_ptr<ExecutorMember> member;
     // GpuMgrCtx *ctx;
     // SchedulerBase *sched;
     // GpuLoopKernel *glk = nullptr;

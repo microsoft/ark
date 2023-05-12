@@ -173,21 +173,21 @@ bool Model::is_no_ref(Tensor *tns) const
     return false;
 }
 
-void to_json(nlohmann::json &j, const Model &model)
-{
-    j = nlohmann::json{
-        {"tensors", vector<Tensor>{}},
-        {"ops", vector<Op>{}},
-    };
-    for (auto &pt : model.get_tensors()) {
-        j.at("tensors").emplace_back(*pt);
-    }
-    for (auto &po : model.get_ops()) {
-        j.at("ops").emplace_back(*po);
-    }
-}
-void from_json(const nlohmann::json &j, Model &model)
-{
-}
+// void to_json(nlohmann::json &j, const Model &model)
+// {
+//     j = nlohmann::json{
+//         {"tensors", vector<Tensor>{}},
+//         {"ops", vector<Op>{}},
+//     };
+//     for (auto &pt : model.get_tensors()) {
+//         j.at("tensors").emplace_back(*pt);
+//     }
+//     for (auto &po : model.get_ops()) {
+//         j.at("ops").emplace_back(*po);
+//     }
+// }
+// void from_json(const nlohmann::json &j, Model &model)
+// {
+// }
 
 } // namespace ark

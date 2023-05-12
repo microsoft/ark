@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/ops/ops_common.h"
+#include "ark/include/ark.h"
 
 using namespace std;
 

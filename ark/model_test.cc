@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/include/ark.h"
 #include "ark/init.h"
-#include "ark/model.h"
 #include "ark/unittest/unittest_utils.h"
 
 #define ITERATION 1

@@ -3,7 +3,7 @@
 
 #include "sstream"
 
-#include "ark/dims.h"
+#include "ark/include/ark.h"
 #include "ark/init.h"
 #include "ark/unittest/unittest_utils.h"
 

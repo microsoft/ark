@@ -12,7 +12,7 @@
 #include "vector_types.h"
 #include "cutlass/half.h"
 // clang-format on
-#include "ark/dims.h"
+#include "ark/include/ark.h"
 #include "ark/random.h"
 
 typedef cutlass::half_t half_t;

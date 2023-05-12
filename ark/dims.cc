@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/dims.h"
+#include "ark/include/ark.h"
 #include "ark/logging.h"
-
+#include "third_party/json/json.h"
+#include <vector>
 using namespace std;
 
 namespace ark {
