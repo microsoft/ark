@@ -69,11 +69,6 @@ USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
-ESRC := ffn/ffn.cc
-
-EOBJ := $(patsubst %.cc,$(BDIR)/examples/%.o,$(ESRC))
-EBIN := $(patsubst %.o,%,$(EOBJ))
-
 ifeq ($(KAHYPAR),1)
 KHP_BDIR := $(BDIR)/third_party/kahypar
 KHP_SO := $(KHP_BDIR)/kahypar/build/install/lib/libkahypar.so
@@ -104,7 +99,6 @@ third_party: cutlass | submodules
 
 build: $(BOBJ) $(LIBTARGET) $(INCTARGETS)
 unittest: $(UBIN)
-examples: $(EBIN)
 
 submodules:
 	@git submodule update --init --recursive
@@ -126,10 +120,6 @@ cpplint-autofix:
 
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
-
-$(EBIN): %: %.o $(LIBTARGET) | third_party
-# $(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
-	$(CXX) -o $@ $(LDFLAGS) -L$(BDIR)/lib $< $(KHP_SO) -lark $(LDLIBS)
 
 $(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)
