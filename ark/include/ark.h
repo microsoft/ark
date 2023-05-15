@@ -4,8 +4,8 @@
 #ifndef ARK_H
 #define ARK_H
 
-#include "ark_utils.h"
 #include <array>
+#include <cassert>
 #include <iostream>
 #include <list>
 #include <map>

@@ -5,8 +5,8 @@
 
 #include "ark/gpu/gpu_kernel.h"
 #include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/logging.h"
-#include "ark/ops/ops_test_utils.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;

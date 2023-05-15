@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "ark/cpu_timer.h"
+#include "ark/gpu/gpu_buf.h"
 #include "ark/logging.h"
 
 namespace ark {
