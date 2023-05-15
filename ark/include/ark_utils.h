@@ -12,7 +12,11 @@
 #include <set>
 #include <string>
 #include <vector>
-
+// clang-format off
+#include "vector_types.h"
+#include "cutlass/half.h"
+// clang-format on
+// typedef uint16_t half_t;
 typedef cutlass::half_t half_t;
 
 // Return a random half_t array.

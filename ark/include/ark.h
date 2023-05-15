@@ -3,10 +3,7 @@
 
 #ifndef ARK_H
 #define ARK_H
-// clang-format off
-#include "vector_types.h"
-#include "cutlass/half.h"
-// clang-format on
+
 #include "ark_utils.h"
 #include <array>
 #include <iostream>
@@ -31,8 +28,6 @@ enum
     DIMS_LEN = 4,
     NO_DIM = -1
 };
-
-const std::string shape_str(const std::vector<DimType> &shape);
 
 // Up-to-`DIMS_LEN`-dimensional vector.
 struct Dims

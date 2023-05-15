@@ -8,6 +8,21 @@ using namespace std;
 
 namespace ark {
 
+// Return shape string from a vector of DimType
+const string shape_str(const vector<DimType> &shape)
+{
+    stringstream ss;
+    ss << "<";
+    for (size_t i = 0; i < shape.size(); i++) {
+        ss << shape[i];
+        if (i != shape.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << ">";
+    return ss.str();
+}
+
 // Reshape `input` to `shape`. This interface does not support -1 as a dimension
 // of `shape`, because Dims does not allow -1 as a valid dimension.
 static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
