@@ -3,7 +3,7 @@
 
 #include "ark/gpu/gpu_logging.h"
 #include "ark/gpu/gpu_mem.h"
-#include "ark/init.h"
+#include "ark/include/ark.h"
 #include "ark/ipc/ipc_coll.h"
 #include "ark/net/net_ib.h"
 #include "ark/process.h"

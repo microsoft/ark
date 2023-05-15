@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/init.h"
+#include "ark/include/ark.h"
 #include "ark/ipc/ipc_mem.h"
 #include "ark/process.h"
 #include "ark/unittest/unittest_utils.h"

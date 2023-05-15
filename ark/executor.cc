@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <algorithm>
-#include <string>
-// #include "ark/include/ark.h"
 #include "ark/env.h"
 #include "ark/gpu/gpu_kernel.h"
 #include "ark/include/ark.h"
 #include "ark/logging.h"
 #include "ark/sched/sched.h"
+#include <algorithm>
+#include <string>
 using namespace std;
 
 namespace ark {

@@ -7,7 +7,6 @@
 #include "vector_types.h"
 #include "cutlass/half.h"
 // clang-format on
-// #include "third_party/json/json.h"
 #include <array>
 #include <iostream>
 #include <list>
@@ -53,6 +52,7 @@ void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
 namespace ark {
 void srand(int seed = -1);
 int rand();
+void init();
 
 const std::string rand_anum(size_t len);
 
@@ -386,18 +386,9 @@ class Model
     std::map<std::string, int> name_cnts;
 };
 
-// void to_json(nlohmann::json &j, const Model &model);
-// void from_json(const nlohmann::json &j, Model &model);
-
-// class GpuMgrCtx;
-// class SchedulerBase;
-// class GpuLoopKernel;
-// class GpuStream;
-// class GpuBuf;
 class ExecutorMember;
 class GpuBuf;
-// Convenience class for executing a
-// model.
+// Convenience class for executing a model.
 class Executor
 {
   public:
@@ -421,10 +412,6 @@ class Executor
     const int rank;
     const int world_size;
     std::unique_ptr<ExecutorMember> member;
-    // GpuMgrCtx *ctx;
-    // SchedulerBase *sched;
-    // GpuLoopKernel *glk = nullptr;
-    // GpuStream stream = nullptr;
 };
 
 } // namespace ark
