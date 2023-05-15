@@ -110,8 +110,8 @@ State test(function<State()> test_func)
 //
 string get_kernel_code(const string &name)
 {
-    return ark::read_file(ark::get_dir(string{__FILE__}) + "/kernels/" + name +
-                          ".h");
+    return ark::read_file(ark::get_dir(string{__FILE__}) + "/../ops/kernels/" +
+                          name + ".h");
 }
 
 } // namespace unittest
