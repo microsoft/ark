@@ -50,8 +50,8 @@ void test_mul_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
 
     // Set data.
     ark::srand();
-    auto data_a = ark::rand_array<T>(bs * len, 0.01);
-    auto data_b = ark::rand_array<T>(len, 0.01);
+    auto data_a = ark::utils::rand_array<T>(bs * len, 0.01);
+    auto data_b = ark::utils::rand_array<T>(len, 0.01);
     ark::gpu_memcpy(buf_a, data_a.get(), bs * len * sizeof(T));
     ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(T));
 
@@ -94,7 +94,7 @@ void test_mul_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
 
     // Compare results with the ground truth.
     std::pair<float, float> p =
-        ark::tensor_compare(gt, res, tns_c->shape, true);
+        ark::utils::tensor_compare(gt, res, tns_c->shape, true);
     float max_err = p.second;
     LOG(ark::INFO, "mul:", n, 'x', m, ",bs=", bs, setprecision(4), " mse ",
         p.first, " max_err ", max_err * 100, "%");

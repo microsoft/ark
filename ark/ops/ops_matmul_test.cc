@@ -58,8 +58,8 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
 
     // Generate random data for tests.
     ark::srand();
-    auto data_a = ark::rand_halfs(buf_a_sz / sizeof(ark::half_t), 0.001);
-    auto data_b = ark::rand_halfs(buf_b_sz / sizeof(ark::half_t), 0.001);
+    auto data_a = ark::utils::rand_halfs(buf_a_sz / sizeof(ark::half_t), 0.001);
+    auto data_b = ark::utils::rand_halfs(buf_b_sz / sizeof(ark::half_t), 0.001);
     ark::gpu_memcpy(buf_a, data_a.get(), buf_a_sz);
     ark::gpu_memcpy(buf_b, data_b.get(), buf_b_sz);
 
@@ -126,7 +126,8 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     // }
 
     // Compare results with the ground truth.
-    auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
+    auto p =
+        ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
     float max_err = p.second;
     LOG(ark::INFO, "matmul:", m, 'x', n, 'x', k, "(relu=", is_relu, ") ",
         setprecision(4), " mse ", p.first, " max_err ", max_err * 100, "%",

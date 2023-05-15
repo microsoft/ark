@@ -42,8 +42,8 @@ void test_dot_internal(unsigned int len)
 
     for (int iter = 0; iter < 10; ++iter) {
         // Set data.
-        auto data_a = ark::rand_halfs(len, 1);
-        auto data_b = ark::rand_halfs(len, 1);
+        auto data_a = ark::utils::rand_halfs(len, 1);
+        auto data_b = ark::utils::rand_halfs(len, 1);
 
         ark::gpu_memcpy(buf_a, data_a.get(), len * sizeof(ark::half_t));
         ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(ark::half_t));
@@ -61,11 +61,11 @@ void test_dot_internal(unsigned int len)
         // Calculate the ground truth.
         gt = 0;
         for (unsigned int i = 0; i < len; ++i) {
-            gt += ark::half2float(data_a.get()[i]) *
-                  ark::half2float(data_b.get()[i]);
+            gt += ark::utils::half2float(data_a.get()[i]) *
+                  ark::utils::half2float(data_b.get()[i]);
         }
 
-        float err = ark::error_rate(gt, res);
+        float err = ark::utils::error_rate(gt, res);
 
         LOG(ark::INFO, "dot:", len, setprecision(4), " res ", res, " gt ", gt,
             " err ", err * 100, "%");

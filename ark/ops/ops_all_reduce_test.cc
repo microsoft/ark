@@ -24,7 +24,8 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
     ark::srand();
     vector<unique_ptr<ark::half_t[]>> input_data(num_gpus);
     for (int i = 0; i < num_gpus; i++) {
-        input_data[i] = ark::rand_halfs(bytes / sizeof(ark::half_t), 0.01);
+        input_data[i] =
+            ark::utils::rand_halfs(bytes / sizeof(ark::half_t), 0.01);
     }
 
     // calculate ground truth of all_reduce.
@@ -35,7 +36,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
     for (size_t i = 0; i < bytes / sizeof(ark::half_t); i++) {
         float sum = 0;
         for (int j = 0; j < num_gpus; j++) {
-            sum += ark::half2float(input_data[j].get()[i]);
+            sum += ark::utils::half2float(input_data[j].get()[i]);
         }
         gt[i] = ark::half_t(sum);
     }
@@ -44,14 +45,14 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
     for (int gpu_id = 0; gpu_id < num_gpus; gpu_id++) {
         cout << "input data of gpu_id: " << gpu_id << endl;
         for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
-            cout << ark::half2float(input_data[gpu_id].get()[i]) << " ";
+            cout << ark::utils::half2float(input_data[gpu_id].get()[i]) << " ";
         }
         cout << endl;
     }
     // print ground truth.
     cout << "ground truth: " << endl;
     for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
-        cout << ark::half2float(gt[i]) << " ";
+        cout << ark::utils::half2float(gt[i]) << " ";
     }
     cout << endl;
 #endif
@@ -87,8 +88,8 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             ark::gpu_memcpy(res, buf_tns, bytes);
 
             // Compare results with the ground truth.
-            auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, 1,
-                                     bytes / 2);
+            auto p = ark::utils::cmp_matrix((ark::half_t *)gt,
+                                            (ark::half_t *)res, 1, bytes / 2);
 #ifdef PRINT_MATRIX
             // print result, to avoid too long output, only print the first 10
             // elements if(gpu_id == 0)

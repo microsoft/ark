@@ -31,10 +31,11 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
 
     // Set data.
     ark::srand();
-    auto data_x = ark::range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
+    auto data_x =
+        ark::utils::range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
     exe.tensor_memcpy(tns_x, data_x.get(), tns_x->shape_bytes());
 
-    // ark::print_matrix(data_x.get(), h * w, c, h * w, c);
+    // ark::utils::print_matrix(data_x.get(), h * w, c, h * w, c);
 
     exe.launch();
     exe.run(1);
@@ -88,8 +89,8 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     }
 
     // Compare results with the ground truth.
-    auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, mdim,
-                             inner_dim, n, mdim, inner_dim);
+    auto p = ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, mdim,
+                                    inner_dim, n, mdim, inner_dim);
     float max_err = p.second;
     stringstream ss;
     ss << "im2col:n=" << n << ",c=" << c << ",h=" << h << ",w=" << w

@@ -27,7 +27,7 @@ ark::unittest::State test_identity()
     UNITTEST_EQ(buf1->get_bytes(), num_elem * sizeof(float));
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
-    auto data = ark::range_floats(num_elem);
+    auto data = ark::utils::range_floats(num_elem);
     exe.tensor_memcpy(tns0, data.get(), num_elem * sizeof(float));
 
     // Check identity values

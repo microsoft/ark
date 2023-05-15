@@ -254,19 +254,21 @@ class Trainer
     void init_data()
     {
         // init the input and ground_truth.
-        auto data_input = range_halfs(this->input->shape_bytes(), 1, 0);
+        auto data_input =
+            ark::utils::range_halfs(this->input->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->input, data_input.get(),
                            this->input->shape_bytes());
         // printf( "input: ");
         // print_tensor(this->input, this->exe);
         auto data_ground_truth =
-            range_halfs(this->ground_truth->shape_bytes(), 2, 0);
+            ark::utils::range_halfs(this->ground_truth->shape_bytes(), 2, 0);
         exe->tensor_memcpy(this->ground_truth, data_ground_truth.get(),
                            this->ground_truth->shape_bytes());
         // printf( "ground_truth: ");
         // print_tensor(this->ground_truth, this->exe);
         // init the grad_loss with 1.
-        auto data_grad_loss = range_halfs(this->grad_loss->shape_bytes(), 1, 0);
+        auto data_grad_loss =
+            ark::utils::range_halfs(this->grad_loss->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->grad_loss, data_grad_loss.get(),
                            this->grad_loss->shape_bytes());
         // printf( "grad_loss: ");
@@ -274,7 +276,7 @@ class Trainer
         // init all the parameters of the model with random values.
         for (auto &layer : ffn_model.layers) {
             for (auto &param : layer.params) {
-                auto data = rand_halfs(param->shape_bytes(), 1);
+                auto data = ark::utils::rand_halfs(param->shape_bytes(), 1);
                 exe->tensor_memcpy(param, data.get(), param->shape_bytes());
             }
         }
@@ -308,7 +310,7 @@ class Trainer
         exe->tensor_memcpy(loss, this->loss_tensor, tensor_size);
         float loss_sum = 0;
         for (int i = 0; i < this->loss_tensor->size(); ++i) {
-            loss_sum += half2float(loss[i]);
+            loss_sum += ark::utils::half2float(loss[i]);
         }
         delete[] loss;
         return loss_sum;
@@ -456,7 +458,7 @@ int main(int argc, const char **argv)
 
     vector<int> pids;
     for (int gpu_id = 0; gpu_id < args.num_gpus; ++gpu_id) {
-        pids.emplace_back(proc_spawn([&] {
+        pids.emplace_back(ark::utils::proc_spawn([&] {
             ark::srand(args.seed);
 
             Model model;
@@ -471,7 +473,7 @@ int main(int argc, const char **argv)
     }
     int state = 0;
     for (auto pid : pids) {
-        int ret = proc_wait(pid);
+        int ret = ark::utils::proc_wait(pid);
         if (ret != 0) {
             cerr << "E: Process " << pid << " returned " << ret << endl;
             state = 1;

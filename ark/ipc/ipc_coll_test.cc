@@ -14,7 +14,7 @@ unittest::State test_ipc_coll_allgather()
     // Launch 100 workers.
     vector<int> pids;
     for (int i = 0; i < 100; ++i) {
-        int pid = proc_spawn([i]() {
+        int pid = ark::utils::proc_spawn([i]() {
             unittest::Timeout timeout{5};
             int rank = i;
             int size = 100;
@@ -32,7 +32,7 @@ unittest::State test_ipc_coll_allgather()
         pids.emplace_back(pid);
     }
     // Wait until all workers finish.
-    int ret = proc_wait(pids);
+    int ret = ark::utils::proc_wait(pids);
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }

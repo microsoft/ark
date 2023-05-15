@@ -39,7 +39,7 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
 
     // Set data.
     ark::srand();
-    auto data_x = ark::rand_halfs(len, 0.01);
+    auto data_x = ark::utils::rand_halfs(len, 0.01);
     ark::gpu_memcpy(buf_x, data_x.get(), len * sizeof(ark::half_t));
 
     // Run the GPU kernel.
@@ -78,7 +78,8 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     exe.tensor_memcpy(res, tns_y, len * sizeof(ark::half_t));
 
     // Compare results with the ground truth.
-    auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n, bs);
+    auto p =
+        ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n, bs);
     float max_err = p.second;
     LOG(ark::INFO, "scale:", n, 'x', m, ",bs=", bs, setprecision(4), " mse ",
         p.first, " max_err ", max_err * 100, "%");

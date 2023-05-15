@@ -354,20 +354,20 @@ int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv)
 ark::unittest::State test_net_ib_cpu()
 {
     for (int i = 0; i < 100; ++i) {
-        int pid0 = ark::proc_spawn([] {
+        int pid0 = ark::utils::proc_spawn([] {
             ark::unittest::Timeout timeout{30};
             std::size_t bytes = 1024 * 1024;
             return test_net_ib_cpu_internal(bytes, true);
         });
         UNITTEST_NE(pid0, -1);
-        int pid1 = ark::proc_spawn([] {
+        int pid1 = ark::utils::proc_spawn([] {
             ark::unittest::Timeout timeout{30};
             std::size_t bytes = 1024 * 1024;
             return test_net_ib_cpu_internal(bytes, false);
         });
         UNITTEST_NE(pid1, -1);
 
-        int ret = ark::proc_wait({pid0, pid1});
+        int ret = ark::utils::proc_wait({pid0, pid1});
         UNITTEST_EQ(ret, 0);
     }
     return ark::unittest::SUCCESS;
@@ -376,20 +376,20 @@ ark::unittest::State test_net_ib_cpu()
 //
 ark::unittest::State test_net_ib_cpu_bw()
 {
-    int pid0 = ark::proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{30};
         std::size_t bytes = BW_TEST_BYTES;
         return test_net_ib_cpu_bw_internal(bytes, true);
     });
     UNITTEST_NE(pid0, -1);
-    int pid1 = ark::proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{30};
         std::size_t bytes = BW_TEST_BYTES;
         return test_net_ib_cpu_bw_internal(bytes, false);
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = ark::proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
 
     return ark::unittest::SUCCESS;
@@ -399,20 +399,20 @@ ark::unittest::State test_net_ib_cpu_bw()
 ark::unittest::State test_net_ib_gpu()
 {
     for (int i = 0; i < 10; ++i) {
-        int pid0 = ark::proc_spawn([] {
+        int pid0 = ark::utils::proc_spawn([] {
             ark::unittest::Timeout timeout{30};
             std::size_t bytes = 1024 * 1024;
             return test_net_ib_gpu_internal(bytes, true);
         });
         UNITTEST_NE(pid0, -1);
-        int pid1 = ark::proc_spawn([] {
+        int pid1 = ark::utils::proc_spawn([] {
             ark::unittest::Timeout timeout{30};
             std::size_t bytes = 1024 * 1024;
             return test_net_ib_gpu_internal(bytes, false);
         });
         UNITTEST_NE(pid1, -1);
 
-        int ret = ark::proc_wait({pid0, pid1});
+        int ret = ark::utils::proc_wait({pid0, pid1});
         UNITTEST_EQ(ret, 0);
     }
     return ark::unittest::SUCCESS;
@@ -421,20 +421,20 @@ ark::unittest::State test_net_ib_gpu()
 //
 ark::unittest::State test_net_ib_gpu_bw()
 {
-    int pid0 = ark::proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{30};
         std::size_t bytes = BW_TEST_BYTES;
         return test_net_ib_gpu_bw_internal(bytes, true);
     });
     UNITTEST_NE(pid0, -1);
-    int pid1 = ark::proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{30};
         std::size_t bytes = BW_TEST_BYTES;
         return test_net_ib_gpu_bw_internal(bytes, false);
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = ark::proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
 
     return ark::unittest::SUCCESS;

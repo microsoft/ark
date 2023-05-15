@@ -14,7 +14,7 @@ using namespace std;
 namespace ark {
 
 // Spawn a process that runs `func`. Returns PID of the spawned process.
-int proc_spawn(const function<int()> &func)
+int ark::utils::proc_spawn(const function<int()> &func)
 {
     pid_t pid = fork();
     if (pid < 0) {
@@ -28,7 +28,7 @@ int proc_spawn(const function<int()> &func)
 
 // Wait for a spawned process with PID `pid`.
 // Return -1 on any unexpected failure, otherwise return the exit status.
-int proc_wait(int pid)
+int ark::utils::proc_wait(int pid)
 {
     int status;
     if (waitpid(pid, &status, 0) == -1) {
@@ -43,7 +43,7 @@ int proc_wait(int pid)
 // Wait for multiple child processes.
 // Return 0 on success, -1 on any unexpected failure, otherwise the first seen
 // non-zero exit status.
-int proc_wait(const vector<int> &pids)
+int ark::utils::proc_wait(const vector<int> &pids)
 {
     int ret = 0;
     for (auto &pid : pids) {

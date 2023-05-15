@@ -20,7 +20,7 @@
 namespace ark {
 
 typedef uint16_t half_t;
-
+namespace utils {
 // Return a random half_t array.
 std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
 // Return a random float array.
@@ -112,7 +112,7 @@ int proc_wait(int pid);
 // Return 0 on success, -1 on any unexpected failure, otherwise the first seen
 // non-zero exit status.
 int proc_wait(const std::vector<int> &pids);
-
+} // namespace utils
 } // namespace ark
 
 #endif

@@ -254,7 +254,7 @@ ark::unittest::State test_sched_comp_baseline()
     ark::srand();
     vector<unique_ptr<ark::half_t[]>> input_data(input_tensor_num);
     for (int i = 0; i < input_tensor_num; i++) {
-        input_data[i] = ark::rand_halfs(channel * in_dim, 0.01);
+        input_data[i] = ark::utils::rand_halfs(channel * in_dim, 0.01);
     }
     // the result of the new scheduler
     ark::half_t *output_data1 = (ark::half_t *)malloc(bytes);
@@ -371,8 +371,9 @@ ark::unittest::State test_sched_comp_baseline()
     ark::unittest::wait_all_processes();
     // TODO: the output data are set on different processes,  we need to copy
     //  run the test on the same process
-    auto p = ark::cmp_matrix((ark::half_t *)output_data1,
-                             (ark::half_t *)output_data2, channel, units);
+    auto p =
+        ark::utils::cmp_matrix((ark::half_t *)output_data1,
+                               (ark::half_t *)output_data2, channel, units);
     LOG(ark::INFO, " scheduler compare test: ", " total_bytes: ", bytes,
         " iter: ", 1, setprecision(4), " mse: ", p.first,
         " max_err: ", p.second * 100, "%");

@@ -41,8 +41,8 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
 
     // Set data.
     ark::srand();
-    auto data_a = ark::rand_halfs(buf_x_sz / sizeof(ark::half_t), 0.01);
-    auto data_b = ark::rand_halfs(buf_y_sz / sizeof(ark::half_t), 0.01);
+    auto data_a = ark::utils::rand_halfs(buf_x_sz / sizeof(ark::half_t), 0.01);
+    auto data_b = ark::utils::rand_halfs(buf_y_sz / sizeof(ark::half_t), 0.01);
     ark::gpu_memcpy(buf_x, data_a.get(), buf_x_sz);
 
     // Run the GPU kernel.
@@ -82,7 +82,8 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     exe.tensor_memcpy(res, tns_y, buf_y_sz);
 
     // Compare results with the ground truth.
-    auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
+    auto p =
+        ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
     float max_err = p.second;
     LOG(ark::INFO, "reduce:", n, 'x', m, 'x', k, "(relu=", is_relu, ") ",
         setprecision(4), " mse ", p.first, " max_err ", max_err * 100, "%");
