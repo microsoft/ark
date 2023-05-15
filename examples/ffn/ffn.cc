@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "ark.h"
+#include "ark_utils.h"
 #include <cassert>
 #include <fstream>
 #include <iomanip>

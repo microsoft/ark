@@ -6,8 +6,8 @@
 
 #include "ark/file_io.h"
 #include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/ops/ops_test_utils.h"
-
 using namespace std;
 
 // Return an array of range values.
