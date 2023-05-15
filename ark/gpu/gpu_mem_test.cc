@@ -4,7 +4,7 @@
 #include "ark/gpu/gpu_logging.h"
 #include "ark/gpu/gpu_mem.h"
 #include "ark/include/ark.h"
-#include "ark/process.h"
+#include "ark/include/ark_utils.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace ark;

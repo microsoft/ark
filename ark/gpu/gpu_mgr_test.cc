@@ -3,7 +3,7 @@
 
 #include "ark/gpu/gpu_mgr.h"
 #include "ark/include/ark.h"
-#include "ark/process.h"
+#include "ark/include/ark_utils.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;

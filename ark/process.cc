@@ -6,8 +6,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include "ark/include/ark_utils.h"
 #include "ark/logging.h"
-#include "ark/process.h"
 
 using namespace std;
 

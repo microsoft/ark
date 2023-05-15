@@ -3,10 +3,10 @@
 
 #include "ark/env.h"
 #include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/ipc/ipc_hosts.h"
 #include "ark/ipc/ipc_socket.h"
 #include "ark/logging.h"
-#include "ark/process.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace ark;

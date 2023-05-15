@@ -4,9 +4,9 @@
 #include "ark/gpu/gpu_logging.h"
 #include "ark/gpu/gpu_mem.h"
 #include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/ipc/ipc_coll.h"
 #include "ark/net/net_ib.h"
-#include "ark/process.h"
 #include "ark/unittest/unittest_utils.h"
 #include <cstring>
 #include <numa.h>
