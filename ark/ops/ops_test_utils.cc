@@ -7,6 +7,12 @@
 #include "ark/file_io.h"
 #include "ark/include/ark.h"
 #include "ark/include/ark_utils.h"
+
+// clang-format off
+#include "vector_types.h"
+#include "cutlass/half.h"
+// clang-format on
+
 using namespace std;
 
 // Return an array of range values.
@@ -143,7 +149,11 @@ void print_matrix(T *val, unsigned int m, unsigned int n, unsigned int bs,
 // Return a random half_t array.
 unique_ptr<half_t[]> rand_halfs(size_t num, float max_val)
 {
-    return rand_array<half_t>(num, max_val);
+    std::unique_ptr<cutlass::half_t[]> cutlass_half_array =
+        rand_array<cutlass::half_t>(num, max_val);
+    std::unique_ptr<half_t[]> half_array(
+        reinterpret_cast<half_t *>(cutlass_half_array.release()));
+    return half_array;
 }
 
 // Return a random float array.
@@ -155,7 +165,11 @@ unique_ptr<float[]> rand_floats(size_t num, float max_val)
 // Return a half_t range array.
 unique_ptr<half_t[]> range_halfs(size_t num, float begin, float diff)
 {
-    return range_array<half_t>(num, begin, diff);
+    std::unique_ptr<cutlass::half_t[]> cutlass_half_array =
+        range_array<cutlass::half_t>(num, begin, diff);
+    std::unique_ptr<half_t[]> half_array(
+        reinterpret_cast<half_t *>(cutlass_half_array.release()));
+    return half_array;
 }
 
 // Return a float range array.
@@ -167,7 +181,12 @@ unique_ptr<float[]> range_floats(size_t num, float begin, float diff)
 //
 float error_rate(half_t a, half_t b)
 {
-    return error_rate<half_t>(a, b);
+    const cutlass::half_t &cutlass_a =
+        *reinterpret_cast<const cutlass::half_t *>(&a);
+    const cutlass::half_t &cutlass_b =
+        *reinterpret_cast<const cutlass::half_t *>(&b);
+
+    return error_rate<cutlass::half_t>(cutlass_a, cutlass_b);
 }
 
 //
@@ -181,7 +200,11 @@ pair<float, float> cmp_matrix(half_t *ground_truth, half_t *res, unsigned int m,
                               unsigned int n, unsigned int bs, unsigned int lm,
                               unsigned int ln, bool print)
 {
-    return cmp_matrix<half_t>(ground_truth, res, m, n, bs, lm, ln, print);
+    cutlass::half_t *cutlass_ground_truth =
+        reinterpret_cast<cutlass::half_t *>(ground_truth);
+    cutlass::half_t *cutlass_res = reinterpret_cast<cutlass::half_t *>(res);
+    return cmp_matrix<cutlass::half_t>(cutlass_ground_truth, cutlass_res, m, n,
+                                       bs, lm, ln, print);
 }
 
 //
@@ -197,4 +220,18 @@ string get_kernel_code(const string &name)
 {
     return ark::read_file(ark::get_dir(string{__FILE__}) + "/kernels/" + name +
                           ".h");
+}
+
+float half2float(half_t h)
+{
+    const cutlass::half_t &cutlass_h =
+        *reinterpret_cast<const cutlass::half_t *>(&h);
+    float f = cutlass::half_t::convert(cutlass_h);
+    return f;
+}
+
+half_t float2half(float f)
+{
+    cutlass::half_t cutlass_h = cutlass::half_t::convert(f);
+    return *reinterpret_cast<half_t *>(&cutlass_h);
 }

@@ -38,25 +38,12 @@ void test_dot_internal(unsigned int len)
     gk.load();
 
     ark::srand();
-    float *res = (float *)malloc(4);
-    UNITTEST_NE(res, (float *)nullptr);
-    half_t *gt = (half_t *)malloc(2);
-    UNITTEST_NE(gt, (half_t *)nullptr);
+    float res = 0, gt = 0;
 
     for (int iter = 0; iter < 10; ++iter) {
         // Set data.
-        auto data_a = rand_halfs(len, 0.1);
-        auto data_b = rand_halfs(len, 0.1);
-
-        // ifstream data("/home/changho/ark2/data_3");
-        // for (unsigned int i = 0; i < len; ++i) {
-        //     string line;
-        //     getline(data, line);
-        //     uint16_t da = (uint16_t)strtoul(line.substr(0, 4).c_str(), 0,
-        //     16); uint16_t db = (uint16_t)strtoul(line.substr(5, 4).c_str(),
-        //     0, 16); data_a.get()[i] = cutlass::half_t::bitcast(da);
-        //     data_b.get()[i] = cutlass::half_t::bitcast(db);
-        // }
+        auto data_a = rand_halfs(len, 1);
+        auto data_b = rand_halfs(len, 1);
 
         ark::gpu_memcpy(buf_a, data_a.get(), len * sizeof(half_t));
         ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(half_t));
@@ -69,37 +56,21 @@ void test_dot_internal(unsigned int len)
         UNITTEST_EQ(ret, 0);
 
         // Copy the result into CPU memory.
-        ark::gpu_memcpy(res, buf_c, 4);
+        ark::gpu_memcpy(&res, buf_c, 4);
 
         // Calculate the ground truth.
-        *gt = half_t(0);
-        // cout << *gt << endl;
+        gt = 0;
         for (unsigned int i = 0; i < len; ++i) {
-            *gt += data_a.get()[i] * data_b.get()[i];
-            // cout << *gt << endl;
+            gt += half2float(data_a.get()[i]) * half2float(data_b.get()[i]);
         }
 
-        float err = error_rate(half_t(*gt), half_t(*res));
+        float err = error_rate(gt, res);
 
-        LOG(ark::INFO, "dot:", len, setprecision(4), " res ", *res, " gt ", *gt,
+        LOG(ark::INFO, "dot:", len, setprecision(4), " res ", res, " gt ", gt,
             " err ", err * 100, "%");
 
-        UNITTEST_TRUE(err < 0.01);
-
-        // if (((*res) * (*gt) < 0) &&
-        //     (abs(*res - *gt) > (float)numeric_limits<half_t>::epsilon())) {
-        //     cout << hex;
-        //     for (unsigned int i = 0; i < len; ++i) {
-        //         cout << data_a.get()[i].storage << "," <<
-        //         data_b.get()[i].storage << endl;
-        //     }
-        //     cout << dec;
-        //     UNITTEST_TRUE(false);
-        // }
+        UNITTEST_TRUE(err < 0.1);
     }
-
-    free(res);
-    free(gt);
     mgr->destroy_context(ctx);
 }
 

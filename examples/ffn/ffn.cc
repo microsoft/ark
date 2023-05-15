@@ -308,7 +308,7 @@ class Trainer
         exe->tensor_memcpy(loss, this->loss_tensor, tensor_size);
         float loss_sum = 0;
         for (int i = 0; i < this->loss_tensor->size(); ++i) {
-            loss_sum += (float)loss[i];
+            loss_sum += half2float(loss[i]);
         }
         delete[] loss;
         return loss_sum;

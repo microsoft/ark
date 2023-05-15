@@ -6,6 +6,8 @@
 #include "ark.h"
 #include <array>
 #include <cassert>
+#include <cstring>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <map>
@@ -15,12 +17,7 @@
 #include <utility>
 #include <vector>
 
-// clang-format off
-#include "vector_types.h"
-#include "cutlass/half.h"
-// clang-format on
-// typedef uint16_t half_t;
-typedef cutlass::half_t half_t;
+typedef uint16_t half_t;
 
 // Return a random half_t array.
 std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
@@ -52,19 +49,6 @@ void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
                   unsigned int lm, unsigned int ln);
 void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
                   unsigned int lm, unsigned int ln);
-
-namespace ark {
-// Spawn a process that runs `func`. Returns PID of the spawned process.
-int proc_spawn(const std::function<int()> &func);
-// Wait for a spawned process with PID `pid`.
-// Return -1 on any unexpected failures, otherwise return the exit status.
-int proc_wait(int pid);
-// Wait for multiple child processes.
-// Return 0 on success, -1 on any unexpected failure, otherwise the first seen
-// non-zero exit status.
-int proc_wait(const std::vector<int> &pids);
-
-} // namespace ark
 
 // Return a random value array.
 template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
@@ -114,5 +98,22 @@ std::pair<float, float> tensor_compare(T *ground_truth, T *res, ark::Dims shape,
     }
     return {l2_loss / nelem, max_err};
 }
+
+float half2float(half_t h);
+
+half_t float2half(float f);
+
+namespace ark {
+// Spawn a process that runs `func`. Returns PID of the spawned process.
+int proc_spawn(const std::function<int()> &func);
+// Wait for a spawned process with PID `pid`.
+// Return -1 on any unexpected failures, otherwise return the exit status.
+int proc_wait(int pid);
+// Wait for multiple child processes.
+// Return 0 on success, -1 on any unexpected failure, otherwise the first seen
+// non-zero exit status.
+int proc_wait(const std::vector<int> &pids);
+
+} // namespace ark
 
 #endif
