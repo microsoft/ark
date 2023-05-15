@@ -25,7 +25,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     ctx->freeze();
 
     ark::GpuKernel gk{"simple_reduce",
-                      {ark::get_kernel_code("simple_reduce")},
+                      {ark::unittest::get_kernel_code("simple_reduce")},
                       {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
                       {128, 1, 1},
                       0,

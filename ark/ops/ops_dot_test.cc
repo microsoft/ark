@@ -24,7 +24,7 @@ void test_dot_internal(unsigned int len)
     ctx->freeze();
 
     ark::GpuKernel gk{"simple_dot",
-                      {ark::get_kernel_code("simple_dot")},
+                      {ark::unittest::get_kernel_code("simple_dot")},
                       {1, 1, 1},
                       {128, 1, 1},
                       0,

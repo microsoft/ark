@@ -4,7 +4,6 @@
 #include <iomanip>
 #include <iostream>
 
-#include "ark/file_io.h"
 #include "ark/include/ark.h"
 #include "ark/include/ark_utils.h"
 
@@ -216,13 +215,6 @@ pair<float, float> ark::cmp_matrix(float *ground_truth, float *res,
                                    unsigned int ln, bool print)
 {
     return ark::cmp_matrix<float>(ground_truth, res, m, n, bs, lm, ln, print);
-}
-
-//
-string ark::get_kernel_code(const string &name)
-{
-    return ark::read_file(ark::get_dir(string{__FILE__}) + "/kernels/" + name +
-                          ".h");
 }
 
 float ark::half2float(ark::half_t h)

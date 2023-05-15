@@ -42,7 +42,7 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
 
     // Define `simple_matmul_nt` kernel to generate the ground truth.
     ark::GpuKernel gk{"simple_matmul_nt",
-                      {ark::get_kernel_code("simple_matmul_nt")},
+                      {ark::unittest::get_kernel_code("simple_matmul_nt")},
                       {n / 16, m / 16, 1},
                       {16, 16, 1},
                       0,

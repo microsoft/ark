@@ -62,8 +62,6 @@ template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
     }
     return std::unique_ptr<T[]>(ret);
 }
-//
-std::string get_kernel_code(const std::string &name);
 
 // Return mean squared error and max error rate between two matrices.
 template <typename T>

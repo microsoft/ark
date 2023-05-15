@@ -34,7 +34,7 @@ void test_mul_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
     ctx->freeze();
 
     ark::GpuKernel gk{kernel_name,
-                      {ark::get_kernel_code("simple_mul")},
+                      {ark::unittest::get_kernel_code("simple_mul")},
                       {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
                       {512, 1, 1},
                       0,

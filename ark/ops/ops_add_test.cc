@@ -34,7 +34,7 @@ void test_add_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
     ctx->freeze();
 
     ark::GpuKernel gk{kernel_name,
-                      {ark::get_kernel_code("simple_add")},
+                      {ark::unittest::get_kernel_code("simple_add")},
                       {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
                       {512, 1, 1},
                       0,

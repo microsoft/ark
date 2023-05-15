@@ -23,7 +23,7 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     ctx->freeze();
 
     ark::GpuKernel gk{"simple_scale",
-                      {ark::get_kernel_code("simple_scale")},
+                      {ark::unittest::get_kernel_code("simple_scale")},
                       {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
                       {512, 1, 1},
                       0,
