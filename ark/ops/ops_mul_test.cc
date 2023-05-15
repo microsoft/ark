@@ -34,7 +34,7 @@ void test_mul_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
     ctx->freeze();
 
     ark::GpuKernel gk{kernel_name,
-                      {get_kernel_code("simple_mul")},
+                      {ark::get_kernel_code("simple_mul")},
                       {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
                       {512, 1, 1},
                       0,
@@ -50,8 +50,8 @@ void test_mul_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
 
     // Set data.
     ark::srand();
-    auto data_a = rand_array<T>(bs * len, 0.01);
-    auto data_b = rand_array<T>(len, 0.01);
+    auto data_a = ark::rand_array<T>(bs * len, 0.01);
+    auto data_b = ark::rand_array<T>(len, 0.01);
     ark::gpu_memcpy(buf_a, data_a.get(), bs * len * sizeof(T));
     ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(T));
 
@@ -93,7 +93,8 @@ void test_mul_internal(ark::TensorType type, ark::DimType bs, ark::DimType n,
     exe.tensor_memcpy(res, tns_c, bs * len * sizeof(T));
 
     // Compare results with the ground truth.
-    std::pair<float, float> p = tensor_compare(gt, res, tns_c->shape, true);
+    std::pair<float, float> p =
+        ark::tensor_compare(gt, res, tns_c->shape, true);
     float max_err = p.second;
     LOG(ark::INFO, "mul:", n, 'x', m, ",bs=", bs, setprecision(4), " mse ",
         p.first, " max_err ", max_err * 100, "%");
@@ -120,15 +121,15 @@ ark::unittest::State test_mul_fp32()
 
 ark::unittest::State test_mul_fp16()
 {
-    test_mul_internal<half_t>(ark::FP16, 1, 1, 2);
-    test_mul_internal<half_t>(ark::FP16, 1, 1, 64);
-    test_mul_internal<half_t>(ark::FP16, 1, 128, 128);
-    test_mul_internal<half_t>(ark::FP16, 1, 1024, 512);
-    test_mul_internal<half_t>(ark::FP16, 1, 512, 1024);
-    test_mul_internal<half_t>(ark::FP16, 2, 1, 64);
-    test_mul_internal<half_t>(ark::FP16, 2, 128, 128);
-    test_mul_internal<half_t>(ark::FP16, 4, 1024, 512);
-    test_mul_internal<half_t>(ark::FP16, 4, 512, 1024);
+    test_mul_internal<ark::half_t>(ark::FP16, 1, 1, 2);
+    test_mul_internal<ark::half_t>(ark::FP16, 1, 1, 64);
+    test_mul_internal<ark::half_t>(ark::FP16, 1, 128, 128);
+    test_mul_internal<ark::half_t>(ark::FP16, 1, 1024, 512);
+    test_mul_internal<ark::half_t>(ark::FP16, 1, 512, 1024);
+    test_mul_internal<ark::half_t>(ark::FP16, 2, 1, 64);
+    test_mul_internal<ark::half_t>(ark::FP16, 2, 128, 128);
+    test_mul_internal<ark::half_t>(ark::FP16, 4, 1024, 512);
+    test_mul_internal<ark::half_t>(ark::FP16, 4, 512, 1024);
     return ark::unittest::SUCCESS;
 }
 

@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 
+namespace ark {
+
 typedef uint16_t half_t;
 
 // Return a random half_t array.
@@ -103,7 +105,6 @@ float half2float(half_t h);
 
 half_t float2half(float f);
 
-namespace ark {
 // Spawn a process that runs `func`. Returns PID of the spawned process.
 int proc_spawn(const std::function<int()> &func);
 // Wait for a spawned process with PID `pid`.

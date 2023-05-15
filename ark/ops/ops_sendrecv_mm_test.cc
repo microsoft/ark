@@ -14,7 +14,7 @@ using namespace ark;
 #define ITER 1000
 ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 {
-    ark::DimType mat_size = mat_length * mat_length * sizeof(half_t);
+    ark::DimType mat_size = mat_length * mat_length * sizeof(ark::half_t);
     char *send_data0 = (char *)malloc(mat_size);
     for (ark::DimType i = 0; i < mat_size; i++)
         send_data0[i] = std::rand() % 256;
@@ -121,7 +121,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
     ark::DimType mat_length)
 {
     int iter = ITER;
-    ark::DimType mat_size = mat_length * mat_length * sizeof(half_t);
+    ark::DimType mat_size = mat_length * mat_length * sizeof(ark::half_t);
     char *send_data0 = (char *)malloc(mat_size);
     for (ark::DimType i = 0; i < mat_size; i++)
         send_data0[i] = std::rand() % 256;
@@ -249,7 +249,7 @@ ark::unittest::State test_sendrecv_mm_4gpus()
     // the four gpus send recv data in a ring, gpu0->gpu1->gpu2->gpu3->gpu0
     const int gpu_num = 4;
     const int mat_length = 64;
-    const int mat_size = mat_length * mat_length * sizeof(half_t);
+    const int mat_size = mat_length * mat_length * sizeof(ark::half_t);
     char *send_data[gpu_num];
     for (int i = 0; i < gpu_num; i++) {
         send_data[i] = new char[mat_size];

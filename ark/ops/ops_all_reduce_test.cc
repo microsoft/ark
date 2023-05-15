@@ -15,43 +15,43 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
 {
     // bytes/num_gpus is the number of bytes a GPU send in one iteration, the
     // bytes must be multiple of num_gpus, the tensor shape is {1, bytes /
-    // sizeof(half_t), 1, 1}.
+    // sizeof(ark::half_t), 1, 1}.
     if (bytes % num_gpus != 0) {
         LOG(INFO, "bytes must be multiple of num_gpus");
         return;
     }
     // init input data and ground truth.
     ark::srand();
-    vector<unique_ptr<half_t[]>> input_data(num_gpus);
+    vector<unique_ptr<ark::half_t[]>> input_data(num_gpus);
     for (int i = 0; i < num_gpus; i++) {
-        input_data[i] = rand_halfs(bytes / sizeof(half_t), 0.01);
+        input_data[i] = ark::rand_halfs(bytes / sizeof(ark::half_t), 0.01);
     }
 
     // calculate ground truth of all_reduce.
-    half_t *gt = (half_t *)malloc(bytes);
+    ark::half_t *gt = (ark::half_t *)malloc(bytes);
     UNITTEST_NE(gt, (void *)nullptr);
     // first convert the input data to float, then sum them up, finally convert
-    // the result to half_t.
-    for (size_t i = 0; i < bytes / sizeof(half_t); i++) {
+    // the result to ark::half_t.
+    for (size_t i = 0; i < bytes / sizeof(ark::half_t); i++) {
         float sum = 0;
         for (int j = 0; j < num_gpus; j++) {
-            sum += (float)input_data[j].get()[i];
+            sum += ark::half2float(input_data[j].get()[i]);
         }
-        gt[i] = half_t(sum);
+        gt[i] = ark::half_t(sum);
     }
 #ifdef PRINT_MATRIX
     // print input data.
     for (int gpu_id = 0; gpu_id < num_gpus; gpu_id++) {
         cout << "input data of gpu_id: " << gpu_id << endl;
-        for (size_t i = 0; i < bytes / sizeof(half_t) && i < 10; i++) {
-            cout << (float)input_data[gpu_id].get()[i] << " ";
+        for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
+            cout << ark::half2float(input_data[gpu_id].get()[i]) << " ";
         }
         cout << endl;
     }
     // print ground truth.
     cout << "ground truth: " << endl;
-    for (size_t i = 0; i < bytes / sizeof(half_t) && i < 10; i++) {
-        cout << (float)gt[i] << " ";
+    for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
+        cout << ark::half2float(gt[i]) << " ";
     }
     cout << endl;
 #endif
@@ -62,7 +62,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             Model model;
             Tensor *data = model.tensor(
                 {
-                    (ark::DimType)(bytes / sizeof(half_t)),
+                    (ark::DimType)(bytes / sizeof(ark::half_t)),
                 },
                 FP16);
             model.all_reduce(data, gpu_id, num_gpus);
@@ -82,18 +82,20 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             float elapsed_msec = exe.stop();
 
             // Copy results of the loop kernel routine into CPU memory.
-            half_t *res = (half_t *)malloc(bytes);
+            ark::half_t *res = (ark::half_t *)malloc(bytes);
             UNITTEST_NE(res, (void *)nullptr);
             ark::gpu_memcpy(res, buf_tns, bytes);
 
             // Compare results with the ground truth.
-            auto p = cmp_matrix((half_t *)gt, (half_t *)res, 1, bytes / 2);
+            auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, 1,
+                                     bytes / 2);
 #ifdef PRINT_MATRIX
             // print result, to avoid too long output, only print the first 10
             // elements if(gpu_id == 0)
             {
                 cout << "result on gpu_id: " << gpu_id << " ";
-                for (size_t i = 0; i < bytes / sizeof(half_t) && i < 10; i++) {
+                for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10;
+                     i++) {
                     cout << (float)res[i] << " ";
                 }
                 cout << endl;

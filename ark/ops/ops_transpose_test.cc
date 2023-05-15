@@ -23,7 +23,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
 
     // Set data.
     ark::srand();
-    auto data_in = rand_array<T>(n * c * h * w, 0.01);
+    auto data_in = ark::rand_array<T>(n * c * h * w, 0.01);
     T *in_ptr = data_in.get();
     exe.tensor_memcpy(tns_in, in_ptr, n * c * h * w * sizeof(T));
 

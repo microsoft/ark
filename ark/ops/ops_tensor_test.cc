@@ -26,7 +26,7 @@ ark::unittest::State test_tensor_memcpy()
     UNITTEST_EQ(buf->get_bytes(), ldims.size() * sizeof(float));
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 3024.0}
-    auto data = range_floats(ldims.size());
+    auto data = ark::range_floats(ldims.size());
     ark::gpu_memcpy(buf, data.get(), ldims.size() * sizeof(float));
 
     // Copy tensor data from GPU to CPU
@@ -114,7 +114,7 @@ ark::unittest::State test_tensor_layout()
     UNITTEST_EQ(buf->get_bytes(), 8 * 7 * 6 * 5 * sizeof(float));
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
-    auto data = range_floats(2 * 3 * 4 * 5);
+    auto data = ark::range_floats(2 * 3 * 4 * 5);
     exe.tensor_memcpy(tns, data.get(), 2 * 3 * 4 * 5 * sizeof(float));
 
     // Check reference values

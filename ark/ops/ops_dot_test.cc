@@ -17,14 +17,14 @@ void test_dot_internal(unsigned int len)
     ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
     ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_dot", 0, 1);
 
-    ark::GpuBuf *buf_a = ctx->mem_alloc(len * sizeof(half_t));
-    ark::GpuBuf *buf_b = ctx->mem_alloc(len * sizeof(half_t));
+    ark::GpuBuf *buf_a = ctx->mem_alloc(len * sizeof(ark::half_t));
+    ark::GpuBuf *buf_b = ctx->mem_alloc(len * sizeof(ark::half_t));
     ark::GpuBuf *buf_c = ctx->mem_alloc(4);
 
     ctx->freeze();
 
     ark::GpuKernel gk{"simple_dot",
-                      {get_kernel_code("simple_dot")},
+                      {ark::get_kernel_code("simple_dot")},
                       {1, 1, 1},
                       {128, 1, 1},
                       0,
@@ -42,11 +42,11 @@ void test_dot_internal(unsigned int len)
 
     for (int iter = 0; iter < 10; ++iter) {
         // Set data.
-        auto data_a = rand_halfs(len, 1);
-        auto data_b = rand_halfs(len, 1);
+        auto data_a = ark::rand_halfs(len, 1);
+        auto data_b = ark::rand_halfs(len, 1);
 
-        ark::gpu_memcpy(buf_a, data_a.get(), len * sizeof(half_t));
-        ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(half_t));
+        ark::gpu_memcpy(buf_a, data_a.get(), len * sizeof(ark::half_t));
+        ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(ark::half_t));
 
         // Run the GPU kernel.
         ark::GpuStream s = ctx->create_stream();
@@ -61,10 +61,11 @@ void test_dot_internal(unsigned int len)
         // Calculate the ground truth.
         gt = 0;
         for (unsigned int i = 0; i < len; ++i) {
-            gt += half2float(data_a.get()[i]) * half2float(data_b.get()[i]);
+            gt += ark::half2float(data_a.get()[i]) *
+                  ark::half2float(data_b.get()[i]);
         }
 
-        float err = error_rate(gt, res);
+        float err = ark::error_rate(gt, res);
 
         LOG(ark::INFO, "dot:", len, setprecision(4), " res ", res, " gt ", gt,
             " err ", err * 100, "%");

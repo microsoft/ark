@@ -31,24 +31,25 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
 
     // Set data.
     ark::srand();
-    auto data_x = range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
+    auto data_x = ark::range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
     exe.tensor_memcpy(tns_x, data_x.get(), tns_x->shape_bytes());
 
-    // print_matrix(data_x.get(), h * w, c, h * w, c);
+    // ark::print_matrix(data_x.get(), h * w, c, h * w, c);
 
     exe.launch();
     exe.run(1);
     exe.stop();
 
     // Copy results of the loop kernel routine into CPU memory.
-    half_t *res = (half_t *)calloc(tns_y->shape.size(), sizeof(half_t));
-    UNITTEST_NE(res, (half_t *)nullptr);
+    ark::half_t *res =
+        (ark::half_t *)calloc(tns_y->shape.size(), sizeof(ark::half_t));
+    UNITTEST_NE(res, (ark::half_t *)nullptr);
     exe.tensor_memcpy(res, tns_y, tns_y->shape_bytes());
 
     // Calculate CPU results
-    half_t *gt =
-        (half_t *)calloc(tns_y->shape_bytes() / sizeof(half_t), sizeof(half_t));
-    UNITTEST_NE(gt, (half_t *)nullptr);
+    ark::half_t *gt = (ark::half_t *)calloc(
+        tns_y->shape_bytes() / sizeof(ark::half_t), sizeof(ark::half_t));
+    UNITTEST_NE(gt, (ark::half_t *)nullptr);
     ark::DimType patch_num_height =
         (h - kernel_height + 2 * pad_height) / stride_height + 1;
     ark::DimType patch_num_width =
@@ -77,7 +78,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
 
             if (elem_height < 0 || elem_height >= h || elem_width < 0 ||
                 elem_width >= w) {
-                gt[midx + nidx * mdim] = half_t(0);
+                gt[midx + nidx * mdim] = ark::half_t(0);
             } else {
                 ark::DimType elem_idx =
                     elem_width + elem_height * w + channel_idx * h * w;
@@ -87,8 +88,8 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     }
 
     // Compare results with the ground truth.
-    auto p = cmp_matrix((half_t *)gt, (half_t *)res, mdim, inner_dim, n, mdim,
-                        inner_dim);
+    auto p = ark::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, mdim,
+                             inner_dim, n, mdim, inner_dim);
     float max_err = p.second;
     stringstream ss;
     ss << "im2col:n=" << n << ",c=" << c << ",h=" << h << ",w=" << w
