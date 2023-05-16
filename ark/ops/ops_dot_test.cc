@@ -38,7 +38,8 @@ void test_dot_internal(unsigned int len)
     gk.load();
 
     ark::srand();
-    float res = 0, gt = 0;
+    float res = 0;
+    ark::half_t gt = 0;
 
     for (int iter = 0; iter < 10; ++iter) {
         // Set data.
@@ -61,10 +62,10 @@ void test_dot_internal(unsigned int len)
         // Calculate the ground truth.
         gt = 0;
         for (unsigned int i = 0; i < len; ++i) {
-            gt += (float)data_a.get()[i] * (float)data_b.get()[i];
+            gt = gt + data_a.get()[i] * data_b.get()[i];
         }
 
-        float err = ark::utils::error_rate(gt, res);
+        float err = ark::utils::error_rate((float)gt, res);
 
         LOG(ark::INFO, "dot:", len, setprecision(4), " res ", res, " gt ", gt,
             " err ", err * 100, "%");
