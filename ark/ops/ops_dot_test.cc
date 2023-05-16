@@ -70,7 +70,7 @@ void test_dot_internal(unsigned int len)
         LOG(ark::INFO, "dot:", len, setprecision(4), " res ", res, " gt ", gt,
             " err ", err * 100, "%");
 
-        UNITTEST_TRUE(err < 0.1);
+        UNITTEST_TRUE(err < 0.01);
     }
     mgr->destroy_context(ctx);
 }
