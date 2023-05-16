@@ -28,6 +28,33 @@ ark::half_t::half_t(float f)
     this->val = *reinterpret_cast<const uint16_t *>(&cutlass_h);
 }
 
+ark::half_t ark::half_t::operator+(ark::half_t const &rhs)
+{
+    cutlass::half_t lhs_h = *reinterpret_cast<cutlass::half_t *>(&this->val);
+    cutlass::half_t rhs_h =
+        *reinterpret_cast<const cutlass::half_t *>(&rhs.val);
+    cutlass::half_t res_h = lhs_h + rhs_h;
+    return *reinterpret_cast<ark::half_t *>(&res_h);
+}
+
+ark::half_t ark::half_t::operator-(ark::half_t const &rhs)
+{
+    cutlass::half_t lhs_h = *reinterpret_cast<cutlass::half_t *>(&this->val);
+    cutlass::half_t rhs_h =
+        *reinterpret_cast<const cutlass::half_t *>(&rhs.val);
+    cutlass::half_t res_h = lhs_h - rhs_h;
+    return *reinterpret_cast<ark::half_t *>(&res_h);
+}
+
+ark::half_t ark::half_t::operator*(ark::half_t const &rhs)
+{
+    cutlass::half_t lhs_h = *reinterpret_cast<cutlass::half_t *>(&this->val);
+    cutlass::half_t rhs_h =
+        *reinterpret_cast<const cutlass::half_t *>(&rhs.val);
+    cutlass::half_t res_h = lhs_h * rhs_h;
+    return *reinterpret_cast<ark::half_t *>(&res_h);
+}
+
 // Return an array of range values.
 template <typename T>
 unique_ptr<T[]> ark::utils::range_array(size_t num, float begin, float diff)

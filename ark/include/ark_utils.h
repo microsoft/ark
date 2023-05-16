@@ -27,11 +27,12 @@ struct half_t
     half_t(float f);
     // Conversion operator from half to float
     operator float() const;
+
+    half_t operator+(half_t const &rhs);
+    half_t operator-(half_t const &rhs);
+    half_t operator*(half_t const &rhs);
 };
 
-half_t operator+(half_t lhs, half_t const &rhs);
-half_t operator-(half_t lhs, half_t const &rhs);
-half_t operator*(half_t lhs, half_t const &rhs);
 namespace utils {
 // Return an array of range values.
 template <typename T>
