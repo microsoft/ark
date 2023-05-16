@@ -38,7 +38,7 @@ Dims::Dims(const vector<DimType> &vec)
 {
     int ds = (int)vec.size();
     if (ds > DIMS_LEN) {
-        LOGERR("only support dims with size <= ", DIMS_LEN, ". Given: ", ds);
+        LOGERR("only support dims with size <= ", DIMS_LEN, ". Given: ", *this);
     }
     int i = 0;
     for (; i < ds; ++i) {
