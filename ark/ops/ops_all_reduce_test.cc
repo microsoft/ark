@@ -36,7 +36,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
     for (size_t i = 0; i < bytes / sizeof(ark::half_t); i++) {
         float sum = 0;
         for (int j = 0; j < num_gpus; j++) {
-            sum += ark::utils::half2float(input_data[j].get()[i]);
+            sum += (float)input_data[j].get()[i];
         }
         gt[i] = ark::half_t(sum);
     }
@@ -45,14 +45,14 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
     for (int gpu_id = 0; gpu_id < num_gpus; gpu_id++) {
         cout << "input data of gpu_id: " << gpu_id << endl;
         for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
-            cout << ark::utils::half2float(input_data[gpu_id].get()[i]) << " ";
+            cout << (float)input_data[gpu_id].get()[i] << " ";
         }
         cout << endl;
     }
     // print ground truth.
     cout << "ground truth: " << endl;
     for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
-        cout << ark::utils::half2float(gt[i]) << " ";
+        cout << (float)gt[i] << " ";
     }
     cout << endl;
 #endif

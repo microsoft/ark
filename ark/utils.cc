@@ -14,6 +14,20 @@
 
 using namespace std;
 
+ark::half_t::operator float() const
+{
+    const cutlass::half_t &cutlass_h =
+        *reinterpret_cast<const cutlass::half_t *>(&this->val);
+    float f = cutlass::half_t::convert(cutlass_h);
+    return f;
+}
+
+ark::half_t::half_t(float f)
+{
+    const cutlass::half_t &cutlass_h = cutlass::half_t::convert(f);
+    this->val = *reinterpret_cast<const uint16_t *>(&cutlass_h);
+}
+
 // Return an array of range values.
 template <typename T>
 unique_ptr<T[]> ark::utils::range_array(size_t num, float begin, float diff)
@@ -220,18 +234,4 @@ pair<float, float> ark::utils::cmp_matrix(float *ground_truth, float *res,
 {
     return ark::utils::cmp_matrix<float>(ground_truth, res, m, n, bs, lm, ln,
                                          print);
-}
-
-float ark::utils::half2float(ark::half_t h)
-{
-    const cutlass::half_t &cutlass_h =
-        *reinterpret_cast<const cutlass::half_t *>(&h);
-    float f = cutlass::half_t::convert(cutlass_h);
-    return f;
-}
-
-ark::half_t ark::utils::float2half(float f)
-{
-    cutlass::half_t cutlass_h = cutlass::half_t::convert(f);
-    return *reinterpret_cast<ark::half_t *>(&cutlass_h);
 }

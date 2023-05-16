@@ -61,8 +61,7 @@ void test_dot_internal(unsigned int len)
         // Calculate the ground truth.
         gt = 0;
         for (unsigned int i = 0; i < len; ++i) {
-            gt += ark::utils::half2float(data_a.get()[i]) *
-                  ark::utils::half2float(data_b.get()[i]);
+            gt += (float)data_a.get()[i] * (float)data_b.get()[i];
         }
 
         float err = ark::utils::error_rate(gt, res);

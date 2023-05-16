@@ -19,7 +19,19 @@
 
 namespace ark {
 
-typedef uint16_t half_t;
+struct half_t
+{
+    uint16_t val;
+    half_t() = default;
+    // Constructor with float parameter
+    half_t(float f);
+    // Conversion operator from half to float
+    operator float() const;
+};
+
+half_t operator+(half_t lhs, half_t const &rhs);
+half_t operator-(half_t lhs, half_t const &rhs);
+half_t operator*(half_t lhs, half_t const &rhs);
 namespace utils {
 // Return an array of range values.
 template <typename T>
@@ -101,10 +113,6 @@ std::pair<float, float> tensor_compare(T *ground_truth, T *res, ark::Dims shape,
     }
     return {l2_loss / nelem, max_err};
 }
-
-float half2float(half_t h);
-
-half_t float2half(float f);
 
 // Spawn a process that runs `func`. Returns PID of the spawned process.
 int proc_spawn(const std::function<int()> &func);
