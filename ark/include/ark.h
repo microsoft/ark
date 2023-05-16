@@ -19,8 +19,6 @@ void srand(int seed = -1);
 int rand();
 void init();
 
-const std::string rand_anum(size_t len);
-
 typedef long long int DimType;
 
 enum
