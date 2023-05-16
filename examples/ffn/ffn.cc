@@ -12,8 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
-// #include "ark/logging.h"
-// #include "ark/ops/ops_test_utils.h"
+
 using namespace std;
 using namespace ark;
 
@@ -159,15 +158,11 @@ class FFN_Model
         }
     }
 
-    //
     Model &model;
     // model parameters.
     vector<FullyConnectedLayer> layers;
-    //
     Tensor *model_input;
-    //
     int num_gpus;
-    //
     int gpu_id;
 };
 
@@ -258,21 +253,15 @@ class Trainer
             ark::utils::range_halfs(this->input->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->input, data_input.get(),
                            this->input->shape_bytes());
-        // printf( "input: ");
-        // print_tensor(this->input, this->exe);
         auto data_ground_truth =
             ark::utils::range_halfs(this->ground_truth->shape_bytes(), 2, 0);
         exe->tensor_memcpy(this->ground_truth, data_ground_truth.get(),
                            this->ground_truth->shape_bytes());
-        // printf( "ground_truth: ");
-        // print_tensor(this->ground_truth, this->exe);
         // init the grad_loss with 1.
         auto data_grad_loss =
             ark::utils::range_halfs(this->grad_loss->shape_bytes(), 1, 0);
         exe->tensor_memcpy(this->grad_loss, data_grad_loss.get(),
                            this->grad_loss->shape_bytes());
-        // printf( "grad_loss: ");
-        // print_tensor(this->grad_loss, this->exe);
         // init all the parameters of the model with random values.
         for (auto &layer : ffn_model.layers) {
             for (auto &param : layer.params) {
