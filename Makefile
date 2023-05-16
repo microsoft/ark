@@ -39,12 +39,12 @@ BSRC_SCHED_SCHED += sched_kahypar.cc
 endif
 BSRC_UNITTEST := unittest_utils.cc
 
-BSRC_OPS := ops_common.cc ops_config.cc ops_test_utils.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
+BSRC_OPS := ops_common.cc ops_config.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
 BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_reduce.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
 BSRC_OPS += ops_conv.cc ops_max_pool.cc ops_sendrecv.cc ops_all_reduce.cc ops_sendrecv_mm.cc ops_transpose.cc
 
 BSRC := init.cc cpu_timer.cc logging.cc math.cc random.cc env.cc file_io.cc process.cc
-BSRC += model.cc model_io.cc tensor.cc dims.cc
+BSRC += model.cc model_io.cc tensor.cc dims.cc utils.cc
 BSRC += executor.cc
 
 BSRC += $(patsubst %.cc,ipc/%.cc,$(BSRC_IPC))

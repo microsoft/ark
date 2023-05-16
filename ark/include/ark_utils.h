@@ -21,6 +21,9 @@ namespace ark {
 
 typedef uint16_t half_t;
 namespace utils {
+// Return an array of range values.
+template <typename T>
+std::unique_ptr<T[]> range_array(size_t num, float begin, float diff);
 // Return a random half_t array.
 std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
 // Return a random float array.

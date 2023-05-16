@@ -16,7 +16,7 @@ using namespace std;
 
 // Return an array of range values.
 template <typename T>
-unique_ptr<T[]> range_array(size_t num, float begin, float diff)
+unique_ptr<T[]> ark::utils::range_array(size_t num, float begin, float diff)
 {
     T *ret = new T[num];
     for (size_t i = 0; i < num; ++i) {
@@ -168,7 +168,7 @@ unique_ptr<ark::half_t[]> ark::utils::range_halfs(size_t num, float begin,
                                                   float diff)
 {
     std::unique_ptr<cutlass::half_t[]> cutlass_half_array =
-        range_array<cutlass::half_t>(num, begin, diff);
+        ark::utils::range_array<cutlass::half_t>(num, begin, diff);
     std::unique_ptr<ark::half_t[]> half_array(
         reinterpret_cast<ark::half_t *>(cutlass_half_array.release()));
     return half_array;
@@ -178,7 +178,7 @@ unique_ptr<ark::half_t[]> ark::utils::range_halfs(size_t num, float begin,
 unique_ptr<float[]> ark::utils::range_floats(size_t num, float begin,
                                              float diff)
 {
-    return range_array<float>(num, begin, diff);
+    return ark::utils::range_array<float>(num, begin, diff);
 }
 
 //
