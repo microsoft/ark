@@ -7,18 +7,24 @@ ARK_PATCH := 0
 
 MKDIR   := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 ARKDIR  := $(MKDIR)
-CUDIR   := /usr/local/cuda
-MPIDIR  := /usr/local/mpi
+CUDIR   ?= /usr/local/cuda
+
+DEBUG   ?= 0
 KAHYPAR ?= 0
 
 CXX      := g++
-CXXFLAGS := -std=c++14 -Wall -Wextra -g -O3 -fPIC
+CXXFLAGS := -std=c++14 -Wall -Wextra -fPIC
 INCLUDE  := -I $(CUDIR)/include -I $(ARKDIR) -I $(ARKDIR)/third_party
 INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
-INCLUDE  += -I $(MPIDIR)/include
 LDLIBS   := -lcuda -lnvidia-ml -lnvrtc -lpthread -lrt -libverbs -lnuma
 LDFLAGS  := -L $(CUDIR)/lib64/stubs -Wl,-rpath,$(CUDIR)/lib64
 MACROS   :=
+
+ifeq ($(DEBUG),1)
+CXXFLAGS += -g -O0
+else
+CXXFLAGS += -O3
+endif
 
 BDIR ?= $(ARKDIR)/build
 
@@ -33,12 +39,12 @@ BSRC_SCHED_SCHED += sched_kahypar.cc
 endif
 BSRC_UNITTEST := unittest_utils.cc
 
-BSRC_OPS := ops_common.cc ops_config.cc ops_test_utils.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
+BSRC_OPS := ops_common.cc ops_config.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
 BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_reduce.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
 BSRC_OPS += ops_conv.cc ops_max_pool.cc ops_sendrecv.cc ops_all_reduce.cc ops_sendrecv_mm.cc ops_transpose.cc
 
-BSRC := init.cc cpu_timer.cc logging.cc math.cc random.cc env.cc file_io.cc process.cc
-BSRC += model.cc model_io.cc tensor.cc dims.cc
+BSRC := init.cc cpu_timer.cc logging.cc math.cc random.cc env.cc file_io.cc
+BSRC += model.cc model_io.cc tensor.cc dims.cc utils.cc
 BSRC += executor.cc
 
 BSRC += $(patsubst %.cc,ipc/%.cc,$(BSRC_IPC))
@@ -63,12 +69,6 @@ USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
 
-SSRC := all_reduce.cc transformer_dp.cc transformer_pp.cc gpu_comm.cc
-SSRC += bert.cc resnet50.cc googlenet.cc ssd.cc 
-
-SOBJ := $(patsubst %.cc,$(BDIR)/samples/%.o,$(SSRC))
-SBIN := $(patsubst %.o,%,$(SOBJ))
-
 ifeq ($(KAHYPAR),1)
 KHP_BDIR := $(BDIR)/third_party/kahypar
 KHP_SO := $(KHP_BDIR)/kahypar/build/install/lib/libkahypar.so
@@ -80,17 +80,18 @@ endif
 
 LIBHEADERS := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(h|hpp)' -not -path '*/ark/include/kernels*')
 CPPSOURCES := $(shell find $(ARKDIR)/ark -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
+CPPSOURCES += $(shell find $(ARKDIR)/examples -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
 
 LIBNAME   := libark.so
 LIBSO     := $(BDIR)/lib/$(LIBNAME)
 LIBTARGET := $(BDIR)/lib/$(LIBNAME).$(ARK_MAJOR).$(ARK_MINOR).$(ARK_PATCH)
 
-INCHEADERS := $(shell find $(ARKDIR)/ark/include/kernels -regextype posix-extended -regex '.*\.(h|hpp)')
+INCHEADERS := $(shell find $(ARKDIR)/ark/include/ -regextype posix-extended -regex '.*\.(h|hpp)')
 CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regextype posix-extended -regex '.*\.(h|hpp)')
 INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
 INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
 
-.PHONY: all build third_party submodules kahypar cutlass gpudma samples unittest cpplint cpplint-autofix install clean
+.PHONY: all build third_party submodules kahypar cutlass gpudma examples unittest cpplint cpplint-autofix install clean
 
 all: build unittest
 
@@ -98,7 +99,6 @@ third_party: cutlass | submodules
 
 build: $(BOBJ) $(LIBTARGET) $(INCTARGETS)
 unittest: $(UBIN)
-samples: $(SBIN)
 
 submodules:
 	@git submodule update --init --recursive
@@ -121,16 +121,13 @@ cpplint-autofix:
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
-$(SBIN): %: %.o $(LIBTARGET) | third_party
-	$(CXX) -o $@ $(LDFLAGS) -L $(MPIDIR)/lib $< $(LIBTARGET) $(KHP_SO) $(LDLIBS) -lmpi
-
 $(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)
 	$(CXX) -o $@ $(CXXFLAGS) $(INCLUDE) -c $< $(MACROS)
 
 $(LIBTARGET): $(BOBJ)
 	@mkdir -p $(@D)
-	$(CXX) -shared -o $(LIBTARGET) $(BOBJ)
+	$(CXX) -shared -o $(LIBTARGET) $(BOBJ) $(LDLIBS) $(LDFLAGS)
 	ln -sf $(LIBTARGET) $(LIBSO)
 
 $(BDIR)/include/%: $(ARKDIR)/ark/include/%

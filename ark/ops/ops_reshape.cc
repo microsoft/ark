@@ -100,13 +100,13 @@ Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
     for (size_t i = 0; i < shape_vec.size(); i++) {
         if (shape_vec[i] == -1) {
             if (neg_idx != -1) {
-                LOGERR("multiple -1 in shape: ", shape_str(shape_vec));
+                LOGERR("multiple -1 in shape: ", Dims(shape_vec));
             }
             neg_idx = (int)i;
         } else if (shape_vec[i] < 0) {
             LOGERR("shape cannot include negative values except -1. "
                    "Given: ",
-                   shape_str(shape_vec));
+                   Dims(shape_vec));
         } else {
             if (shape_vec[i] == 0) {
                 zero_exists = true;
@@ -119,7 +119,7 @@ Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
         if (zero_exists) {
             LOGERR("shape cannot include both 0 and -1 at the same "
                    "time. Given: ",
-                   shape_str(shape_vec));
+                   Dims(shape_vec));
         }
         // Infer the -1 dimension
         if (total_size <= 0) {
@@ -127,12 +127,12 @@ Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
         }
         if (input->shape.size() % total_size != 0) {
             LOGERR("number of elements mismatch: reshape from ", input->shape,
-                   " to ", shape_str(shape_vec));
+                   " to ", Dims(shape_vec));
         }
         inferred_shape[neg_idx] = input->shape.size() / total_size;
     } else if (input->shape.size() != total_size) {
         LOGERR("number of elements mismatch: reshape from ", input->shape,
-               " to ", shape_str(shape_vec));
+               " to ", Dims(shape_vec));
     }
     return _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
 }

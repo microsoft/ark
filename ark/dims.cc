@@ -1,27 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/dims.h"
+#include "ark/include/ark.h"
 #include "ark/logging.h"
-
+#include "third_party/json/json.h"
+#include <vector>
 using namespace std;
 
 namespace ark {
-
-// Return shape string from a vector of DimType
-const string shape_str(const vector<DimType> &shape)
-{
-    stringstream ss;
-    ss << "<";
-    for (size_t i = 0; i < shape.size(); i++) {
-        ss << shape[i];
-        if (i != shape.size() - 1) {
-            ss << ", ";
-        }
-    }
-    ss << ">";
-    return ss.str();
-}
 
 // Construct with given four dimensions.
 Dims::Dims(DimType d0, DimType d1, DimType d2, DimType d3)
@@ -52,8 +38,7 @@ Dims::Dims(const vector<DimType> &vec)
 {
     int ds = (int)vec.size();
     if (ds > DIMS_LEN) {
-        LOGERR("only support dims with size <= ", DIMS_LEN,
-               ". Given: ", shape_str(vec));
+        LOGERR("only support dims with size <= ", DIMS_LEN, ". Given: ", *this);
     }
     int i = 0;
     for (; i < ds; ++i) {

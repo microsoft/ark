@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "ark/file_io.h"
-#include "ark/init.h"
+#include "ark/include/ark.h"
 
 using namespace std;
 

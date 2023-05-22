@@ -6,7 +6,7 @@
 
 #include "ark/gpu/gpu_kernel.h"
 #include "ark/gpu/gpu_mgr.h"
-#include "ark/model.h"
+#include "ark/include/ark.h"
 #include "ark/sched/sched_codegen.h"
 #include "ark/sched/sched_opgraph.h"
 #include "ark/sched/sched_profiler.h"

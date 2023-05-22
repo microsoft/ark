@@ -4,7 +4,7 @@
 #ifndef ARK_MODEL_IO_H_
 #define ARK_MODEL_IO_H_
 
-#include "ark/model.h"
+#include "ark/include/ark.h"
 #include <iostream>
 
 namespace ark {

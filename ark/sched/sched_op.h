@@ -5,7 +5,7 @@
 #define ARK_SCHED_OP_H_
 
 #include "ark/gpu/gpu_mgr.h"
-#include "ark/model.h"
+#include "ark/include/ark.h"
 #include "ark/ops/ops_config.h"
 
 namespace ark {

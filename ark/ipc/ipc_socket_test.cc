@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 
 #include "ark/env.h"
-#include "ark/init.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/ipc/ipc_hosts.h"
 #include "ark/ipc/ipc_socket.h"
 #include "ark/logging.h"
-#include "ark/process.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace ark;
@@ -20,7 +20,7 @@ struct TestIpcSocketItem
 
 unittest::State test_ipc_socket_simple()
 {
-    int pid0 = proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         int port_base = get_env().ipc_listen_port_base;
         IpcSocket is{get_host(0), port_base};
@@ -49,7 +49,7 @@ unittest::State test_ipc_socket_simple()
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         int port_base = get_env().ipc_listen_port_base;
         IpcSocket is{get_host(0), port_base + 1};
@@ -78,14 +78,14 @@ unittest::State test_ipc_socket_simple()
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
 
 unittest::State test_ipc_socket_no_item()
 {
-    int pid0 = proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         int port_base = get_env().ipc_listen_port_base;
         IpcSocket is{get_host(0), port_base};
@@ -102,7 +102,7 @@ unittest::State test_ipc_socket_no_item()
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         int port_base = get_env().ipc_listen_port_base;
         IpcSocket is{get_host(0), port_base + 1};
@@ -125,7 +125,7 @@ unittest::State test_ipc_socket_no_item()
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
