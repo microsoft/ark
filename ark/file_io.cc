@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstring>
 #include <dirent.h>
+#include <fcntl.h>
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
@@ -67,55 +68,60 @@ int create_dir(const string &path)
     return 0;
 }
 
+// Helper function to remove all files in a directory given a file descriptor.
+int clear_dirat_helper(int dir_fd, const char *name)
+{
+    int r = -1;
+    int fd = openat(dir_fd, name, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+
+    if (fd >= 0) {
+        struct stat statbuf;
+
+        if (!fstat(fd, &statbuf)) {
+            if (S_ISDIR(statbuf.st_mode)) {
+                r = clear_dirat_helper(fd, ".");
+                if (!r) {
+                    r = unlinkat(dir_fd, name, AT_REMOVEDIR);
+                }
+            } else {
+                r = unlinkat(dir_fd, name, 0);
+            }
+        }
+        close(fd);
+    }
+
+    return r;
+}
+
 // Remove all files in a directory.
-// TODO(chhwang): fix the race condition of this function.
-// int clear_dir(const string &path)
-// {
-//     const char *path_c = path.c_str();
-//     DIR *d = opendir(path_c);
-//     size_t path_len = strlen(path_c);
-//     int r = -1;
+int clear_dir(const string &path)
+{
+    const char *path_c = path.c_str();
+    DIR *d = opendir(path_c);
+    size_t path_len = strlen(path_c);
+    int r = -1;
 
-//     if (d) {
-//         struct dirent *p;
+    if (d) {
+        struct dirent *p;
+        int dir_fd = dirfd(d);
 
-//         r = 0;
-//         while (!r && (p = readdir(d))) {
-//             int r2 = -1;
-//             char *buf;
-//             size_t len;
+        r = 0;
+        while (!r && (p = readdir(d))) {
+            int r2 = -1;
 
-//             // Skip the names "." and ".." as we don't want to recurse on
-//             // them.
-//             if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
-//                 continue;
-//             }
-//             len = path_len + strlen(p->d_name) + 2;
-//             buf = (char *)malloc(len);
+            // Skip the names "." and ".." as we don't want to recurse on
+            // them.
+            if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
+                continue;
+            }
+            r2 = clear_dirat_helper(dir_fd, p->d_name);
+            r = r2;
+        }
+        closedir(d);
+    }
 
-//             if (buf) {
-//                 struct stat statbuf;
-
-//                 snprintf(buf, len, "%s/%s", path_c, p->d_name);
-//                 if (!stat(buf, &statbuf)) {
-//                     if (S_ISDIR(statbuf.st_mode)) {
-//                         r2 = clear_dir(buf);
-//                         if (!r2) {
-//                             r2 = rmdir(buf);
-//                         }
-//                     } else {
-//                         r2 = unlink(buf);
-//                     }
-//                 }
-//                 free(buf);
-//             }
-//             r = r2;
-//         }
-//         closedir(d);
-//     }
-
-//     return r;
-// }
+    return r;
+}
 
 vector<string> list_dir(const string &path)
 {
