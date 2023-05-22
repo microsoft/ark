@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 #include "ark/gpu/gpu_mgr.h"
-#include "ark/init.h"
-#include "ark/process.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;
@@ -12,7 +12,7 @@ using namespace ark;
 // Test initializing and destroying GpuMgr and GpuMgrCtx.
 unittest::State test_gpu_mgr_basic()
 {
-    int pid = proc_spawn([] {
+    int pid = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         GpuMgr *mgr_a = get_gpu_mgr(0);
         GpuMgr *mgr_b = get_gpu_mgr(0);
@@ -31,7 +31,7 @@ unittest::State test_gpu_mgr_basic()
         return 0;
     });
 
-    int ret = proc_wait(pid);
+    int ret = ark::utils::proc_wait(pid);
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
@@ -39,7 +39,7 @@ unittest::State test_gpu_mgr_basic()
 // Test accessing remote GPU's memory space.
 unittest::State test_gpu_mgr_remote()
 {
-    int pid0 = proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
@@ -69,7 +69,7 @@ unittest::State test_gpu_mgr_remote()
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         GpuMgr *mgr = get_gpu_mgr(1);
         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
@@ -100,7 +100,7 @@ unittest::State test_gpu_mgr_remote()
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
@@ -108,7 +108,7 @@ unittest::State test_gpu_mgr_remote()
 // Test accessing remote GPU's memory space after the context is freezed.
 unittest::State test_gpu_mgr_remote_lazy_import()
 {
-    int pid0 = proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
@@ -139,7 +139,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         GpuMgr *mgr = get_gpu_mgr(1);
         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
@@ -170,7 +170,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
@@ -178,7 +178,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
 // Test inter-GPU communication via sending a doorbell.
 unittest::State test_gpu_mgr_doorbell()
 {
-    int pid0 = proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
@@ -207,7 +207,7 @@ unittest::State test_gpu_mgr_doorbell()
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         GpuMgr *mgr = get_gpu_mgr(1);
         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
@@ -233,7 +233,7 @@ unittest::State test_gpu_mgr_doorbell()
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }

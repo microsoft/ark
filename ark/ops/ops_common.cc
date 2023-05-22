@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/ops/ops_common.h"
+#include "ark/include/ark.h"
+#include "third_party/json/json.h"
 
 using namespace std;
 
@@ -100,39 +101,39 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
     return false;
 }
 
-void to_json(nlohmann::json &j, const OpArg &oparg)
-{
-    j = nlohmann::json{
-        {"type", oparg.type},
-    };
-    if (oparg.type == OP_ARG_INT) {
-        j.emplace("val", *static_cast<int *>(oparg.val));
-    } else if (oparg.type == OP_ARG_INT64) {
-        j.emplace("val", *static_cast<DimType *>(oparg.val));
-    } else if (oparg.type == OP_ARG_UINT64) {
-        j.emplace("val", *static_cast<uint64_t *>(oparg.val));
-    } else if (oparg.type == OP_ARG_BOOL) {
-        j.emplace("val", *static_cast<bool *>(oparg.val));
-    } else if (oparg.type == OP_ARG_FLOAT) {
-        j.emplace("val", *static_cast<float *>(oparg.val));
-    }
-}
+// void to_json(nlohmann::json &j, const OpArg &oparg)
+// {
+//     j = nlohmann::json{
+//         {"type", oparg.type},
+//     };
+//     if (oparg.type == OP_ARG_INT) {
+//         j.emplace("val", *static_cast<int *>(oparg.val));
+//     } else if (oparg.type == OP_ARG_INT64) {
+//         j.emplace("val", *static_cast<DimType *>(oparg.val));
+//     } else if (oparg.type == OP_ARG_UINT64) {
+//         j.emplace("val", *static_cast<uint64_t *>(oparg.val));
+//     } else if (oparg.type == OP_ARG_BOOL) {
+//         j.emplace("val", *static_cast<bool *>(oparg.val));
+//     } else if (oparg.type == OP_ARG_FLOAT) {
+//         j.emplace("val", *static_cast<float *>(oparg.val));
+//     }
+// }
 
-void from_json(const nlohmann::json &j, OpArg &oparg)
-{
-    j.at("type").get_to(oparg.type);
-    if (oparg.type == OP_ARG_INT) {
-        oparg.val = new int{j.at("val").get<int>()};
-    } else if (oparg.type == OP_ARG_INT64) {
-        oparg.val = new DimType{j.at("val").get<DimType>()};
-    } else if (oparg.type == OP_ARG_UINT64) {
-        oparg.val = new uint64_t{j.at("val").get<uint64_t>()};
-    } else if (oparg.type == OP_ARG_BOOL) {
-        oparg.val = new bool{j.at("val").get<bool>()};
-    } else if (oparg.type == OP_ARG_FLOAT) {
-        oparg.val = new float{j.at("val").get<float>()};
-    }
-}
+// void from_json(const nlohmann::json &j, OpArg &oparg)
+// {
+//     j.at("type").get_to(oparg.type);
+//     if (oparg.type == OP_ARG_INT) {
+//         oparg.val = new int{j.at("val").get<int>()};
+//     } else if (oparg.type == OP_ARG_INT64) {
+//         oparg.val = new DimType{j.at("val").get<DimType>()};
+//     } else if (oparg.type == OP_ARG_UINT64) {
+//         oparg.val = new uint64_t{j.at("val").get<uint64_t>()};
+//     } else if (oparg.type == OP_ARG_BOOL) {
+//         oparg.val = new bool{j.at("val").get<bool>()};
+//     } else if (oparg.type == OP_ARG_FLOAT) {
+//         oparg.val = new float{j.at("val").get<float>()};
+//     }
+// }
 
 Op::Op(const OpType &type_, const OpPrecType &prec_type_,
        const vector<Tensor *> &in_deps_, const vector<Tensor *> &out_deps_,
@@ -179,22 +180,22 @@ bool operator==(const Op &op1, const Op &op2)
     }
     return true;
 }
-void to_json(nlohmann::json &j, const Op &op)
-{
-    j = nlohmann::json{
-        {"type", op.type},          {"prec_type", op.prec_type},
-        {"in_deps", vector<int>{}}, {"out_deps", vector<int>{}},
-        {"args", op.args},          {"name", op.name},
-    };
-    for (Tensor *pt : op.in_deps) {
-        j.at("in_deps").emplace_back(pt->id);
-    }
-    for (Tensor *pt : op.out_deps) {
-        j.at("out_deps").emplace_back(pt->id);
-    }
-}
-void from_json(const nlohmann::json &j, Op &op)
-{
-}
+// void to_json(nlohmann::json &j, const Op &op)
+// {
+//     j = nlohmann::json{
+//         {"type", op.type},          {"prec_type", op.prec_type},
+//         {"in_deps", vector<int>{}}, {"out_deps", vector<int>{}},
+//         {"args", op.args},          {"name", op.name},
+//     };
+//     for (Tensor *pt : op.in_deps) {
+//         j.at("in_deps").emplace_back(pt->id);
+//     }
+//     for (Tensor *pt : op.out_deps) {
+//         j.at("out_deps").emplace_back(pt->id);
+//     }
+// }
+// void from_json(const nlohmann::json &j, Op &op)
+// {
+// }
 
 } // namespace ark

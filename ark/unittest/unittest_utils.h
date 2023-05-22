@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "ark/cpu_timer.h"
+#include "ark/gpu/gpu_buf.h"
 #include "ark/logging.h"
 
 namespace ark {
@@ -43,6 +44,8 @@ int spawn_process(std::function<State()> func);
 void wait_all_processes();
 
 State test(std::function<State()> test_func);
+//
+std::string get_kernel_code(const std::string &name);
 
 } // namespace unittest
 } // namespace ark

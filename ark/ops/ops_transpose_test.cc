@@ -1,12 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/executor.h"
 #include "ark/gpu/gpu_kernel.h"
-#include "ark/init.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/logging.h"
-#include "ark/ops/ops_test_utils.h"
-#include "ark/random.h"
 #include "ark/unittest/unittest_utils.h"
 
 template <typename T>
@@ -25,7 +23,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
 
     // Set data.
     ark::srand();
-    auto data_in = rand_array<T>(n * c * h * w, 0.01);
+    auto data_in = ark::utils::rand_array<T>(n * c * h * w, 0.01);
     T *in_ptr = data_in.get();
     exe.tensor_memcpy(tns_in, in_ptr, n * c * h * w * sizeof(T));
 

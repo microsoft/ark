@@ -1,12 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/executor.h"
 #include "ark/gpu/gpu_kernel.h"
-#include "ark/init.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/logging.h"
-#include "ark/ops/ops_test_utils.h"
-#include "ark/random.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;
@@ -26,9 +24,12 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
     ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_matmul_nt", 0, 1);
 
-    size_t buf_a_sz = (size_t)bs_a * (size_t)m * (size_t)k * sizeof(half_t);
-    size_t buf_b_sz = (size_t)bs_b * (size_t)k * (size_t)n * sizeof(half_t);
-    size_t buf_res_sz = (size_t)bs_res * (size_t)m * (size_t)n * sizeof(half_t);
+    size_t buf_a_sz =
+        (size_t)bs_a * (size_t)m * (size_t)k * sizeof(ark::half_t);
+    size_t buf_b_sz =
+        (size_t)bs_b * (size_t)k * (size_t)n * sizeof(ark::half_t);
+    size_t buf_res_sz =
+        (size_t)bs_res * (size_t)m * (size_t)n * sizeof(ark::half_t);
 
     // Reserved GPU buffers for execution of a manually written kernel,
     // `simple_matmul_nt`.
@@ -41,7 +42,7 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
 
     // Define `simple_matmul_nt` kernel to generate the ground truth.
     ark::GpuKernel gk{"simple_matmul_nt",
-                      {get_kernel_code("simple_matmul_nt")},
+                      {ark::unittest::get_kernel_code("simple_matmul_nt")},
                       {n / 16, m / 16, 1},
                       {16, 16, 1},
                       0,
@@ -57,8 +58,8 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
 
     // Generate random data for tests.
     ark::srand();
-    auto data_a = rand_halfs(buf_a_sz / sizeof(half_t), 0.001);
-    auto data_b = rand_halfs(buf_b_sz / sizeof(half_t), 0.001);
+    auto data_a = ark::utils::rand_halfs(buf_a_sz / sizeof(ark::half_t), 0.001);
+    auto data_b = ark::utils::rand_halfs(buf_b_sz / sizeof(ark::half_t), 0.001);
     ark::gpu_memcpy(buf_a, data_a.get(), buf_a_sz);
     ark::gpu_memcpy(buf_b, data_b.get(), buf_b_sz);
 
@@ -121,11 +122,12 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     //         temp += (float)(data_a.get()[j * m + h]) * (float)(data_b.get()[j
     //         * n + w]);
     //     }
-    //     ((half_t *)gt)[i] = half_t(temp);
+    //     ((ark::half_t *)gt)[i] = ark::half_t(temp);
     // }
 
     // Compare results with the ground truth.
-    auto p = cmp_matrix((half_t *)gt, (half_t *)res, m, n);
+    auto p =
+        ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
     float max_err = p.second;
     LOG(ark::INFO, "matmul:", m, 'x', n, 'x', k, "(relu=", is_relu, ") ",
         setprecision(4), " mse ", p.first, " max_err ", max_err * 100, "%",
@@ -149,10 +151,10 @@ void test_matmul_split_internal(unsigned int m, unsigned int n, unsigned int k,
     // Launcher *ln_1 = ctx.create_launcher(0);
     // Launcher *ln_2 = ctx.create_launcher(1);
 
-    // size_t buf_a_sz = (size_t)bs_a * (size_t)m * (size_t)k * sizeof(half_t);
-    // size_t buf_b_sz = (size_t)bs_b * (size_t)k * (size_t)n * sizeof(half_t);
-    // size_t buf_res_sz = (size_t)bs_res * (size_t)m * (size_t)n *
-    // sizeof(half_t);
+    // size_t buf_a_sz = (size_t)bs_a * (size_t)m * (size_t)k *
+    // sizeof(ark::half_t); size_t buf_b_sz = (size_t)bs_b * (size_t)k *
+    // (size_t)n * sizeof(ark::half_t); size_t buf_res_sz = (size_t)bs_res *
+    // (size_t)m * (size_t)n * sizeof(ark::half_t);
 
     // // Declare an equivalent matmul using Model APIs.
     // Model model_1;
@@ -196,8 +198,8 @@ void test_matmul_split_internal(unsigned int m, unsigned int n, unsigned int k,
     // {
     //     // Generate random data for tests.
     //     ark::srand();
-    //     auto data_a = rand_halfs(buf_a_sz / sizeof(half_t), 0.5);
-    //     auto data_b = rand_halfs(buf_b_sz / sizeof(half_t), 0.5);
+    //     auto data_a = rand_halfs(buf_a_sz / sizeof(ark::half_t), 0.5);
+    //     auto data_b = rand_halfs(buf_b_sz / sizeof(ark::half_t), 0.5);
     //     ark::memcpy(buf_tns_a_1, data_a.get(), buf_a_sz);
     //     ark::memcpy(buf_tns_b_1, data_b.get(), buf_b_sz);
     //     ark::memcpy(buf_tns_a_2, data_a.get(), buf_a_sz);
@@ -225,9 +227,8 @@ void test_matmul_split_internal(unsigned int m, unsigned int n, unsigned int k,
     // // Compare results with the ground truth.
     // stringstream ss;
     // ss << "test_matmul_split:" << m << 'x' << n << 'x' << k;
-    // test_matrix_cmp(ss.str(), res_2, res_1, m, n, k, sizeof(half_t), false);
-    // free(res_1);
-    // free(res_2);
+    // test_matrix_cmp(ss.str(), res_2, res_1, m, n, k, sizeof(ark::half_t),
+    // false); free(res_1); free(res_2);
 }
 
 ark::unittest::State test_matmul()

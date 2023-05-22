@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "ark/file_io.h"
 #include "ark/logging.h"
 #include "ark/unittest/unittest_utils.h"
 
@@ -104,6 +105,13 @@ void wait_all_processes()
 State test(function<State()> test_func)
 {
     return test_func();
+}
+
+//
+string get_kernel_code(const string &name)
+{
+    return ark::read_file(ark::get_dir(string{__FILE__}) + "/../ops/kernels/" +
+                          name + ".h");
 }
 
 } // namespace unittest

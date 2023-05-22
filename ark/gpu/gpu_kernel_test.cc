@@ -2,9 +2,8 @@
 // Licensed under the MIT license.
 
 #include "ark/gpu/gpu_kernel.h"
-#include "ark/init.h"
-#include "ark/process.h"
-#include "ark/random.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;
@@ -25,7 +24,7 @@ const string test_kernel_loop_void =
 //
 unittest::State test_gpu_kernel_loop_void()
 {
-    int pid = proc_spawn([] {
+    int pid = ark::utils::proc_spawn([] {
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test_loop_void", 0, 1);
         ctx->freeze();
@@ -49,7 +48,7 @@ unittest::State test_gpu_kernel_loop_void()
         return 0;
     });
     UNITTEST_NE(pid, -1);
-    int ret = proc_wait(pid);
+    int ret = ark::utils::proc_wait(pid);
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
