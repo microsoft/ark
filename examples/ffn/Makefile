@@ -20,4 +20,4 @@ build/ffn.o: ffn.cc
 	$(CXX) -o $@ $(CXXFLAGS) $(INCLUDE) -c $<
 
 clean:
-	rm -f build/ffn build/ffn.o
+	rm -r build/

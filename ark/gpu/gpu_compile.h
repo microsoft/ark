@@ -10,7 +10,6 @@
 #include "ark/gpu/gpu_mgr.h"
 
 namespace ark {
-const std::string rand_anum(size_t len);
 
 const std::string gpu_compile(const std::vector<std::string> &codes,
                               const GpuArchType &arch, unsigned int max_reg_cnt,

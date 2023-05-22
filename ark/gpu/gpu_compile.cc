@@ -26,10 +26,8 @@
 
 using namespace std;
 
-namespace ark {
-
 // Generate a random alpha-numeric string.
-const std::string rand_anum(size_t len)
+static const string rand_anum(size_t len)
 {
     auto randchar = []() -> char {
         const char charset[] = "0123456789"
@@ -38,10 +36,12 @@ const std::string rand_anum(size_t len)
         const size_t max_index = sizeof(charset) - 1;
         return charset[rand() % max_index];
     };
-    std::string str(len, 0);
-    std::generate_n(str.begin(), len, randchar);
+    string str(len, 0);
+    generate_n(str.begin(), len, randchar);
     return str;
 }
+
+namespace ark {
 
 #if (ARK_USE_NVRTC)
 const string nvrtc_compile(const string &ark_root, const string &arch,
