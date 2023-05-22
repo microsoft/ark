@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/executor.h"
-#include "ark/init.h"
-#include "ark/ops/ops_test_utils.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/unittest/unittest_utils.h"
-
 using namespace std;
 
 ark::unittest::State test_identity()
@@ -29,7 +27,7 @@ ark::unittest::State test_identity()
     UNITTEST_EQ(buf1->get_bytes(), num_elem * sizeof(float));
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
-    auto data = range_floats(num_elem);
+    auto data = ark::utils::range_floats(num_elem);
     exe.tensor_memcpy(tns0, data.get(), num_elem * sizeof(float));
 
     // Check identity values

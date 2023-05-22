@@ -1,12 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/executor.h"
 #include "ark/gpu/gpu_kernel.h"
-#include "ark/init.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/logging.h"
-#include "ark/ops/ops_test_utils.h"
-#include "ark/random.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace std;
@@ -19,13 +17,13 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_scale", 0, 1);
 
     unsigned int len = bs * m * n;
-    ark::GpuBuf *buf_x = ctx->mem_alloc(len * sizeof(half_t));
-    ark::GpuBuf *buf_y = ctx->mem_alloc(len * sizeof(half_t));
+    ark::GpuBuf *buf_x = ctx->mem_alloc(len * sizeof(ark::half_t));
+    ark::GpuBuf *buf_y = ctx->mem_alloc(len * sizeof(ark::half_t));
 
     ctx->freeze();
 
     ark::GpuKernel gk{"simple_scale",
-                      {get_kernel_code("simple_scale")},
+                      {ark::unittest::get_kernel_code("simple_scale")},
                       {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
                       {512, 1, 1},
                       0,
@@ -41,8 +39,8 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
 
     // Set data.
     ark::srand();
-    auto data_x = rand_halfs(len, 0.01);
-    ark::gpu_memcpy(buf_x, data_x.get(), len * sizeof(half_t));
+    auto data_x = ark::utils::rand_halfs(len, 0.01);
+    ark::gpu_memcpy(buf_x, data_x.get(), len * sizeof(ark::half_t));
 
     // Run the GPU kernel.
     ark::GpuStream s = ctx->create_stream();
@@ -52,9 +50,9 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     UNITTEST_EQ(ret, 0);
 
     // Copy the ground truth results into CPU memory.
-    void *gt = malloc(len * sizeof(half_t));
+    void *gt = malloc(len * sizeof(ark::half_t));
     UNITTEST_NE(gt, (void *)nullptr);
-    ark::gpu_memcpy(gt, buf_y, len * sizeof(half_t));
+    ark::gpu_memcpy(gt, buf_y, len * sizeof(ark::half_t));
 
     mgr->destroy_context(ctx);
 
@@ -68,19 +66,20 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     exe.compile();
 
     // Set data.
-    exe.tensor_memcpy(tns_x, data_x.get(), len * sizeof(half_t));
+    exe.tensor_memcpy(tns_x, data_x.get(), len * sizeof(ark::half_t));
 
     exe.launch();
     exe.run(1);
     exe.stop();
 
     // Copy results of the loop kernel routine into CPU memory.
-    void *res = malloc(len * sizeof(half_t));
+    void *res = malloc(len * sizeof(ark::half_t));
     UNITTEST_NE(res, (void *)nullptr);
-    exe.tensor_memcpy(res, tns_y, len * sizeof(half_t));
+    exe.tensor_memcpy(res, tns_y, len * sizeof(ark::half_t));
 
     // Compare results with the ground truth.
-    auto p = cmp_matrix((half_t *)gt, (half_t *)res, m, n, bs);
+    auto p =
+        ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n, bs);
     float max_err = p.second;
     LOG(ark::INFO, "scale:", n, 'x', m, ",bs=", bs, setprecision(4), " mse ",
         p.first, " max_err ", max_err * 100, "%");

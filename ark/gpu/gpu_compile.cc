@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -13,7 +14,7 @@
 
 #include "ark/gpu/gpu_compile.h"
 #include "ark/gpu/gpu_logging.h"
-#include "ark/random.h"
+#include "ark/include/ark.h"
 #include "ark/threading.h"
 
 #define ARK_USE_NVRTC 0
@@ -24,6 +25,21 @@
 #endif // (ARK_USE_NVRTC)
 
 using namespace std;
+
+// Generate a random alpha-numeric string.
+static const string rand_anum(size_t len)
+{
+    auto randchar = []() -> char {
+        const char charset[] = "0123456789"
+                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = sizeof(charset) - 1;
+        return charset[rand() % max_index];
+    };
+    string str(len, 0);
+    generate_n(str.begin(), len, randchar);
+    return str;
+}
 
 namespace ark {
 

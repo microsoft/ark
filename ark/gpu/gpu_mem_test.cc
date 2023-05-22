@@ -3,8 +3,8 @@
 
 #include "ark/gpu/gpu_logging.h"
 #include "ark/gpu/gpu_mem.h"
-#include "ark/init.h"
-#include "ark/process.h"
+#include "ark/include/ark.h"
+#include "ark/include/ark_utils.h"
 #include "ark/unittest/unittest_utils.h"
 
 using namespace ark;
@@ -12,7 +12,7 @@ using namespace std;
 
 unittest::State test_gpu_mem_no_ipc()
 {
-    int pid = proc_spawn([] {
+    int pid = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
 
         // Create a CUDA context of GPU 0.
@@ -58,14 +58,14 @@ unittest::State test_gpu_mem_no_ipc()
     });
     UNITTEST_NE(pid, -1);
 
-    int ret = proc_wait(pid);
+    int ret = ark::utils::proc_wait(pid);
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
 
 unittest::State test_gpu_mem_ipc()
 {
-    int pid0 = proc_spawn([] {
+    int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
 
         // Create a CUDA context of GPU 0.
@@ -95,7 +95,7 @@ unittest::State test_gpu_mem_ipc()
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = proc_spawn([] {
+    int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
 
         // Create a CUDA context of GPU 1.
@@ -125,7 +125,7 @@ unittest::State test_gpu_mem_ipc()
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = proc_wait({pid0, pid1});
+    int ret = ark::utils::proc_wait({pid0, pid1});
     UNITTEST_EQ(ret, 0);
     return unittest::SUCCESS;
 }
