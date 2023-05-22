@@ -3,7 +3,7 @@
 
 --- ioctlrw.c
 +++ ioctlrw.c
-@@ -34,7 +34,7 @@
+@@ -34,7 +34,7 @@ void free_nvp_callback(void *data)
      if(entry) {
          res = nvidia_p2p_free_page_table(entry->page_table);
          if(res == 0) {
@@ -12,7 +12,7 @@
              //entry->virt_start = 0ULL;
              //entry->page_table = 0;
          } else {
-@@ -86,7 +86,7 @@
+@@ -86,7 +86,7 @@ int ioctl_mem_lock(struct gpumem *drv, unsigned long arg)
      param.page_count = entry->page_table->entries;
      param.handle = entry;
  
@@ -21,7 +21,7 @@
  
      if(copy_to_user((void *)arg, &param, sizeof(struct gpudma_lock_t))) {
          printk(KERN_ERR"%s(): Error in copy_from_user()\n", __FUNCTION__);
-@@ -96,7 +96,7 @@
+@@ -96,7 +96,7 @@ int ioctl_mem_lock(struct gpumem *drv, unsigned long arg)
  
      list_add_tail(&entry->list, &drv->table_list);
  
@@ -30,7 +30,7 @@
  
      return 0;
  
-@@ -129,8 +129,8 @@
+@@ -129,8 +129,8 @@ int ioctl_mem_unlock(struct gpumem *drv, unsigned long arg)
          if(entry) {
              if(entry->handle == param.handle) {
  
@@ -41,7 +41,7 @@
  
                  if(entry->virt_start && entry->page_table) {
                      error = nvidia_p2p_put_pages(0, 0, entry->virt_start, entry->page_table);
-@@ -140,7 +140,7 @@
+@@ -140,14 +140,14 @@ int ioctl_mem_unlock(struct gpumem *drv, unsigned long arg)
                      }
                      //entry->virt_start = 0ULL;
                      //entry->page_table = 0;
@@ -50,7 +50,15 @@
                  }
  
                  list_del(pos);
-@@ -180,8 +180,8 @@
+                 kfree(entry);
+                 break;
+             } else {
+-                printk(KERN_ERR"%s(): Skip entry: %p\n", __FUNCTION__, entry->handle);
++                //printk(KERN_ERR"%s(): Skip entry: %p\n", __FUNCTION__, entry->handle);
+             }
+         }
+     }
+@@ -180,8 +180,8 @@ int ioctl_mem_state(struct gpumem *drv, unsigned long arg)
          if(entry) {
              if(entry->handle == header.handle) {
  
@@ -61,8 +69,12 @@
  
                  if(!entry->page_table) {
                      printk(KERN_ERR"%s(): Error - memory not pinned!\n", __FUNCTION__);
-@@ -208,7 +208,7 @@
-                         //printk(KERN_ERR"%s(): %02d - 0x%llx\n", __FUNCTION__, i, param->pages[i]);
+@@ -205,10 +205,10 @@ int ioctl_mem_state(struct gpumem *drv, unsigned long arg)
+                     if(nvp) {
+                         param->pages[i] = nvp->physical_address;
+                         param->page_count++;
+-                        printk(KERN_ERR"%s(): %02d - 0x%llx\n", __FUNCTION__, i, param->pages[i]);
++                        //printk(KERN_ERR"%s(): %02d - 0x%llx\n", __FUNCTION__, i, param->pages[i]);
                      }
                  }
 -                printk(KERN_ERR"%s(): page_count = %ld\n", __FUNCTION__, (long int)param->page_count);
@@ -70,3 +82,12 @@
                  param->handle = header.handle;
                  if(copy_to_user((void *)arg, param, size)) {
                      printk(KERN_DEBUG"%s(): Error in copy_to_user()\n", __FUNCTION__);
+@@ -217,7 +217,7 @@ int ioctl_mem_state(struct gpumem *drv, unsigned long arg)
+ 
+                 kfree(param);
+             } else {
+-                printk(KERN_ERR"%s(): Skip entry: %p\n", __FUNCTION__, entry->handle);
++                //printk(KERN_ERR"%s(): Skip entry: %p\n", __FUNCTION__, entry->handle);
+             }
+         }
+     }
