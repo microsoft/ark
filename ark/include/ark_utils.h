@@ -19,6 +19,7 @@
 
 namespace ark {
 
+// half_t is a 16-bit floating point type.
 struct half_t
 {
     uint16_t val;
@@ -33,6 +34,7 @@ struct half_t
     half_t operator*(half_t const &rhs);
 };
 
+// a set of utility functions
 namespace utils {
 // Return an array of range values.
 template <typename T>
@@ -48,7 +50,7 @@ std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
 std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
                                       float diff = 1.0f);
 
-//
+// Return the error rate between two values.
 float error_rate(half_t a, half_t b);
 float error_rate(float a, float b);
 
@@ -62,7 +64,7 @@ std::pair<float, float> cmp_matrix(float *ground_truth, float *res,
                                    unsigned int bs = 1, unsigned int lm = 0,
                                    unsigned int ln = 0, bool print = false);
 
-//
+// Print a matrix.
 void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
                   unsigned int lm, unsigned int ln);
 void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
