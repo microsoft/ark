@@ -411,21 +411,21 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
 
     depth_num = 0;
     for (auto &depth : this->depth_nodes) {
-        LOG(INFO, "Depth ", depth_num, " -------------------- ");
+        // LOG(INFO, "Depth ", depth_num, " -------------------- ");
         for (OpGraphNode *ogn : depth) {
             ogn->depth = depth_num;
-            stringstream info;
-            for (OpGraphNode *x : ogn->in_deps) {
-                info << x << ",";
-            }
-            info << " --> " << ogn << " --> ";
-            for (OpGraphNode *x : ogn->out_deps) {
-                info << x << ",  ";
-            }
-            for (const SchedOp &sop : ogn->opseq.get_sched_ops()) {
-                info << sop.func_string();
-            }
-            LOG(INFO, info.str());
+            // stringstream info;
+            // for (OpGraphNode *x : ogn->in_deps) {
+            //     info << x << ",";
+            // }
+            // info << " --> " << ogn << " --> ";
+            // for (OpGraphNode *x : ogn->out_deps) {
+            //     info << x << ",  ";
+            // }
+            // for (const SchedOp &sop : ogn->opseq.get_sched_ops()) {
+            //     info << sop.func_string();
+            // }
+            // LOG(INFO, info.str());
         }
         ++depth_num;
     }
