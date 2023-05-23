@@ -542,10 +542,11 @@ const string SchedOp::func_string_scale() const
         CHECK(tile_out.x == 1);
     }
 
+    int val_int = *(int *)(this->op->args[0].val);
     stringstream ss;
     ss << "ark::scale<" << ldm << COM << ldn << COM << this->cfg->num_warps * 32
        << COM << this->cfg->smem_bytes << COM << tile_out.y << COM << tile_out.x
-       << COM << 1 << '>';
+       << COM << 1 << COM << val_int << '>';
     return ss.str();
 }
 
