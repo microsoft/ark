@@ -461,7 +461,7 @@ struct GemmEpilogueOutputElementCount<ElementC, cutlass::arch::OpClassSimt>
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// For configuration detials, refer to the following files:
+// For configuration details, refer to the following files:
 //  - cutlass/gemm/device/default_gemm_configuration.h
 //  - cutlass/epilogue/threadblock/default_epilogue_tensor_op.h
 //  - cutlass/gemm/kernel/default_gemm.h
