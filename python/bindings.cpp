@@ -10,6 +10,24 @@
 
 namespace py = pybind11;
 
+void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
+                                  py::buffer host_buffer)
+{
+    py::buffer_info info = host_buffer.request();
+    size_t bytes = info.size * info.itemsize;
+    void *host_buffer_ptr = info.ptr;
+    executor->tensor_memcpy(tns, (const void *)host_buffer_ptr, bytes);
+}
+
+void tensor_memcpy_device_to_host(ark::Executor *executor,
+                                  py::buffer host_buffer, ark::Tensor *tns)
+{
+    py::buffer_info info = host_buffer.request();
+    size_t bytes = info.size * info.itemsize;
+    void *host_buffer_ptr = info.ptr;
+    executor->tensor_memcpy((void *)host_buffer_ptr, tns, bytes);
+}
+
 PYBIND11_MODULE(ark, m)
 {
     m.doc() = "pybind11 ark plugin"; // optional module docstring
@@ -191,7 +209,7 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
              py::arg("name") = "all_reduce");
-    // py::class_<ark::GpuBuf>(m, "GpuBuf");
+    // register class Executor
     py::class_<ark::Executor>(m, "Executor")
         .def(py::init<const int, int, int, const ark::Model &,
                       const std::string &>(),
@@ -204,13 +222,9 @@ PYBIND11_MODULE(ark, m)
         .def("stop", &ark::Executor::stop)
         .def("get_tensor", &ark::Executor::get_tensor, py::arg("tns"),
              py::return_value_policy::reference_internal)
-        .def("tensor_memcpy",
-             (void (ark::Executor::*)(ark::Tensor *, const void *, size_t)) &
-                 ark::Executor::tensor_memcpy,
-             py::arg("tns"), py::arg("src"), py::arg("bytes"))
-        .def("tensor_memcpy",
-             (void (ark::Executor::*)(void *, ark::Tensor *, size_t)) &
-                 ark::Executor::tensor_memcpy,
-             py::arg("dst"), py::arg("src"), py::arg("bytes"))
+        .def("tensor_memcpy_host_to_device", &tensor_memcpy_host_to_device,
+             py::arg("tns"), py::arg("src"))
+        .def("tensor_memcpy_device_to_host", &tensor_memcpy_device_to_host,
+             py::arg("dst"), py::arg("tns"))
         .def("tensor_clear", &ark::Executor::tensor_clear, py::arg("tns"));
 }

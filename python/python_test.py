@@ -43,7 +43,7 @@ t1 = model.tensor(ark.Dims(1, 1, 64, 64), ark.TensorType.FP32)
 t2 = model.tensor(ark.Dims(1, 1, 64, 64), ark.TensorType.FP32)
 
 # scaled_tensor = model.scale(t1, 2.0)
-
+import numpy as np
 # Test the add method
 added_tensor = model.add(t1, t2)
 
@@ -51,8 +51,18 @@ added_tensor = model.add(t1, t2)
 # multiplied_tensor = model.mul(t1, t2)
 exe=ark.Executor(0, 0, 1, model, "test_python_bindings")
 exe.compile()
+datasrc_np = np.random.rand(64, 64).astype(np.float16)
+
+exe.tensor_memcpy_host_to_device(t1, datasrc_np)
+exe.tensor_memcpy_host_to_device(t2, datasrc_np)
+
+
 exe.launch()
 exe.run(1)
-exe.stop()
 
+exe.stop()
+datadst_np = np.zeros((64, 64), dtype=np.float16)
+
+exe.tensor_memcpy_device_to_host(datadst_np, added_tensor)
+print(datadst_np)
 print("ark test success")
