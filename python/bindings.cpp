@@ -7,11 +7,6 @@
 
 namespace py = pybind11;
 
-// Data type for dimension.
-typedef long long int DimType;
-
-enum { DIMS_LEN = 4, NO_DIM = -1 };
-
 PYBIND11_MODULE(ark, m)
 {
     m.doc() = "pybind11 ark plugin"; // optional module docstring
@@ -193,4 +188,26 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
              py::arg("name") = "all_reduce");
+    // py::class_<ark::GpuBuf>(m, "GpuBuf");
+    py::class_<ark::Executor>(m, "Executor")
+        .def(py::init<const int, int, int, const ark::Model &,
+                      const std::string &>(),
+             py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
+             py::arg("model"), py::arg("name"))
+        .def("compile", &ark::Executor::compile)
+        .def("launch", &ark::Executor::launch)
+        .def("run", &ark::Executor::run, py::arg("iter"))
+        .def("wait", &ark::Executor::wait)
+        .def("stop", &ark::Executor::stop)
+        .def("get_tensor", &ark::Executor::get_tensor, py::arg("tns"),
+             py::return_value_policy::reference_internal)
+        .def("tensor_memcpy",
+             (void (ark::Executor::*)(ark::Tensor *, const void *, size_t)) &
+                 ark::Executor::tensor_memcpy,
+             py::arg("tns"), py::arg("src"), py::arg("bytes"))
+        .def("tensor_memcpy",
+             (void (ark::Executor::*)(void *, ark::Tensor *, size_t)) &
+                 ark::Executor::tensor_memcpy,
+             py::arg("dst"), py::arg("src"), py::arg("bytes"))
+        .def("tensor_clear", &ark::Executor::tensor_clear, py::arg("tns"));
 }

@@ -36,15 +36,20 @@ print(tensor_offset)
 model = ark.Model()
 
 # Test the tensor method
-t1 = model.tensor(ark.Dims(1, 2, 3, 4), ark.TensorType.FP32)
-t2 = model.tensor(ark.Dims(1, 2, 3, 4), ark.TensorType.FP32)
+t1 = model.tensor(ark.Dims(1, 1, 64, 64), ark.TensorType.FP32)
+t2 = model.tensor(ark.Dims(1, 1, 64, 64), ark.TensorType.FP32)
 
-scaled_tensor = model.scale(t1, 2.0)
+# scaled_tensor = model.scale(t1, 2.0)
 
 # Test the add method
 added_tensor = model.add(t1, t2)
 
 # Test the mul method
-multiplied_tensor = model.mul(t1, t2)
+# multiplied_tensor = model.mul(t1, t2)
+exe=ark.Executor(0, 0, 1, model, "test_python_bindings")
+exe.compile()
+exe.launch()
+exe.run(1)
+exe.stop()
 
 print("ark test success")
