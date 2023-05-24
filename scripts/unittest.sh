@@ -53,6 +53,11 @@ done
 ex "rm /dev/shm/ark.* 2> /dev/null"
 ex "sysctl fs.inotify.max_user_watches=524288"
 
+ex "nvidia-smi -pm 1"
+for i in $(seq 0 $(( $(nvidia-smi -L | wc -l) - 1 ))); do
+    ex "nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i"
+done
+
 PREFIX="ARK_ROOT=$ARK_ROOT LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ARK_ROOT/lib $CM $GDB"
 
 if [ -z $TEST_NAME ]; then
