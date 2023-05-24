@@ -94,7 +94,7 @@ std::string get_kernel_code(const std::string &name);
         }                                                                      \
         UNITTEST_FEXIT("condition `" #cond "` failed");                        \
     } while (0)
-// Check if the given experssions are equal.
+// Check if the given expressions are equal.
 #define UNITTEST_EQ(exp0, exp1)                                                \
     do {                                                                       \
         auto _v0 = (exp0);                                                     \
@@ -105,7 +105,7 @@ std::string get_kernel_code(const std::string &name);
         UNITTEST_FEXIT("`" #exp0 "` (value: ", _v0,                            \
                        ") != `" #exp1 "` (value: ", _v1, ")");                 \
     } while (0)
-// Check if the given experssions are not equal.
+// Check if the given expressions are not equal.
 #define UNITTEST_NE(exp0, exp1)                                                \
     do {                                                                       \
         auto _v0 = (exp0);                                                     \

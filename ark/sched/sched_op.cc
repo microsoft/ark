@@ -545,7 +545,7 @@ const string SchedOp::func_string_scale() const
     // `val` is actually a floating point runtime argument, but we store it as
     // an integer in the template because floating point template arguments are
     // not supported by CUDA.
-    // TODO: this template arugment is currently unused by the kernel and is
+    // TODO: this template argument is currently unused by the kernel and is
     // only for making func_string unique across different runtime arguments.
     // DefaultScheduler leverages this to avoid redundant kernel definitions,
     // but we should find a better way to do this.

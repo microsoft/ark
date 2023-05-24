@@ -18,7 +18,7 @@ using namespace std;
 
 namespace ark {
 
-void retreive_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
+void retrieve_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
                               const Op *target, set<const Op *> &dep_ops)
 {
     for (Tensor *tns : target->in_deps) {
@@ -29,7 +29,7 @@ void retreive_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
         }
         const OpConfig *cfg = sched_op_config(op, gpu_info);
         if (cfg->num_warps == 0) {
-            retreive_no_virt_dep_ops(model, gpu_info, op, dep_ops);
+            retrieve_no_virt_dep_ops(model, gpu_info, op, dep_ops);
         } else {
             dep_ops.emplace(op);
         }
@@ -59,7 +59,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                 // LOG(INFO, "OGN: ", ogn);
                 depth->emplace_back(ogn);
                 seen.emplace(op);
-                // LOG(DEBUG, "retreive: final op ", op->type);
+                // LOG(DEBUG, "retrieve: final op ", op->type);
             }
         }
     }
@@ -73,7 +73,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         auto it = depth_prev->begin();
         for (; it != depth_prev->end(); ++it) {
             SchedOpSeq &opseq = (*it)->opseq;
-            // LOG(INFO, "retreive: ", *it, ", last op ",
+            // LOG(INFO, "retrieve: ", *it, ", last op ",
             // (*it)->opseq.get_last_op()->type, " ",
             // (*it)->opseq.get_last_op());
             for (;;) {
@@ -108,7 +108,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     }
                     if (is_only) {
                         dep_ops.emplace(op);
-                        // LOG(DEBUG, "retreive: dep op ", op->type);
+                        // LOG(DEBUG, "retrieve: dep op ", op->type);
                     }
                 }
                 // If there is only one such Op, check if this can be
@@ -152,7 +152,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                                     auto p = seen.emplace(op);
                                     assert(p.second);
                                     this->nodes[op] = *it;
-                                    // LOG(DEBUG, "retreive: merge");
+                                    // LOG(DEBUG, "retrieve: merge");
                                     continue;
                                 }
                             }
@@ -221,7 +221,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         seen.insert(seen_tmp.begin(), seen_tmp.end());
         if (depth_prev->size() == 0) {
             // this->depth_nodes.erase(next(this->depth_nodes.begin()));
-            // LOG(DEBUG, "retreive: ---------- next depth");
+            // LOG(DEBUG, "retrieve: ---------- next depth");
         }
     }
 

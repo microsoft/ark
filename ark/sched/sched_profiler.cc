@@ -328,7 +328,7 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
             get<1>(p)(e, r);
             wps_cache_json[prof_name(get<0>(p)->sms[0][0])] = {e, r};
         }
-        // Perfomance summary.
+        // Performance summary.
     }
     // write the profiling results as json to the cache file
     ofstream cache_file_stream(this->wps_prof_cache_path);

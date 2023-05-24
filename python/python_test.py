@@ -25,8 +25,18 @@ offs = ark.Dims(0, 0, 0, 0)
 pads = ark.Dims(1, 1, 1, 1)
 
 # # Create a Tensor object
-tensor = ark.Tensor(shape, ark.TensorType.FP32, buf, ldims,
-                    offs, pads, False, False, 0, "my_tensor")
+tensor = ark.Tensor(
+    shape,
+    ark.TensorType.FP32,
+    buf,
+    ldims,
+    offs,
+    pads,
+    False,
+    False,
+    0,
+    "my_tensor",
+)
 
 # # Call Tensor methods
 tensor_size = tensor.size()
@@ -49,7 +59,7 @@ added_tensor = model.add(t1, t2)
 
 # Test the mul method
 # multiplied_tensor = model.mul(t1, t2)
-exe=ark.Executor(0, 0, 1, model, "test_python_bindings")
+exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
 exe.compile()
 exe.launch()
 exe.run(1)
