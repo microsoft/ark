@@ -226,5 +226,6 @@ PYBIND11_MODULE(ark, m)
              py::arg("tns"), py::arg("src"))
         .def("tensor_memcpy_device_to_host", &tensor_memcpy_device_to_host,
              py::arg("dst"), py::arg("tns"))
-        .def("tensor_clear", &ark::Executor::tensor_clear, py::arg("tns"));
+        .def("tensor_clear", &ark::Executor::tensor_clear, py::arg("tns"))
+        .def("print_tensor", &ark::Executor::print_tensor, py::arg("tns"));
 }
