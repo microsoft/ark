@@ -11,6 +11,7 @@ ext_modules = [
             "/opt/conda/lib/python3.8/site-packages/pybind11/include ",ark_dir+"/include"],
         libraries=["ark"],
         library_dirs=[ark_dir+"/lib"],
+        define_macros=[("DEBUG", None)],
     ),
 ]
 
