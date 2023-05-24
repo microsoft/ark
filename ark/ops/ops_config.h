@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_OPS_CONFIGS_H_
-#define ARK_OPS_CONFIGS_H_
+#ifndef ARK_OPS_CONFIG_H_
+#define ARK_OPS_CONFIG_H_
 
 #include "ark/include/ark.h"
 #include "third_party/json/json.h"
@@ -50,4 +50,4 @@ extern const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP;
 
 } // namespace ark
 
-#endif // ARK_OPS_CONFIGS_H_
+#endif // ARK_OPS_CONFIG_H_

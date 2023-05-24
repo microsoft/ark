@@ -68,6 +68,26 @@ std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
 std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
                                       float diff = 1.0f);
 
+// Return an array where each element is 0.
+template <typename T> std::unique_ptr<T[]> zeros(size_t num)
+{
+    T *ret = new T[num];
+    for (size_t i = 0; i < num; ++i) {
+        ret[i] = T(0);
+    }
+    return std::unique_ptr<T[]>(ret);
+}
+
+// Return an array where each element is 1.
+template <typename T> std::unique_ptr<T[]> ones(size_t num)
+{
+    T *ret = new T[num];
+    for (size_t i = 0; i < num; ++i) {
+        ret[i] = T(1);
+    }
+    return std::unique_ptr<T[]>(ret);
+}
+
 // Return the error rate between two values.
 float error_rate(half_t a, half_t b);
 float error_rate(float a, float b);

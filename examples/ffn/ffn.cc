@@ -79,10 +79,8 @@ class FullyConnectedLayer
         for (auto &param : params) {
             Tensor *grad = grads[param];
             // the learning rate
-            Tensor *grad_scale = model.tensor(grad->shape, grad->type);
-            model.scale(grad, -0.0001, grad_scale);
+            Tensor *grad_scale = model.scale(grad, -0.0001);
             Tensor *param_identity = model.identity(param);
-
             model.add(param, grad_scale, param_identity);
         }
     }
