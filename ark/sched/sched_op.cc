@@ -542,10 +542,19 @@ const string SchedOp::func_string_scale() const
         CHECK(tile_out.x == 1);
     }
 
+    // `val` is actually a floating point runtime argument, but we store it as
+    // an integer in the template because floating point template arguments are
+    // not supported by CUDA.
+    // TODO: this template arugment is currently unused by the kernel and is
+    // only for making func_string unique across different runtime arguments.
+    // DefaultScheduler leverages this to avoid redundant kernel definitions,
+    // but we should find a better way to do this.
+    int val_int = *(int *)(this->op->args[0].val);
+
     stringstream ss;
-    ss << "ark::scale<" << ldm << COM << ldn << COM << this->cfg->num_warps * 32
-       << COM << this->cfg->smem_bytes << COM << tile_out.y << COM << tile_out.x
-       << COM << 1 << '>';
+    ss << "ark::scale<" << ldm << COM << ldn << COM << val_int << COM
+       << this->cfg->num_warps * 32 << COM << this->cfg->smem_bytes << COM
+       << tile_out.y << COM << tile_out.x << COM << 1 << '>';
     return ss.str();
 }
 

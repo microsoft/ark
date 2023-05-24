@@ -18,6 +18,9 @@ using namespace ark;
 
 void print_tensor(Tensor *tensor, Executor *exe)
 {
+    if (tensor == nullptr) {
+        return;
+    }
     cout << "tensor: " << tensor->name << endl;
     size_t tensor_size = tensor->shape_bytes();
     half_t *data = (half_t *)malloc(tensor_size);
@@ -76,7 +79,9 @@ class FullyConnectedLayer
         for (auto &param : params) {
             Tensor *grad = grads[param];
             // the learning rate
-            model.add(param, model.scale(grad, -0.0001), param);
+            Tensor *grad_scale = model.scale(grad, -0.0001);
+            Tensor *param_identity = model.identity(param);
+            model.add(param, grad_scale, param_identity);
         }
     }
 

@@ -173,7 +173,7 @@ DEVICE void mul(ark::half *c, ark::half *a, ark::half *b, int tx, int ty,
                                               tz % OutShape::C, ty, tx);
 }
 
-template <int M, int N, int TN, int SB, int TDM, int TDN, int TDK>
+template <int M, int N, int VAL, int TN, int SB, int TDM, int TDN, int TDK>
 DEVICE void scale(ark::half *y, ark::half *x, float val, int tx, int ty, int tz)
 {
     __half2 val2 = __float2half2_rn(val);
