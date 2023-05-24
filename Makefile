@@ -57,17 +57,21 @@ BSRC += $(patsubst %.cc,sched/sched/%.cc,$(BSRC_SCHED_SCHED))
 
 BOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(BSRC))
 
-USRC_OPS := ops_tensor_test.cc ops_identity_test.cc ops_reshape_test.cc ops_add_test.cc ops_mul_test.cc ops_reduce_test.cc ops_all_reduce_test.cc ops_scale_test.cc
-USRC_OPS += ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc
-
 USRC := ipc/ipc_mem_test.cc ipc/ipc_coll_test.cc ipc/ipc_socket_test.cc
 USRC += gpu/gpu_mem_test.cc gpu/gpu_mgr_test.cc gpu/gpu_kernel_test.cc
 USRC += net/net_ib_test.cc dims_test.cc sched/sched_test.cc
 
-USRC += $(patsubst %.cc,ops/%.cc,$(USRC_OPS))
-
 UOBJ := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC))
 UBIN := $(patsubst %.o,%,$(UOBJ))
+
+USRC_OPS_COMMON := ops/ops_test_common.cc
+UOBJ_OPS_COMMON := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC_OPS_COMMON))
+
+USRC_OPS := ops_tensor_test.cc ops_identity_test.cc ops_reshape_test.cc ops_add_test.cc ops_mul_test.cc ops_reduce_test.cc ops_all_reduce_test.cc ops_scale_test.cc
+USRC_OPS += ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc
+
+UOBJ_OPS := $(patsubst %.cc,$(BDIR)/ark/ops/%.o,$(USRC_OPS))
+UBIN_OPS := $(patsubst %.o,%,$(UOBJ_OPS))
 
 ifeq ($(KAHYPAR),1)
 KHP_BDIR := $(BDIR)/third_party/kahypar
@@ -98,7 +102,7 @@ all: build unittest
 third_party: cutlass | submodules
 
 build: $(BOBJ) $(LIBTARGET) $(INCTARGETS)
-unittest: $(UBIN)
+unittest: $(UBIN) $(UBIN_OPS)
 
 submodules:
 	@git submodule update --init --recursive
@@ -120,6 +124,9 @@ cpplint-autofix:
 
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
+
+$(UBIN_OPS): %: %.o $(BOBJ) $(UOBJ_OPS_COMMON) | third_party
+	$(CXX) -o $@ $(LDFLAGS) $+ $(KHP_SO) $(LDLIBS)
 
 $(BDIR)/%.o: %.cc $(LIBHEADERS) | third_party
 	@mkdir -p $(@D)

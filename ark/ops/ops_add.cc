@@ -48,6 +48,8 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
         output = this->tensor(output_shape, input->type);
     } else if (output->shape != output_shape) {
         LOGERR("invalid output shape: ", output->shape);
+    } else if (output == input) {
+        output = this->identity(output);
     }
     this->create_op(OP_ADD, pt, {input, other}, {output}, {}, name);
     return output;
