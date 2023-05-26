@@ -6,32 +6,32 @@
 
 #include "static_math.h"
 #include "unit_op.h"
-#include "utils.h"
+#include "vec.h"
 
 namespace ark {
 
-// Static checker if InShape0 and InShape1 can be broadcasted into OutShape.
-template <typename InShape0, typename InShape1, typename OutShape>
+// Static checker if In0Shape and In1Shape can be broadcasted into OutShape.
+template <typename In0Shape, typename In1Shape, typename OutShape>
 struct BroadcastShapeChecker
 {
-    static_assert(InShape0::N == 1 || InShape1::N == 1 ||
-                      InShape0::N == InShape1::N,
+    static_assert(In0Shape::N == 1 || In1Shape::N == 1 ||
+                      In0Shape::N == In1Shape::N,
                   "Cannot broadcast dimension N of inputs");
-    static_assert(InShape0::C == 1 || InShape1::C == 1 ||
-                      InShape0::C == InShape1::C,
+    static_assert(In0Shape::C == 1 || In1Shape::C == 1 ||
+                      In0Shape::C == In1Shape::C,
                   "Cannot broadcast dimension C of inputs");
-    static_assert(InShape0::H == 1 || InShape1::H == 1 ||
-                      InShape0::H == InShape1::H,
+    static_assert(In0Shape::H == 1 || In1Shape::H == 1 ||
+                      In0Shape::H == In1Shape::H,
                   "Cannot broadcast dimension H of inputs");
-    static_assert(InShape0::W == 1 || InShape1::W == 1 ||
-                      InShape0::W == InShape1::W,
+    static_assert(In0Shape::W == 1 || In1Shape::W == 1 ||
+                      In0Shape::W == In1Shape::W,
                   "Cannot broadcast dimension W of inputs");
 
     // Derived OutShape.
-    using DerOutShape = Vec<math::max<InShape0::N, InShape1::N>::value,
-                            math::max<InShape0::C, InShape1::C>::value,
-                            math::max<InShape0::H, InShape1::H>::value,
-                            math::max<InShape0::W, InShape1::W>::value>;
+    using DerOutShape = Vec<math::max<In0Shape::N, In1Shape::N>::value,
+                            math::max<In0Shape::C, In1Shape::C>::value,
+                            math::max<In0Shape::H, In1Shape::H>::value,
+                            math::max<In0Shape::W, In1Shape::W>::value>;
     static_assert(
         DerOutShape::N == OutShape::N,
         "Dimension N of output is not as expected from broadcast rules");

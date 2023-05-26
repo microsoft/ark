@@ -6,7 +6,6 @@
 
 #include "static_math.h"
 #include "unit_op.h"
-#include "utils.h"
 
 namespace ark {
 
