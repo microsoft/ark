@@ -74,7 +74,9 @@ exe.run(1)
 
 exe.stop()
 datadst_np = np.zeros((1, 32), dtype=np.float16)
+
 exe.tensor_memcpy_device_to_host(datadst_np, added_tensor)
+
 # test if the result is correct
 assert np.allclose(datadst_np, datasrc_np * 2.0)
 print("ark test success")

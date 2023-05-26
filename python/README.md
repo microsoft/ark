@@ -3,7 +3,12 @@
 This README provides instructions on how to build and test the Python bindings for Ark.  
   
 ## Building the Python Bindings  
-  
+1. Install pybind11 using pip:  
+
+```bash
+pip3 install -r requirements.txt
+```
+
 1. Run the following command to build the Python bindings:  
 
 ```bash
