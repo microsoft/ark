@@ -65,20 +65,16 @@ datasrc_np = np.random.rand(1, 32).astype(np.float16)
 
 exe.tensor_memcpy_host_to_device(t1, datasrc_np)
 exe.tensor_memcpy_host_to_device(t2, datasrc_np)
-exe.print_tensor(t1)
 # data_test = np.zeros((32, 32), dtype=np.float16)
 # exe.tensor_memcpy_device_to_host(data_test, t1)
 # assert np.allclose(data_test, datasrc_np)
 
-print("datasrc_np", datasrc_np, datasrc_np.shape)
 exe.launch()
 exe.run(1)
 
 exe.stop()
 datadst_np = np.zeros((1, 32), dtype=np.float16)
-exe.print_tensor(added_tensor)
 exe.tensor_memcpy_device_to_host(datadst_np, added_tensor)
-print(datadst_np)
 # test if the result is correct
 assert np.allclose(datadst_np, datasrc_np * 2.0)
 print("ark test success")

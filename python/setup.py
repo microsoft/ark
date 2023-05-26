@@ -1,12 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-# Using python3 setup.py build_ext to build the python bindings.
-# After running this script, the ark.cpython-38-x86_64-linux-gnu.so
-# will be generated in the ark/python/build/lib.linux-x86_64-3.8 directory.
-# Users can use export PYTHONPATH="$ARK_DIR/ark/python/build/lib.linux-x86_64-3.8:${PYTHONPATH}"
-# And cd to the ark/python directory and run python3 python_test.py to test the python bindings.
-
 from setuptools import setup
 from pybind11.setup_helpers import Pybind11Extension
 import pybind11

@@ -412,8 +412,6 @@ class Executor
     void tensor_memcpy(void *dst, Tensor *src, size_t bytes);
     // Set all bytes of `tns` into zero.
     void tensor_clear(Tensor *tns);
-    // Print the content of `tns` to stdout.
-    void print_tensor(Tensor *tns);
 
   private:
     const int gpu_id;

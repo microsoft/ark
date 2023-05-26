@@ -4,8 +4,6 @@
 #include "ark/env.h"
 #include "ark/gpu/gpu_kernel.h"
 #include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-
 #include "ark/logging.h"
 #include "ark/sched/sched.h"
 #include <algorithm>
@@ -307,25 +305,6 @@ void Executor::tensor_clear(Tensor *tns)
     }
     assert(rem == 0);
     assert(done == num);
-}
-
-void Executor::print_tensor(Tensor *tns)
-{
-    half_t *p = (half_t *)malloc(tns->shape_bytes());
-    this->tensor_memcpy(p, tns, tns->shape_bytes());
-    Tensor *_tns = this->get_tensor(tns);
-    for (DimType i = 0; i < _tns->shape[0]; ++i) {
-        for (DimType j = 0; j < _tns->shape[1]; ++j) {
-            for (DimType k = 0; k < _tns->shape[2]; ++k) {
-                for (DimType l = 0; l < _tns->shape[3]; ++l) {
-                    printf("%f ", (float)p[_tns->offset(i, j, k, l)]);
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
 }
 
 } // namespace ark
