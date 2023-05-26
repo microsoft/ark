@@ -5,8 +5,10 @@ This README provides instructions on how to build and test the Python bindings f
 ## Building the Python Bindings  
   
 1. Run the following command to build the Python bindings:  
-  
+
+```bash
 python3 setup.py build_ext
+```
 
 After running this script, the `ark.cpython-38-x86_64-linux-gnu.so` will be generated in the `ark/python/build/lib.linux-x86_64-3.8` directory.  
   
@@ -18,15 +20,10 @@ export PYTHONPATH="$ARK_DIR/ark/python/build/lib.linux-x86_64-3.8:${PYTHONPATH}"
   
 ## Testing the Python Bindings  
   
-1. Change to the `ark/python` directory:  
+Change to the `ark/python` directory and run the Python test script:  
 
 ```bash
 cd ark/python
-```
-
-2. Run the Python test script:  
-
-```bash
 python3 python_test.py
 ```
 
