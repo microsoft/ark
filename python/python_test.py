@@ -54,6 +54,7 @@ t2 = model.tensor(ark.Dims(1, 1, 1, 32), ark.TensorType.FP16)
 
 # scaled_tensor = model.scale(t1, 2.0)
 import numpy as np
+
 # Test the add method
 added_tensor = model.add(t1, t2)
 
