@@ -11,7 +11,7 @@ using namespace std;
 
 //
 void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
-                          bool is_relu = false)
+                          ark::DimType axis, bool is_relu = false)
 {
     ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
     ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_reduce", 0, 1);
@@ -61,9 +61,23 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
 
     //
     ark::Model model;
-    ark::Tensor *tns_x = model.tensor({k, n, m}, ark::FP16);
-    ark::Tensor *tns_y = model.tensor({1, n, m}, ark::FP16);
-    model.reduce(tns_x, 0, tns_y, is_relu);
+    ark::Tensor *tns_x = nullptr;
+    ark::Tensor *tns_y = nullptr;
+    if (axis == 0) {
+        tns_x = model.tensor({k, n, m}, ark::FP16);
+        tns_y = model.tensor({1, n, m}, ark::FP16);
+    } else if (axis == 1) {
+        tns_x = model.tensor({n, k, m}, ark::FP16);
+        tns_y = model.tensor({n, 1, m}, ark::FP16);
+    } else if (axis = 2) {
+        tns_x = model.tensor({n, m, k}, ark::FP16);
+        tns_y = model.tensor({n, m, 1}, ark::FP16);
+
+    } else {
+        LOGERR("invalid axis");
+    }
+
+    model.reduce(tns_x, axis, tns_y, is_relu);
 
     //
     ark::Executor exe{0, 0, 1, model, "test_reduce"};
@@ -96,21 +110,21 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
 
 ark::unittest::State test_reduce()
 {
-    test_reduce_internal(1, 64, 2);
-    test_reduce_internal(1, 64, 8);
-    test_reduce_internal(1, 64, 9);
+    test_reduce_internal(1, 64, 2, 0);
+    test_reduce_internal(1, 64, 8, 0);
+    test_reduce_internal(1, 64, 9, 0);
 
-    test_reduce_internal(2, 64, 4);
-    test_reduce_internal(8, 64, 4);
-    test_reduce_internal(64, 64, 4);
+    test_reduce_internal(2, 64, 4, 0);
+    test_reduce_internal(8, 64, 4, 0);
+    test_reduce_internal(64, 64, 4, 0);
 
-    test_reduce_internal(1024, 384, 4);
+    test_reduce_internal(1024, 384, 4, 0);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_reduce_relu()
 {
-    test_reduce_internal(1024, 384, 4, true);
+    test_reduce_internal(1024, 384, 4, 0, true);
     return ark::unittest::SUCCESS;
 }
 
