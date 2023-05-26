@@ -54,6 +54,7 @@ t2 = model.tensor(ark.Dims(1, 1, 1, 32), ark.TensorType.FP16)
 
 # scaled_tensor = model.scale(t1, 2.0)
 import numpy as np
+
 # Test the add method
 added_tensor = model.add(t1, t2)
 
@@ -65,6 +66,7 @@ datasrc_np = np.random.rand(1, 32).astype(np.float16)
 
 exe.tensor_memcpy_host_to_device(t1, datasrc_np)
 exe.tensor_memcpy_host_to_device(t2, datasrc_np)
+
 # data_test = np.zeros((32, 32), dtype=np.float16)
 # exe.tensor_memcpy_device_to_host(data_test, t1)
 # assert np.allclose(data_test, datasrc_np)
@@ -74,7 +76,9 @@ exe.run(1)
 
 exe.stop()
 datadst_np = np.zeros((1, 32), dtype=np.float16)
+
 exe.tensor_memcpy_device_to_host(datadst_np, added_tensor)
+
 # test if the result is correct
 assert np.allclose(datadst_np, datasrc_np * 2.0)
 print("ark test success")
