@@ -13,51 +13,33 @@ using namespace std;
 void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
                           ark::DimType axis, bool is_relu = false)
 {
-    ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
-    ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_reduce", 0, 1);
-
     size_t buf_x_sz = (size_t)m * (size_t)n * (size_t)k * sizeof(ark::half_t);
     size_t buf_y_sz = (size_t)m * (size_t)n * sizeof(ark::half_t);
-
-    ark::GpuBuf *buf_x = ctx->mem_alloc(buf_x_sz);
-    ark::GpuBuf *buf_y = ctx->mem_alloc(buf_y_sz);
-
-    ctx->freeze();
-
-    ark::GpuKernel gk{"simple_reduce",
-                      {ark::unittest::get_kernel_code("simple_reduce")},
-                      {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
-                      {128, 1, 1},
-                      0,
-                      {buf_y, buf_x},
-                      {},
-                      {{&m, sizeof(m)},
-                       {&n, sizeof(n)},
-                       {&k, sizeof(k)},
-                       {&is_relu, sizeof(is_relu)}},
-                      ""};
-    gk.compile(mgr->get_gpu_info());
-    gk.load();
 
     // Set data.
     ark::srand();
     auto data_a = ark::utils::rand_halfs(buf_x_sz / sizeof(ark::half_t), 0.01);
     auto data_b = ark::utils::rand_halfs(buf_y_sz / sizeof(ark::half_t), 0.01);
-    ark::gpu_memcpy(buf_x, data_a.get(), buf_x_sz);
-
-    // Run the GPU kernel.
-    ark::GpuStream s = ctx->create_stream();
-    int ret = gk.launch(s);
-    UNITTEST_EQ(ret, 0);
-    ret = ctx->sync_stream(s);
-    UNITTEST_EQ(ret, 0);
 
     // Copy the ground truth results into CPU memory.
     void *gt = malloc(buf_y_sz);
     UNITTEST_NE(gt, (void *)nullptr);
-    ark::gpu_memcpy(gt, buf_y, buf_y_sz);
 
-    mgr->destroy_context(ctx);
+    for (unsigned int i = 0; i < n; ++i) {
+        for (unsigned int j = 0; j < m; ++j) {
+            ark::half_t v = 0;
+            for (unsigned int l = 0; l < k; ++l) {
+                ark::half_t x = data_a[i * m + j + l * m * n];
+                v += x;
+            }
+            if (is_relu) {
+                if ((float)v < 0) {
+                    v = 0;
+                }
+            }
+            ((ark::half_t *)gt)[i * m + j] = v;
+        }
+    }
 
     //
     ark::Model model;
@@ -72,7 +54,6 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     } else if (axis = 2) {
         tns_x = model.tensor({n, m, k}, ark::FP16);
         tns_y = model.tensor({n, m, 1}, ark::FP16);
-
     } else {
         LOGERR("invalid axis");
     }
