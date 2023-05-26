@@ -29,7 +29,17 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
         for (unsigned int j = 0; j < m; ++j) {
             ark::half_t v = 0;
             for (unsigned int l = 0; l < k; ++l) {
-                ark::half_t x = data_a[i * m + j + l * m * n];
+                int idx;
+                if (axis == 0) {
+                    idx = i * m + j + l * m * n;
+                }
+                if (axis == 1) {
+                    idx = i * m * k + j + l * m;
+                }
+                if (axis == 2) {
+                    idx = i * m * k + j * k + l;
+                }
+                ark::half_t x = data_a[idx];
                 v += x;
             }
             if (is_relu) {
@@ -91,15 +101,18 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
 
 ark::unittest::State test_reduce()
 {
-    test_reduce_internal(1, 64, 2, 0);
-    test_reduce_internal(1, 64, 8, 0);
-    test_reduce_internal(1, 64, 9, 0);
+    for (int axis = 0; axis < 3; axis++) {
+        test_reduce_internal(1, 64, 2, axis);
+        test_reduce_internal(1, 64, 8, axis);
+        test_reduce_internal(1, 64, 9, axis);
 
-    test_reduce_internal(2, 64, 4, 0);
-    test_reduce_internal(8, 64, 4, 0);
-    test_reduce_internal(64, 64, 4, 0);
+        test_reduce_internal(2, 64, 4, axis);
+        test_reduce_internal(8, 64, 4, axis);
+        test_reduce_internal(64, 64, 4, axis);
 
-    test_reduce_internal(1024, 384, 4, 0);
+        test_reduce_internal(1024, 384, 4, axis);
+    }
+
     return ark::unittest::SUCCESS;
 }
 
