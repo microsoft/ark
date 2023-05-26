@@ -42,9 +42,9 @@ class PoswiseFeedForwardNetArk():
     def forward(self, inputs):
         middle_result = model.matmul(inputs, self.weight_1, is_relu=True)
         middle_result1 = model.matmul(middle_result, self.weight_2)
-        # output = model.add(middle_result1, inputs)
+        output = model.add(middle_result1, inputs)
         # TODO: add layer norm
-        return middle_result1
+        return output
 
 
 ark.init()
@@ -52,10 +52,10 @@ ark.init()
 # Create a Model instance
 model = ark.Model()
 
-# input_tensor = model.tensor(
-#     ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16)
+input_tensor = model.tensor(
+    ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16)
 
-# output_tensor = PoswiseFeedForwardNetArk(model).forward(input_tensor)
+output_tensor = PoswiseFeedForwardNetArk(model).forward(input_tensor)
 
 # Test the mul method
 # multiplied_tensor = model.mul(t1, t2)
@@ -77,7 +77,13 @@ output_tensor_host = np.zeros((batch_size, seq_len, d_model), dtype=np.float16)
 
 exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
-gt = PoswiseFeedForwardNetPytorch()(torch.from_numpy(input_tensor_host)).numpy()
+input_tensor_host_float32 = input_tensor_host.astype(np.float32)
+
+torch_input =  torch.from_numpy(input_tensor_host_float32)
+
+torch_model = PoswiseFeedForwardNetPytorch()
+
+gt = torch_model(torch_input).detach().numpy().astype(np.float16)
 
 # test if the result is correct
 assert np.allclose(output_tensor_host, gt)
