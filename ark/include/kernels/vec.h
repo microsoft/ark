@@ -8,7 +8,8 @@ namespace ark {
 
 using DimType = int;
 
-template <DimType _D0 = 1, DimType _D1 = 1, DimType _D2 = 1, DimType _D3 = 1> struct Vec
+template <DimType _D0 = 1, DimType _D1 = 1, DimType _D2 = 1, DimType _D3 = 1>
+struct Vec
 {
     static_assert(_D0 >= 0, "");
     static_assert(_D1 >= 0, "");
