@@ -212,7 +212,7 @@ template <int M> struct TransformGELU
 };
 
 template <int M, int N, int TN, int SB, int TDM, int TDN, int TDK>
-DEVICE void glue(ark::half *y, ark::half *x, int tx, int ty, int tz)
+DEVICE void gelu(ark::half *y, ark::half *x, int tx, int ty, int tz)
 {
     Transform<TransformGELU<M>, M, N, 1, TN, SB, TDM, TDN, TDK>::run(y, x, tx,
                                                                      ty, tz);

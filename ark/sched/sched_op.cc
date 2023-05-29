@@ -195,8 +195,8 @@ const string SchedOp::func_string() const
         return this->func_string_reduce();
     } else if (this->op->type == OP_SCALE) {
         return this->func_string_scale();
-    } else if (this->op->type == OP_GLUE) {
-        return this->func_string_glue();
+    } else if (this->op->type == OP_GELU) {
+        return this->func_string_gelu();
     } else if (this->op->type == OP_ADD) {
         return this->func_string_add();
     } else if (this->op->type == OP_MUL) {
@@ -560,7 +560,7 @@ const string SchedOp::func_string_scale() const
     return ss.str();
 }
 
-const string SchedOp::func_string_glue() const
+const string SchedOp::func_string_gelu() const
 {
     CHECK(this->op->in_deps.size() == 1);
 
@@ -587,7 +587,7 @@ const string SchedOp::func_string_glue() const
     }
 
     stringstream ss;
-    ss << "ark::glue<" << ldm << COM << ldn << COM << this->cfg->num_warps * 32
+    ss << "ark::gelu<" << ldm << COM << ldn << COM << this->cfg->num_warps * 32
        << COM << this->cfg->smem_bytes << COM << tile_out.y << COM << tile_out.x
        << COM << 1 << '>';
     return ss.str();

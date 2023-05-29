@@ -27,7 +27,7 @@ bool is_tiled_op(SchedOp &sop)
 {
     return (
         sop.get_op()->type == OP_MATMUL || sop.get_op()->type == OP_REDUCE ||
-        sop.get_op()->type == OP_SCALE || sop.get_op()->type == OP_GLUE ||
+        sop.get_op()->type == OP_SCALE || sop.get_op()->type == OP_GELU ||
         sop.get_op()->type == OP_ADD || sop.get_op()->type == OP_MUL ||
         sop.get_op()->type == OP_IM2COL || sop.get_op()->type == OP_TRANSPOSE ||
         sop.get_op()->type == OP_SEND_MM || sop.get_op()->type == OP_RECV_MM);
@@ -461,7 +461,7 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
         assert((sop.get_op()->type == OP_MATMUL) ||
                (sop.get_op()->type == OP_REDUCE) ||
                (sop.get_op()->type == OP_SCALE) ||
-               (sop.get_op()->type == OP_GLUE) ||
+               (sop.get_op()->type == OP_GELU) ||
                (sop.get_op()->type == OP_ADD) ||
                (sop.get_op()->type == OP_MUL) ||
                (sop.get_op()->type == OP_IM2COL) ||
@@ -558,7 +558,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
                 // If this is a new function, define it.
                 if ((sop.get_op()->type == OP_REDUCE) ||
                     (sop.get_op()->type == OP_SCALE) ||
-                    (sop.get_op()->type == OP_GLUE) ||
+                    (sop.get_op()->type == OP_GELU) ||
                     (sop.get_op()->type == OP_ADD)) {
                     os << "DEVICE void uop" << uop_id << "(";
                 } else {
@@ -569,7 +569,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
                        (sop.get_op()->type == OP_ADD) ||
                        (sop.get_op()->type == OP_MUL) ||
                        (sop.get_op()->type == OP_SCALE) ||
-                       (sop.get_op()->type == OP_GLUE) ||
+                       (sop.get_op()->type == OP_GELU) ||
                        (sop.get_op()->type == OP_IM2COL) ||
                        (sop.get_op()->type == OP_TRANSPOSE));
                 int cnt_param = 0;

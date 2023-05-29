@@ -10,7 +10,7 @@ namespace ark {
 
 // Multiply `input` by `val`.
 // TODO: make it into a general element-wise operation
-Tensor *Model::glue(Tensor *input, Tensor *output, const string &name)
+Tensor *Model::gelu(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
     OpPrecType pt;
@@ -29,7 +29,7 @@ Tensor *Model::glue(Tensor *input, Tensor *output, const string &name)
     } else if (output->shape != input->shape) {
         LOGERR("invalid output shape: ", output->shape);
     }
-    this->create_op(OP_GLUE, pt, {input}, {output}, {}, name);
+    this->create_op(OP_GELU, pt, {input}, {output}, {}, name);
     return output;
 }
 

@@ -17,9 +17,9 @@ if __name__ == "__main__":
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16)
 
     
-    output_tensor = model.glue(input_tensor)
+    output_tensor = model.gelu(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_glue_test")
+    exe = ark.Executor(0, 0, 1, model, "ops_gelu_test")
     exe.compile()
     input_tensor_host = np.random.rand(
         batch_size, seq_len, d_model).astype(np.float16)
@@ -48,5 +48,5 @@ if __name__ == "__main__":
     avg_error = np.mean(np.abs(output_tensor_host - gt))
     print("max error: ", max_error)
     print("avg error: ", avg_error)
-    print("ark test success")
+    print("gelu test success")
 

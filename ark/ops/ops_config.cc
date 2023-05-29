@@ -242,7 +242,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 0, {{2, 64}}, {{2, 64}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
      }},
-    {{OP_GLUE, OP_ARCH_CUDA_70, OP_PREC_FP16},
+    {{OP_GELU, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {4, 0, {{64, 64}}, {{64, 64}}, false, false},
@@ -254,7 +254,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 0, {{2, 64}}, {{2, 64}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
      }},
-    {{OP_GLUE, OP_ARCH_CUDA_80, OP_PREC_FP16},
+    {{OP_GELU, OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},

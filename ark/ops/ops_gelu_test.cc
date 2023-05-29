@@ -10,7 +10,7 @@
 using namespace std;
 
 //
-void test_glue_internal(unsigned int bs, unsigned int n, unsigned int m,
+void test_gelu_internal(unsigned int bs, unsigned int n, unsigned int m,
                         float val = 0.7)
 {
     unsigned int len = bs * m * n;
@@ -25,10 +25,10 @@ void test_glue_internal(unsigned int bs, unsigned int n, unsigned int m,
     //
     ark::Model model;
     ark::Tensor *tns_x = model.tensor({bs, n, m}, ark::FP16);
-    ark::Tensor *tns_y = model.glue(tns_x);
+    ark::Tensor *tns_y = model.gelu(tns_x);
 
     //
-    ark::Executor exe{0, 0, 1, model, "test_glue"};
+    ark::Executor exe{0, 0, 1, model, "test_gelu"};
     exe.compile();
 
     // Set data.
@@ -47,7 +47,7 @@ void test_glue_internal(unsigned int bs, unsigned int n, unsigned int m,
     auto p =
         ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n, bs);
     float max_err = p.second;
-    LOG(ark::INFO, "glue:", n, 'x', m, ",bs=", bs, setprecision(4), " mse ",
+    LOG(ark::INFO, "gelu:", n, 'x', m, ",bs=", bs, setprecision(4), " mse ",
         p.first, " max_err ", max_err * 100, "%");
 
     free(res);
@@ -56,22 +56,22 @@ void test_glue_internal(unsigned int bs, unsigned int n, unsigned int m,
     UNITTEST_EQ(max_err, 0.0);
 }
 
-ark::unittest::State test_glue()
+ark::unittest::State test_gelu()
 {
-    // test_glue_internal(1, 1, 64);
-    // test_glue_internal(1, 128, 128);
-    // test_glue_internal(1, 4096, 1024);
-    // test_glue_internal(1, 1024, 4096);
-    // test_glue_internal(2, 1, 64);
-    // test_glue_internal(2, 128, 128);
-    // test_glue_internal(8, 4096, 1024);
-    // test_glue_internal(8, 1024, 4096);
+    // test_gelu_internal(1, 1, 64);
+    // test_gelu_internal(1, 128, 128);
+    // test_gelu_internal(1, 4096, 1024);
+    // test_gelu_internal(1, 1024, 4096);
+    // test_gelu_internal(2, 1, 64);
+    // test_gelu_internal(2, 128, 128);
+    // test_gelu_internal(8, 4096, 1024);
+    // test_gelu_internal(8, 1024, 4096);
     return ark::unittest::SUCCESS;
 }
 
 int main()
 {
     ark::init();
-    UNITTEST(test_glue);
+    UNITTEST(test_gelu);
     return ark::unittest::SUCCESS;
 }

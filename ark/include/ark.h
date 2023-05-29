@@ -170,7 +170,7 @@ typedef enum
     OP_MERGE,
     OP_REDUCE,
     OP_SCALE,
-    OP_GLUE,
+    OP_GELU,
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
@@ -314,8 +314,8 @@ class Model
     // Multiply `input` by `val`.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
-    Tensor *glue(Tensor *input, Tensor *output = nullptr,
-                 const std::string &name = "glue");
+    Tensor *gelu(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "gelu");
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "add");
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
