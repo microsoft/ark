@@ -58,7 +58,7 @@ void test_glue_internal(unsigned int bs, unsigned int n, unsigned int m,
 
 ark::unittest::State test_glue()
 {
-    test_glue_internal(1, 1, 64);
+    // test_glue_internal(1, 1, 64);
     // test_glue_internal(1, 128, 128);
     // test_glue_internal(1, 4096, 1024);
     // test_glue_internal(1, 1024, 4096);

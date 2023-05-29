@@ -177,6 +177,9 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("val"), py::arg("output") = nullptr,
              py::arg("name") = "scale")
+        .def("glue", &ark::Model::glue,
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "glue")
         .def("add", &ark::Model::add,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
