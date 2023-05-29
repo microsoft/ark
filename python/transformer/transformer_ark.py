@@ -30,6 +30,10 @@ class PoswiseFeedForwardNetPytorch(nn.Module):
         output = self.fc(inputs)
         return (output + residual)  # [batch_size, seq_len, d_model]
 
+    def init_model(self, param):
+        self.fc[0].weight.data.copy_(torch.from_numpy(param["weight_1"]))
+        self.fc[2].weight.data.copy_(torch.from_numpy(param["weight_2"]))
+
 
 class PoswiseFeedForwardNetArk():
     def __init__(self, model):
@@ -46,6 +50,9 @@ class PoswiseFeedForwardNetArk():
         # TODO: add layer norm
         return output
 
+    def init_model(self, param, exe):
+        exe.tensor_memcpy_host_to_device(self.weight_1, param["weight_1"])
+        exe.tensor_memcpy_host_to_device(self.weight_2, param["weight_2"])
 
 ark.init()
 
@@ -55,19 +62,24 @@ model = ark.Model()
 input_tensor = model.tensor(
     ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16)
 
-output_tensor = PoswiseFeedForwardNetArk(model).forward(input_tensor)
-
+ark_model = PoswiseFeedForwardNetArk(model)
+output_tensor = ark_model.forward(input_tensor)
 # Test the mul method
-# multiplied_tensor = model.mul(t1, t2)
 exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
 exe.compile()
 input_tensor_host = np.random.rand(
     batch_size, seq_len, d_model).astype(np.float16)
 
 
-
 exe.launch()
 exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+
+weight_1_host = np.random.rand(d_model, d_ff).astype(np.float16)
+weight_2_host = np.random.rand(d_ff, d_model).astype(np.float16)
+
+param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
+
+ark_model.init_model(param, exe)
 
 exe.run(1)
 
@@ -79,9 +91,11 @@ exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
 input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 
-torch_input =  torch.from_numpy(input_tensor_host_float32)
+torch_input = torch.from_numpy(input_tensor_host_float32)
 
 torch_model = PoswiseFeedForwardNetPytorch()
+
+torch_model.init_model(param)
 
 gt = torch_model(torch_input).detach().numpy().astype(np.float16)
 
