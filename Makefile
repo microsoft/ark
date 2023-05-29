@@ -40,7 +40,7 @@ endif
 BSRC_UNITTEST := unittest_utils.cc
 
 BSRC_OPS := ops_common.cc ops_config.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
-BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_reduce.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
+BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_glue.cc ops_reduce.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
 BSRC_OPS += ops_conv.cc ops_max_pool.cc ops_sendrecv.cc ops_all_reduce.cc ops_sendrecv_mm.cc ops_transpose.cc
 
 BSRC := init.cc cpu_timer.cc logging.cc math.cc random.cc env.cc file_io.cc
@@ -68,7 +68,7 @@ USRC_OPS_COMMON := ops/ops_test_common.cc
 UOBJ_OPS_COMMON := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC_OPS_COMMON))
 
 USRC_OPS := ops_tensor_test.cc ops_identity_test.cc ops_reshape_test.cc ops_add_test.cc ops_mul_test.cc ops_reduce_test.cc ops_all_reduce_test.cc ops_scale_test.cc
-USRC_OPS += ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc
+USRC_OPS += ops_glue_test.cc ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc
 
 UOBJ_OPS := $(patsubst %.cc,$(BDIR)/ark/ops/%.o,$(USRC_OPS))
 UBIN_OPS := $(patsubst %.o,%,$(UOBJ_OPS))

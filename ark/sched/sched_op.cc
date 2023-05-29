@@ -195,6 +195,8 @@ const string SchedOp::func_string() const
         return this->func_string_reduce();
     } else if (this->op->type == OP_SCALE) {
         return this->func_string_scale();
+    } else if (this->op->type == OP_GLUE) {
+        return this->func_string_glue();
     } else if (this->op->type == OP_ADD) {
         return this->func_string_add();
     } else if (this->op->type == OP_MUL) {
@@ -555,6 +557,39 @@ const string SchedOp::func_string_scale() const
     ss << "ark::scale<" << ldm << COM << ldn << COM << val_int << COM
        << this->cfg->num_warps * 32 << COM << this->cfg->smem_bytes << COM
        << tile_out.y << COM << tile_out.x << COM << 1 << '>';
+    return ss.str();
+}
+
+const string SchedOp::func_string_glue() const
+{
+    CHECK(this->op->in_deps.size() == 1);
+
+    const Tensor *tns_in = this->op->in_deps[0];
+    const Tensor *tns_out = this->op->out_deps[0];
+
+    Dims shp_in = tns_in->shape;
+    Dims shp_out = tns_out->shape;
+
+    CHECK(shp_in[1] == shp_out[1]);
+    CHECK(shp_in[2] == shp_out[2]);
+    CHECK(shp_in[3] == shp_out[3]);
+
+    int ndims = shp_out.ndims();
+    unsigned int ldm = tns_out->ldims[ndims - 1];
+    unsigned int ldn = (ndims > 1) ? tns_out->ldims[ndims - 2] : 1;
+
+    const OpTile &tile_out = this->cfg->out_deps_tiles[0];
+    CHECK(shp_out[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(shp_out[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    stringstream ss;
+    ss << "ark::glue<" << ldm << COM << ldn << COM << this->cfg->num_warps * 32
+       << COM << this->cfg->smem_bytes << COM << tile_out.y << COM << tile_out.x
+       << COM << 1 << '>';
     return ss.str();
 }
 

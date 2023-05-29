@@ -75,6 +75,7 @@ if [ -z $TEST_NAME ]; then
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_add_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_mul_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_scale_test"; ck;
+    ex "$PREFIX $ARK_BUILD_DIR/ops/ops_glue_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_reduce_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_matmul_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_im2col_test"; ck;
