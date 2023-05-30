@@ -38,8 +38,8 @@ struct Ewise1
             int tid_c =
                 ((tid * NelemPerThread) / UnitOutShape::W / UnitOutShape::H) %
                 UnitOutShape::C;
-            int tid_n =
-                tid / UnitOutShape::W / UnitOutShape::H / UnitOutShape::C;
+            int tid_n = (tid * NelemPerThread) / UnitOutShape::W /
+                        UnitOutShape::H / UnitOutShape::C;
 
             if (tid_n >= UnitOutShape::N) {
                 break;
