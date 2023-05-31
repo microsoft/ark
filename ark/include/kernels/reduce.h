@@ -27,11 +27,11 @@ template <typename InShape, typename OutShape> struct ReduceShapeCheckerNCH
     // All dimensions should be the same except for one dimension
     static_assert(((OutShape::N == 1) && (InShape::C == OutShape::C) &&
                    (InShape::H == OutShape::H)) ||
-                  ((OutShape::C == 1) && (InShape::N == OutShape::N) &&
-                   (InShape::H == OutShape::H)) ||
-                  ((OutShape::H == 1) && (InShape::N == OutShape::N) &&
-                   (InShape::C ==
-                    OutShape::C)) "Only one dimension can be reduced");
+                      ((OutShape::C == 1) && (InShape::N == OutShape::N) &&
+                       (InShape::H == OutShape::H)) ||
+                      ((OutShape::H == 1) && (InShape::N == OutShape::N) &&
+                       (InShape::C == OutShape::C)),
+                  "Only one dimension can be reduced");
 };
 
 struct ReduceTypeSum
