@@ -16,6 +16,7 @@ typedef cutlass::half_t half;
 
 extern __shared__ int _ARK_SMEM[];
 
+#include "activation.h"
 #include "arithmetic.h"
 #include "comm.h"
 #include "comm_mm.h"
