@@ -4,9 +4,7 @@
 #ifndef ARK_KERNELS_ACTIVATION_H_
 #define ARK_KERNELS_ACTIVATION_H_
 
-#include "broadcast.h"
 #include "ewise.h"
-#include "transform.h"
 
 namespace ark {
 template <typename InDims, typename OutDims> struct Gelu
