@@ -1,7 +1,7 @@
 import ark
 
-import torch    
-import torch.nn.functional as F    
+import torch
+import torch.nn.functional as F
 import numpy as np
 
 
@@ -12,16 +12,14 @@ def test_gelu_internal(batch_size, seq_len, d_model):
     model = ark.Model()
 
     input_tensor = model.tensor(
-        ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16)
+        ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
+    )
 
-    
     output_tensor = model.gelu(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_gelu_test")
     exe.compile()
-    input_tensor_host = np.random.rand(
-        batch_size, seq_len, d_model).astype(np.float16)
-
+    input_tensor_host = np.random.rand(batch_size, seq_len, d_model).astype(np.float16)
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
@@ -48,6 +46,7 @@ def test_gelu_internal(batch_size, seq_len, d_model):
     print("avg error: ", avg_error)
     print("gelu test success")
 
+
 if __name__ == "__main__":
     batch_size = 1
     seq_len = 32
@@ -60,4 +59,3 @@ if __name__ == "__main__":
     test_gelu_internal(2, 128, 128)
     test_gelu_internal(8, 4096, 1024)
     test_gelu_internal(8, 1024, 4096)
-
