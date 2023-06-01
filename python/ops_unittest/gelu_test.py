@@ -3,11 +3,9 @@ import ark
 import torch    
 import torch.nn.functional as F    
 import numpy as np
-batch_size = 1
-seq_len = 32
-d_model = 512
 
-if __name__ == "__main__":
+
+def test_gelu_internal(batch_size, seq_len, d_model):
     ark.init()
 
     # Create a Model instance
@@ -41,12 +39,25 @@ if __name__ == "__main__":
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
     gt = F.gelu(torch_input).detach().numpy().astype(np.float16)
-    print(output_tensor_host)
-    print(gt)
+
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
+    np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-3)
     print("max error: ", max_error)
     print("avg error: ", avg_error)
     print("gelu test success")
+
+if __name__ == "__main__":
+    batch_size = 1
+    seq_len = 32
+    d_model = 512
+    test_gelu_internal(1, 1, 64)
+    test_gelu_internal(1, 128, 128)
+    test_gelu_internal(1, 4096, 1024)
+    test_gelu_internal(1, 1024, 4096)
+    test_gelu_internal(2, 1, 64)
+    test_gelu_internal(2, 128, 128)
+    test_gelu_internal(8, 4096, 1024)
+    test_gelu_internal(8, 1024, 4096)
 

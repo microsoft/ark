@@ -17,30 +17,32 @@ template <typename InDims, typename OutDims> struct Gelu
     {
         out += idx_n * OutDims::C * OutDims::H * OutDims::W +
                idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
-        //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_c * InDims::W + idx_w;
-        __half input = *in;
-        __half half_pi =
-            __float2half(0.7978845608f); // sqrt(2 / pi) = 0.7978845608
-        __half coeff = __float2half(0.044715f);
-        __half one = __float2half(1.0f);
-        __half x_cubed = __hmul(input, __hmul(input, input));
-        __half tanh_input = __hadd(__hmul(input, half_pi),
-                                   __hmul(x_cubed, __hmul(coeff, half_pi)));
-        // Convert __half to float
-        float input_float = __half2float(tanh_input);
 
-        // Compute tanh for the float variable
-        float output_float = tanhf(input_float);
+        in += idx_n * OutDims::C * OutDims::H * OutDims::W +
+              idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        __half2 input = *(__half2 *)in;
+        __half2 half_pi =
+            __float2half2_rn(0.7978845608f); // sqrt(2 / pi) = 0.7978845608
+        __half2 coeff = __float2half2_rn(0.044715f);
+        __half2 one = __float2half2_rn(1.0f);
 
-        // Convert float back to __half
-        __half tanh_output = __float2half(output_float);
+        __half2 x_cubed = __hmul2(input, __hmul2(input, input));
+        __half2 tanh_input = __hadd2(__hmul2(input, half_pi),
+                                     __hmul2(x_cubed, __hmul2(coeff, half_pi)));
 
-        __half gelu =
-            __hmul(__hmul(input, __hadd(one, tanh_output)), __float2half(0.5f));
+        // Convert __half2 to float2
+        float2 input_float2 = __half22float2(tanh_input);
 
-        *out = gelu;
+        // Compute tanh for each float in the float2 variable
+        float2 output_float2 =
+            make_float2(tanhf(input_float2.x), tanhf(input_float2.y));
+
+        // Convert float2 back to __half2
+        __half2 tanh_output = __float22half2_rn(output_float2);
+
+        __half2 gelu = __hmul2(__hmul2(input, __hadd2(one, tanh_output)),
+                               __float2half2_rn(0.5f));
+        *(__half2 *)out = gelu;
     }
 };
 
@@ -48,13 +50,13 @@ template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutShape, int ThreadsNum, int SmemBytes>
 DEVICE void gelu(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
-    constexpr int NelemPerThread = 1;
+    constexpr int NelemPerThread = 2;
     Ewise1<InDims, OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
            Gelu<InDims, OutDims>, __half, NelemPerThread>::run((__half *)out,
                                                                (__half *)in,
                                                                tz / OutShape::C,
                                                                tz % OutShape::C,
-                                                               tx, ty);
+                                                               ty, tx);
 }
 
 } // namespace ark
