@@ -11,11 +11,12 @@
 // clang-format on
 
 namespace ark {
-typedef cutlass::half_t half;
+using half = cutlass::half_t;
 } // namespace ark
 
 extern __shared__ int _ARK_SMEM[];
 
+#include "activation.h"
 #include "arithmetic.h"
 #include "comm.h"
 #include "comm_mm.h"

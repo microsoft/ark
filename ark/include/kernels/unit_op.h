@@ -5,6 +5,7 @@
 #define ARK_KERNELS_UNIT_OP_H_
 
 #include "common.h"
+#include "smem.h"
 #include "static_math.h"
 
 namespace ark {
@@ -69,6 +70,14 @@ struct UnitOp
     static DEVICE int thread_id()
     {
         return math::mod<ThreadsNum>(threadIdx.x);
+    }
+
+    // Return a shared memory pointer.
+    template <typename T> static DEVICE T *shared_memory()
+    {
+        static_assert(sizeof(T) <= SmemBytes,
+                      "Shared memory is not large enough");
+        return SharedMemory<T, ThreadsNum>();
     }
 };
 

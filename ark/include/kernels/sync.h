@@ -6,8 +6,6 @@
 
 #include "static_math.h"
 
-#define ARK_KERNELS_SYNC_GPU_TEST 0
-
 namespace ark {
 
 namespace sync {
@@ -22,93 +20,6 @@ struct State
 
 } // namespace sync
 
-#if (ARK_KERNELS_SYNC_GPU_TEST)
-__device__ volatile int TMP[80];
-
-template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
-{
-    __syncthreads();
-    if (threadIdx.x == 0) {
-        int is_add_ = state.is_add ^ 1;
-        int idx = blockIdx.x >> 1;
-        volatile long int *pTMP = (volatile long int *)TMP;
-        if (blockIdx.x & 1 || blockIdx.x >= 40) {
-            // 1, 3, 5, 7, ..., 79
-            TMP[blockIdx.x] = is_add_ + 1;
-            goto Barrier;
-        }
-        if (is_add_ == 0) {
-            while (pTMP[idx + 20] != 4294967297) {
-            }
-            if (idx >= 10) {
-                TMP[blockIdx.x] = 1;
-                goto Barrier;
-            }
-            while (pTMP[idx + 10] != 4294967297) {
-            }
-            if (idx >= 5) {
-                TMP[blockIdx.x] = 1;
-                goto Barrier;
-            }
-            while (pTMP[idx + 5] != 4294967297) {
-            }
-            if (idx >= 2) {
-                TMP[blockIdx.x] = 1;
-                goto Barrier;
-            }
-            while (pTMP[idx + 2] != 4294967297) {
-            }
-            if (idx >= 1) {
-                TMP[blockIdx.x] = 1;
-                goto Barrier;
-            }
-            while (pTMP[1] != 4294967297) {
-            }
-            while (pTMP[4] != 4294967297) {
-            }
-        } else {
-            while (pTMP[idx + 20] != 8589934594) {
-            }
-            if (idx >= 10) {
-                TMP[blockIdx.x] = 2;
-                goto Barrier;
-            }
-            while (pTMP[idx + 10] != 8589934594) {
-            }
-            if (idx >= 5) {
-                TMP[blockIdx.x] = 2;
-                goto Barrier;
-            }
-            while (pTMP[idx + 5] != 8589934594) {
-            }
-            if (idx >= 2) {
-                TMP[blockIdx.x] = 2;
-                goto Barrier;
-            }
-            while (pTMP[idx + 2] != 8589934594) {
-            }
-            if (idx >= 1) {
-                TMP[blockIdx.x] = 2;
-                goto Barrier;
-            }
-            while (pTMP[1] != 8589934594) {
-            }
-            while (pTMP[4] != 8589934594) {
-            }
-        }
-    Barrier:
-        //
-        if (blockIdx.x == 0) {
-            state.flag ^= 1;
-        } else {
-            while (state.flag != is_add_) {
-            }
-        }
-        state.is_add = is_add_;
-    }
-    __syncthreads();
-}
-#else // (ARK_KERNELS_SYNC_GPU_TEST)
 // Synchronize multiple thread blocks inside a kernel. Guarantee that all
 // previous work of all threads in cooperating blocks is finished and
 // visible to all threads in the device.
@@ -147,7 +58,6 @@ template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
     // the flag is flipped.
     __syncthreads();
 }
-#endif // (ARK_KERNELS_SYNC_GPU_TEST)
 
 // Synchronize a group of warps.
 // This function replaces `__syncthreads()` of legacy kernel implementations.
