@@ -8,8 +8,6 @@ using namespace std;
 
 namespace ark {
 
-// Multiply `input` by `val`.
-// TODO: make it into a general element-wise operation
 Tensor *Model::gelu(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
