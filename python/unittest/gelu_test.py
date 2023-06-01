@@ -19,7 +19,9 @@ def test_gelu_internal(batch_size, seq_len, d_model):
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_gelu_test")
     exe.compile()
-    input_tensor_host = np.random.rand(batch_size, seq_len, d_model).astype(np.float16)
+    input_tensor_host = np.random.rand(batch_size, seq_len, d_model).astype(
+        np.float16
+    )
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
@@ -28,7 +30,9 @@ def test_gelu_internal(batch_size, seq_len, d_model):
 
     exe.stop()
 
-    output_tensor_host = np.zeros((batch_size, seq_len, d_model), dtype=np.float16)
+    output_tensor_host = np.zeros(
+        (batch_size, seq_len, d_model), dtype=np.float16
+    )
 
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
