@@ -195,6 +195,8 @@ const string SchedOp::func_string() const
         return this->func_string_reduce();
     } else if (this->op->type == OP_SCALE) {
         return this->func_string_scale();
+    } else if (this->op->type == OP_GELU) {
+        return this->func_string_gelu();
     } else if (this->op->type == OP_ADD) {
         return this->func_string_add();
     } else if (this->op->type == OP_MUL) {
@@ -555,6 +557,36 @@ const string SchedOp::func_string_scale() const
     ss << "ark::scale<" << ldm << COM << ldn << COM << val_int << COM
        << this->cfg->num_warps * 32 << COM << this->cfg->smem_bytes << COM
        << tile_out.y << COM << tile_out.x << COM << 1 << '>';
+    return ss.str();
+}
+
+const string SchedOp::func_string_gelu() const
+{
+    CHECK(this->op->in_deps.size() == 1);
+
+    const Tensor *tns_in = this->op->in_deps[0];
+    const Tensor *tns_out = this->op->out_deps[0];
+
+    LOG(DEBUG, "func_string_gelu: ", tns_out->shape, " ", tns_out->ldims);
+
+    int ndims = tns_out->shape.ndims();
+    const OpTile &tile_out = this->cfg->out_deps_tiles[0];
+    CHECK(tns_out->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(tns_out->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+
+    stringstream ss;
+    ss << "ark::gelu"
+       << "<"
+       << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
+       << tns_out->ldims.dims4() << COM << "ark::Vec" << tns_out->shape.dims4()
+       << COM << "ark::Vec" << unit_out_shape << COM
+       << this->cfg->num_warps * 32 << COM << this->cfg->smem_bytes << ">";
     return ss.str();
 }
 

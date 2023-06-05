@@ -34,7 +34,7 @@
 #endif // defined(CUTLASS_ARCH_WMMA_ENABLED)
 
 #include "smem.h"
-#include "utils.h"
+#include "vec.h"
 
 namespace cutlass {
 namespace epilogue {
