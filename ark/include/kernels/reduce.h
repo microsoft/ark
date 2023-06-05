@@ -8,6 +8,32 @@
 
 namespace ark {
 
+/* Reduce single-precision `val` within a single warp. */
+template <typename RType, typename DType, int LanesNum>
+DEVICE DType shfl(DType val)
+{
+    if (LanesNum == 32) {
+        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 16, 32));
+        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 8, 16));
+        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
+        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
+        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
+        return val;
+    } else {
+        if (LanesNum > 16)
+            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 16, 32));
+        if (LanesNum > 8)
+            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 8, 16));
+        if (LanesNum > 4)
+            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
+        if (LanesNum > 2)
+            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
+        if (LanesNum > 1)
+            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
+        return __shfl_sync(0xffffffff, val, 0);
+    }
+}
+
 // Static checkers if InShape can be reduced into OutShape.
 template <typename InShape, typename OutShape> struct ReduceShapeCheckerW
 {
@@ -167,6 +193,9 @@ struct Reduce
         __syncthreads();
 
         // TODO: final reduction on shared memory using warp shuffle.
+        DataType val = smem[tid];
+        val = shfl<ReduceType, DataType, 32>(val) val =
+            ReduceType::postReduce(smem[tid], NelemPerThread);
     }
 };
 
@@ -180,6 +209,18 @@ DEVICE void reduce_w_sum(float *c, float *a, float *b, int tx, int ty, int tz)
            SmemBytes, ReduceTypeSum, float,
            NelemPerThread>::runW(c, a, b, tz / OutShape::C, tz % OutShape::C,
                                  ty, tx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutShape, int axis, int ThreadsNum,
+          int SmemBytes>
+DEVICE void reduce_sum(float *c, float *a, float *b, int tx, int ty, int tz)
+{
+    constexpr int NelemPerThread = 2;
+    Reduce<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
+           SmemBytes, ReduceTypeSum, float,
+           NelemPerThread>::run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty,
+                                tx);
 }
 
 template <bool IsRelu> struct ReduceActivation

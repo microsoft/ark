@@ -437,34 +437,25 @@ const string SchedOp::func_string_reduce() const
     const Tensor *tns_out = this->op->out_deps[0];
     bool is_relu = *(bool *)this->op->args[0].val;
 
+    LOG(DEBUG, "func_string_reduce: ", tns_out->shape, " ", tns_out->ldims);
+
     Dims shp_in = tns_in->shape;
     Dims shp_out = tns_out->shape;
 
     int ndims = shp_out.ndims();
     CHECK(ndims < 4);
 
-    unsigned int ldm = tns_out->ldims[ndims - 1];
-    unsigned int ldn = (ndims == 3) ? tns_out->ldims[ndims - 2] : 1;
-    unsigned int k = shp_in[0] / shp_out[0];
-
-    CHECK(shp_in[ndims - 1] == shp_out[ndims - 1]);
-    if (ndims == 3) {
-        CHECK(shp_in[ndims - 2] == shp_out[ndims - 2]);
-    }
+    int axis = *(int *)this->op->args[1].val;
 
     const OpTile &tile_out = this->cfg->out_deps_tiles[0];
-    CHECK(shp_out[ndims - 1] % tile_out.y == 0);
-    if (ndims > 1) {
-        CHECK(shp_out[ndims - 2] % tile_out.x == 0);
-    } else {
-        CHECK(tile_out.x == 1);
-    }
-
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
     stringstream ss;
-    ss << "ark::reduce_batch<" << ldm << COM << ldn << COM << k << COM
-       << is_relu << COM << this->cfg->num_warps * 32 << COM
-       << this->cfg->smem_bytes << COM << tile_out.y << COM << tile_out.x << COM
-       << 1 << '>';
+    ss << "ark::reduce_sum<"
+       << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
+       << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
+       << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
+       << unit_out_shape << COM << axis << COM << this->cfg->num_warps * 32
+       << COM << this->cfg->smem_bytes << '>';
     return ss.str();
 }
 

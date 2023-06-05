@@ -29,7 +29,7 @@ Tensor *Model::reduce(Tensor *input, DimType axis, Tensor *output, bool is_relu,
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     }
-    this->create_op(OP_REDUCE, pt, {input}, {output}, {is_relu}, name);
+    this->create_op(OP_REDUCE, pt, {input}, {output}, {is_relu, axis}, name);
     return output;
 }
 
