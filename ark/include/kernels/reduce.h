@@ -7,22 +7,30 @@
 #include "transform.h"
 
 namespace ark {
-
+#define PRINT                                                                  \
+    if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
+    printf
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
 {
     if (LanesNum == 32) {
+        PRINT("shfl1: %f\n", (float)val);
         val = ReduceType::reduce(
             val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
+        PRINT("shfl2: %f\n", (float)val);
         val = ReduceType::reduce(
             val, (DType)__shfl_xor_sync(0xffffffff, val, 8, 16));
+        PRINT("shfl3: %f\n", (float)val);
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 4, 8));
+        PRINT("shfl4: %f\n", (float)val);
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
+        PRINT("shfl5: %f\n", (float)val);
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
+        PRINT("shfl6: %f\n", (float)val);
         return val;
     } else {
         if (LanesNum > 16)
@@ -201,40 +209,45 @@ struct Reduce
             }
             smem->storage[tid] =
                 ReduceType::reduce(smem->storage[tid], reduced);
+            PRINT("tid: %d, idx_in: %d, reduced: %f, smem: %f\n", tid, idx_in,
+                  (float)reduced, (float)smem->storage[tid]);
         }
         __syncthreads();
 
         // TODO: final reduction on shared memory using warp shuffle.
         DataType val = smem->storage[tid];
-        // printf("tid: %d, val: %f\n", tid, (float)val);
+        PRINT("tid: %d, val: %f\n", tid, (float)val);
         val = shfl<ReduceType, DataType, 32>(val);
-        val = ReduceType::postReduce(smem->storage[tid], NelemPerThread);
-        out[idx_out] = val;
+        val = ReduceType::postReduce(val, NelemPerThread);
+        PRINT("tid: %d, val: %f\n", tid, (float)val);
+        if (tid == 0) {
+            out[idx_out] = val;
+        }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int axis, int ThreadsNum,
           int SmemBytes>
-DEVICE void reduce_w_sum(ark::half *c, ark::half *a, int tx, int ty, int tz)
+DEVICE void reduce_w_sum(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
-    constexpr int NelemPerThread = 2;
+    constexpr int NelemPerThread = 1;
     Reduce<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
            SmemBytes, ReduceTypeSum, ark::half,
-           NelemPerThread>::runW(c, a, tz / OutShape::C, tz % OutShape::C, ty,
-                                 tx);
+           NelemPerThread>::runW(out, in, tz / OutShape::C, tz % OutShape::C,
+                                 ty, tx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int axis, int ThreadsNum,
           int SmemBytes>
-DEVICE void reduce_w_sum(float *c, float *a, int tx, int ty, int tz)
+DEVICE void reduce_w_sum(float *out, float *in, int tx, int ty, int tz)
 {
-    constexpr int NelemPerThread = 2;
+    constexpr int NelemPerThread = 1;
     Reduce<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
            SmemBytes, ReduceTypeSum, float,
-           NelemPerThread>::runW(c, a, tz / OutShape::C, tz % OutShape::C, ty,
-                                 tx);
+           NelemPerThread>::runW(out, in, tz / OutShape::C, tz % OutShape::C,
+                                 ty, tx);
 }
 
 template <bool IsRelu> struct ReduceActivation
