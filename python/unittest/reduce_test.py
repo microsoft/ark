@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-def test_reduce_internal(batch_size, seq_len, d_model, data_type="float"):
+def test_reduce_internal(batch_size, m, n, data_type="float"):
     ark.init()
 
     # Create a Model instance
@@ -16,14 +16,14 @@ def test_reduce_internal(batch_size, seq_len, d_model, data_type="float"):
         ark_data_type = ark.TensorType.FP16
         numpy_data_type = np.float16
     input_tensor = model.tensor(
-        ark.Dims(batch_size, seq_len, d_model), ark_data_type
+        ark.Dims(batch_size, m, n), ark_data_type
     )
 
     output_tensor = model.reduce(input_tensor, 2)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_reduce_test")
     exe.compile()
-    input_tensor_host = np.random.rand(batch_size, seq_len, d_model).astype(
+    input_tensor_host = np.random.rand(batch_size, m, n).astype(
         numpy_data_type
     )
 
@@ -35,7 +35,7 @@ def test_reduce_internal(batch_size, seq_len, d_model, data_type="float"):
     exe.stop()
 
     output_tensor_host = np.zeros(
-        (batch_size, seq_len, 1), dtype=numpy_data_type,
+        (batch_size, m, 1), dtype=numpy_data_type,
     )
 
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
@@ -49,25 +49,23 @@ def test_reduce_internal(batch_size, seq_len, d_model, data_type="float"):
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
-    # np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-3, atol=1e-3)
+    np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-3, atol=1e-3)
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("max error: ", max_error)
-    print("avg error: ", avg_error)
-    print("reduce test success")
+    print("reduce test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
 
 
 if __name__ == "__main__":
     batch_size = 1
-    seq_len = 32
-    d_model = 512
+    m = 32
+    n = 512
     # test_reduce_internal(1, 1024, 4)
     test_reduce_internal(1, 64, 4, "half")
     test_reduce_internal(1, 128, 128, "half")
     test_reduce_internal(1, 256, 256, "half")
     test_reduce_internal(1, 512, 512, "half")
-    
+
     test_reduce_internal(1, 64, 4)
     test_reduce_internal(1, 128, 128)
     test_reduce_internal(1, 256, 256)
