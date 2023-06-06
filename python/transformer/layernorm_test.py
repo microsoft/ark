@@ -4,7 +4,29 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-def test_reduce_internal(batch_size, m, n, data_type="float"):
+class layer_norm(torch.nn.Module):
+    def __init__(self, hidden_size, eps=1e-5):
+        super(layer_norm, self).__init__()
+        self.gamma = torch.nn.Parameter(torch.ones(hidden_size))
+        self.beta = torch.nn.Parameter(torch.zeros(hidden_size))
+        self.eps = eps
+    
+    def forward(self, x):
+        mean = x.mean(-1, keepdim=True)
+        std = x.std(-1, keepdim=True)
+        return self.gamma * (x - mean) / (std + self.eps) + self.beta
+
+class layer_norm_ark():
+    def __init__(self, model):
+        self.model = model
+    def forward(self, inputs):
+        mean = self.model.reduce(inputs, 2)
+        x_minus_mean = self.model.add(inputs, self.model.scale(mean,-1))
+        std = self.model.sqrt(self.model.reduce(self.model.square(x_minus_mean), 2))
+        return self.model.add(self.model.mul(self.model.scale(self.model.div(x_minus_mean, self.model.add(std, 1e-5)), self.model.const(1.0)), self.model.const(1.0)), self.model.const(0.0))
+
+
+def test_layernorm_internal(batch_size, m, n, data_type="float"):
     ark.init()
 
     # Create a Model instance
@@ -18,10 +40,10 @@ def test_reduce_internal(batch_size, m, n, data_type="float"):
     input_tensor = model.tensor(
         ark.Dims(batch_size, m, n), ark_data_type
     )
-
-    output_tensor = model.reduce(input_tensor, 2)
+    ark_layer_norm = layer_norm_ark(model)
+    output_tensor = ark_layer_norm.forward(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_reduce_test")
+    exe = ark.Executor(0, 0, 1, model, "ops_layernorm_test")
     exe.compile()
     input_tensor_host = np.random.rand(batch_size, m, n).astype(
         numpy_data_type
@@ -53,27 +75,11 @@ def test_reduce_internal(batch_size, m, n, data_type="float"):
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("reduce test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
+    print("layernorm test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
 
 
 if __name__ == "__main__":
     batch_size = 1
     m = 32
     n = 512
-    # test_reduce_internal(1, 1024, 4)
-    # test_reduce_internal(1, 64, 4, "half")
-    # test_reduce_internal(1, 128, 128, "half")
-    # test_reduce_internal(1, 256, 256, "half")
-    # test_reduce_internal(1, 512, 512, "half")
-
-    # test_reduce_internal(1, 64, 4)
-    # test_reduce_internal(1, 128, 128)
-    # test_reduce_internal(1, 256, 256)
-    # test_reduce_internal(1, 512, 512)
-    # test_reduce_internal(1, 1024, 1024)
-    # test_reduce_internal(1, 4096, 1024)
-    # test_reduce_internal(1, 1024, 4096)
-    test_reduce_internal(2, 64, 64)
-    test_reduce_internal(2, 128, 128)
-    test_reduce_internal(8, 4096, 1024)
-    test_reduce_internal(8, 1024, 4096)
+    test_layernorm_internal(batch_size, m, n, "float")
