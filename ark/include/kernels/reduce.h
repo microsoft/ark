@@ -7,9 +7,10 @@
 #include "transform.h"
 
 namespace ark {
-#define PRINT                                                                  \
-    if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
-    printf
+// #define PRINT                                                                  \
+//     if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
+//     printf
+#define PRINT(...)
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
@@ -168,7 +169,7 @@ struct Reduce
 
         constexpr int NonReduceDimLength =
             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
-
+        PRINT("NonReduceDimLength: %d\n", NonReduceDimLength);
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
         static_assert((ThreadsNum * NelemPerThread) % NonReduceDimLength == 0);
@@ -217,10 +218,11 @@ struct Reduce
         // TODO: final reduction on shared memory using warp shuffle.
         DataType val = smem->storage[tid];
         PRINT("tid: %d, val: %f\n", tid, (float)val);
-        val = shfl<ReduceType, DataType, 32>(val);
+        val = shfl<ReduceType, DataType, FinalDim>(val);
         val = ReduceType::postReduce(val, NelemPerThread);
         PRINT("tid: %d, val: %f\n", tid, (float)val);
-        if (tid == 0) {
+        PRINT("FinalDim: %d\n", FinalDim);
+        if (tid % FinalDim == 0) {
             out[idx_out] = val;
         }
     }

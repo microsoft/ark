@@ -59,9 +59,13 @@ if __name__ == "__main__":
     seq_len = 32
     d_model = 512
     test_reduce_internal(1, 64, 4)
-    # test_reduce_internal(1, 128, 128)
-    # test_reduce_internal(1, 4096, 1024)
-    # test_reduce_internal(1, 1024, 4096)
+    test_reduce_internal(1, 128, 128)
+    test_reduce_internal(1, 256, 256)
+    test_reduce_internal(1, 512, 512)
+    test_reduce_internal(1, 1024, 1024)
+    # test_reduce_internal(1, 1024, 4)
+    test_reduce_internal(1, 4096, 1024)
+    test_reduce_internal(1, 1024, 4096)
     # test_reduce_internal(2, 1, 64)
     # test_reduce_internal(2, 128, 128)
     # test_reduce_internal(8, 4096, 1024)
