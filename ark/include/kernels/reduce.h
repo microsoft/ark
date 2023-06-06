@@ -13,28 +13,33 @@ template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
 {
     if (LanesNum == 32) {
-        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 16, 32));
-        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 8, 16));
-        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
-        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
-        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
+        val = ReduceType::reduce(
+            val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
+        val = ReduceType::reduce(
+            val, (DType)__shfl_xor_sync(0xffffffff, val, 8, 16));
+        val = ReduceType::reduce(val,
+                                 (DType)__shfl_xor_sync(0xffffffff, val, 4, 8));
+        val = ReduceType::reduce(val,
+                                 (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
+        val = ReduceType::reduce(val,
+                                 (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
         return val;
     } else {
         if (LanesNum > 16)
-            val = ReduceType::reduce(val,
-                                     __shfl_xor_sync(0xffffffff, val, 16, 32));
+            val = ReduceType::reduce(
+                val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
         if (LanesNum > 8)
-            val = ReduceType::reduce(val,
-                                     __shfl_xor_sync(0xffffffff, val, 8, 16));
+            val = ReduceType::reduce(
+                val, (DType)__shfl_xor_sync(0xffffffff, val, 8, 16));
         if (LanesNum > 4)
-            val =
-                ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
+            val = ReduceType::reduce(
+                val, (DType)__shfl_xor_sync(0xffffffff, val, 4, 8));
         if (LanesNum > 2)
-            val =
-                ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
+            val = ReduceType::reduce(
+                val, (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
         if (LanesNum > 1)
-            val =
-                ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
+            val = ReduceType::reduce(
+                val, (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
         return __shfl_sync(0xffffffff, val, 0);
     }
 }
