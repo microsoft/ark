@@ -7,10 +7,10 @@
 #include "transform.h"
 
 namespace ark {
-// #define PRINT                                                                  \
-//     if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
-//     printf
-#define PRINT(...)
+#define PRINT                                                                  \
+    if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
+    printf
+// #define PRINT(...)
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
@@ -204,6 +204,8 @@ struct Reduce
              idx_in_w += FinalDim) {
             int idx_in = idx_in_base + idx_in_w;
             DataType reduced = in[idx_in];
+            PRINT("tid: %d, idx_in: %d, reduced: %f\n", tid, idx_in,
+                  (float)reduced);
 #pragma unroll
             for (int i = 1; i < NelemPerThread; i++) {
                 reduced = ReduceType::reduce(reduced, in[idx_in + i]);
