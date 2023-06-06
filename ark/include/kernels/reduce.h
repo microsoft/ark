@@ -9,27 +9,32 @@
 namespace ark {
 
 /* Reduce single-precision `val` within a single warp. */
-template <typename RType, typename DType, int LanesNum>
+template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
 {
     if (LanesNum == 32) {
-        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 16, 32));
-        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 8, 16));
-        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
-        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
-        val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
+        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 16, 32));
+        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 8, 16));
+        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
+        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
+        val = ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
         return val;
     } else {
         if (LanesNum > 16)
-            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 16, 32));
+            val = ReduceType::reduce(val,
+                                     __shfl_xor_sync(0xffffffff, val, 16, 32));
         if (LanesNum > 8)
-            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 8, 16));
+            val = ReduceType::reduce(val,
+                                     __shfl_xor_sync(0xffffffff, val, 8, 16));
         if (LanesNum > 4)
-            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
+            val =
+                ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 4, 8));
         if (LanesNum > 2)
-            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
+            val =
+                ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 2, 4));
         if (LanesNum > 1)
-            val = RType::Calc(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
+            val =
+                ReduceType::reduce(val, __shfl_xor_sync(0xffffffff, val, 1, 2));
         return __shfl_sync(0xffffffff, val, 0);
     }
 }
@@ -64,7 +69,7 @@ struct ReduceTypeSum
 {
     template <typename DataType> static DEVICE DataType identity()
     {
-        return 0;
+        return (DataType)0;
     }
     template <typename DataType>
     static DEVICE DataType reduce(const DataType &a, const DataType &b)
@@ -148,7 +153,7 @@ struct Reduce
     {
         using InOutChk = ReduceShapeCheckerW<InShape, OutShape>;
 
-        constexpr int NonReduceDimLen =
+        constexpr int NonReduceDimLength =
             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
 
         // The reduction dimension of the final stage.
@@ -158,8 +163,9 @@ struct Reduce
             (ThreadsNum * NelemPerThread) / NonReduceDimLength;
 
         // Shared memory
-        ReduceSharedStorage *smem =
-            UnitOp::shared_memory<ReduceSharedStorage>();
+        ReduceSharedStorage<DataType, ThreadsNum> *smem =
+            UnitOp::template shared_memory<
+                ReduceSharedStorage<DataType, ThreadsNum>>();
 
         int tid = UnitOp::thread_id();
         int tid_w = (tid * NelemPerThread) % FinalDim;
@@ -169,16 +175,18 @@ struct Reduce
         int tid_n = (tid * NelemPerThread) / FinalDim / UnitOutShape::H /
                     UnitOutShape::C;
 
-        int idx_out = (tid_h + th * UnitOutShape::H) * OutDims::W +
-                      (tid_c + tc * UnitOutShape::C) * OutDims::W * OutDims::H +
-                      (tid_n + tn * UnitOutShape::N) * OutDims::W * OutDims::H *
-                          OutDims::C;
+        // int idx_out = (tid_h + th * UnitOutShape::H) * OutDims::W +
+        //               (tid_c + tc * UnitOutShape::C) * OutDims::W *
+        //               OutDims::H + (tid_n + tn * UnitOutShape::N) *
+        //               OutDims::W * OutDims::H *
+        //                   OutDims::C;
         int idx_in_base =
             (tid_h + th * UnitOutShape::H) * InDims::W +
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
 
-        smem[tid] = ReduceType::identity<DataType>();
+        smem->storage[tid] = ReduceType::template identity<DataType>();
+        // ReduceType::template identity<DataType>();
 
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += FinalDim) {
@@ -188,39 +196,40 @@ struct Reduce
             for (int i = 1; i < NelemPerThread; i++) {
                 reduced = ReduceType::reduce(reduced, in[idx_in + i]);
             }
-            smem[tid] = ReduceType::reduce(smem[tid], reduced);
+            smem->storage[tid] =
+                ReduceType::reduce(smem->storage[tid], reduced);
         }
         __syncthreads();
 
         // TODO: final reduction on shared memory using warp shuffle.
-        DataType val = smem[tid];
-        val = shfl<ReduceType, DataType, 32>(val) val =
-            ReduceType::postReduce(smem[tid], NelemPerThread);
+        DataType val = smem->storage[tid];
+        val = shfl<ReduceType, DataType, 32>(val);
+        val = ReduceType::postReduce(smem->storage[tid], NelemPerThread);
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutShape, int ThreadsNum,
+          typename OutShape, typename UnitOutShape, int axis, int ThreadsNum,
           int SmemBytes>
-DEVICE void reduce_w_sum(float *c, float *a, float *b, int tx, int ty, int tz)
+DEVICE void reduce_w_sum(ark::half *c, ark::half *a, int tx, int ty, int tz)
 {
     constexpr int NelemPerThread = 2;
     Reduce<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
-           SmemBytes, ReduceTypeSum, float,
-           NelemPerThread>::runW(c, a, b, tz / OutShape::C, tz % OutShape::C,
-                                 ty, tx);
+           SmemBytes, ReduceTypeSum, ark::half,
+           NelemPerThread>::runW(c, a, tz / OutShape::C, tz % OutShape::C, ty,
+                                 tx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int axis, int ThreadsNum,
           int SmemBytes>
-DEVICE void reduce_sum(float *c, float *a, float *b, int tx, int ty, int tz)
+DEVICE void reduce_w_sum(float *c, float *a, int tx, int ty, int tz)
 {
     constexpr int NelemPerThread = 2;
     Reduce<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
            SmemBytes, ReduceTypeSum, float,
-           NelemPerThread>::run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty,
-                                tx);
+           NelemPerThread>::runW(c, a, tz / OutShape::C, tz % OutShape::C, ty,
+                                 tx);
 }
 
 template <bool IsRelu> struct ReduceActivation

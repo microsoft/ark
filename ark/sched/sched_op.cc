@@ -450,7 +450,7 @@ const string SchedOp::func_string_reduce() const
     const OpTile &tile_out = this->cfg->out_deps_tiles[0];
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
     stringstream ss;
-    ss << "ark::reduce_sum<"
+    ss << "ark::reduce_w_sum<"
        << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
        << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
        << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
