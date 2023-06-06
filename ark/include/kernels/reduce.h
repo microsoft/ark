@@ -40,7 +40,7 @@ DEVICE DType shfl(DType val)
         if (LanesNum > 1)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
-        return __shfl_sync(0xffffffff, val, 0);
+        return (DType)__shfl_sync(0xffffffff, val, 0);
     }
 }
 
@@ -180,11 +180,10 @@ struct Reduce
         int tid_n = (tid * NelemPerThread) / FinalDim / UnitOutShape::H /
                     UnitOutShape::C;
 
-        // int idx_out = (tid_h + th * UnitOutShape::H) * OutDims::W +
-        //               (tid_c + tc * UnitOutShape::C) * OutDims::W *
-        //               OutDims::H + (tid_n + tn * UnitOutShape::N) *
-        //               OutDims::W * OutDims::H *
-        //                   OutDims::C;
+        int idx_out = (tid_h + th * UnitOutShape::H) * OutDims::W +
+                      (tid_c + tc * UnitOutShape::C) * OutDims::W * OutDims::H +
+                      (tid_n + tn * UnitOutShape::N) * OutDims::W * OutDims::H *
+                          OutDims::C;
         int idx_in_base =
             (tid_h + th * UnitOutShape::H) * InDims::W +
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
@@ -210,6 +209,7 @@ struct Reduce
         DataType val = smem->storage[tid];
         val = shfl<ReduceType, DataType, 32>(val);
         val = ReduceType::postReduce(smem->storage[tid], NelemPerThread);
+        out[idx_out] = val;
     }
 };
 
