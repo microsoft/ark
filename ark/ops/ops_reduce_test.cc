@@ -19,7 +19,6 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     // Set data.
     ark::srand();
     auto data_a = ark::utils::rand_halfs(buf_x_sz / sizeof(ark::half_t), 0.01);
-    auto data_b = ark::utils::rand_halfs(buf_y_sz / sizeof(ark::half_t), 0.01);
 
     // Copy the ground truth results into CPU memory.
     void *gt = malloc(buf_y_sz);

@@ -190,7 +190,6 @@ struct Reduce
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
 
         smem->storage[tid] = ReduceType::template identity<DataType>();
-        // ReduceType::template identity<DataType>();
 
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += FinalDim) {
@@ -207,6 +206,7 @@ struct Reduce
 
         // TODO: final reduction on shared memory using warp shuffle.
         DataType val = smem->storage[tid];
+        // printf("tid: %d, val: %f\n", tid, (float)val);
         val = shfl<ReduceType, DataType, 32>(val);
         val = ReduceType::postReduce(smem->storage[tid], NelemPerThread);
         out[idx_out] = val;

@@ -14,7 +14,7 @@ void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = info.size * info.itemsize;
+    size_t bytes = tns->ldims_bytes();
     void *host_buffer_ptr = info.ptr;
     executor->tensor_memcpy(tns, (const void *)host_buffer_ptr, bytes);
 }
@@ -23,7 +23,7 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
                                   py::buffer host_buffer, ark::Tensor *tns)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = info.size * info.itemsize;
+    size_t bytes = tns->ldims_bytes();
     void *host_buffer_ptr = info.ptr;
     executor->tensor_memcpy((void *)host_buffer_ptr, tns, bytes);
 }
