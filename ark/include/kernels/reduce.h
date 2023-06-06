@@ -7,10 +7,10 @@
 #include "transform.h"
 
 namespace ark {
-#define PRINT                                                                  \
-    if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
-    printf
-// #define PRINT(...)
+// #define PRINT                                                                  \
+//     if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
+//     printf
+#define PRINT(...)
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
@@ -37,19 +37,24 @@ DEVICE DType shfl(DType val)
         if (LanesNum > 16)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
+        PRINT("shfl1: %f\n", (float)val);
         if (LanesNum > 8)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 8, 16));
+        PRINT("shfl2: %f\n", (float)val);
         if (LanesNum > 4)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 4, 8));
+        PRINT("shfl3: %f\n", (float)val);
         if (LanesNum > 2)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
+        PRINT("shfl4: %f\n", (float)val);
         if (LanesNum > 1)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
-        return (DType)__shfl_sync(0xffffffff, val, 0);
+        PRINT("shfl5: %f\n", (float)val);
+        return val;
     }
 }
 
