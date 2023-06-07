@@ -7,53 +7,39 @@
 #include "transform.h"
 
 namespace ark {
-// #define PRINT                                                                  \
-//     if (blockIdx.x == 0 && threadIdx.x < 32)                                   \
-//     printf
-#define PRINT(...)
+
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
 {
     if (LanesNum == 32) {
-        PRINT("shfl1: %f\n", (float)val);
         val = ReduceType::reduce(
             val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
-        PRINT("shfl2: %f\n", (float)val);
         val = ReduceType::reduce(
             val, (DType)__shfl_xor_sync(0xffffffff, val, 8, 16));
-        PRINT("shfl3: %f\n", (float)val);
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 4, 8));
-        PRINT("shfl4: %f\n", (float)val);
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
-        PRINT("shfl5: %f\n", (float)val);
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
-        PRINT("shfl6: %f\n", (float)val);
         return val;
     } else {
         if (LanesNum > 16)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
-        PRINT("shfl1: %f\n", (float)val);
         if (LanesNum > 8)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 8, 16));
-        PRINT("shfl2: %f\n", (float)val);
         if (LanesNum > 4)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 4, 8));
-        PRINT("shfl3: %f\n", (float)val);
         if (LanesNum > 2)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
-        PRINT("shfl4: %f\n", (float)val);
         if (LanesNum > 1)
             val = ReduceType::reduce(
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
-        PRINT("shfl5: %f\n", (float)val);
         return val;
     }
 }
@@ -174,7 +160,6 @@ struct Reduce
 
         constexpr int NonReduceDimLength =
             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
-        PRINT("NonReduceDimLength: %d\n", NonReduceDimLength);
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
         static_assert((ThreadsNum * NelemPerThread) % NonReduceDimLength == 0);
@@ -209,26 +194,19 @@ struct Reduce
              idx_in_w += FinalDim) {
             int idx_in = idx_in_base + idx_in_w;
             DataType reduced = in[idx_in];
-            PRINT("tid: %d, idx_in: %d, reduced: %f\n", tid, idx_in,
-                  (float)reduced);
 #pragma unroll
             for (int i = 1; i < NelemPerThread; i++) {
                 reduced = ReduceType::reduce(reduced, in[idx_in + i]);
             }
             smem->storage[tid] =
                 ReduceType::reduce(smem->storage[tid], reduced);
-            PRINT("tid: %d, idx_in: %d, reduced: %f, smem: %f\n", tid, idx_in,
-                  (float)reduced, (float)smem->storage[tid]);
         }
         __syncthreads();
 
-        // TODO: final reduction on shared memory using warp shuffle.
+        // final reduction on shared memory using warp shuffle.
         DataType val = smem->storage[tid];
-        PRINT("tid: %d, val: %f\n", tid, (float)val);
         val = shfl<ReduceType, DataType, FinalDim>(val);
         val = ReduceType::postReduce(val, NelemPerThread);
-        PRINT("tid: %d, val: %f\n", tid, (float)val);
-        PRINT("FinalDim: %d\n", FinalDim);
         if (tid % FinalDim == 0) {
             out[idx_out] = val;
         }
