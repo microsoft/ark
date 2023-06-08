@@ -140,6 +140,9 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("output") = nullptr,
              py::arg("is_relu") = false, py::arg("name") = "reduce")
+        .def("layer_norm", &ark::Model::layer_norm,
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "layer_norm")
         .def("transpose", &ark::Model::transpose,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("perm"), py::arg("output") = nullptr,

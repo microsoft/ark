@@ -34,7 +34,7 @@ class layer_norm_ark():
         return self.model.div(x_minus_mean, self.model.add(std, 1e-5))
 
 
-def test_layernorm_internal(batch_size, m, n, data_type="float"):
+def test_layer_norm_internal(batch_size, m, n, data_type="float"):
     ark.init()
 
     # Create a Model instance
@@ -56,7 +56,7 @@ def test_layernorm_internal(batch_size, m, n, data_type="float"):
     output_tensor_dim = output_tensor_size // elesize
     print("output_tensor_shape", output_tensor_size)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_layernorm_test")
+    exe = ark.Executor(0, 0, 1, model, "ops_layer_norm_test")
     exe.compile()
     input_tensor_host = np.random.rand(batch_size, m, n).astype(
         numpy_data_type
@@ -77,9 +77,9 @@ def test_layernorm_internal(batch_size, m, n, data_type="float"):
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    torch_layernorm = layer_norm()
+    torch_layer_norm = layer_norm()
 
-    gt =  torch_layernorm(torch_input).numpy()
+    gt =  torch_layer_norm(torch_input).numpy()
 
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
@@ -88,7 +88,7 @@ def test_layernorm_internal(batch_size, m, n, data_type="float"):
     print(input_tensor_host)
     print(output_tensor_host)
     print(gt)
-    print("layernorm test ", "batch_size:", batch_size, "m:", m, "n:", n,
+    print("layer_norm test ", "batch_size:", batch_size, "m:", m, "n:", n,
           "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
 
 
@@ -96,4 +96,4 @@ if __name__ == "__main__":
     batch_size = 1
     m = 32
     n = 512
-    test_layernorm_internal(batch_size, m, n, "float")
+    test_layer_norm_internal(batch_size, m, n, "float")

@@ -169,6 +169,7 @@ typedef enum
     OP_RESHAPE,
     OP_MERGE,
     OP_REDUCE,
+    OP_LAYER_NORM,
     OP_SCALE,
     OP_GELU,
     OP_MATMUL,
@@ -288,6 +289,8 @@ class Model
 
     Tensor *reduce(Tensor *input, DimType axis, Tensor *output = nullptr,
                    bool is_relu = false, const std::string &name = "reduce");
+    Tensor *layer_norm(Tensor *input, Tensor *output = nullptr,
+                       const std::string &name = "layer_norm");
     Tensor *transpose(Tensor *input, Dims perm, Tensor *output = nullptr,
                       const std::string &name = "transpose");
     Tensor *matmul(Tensor *input, Tensor *other, Tensor *output = nullptr,
