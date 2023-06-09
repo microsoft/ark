@@ -19,7 +19,7 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
         ark.Dims(batch_size, m, n), ark_data_type
     )
 
-    output_tensor = model.layer_norm(input_tensor, 2)
+    output_tensor = model.layer_norm(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_layer_norm_test")
     exe.compile()
@@ -35,7 +35,7 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
     exe.stop()
 
     output_tensor_host = np.zeros(
-        (batch_size, m, 1), dtype=numpy_data_type,
+        (batch_size, m, n), dtype=numpy_data_type,
     )
 
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
