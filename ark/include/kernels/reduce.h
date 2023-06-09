@@ -163,9 +163,12 @@ struct Reduce
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
         static_assert((ThreadsNum * NelemPerThread) % NonReduceDimLength == 0);
+        // If we reshape the input into a 2D matrix (NCH x W), ThreadsNum
+        // threads compute NCH rows, and each row's sum is computed by FinalDim
+        // threads. If FinalDim is larger than warp size, we need to use
+        // shared memory to reduce the result of each warp.
         constexpr int FinalDim =
             (ThreadsNum * NelemPerThread) / NonReduceDimLength;
-
         // Shared memory
         ReduceSharedStorage<DataType, ThreadsNum> *smem =
             UnitOp::template shared_memory<
@@ -188,27 +191,26 @@ struct Reduce
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
 
-        smem->storage[tid] = ReduceType::template identity<DataType>();
-
+        // smem->storage[tid] = ReduceType::template identity<DataType>();
+        DataType reduced = ReduceType::template identity<DataType>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += FinalDim) {
             int idx_in = idx_in_base + idx_in_w;
-            DataType reduced = in[idx_in];
-#pragma unroll
-            for (int i = 1; i < NelemPerThread; i++) {
-                reduced = ReduceType::reduce(reduced, in[idx_in + i]);
-            }
-            smem->storage[tid] =
-                ReduceType::reduce(smem->storage[tid], reduced);
+            // DataType reduced = in[idx_in];
+            // #pragma unroll
+            //             for (int i = 1; i < NelemPerThread; i++) {
+            //                 reduced = ReduceType::reduce(reduced, in[idx_in +
+            //                 i]);
+            //             }
+            reduced = ReduceType::reduce(reduced, in[idx_in]);
         }
         __syncthreads();
 
         // final reduction on shared memory using warp shuffle.
-        DataType val = smem->storage[tid];
-        val = shfl<ReduceType, DataType, FinalDim>(val);
-        val = ReduceType::postReduce(val, NelemPerThread);
+        reduced = shfl<ReduceType, DataType, FinalDim>(reduced);
+        reduced = ReduceType::postReduce(reduced, NelemPerThread);
         if (tid % FinalDim == 0) {
-            out[idx_out] = val;
+            out[idx_out] = reduced;
         }
     }
 };
