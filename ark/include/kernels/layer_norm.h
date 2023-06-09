@@ -25,15 +25,14 @@ struct LayerNorm
     {
         //         using InOutChk = LayerNormShapeCheckerW<InShape, OutShape>;
 
-        //         constexpr int NonLayerNormDimLength =
-        //             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
-        //         // The reduction dimension of the final stage.
-        //         // Assume this division is always exact.
-        //         static_assert((ThreadsNum * NelemPerThread) %
-        //         NonLayerNormDimLength ==
-        //                       0);
-        //         constexpr int FinalDim =
-        //             (ThreadsNum * NelemPerThread) / NonLayerNormDimLength;
+        constexpr int NonLayerNormDimLength =
+            UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
+        // The reduction dimension of the final stage.
+        // Assume this division is always exact.
+        static_assert((ThreadsNum * NelemPerThread) % NonLayerNormDimLength ==
+                      0);
+        constexpr int FinalDim =
+            (ThreadsNum * NelemPerThread) / NonLayerNormDimLength;
 
         //         // Shared memory
         //         LayerNormSharedStorage<DataType, ThreadsNum> *smem =
