@@ -231,6 +231,46 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 128, {{2, 1}}, {{2, 1}}, false, false},
          {1, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
+    {{OP_LAYER_NORM, OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 64, {{32, 1}}, {{32, 1}}, false, false},
+         {1, 64, {{16, 1}}, {{16, 1}}, false, false},
+         {1, 64, {{8, 1}}, {{8, 1}}, false, false},
+         {1, 64, {{4, 1}}, {{4, 1}}, false, false},
+         {1, 64, {{2, 1}}, {{2, 1}}, false, false},
+         {1, 64, {{1, 1}}, {{1, 1}}, false, false},
+     }},
+    {{OP_LAYER_NORM, OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 64, {{32, 1}}, {{32, 1}}, false, false},
+         {1, 64, {{16, 1}}, {{16, 1}}, false, false},
+         {1, 64, {{8, 1}}, {{8, 1}}, false, false},
+         {1, 64, {{4, 1}}, {{4, 1}}, false, false},
+         {1, 64, {{2, 1}}, {{2, 1}}, false, false},
+         {1, 64, {{1, 1}}, {{1, 1}}, false, false},
+     }},
+    {{OP_LAYER_NORM, OP_ARCH_CUDA_70, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, false, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, false, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, false, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, false, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, false, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, false, false},
+     }},
+    {{OP_LAYER_NORM, OP_ARCH_CUDA_80, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, false, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, false, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, false, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, false, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, false, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, false, false},
+     }},
     {{OP_SCALE, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
