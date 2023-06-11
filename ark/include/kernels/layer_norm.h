@@ -71,6 +71,7 @@ struct LayerNorm
 
         // final reduction on shared memory using warp shuffle.
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
+        // get the average result.
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
         printf("tid: %d, reduced: %f\n", tid, reduced);
     }

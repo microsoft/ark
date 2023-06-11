@@ -89,7 +89,15 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
         LOGERR("no valid tile configuration found. Output shape ",
                output->shape, ", available tiles: ", configs_str.str());
     }
-    return &search->second[gran_lev];
+    const OpConfig *cfg = &search->second[gran_lev];
+    OpConfig *cfg_new = new OpConfig(*cfg);
+    if (op->type == OP_LAYER_NORM) {
+
+        cfg_new->out_deps_tiles[0].y = output->shape[ndims - 1];
+        LOG(DEBUG, "layer norm cfg: ", cfg_new->out_deps_tiles[0].x, COM,
+            cfg_new->out_deps_tiles[0].y);
+    }
+    return cfg_new;
 }
 
 SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
