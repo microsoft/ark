@@ -28,7 +28,7 @@ class PoswiseFeedForwardNetPytorch(nn.Module):
         output = nn.ReLU()(output)
         output = torch.matmul(output, self.weight_2)  # [batch_size, seq_len, d_model]
         # output = nn.LayerNorm(d_model)(output + inputs)  # [batch_size, seq_len, d_model]
-        return output
+        return output+ inputs
 
     def init_model(self, param):
         self.weight_1.data.copy_(torch.from_numpy(param["weight_1"]))
