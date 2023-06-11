@@ -19,21 +19,20 @@ seq_len = 32
 class PoswiseFeedForwardNetPytorch(nn.Module):
     def __init__(self):
         super(PoswiseFeedForwardNetPytorch, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(d_model, d_ff, bias=False),
-            nn.ReLU(),
-            nn.Linear(d_ff, d_model, bias=False))
+        self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
+        self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
 
     # inputs: [batch_size, seq_len, d_model]
     def forward(self, inputs):
-        residual = inputs
-        output = self.fc(inputs)
+        output = torch.matmul(inputs, self.weight_1)  # [batch_size, seq_len, d_ff]
+        output = nn.ReLU()(output)
+        output = torch.matmul(output, self.weight_2)  # [batch_size, seq_len, d_model]
         # output = nn.LayerNorm(d_model)(output + residual)  # [batch_size, seq_len, d_model]
-        return output + residual
+        return output
 
     def init_model(self, param):
-        self.fc[0].weight.data.copy_(torch.from_numpy(param["weight_1"]))
-        self.fc[2].weight.data.copy_(torch.from_numpy(param["weight_2"]))
+        self.weight_1.data.copy_(torch.from_numpy(param["weight_1"]))
+        self.weight_2.data.copy_(torch.from_numpy(param["weight_2"]))
 
 
 class PoswiseFeedForwardNetArk():
@@ -47,9 +46,9 @@ class PoswiseFeedForwardNetArk():
     def forward(self, inputs):
         middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
         middle_result1 = self.model.matmul(middle_result, self.weight_2)
-        output = self.model.add(middle_result1, inputs)
+        # output = self.model.add(middle_result1, inputs)
         # output_layernorm = self.model.layer_norm(output)
-        return output
+        return middle_result1
 
     def init_model(self, param, exe):
         exe.tensor_memcpy_host_to_device(self.weight_1, param["weight_1"])
