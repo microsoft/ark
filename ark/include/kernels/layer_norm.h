@@ -31,7 +31,8 @@ struct LayerNorm
         UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static DEVICE void run(DataType *out, DataType *in, int tx, int ty, int tz)
+    static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
+                           int tw)
     {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
 
@@ -59,7 +60,7 @@ struct LayerNorm
             (tid_h + th * UnitOutShape::H) * InDims::W +
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
-
+        using ReduceType = ReduceTypeAvg;
         DataType reduced = ReduceType::template identity<DataType>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
@@ -80,8 +81,10 @@ template <typename InDims, typename InShape, typename OutDims,
           int SmemBytes>
 DEVICE void layer_norm(float *out, float *in, int tx, int ty, int tz)
 {
+    constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
-              SmemBytes, float, NelemPerThread>::run(out, in, tx, ty, tz);
+              SmemBytes, float, NelemPerThread>::run(out, in, tz / OutShape::C,
+                                                     tz % OutShape::C, tx, ty);
 }
 
 } // namespace ark

@@ -25,7 +25,7 @@ void test_layer_norm_internal(unsigned int n, unsigned int m, unsigned int k)
 
     //
     ark::Model model;
-    ark::Tensor *tns_x = model.tensor({m, n, k}, ark::FP16);
+    ark::Tensor *tns_x = model.tensor({m, n, k}, ark::FP32);
     ark::Tensor *tns_y = model.layer_norm(tns_x);
 
     //
