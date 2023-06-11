@@ -55,10 +55,6 @@ struct LayerNorm
         int tid_n = (tid * NelemPerThread) / ThreadsPerRow / UnitOutShape::H /
                     UnitOutShape::C;
 
-        int idx_out = (tid_h + th * UnitOutShape::H) * OutDims::W +
-                      (tid_c + tc * UnitOutShape::C) * OutDims::W * OutDims::H +
-                      (tid_n + tn * UnitOutShape::N) * OutDims::W * OutDims::H *
-                          OutDims::C;
         int idx_in_base =
             (tid_h + th * UnitOutShape::H) * InDims::W +
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
@@ -74,10 +70,8 @@ struct LayerNorm
 
         // final reduction on shared memory using warp shuffle.
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
-        reduced = ReduceType::postReduce(reduced, NelemPerThread);
-        if (tid % ThreadsPerRow == 0) {
-            out[idx_out] = reduced;
-        }
+        reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
+        printf("tid: %d, reduced: %f\n", tid, reduced);
     }
 };
 

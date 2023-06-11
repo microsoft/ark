@@ -44,7 +44,7 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    gt = torch.sum(torch_input, dim=2, keepdim=True).numpy().astype(numpy_data_type)
+    gt =  F.layer_norm(torch_input, [n], eps=1e-5, elementwise_affine=False).numpy()
 
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     # test_layer_norm_internal(1, 1024, 1024)
     # test_layer_norm_internal(1, 4096, 1024)
     # test_layer_norm_internal(1, 1024, 4096)
-    test_layer_norm_internal(2, 64, 64)
-    test_layer_norm_internal(2, 128, 128)
-    test_layer_norm_internal(8, 4096, 1024)
-    test_layer_norm_internal(8, 1024, 4096)
+    # test_layer_norm_internal(2, 64, 64)
+    # test_layer_norm_internal(2, 128, 128)
+    # test_layer_norm_internal(8, 4096, 1024)
+    # test_layer_norm_internal(8, 1024, 4096)

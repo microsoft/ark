@@ -193,6 +193,8 @@ const string SchedOp::func_string() const
         return this->func_string_recv_mm();
     } else if (this->op->type == OP_REDUCE) {
         return this->func_string_reduce();
+    } else if (this->op->type == OP_LAYER_NORM) {
+        return this->func_string_layer_norm();
     } else if (this->op->type == OP_SCALE) {
         return this->func_string_scale();
     } else if (this->op->type == OP_GELU) {
@@ -456,6 +458,33 @@ const string SchedOp::func_string_reduce() const
        << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
        << unit_out_shape << COM << axis << COM << this->cfg->num_warps * 32
        << COM << this->cfg->smem_bytes << '>';
+    return ss.str();
+}
+
+const string SchedOp::func_string_layer_norm() const
+{
+    CHECK(this->op->in_deps.size() == 1);
+
+    const Tensor *tns_in = this->op->in_deps[0];
+    const Tensor *tns_out = this->op->out_deps[0];
+
+    LOG(DEBUG, "func_string_layer_norm: ", tns_out->shape, " ", tns_out->ldims);
+
+    Dims shp_in = tns_in->shape;
+    Dims shp_out = tns_out->shape;
+
+    int ndims = shp_out.ndims();
+    CHECK(ndims < 4);
+
+    const OpTile &tile_out = this->cfg->out_deps_tiles[0];
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    stringstream ss;
+    ss << "ark::layer_norm<"
+       << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
+       << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
+       << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
+       << unit_out_shape << COM << this->cfg->num_warps * 32 << COM
+       << this->cfg->smem_bytes << '>';
     return ss.str();
 }
 

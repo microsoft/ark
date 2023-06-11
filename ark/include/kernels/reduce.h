@@ -197,7 +197,9 @@ struct Reduce
 
         // final reduction on shared memory using warp shuffle.
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
-        reduced = ReduceType::postReduce(reduced, NelemPerThread);
+        reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
+
+        // write the result to output.
         if (tid % ThreadsPerRow == 0) {
             out[idx_out] = reduced;
         }
