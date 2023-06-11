@@ -164,22 +164,18 @@ struct Reduce
         // Assume this division is always exact.
         static_assert((ThreadsNum * NelemPerThread) % NonReduceDimLength == 0);
         // If we reshape the input into a 2D matrix (NCH x W), ThreadsNum
-        // threads compute NCH rows, and each row's sum is computed by FinalDim
-        // threads. If FinalDim is larger than warp size, we need to use
-        // shared memory to reduce the result of each warp.
-        constexpr int FinalDim =
+        // threads compute NCH rows, and each row's sum is computed by
+        // ThreadsPerRow threads. If ThreadsPerRow is larger than warp size, we
+        // need to use shared memory to reduce the result of each warp.
+        constexpr int ThreadsPerRow =
             (ThreadsNum * NelemPerThread) / NonReduceDimLength;
-        // Shared memory
-        ReduceSharedStorage<DataType, ThreadsNum> *smem =
-            UnitOp::template shared_memory<
-                ReduceSharedStorage<DataType, ThreadsNum>>();
 
         int tid = UnitOp::thread_id();
-        int tid_w = (tid * NelemPerThread) % FinalDim;
-        int tid_h = ((tid * NelemPerThread) / FinalDim) % UnitOutShape::H;
-        int tid_c = ((tid * NelemPerThread) / FinalDim / UnitOutShape::H) %
+        int tid_w = (tid * NelemPerThread) % ThreadsPerRow;
+        int tid_h = ((tid * NelemPerThread) / ThreadsPerRow) % UnitOutShape::H;
+        int tid_c = ((tid * NelemPerThread) / ThreadsPerRow / UnitOutShape::H) %
                     UnitOutShape::C;
-        int tid_n = (tid * NelemPerThread) / FinalDim / UnitOutShape::H /
+        int tid_n = (tid * NelemPerThread) / ThreadsPerRow / UnitOutShape::H /
                     UnitOutShape::C;
 
         int idx_out = (tid_h + th * UnitOutShape::H) * OutDims::W +
@@ -191,25 +187,18 @@ struct Reduce
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
 
-        // smem->storage[tid] = ReduceType::template identity<DataType>();
         DataType reduced = ReduceType::template identity<DataType>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += FinalDim) {
+             idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            // DataType reduced = in[idx_in];
-            // #pragma unroll
-            //             for (int i = 1; i < NelemPerThread; i++) {
-            //                 reduced = ReduceType::reduce(reduced, in[idx_in +
-            //                 i]);
-            //             }
             reduced = ReduceType::reduce(reduced, in[idx_in]);
         }
         __syncthreads();
 
         // final reduction on shared memory using warp shuffle.
-        reduced = shfl<ReduceType, DataType, FinalDim>(reduced);
+        reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
         reduced = ReduceType::postReduce(reduced, NelemPerThread);
-        if (tid % FinalDim == 0) {
+        if (tid % ThreadsPerRow == 0) {
             out[idx_out] = reduced;
         }
     }
