@@ -1,5 +1,4 @@
 
-from transformer_pytorch import *
 from transformer_ark import *
 
 if __name__ == "__main__":
@@ -16,15 +15,15 @@ if __name__ == "__main__":
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
     exe.compile()
-    input_tensor_host = np.random.rand(
-        batch_size, seq_len, d_model).astype(np.float16)
+    input_tensor_host = ((np.random.rand(
+        batch_size, seq_len, d_model)-0.5)*0.1).astype(np.float16)
 
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
-    weight_1_host = np.random.rand(d_model, d_ff).astype(np.float16)
-    weight_2_host = np.random.rand(d_ff, d_model).astype(np.float16)
+    weight_1_host = ((np.random.rand(d_model, d_ff)-0.5)*0.1).astype(np.float16)
+    weight_2_host = ((np.random.rand(d_ff, d_model)-0.5)*0.1).astype(np.float16)
 
     param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
 
