@@ -92,7 +92,9 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     const OpConfig *cfg = &search->second[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);
     if (op->type == OP_LAYER_NORM) {
-
+        // The out_deps_tiles[0].y of the original config is 1, we need to make
+        // out_deps_tiles[0].y equal to the output last dimension size, which is
+        // also the dimension that the layer norm is performed.
         cfg_new->out_deps_tiles[0].y = output->shape[ndims - 1];
         LOG(DEBUG, "layer norm cfg: ", cfg_new->out_deps_tiles[0].x, COM,
             cfg_new->out_deps_tiles[0].y);

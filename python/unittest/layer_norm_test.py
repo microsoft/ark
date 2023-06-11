@@ -44,8 +44,8 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    gt = torch.sum(torch_input, dim=2, keepdim=True).numpy().astype(numpy_data_type)
-
+    # get the ground truth
+    gt = torch.nn.LayerNorm([n], eps=1e-5, elementwise_affine=False)(torch_input).numpy()
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))

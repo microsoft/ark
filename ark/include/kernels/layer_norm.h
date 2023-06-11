@@ -73,7 +73,24 @@ struct LayerNorm
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
         // get the average result.
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
-        printf("tid: %d, reduced: %f\n", tid, reduced);
+        float variance = 0.0f;
+        // get the variance
+        __syncthreads();
+        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
+             idx_in_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_in_w;
+            variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
+        }
+        __syncthreads();
+        variance = shfl<ReduceType, DataType, ThreadsPerRow>(variance);
+        variance = ReduceType::postReduce(variance, UnitOutShape::W) + 1e-5f;
+        __syncthreads();
+        // the output is (input - mean) / sqrt(variance)
+        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
+             idx_in_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_in_w;
+            out[idx_in] = (in[idx_in] - reduced) * rsqrtf(variance);
+        }
     }
 };
 
@@ -85,7 +102,7 @@ DEVICE void layer_norm(float *out, float *in, int tx, int ty, int tz)
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
               SmemBytes, float, NelemPerThread>::run(out, in, tz / OutShape::C,
-                                                     tz % OutShape::C, tx, ty);
+                                                     tz % OutShape::C, ty, tx);
 }
 
 } // namespace ark
