@@ -27,7 +27,7 @@ class PoswiseFeedForwardNetPytorch(nn.Module):
         output = torch.matmul(inputs, self.weight_1)  # [batch_size, seq_len, d_ff]
         output = nn.ReLU()(output)
         output = torch.matmul(output, self.weight_2)  # [batch_size, seq_len, d_model]
-        # output = nn.LayerNorm(d_model)(output + residual)  # [batch_size, seq_len, d_model]
+        # output = nn.LayerNorm(d_model)(output + inputs)  # [batch_size, seq_len, d_model]
         return output
 
     def init_model(self, param):
@@ -46,9 +46,9 @@ class PoswiseFeedForwardNetArk():
     def forward(self, inputs):
         middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
         middle_result1 = self.model.matmul(middle_result, self.weight_2)
-        # output = self.model.add(middle_result1, inputs)
+        output = self.model.add(middle_result1, inputs)
         # output_layernorm = self.model.layer_norm(output)
-        return middle_result1
+        return output
 
     def init_model(self, param, exe):
         exe.tensor_memcpy_host_to_device(self.weight_1, param["weight_1"])
