@@ -57,10 +57,8 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
 
 
 if __name__ == "__main__":
-    batch_size = 1
-    m = 32
-    n = 512
-    test_layer_norm_internal(1, 1024, 4)
+    test_layer_norm_internal(1, 32, 4, "half")
+    test_layer_norm_internal(1, 32, 512, "half")
     test_layer_norm_internal(1, 64, 4, "half")
     test_layer_norm_internal(1, 128, 128, "half")
     test_layer_norm_internal(1, 256, 256, "half")

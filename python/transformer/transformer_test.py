@@ -50,5 +50,9 @@ if __name__ == "__main__":
 
     # test if the result is correct
     assert np.allclose(output_tensor_host, gt)
+    print(input_tensor_host)
+    print(output_tensor_host)
+    print(gt)
+
     print("ark test success")
 
