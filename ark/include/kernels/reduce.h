@@ -193,7 +193,7 @@ struct Reduce
             int idx_in = idx_in_base + idx_in_w;
             reduced = ReduceType::reduce(reduced, in[idx_in]);
         }
-        __syncthreads();
+        ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);

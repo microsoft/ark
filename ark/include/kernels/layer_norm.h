@@ -67,7 +67,7 @@ struct LayerNorm
             int idx_in = idx_in_base + idx_in_w;
             reduced = ReduceType::reduce(reduced, in[idx_in]);
         }
-        __syncthreads();
+        ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
@@ -75,16 +75,16 @@ struct LayerNorm
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
         DataType variance = ReduceType::template identity<DataType>();
         // get the variance
-        __syncthreads();
+        ark::sync_warps<ThreadsNum>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
-        __syncthreads();
+        ark::sync_warps<ThreadsNum>();
         variance = shfl<ReduceType, DataType, ThreadsPerRow>(variance);
         variance = ReduceType::postReduce(variance, UnitOutShape::W) + 1e-5f;
-        __syncthreads();
+        ark::sync_warps<ThreadsNum>();
         // the output is (input - mean) / sqrt(variance)
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
