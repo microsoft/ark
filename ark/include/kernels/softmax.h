@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_KERNELS_LAYER_NORM_H_
-#define ARK_KERNELS_LAYER_NORM_H_
+#ifndef ARK_KERNELS_softmax_H_
+#define ARK_KERNELS_softmax_H_
 
 #include "reduce.h"
 
 namespace ark {
 
 // Static checkers if InShape can be reduced into OutShape.
-template <typename InShape, typename OutShape> struct LayerNormShapeChecker
+template <typename InShape, typename OutShape> struct SoftmaxShapeChecker
 {
     static_assert(InShape::N == OutShape::N,
                   "Dimension N of input and output do not match");
@@ -25,7 +25,7 @@ template <typename InShape, typename OutShape> struct LayerNormShapeChecker
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
           int SmemBytes, typename DataType, int NelemPerThread>
-struct LayerNorm
+struct Softmax
 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
@@ -34,7 +34,7 @@ struct LayerNorm
     static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
                            int tw)
     {
-        using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
+        using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
 
         constexpr int NonReduceDimLength =
             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
@@ -73,7 +73,7 @@ struct LayerNorm
         reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
         // get the average result.
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
-        DataType variance = ReduceType::template identity<DataType>();
+        float variance = 0.0f;
         // get the variance
         __syncthreads();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
@@ -97,27 +97,14 @@ struct LayerNorm
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
           int SmemBytes>
-DEVICE void layer_norm(float *out, float *in, int tx, int ty, int tz)
+DEVICE void softmax(float *out, float *in, int tx, int ty, int tz)
 {
     constexpr int NelemPerThread = 1;
-    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
-              SmemBytes, float, NelemPerThread>::run(out, in, tz / OutShape::C,
-                                                     tz % OutShape::C, ty, tx);
-}
-
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutShape, int ThreadsNum,
-          int SmemBytes>
-DEVICE void layer_norm(ark::half *out, ark::half *in, int tx, int ty, int tz)
-{
-    constexpr int NelemPerThread = 1;
-    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
-              SmemBytes, ark::half, NelemPerThread>::run(out, in,
-                                                         tz / OutShape::C,
-                                                         tz % OutShape::C, ty,
-                                                         tx);
+    Softmax<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
+            SmemBytes, float, NelemPerThread>::run(out, in, tz / OutShape::C,
+                                                   tz % OutShape::C, ty, tx);
 }
 
 } // namespace ark
 
-#endif // ARK_KERNELS_LAYER_NORM_H_
+#endif // ARK_KERNELS_softmax_H_

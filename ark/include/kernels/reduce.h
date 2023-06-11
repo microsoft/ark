@@ -94,7 +94,7 @@ struct ReduceTypeMax
     {
         // TODO: implement
         static_assert(false, "ReduceTypeMax is not implemented");
-        return 0;
+        return (DataType)0;
     }
     template <typename DataType>
     static DEVICE DataType reduce(const DataType &a, const DataType &b)
@@ -112,7 +112,7 @@ struct ReduceTypeAvg
 {
     template <typename DataType> static DEVICE DataType identity()
     {
-        return 0;
+        return (DataType)0;
     }
     template <typename DataType>
     static DEVICE DataType reduce(const DataType &a, const DataType &b)
@@ -122,7 +122,7 @@ struct ReduceTypeAvg
     template <typename DataType>
     static DEVICE DataType postReduce(const DataType &a, int nelem = 1)
     {
-        return a / nelem;
+        return (DataType)(a / nelem);
     }
 };
 
