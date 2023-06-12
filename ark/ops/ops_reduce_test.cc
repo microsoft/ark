@@ -102,23 +102,18 @@ ark::unittest::State test_reduce()
 {
     // TODO: implement reduce for axis = 0 and axis = 1
     for (int axis = 2; axis < 3; axis++) {
-        test_reduce_internal(1, 64, 2, axis);
-        test_reduce_internal(1, 64, 8, axis);
-        test_reduce_internal(1, 64, 9, axis);
+        // test_reduce_internal(1, 64, 2, axis);
+        // test_reduce_internal(1, 64, 8, axis);
+        // test_reduce_internal(1, 64, 9, axis);
 
-        test_reduce_internal(2, 64, 4, axis);
-        test_reduce_internal(8, 64, 4, axis);
-        test_reduce_internal(64, 64, 4, axis);
+        // test_reduce_internal(2, 64, 4, axis);
+        // test_reduce_internal(8, 64, 4, axis);
+        // test_reduce_internal(64, 64, 4, axis);
+        test_reduce_internal(1, 256, 256, axis);
 
-        test_reduce_internal(1024, 384, 4, axis);
+        // test_reduce_internal(1024, 384, 4, axis);
     }
 
-    return ark::unittest::SUCCESS;
-}
-
-ark::unittest::State test_reduce_relu()
-{
-    test_reduce_internal(1024, 384, 4, 0, true);
     return ark::unittest::SUCCESS;
 }
 

@@ -5,6 +5,8 @@
 #define ARK_KERNELS_REDUCE_H_
 
 #include "transform.h"
+// #define PRINT(...) printf(__VA_ARGS__)
+#define PRINT(...)
 
 namespace ark {
 
@@ -52,16 +54,19 @@ DEVICE DType warpReduce(DType val)
 
 // Reduce single-precision `val` within multiple warps.
 template <typename ReduceType, typename DType, typename UnitOp, int LanesNum>
-DEVICE DType warpsReduce(DType val, int laneId)
+DEVICE DType warpsReduce(DType val, int tid)
 {
     val = warpReduce<ReduceType, DType, LanesNum>(val);
+    PRINT("tid: %d, val: %f\n", tid, (float)val);
     if (LanesNum > 32) {
-        printf("LanesNum : %d\n", LanesNum);
         ReduceSharedStorage<DType> *shared =
             UnitOp::template shared_memory<ReduceSharedStorage<DType>>();
-        int warpId = laneId >> 5;
-        if (laneId == 0)
+        int laneId = tid & 31;
+        int warpId = tid >> 5;
+        if (laneId == 0) {
+            PRINT("warpId: %d, val: %f\n", warpId, (float)val);
             shared->storage[warpId] = val;
+        }
         ark::sync_warps<LanesNum>();
         val = (laneId < (LanesNum >> 5))
                   ? shared->storage[laneId]
@@ -190,7 +195,6 @@ struct Reduce
         // need to use shared memory to reduce the result of each warp.
         constexpr int ThreadsPerRow =
             (ThreadsNum * NelemPerThread) / NonReduceDimLength;
-
         int tid = UnitOp::thread_id();
         int tid_w = (tid * NelemPerThread) % ThreadsPerRow;
         int tid_h = ((tid * NelemPerThread) / ThreadsPerRow) % UnitOutShape::H;
@@ -217,8 +221,9 @@ struct Reduce
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow>(
-            reduced, tid);
+        reduced =
+            warpsReduce<ReduceType, DataType, UnitOp, ThreadsNum>(reduced,
+            tid);
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
 
         // write the result to output.

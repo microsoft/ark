@@ -49,10 +49,10 @@ def test_reduce_internal(batch_size, m, n, data_type="float"):
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
-    # np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
-    print(input_tensor_host)
-    print(output_tensor_host)
-    print(gt)
+    np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
+    # print(input_tensor_host)
+    # print(output_tensor_host)
+    # print(gt)
     print("reduce test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
 
 
@@ -61,8 +61,8 @@ if __name__ == "__main__":
     m = 32
     n = 512
     # test_reduce_internal(1, 64, 4, "half")
-    test_reduce_internal(1, 128, 128, "half")
-    # test_reduce_internal(1, 256, 256, "half")
+    # test_reduce_internal(1, 128, 128, "half")
+    test_reduce_internal(1, 256, 256, "half")
     # test_reduce_internal(1, 512, 512, "half")
 
     # test_reduce_internal(1, 64, 4)

@@ -70,8 +70,8 @@ struct LayerNorm
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow>(
-            reduced, tid);
+        reduced =
+            warpsReduce<ReduceType, DataType, UnitOp, ThreadsNum>(reduced, tid);
         // get the average result.
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
         DataType variance = ReduceType::template identity<DataType>();
@@ -83,7 +83,7 @@ struct LayerNorm
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
         ark::sync_warps<ThreadsNum>();
-        variance = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow>(
+        variance = warpsReduce<ReduceType, DataType, UnitOp, ThreadsNum>(
             variance, tid);
         variance = ReduceType::postReduce(variance, UnitOutShape::W) + 1e-5f;
         ark::sync_warps<ThreadsNum>();
