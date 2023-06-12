@@ -73,7 +73,7 @@ if [ $? != 0 ]; then
     # Download and build KaHyPar
     test -e $WRK/kahypar
     if [ $? != 0 ]; then
-        ex "cd $ARKDIR && git submodule update --init --recursive"
+        ex "cd $ARKDIR/third_party && git clone https://github.com/kahypar/kahypar && cd kahypar && git checkout fdb9ae7049e797fa23d41c974c09b53d4bbfc243"
         ex "cp -r $ARKDIR/third_party/kahypar $WRK"
     fi
     ex "cd $WRK/kahypar"

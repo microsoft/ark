@@ -109,7 +109,7 @@ unittest: $(UBIN) $(UBIN_OPS)
 submodules:
 	@git submodule update --init --recursive
 
-kahypar: | submodules
+kahypar:
 	@ARKDIR=$(ARKDIR) BDIR=$(BDIR) ./scripts/build_kahypar.sh
 
 cutlass: | submodules
