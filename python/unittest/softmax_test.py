@@ -1,8 +1,12 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 import ark
 
 import torch
 import torch.nn.functional as F
 import numpy as np
+
 
 def test_softmax_internal(batch_size, m, n, data_type="float"):
     ark.init()
@@ -15,17 +19,13 @@ def test_softmax_internal(batch_size, m, n, data_type="float"):
     elif data_type == "half":
         ark_data_type = ark.TensorType.FP16
         numpy_data_type = np.float16
-    input_tensor = model.tensor(
-        ark.Dims(batch_size, m, n), ark_data_type
-    )
+    input_tensor = model.tensor(ark.Dims(batch_size, m, n), ark_data_type)
 
     output_tensor = model.softmax(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_softmax_test")
     exe.compile()
-    input_tensor_host = np.random.rand(batch_size, m, n).astype(
-        numpy_data_type
-    )
+    input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
@@ -35,7 +35,8 @@ def test_softmax_internal(batch_size, m, n, data_type="float"):
     exe.stop()
 
     output_tensor_host = np.zeros(
-        (batch_size, m, n), dtype=numpy_data_type,
+        (batch_size, m, n),
+        dtype=numpy_data_type,
     )
 
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
@@ -53,7 +54,21 @@ def test_softmax_internal(batch_size, m, n, data_type="float"):
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("softmax test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
+    print(
+        "softmax test ",
+        "batch_size:",
+        batch_size,
+        "m:",
+        m,
+        "n:",
+        n,
+        "data_type:",
+        data_type,
+        "max error: ",
+        max_error,
+        "avg error: ",
+        avg_error,
+    )
 
 
 if __name__ == "__main__":
