@@ -10,7 +10,7 @@ namespace ark {
 
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
-DEVICE DType shfl(DType val)
+DEVICE DType warpReduce(DType val)
 {
     if (LanesNum >= 32) {
         val = ReduceType::reduce(
@@ -23,10 +23,6 @@ DEVICE DType shfl(DType val)
                                  (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
-        if (LanesNum > 32) {
-            // TODO: if the reduce is done by multiple warps, we need to use
-            // shared memory to reduce the result of each warp.
-        }
         return val;
     } else {
         if (LanesNum > 16)
@@ -46,6 +42,19 @@ DEVICE DType shfl(DType val)
                 val, (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
         return val;
     }
+}
+
+// Reduce single-precision `val` within multiple warps.
+template <typename ReduceType, typename DType, int LanesNum>
+DEVICE DType warpsReduce(DType val)
+{
+    val = warpReduce<ReduceType, DType, LanesNum>(val);
+    if (LanesNum > 32) {
+        // TODO: if the reduce is done by multiple warps, we need to use
+        // shared memory to reduce the result of each warp.
+    }
+
+    return val;
 }
 
 // Static checkers if InShape can be reduced into OutShape.
@@ -200,7 +209,7 @@ struct Reduce
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        reduced = shfl<ReduceType, DataType, ThreadsPerRow>(reduced);
+        reduced = warpsReduce<ReduceType, DataType, ThreadsPerRow>(reduced);
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
 
         // write the result to output.
