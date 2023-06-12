@@ -5,8 +5,6 @@
 #define ARK_KERNELS_REDUCE_H_
 
 #include "transform.h"
-// #define PRINT(...) printf(__VA_ARGS__)
-#define PRINT(...)
 
 namespace ark {
 
@@ -58,14 +56,12 @@ template <typename ReduceType, typename DType, typename UnitOp, int LanesNum,
 DEVICE DType warpsReduce(DType val, int tid)
 {
     val = warpReduce<ReduceType, DType, LanesNum>(val);
-    PRINT("tid: %d, val: %f\n", tid, (float)val);
     if (LanesNum > 32) {
         ReduceSharedStorage<DType> *shared =
             UnitOp::template shared_memory<ReduceSharedStorage<DType>>();
         int laneId = tid & 31;
         int warpId = tid >> 5;
         if (laneId == 0) {
-            PRINT("warpId: %d, val: %f\n", warpId, (float)val);
             shared->storage[warpId] = val;
         }
         ark::sync_warps<ThreadsNum>();
