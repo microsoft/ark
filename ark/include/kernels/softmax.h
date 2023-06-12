@@ -60,38 +60,41 @@ struct Softmax
             (tid_h + th * UnitOutShape::H) * InDims::W +
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
-        using ReduceType = ReduceTypeAvg;
-        DataType reduced = ReduceType::template identity<DataType>();
+
+        // get the max input.
+        DataType max_input = ReduceTypeMax::template identity<DataType>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            reduced = ReduceType::reduce(reduced, in[idx_in]);
+            max_input = ReduceTypeMax::reduce(max_input, in[idx_in]);
         }
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow,
-                              ThreadsNum>(reduced, tid);
-        // get the average result.
-        reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
-        DataType variance = ReduceType::template identity<DataType>();
-        // get the variance
+        max_input = warpsReduce<ReduceTypeMax, DataType, UnitOp, ThreadsPerRow,
+                                ThreadsNum>(max_input, tid);
+        // get the max input.
+        max_input = ReduceTypeMax::postReduce(max_input, UnitOutShape::W);
+
+        // get the exp input sum, use float to avoid overflow.
+        DataType exp_sum_input = ReduceTypeSum::template identity<DataType>();
         ark::sync_warps<ThreadsNum>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
+            exp_sum_input = exp_sum_input + expf(in[idx_in] - max_input);
         }
         ark::sync_warps<ThreadsNum>();
-        variance = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow,
-                               ThreadsNum>(variance, tid);
-        variance = ReduceType::postReduce(variance, UnitOutShape::W) + 1e-5f;
+        exp_sum_input =
+            warpsReduce<ReduceTypeSum, DataType, UnitOp, ThreadsPerRow,
+                        ThreadsNum>(exp_sum_input, tid);
+        exp_sum_input = ReduceTypeSum::postReduce(exp_sum_input);
         ark::sync_warps<ThreadsNum>();
-        // the output is (input - mean) / sqrt(variance)
+        // the output is
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = (in[idx_in] - reduced) * rsqrtf(variance);
+            out[idx_in] = expf(in[idx_in] - max_input) / exp_sum_input;
         }
     }
 };

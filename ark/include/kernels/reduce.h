@@ -122,9 +122,11 @@ struct ReduceTypeMax
 {
     template <typename DataType> static DEVICE DataType identity()
     {
-        // TODO: implement
-        static_assert(false, "ReduceTypeMax is not implemented");
-        return (DataType)0;
+        // if (std::is_same<DataType, float>::value)
+        //     return (DataType)-0x7f800000;
+        // else if (std::is_same<DataType, ark::half>::value)
+        //     return (DataType)-65504.0f;
+        return (DataType)(-10000.0f);
     }
     template <typename DataType>
     static DEVICE DataType reduce(const DataType &a, const DataType &b)
