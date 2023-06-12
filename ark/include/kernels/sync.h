@@ -99,7 +99,7 @@ template <int ThreadsPerWarpGroup> DEVICE void sync_warps()
     if (ThreadsPerWarpGroup == 32) {
         __syncwarp();
     } else if (ThreadsPerWarpGroup == 64) {
-        asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6)));
+        asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6) + 8));
     } else if (ThreadsPerWarpGroup == 128) {
         asm volatile("barrier.sync %0, 128;" ::"r"((threadIdx.x >> 7) + 8));
     } else if (ThreadsPerWarpGroup == 256) {

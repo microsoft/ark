@@ -53,7 +53,8 @@ DEVICE DType warpReduce(DType val)
 }
 
 // Reduce single-precision `val` within multiple warps.
-template <typename ReduceType, typename DType, typename UnitOp, int LanesNum>
+template <typename ReduceType, typename DType, typename UnitOp, int LanesNum,
+          int ThreadsNum>
 DEVICE DType warpsReduce(DType val, int tid)
 {
     val = warpReduce<ReduceType, DType, LanesNum>(val);
@@ -67,7 +68,7 @@ DEVICE DType warpsReduce(DType val, int tid)
             PRINT("warpId: %d, val: %f\n", warpId, (float)val);
             shared->storage[warpId] = val;
         }
-        ark::sync_warps<LanesNum>();
+        ark::sync_warps<ThreadsNum>();
         val = (laneId < (LanesNum >> 5))
                   ? shared->storage[laneId]
                   : ReduceType::template identity<DType>();
@@ -221,9 +222,8 @@ struct Reduce
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        reduced =
-            warpsReduce<ReduceType, DataType, UnitOp, ThreadsNum>(reduced,
-            tid);
+        reduced = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow,
+                              ThreadsNum>(reduced, tid);
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
 
         // write the result to output.
