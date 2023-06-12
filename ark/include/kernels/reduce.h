@@ -12,7 +12,7 @@ namespace ark {
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType shfl(DType val)
 {
-    if (LanesNum == 32) {
+    if (LanesNum >= 32) {
         val = ReduceType::reduce(
             val, (DType)__shfl_xor_sync(0xffffffff, val, 16, 32));
         val = ReduceType::reduce(
@@ -23,6 +23,10 @@ DEVICE DType shfl(DType val)
                                  (DType)__shfl_xor_sync(0xffffffff, val, 2, 4));
         val = ReduceType::reduce(val,
                                  (DType)__shfl_xor_sync(0xffffffff, val, 1, 2));
+        if (LanesNum > 32) {
+            // TODO: if the reduce is done by multiple warps, we need to use
+            // shared memory to reduce the result of each warp.
+        }
         return val;
     } else {
         if (LanesNum > 16)
