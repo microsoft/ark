@@ -143,6 +143,9 @@ PYBIND11_MODULE(ark, m)
         .def("layer_norm", &ark::Model::layer_norm,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "layer_norm")
+        .def("softmax", &ark::Model::softmax,
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "softmax")
         .def("transpose", &ark::Model::transpose,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("perm"), py::arg("output") = nullptr,

@@ -170,6 +170,7 @@ typedef enum
     OP_MERGE,
     OP_REDUCE,
     OP_LAYER_NORM,
+    OP_SOFTMAX,
     OP_SCALE,
     OP_GELU,
     OP_MATMUL,
@@ -291,6 +292,8 @@ class Model
                    bool is_relu = false, const std::string &name = "reduce");
     Tensor *layer_norm(Tensor *input, Tensor *output = nullptr,
                        const std::string &name = "layer_norm");
+    Tensor *softmax(Tensor *input, Tensor *output = nullptr,
+                    const std::string &name = "softmax");
     Tensor *transpose(Tensor *input, Dims perm, Tensor *output = nullptr,
                       const std::string &name = "transpose");
     Tensor *matmul(Tensor *input, Tensor *other, Tensor *output = nullptr,

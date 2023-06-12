@@ -91,12 +91,12 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     }
     const OpConfig *cfg = &search->second[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);
-    if (op->type == OP_LAYER_NORM) {
+    if (op->type == OP_LAYER_NORM || op->type == OP_SOFTMAX) {
         // The out_deps_tiles[0].y of the original config is 1, we need to make
         // out_deps_tiles[0].y equal to the output last dimension size, which is
-        // also the dimension that the layer norm is performed.
+        // also the dimension that the layer norm or softmax is performed.
         cfg_new->out_deps_tiles[0].y = output->shape[ndims - 1];
-        LOG(DEBUG, "layer norm cfg: ", cfg_new->out_deps_tiles[0].x, COM,
+        LOG(DEBUG, "op cfg: ", cfg_new->out_deps_tiles[0].x, COM,
             cfg_new->out_deps_tiles[0].y);
     }
     return cfg_new;
@@ -205,6 +205,8 @@ const string SchedOp::func_string() const
         return this->func_string_reduce();
     } else if (this->op->type == OP_LAYER_NORM) {
         return this->func_string_layer_norm();
+    } else if (this->op->type == OP_SOFTMAX) {
+        return this->func_string_softmax();
     } else if (this->op->type == OP_SCALE) {
         return this->func_string_scale();
     } else if (this->op->type == OP_GELU) {
@@ -490,6 +492,33 @@ const string SchedOp::func_string_layer_norm() const
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
     stringstream ss;
     ss << "ark::layer_norm<"
+       << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
+       << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
+       << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
+       << unit_out_shape << COM << this->cfg->num_warps * 32 << COM
+       << this->cfg->smem_bytes << '>';
+    return ss.str();
+}
+
+const string SchedOp::func_string_softmax() const
+{
+    CHECK(this->op->in_deps.size() == 1);
+
+    const Tensor *tns_in = this->op->in_deps[0];
+    const Tensor *tns_out = this->op->out_deps[0];
+
+    LOG(DEBUG, "func_string_softmax: ", tns_out->shape, " ", tns_out->ldims);
+
+    Dims shp_in = tns_in->shape;
+    Dims shp_out = tns_out->shape;
+
+    int ndims = shp_out.ndims();
+    CHECK(ndims < 4);
+
+    const OpTile &tile_out = this->cfg->out_deps_tiles[0];
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    stringstream ss;
+    ss << "ark::softmax<"
        << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
        << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
        << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"

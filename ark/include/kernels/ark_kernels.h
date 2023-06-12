@@ -25,6 +25,7 @@ extern __shared__ int _ARK_SMEM[];
 #include "matmul.h"
 #include "reduce.h"
 #include "smem.h"
+#include "softmax.h"
 #include "sync.h"
 #include "transpose.h"
 
