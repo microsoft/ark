@@ -8,6 +8,12 @@
 
 namespace ark {
 
+// Shared memory for reduction.
+template <typename DataType> struct ReduceSharedStorage
+{
+    DataType storage[32];
+};
+
 /* Reduce single-precision `val` within a single warp. */
 template <typename ReduceType, typename DType, int LanesNum>
 DEVICE DType warpReduce(DType val)
@@ -45,13 +51,24 @@ DEVICE DType warpReduce(DType val)
 }
 
 // Reduce single-precision `val` within multiple warps.
-template <typename ReduceType, typename DType, int LanesNum>
+template <typename ReduceType, typename DType, typename UnitOp, int LanesNum>
 DEVICE DType warpsReduce(DType val)
 {
     val = warpReduce<ReduceType, DType, LanesNum>(val);
     if (LanesNum > 32) {
         // TODO: if the reduce is done by multiple warps, we need to use
         // shared memory to reduce the result of each warp.
+        ReduceSharedStorage<DType> *shared =
+            UnitOp::template shared_memory<ReduceSharedStorage<DType>>();
+        int laneId = threadIdx.x & 0x1f;
+        int warpId = threadIdx.x >> 5;
+        if (laneId == 0)
+            shared->storage[warpId] = val;
+        __syncthreads();
+        val = (laneId < (LanesNum >> 5))
+                  ? shared->storage[laneId]
+                  : ReduceType::template identity<DType>();
+        val = warpReduce<ReduceType, DType, 32>(val);
     }
 
     return val;
@@ -139,13 +156,6 @@ struct ReduceTypeAvg
     }
 };
 
-// Shared memory for reduction.
-template <typename DataType, int ThreadsNum> struct ReduceSharedStorage
-{
-    // static const int WarpsNum = ThreadsNum / Arch::ThreadsPerWarp;
-    DataType storage[ThreadsNum];
-};
-
 // Reduce one dimension of input into output.
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
@@ -209,7 +219,8 @@ struct Reduce
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceType, DataType, ThreadsPerRow>(reduced);
+        reduced =
+            warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow>(reduced);
         reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
 
         // write the result to output.
