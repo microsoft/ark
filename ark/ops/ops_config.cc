@@ -252,6 +252,9 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 128, {{4, 1}}, {{4, 1}}, false, false},
          {1, 128, {{2, 1}}, {{2, 1}}, false, false},
          {1, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {2, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
     {{OP_LAYER_NORM, OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
@@ -262,6 +265,9 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 128, {{4, 1}}, {{4, 1}}, false, false},
          {1, 128, {{2, 1}}, {{2, 1}}, false, false},
          {1, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {2, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
     {{OP_LAYER_NORM, OP_ARCH_CUDA_70, OP_PREC_FP32},
      {
@@ -272,6 +278,9 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 128, {{4, 1}}, {{4, 1}}, false, false},
          {1, 128, {{2, 1}}, {{2, 1}}, false, false},
          {1, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {2, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
     {{OP_LAYER_NORM, OP_ARCH_CUDA_80, OP_PREC_FP32},
      {
@@ -282,6 +291,9 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 128, {{4, 1}}, {{4, 1}}, false, false},
          {1, 128, {{2, 1}}, {{2, 1}}, false, false},
          {1, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {2, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, false, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
     {{OP_SCALE, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
