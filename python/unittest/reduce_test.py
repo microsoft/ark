@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-def test_layer_norm_internal(batch_size, m, n, data_type="float"):
+def test_reduce_internal(batch_size, m, n, data_type="float"):
     ark.init()
 
     # Create a Model instance
@@ -19,9 +19,9 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
         ark.Dims(batch_size, m, n), ark_data_type
     )
 
-    output_tensor = model.layer_norm(input_tensor, 2)
+    output_tensor = model.reduce(input_tensor, 2)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_layer_norm_test")
+    exe = ark.Executor(0, 0, 1, model, "ops_reduce_test")
     exe.compile()
     input_tensor_host = np.random.rand(batch_size, m, n).astype(
         numpy_data_type
@@ -44,7 +44,7 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    gt =  F.layer_norm(torch_input, [n], eps=1e-5, elementwise_affine=False).numpy()
+    gt =  torch.sum(torch_input, dim=2, keepdim=True).numpy()
 
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
@@ -53,27 +53,27 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("layer_norm test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
+    print("reduce test ", "batch_size:", batch_size, "m:", m, "n:", n, "data_type:", data_type, "max error: ", max_error, "avg error: ", avg_error)
 
 
 if __name__ == "__main__":
     batch_size = 1
     m = 32
     n = 512
-    # test_layer_norm_internal(1, 1024, 4)
-    # test_layer_norm_internal(1, 64, 4, "half")
-    # test_layer_norm_internal(1, 128, 128, "half")
-    # test_layer_norm_internal(1, 256, 256, "half")
-    # test_layer_norm_internal(1, 512, 512, "half")
+    test_reduce_internal(1, 1024, 4)
+    test_reduce_internal(1, 64, 4, "half")
+    test_reduce_internal(1, 128, 128, "half")
+    test_reduce_internal(1, 256, 256, "half")
+    test_reduce_internal(1, 512, 512, "half")
 
-    # test_layer_norm_internal(1, 64, 4)
-    # test_layer_norm_internal(1, 128, 128)
-    # test_layer_norm_internal(1, 256, 256)
-    # test_layer_norm_internal(1, 512, 512)
-    # test_layer_norm_internal(1, 1024, 1024)
-    # test_layer_norm_internal(1, 4096, 1024)
-    # test_layer_norm_internal(1, 1024, 4096)
-    # test_layer_norm_internal(2, 64, 64)
-    # test_layer_norm_internal(2, 128, 128)
-    # test_layer_norm_internal(8, 4096, 1024)
-    # test_layer_norm_internal(8, 1024, 4096)
+    test_reduce_internal(1, 64, 4)
+    test_reduce_internal(1, 128, 128)
+    test_reduce_internal(1, 256, 256)
+    test_reduce_internal(1, 512, 512)
+    test_reduce_internal(1, 1024, 1024)
+    test_reduce_internal(1, 4096, 1024)
+    test_reduce_internal(1, 1024, 4096)
+    test_reduce_internal(2, 64, 64)
+    test_reduce_internal(2, 128, 128)
+    test_reduce_internal(8, 4096, 1024)
+    test_reduce_internal(8, 1024, 4096)
