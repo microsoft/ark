@@ -287,8 +287,8 @@ const string SchedOp::func_string_matmul() const
     int ndims_in_s = shp_in_s.ndims();
     if (ndims_in_l > 2) {
         for (int i = 2; i < ndims_in_s; ++i) {
-            DimType dim_l = shp_in_l[ndims_in_l - i];
-            DimType dim_s = shp_in_s[ndims_in_s - i];
+            DimType dim_l = shp_in_l[ndims_in_l - i - 1];
+            DimType dim_s = shp_in_s[ndims_in_s - i - 1];
             CHECK((dim_l == dim_s) || (dim_l == 1) || (dim_s == 1));
         }
     }

@@ -86,22 +86,22 @@ def test_ScaledDotProductAttention():
     # Create a Model instance
     model = ark.Model()
 
-    Q = model.tensor(ark.Dims(batch_size, seq_len, d_k), ark.TensorType.FP16)
-    K = model.tensor(ark.Dims(batch_size, seq_len, d_k), ark.TensorType.FP16)
-    V = model.tensor(ark.Dims(batch_size, seq_len, d_v), ark.TensorType.FP16)
+    Q = model.tensor(ark.Dims(batch_size,n_heads, seq_len, d_k), ark.TensorType.FP16)
+    K = model.tensor(ark.Dims(batch_size,n_heads, seq_len, d_k), ark.TensorType.FP16)
+    V = model.tensor(ark.Dims(batch_size,n_heads, seq_len, d_v), ark.TensorType.FP16)
 
     ark_model = ScaledDotProductAttentionArk(model)
-    context, attn = ark_model.forward(Q, K, V)
+    scores = ark_model.forward(Q, K, V)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
     exe.compile()
-    Q_host = ((np.random.rand(batch_size, seq_len, d_k) - 0.5) * 0.1).astype(
+    Q_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5) * 0.1).astype(
         np.float16
     )
-    K_host = ((np.random.rand(batch_size, seq_len, d_k) - 0.5) * 0.1).astype(
+    K_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5) * 0.1).astype(
         np.float16
     )
-    V_host = ((np.random.rand(batch_size, seq_len, d_v) - 0.5) * 0.1).astype(
+    V_host = ((np.random.rand(batch_size,n_heads, seq_len, d_v) - 0.5) * 0.1).astype(
         np.float16
     )
 
@@ -113,10 +113,10 @@ def test_ScaledDotProductAttention():
     exe.run(1)
     exe.stop()
 
-    context_host = np.zeros((batch_size, seq_len, d_v), dtype=np.float16)
-    attn = np.zeros((batch_size, seq_len, seq_len), dtype=np.float16)
+    context_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
+    attn = np.zeros((batch_size,n_heads, seq_len, seq_len), dtype=np.float16)
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
+    # exe.tensor_memcpy_device_to_host(context_host, context)
 
     torch_Q = torch.from_numpy(Q_host.astype(np.float32))
     torch_K = torch.from_numpy(K_host.astype(np.float32))
@@ -124,12 +124,8 @@ def test_ScaledDotProductAttention():
 
     torch_model = ScaledDotProductAttention()
 
-    gt = (
-        torch_model(torch_Q, torch_K, torch_V)
-        .detach()
-        .numpy()
-        .astype(np.float16)
-    )
+    gt = torch_model(torch_Q, torch_K, torch_V)
+        
 
     # test if the result is correct
     # max_error = np.max(np.abs(output_tensor_host - gt))
@@ -141,5 +137,5 @@ def test_ScaledDotProductAttention():
 
 
 if __name__ == "__main__":
-    test_poswise_feed_forward_net()
-    # test_ScaledDotProductAttention()
+    # test_poswise_feed_forward_net()
+    test_ScaledDotProductAttention()

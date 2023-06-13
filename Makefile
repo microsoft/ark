@@ -150,6 +150,9 @@ $(BDIR)/include/kernels/cutlass/%: $(ARKDIR)/third_party/cutlass/include/cutlass
 install:
 	@ARKDIR=$(ARKDIR) ARK_ROOT=$(ARK_ROOT) BDIR=$(BDIR) ./scripts/install.sh
 
+python:
+	ARK_ROOT=$(ARK_ROOT) python python/setup.py build_ext
+
 clean:
 	rm -rf $(BDIR)
 	cd third_party && $(MAKE) clean

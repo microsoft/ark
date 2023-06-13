@@ -88,12 +88,36 @@ class ScaledDotProductAttentionArk:
         self.model = model
 
     def forward(self, Q, K, V, attn_mask=None):
-        K_transpose = self.model.transpose(K, ark.Dims(0,2, 1))
-        print(K_transpose.shape())
-        scores = self.model.matmul(Q, K_transpose)
+        # Q: [batch_size, n_heads, len_q, d_k]
+        # K: [batch_size, n_heads, len_k, d_k]
+        # V: [batch_size, n_heads, len_v(=len_k), d_v]
+
+        K_transpose = self.model.transpose(K, ark.Dims(0, 1, 3, 2))
+
+        # reshape K_transpose to [batch_size * n_heads, d_k, len_k]
+        K_transpose_shape = K_transpose.shape()
+        K_transpose_reshape = self.model.reshape(K_transpose, ark.Dims(
+            K_transpose_shape[0]*K_transpose_shape[1], K_transpose_shape[2], K_transpose_shape[3]))
+        
+        # reshape Q to [batch_size * n_heads, len_q, d_k]
+        Q_shape = Q.shape()
+        Q_reshape = self.model.reshape(Q, ark.Dims(
+            Q_shape[0]*Q_shape[1], Q_shape[2], Q_shape[3]))
+
+        # scores: [batch_size * n_heads, len_q, len_k]
+        print(Q_reshape.shape(), K_transpose_reshape.shape())
+        scores = self.model.matmul(Q_reshape, K_transpose_reshape)
+        print(scores.shape())
         scores = self.model.scale(scores, 1 / np.sqrt(d_k))
+        
         if attn_mask is not None:
             scores = self.model.add(scores, attn_mask, alpha=-1e9)
         attn = self.model.softmax(scores)
-        context = self.model.matmul(scores, V)
+
+        # reshape V to [batch_size * n_heads, len_v, d_v]
+        V_shape = V.shape()
+        V_reshape = self.model.reshape(V, ark.Dims(
+            V_shape[0]*V_shape[1], V_shape[2], V_shape[3]))
+
+        context = self.model.matmul(scores, V_reshape)
         return context, attn
