@@ -88,7 +88,8 @@ class ScaledDotProductAttentionArk:
         self.model = model
 
     def forward(self, Q, K, V, attn_mask=None):
-        K_transpose = self.model.transpose(K, perm=[0, 1, 3, 2])
+        K_transpose = self.model.transpose(K, ark.Dims(0,2, 1))
+        print(K_transpose.shape())
         scores = self.model.matmul(Q, K_transpose)
         scores = self.model.scale(scores, 1 / np.sqrt(d_k))
         if attn_mask is not None:

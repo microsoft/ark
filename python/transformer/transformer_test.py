@@ -141,5 +141,5 @@ def test_ScaledDotProductAttention():
 
 
 if __name__ == "__main__":
-    # test_poswise_feed_forward_net()
-    test_ScaledDotProductAttention()
+    test_poswise_feed_forward_net()
+    # test_ScaledDotProductAttention()
