@@ -95,13 +95,13 @@ def test_ScaledDotProductAttention():
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
     exe.compile()
-    Q_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5) * 0.1).astype(
+    Q_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5)).astype(
         np.float16
     )
-    K_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5) * 0.1).astype(
+    K_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5)).astype(
         np.float16
     )
-    V_host = ((np.random.rand(batch_size,n_heads, seq_len, d_v) - 0.5) * 0.1).astype(
+    V_host = ((np.random.rand(batch_size,n_heads, seq_len, d_v) - 0.5)).astype(
         np.float16
     )
 
@@ -113,10 +113,13 @@ def test_ScaledDotProductAttention():
     exe.run(1)
     exe.stop()
 
-    context_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
-    attn = np.zeros((batch_size,n_heads, seq_len, seq_len), dtype=np.float16)
+    # context_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
+    # attn_host = np.zeros((batch_size,n_heads, seq_len, seq_len), dtype=np.float16)
+    scores_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
 
     # exe.tensor_memcpy_device_to_host(context_host, context)
+    # exe.tensor_memcpy_device_to_host(attn_host, attn)
+    exe.tensor_memcpy_device_to_host(scores_host, scores)
 
     torch_Q = torch.from_numpy(Q_host.astype(np.float32))
     torch_K = torch.from_numpy(K_host.astype(np.float32))
@@ -124,9 +127,22 @@ def test_ScaledDotProductAttention():
 
     torch_model = ScaledDotProductAttention()
 
-    gt = torch_model(torch_Q, torch_K, torch_V)
-        
+    scores = torch_model(torch_Q, torch_K, torch_V)
 
+    # gt_context = context_torch.detach().numpy().astype(np.float16)
+    # gt_attn = attn_torch.detach().numpy().astype(np.float16)
+    gt_scores = scores.detach().numpy().astype(np.float16)
+
+    # print(context_host)
+    # print(gt_context)
+    # print("attn_host")
+    # print(attn_host)
+    # print("gt_attn")
+    # print(gt_attn)
+    print("scores_host")
+    print(scores_host)
+    print("gt_scores")
+    print(gt_scores)
     # test if the result is correct
     # max_error = np.max(np.abs(output_tensor_host - gt))
     # avg_error = np.mean(np.abs(output_tensor_host - gt))
