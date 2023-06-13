@@ -5,6 +5,7 @@
 #define ARK_KERNELS_REDUCE_H_
 
 #include "transform.h"
+#include <cfloat>
 
 namespace ark {
 
@@ -122,11 +123,10 @@ struct ReduceTypeMax
 {
     template <typename DataType> static DEVICE DataType identity()
     {
-        // if (std::is_same<DataType, float>::value)
-        //     return (DataType)-0x7f800000;
-        // else if (std::is_same<DataType, ark::half>::value)
-        //     return (DataType)-65504.0f;
-        return (DataType)(-10000.0f);
+        static const float HALF_FLT_MAX = 65504.F;
+        DataType ret = DataType(
+            (std::is_same<DataType, half>::value) ? -HALF_FLT_MAX : -FLT_MAX);
+        return ret;
     }
     template <typename DataType>
     static DEVICE DataType reduce(const DataType &a, const DataType &b)
