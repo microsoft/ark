@@ -28,6 +28,9 @@ Tensor *Model::reduce(Tensor *input, DimType axis, Tensor *output, bool is_relu,
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
+    } else if (output == input) {
+        LOGERR(
+            "output tensor cannot be the same as input tensor for reduce op");
     }
     this->create_op(OP_REDUCE, pt, {input}, {output}, {is_relu, axis}, name);
     return output;

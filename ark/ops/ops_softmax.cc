@@ -25,6 +25,8 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type);
+    } else if (output == input) {
+        output = this->identity(output);
     }
     this->create_op(OP_SOFTMAX, pt, {input}, {output}, {}, name);
     return output;
