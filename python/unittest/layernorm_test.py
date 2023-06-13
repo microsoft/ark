@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 
 
-def test_layer_norm_internal(batch_size, m, n, data_type="float"):
+def test_layernorm_internal(batch_size, m, n, data_type="float"):
     ark.init()
 
     # Create a Model instance
@@ -21,9 +21,9 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
         numpy_data_type = np.float16
     input_tensor = model.tensor(ark.Dims(batch_size, m, n), ark_data_type)
 
-    output_tensor = model.layer_norm(input_tensor)
+    output_tensor = model.layernorm(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_layer_norm_test")
+    exe = ark.Executor(0, 0, 1, model, "ops_layernorm_test")
     exe.compile()
     input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
 
@@ -57,7 +57,7 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
     # print(output_tensor_host)
     # print(gt)
     print(
-        "layer_norm test ",
+        "layernorm test ",
         "batch_size:",
         batch_size,
         "m:",
@@ -74,21 +74,21 @@ def test_layer_norm_internal(batch_size, m, n, data_type="float"):
 
 
 if __name__ == "__main__":
-    test_layer_norm_internal(1, 32, 4, "half")
-    test_layer_norm_internal(1, 32, 512, "half")
-    test_layer_norm_internal(1, 64, 4, "half")
-    test_layer_norm_internal(1, 128, 128, "half")
-    test_layer_norm_internal(1, 256, 256, "half")
-    test_layer_norm_internal(1, 512, 512, "half")
+    test_layernorm_internal(1, 32, 4, "half")
+    test_layernorm_internal(1, 32, 512, "half")
+    test_layernorm_internal(1, 64, 4, "half")
+    test_layernorm_internal(1, 128, 128, "half")
+    test_layernorm_internal(1, 256, 256, "half")
+    test_layernorm_internal(1, 512, 512, "half")
 
-    test_layer_norm_internal(1, 8, 4)
-    test_layer_norm_internal(1, 128, 128)
-    test_layer_norm_internal(1, 256, 256)
-    test_layer_norm_internal(1, 512, 512)
-    test_layer_norm_internal(1, 1024, 1024)
-    test_layer_norm_internal(1, 4096, 1024)
-    test_layer_norm_internal(1, 1024, 4096)
-    test_layer_norm_internal(2, 64, 64)
-    test_layer_norm_internal(2, 128, 128)
-    test_layer_norm_internal(8, 4096, 1024)
-    test_layer_norm_internal(8, 1024, 4096)
+    test_layernorm_internal(1, 8, 4)
+    test_layernorm_internal(1, 128, 128)
+    test_layernorm_internal(1, 256, 256)
+    test_layernorm_internal(1, 512, 512)
+    test_layernorm_internal(1, 1024, 1024)
+    test_layernorm_internal(1, 4096, 1024)
+    test_layernorm_internal(1, 1024, 4096)
+    test_layernorm_internal(2, 64, 64)
+    test_layernorm_internal(2, 128, 128)
+    test_layernorm_internal(8, 4096, 1024)
+    test_layernorm_internal(8, 1024, 4096)

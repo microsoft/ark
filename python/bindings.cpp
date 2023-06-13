@@ -141,9 +141,9 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("output") = nullptr,
              py::arg("is_relu") = false, py::arg("name") = "reduce")
-        .def("layer_norm", &ark::Model::layer_norm,
+        .def("layernorm", &ark::Model::layernorm,
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("output") = nullptr, py::arg("name") = "layer_norm")
+             py::arg("output") = nullptr, py::arg("name") = "layernorm")
         .def("softmax", &ark::Model::softmax,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "softmax")

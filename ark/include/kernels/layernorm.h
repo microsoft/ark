@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_KERNELS_LAYER_NORM_H_
-#define ARK_KERNELS_LAYER_NORM_H_
+#ifndef ARK_KERNELS_LAYERNORM_H_
+#define ARK_KERNELS_LAYERNORM_H_
 
 #include "reduce.h"
 
@@ -99,7 +99,7 @@ struct LayerNorm
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
           int SmemBytes>
-DEVICE void layer_norm(float *out, float *in, int tx, int ty, int tz)
+DEVICE void layernorm(float *out, float *in, int tx, int ty, int tz)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
@@ -110,7 +110,7 @@ DEVICE void layer_norm(float *out, float *in, int tx, int ty, int tz)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
           int SmemBytes>
-DEVICE void layer_norm(ark::half *out, ark::half *in, int tx, int ty, int tz)
+DEVICE void layernorm(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
@@ -122,4 +122,4 @@ DEVICE void layer_norm(ark::half *out, ark::half *in, int tx, int ty, int tz)
 
 } // namespace ark
 
-#endif // ARK_KERNELS_LAYER_NORM_H_
+#endif // ARK_KERNELS_LAYERNORM_H_

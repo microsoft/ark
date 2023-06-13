@@ -460,7 +460,7 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
         }
         assert((sop.get_op()->type == OP_MATMUL) ||
                (sop.get_op()->type == OP_REDUCE) ||
-               (sop.get_op()->type == OP_LAYER_NORM) ||
+               (sop.get_op()->type == OP_LAYERNORM) ||
                (sop.get_op()->type == OP_SOFTMAX) ||
                (sop.get_op()->type == OP_SCALE) ||
                (sop.get_op()->type == OP_GELU) ||
@@ -568,7 +568,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
                 }
                 assert((sop.get_op()->type == OP_MATMUL) ||
                        (sop.get_op()->type == OP_REDUCE) ||
-                       (sop.get_op()->type == OP_LAYER_NORM) ||
+                       (sop.get_op()->type == OP_LAYERNORM) ||
                        (sop.get_op()->type == OP_SOFTMAX) ||
                        (sop.get_op()->type == OP_ADD) ||
                        (sop.get_op()->type == OP_MUL) ||

@@ -243,7 +243,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 128, {{1, 1}}, {{1, 1}}, false, false},
          {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
-    {{OP_LAYER_NORM, OP_ARCH_CUDA_70, OP_PREC_FP16},
+    {{OP_LAYERNORM, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, 1}}, {{32, 1}}, false, false},
@@ -256,7 +256,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 128, {{1, 1}}, {{1, 1}}, false, false},
          {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
-    {{OP_LAYER_NORM, OP_ARCH_CUDA_80, OP_PREC_FP16},
+    {{OP_LAYERNORM, OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, 1}}, {{32, 1}}, false, false},
@@ -269,7 +269,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 128, {{1, 1}}, {{1, 1}}, false, false},
          {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
-    {{OP_LAYER_NORM, OP_ARCH_CUDA_70, OP_PREC_FP32},
+    {{OP_LAYERNORM, OP_ARCH_CUDA_70, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, 1}}, {{32, 1}}, false, false},
@@ -282,7 +282,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 128, {{1, 1}}, {{1, 1}}, false, false},
          {8, 128, {{1, 1}}, {{1, 1}}, false, false},
      }},
-    {{OP_LAYER_NORM, OP_ARCH_CUDA_80, OP_PREC_FP32},
+    {{OP_LAYERNORM, OP_ARCH_CUDA_80, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, 1}}, {{32, 1}}, false, false},

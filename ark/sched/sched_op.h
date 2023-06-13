@@ -46,7 +46,7 @@ class SchedOp
     const std::string func_string_send_mm() const;
     const std::string func_string_recv_mm() const;
     const std::string func_string_reduce() const;
-    const std::string func_string_layer_norm() const;
+    const std::string func_string_layernorm() const;
     const std::string func_string_softmax() const;
     const std::string func_string_scale() const;
     const std::string func_string_gelu() const;

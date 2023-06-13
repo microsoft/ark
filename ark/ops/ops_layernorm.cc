@@ -8,10 +8,10 @@ using namespace std;
 
 namespace ark {
 
-Tensor *Model::layer_norm(Tensor *input, Tensor *output, const string &name)
+Tensor *Model::layernorm(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "layer_norm ", input->shape, " ", input->ldims, " ");
+    LOG(DEBUG, "layernorm ", input->shape, " ", input->ldims, " ");
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -26,7 +26,7 @@ Tensor *Model::layer_norm(Tensor *input, Tensor *output, const string &name)
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type);
     }
-    this->create_op(OP_LAYER_NORM, pt, {input}, {output}, {}, name);
+    this->create_op(OP_LAYERNORM, pt, {input}, {output}, {}, name);
     return output;
 }
 
