@@ -101,7 +101,6 @@ class ScaledDotProductAttentionArk:
         Q_reshape = self.model.reshape(Q, ark.Dims(
             Q_shape[0]*Q_shape[1], Q_shape[2], Q_shape[3]))
         # scores: [batch_size * n_heads, len_q, len_k]
-        print(Q_reshape.shape(), K_transpose_reshape.shape())
         scores = self.model.matmul(Q_reshape, K_transpose_reshape)
         scores_scale = self.model.scale(scores, 1 / np.sqrt(d_k))
         # if attn_mask is not None:
@@ -113,5 +112,5 @@ class ScaledDotProductAttentionArk:
         V_reshape = self.model.reshape(V, ark.Dims(
             V_shape[0]*V_shape[1], V_shape[2], V_shape[3]))
 
-        context = self.model.matmul(scores, V_reshape)
+        context = self.model.matmul(attn, V_reshape)
         return context, attn

@@ -133,19 +133,14 @@ def test_ScaledDotProductAttention():
 
     gt_context = context_torch.detach().numpy().astype(np.float16)
     gt_attn = attn_torch.detach().numpy().astype(np.float16)
-    print(context_host)
-    print(gt_context)
-    print(attn_host)
-    print(gt_attn)
-   
-    # test if the result is correct
-    # max_error = np.max(np.abs(output_tensor_host - gt))
-    # avg_error = np.mean(np.abs(output_tensor_host - gt))
-    # print(input_tensor_host)
-    # print(output_tensor_host)
-    # print(gt)
-    # print("transformer test ", "batch_size:", batch_size, "seq_len:", seq_len, "d_model:", d_model, "d_ff:", d_ff, "max error: ", max_error, "avg error: ", avg_error)
-
+    
+    context_max_error = np.max(np.abs(context_host - gt_context))
+    context_avg_error = np.mean(np.abs(context_host - gt_context))
+    attn_max_error = np.max(np.abs(attn_host - gt_attn))
+    attn_avg_error = np.mean(np.abs(attn_host - gt_attn))
+    print("scaled dot product attention test") 
+    print("batch_size:", batch_size, "seq_len:", seq_len, "d_model:", d_model, "d_ff:", d_ff)
+    print("max context error: ", context_max_error, "avg context error: ", context_avg_error, "max attn error: ", attn_max_error, "avg attn error: ", attn_avg_error)
 
 if __name__ == "__main__":
     # test_poswise_feed_forward_net()
