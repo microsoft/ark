@@ -59,27 +59,12 @@ def test_poswise_feed_forward_net():
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
-    print(input_tensor_host)
-    print(output_tensor_host)
-    print(gt)
-    print(
-        "transformer test ",
-        "batch_size:",
-        batch_size,
-        "seq_len:",
-        seq_len,
-        "d_model:",
-        d_model,
-        "d_ff:",
-        d_ff,
-        "max error: ",
-        max_error,
-        "avg error: ",
-        avg_error,
-    )
-
-    print("ark test success")
-
+    # print(input_tensor_host)
+    # print(output_tensor_host)
+    # print(gt)
+    print("poswise feed forward net test")
+    print("batch_size:", batch_size, "seq_len:", seq_len, "d_model:", d_model, "d_ff:", d_ff)
+    print("max error: ", max_error , "avg error: ", avg_error)
 
 def test_ScaledDotProductAttention():
     ark.init()
@@ -143,5 +128,5 @@ def test_ScaledDotProductAttention():
     print("max context error: ", context_max_error, "avg context error: ", context_avg_error, "max attn error: ", attn_max_error, "avg attn error: ", attn_avg_error)
 
 if __name__ == "__main__":
-    # test_poswise_feed_forward_net()
+    test_poswise_feed_forward_net()
     test_ScaledDotProductAttention()
