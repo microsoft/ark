@@ -75,7 +75,6 @@ class ScaledDotProductAttention(nn.Module):
         # attn_mask: [batch_size, n_heads, seq_len, seq_len]
         scores = torch.matmul(Q, K.transpose(-1, -2)) / np.sqrt(d_k)
          # scores : [batch_size, n_heads, len_q, len_k]
-        return scores
         if attn_mask is not None:
             scores.masked_fill_(attn_mask, -1e9)
         attn = nn.Softmax(dim=-1)(scores)
@@ -105,10 +104,9 @@ class ScaledDotProductAttentionArk:
         print(Q_reshape.shape(), K_transpose_reshape.shape())
         scores = self.model.matmul(Q_reshape, K_transpose_reshape)
         scores_scale = self.model.scale(scores, 1 / np.sqrt(d_k))
-        return scores_scale
-        if attn_mask is not None:
-            scores = self.model.add(scores, attn_mask, alpha=-1e9)
-        attn = self.model.softmax(scores)
+        # if attn_mask is not None:
+        #     scores = self.model.add(scores, attn_mask, alpha=-1e9)
+        attn = self.model.softmax(scores_scale)
 
         # reshape V to [batch_size * n_heads, len_v, d_v]
         V_shape = V.shape()
