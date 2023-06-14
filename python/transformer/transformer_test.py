@@ -1,8 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from transformer_pytorch import *
-from transformer_ark import *
+import transformer_pytorch
+import transformer_ark
 from transformer_utils import *
 
 
@@ -16,7 +16,7 @@ def test_poswise_feed_forward_net():
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
 
-    ark_model = PoswiseFeedForwardNetArk(model)
+    ark_model = transformer_ark.PoswiseFeedForwardNet(model)
     output_tensor = ark_model.forward(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
@@ -52,7 +52,7 @@ def test_poswise_feed_forward_net():
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    torch_model = PoswiseFeedForwardNetPytorch()
+    torch_model = transformer_pytorch.PoswiseFeedForwardNet()
 
     torch_model.init_model(param)
 
@@ -81,7 +81,7 @@ def test_ScaledDotProductAttention():
     V = model.tensor(ark.Dims(batch_size, n_heads,
                      seq_len, d_v), ark.TensorType.FP16)
 
-    ark_model = ScaledDotProductAttentionArk(model)
+    ark_model = transformer_ark.ScaledDotProductAttention(model)
     context, attn = ark_model.forward(Q, K, V)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
@@ -114,7 +114,7 @@ def test_ScaledDotProductAttention():
     torch_K = torch.from_numpy(K_host.astype(np.float32))
     torch_V = torch.from_numpy(V_host.astype(np.float32))
 
-    torch_model = ScaledDotProductAttention()
+    torch_model = transformer_pytorch.ScaledDotProductAttention()
 
     context_torch, attn_torch = torch_model(torch_Q, torch_K, torch_V)
 

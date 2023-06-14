@@ -3,7 +3,7 @@
 
 from transformer_utils import *
 
-class PoswiseFeedForwardNetArk:
+class PoswiseFeedForwardNet:
     def __init__(self, model):
         self.model = model
         self.weight_1 = model.tensor(
@@ -28,7 +28,7 @@ class PoswiseFeedForwardNetArk:
 
 
 
-class ScaledDotProductAttentionArk:
+class ScaledDotProductAttention:
     def __init__(self, model):
         self.model = model
 

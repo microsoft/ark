@@ -3,9 +3,9 @@
 
 from transformer_utils import *
 
-class PoswiseFeedForwardNetPytorch(nn.Module):
+class PoswiseFeedForwardNet(nn.Module):
     def __init__(self):
-        super(PoswiseFeedForwardNetPytorch, self).__init__()
+        super(PoswiseFeedForwardNet, self).__init__()
         self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
         self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
 
