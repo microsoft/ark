@@ -1,7 +1,9 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from transformer_pytorch import *
 from transformer_ark import *
+from transformer_utils import *
 
 
 def test_poswise_feed_forward_net():
