@@ -458,6 +458,17 @@ DEVICE void _transpose(float *out, float *in, int tx, int ty, int tz)
                                                   tz % OutShape::C, ty, tx);
 }
 
+template <typename InDims, typename OutDims, typename OutShape,
+          typename UnitOutShape, int ThreadsNum, int SmemBytes,
+          typename Transpose>
+DEVICE void _transpose(ark::half *out, ark::half *in, int tx, int ty, int tz)
+{
+    constexpr int NelemPerThread = 1;
+    Ewise1<InDims, OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+           Transpose, ark::half, NelemPerThread>::run(out, in, tz / OutShape::C,
+                                                      tz % OutShape::C, ty, tx);
+}
+
 #define _DEC_TRANSPOSE(tp_type)                                                \
     template <typename InDims, typename OutDims, typename OutShape,            \
               typename UnitOutShape, int ThreadsNum, int SmemBytes,            \

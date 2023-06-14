@@ -166,6 +166,7 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 0, {{1, 1}}, {{64, 128}}, true, false},
          {4, 0, {{1, 1}}, {{128, 64}}, true, false},
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
      }},
     {{OP_TRANSPOSE, OP_ARCH_CUDA_80, OP_PREC_FP32},
      {
@@ -174,6 +175,25 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 0, {{1, 1}}, {{64, 128}}, true, false},
          {4, 0, {{1, 1}}, {{128, 64}}, true, false},
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
+     }},
+    {{OP_TRANSPOSE, OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
+     }},
+    {{OP_TRANSPOSE, OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
      }},
     {{OP_MATMUL, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
@@ -358,7 +378,6 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 0, {{4, 64}}, {{4, 64}}, false, false},
          {1, 0, {{2, 64}}, {{2, 64}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
-         {1, 0, {{1, 32}}, {{1, 32}}, false, false},
      }},
     {{OP_SCALE, OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
@@ -374,7 +393,6 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {1, 0, {{4, 64}}, {{4, 64}}, false, false},
          {1, 0, {{2, 64}}, {{2, 64}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
-         {1, 0, {{1, 32}}, {{1, 32}}, false, false},
      }},
     {{OP_GELU, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {

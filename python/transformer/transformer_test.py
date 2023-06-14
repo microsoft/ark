@@ -3,6 +3,7 @@
 
 from transformer_ark import *
 
+
 def test_poswise_feed_forward_net():
     ark.init()
 
@@ -86,22 +87,25 @@ def test_ScaledDotProductAttention():
     # Create a Model instance
     model = ark.Model()
 
-    Q = model.tensor(ark.Dims(batch_size,n_heads, seq_len, d_k), ark.TensorType.FP16)
-    K = model.tensor(ark.Dims(batch_size,n_heads, seq_len, d_k), ark.TensorType.FP16)
-    V = model.tensor(ark.Dims(batch_size,n_heads, seq_len, d_v), ark.TensorType.FP16)
+    Q = model.tensor(ark.Dims(batch_size, n_heads,
+                     seq_len, d_k), ark.TensorType.FP16)
+    K = model.tensor(ark.Dims(batch_size, n_heads,
+                     seq_len, d_k), ark.TensorType.FP16)
+    V = model.tensor(ark.Dims(batch_size, n_heads,
+                     seq_len, d_v), ark.TensorType.FP16)
 
     ark_model = ScaledDotProductAttentionArk(model)
     scores = ark_model.forward(Q, K, V)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
     exe.compile()
-    Q_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5)).astype(
+    Q_host = ((np.random.rand(batch_size, n_heads, seq_len, d_k) - 0.5)).astype(
         np.float16
     )
-    K_host = ((np.random.rand(batch_size,n_heads, seq_len, d_k) - 0.5)).astype(
+    K_host = ((np.random.rand(batch_size, n_heads, seq_len, d_k) - 0.5)).astype(
         np.float16
     )
-    V_host = ((np.random.rand(batch_size,n_heads, seq_len, d_v) - 0.5)).astype(
+    V_host = ((np.random.rand(batch_size, n_heads, seq_len, d_v) - 0.5)).astype(
         np.float16
     )
 
@@ -115,7 +119,8 @@ def test_ScaledDotProductAttention():
 
     # context_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
     # attn_host = np.zeros((batch_size,n_heads, seq_len, seq_len), dtype=np.float16)
-    scores_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
+    scores_host = np.zeros(
+        (batch_size, n_heads, seq_len, d_v), dtype=np.float16)
 
     # exe.tensor_memcpy_device_to_host(context_host, context)
     # exe.tensor_memcpy_device_to_host(attn_host, attn)
@@ -131,14 +136,19 @@ def test_ScaledDotProductAttention():
 
     # gt_context = context_torch.detach().numpy().astype(np.float16)
     # gt_attn = attn_torch.detach().numpy().astype(np.float16)
-    gt_scores = scores.detach().numpy().astype(np.float16)
-
+    gt_scores = scores.detach().numpy()
+    print(gt_scores.shape)
     # print(context_host)
     # print(gt_context)
     # print("attn_host")
     # print(attn_host)
     # print("gt_attn")
     # print(gt_attn)
+    print("Q_host")
+    print(Q_host)
+    print("K_host")
+    print(K_host)
+
     print("scores_host")
     print(scores_host)
     print("gt_scores")

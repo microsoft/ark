@@ -68,7 +68,6 @@ struct LayerNorm
             reduced = ReduceType::reduce(reduced, in[idx_in]);
         }
         ark::sync_warps<ThreadsNum>();
-
         // final reduction on shared memory using warp shuffle.
         reduced = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow,
                               ThreadsNum>(reduced, tid);
