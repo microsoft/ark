@@ -16,7 +16,7 @@ CXX      := g++
 CXXFLAGS := -std=c++14 -Wall -Wextra -fPIC
 INCLUDE  := -I $(CUDIR)/include -I $(ARKDIR) -I $(ARKDIR)/third_party
 INCLUDE  += -I $(ARKDIR)/third_party/cutlass/include
-LDLIBS   := -lcuda -lnvidia-ml -lnvrtc -lpthread -lrt -libverbs -lnuma
+LDLIBS   := -lcuda -lnvidia-ml -lnvrtc -lpthread -lrt -libverbs -lgdrapi -lnuma
 LDFLAGS  := -L $(CUDIR)/lib64/stubs -Wl,-rpath,$(CUDIR)/lib64
 MACROS   :=
 

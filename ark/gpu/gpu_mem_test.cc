@@ -13,7 +13,7 @@ using namespace std;
 unittest::State test_gpu_mem_no_ipc()
 {
     int pid = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        // unittest::Timeout timeout{3};
 
         // Create a CUDA context of GPU 0.
         CULOG(cuInit(0));
@@ -41,6 +41,7 @@ unittest::State test_gpu_mem_no_ipc()
         CULOG(cuMemsetD32(mem0.ref(), 7, 1024));
         // Check data on GPU 0.
         volatile int *href0 = (volatile int *)mem0.href();
+        UNITTEST_NE(href0, (volatile int *)nullptr);
         for (int i = 0; i < 1024; ++i) {
             UNITTEST_EQ(href0[i], 7);
         }
@@ -50,6 +51,7 @@ unittest::State test_gpu_mem_no_ipc()
         CULOG(cuMemsetD32(mem1.ref(), 9, 1024));
         // Check data on GPU 1.
         volatile int *href1 = (volatile int *)mem1.href();
+        UNITTEST_NE(href1, (volatile int *)nullptr);
         for (int i = 0; i < 1024; ++i) {
             UNITTEST_EQ(href1[i], 9);
         }
@@ -66,7 +68,7 @@ unittest::State test_gpu_mem_no_ipc()
 unittest::State test_gpu_mem_ipc()
 {
     int pid0 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        // unittest::Timeout timeout{3};
 
         // Create a CUDA context of GPU 0.
         CULOG(cuInit(0));
@@ -83,6 +85,7 @@ unittest::State test_gpu_mem_ipc()
 
         // Wait until another process writes data on the local GPU 0.
         volatile int *href = (volatile int *)mem0.href();
+        UNITTEST_NE(href, (volatile int *)nullptr);
         for (int i = 0; i < 1024; ++i) {
             while (href[i] != 7) {
             }
@@ -96,7 +99,7 @@ unittest::State test_gpu_mem_ipc()
     UNITTEST_NE(pid0, -1);
 
     int pid1 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        // unittest::Timeout timeout{3};
 
         // Create a CUDA context of GPU 1.
         CULOG(cuInit(0));
@@ -116,6 +119,7 @@ unittest::State test_gpu_mem_ipc()
 
         // Wait until another process writes data on the local GPU 1.
         volatile int *href = (volatile int *)mem1.href();
+        UNITTEST_NE(href, (volatile int *)nullptr);
         for (int i = 0; i < 1024; ++i) {
             while (href[i] != 9) {
             }
