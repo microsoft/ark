@@ -3,6 +3,18 @@
 
 from transformer_utils import *
 
+def get_attn_pad_mask(seq_q, seq_k):                                # seq_q: [batch_size, seq_len] ,seq_k: [batch_size, seq_len]
+    batch_size, len_q = seq_q.size()
+    batch_size, len_k = seq_k.size()
+    pad_attn_mask = seq_k.data.eq(0).unsqueeze(1)                   # 判断 输入那些含有P(=0),用1标记 ,[batch_size, 1, len_k]
+    return pad_attn_mask.expand(batch_size, len_q, len_k)           # 扩展成多维度
+
+
+def get_attn_subsequence_mask(seq):                                 # seq: [batch_size, tgt_len]
+    attn_shape = [seq.size(0), seq.size(1), seq.size(1)]
+    subsequence_mask = np.triu(np.ones(attn_shape), k=1)            # 生成上三角矩阵,[batch_size, tgt_len, tgt_len]
+    subsequence_mask = torch.from_numpy(subsequence_mask).byte()    # [batch_size, tgt_len, tgt_len]
+    return subsequence_mask
 
 class PoswiseFeedForwardNet(nn.Module):
     def __init__(self):

@@ -3,6 +3,18 @@
 
 from transformer_utils import *
 
+def attn_pad_mask_init(attention_mask, exe, seq_k_len):
+    # attention_mask: [batch_size * n_heads, len_q, len_k]
+    attention_mask_shape = attention_mask.shape()
+    attention_mask_host = np.zeros((attention_mask_shape[0], attention_mask_shape[1], attention_mask_shape[2]), dtype=np.float16)
+    for i in range(attention_mask_shape[0]):
+        for j in range(attention_mask_shape[1]):
+            for k in range(attention_mask_shape[2]):
+                if k >= seq_k_len:
+                    attention_mask_host[i][j][k] = -1000
+
+    exe.tensor_memcpy_host_to_device(attention_mask, attention_mask_host)
+    
 
 class PoswiseFeedForwardNet:
     def __init__(self, model):
@@ -48,7 +60,7 @@ class ScaledDotProductAttention:
         scores = self.model.matmul(Q_reshape, K_transpose_reshape)
         scores_scale = self.model.scale(scores, 1 / np.sqrt(d_k))
         if attn_mask is not None:
-            scores_scale = self.model.add(scores_scale, attn_mask, alpha=-1e9)
+            scores_scale = self.model.add(scores_scale, attn_mask)
         attn = self.model.softmax(scores_scale)
 
         # reshape V to [batch_size * n_heads, len_v, d_v]
