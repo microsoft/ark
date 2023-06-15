@@ -116,10 +116,6 @@ class MultiHeadAttention():
         # V: [batch_size, n_heads, len_v(=len_k), d_v]
         V = self.model.transpose(V, ark.Dims(0, 2, 1, 3))
 
-        if attn_mask is not None:
-            # TODO: attn_mask
-            pass
-
         context, attn = self.scaled_dot_product_attention.forward(
             Q, K, V, attn_mask)
 

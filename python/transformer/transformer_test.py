@@ -71,7 +71,7 @@ def test_poswise_feed_forward_net():
 
 
 def test_ScaledDotProductAttention():
-    # The number of input tokens is 10, the number of output tokens is 20
+    # The number of input tokens is 10
     input_seq_len = 10
     ark.init()
 
@@ -156,6 +156,8 @@ def test_ScaledDotProductAttention():
 
 
 def test_MultiHeadAttention():
+    # The number of input tokens is 10
+    input_seq_len = 10
     ark.init()
 
     # Create a Model instance
@@ -169,7 +171,11 @@ def test_MultiHeadAttention():
                      ark.TensorType.FP16)
 
     ark_model = transformer_ark.MultiHeadAttention(model)
-    context, attn = ark_model.forward(Q, K, V)
+
+    attn_mask = model.tensor(
+        ark.Dims(batch_size * n_heads, seq_len, seq_len), ark.TensorType.FP16)
+
+    context, attn = ark_model.forward(Q, K, V, attn_mask)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
     exe.compile()
@@ -203,7 +209,8 @@ def test_MultiHeadAttention():
     exe.tensor_memcpy_host_to_device(Q, Q_host)
     exe.tensor_memcpy_host_to_device(K, K_host)
     exe.tensor_memcpy_host_to_device(V, V_host)
-
+    transformer_ark.attn_pad_mask_init(
+        attn_mask, exe, input_seq_len)
     exe.run(1)
     exe.stop()
 
@@ -221,8 +228,15 @@ def test_MultiHeadAttention():
 
     torch_model = transformer_pytorch.MultiHeadAttention()
     torch_model.init_model(param)
-
-    context_torch, attn_torch = torch_model(torch_Q, torch_K, torch_V)
+    input_seq = np.zeros((batch_size, seq_len), dtype=np.int32)
+    for i in range(batch_size):
+        for j in range(seq_len):
+            if j < input_seq_len:
+                input_seq[i][j] = 1
+    input_seq_torch = torch.from_numpy(input_seq)
+    attn_mask_torch = transformer_pytorch.get_attn_pad_mask(
+        input_seq_torch, input_seq_torch)
+    context_torch, attn_torch = torch_model(torch_Q, torch_K, torch_V, attn_mask_torch)
 
     gt_context = context_torch.detach().numpy().astype(np.float16)
     # gt_context = gt_context.reshape(batch_size*n_heads* seq_len* d_v)
