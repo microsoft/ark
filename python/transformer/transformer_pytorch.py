@@ -6,13 +6,13 @@ from transformer_utils import *
 def get_attn_pad_mask(seq_q, seq_k):                                # seq_q: [batch_size, seq_len] ,seq_k: [batch_size, seq_len]
     batch_size, len_q = seq_q.size()
     batch_size, len_k = seq_k.size()
-    pad_attn_mask = seq_k.data.eq(0).unsqueeze(1)                   # 判断 输入那些含有P(=0),用1标记 ,[batch_size, 1, len_k]
-    return pad_attn_mask.expand(batch_size, len_q, len_k)           # 扩展成多维度
+    pad_attn_mask = seq_k.data.eq(0).unsqueeze(1)                   # mark seq_k that contain P (=0) with 1 ,[batch_size, 1, len_k]
+    return pad_attn_mask.expand(batch_size, len_q, len_k)           # expand into multiple dimensions
 
 
 def get_attn_subsequence_mask(seq):                                 # seq: [batch_size, tgt_len]
     attn_shape = [seq.size(0), seq.size(1), seq.size(1)]
-    subsequence_mask = np.triu(np.ones(attn_shape), k=1)            # 生成上三角矩阵,[batch_size, tgt_len, tgt_len]
+    subsequence_mask = np.triu(np.ones(attn_shape), k=1)            # generate an upper triangular matrix, [batch_size, tgt_len, tgt_len]
     subsequence_mask = torch.from_numpy(subsequence_mask).byte()    # [batch_size, tgt_len, tgt_len]
     return subsequence_mask
 
@@ -109,3 +109,18 @@ class MultiHeadAttention(nn.Module):
             torch.from_numpy(param["W_V"].transpose(1, 0)))
         self.fc.weight.data.copy_(
             torch.from_numpy(param["fc"].transpose(1, 0)))
+
+class EncoderLayer(nn.Module):
+    def __init__(self):
+        super(EncoderLayer, self).__init__()
+        self.enc_self_attn = MultiHeadAttention()                   # Multi-Head Attention mechanism
+        self.pos_ffn = PoswiseFeedForwardNet()                      # FeedForward neural networks
+
+    def forward(self, enc_inputs, enc_self_attn_mask):              # enc_inputs: [batch_size, src_len, d_model]
+                    # enc_self_attn_mask: [batch_size, src_len, src_len]
+        enc_outputs, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs,
+                                                                    # enc_outputs: [batch_size, src_len, d_model],
+                                               enc_self_attn_mask)  # attn: [batch_size, n_heads, src_len, src_len]
+        enc_outputs = self.pos_ffn(enc_outputs)                     # enc_outputs: [batch_size, src_len, d_model]
+        return enc_outputs, attn
+

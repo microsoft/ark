@@ -140,3 +140,20 @@ class MultiHeadAttention():
         exe.tensor_memcpy_host_to_device(self.W_K, param["W_K"])
         exe.tensor_memcpy_host_to_device(self.W_V, param["W_V"])
         exe.tensor_memcpy_host_to_device(self.fc, param["fc"])
+
+class EncoderLayer():
+    def __init__(self, model):
+        self.model = model
+        self.enc_self_attn = MultiHeadAttention(model)                   # Multi-Head Attention mechanism
+        self.pos_ffn = PoswiseFeedForwardNet(model)
+
+    def forward(self, enc_inputs, enc_self_attn_mask=None): 
+        enc_outputs, attn = self.enc_self_attn.forward(enc_inputs, enc_inputs, enc_inputs,
+                                                                    # enc_outputs: [batch_size, src_len, d_model],
+                                               enc_self_attn_mask)  # attn: [batch_size, n_heads, src_len, src_len]
+        enc_outputs = self.pos_ffn.forward(enc_outputs)                     # enc_outputs: [batch_size, src_len, d_model]
+        return enc_outputs, attn
+    
+    def init_model(self, param, exe):
+        self.enc_self_attn.init_model(param["enc_self_attn"], exe)
+        self.pos_ffn.init_model(param["pos_ffn"], exe)
