@@ -57,7 +57,7 @@ class MultiHeadAttention(nn.Module):
         self.fc = nn.Linear(n_heads * d_v, d_model, bias=False)
 
     # input_Q: [batch_size, len_q, d_model]
-    def forward(self, input_Q, input_K, input_V, attn_mask):
+    def forward(self, input_Q, input_K, input_V, attn_mask=None):
         # input_K: [batch_size, len_k, d_model]
         # input_V: [batch_size, len_v(=len_k), d_model]
         # attn_mask: [batch_size, seq_len, seq_len]
@@ -65,19 +65,33 @@ class MultiHeadAttention(nn.Module):
         # Q: [batch_size, n_heads, len_q, d_k]
         Q = self.W_Q(input_Q).view(batch_size, -1,
                                    n_heads, d_k).transpose(1, 2)
-        return Q
         # K: [batch_size, n_heads, len_k, d_k]
         K = self.W_K(input_K).view(batch_size, -1,
                                    n_heads, d_k).transpose(1, 2)
-        V = self.W_V(input_V).view(batch_size, -1, n_heads, d_v).transpose(1,
-                                                                           2)       # V: [batch_size, n_heads, len_v(=len_k), d_v]
-        attn_mask = attn_mask.unsqueeze(1).repeat(1, n_heads, 1,
-                                                  1)                                # attn_mask : [batch_size, n_heads, seq_len, seq_len]
+        # V: [batch_size, n_heads, len_v(=len_k), d_v]
+        V = self.W_V(input_V).view(batch_size, -1,
+                                   n_heads, d_v).transpose(1, 2)
+        if attn_mask is not None:
+            attn_mask = attn_mask.unsqueeze(1).repeat(1, n_heads, 1,
+                                                      1)                                
+        # attn_mask : [batch_size, n_heads, seq_len, seq_len]
         # context: [batch_size, n_heads, len_q, d_v]
         context, attn = ScaledDotProductAttention()(Q, K, V, attn_mask)
         # attn: [batch_size, n_heads, len_q, len_k]
+        return context, attn
         context = context.transpose(1, 2).reshape(batch_size, -1,
-                                                  n_heads * d_v)                    # context: [batch_size, len_q, n_heads * d_v]
+                                                  n_heads * d_v)                    
+        # context: [batch_size, len_q, n_heads * d_v]
         # [batch_size, len_q, d_model]
         output = self.fc(context)
         return nn.LayerNorm(d_model).cuda()(output + residual), attn
+
+    def init_model(self, param):
+        self.W_Q.weight.data.copy_(
+            torch.from_numpy(param["W_Q"].transpose(1, 0)))
+        self.W_K.weight.data.copy_(
+            torch.from_numpy(param["W_K"].transpose(1, 0)))
+        self.W_V.weight.data.copy_(
+            torch.from_numpy(param["W_V"].transpose(1, 0)))
+        self.fc.weight.data.copy_(
+            torch.from_numpy(param["fc"].transpose(1, 0)))
