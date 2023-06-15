@@ -78,13 +78,15 @@ class MultiHeadAttention(nn.Module):
         # context: [batch_size, n_heads, len_q, d_v]
         context, attn = ScaledDotProductAttention()(Q, K, V, attn_mask)
         # attn: [batch_size, n_heads, len_q, len_k]
-        return context, attn
         context = context.transpose(1, 2).reshape(batch_size, -1,
                                                   n_heads * d_v)                    
+
         # context: [batch_size, len_q, n_heads * d_v]
         # [batch_size, len_q, d_model]
         output = self.fc(context)
-        return nn.LayerNorm(d_model).cuda()(output + residual), attn
+        layer_norm = nn.LayerNorm(d_model)
+        # return output + residual, attn
+        return nn.LayerNorm(d_model)(output + residual), attn
 
     def init_model(self, param):
         self.W_Q.weight.data.copy_(

@@ -188,7 +188,7 @@ def test_MultiHeadAttention():
     exe.run(1)
     exe.stop()
 
-    context_host = np.zeros((batch_size,n_heads, seq_len, d_v), dtype=np.float16)
+    context_host = np.zeros((batch_size,seq_len,n_heads*d_v), dtype=np.float16)
     attn_host = np.zeros((batch_size,n_heads, seq_len, seq_len), dtype=np.float16)
 
     exe.tensor_memcpy_device_to_host(context_host, context)
@@ -200,22 +200,25 @@ def test_MultiHeadAttention():
 
     torch_model = transformer_pytorch.MultiHeadAttention()
     torch_model.init_model(param)
-    
+
     context_torch, attn_torch = torch_model(torch_Q, torch_K, torch_V)
 
     gt_context = context_torch.detach().numpy().astype(np.float16)
+    # gt_context = gt_context.reshape(batch_size*n_heads* seq_len* d_v)
     gt_attn = attn_torch.detach().numpy().astype(np.float16)
 
     context_max_error = np.max(np.abs(context_host - gt_context))
     context_avg_error = np.mean(np.abs(context_host - gt_context))
     attn_max_error = np.max(np.abs(attn_host - gt_attn))
     attn_avg_error = np.mean(np.abs(attn_host - gt_attn))
+    relative_error = np.abs(context_host - gt_context) / np.abs(gt_context)
     print("scaled dot product attention test")
     print("batch_size:", batch_size, "seq_len:", seq_len, "d_model:", d_model, "d_ff:", d_ff)
     print("max context error: ", context_max_error, "avg context error: ", context_avg_error, "max attn error: ", attn_max_error, "avg attn error: ", attn_avg_error)
-
+    # print(context_host)
+    # print(gt_context)
 
 if __name__ == "__main__":
-    # test_poswise_feed_forward_net()
-    # test_ScaledDotProductAttention()
+    test_poswise_feed_forward_net()
+    test_ScaledDotProductAttention()
     test_MultiHeadAttention()

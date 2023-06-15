@@ -3,6 +3,7 @@
 
 from transformer_utils import *
 
+
 class PoswiseFeedForwardNet:
     def __init__(self, model):
         self.model = model
@@ -23,6 +24,7 @@ class PoswiseFeedForwardNet:
     def init_model(self, param, exe):
         exe.tensor_memcpy_host_to_device(self.weight_1, param["weight_1"])
         exe.tensor_memcpy_host_to_device(self.weight_2, param["weight_2"])
+
 
 class ScaledDotProductAttention:
     def __init__(self, model):
@@ -57,43 +59,73 @@ class ScaledDotProductAttention:
         context = self.model.matmul(attn, V_reshape)
         return context, attn
 
+
 class MultiHeadAttention():
     def __init__(self, model):
         self.model = model
-        self.W_Q = model.tensor(ark.Dims(d_model, d_k * n_heads), ark.TensorType.FP16)
-        self.W_K = model.tensor(ark.Dims(d_model, d_k * n_heads), ark.TensorType.FP16)
-        self.W_V = model.tensor(ark.Dims(d_model, d_v * n_heads), ark.TensorType.FP16)
-        self.fc = model.tensor(ark.Dims(d_v * n_heads, d_model), ark.TensorType.FP16)
+        self.W_Q = model.tensor(
+            ark.Dims(d_model, d_k * n_heads), ark.TensorType.FP16)
+        self.W_K = model.tensor(
+            ark.Dims(d_model, d_k * n_heads), ark.TensorType.FP16)
+        self.W_V = model.tensor(
+            ark.Dims(d_model, d_v * n_heads), ark.TensorType.FP16)
+        self.fc = model.tensor(
+            ark.Dims(d_v * n_heads, d_model), ark.TensorType.FP16)
         self.scaled_dot_product_attention = ScaledDotProductAttention(model)
 
-    def forward(self,input_Q, input_K, input_V, attn_mask=None):
-                                                                # input_Q: [batch_size, len_q, d_model]
-                                                                # input_K: [batch_size, len_k, d_model]
-                                                                # input_V: [batch_size, len_v(=len_k), d_model]
-                                                                # attn_mask: [batch_size, seq_len, seq_len]
-        residual, batch_size = input_Q, input_Q.shape()[0]     # residual: [batch_size, len_q, d_model]
+    def forward(self, input_Q, input_K, input_V, attn_mask=None):
+        # input_Q: [batch_size, len_q, d_model]
+        # input_K: [batch_size, len_k, d_model]
+        # input_V: [batch_size, len_v(=len_k), d_model]
+        # attn_mask: [batch_size, seq_len, seq_len]
+        # residual: [batch_size, len_q, d_model]
+        batch_size =input_Q.shape()[0]
         len_q = input_Q.shape()[1]
-        Q = self.model.matmul(input_Q, self.W_Q)                # Q: [batch_size, len_q, n_heads * d_k]
-        Q = self.model.reshape(Q, ark.Dims(batch_size, len_q, n_heads, d_k))  # Q: [batch_size, len_q, n_heads, d_k]
-        Q = self.model.transpose(Q, ark.Dims(0, 2, 1, 3))       # Q: [batch_size, n_heads, len_q, d_k]
-        
+        # Q: [batch_size, len_q, n_heads * d_k]
+        Q = self.model.matmul(input_Q, self.W_Q)
+        # Q: [batch_size, len_q, n_heads, d_k]
+        Q = self.model.reshape(Q, ark.Dims(batch_size, len_q, n_heads, d_k))
+        # Q: [batch_size, n_heads, len_q, d_k]
+        Q = self.model.transpose(Q, ark.Dims(0, 2, 1, 3))
+
         len_k = input_K.shape()[1]
-        K = self.model.matmul(input_K, self.W_K)                # K: [batch_size, len_k, n_heads * d_k]
-        K = self.model.reshape(K, ark.Dims(batch_size, len_k, n_heads, d_k))  # K: [batch_size, len_k, n_heads, d_k]
-        K = self.model.transpose(K, ark.Dims(0, 2, 1, 3))       # K: [batch_size, n_heads, len_k, d_k]
+        # K: [batch_size, len_k, n_heads * d_k]
+        K = self.model.matmul(input_K, self.W_K)
+        # K: [batch_size, len_k, n_heads, d_k]
+        K = self.model.reshape(K, ark.Dims(batch_size, len_k, n_heads, d_k))
+        # K: [batch_size, n_heads, len_k, d_k]
+        K = self.model.transpose(K, ark.Dims(0, 2, 1, 3))
 
         len_v = input_V.shape()[1]
-        V = self.model.matmul(input_V, self.W_V)                # V: [batch_size, len_v(=len_k), n_heads * d_v]
-        V = self.model.reshape(V, ark.Dims(batch_size, len_v, n_heads, d_v))  # V: [batch_size, len_v(=len_k), n_heads, d_v]
-        V = self.model.transpose(V, ark.Dims(0, 2, 1, 3))       # V: [batch_size, n_heads, len_v(=len_k), d_v]
+        # V: [batch_size, len_v(=len_k), n_heads * d_v]
+        V = self.model.matmul(input_V, self.W_V)
+        # V: [batch_size, len_v(=len_k), n_heads, d_v]
+        V = self.model.reshape(V, ark.Dims(batch_size, len_v, n_heads, d_v))
+        # V: [batch_size, n_heads, len_v(=len_k), d_v]
+        V = self.model.transpose(V, ark.Dims(0, 2, 1, 3))
 
         if attn_mask is not None:
             # TODO: attn_mask
             pass
-        
-        context, attn = self.scaled_dot_product_attention.forward(Q, K, V, attn_mask)
 
-        return context, attn
+        context, attn = self.scaled_dot_product_attention.forward(
+            Q, K, V, attn_mask)
+
+        # context: [batch_size, n_heads, len_q, d_v]
+        context1 = self.model.reshape(
+            context, ark.Dims(batch_size, n_heads, len_q, d_v))
+
+        # context: [batch_size, len_q, n_heads, d_v]
+        context2 = self.model.transpose(context1, ark.Dims(0, 2, 1, 3))
+        
+        context3 = self.model.reshape(context2, ark.Dims(batch_size, len_q,
+                                                              n_heads * d_v))  # context: [batch_size, len_q, n_heads * d_v]
+
+        # output: [batch_size, len_q, d_model]
+        output = self.model.matmul(context3, self.fc)
+        output_plus_residual = self.model.add(output, input_Q)
+        output_layernorm = self.model.layernorm(output_plus_residual)
+        return output_layernorm, attn
 
     def init_model(self, param, exe):
         exe.tensor_memcpy_host_to_device(self.W_Q, param["W_Q"])

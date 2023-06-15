@@ -185,6 +185,8 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 0, {{1, 1}}, {{128, 64}}, true, false},
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
          {2, 0, {{1, 1}}, {{32, 32}}, true, false},
+         {1, 0, {{1, 1}}, {{16, 16}}, true, false},
+         {1, 0, {{1, 1}}, {{8, 16}}, true, false},
      }},
     {{OP_TRANSPOSE, OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
@@ -194,6 +196,8 @@ const std::map<OpConfigKey, std::vector<OpConfig>> ARK_OP_CONFIG_MAP = {
          {4, 0, {{1, 1}}, {{128, 64}}, true, false},
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
          {2, 0, {{1, 1}}, {{32, 32}}, true, false},
+         {1, 0, {{1, 1}}, {{16, 16}}, true, false},
+         {1, 0, {{1, 1}}, {{8, 16}}, true, false},
      }},
     {{OP_MATMUL, OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
