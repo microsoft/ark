@@ -24,10 +24,6 @@ class PoswiseFeedForwardNet:
         exe.tensor_memcpy_host_to_device(self.weight_1, param["weight_1"])
         exe.tensor_memcpy_host_to_device(self.weight_2, param["weight_2"])
 
-
-
-
-
 class ScaledDotProductAttention:
     def __init__(self, model):
         self.model = model
@@ -60,5 +56,24 @@ class ScaledDotProductAttention:
 
         context = self.model.matmul(attn, V_reshape)
         return context, attn
+
+class MultiHeadAttention():
+    def __init__(self, model):
+        self.W_Q = model.tensor(ark.Dims(d_model, d_k * n_heads), ark.TensorType.FP16)
+        self.W_K = model.tensor(ark.Dims(d_model, d_k * n_heads), ark.TensorType.FP16)
+        self.W_V = model.tensor(ark.Dims(d_model, d_v * n_heads), ark.TensorType.FP16)
+        self.fc = model.tensor(ark.Dims(d_v * n_heads, d_model), ark.TensorType.FP16)
+        self.scaled_dot_product_attention = ScaledDotProductAttention(model)
+    def forward(self,input_Q, input_K, input_V, attn_mask=None):
+                                                                # input_Q: [batch_size, len_q, d_model]
+                                                                # input_K: [batch_size, len_k, d_model]
+                                                                # input_V: [batch_size, len_v(=len_k), d_model]
+                                                                # attn_mask: [batch_size, seq_len, seq_len]
+        residual, batch_size = input_Q, input_Q.shape()[0]     # residual: [batch_size, len_q, d_model]
+        len_q = input_Q.shape()[1]
+        Q = self.model.matmul(input_Q, self.W_Q)                # Q: [batch_size, len_q, n_heads * d_k]
+        Q = self.model.reshape(Q, ark.Dims(batch_size, len_q, n_heads, d_k))  # Q: [batch_size, len_q, n_heads, d_k]
+        Q = self.model.transpose(Q, ark.Dims(0, 2, 1, 3))       # Q: [batch_size, n_heads, len_q, d_k]
+        return Q
 
 
