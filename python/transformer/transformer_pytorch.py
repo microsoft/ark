@@ -3,18 +3,30 @@
 
 from transformer_utils import *
 
-def get_attn_pad_mask(seq_q, seq_k):                                # seq_q: [batch_size, seq_len] ,seq_k: [batch_size, seq_len]
+
+def get_attn_pad_mask(
+    seq_q, seq_k
+):  # seq_q: [batch_size, seq_len] ,seq_k: [batch_size, seq_len]
     batch_size, len_q = seq_q.size()
     batch_size, len_k = seq_k.size()
-    pad_attn_mask = seq_k.data.eq(0).unsqueeze(1)                   # mark seq_k that contain P (=0) with 1 ,[batch_size, 1, len_k]
-    return pad_attn_mask.expand(batch_size, len_q, len_k)           # expand into multiple dimensions
+    pad_attn_mask = seq_k.data.eq(0).unsqueeze(
+        1
+    )  # mark seq_k that contain P (=0) with 1 ,[batch_size, 1, len_k]
+    return pad_attn_mask.expand(
+        batch_size, len_q, len_k
+    )  # expand into multiple dimensions
 
 
-def get_attn_subsequence_mask(seq):                                 # seq: [batch_size, tgt_len]
+def get_attn_subsequence_mask(seq):  # seq: [batch_size, tgt_len]
     attn_shape = [seq.size(0), seq.size(1), seq.size(1)]
-    subsequence_mask = np.triu(np.ones(attn_shape), k=1)            # generate an upper triangular matrix, [batch_size, tgt_len, tgt_len]
-    subsequence_mask = torch.from_numpy(subsequence_mask).byte()    # [batch_size, tgt_len, tgt_len]
+    subsequence_mask = np.triu(
+        np.ones(attn_shape), k=1
+    )  # generate an upper triangular matrix, [batch_size, tgt_len, tgt_len]
+    subsequence_mask = torch.from_numpy(
+        subsequence_mask
+    ).byte()  # [batch_size, tgt_len, tgt_len]
     return subsequence_mask
+
 
 class PoswiseFeedForwardNet(nn.Module):
     def __init__(self):
@@ -36,9 +48,9 @@ class PoswiseFeedForwardNet(nn.Module):
         )  # [batch_size, seq_len, d_model]
         return output
 
-    def init_model(self, param):
-        self.weight_1.data.copy_(torch.from_numpy(param["weight_1"]))
-        self.weight_2.data.copy_(torch.from_numpy(param["weight_2"]))
+    def init_model(self, param, prefix):
+        self.weight_1.data.copy_(torch.from_numpy(param[prefix + "weight_1"]))
+        self.weight_2.data.copy_(torch.from_numpy(param[prefix + "weight_2"]))
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -75,23 +87,18 @@ class MultiHeadAttention(nn.Module):
         # attn_mask: [batch_size, seq_len, seq_len]
         residual, batch_size = input_Q, input_Q.size(0)
         # Q: [batch_size, n_heads, len_q, d_k]
-        Q = self.W_Q(input_Q).view(batch_size, -1,
-                                   n_heads, d_k).transpose(1, 2)
+        Q = self.W_Q(input_Q).view(batch_size, -1, n_heads, d_k).transpose(1, 2)
         # K: [batch_size, n_heads, len_k, d_k]
-        K = self.W_K(input_K).view(batch_size, -1,
-                                   n_heads, d_k).transpose(1, 2)
+        K = self.W_K(input_K).view(batch_size, -1, n_heads, d_k).transpose(1, 2)
         # V: [batch_size, n_heads, len_v(=len_k), d_v]
-        V = self.W_V(input_V).view(batch_size, -1,
-                                   n_heads, d_v).transpose(1, 2)
+        V = self.W_V(input_V).view(batch_size, -1, n_heads, d_v).transpose(1, 2)
         if attn_mask is not None:
-            attn_mask = attn_mask.unsqueeze(1).repeat(1, n_heads, 1,
-                                                      1)                                
+            attn_mask = attn_mask.unsqueeze(1).repeat(1, n_heads, 1, 1)
         # attn_mask : [batch_size, n_heads, seq_len, seq_len]
         # context: [batch_size, n_heads, len_q, d_v]
         context, attn = ScaledDotProductAttention()(Q, K, V, attn_mask)
         # attn: [batch_size, n_heads, len_q, len_k]
-        context = context.transpose(1, 2).reshape(batch_size, -1,
-                                                  n_heads * d_v)                    
+        context = context.transpose(1, 2).reshape(batch_size, -1, n_heads * d_v)
 
         # context: [batch_size, len_q, n_heads * d_v]
         # [batch_size, len_q, d_model]
@@ -100,27 +107,45 @@ class MultiHeadAttention(nn.Module):
         # return output + residual, attn
         return nn.LayerNorm(d_model)(output + residual), attn
 
-    def init_model(self, param):
+    def init_model(self, param, prefix=""):
         self.W_Q.weight.data.copy_(
-            torch.from_numpy(param["W_Q"].transpose(1, 0)))
+            torch.from_numpy(param[prefix + "W_Q"].transpose(1, 0))
+        )
         self.W_K.weight.data.copy_(
-            torch.from_numpy(param["W_K"].transpose(1, 0)))
+            torch.from_numpy(param[prefix + "W_K"].transpose(1, 0))
+        )
         self.W_V.weight.data.copy_(
-            torch.from_numpy(param["W_V"].transpose(1, 0)))
+            torch.from_numpy(param[prefix + "W_V"].transpose(1, 0))
+        )
         self.fc.weight.data.copy_(
-            torch.from_numpy(param["fc"].transpose(1, 0)))
+            torch.from_numpy(param[prefix + "fc"].transpose(1, 0))
+        )
+
 
 class EncoderLayer(nn.Module):
     def __init__(self):
         super(EncoderLayer, self).__init__()
-        self.enc_self_attn = MultiHeadAttention()                   # Multi-Head Attention mechanism
-        self.pos_ffn = PoswiseFeedForwardNet()                      # FeedForward neural networks
+        self.enc_self_attn = (
+            MultiHeadAttention()
+        )  # Multi-Head Attention mechanism
+        self.pos_ffn = PoswiseFeedForwardNet()  # FeedForward neural networks
 
-    def forward(self, enc_inputs, enc_self_attn_mask):              # enc_inputs: [batch_size, src_len, d_model]
-                    # enc_self_attn_mask: [batch_size, src_len, src_len]
-        enc_outputs, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs,
-                                                                    # enc_outputs: [batch_size, src_len, d_model],
-                                               enc_self_attn_mask)  # attn: [batch_size, n_heads, src_len, src_len]
-        enc_outputs = self.pos_ffn(enc_outputs)                     # enc_outputs: [batch_size, src_len, d_model]
+    def forward(
+        self, enc_inputs, enc_self_attn_mask
+    ):  # enc_inputs: [batch_size, src_len, d_model]
+        # enc_self_attn_mask: [batch_size, src_len, src_len]
+        enc_outputs, attn = self.enc_self_attn(
+            enc_inputs,
+            enc_inputs,
+            enc_inputs,
+            # enc_outputs: [batch_size, src_len, d_model],
+            enc_self_attn_mask,
+        )  # attn: [batch_size, n_heads, src_len, src_len]
+        enc_outputs = self.pos_ffn(
+            enc_outputs
+        )  # enc_outputs: [batch_size, src_len, d_model]
         return enc_outputs, attn
 
+    def init_model(self, param, prefix=""):
+        self.enc_self_attn.init_model(param, prefix + "enc_self_attn.")
+        self.pos_ffn.init_model(param, prefix + "pos_ffn.")

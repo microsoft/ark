@@ -15,4 +15,3 @@ n_heads = 8  # Number of heads in Multi-Head Attention set to 8
 
 batch_size = 1
 seq_len = 64
-
