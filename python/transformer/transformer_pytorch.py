@@ -177,7 +177,7 @@ class EncoderLayer(nn.Module):
         self.enc_self_attn.init_model(param, prefix + "enc_self_attn.")
         self.pos_ffn.init_model(param, prefix + "pos_ffn.")
 
-
+# TODO: test the Encoder
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()

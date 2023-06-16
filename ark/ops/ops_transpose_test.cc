@@ -68,7 +68,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
 
 ark::unittest::State test_transpose_fp32()
 {
-    // test_transpose_internal<float>(ark::FP32, 3, 2048, 96, 128, 0, 2, 1, 3);
+    test_transpose_internal<float>(ark::FP32, 3, 2048, 96, 128, 0, 2, 1, 3);
     test_transpose_internal<ark::half_t>(ark::FP16, 1, 1, 64, 32, 0, 1, 3, 2);
 
     return ark::unittest::SUCCESS;

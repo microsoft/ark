@@ -569,4 +569,5 @@ if __name__ == "__main__":
     test_ScaledDotProductAttention()
     test_MultiHeadAttention()
     test_EncoderLayer()
+    # TODO: test_Encoder() and test_Decoder()
     # test_Encoder()
