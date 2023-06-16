@@ -75,7 +75,7 @@ class PoswiseFeedForwardNet(nn.Module):
         )  # [batch_size, seq_len, d_model]
         return output
 
-    def init_model(self, param, prefix):
+    def init_model(self, param, prefix=""):
         self.weight_1.data.copy_(torch.from_numpy(param[prefix + "weight_1"]))
         self.weight_2.data.copy_(torch.from_numpy(param[prefix + "weight_2"]))
 
