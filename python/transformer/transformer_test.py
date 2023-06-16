@@ -404,7 +404,7 @@ def test_EncoderLayer():
     context_avg_error = np.mean(np.abs(context_host - gt_context))
     attn_max_error = np.max(np.abs(attn_host - gt_attn))
     attn_avg_error = np.mean(np.abs(attn_host - gt_attn))
-    print("multi head attention test")
+    print("EncoderLayer test")
     print(
         "batch_size:",
         batch_size,
@@ -429,8 +429,144 @@ def test_EncoderLayer():
     # print(gt_context)
 
 
+def test_Encoder():
+    # The number of input tokens is 10
+    input_seq_len = 10
+    ark.init()
+
+    # Create a Model instance
+    model = ark.Model()
+
+    enc_inputs = model.tensor(
+        ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
+    )
+
+    ark_model = transformer_ark.Encoder(model)
+
+    attn_mask = model.tensor(
+        ark.Dims(batch_size * n_heads, seq_len, seq_len), ark.TensorType.FP16
+    )
+
+    context, attns = ark_model.forward(enc_inputs, attn_mask)
+    # Test the mul method
+    exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
+    exe.compile()
+    enc_inputs_host = (
+        (np.random.rand(batch_size, seq_len, d_model) - 0.5)
+    ).astype(np.float16)
+
+    param = {}
+
+    for i in range(n_layers):
+        W_Q_host = ((np.random.rand(d_model, d_k * n_heads) - 0.5)).astype(
+            np.float16
+        )
+        W_K_host = ((np.random.rand(d_model, d_k * n_heads) - 0.5)).astype(
+            np.float16
+        )
+        W_V_host = ((np.random.rand(d_model, d_v * n_heads) - 0.5)).astype(
+            np.float16
+        )
+        fc_host = ((np.random.rand(d_v * n_heads, d_model) - 0.5)).astype(
+            np.float16
+        )
+        pos_ffn_weight_1_host = (
+            (np.random.rand(d_model, d_ff) - 0.5) * 0.1
+        ).astype(np.float16)
+        pos_ffn_weight_2_host = (
+            (np.random.rand(d_ff, d_model) - 0.5) * 0.1
+        ).astype(np.float16)
+
+        prefix = "layers." + str(i) + "."
+        param[prefix + "enc_self_attn.W_Q"] = W_Q_host
+        param[prefix + "enc_self_attn.W_K"] = W_K_host
+        param[prefix + "enc_self_attn.W_V"] = W_V_host
+        param[prefix + "enc_self_attn.fc"] = fc_host
+        param[prefix + "pos_ffn.weight_1"] = pos_ffn_weight_1_host
+        param[prefix + "pos_ffn.weight_2"] = pos_ffn_weight_2_host
+
+    ark_model.init_model(param, exe)
+
+    exe.launch()
+    exe.tensor_memcpy_host_to_device(enc_inputs, enc_inputs_host)
+    transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
+    exe.run(1)
+    exe.stop()
+
+    context_host = np.zeros(
+        (batch_size, seq_len, n_heads * d_v), dtype=np.float16
+    )
+
+    exe.tensor_memcpy_device_to_host(context_host, context)
+    attns_host = []
+    for i in range(n_layers):
+        attn_host = np.zeros(
+            (batch_size, n_heads, seq_len, seq_len), dtype=np.float16
+        )
+        exe.tensor_memcpy_device_to_host(attn_host, attns[i])
+        attns_host.append(attn_host)
+
+    torch_enc_inputs = torch.from_numpy(enc_inputs_host.astype(np.float32))
+
+    torch_model = transformer_pytorch.Encoder()
+    torch_model.init_model(param)
+    input_seq = np.zeros((batch_size, seq_len), dtype=np.int32)
+    for i in range(batch_size):
+        for j in range(seq_len):
+            if j < input_seq_len:
+                input_seq[i][j] = 1
+    input_seq_torch = torch.from_numpy(input_seq)
+    attn_mask_torch = transformer_pytorch.get_attn_pad_mask(
+        input_seq_torch, input_seq_torch
+    )
+    context_torch, attns_torch = torch_model(torch_enc_inputs, attn_mask_torch)
+
+    gt_context = context_torch.detach().numpy().astype(np.float16)
+    # gt_context = gt_context.reshape(batch_size*n_heads* seq_len* d_v)
+    # gt_attn = attn_torch.detach().numpy().astype(np.float16)
+
+    context_max_error = np.max(np.abs(context_host - gt_context))
+    context_avg_error = np.mean(np.abs(context_host - gt_context))
+    attns_max_error = []
+    attns_avg_error = []
+    for i in range(n_layers):
+        attn_host = attns_host[i]
+        attn_torch = attns_torch[i]
+        gt_attn = attn_torch.detach().numpy().astype(np.float16)
+        attn_max_error = np.max(np.abs(attn_host - gt_attn))
+        attn_avg_error = np.mean(np.abs(attn_host - gt_attn))
+        attns_max_error.append(attn_max_error)
+        attns_avg_error.append(attn_avg_error)
+    # attn_max_error = np.max(np.abs(attn_host - gt_attn))
+    # attn_avg_error = np.mean(np.abs(attn_host - gt_attn))
+    print("Encoder test")
+    print(
+        "batch_size:",
+        batch_size,
+        "seq_len:",
+        seq_len,
+        "d_model:",
+        d_model,
+        "d_ff:",
+        d_ff,
+    )
+    print(
+        "max context error: ",
+        context_max_error,
+        "avg context error: ",
+        context_avg_error,
+        "max attn error: ",
+        attns_max_error,
+        "avg attn error: ",
+        attns_avg_error,
+    )
+    # print(context_host)
+    # print(gt_context)
+
+
 if __name__ == "__main__":
     # test_PoswiseFeedForwardNet()
     # test_ScaledDotProductAttention()
     # test_MultiHeadAttention()
-    test_EncoderLayer()
+    # test_EncoderLayer()
+    test_Encoder()

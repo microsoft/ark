@@ -4,6 +4,33 @@
 from transformer_utils import *
 
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        pos_table = np.array(
+            [
+                [pos / np.power(10000, 2 * i / d_model) for i in range(d_model)]
+                if pos != 0
+                else np.zeros(d_model)
+                for pos in range(max_len)
+            ]
+        )
+        pos_table[1:, 0::2] = np.sin(
+            pos_table[1:, 0::2]
+        )  # word embedding dimmentions is even
+        pos_table[1:, 1::2] = np.cos(
+            pos_table[1:, 1::2]
+        )  # word embedding dimmentions is odd
+        self.pos_table = torch.FloatTensor(
+            pos_table
+        ).cuda()  # enc_inputs: [seq_len, d_model]
+
+    def forward(self, enc_inputs):  # enc_inputs: [batch_size, seq_len, d_model]
+        enc_inputs += self.pos_table[: enc_inputs.size(1), :]
+        return self.dropout(enc_inputs.cuda())
+
+
 def get_attn_pad_mask(
     seq_q, seq_k
 ):  # seq_q: [batch_size, seq_len] ,seq_k: [batch_size, seq_len]
@@ -149,3 +176,35 @@ class EncoderLayer(nn.Module):
     def init_model(self, param, prefix=""):
         self.enc_self_attn.init_model(param, prefix + "enc_self_attn.")
         self.pos_ffn.init_model(param, prefix + "pos_ffn.")
+
+
+# class EmbeddingLyaer(nn.Module):
+#     def __init__(self):
+#         self.src_emb = nn.Embedding(src_vocab_size, d_model)                     # 把字转换字向量
+#         self.pos_emb = PositionalEncoding(d_model)                               # 加入位置信息
+#     def forward(self, enc_inputs):
+#         enc_outputs = self.src_emb(enc_inputs)                                   # enc_outputs: [batch_size, src_len, d_model]
+#         enc_outputs = self.pos_emb(enc_outputs)                                  # enc_outputs: [batch_size, src_len, d_model]
+
+
+class Encoder(nn.Module):
+    def __init__(self):
+        super(Encoder, self).__init__()
+        # self.EmbeddingLyaer = EmbeddingLyaer()
+        self.layers = nn.ModuleList([EncoderLayer() for _ in range(n_layers)])
+
+    def forward(
+        self, enc_outputs, enc_self_attn_mask
+    ):  # enc_inputs: [batch_size, src_len]
+        enc_self_attns = []
+        for layer in self.layers:
+            enc_outputs, enc_self_attn = layer(
+                enc_outputs, enc_self_attn_mask
+            )  # enc_outputs :   [batch_size, src_len, d_model],
+            # enc_self_attn : [batch_size, n_heads, src_len, src_len]
+            enc_self_attns.append(enc_self_attn)
+        return enc_outputs, enc_self_attns
+
+    def init_model(self, param, prefix=""):
+        for i, layer in enumerate(self.layers):
+            layer.init_model(param, prefix + "layers." + str(i) + ".")

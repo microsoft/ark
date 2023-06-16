@@ -193,3 +193,23 @@ class EncoderLayer:
     def init_model(self, param, exe, prefix=""):
         self.enc_self_attn.init_model(param, exe, prefix + "enc_self_attn.")
         self.pos_ffn.init_model(param, exe, prefix + "pos_ffn.")
+
+
+class Encoder:
+    def __init__(self, model):
+        self.layers = []
+        for i in range(n_layers):
+            self.layers.append(EncoderLayer(model))
+
+    def forward(self, enc_inputs, enc_self_attn_mask=None):
+        enc_self_attns = []
+        for layer in self.layers:
+            enc_outputs, enc_self_attn = layer.forward(
+                enc_inputs, enc_self_attn_mask
+            )
+            enc_self_attns.append(enc_self_attn)
+        return enc_outputs, enc_self_attns
+
+    def init_model(self, param, exe, prefix=""):
+        for i, layer in enumerate(self.layers):
+            layer.init_model(param, exe, prefix + "layers." + str(i) + ".")
