@@ -177,16 +177,6 @@ class EncoderLayer(nn.Module):
         self.enc_self_attn.init_model(param, prefix + "enc_self_attn.")
         self.pos_ffn.init_model(param, prefix + "pos_ffn.")
 
-
-# class EmbeddingLyaer(nn.Module):
-#     def __init__(self):
-#         self.src_emb = nn.Embedding(src_vocab_size, d_model)                     # 把字转换字向量
-#         self.pos_emb = PositionalEncoding(d_model)                               # 加入位置信息
-#     def forward(self, enc_inputs):
-#         enc_outputs = self.src_emb(enc_inputs)                                   # enc_outputs: [batch_size, src_len, d_model]
-#         enc_outputs = self.pos_emb(enc_outputs)                                  # enc_outputs: [batch_size, src_len, d_model]
-
-
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
