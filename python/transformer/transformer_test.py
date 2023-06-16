@@ -565,8 +565,8 @@ def test_Encoder():
 
 
 if __name__ == "__main__":
-    # test_PoswiseFeedForwardNet()
-    # test_ScaledDotProductAttention()
-    # test_MultiHeadAttention()
-    # test_EncoderLayer()
-    test_Encoder()
+    test_PoswiseFeedForwardNet()
+    test_ScaledDotProductAttention()
+    test_MultiHeadAttention()
+    test_EncoderLayer()
+    # test_Encoder()

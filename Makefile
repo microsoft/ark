@@ -124,6 +124,12 @@ cpplint:
 cpplint-autofix:
 	clang-format-12 -style=file --verbose --Werror -i $(CPPSOURCES)
 
+pythonlint:
+	black --check python --config .black ./python
+
+pythonlint-autofix:
+	black --config .black ./python
+
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)
 
