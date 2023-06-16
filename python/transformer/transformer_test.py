@@ -348,12 +348,12 @@ def test_EncoderLayer():
     fc_host = ((np.random.rand(d_v * n_heads, d_model) - 0.5)).astype(
         np.float16
     )
-    pos_ffn_weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5)).astype(
-        np.float16
-    )
-    pos_ffn_weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5)).astype(
-        np.float16
-    )
+    pos_ffn_weight_1_host = (
+        (np.random.rand(d_model, d_ff) - 0.5) * 0.1
+    ).astype(np.float16)
+    pos_ffn_weight_2_host = (
+        (np.random.rand(d_ff, d_model) - 0.5) * 0.1
+    ).astype(np.float16)
 
     param = {
         "enc_self_attn.W_Q": W_Q_host,

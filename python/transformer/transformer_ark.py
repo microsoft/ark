@@ -41,9 +41,13 @@ class PoswiseFeedForwardNet:
         output_layernorm = self.model.layernorm(output)
         return output_layernorm
 
-    def init_model(self, param, exe):
-        exe.tensor_memcpy_host_to_device(self.weight_1, param["weight_1"])
-        exe.tensor_memcpy_host_to_device(self.weight_2, param["weight_2"])
+    def init_model(self, param, exe, prefix=""):
+        exe.tensor_memcpy_host_to_device(
+            self.weight_1, param[prefix + "weight_1"]
+        )
+        exe.tensor_memcpy_host_to_device(
+            self.weight_2, param[prefix + "weight_2"]
+        )
 
 
 class ScaledDotProductAttention:
@@ -158,11 +162,11 @@ class MultiHeadAttention:
         output_layernorm = self.model.layernorm(output_plus_residual)
         return output_layernorm, attn
 
-    def init_model(self, param, exe):
-        exe.tensor_memcpy_host_to_device(self.W_Q, param["W_Q"])
-        exe.tensor_memcpy_host_to_device(self.W_K, param["W_K"])
-        exe.tensor_memcpy_host_to_device(self.W_V, param["W_V"])
-        exe.tensor_memcpy_host_to_device(self.fc, param["fc"])
+    def init_model(self, param, exe, prefix=""):
+        exe.tensor_memcpy_host_to_device(self.W_Q, param[prefix + "W_Q"])
+        exe.tensor_memcpy_host_to_device(self.W_K, param[prefix + "W_K"])
+        exe.tensor_memcpy_host_to_device(self.W_V, param[prefix + "W_V"])
+        exe.tensor_memcpy_host_to_device(self.fc, param[prefix + "fc"])
 
 
 class EncoderLayer:
@@ -181,11 +185,11 @@ class EncoderLayer:
             # enc_outputs: [batch_size, src_len, d_model],
             enc_self_attn_mask,
         )  # attn: [batch_size, n_heads, src_len, src_len]
-        enc_outputs = self.pos_ffn.forward(
+        enc_outputs1 = self.pos_ffn.forward(
             enc_outputs
         )  # enc_outputs: [batch_size, src_len, d_model]
-        return enc_outputs, attn
+        return enc_outputs1, attn
 
-    def init_model(self, param, exe):
-        self.enc_self_attn.init_model(param["enc_self_attn"], exe)
-        self.pos_ffn.init_model(param["pos_ffn"], exe)
+    def init_model(self, param, exe, prefix=""):
+        self.enc_self_attn.init_model(param, exe, prefix + "enc_self_attn.")
+        self.pos_ffn.init_model(param, exe, prefix + "pos_ffn.")
