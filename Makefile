@@ -97,7 +97,7 @@ CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regext
 INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
 INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
 
-.PHONY: all build third_party submodules kahypar cutlass gpudma examples unittest cpplint cpplint-autofix install clean
+.PHONY: all build third_party submodules kahypar cutlass gpudma examples unittest cpplint cpplint-autofix pythonlint pythonlint-autofix install clean
 
 all: build unittest
 
