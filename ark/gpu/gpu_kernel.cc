@@ -6,6 +6,9 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <time.h>
+//  sleep
+#include <unistd.h>
 
 #include "ark/cpu_timer.h"
 #include "ark/env.h"
@@ -233,6 +236,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "__device__ long long int *_ARK_CLKS;\n"
         "__device__ int _ITER = 0;\n"
         "#include \"ark_kernels.h\"\n"
+        "#include <stdio.h>\n"
         "__device__ ark::sync::State " ARK_LSS_NAME ";\n"
         "__device__ char *" ARK_BUF_NAME ";\n"
         << *ark_loop_body_code <<
@@ -245,6 +249,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "      *_it_b = 0;\n"
         "      while (*_it_a == 0) {}\n"
         "      _ITER = *_it_a;\n"
+        "    printf(\"ITER1 = %d\\n\", _ITER);\n"
         "    }\n"
         "    __syncthreads();\n"
         "    if (_ITER < 0) {\n"
@@ -258,6 +263,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "      *_it_a = 0;\n"
         "      while (*_it_b == 0) {}\n"
         "      _ITER = *_it_b;\n"
+        "    printf(\"ITER2 = %d\\n\", _ITER);\n"
         "    }\n"
         "    __syncthreads();\n"
         "    if (_ITER < 0) {\n"
@@ -428,6 +434,7 @@ void GpuLoopKernel::wait()
 {
     volatile int *href = this->flag_href[this->flip_flag ? 1 : 0];
     int cnt = MAX_LOOP_COUNTER;
+    printf("wait: href=%p %d\n", href, *href);
     while (*href > 0) {
         if (--cnt > 0) {
             continue;
@@ -449,6 +456,7 @@ void GpuLoopKernel::wait()
             CULOG(res);
         }
     }
+    printf("waitend: href=%p %d\n", href, *href);
 }
 
 void GpuLoopKernel::stop()
@@ -456,6 +464,7 @@ void GpuLoopKernel::stop()
     this->wait();
     *(this->flag_href[0]) = -1;
     *(this->flag_href[1]) = -1;
+    sleep(1);
     CULOG(cuStreamSynchronize(this->stream));
     if (is_recording) {
         CULOG(cuEventElapsedTime(&(this->elapsed_msec), this->timer_begin,
