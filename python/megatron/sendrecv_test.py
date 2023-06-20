@@ -18,10 +18,10 @@ def my_function(rank):
         ark.Dims(2048), ark.TensorType.FP16
     )
     if(rank == 0):
-        model.send(input_tensor, 0, 1, 2048)
+        model.send(input_tensor, 1, 1, 2048)
         # model.send_done(input_tensor, 0)
     if(rank == 1):
-        model.recv(input_tensor, 0, 0, 2048)
+        model.recv(input_tensor, 1, 0, 2048)
     # model.all_reduce(input_tensor, rank, world_size)
 
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
