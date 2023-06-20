@@ -15,11 +15,11 @@ def my_function(rank):
     model = ark.Model()
 
     input_tensor = model.tensor(
-        ark.Dims(1024), ark.TensorType.FP16
+        ark.Dims(2048), ark.TensorType.FP16
     )
     if(rank == 0):
         model.send(input_tensor, 0, 1, 2048)
-        model.send_done(input_tensor, 0)
+        # model.send_done(input_tensor, 0)
     if(rank == 1):
         model.recv(input_tensor, 0, 0, 2048)
     # model.all_reduce(input_tensor, rank, world_size)
@@ -36,7 +36,7 @@ def my_function(rank):
 if __name__ == "__main__":  
     ark.init()
 
-    num_processes = world_size  # 设置进程数量  
+    num_processes = world_size  # number of processes
     processes = []  
   
     for i in range(num_processes):  
