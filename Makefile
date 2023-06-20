@@ -68,7 +68,7 @@ USRC_OPS_COMMON := ops/ops_test_common.cc
 UOBJ_OPS_COMMON := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC_OPS_COMMON))
 
 USRC_OPS := ops_tensor_test.cc ops_identity_test.cc ops_reshape_test.cc ops_add_test.cc ops_mul_test.cc ops_reduce_test.cc ops_layernorm_test.cc ops_all_reduce_test.cc ops_scale_test.cc
-USRC_OPS += ops_gelu_test.cc ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc
+USRC_OPS += ops_gelu_test.cc ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc ops_sendrecv_test.cc
 
 UOBJ_OPS := $(patsubst %.cc,$(BDIR)/ark/ops/%.o,$(USRC_OPS))
 UBIN_OPS := $(patsubst %.o,%,$(UOBJ_OPS))

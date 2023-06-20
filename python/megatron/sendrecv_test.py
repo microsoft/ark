@@ -15,19 +15,23 @@ def my_function(rank):
     model = ark.Model()
 
     input_tensor = model.tensor(
-        ark.Dims(512), ark.TensorType.FP16
+        ark.Dims(1024), ark.TensorType.FP16
     )
-
-    model.all_reduce(input_tensor, rank, world_size)
+    if(rank == 0):
+        model.send(input_tensor, 0, 1, 2048)
+        model.send_done(input_tensor, 0)
+    if(rank == 1):
+        model.recv(input_tensor, 0, 0, 2048)
+    # model.all_reduce(input_tensor, rank, world_size)
 
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
     exe.compile()
 
     exe.launch()
 
-    exe.run(2)
+    exe.run(1)
     exe.stop()
-
+    print("rank:", rank, "done")
   
 if __name__ == "__main__":  
     ark.init()
@@ -42,6 +46,5 @@ if __name__ == "__main__":
   
     for process in processes:  
         process.join()  
-        process.wait()
 
 

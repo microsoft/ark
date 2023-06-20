@@ -437,6 +437,7 @@ void GpuLoopKernel::wait()
         if (res == CUDA_SUCCESS) {
             if (*href > 0) {
                 LOG(WARN, "Stream is finished but the loop flag is still set.");
+                break;
             } else {
                 LOG(WARN, "wait() is delayed by a stream query. Regarding "
                           "timing measurements may be inaccurate.");
