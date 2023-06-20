@@ -23,14 +23,17 @@ using namespace std;
 namespace ark {
 
 // if the sop is an op that can be tiled, return true
-bool is_tiled_op(SchedOp &sop)
+bool is_tiled_op(const SchedOp &sop)
 {
-    return (
-        sop.get_op()->type == OP_MATMUL || sop.get_op()->type == OP_REDUCE ||
-        sop.get_op()->type == OP_SCALE || sop.get_op()->type == OP_GELU ||
-        sop.get_op()->type == OP_ADD || sop.get_op()->type == OP_MUL ||
-        sop.get_op()->type == OP_IM2COL || sop.get_op()->type == OP_TRANSPOSE ||
-        sop.get_op()->type == OP_SEND_MM || sop.get_op()->type == OP_RECV_MM);
+    return (sop.get_op()->type == OP_MATMUL) ||
+           (sop.get_op()->type == OP_REDUCE) ||
+           (sop.get_op()->type == OP_LAYERNORM) ||
+           (sop.get_op()->type == OP_SOFTMAX) ||
+           (sop.get_op()->type == OP_ADD) || (sop.get_op()->type == OP_MUL) ||
+           (sop.get_op()->type == OP_SCALE) ||
+           (sop.get_op()->type == OP_GELU) ||
+           (sop.get_op()->type == OP_IM2COL) ||
+           (sop.get_op()->type == OP_TRANSPOSE);
 }
 
 size_t SimpleCodeGenerator::get_tensor_offset(const Tensor *tensor)
@@ -458,14 +461,7 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
         for (Tensor *tns : sop.get_op()->in_deps) {
             this->codegen_tensor(os, *tns) << COM;
         }
-        assert((sop.get_op()->type == OP_MATMUL) ||
-               (sop.get_op()->type == OP_REDUCE) ||
-               (sop.get_op()->type == OP_SCALE) ||
-               (sop.get_op()->type == OP_GELU) ||
-               (sop.get_op()->type == OP_ADD) ||
-               (sop.get_op()->type == OP_MUL) ||
-               (sop.get_op()->type == OP_IM2COL) ||
-               (sop.get_op()->type == OP_TRANSPOSE));
+        assert(is_tiled_op(sop));
         // Tile indexes.
         const pair<int, int> &fdims = opseq.get_fdims()[idx];
 
@@ -564,14 +560,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
                 } else {
                     os << "__noinline__ __device__ void uop" << uop_id << "(";
                 }
-                assert((sop.get_op()->type == OP_MATMUL) ||
-                       (sop.get_op()->type == OP_REDUCE) ||
-                       (sop.get_op()->type == OP_ADD) ||
-                       (sop.get_op()->type == OP_MUL) ||
-                       (sop.get_op()->type == OP_SCALE) ||
-                       (sop.get_op()->type == OP_GELU) ||
-                       (sop.get_op()->type == OP_IM2COL) ||
-                       (sop.get_op()->type == OP_TRANSPOSE));
+                assert(is_tiled_op(sop));
                 int cnt_param = 0;
                 for (Tensor *tns : sop.get_op()->out_deps) {
                     if (tns->type == FP16) {

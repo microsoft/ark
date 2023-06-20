@@ -173,7 +173,7 @@ Tensor *TransformerLayerForward(Model *model, Tensor *input, DimType embed_dim,
     Tensor *attn_out =
         MultiheadAttention(model, input, embed_dim, num_heads, dropout, dtype);
     Tensor *res = model->add(input, attn_out);
-    // res = model->layer_norm(res, res);
+    // res = model->layernorm(res, res);
 
     Tensor *w_ff1 = model->tensor({embed_dim, dim_ff}, dtype);
     Tensor *w_ff2 = model->tensor({dim_ff, embed_dim}, dtype);
@@ -181,7 +181,7 @@ Tensor *TransformerLayerForward(Model *model, Tensor *input, DimType embed_dim,
     Tensor *ff1 = model->matmul(res, w_ff1);
     Tensor *ff2 = model->matmul(ff1, w_ff2);
     Tensor *ret = model->add(res, ff2);
-    // ret = model->layer_norm(ret, ret);
+    // ret = model->layernorm(ret, ret);
     return ret;
 }
 

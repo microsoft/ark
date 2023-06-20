@@ -14,7 +14,7 @@ void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = info.size * info.itemsize;
+    size_t bytes = tns->ldims_bytes();
     void *host_buffer_ptr = info.ptr;
     executor->tensor_memcpy(tns, (const void *)host_buffer_ptr, bytes);
 }
@@ -23,7 +23,7 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
                                   py::buffer host_buffer, ark::Tensor *tns)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = info.size * info.itemsize;
+    size_t bytes = tns->ldims_bytes();
     void *host_buffer_ptr = info.ptr;
     executor->tensor_memcpy((void *)host_buffer_ptr, tns, bytes);
 }
@@ -94,6 +94,7 @@ PYBIND11_MODULE(ark, m)
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("size", &ark::Tensor::size)
         .def("ndims", &ark::Tensor::ndims)
+        .def("shape", &ark::Tensor::padded_shape)
         .def("padded_shape", &ark::Tensor::padded_shape)
         .def("type_bytes", &ark::Tensor::type_bytes)
         .def("shape_bytes", &ark::Tensor::shape_bytes)
@@ -140,6 +141,12 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("output") = nullptr,
              py::arg("is_relu") = false, py::arg("name") = "reduce")
+        .def("layernorm", &ark::Model::layernorm,
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "layernorm")
+        .def("softmax", &ark::Model::softmax,
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "softmax")
         .def("transpose", &ark::Model::transpose,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("perm"), py::arg("output") = nullptr,

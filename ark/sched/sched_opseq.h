@@ -28,6 +28,7 @@ class SchedOpSeq
         return num_warps == 0;
     }
     bool is_send() const;
+    bool is_send_done() const;
     bool is_recv() const;
 
     const int &get_id() const

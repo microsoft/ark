@@ -8,11 +8,10 @@ using namespace std;
 
 namespace ark {
 
-Tensor *Model::reduce(Tensor *input, DimType axis, Tensor *output, bool is_relu,
-                      const string &name)
+Tensor *Model::layernorm(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "reduce ", input->shape, " ", input->ldims, " ", axis);
+    LOG(DEBUG, "layernorm ", input->shape, " ", input->ldims, " ");
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -25,14 +24,11 @@ Tensor *Model::reduce(Tensor *input, DimType axis, Tensor *output, bool is_relu,
         LOGERR("invalid output data type: ", type_str(output->type));
     }
     if (output == nullptr) {
-        Dims reduced_shape{input->shape};
-        reduced_shape[axis] = 1;
-        output = this->tensor(reduced_shape, input->type);
+        output = this->tensor(input->shape, input->type);
     } else if (output == input) {
-        LOGERR(
-            "output tensor cannot be the same as input tensor for reduce op");
+        output = this->identity(output);
     }
-    this->create_op(OP_REDUCE, pt, {input}, {output}, {is_relu, axis}, name);
+    this->create_op(OP_LAYERNORM, pt, {input}, {output}, {}, name);
     return output;
 }
 

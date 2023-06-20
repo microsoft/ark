@@ -40,7 +40,7 @@ endif
 BSRC_UNITTEST := unittest_utils.cc
 
 BSRC_OPS := ops_common.cc ops_config.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
-BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_gelu.cc ops_reduce.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
+BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_gelu.cc ops_reduce.cc ops_layernorm.cc ops_softmax.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
 BSRC_OPS += ops_conv.cc ops_max_pool.cc ops_sendrecv.cc ops_all_reduce.cc ops_sendrecv_mm.cc ops_transpose.cc
 
 BSRC := init.cc cpu_timer.cc logging.cc math.cc random.cc env.cc file_io.cc
@@ -67,7 +67,7 @@ UBIN := $(patsubst %.o,%,$(UOBJ))
 USRC_OPS_COMMON := ops/ops_test_common.cc
 UOBJ_OPS_COMMON := $(patsubst %.cc,$(BDIR)/ark/%.o,$(USRC_OPS_COMMON))
 
-USRC_OPS := ops_tensor_test.cc ops_identity_test.cc ops_reshape_test.cc ops_add_test.cc ops_mul_test.cc ops_reduce_test.cc ops_all_reduce_test.cc ops_scale_test.cc
+USRC_OPS := ops_tensor_test.cc ops_identity_test.cc ops_reshape_test.cc ops_add_test.cc ops_mul_test.cc ops_reduce_test.cc ops_layernorm_test.cc ops_all_reduce_test.cc ops_scale_test.cc
 USRC_OPS += ops_gelu_test.cc ops_im2col_test.cc ops_matmul_test.cc ops_dot_test.cc ops_sendrecv_mm_test.cc ops_transpose_test.cc
 
 UOBJ_OPS := $(patsubst %.cc,$(BDIR)/ark/ops/%.o,$(USRC_OPS))
@@ -97,7 +97,7 @@ CUTHEADERS := $(shell find $(ARKDIR)/third_party/cutlass/include/cutlass -regext
 INCTARGETS := $(patsubst $(ARKDIR)/ark/include/%,$(BDIR)/include/%,$(INCHEADERS))
 INCTARGETS += $(patsubst $(ARKDIR)/third_party/cutlass/include/cutlass/%,$(BDIR)/include/kernels/cutlass/%,$(CUTHEADERS))
 
-.PHONY: all build third_party submodules kahypar cutlass gpudma examples unittest cpplint cpplint-autofix install clean
+.PHONY: all build third_party submodules kahypar cutlass gpudma examples unittest cpplint cpplint-autofix pythonlint pythonlint-autofix install clean
 
 all: build unittest
 
@@ -123,6 +123,12 @@ cpplint:
 
 cpplint-autofix:
 	clang-format-12 -style=file --verbose --Werror -i $(CPPSOURCES)
+
+pythonlint:
+	black --check python --config .black ./python
+
+pythonlint-autofix:
+	black --config .black ./python
 
 $(UBIN): %: %.o $(BOBJ) | third_party
 	$(CXX) -o $@ $(LDFLAGS) $< $(BOBJ) $(KHP_SO) $(LDLIBS)

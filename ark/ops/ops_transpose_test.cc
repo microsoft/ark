@@ -25,6 +25,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
     ark::srand();
     auto data_in = ark::utils::rand_array<T>(n * c * h * w, 0.01);
     T *in_ptr = data_in.get();
+
     exe.tensor_memcpy(tns_in, in_ptr, n * c * h * w * sizeof(T));
 
     exe.launch();
@@ -68,6 +69,8 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
 ark::unittest::State test_transpose_fp32()
 {
     test_transpose_internal<float>(ark::FP32, 3, 2048, 96, 128, 0, 2, 1, 3);
+    test_transpose_internal<ark::half_t>(ark::FP16, 1, 1, 64, 32, 0, 1, 3, 2);
+
     return ark::unittest::SUCCESS;
 }
 

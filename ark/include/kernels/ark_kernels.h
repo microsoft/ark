@@ -21,9 +21,11 @@ extern __shared__ int _ARK_SMEM[];
 #include "comm.h"
 #include "comm_mm.h"
 #include "im2col.h"
+#include "layernorm.h"
 #include "matmul.h"
 #include "reduce.h"
 #include "smem.h"
+#include "softmax.h"
 #include "sync.h"
 #include "transpose.h"
 

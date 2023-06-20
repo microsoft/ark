@@ -36,6 +36,21 @@ bool SchedOpSeq::is_send() const
     return true;
 }
 
+bool SchedOpSeq::is_send_done() const
+{
+    for (auto &sop : this->seq) {
+        if (sop.get_cfg()->num_warps == 0) {
+            continue;
+        }
+        const OpType &ot = sop.get_op()->type;
+        if (ot == OP_SEND_DONE) {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
 bool SchedOpSeq::is_recv() const
 {
     for (auto &sop : this->seq) {
