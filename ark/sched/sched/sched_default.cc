@@ -649,12 +649,15 @@ vector<string> DefaultScheduler::schedule()
         vector<Sched> ds;
         vector<SchedOpSeq *> calc_opseqs;
         vector<SchedOpSeq *> send_opseqs;
+        vector<SchedOpSeq *> send_done_opseqs;
         vector<SchedOpSeq *> recv_opseqs;
         for (auto &ogn : depth) {
             if (ogn->opseq.is_send()) {
                 send_opseqs.emplace_back(&(ogn->opseq));
             } else if (ogn->opseq.is_recv()) {
                 recv_opseqs.emplace_back(&(ogn->opseq));
+            } else if (ogn->opseq.is_send_done()) {
+                send_done_opseqs.emplace_back(&(ogn->opseq));
             } else {
                 calc_opseqs.emplace_back(&(ogn->opseq));
             }
@@ -662,6 +665,7 @@ vector<string> DefaultScheduler::schedule()
         LOG(DEBUG, "schedule depth");
         this->schedule_depth_comm(send_opseqs, scheds);
         this->schedule_depth(calc_opseqs, scheds);
+        this->schedule_depth_comm(send_done_opseqs, scheds);
         this->schedule_depth_comm(recv_opseqs, scheds);
         // TODO: profile one depth
         // Global sync.
