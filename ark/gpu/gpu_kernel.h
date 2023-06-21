@@ -111,8 +111,7 @@ class GpuLoopKernel : public GpuKernel
     GpuMem *clks;
     unsigned int num_depths;
 
-    volatile int *flag_href[2];
-    volatile bool flip_flag = true;
+    volatile int *flag_href;
 
     GpuStream stream = nullptr;
     GpuEvent timer_begin;

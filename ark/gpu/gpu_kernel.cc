@@ -206,10 +206,8 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
     this->clks = global_clks.get();
     *(GpuPtr *)this->params[0] = this->flags->ref(0);
     *(GpuPtr *)this->params[1] = this->flags->ref(sizeof(int));
-    this->flag_href[0] = (volatile int *)this->flags->href(0);
-    this->flag_href[1] = (volatile int *)this->flags->href(sizeof(int));
-    assert(this->flag_href[0] != nullptr);
-    assert(this->flag_href[1] != nullptr);
+    this->flag_href = (volatile int *)this->flags->href(0);
+    assert(this->flag_href != nullptr);
     std::memset(this->clks->href(), 0, this->clks->get_bytes());
 
     if (codes_body.size() > 0) {
@@ -241,17 +239,15 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "__device__ char *" ARK_BUF_NAME ";\n"
         << *ark_loop_body_code <<
         "extern \"C\" __global__ __launch_bounds__(" << num_warp * 32 << ", 1)\n"
-        "void " << name_ << "(volatile int *_it_a, volatile int *_it_b)\n"
+        "void " << name_ << "(volatile int *_it)\n"
         "{\n"
-        "  ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "  for (;;) {\n"
-        "    if (threadIdx.x == 0) {\n"
-        "      *_it_b = 0;\n"
-        "      while (*_it_a == 0) {}\n"
-        "      _ITER = *_it_a;\n"
-        "    printf(\"ITER1 = %d\\n\", _ITER);\n"
+        "    if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
+        "      int iter;\n"
+        "      while ((iter = *_it) == 0) {}\n"
+        "      _ITER = iter;\n"
         "    }\n"
-        "    __syncthreads();\n"
+        "    ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "    if (_ITER < 0) {\n"
         "      return;\n"
         "    }\n"
@@ -259,19 +255,8 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "      ark_loop_body(_i);\n"
         "      ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "    }\n"
-        "    if (threadIdx.x == 0) {\n"
-        "      *_it_a = 0;\n"
-        "      while (*_it_b == 0) {}\n"
-        "      _ITER = *_it_b;\n"
-        "    printf(\"ITER2 = %d\\n\", _ITER);\n"
-        "    }\n"
-        "    __syncthreads();\n"
-        "    if (_ITER < 0) {\n"
-        "      return;\n"
-        "    }\n"
-        "    for (int _i = 0; _i < _ITER; ++_i) {\n"
-        "      ark_loop_body(_i);\n"
-        "      ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
+        "    if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
+        "      *_it = 0;\n"
         "    }\n"
         "  }\n"
         "}\n";
@@ -384,9 +369,7 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
         CULOG(cuEventRecord(this->timer_begin, stream));
     }
     // Initialize loop flags.
-    *(this->flag_href[0]) = 0;
-    *(this->flag_href[1]) = 0;
-    this->flip_flag = true;
+    *(this->flag_href) = 0;
     GpuState res = GpuKernel::launch(stream);
     if (res == CUDA_SUCCESS) {
         this->stream = stream;
@@ -415,24 +398,22 @@ void GpuLoopKernel::run(int iter)
             this->flip_flag = !(this->flip_flag);
         }
 #else
-        volatile int *href = this->flag_href[this->flip_flag ? 0 : 1];
+        volatile int *href = this->flag_href;
         while (*href > 0) {
         }
         *href = iter;
-        this->flip_flag = !(this->flip_flag);
 #endif
     }
 }
 
 bool GpuLoopKernel::poll()
 {
-    volatile int *href = this->flag_href[this->flip_flag ? 1 : 0];
-    return *href <= 0;
+    return *(this->flag_href) <= 0;
 }
 
 void GpuLoopKernel::wait()
 {
-    volatile int *href = this->flag_href[this->flip_flag ? 1 : 0];
+    volatile int *href = this->flag_href;
     int cnt = MAX_LOOP_COUNTER;
     printf("wait: href=%p %d\n", href, *href);
     while (*href > 0) {
@@ -462,8 +443,7 @@ void GpuLoopKernel::wait()
 void GpuLoopKernel::stop()
 {
     this->wait();
-    *(this->flag_href[0]) = -1;
-    *(this->flag_href[1]) = -1;
+    *(this->flag_href) = -1;
     sleep(1);
     CULOG(cuStreamSynchronize(this->stream));
     if (is_recording) {
