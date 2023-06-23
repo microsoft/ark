@@ -227,6 +227,7 @@ struct OpArg
     friend bool operator==(const OpArg &oa1, const OpArg &oa2);
 };
 
+// The Operation of a model.
 struct Op
 {
     Op(const OpType &type, const OpPrecType &prec_type,
@@ -236,9 +237,13 @@ struct Op
     Op(const Op &) = default;
     //
     OpType type;
+    // Precision type of the operation.
     OpPrecType prec_type;
+    // The input tensors of the operation.
     std::vector<Tensor *> in_deps;
+    // The output tensors of the operation.
     std::vector<Tensor *> out_deps;
+    // Additional arguments of the operation.
     std::vector<OpArg> args;
     std::string name;
     int gran_lev;
@@ -256,7 +261,7 @@ class Model
     }
     Model(const Model &) = delete;
     Model &operator=(const Model &) = delete;
-
+    // construct a tensor with given shape and data type.
     Tensor *tensor(const Dims &shape, TensorType dtype,
                    TensorBuf *buf = nullptr, const Dims &ldims = {},
                    const Dims &offs = {}, const Dims &pads = {},
@@ -287,58 +292,97 @@ class Model
     std::vector<Tensor *> sharding(Tensor *input, DimType axis,
                                    DimType dim_per_shard,
                                    const std::string &name = "sharding");
-
+    // Performs reduction along the `axis` of the `input` tensor and stores the
+    // result in `output`.
+    // Currently, only reduction along the last dimension is supported.
     Tensor *reduce(Tensor *input, DimType axis, Tensor *output = nullptr,
                    bool is_relu = false, const std::string &name = "reduce");
+    // Applies layer normalization to the `input` tensor and returns the
+    // normalized tensor as `output`.
+
     Tensor *layernorm(Tensor *input, Tensor *output = nullptr,
                       const std::string &name = "layernorm");
+    // Applies softmax activation to the `input` tensor, with the softmax
+    // operation
+    // being performed on the last dimension of the input tensor.
     Tensor *softmax(Tensor *input, Tensor *output = nullptr,
                     const std::string &name = "softmax");
+    // Transposes the `input` tensor according to the given `perm` permutation.
+    // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
+    // dimensions of the input tensor. Currently, only 4D tensors are supported.
     Tensor *transpose(Tensor *input, Dims perm, Tensor *output = nullptr,
                       const std::string &name = "transpose");
+    // Performs matrix multiplication between the `input` tensor and another
+    // `other` tensor, storing the result in `output`.
+    // Optional parameters allow controlling the behavior of the multiplication,
+    // such as transposing the input tensors and applying a ReLU activation.
     Tensor *matmul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                    DimType splitk = 1, bool trans_input = false,
                    bool trans_other = false, bool is_relu = false,
                    const std::string &name = "matmul", int gran_lev = -1);
+    // Implements a linear (fully connected) layer of the neural network model
+    // Note that support for bias is currently not available.
     Tensor *linear(Tensor *input, DimType out_features, bool bias = true,
                    Tensor *output = nullptr, DimType splitk = 1,
                    bool is_relu = false, const std::string &name = "linear",
                    int gran_lev = -1);
+    // Implements the 'im2col' method for 2D convolution layers, which takes an
+    // `input` tensor and reshapes it to a 2D matrix by extracting image patches
+    // from the input tensor based on the provided parameters.
     Tensor *im2col(Tensor *input, DimType kernel_height, DimType kernel_width,
                    DimType stride_height, DimType stride_width,
                    DimType pad_height, DimType pad_width,
                    DimType dilation_height, DimType dilation_width,
                    Tensor *output = nullptr,
                    const std::string &name = "im2col");
+    // Implements a 2D convolution layer using the 'im2col' method.
     Tensor *conv2d(Tensor *input, DimType in_channels, DimType out_channels,
                    DimType kernel_size, DimType stride, DimType padding,
                    bool bias = false, Tensor *output = nullptr,
                    const std::string &name = "conv2d");
+    // Applies max-pooling on the `input` tensor using `kernel_size` and
+    // `stride`, reducing its spatial size. The output shape is calculated based
+    // on the input tensor's shape and the stride value as follows: {is[0],
+    // (is[1] + stride - 1) / stride, (is[2] + stride - 1) / stride, is[3]},
+    // where 'is' represents the input tensor's shape.
     Tensor *max_pool(Tensor *input, DimType kernel_size, DimType stride,
                      Tensor *output = nullptr,
                      const std::string &name = "max_pool");
-    // Multiply `input` by `val`.
+    // Multiplies the `input` tensor by a scalar `val`, element-wise.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
+    // Applies the Gaussian Error Linear Unit (GELU) activation function to the
+    // `input` tensor, element-wise. GELU is a smooth approximation of the
+    // rectifier function and is widely used in deep learning models.
     Tensor *gelu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "gelu");
+    // Performs an element-wise addition operation between the `input` tensor
+    // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "add");
+    // Performs an element-wise multiplication operation between the `input`
+    // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
+    // send a tensor to gpu_dst, different tensors can be sent to the same gpu,
+    // so id is needed to identify the tensor. A send must have a corresponding
+    // recv operation in the model of another gpu.
     Tensor *send(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "send");
+    // block until the corresponding send operation is finished
     Tensor *send_done(Tensor *input, int id, Tensor *output = nullptr,
                       const std::string &name = "send_done");
+    // block until the corresponding recv operation is finished
     Tensor *recv(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
-    // send data from src to dst of id
+    // same as send_done, implemented by GPU-memcpy
     Tensor *send_mm(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "send_mm");
     Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "recv_mm");
+    // all reduce operation among all gpus
     Tensor *all_reduce(Tensor *input, int gpu_id, int gpu_num,
                        Tensor *output = nullptr,
                        const std::string &name = "all_reduce");
