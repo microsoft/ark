@@ -225,16 +225,20 @@ PYBIND11_MODULE(ark, m)
                       const std::string &>(),
              py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
              py::arg("model"), py::arg("name"))
-        .def("compile", &ark::Executor::compile)
-        .def("launch", &ark::Executor::launch)
-        .def("run", &ark::Executor::run, py::arg("iter"))
-        .def("wait", &ark::Executor::wait)
-        .def("stop", &ark::Executor::stop)
+        .def("compile", &ark::Executor::compile,
+             "compile the model kernel code")
+        .def("launch", &ark::Executor::launch,
+             "initialize and launch the GPU kernel")
+        .def("run", &ark::Executor::run, py::arg("iter"),
+             "run the GPU loop kernel for iter times")
+        .def("wait", &ark::Executor::wait, "wait for the GPU kernel to finish")
+        .def("stop", &ark::Executor::stop,
+             "wait for the GPU kernel to finish and stop the GPU kernel")
         .def("get_tensor", &ark::Executor::get_tensor, py::arg("tns"),
              py::return_value_policy::reference_internal)
         .def("tensor_memcpy_host_to_device", &tensor_memcpy_host_to_device,
-             py::arg("tns"), py::arg("src"))
+             py::arg("tns"), py::arg("src"), "copy tensor from host to device")
         .def("tensor_memcpy_device_to_host", &tensor_memcpy_device_to_host,
-             py::arg("dst"), py::arg("tns"))
+             py::arg("dst"), py::arg("tns"), "copy tensor from device to host")
         .def("tensor_clear", &ark::Executor::tensor_clear, py::arg("tns"));
 }

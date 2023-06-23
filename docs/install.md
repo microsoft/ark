@@ -88,3 +88,40 @@
 
     **NOTE:** currently unittest supports CUDA compute capapbility >= 7.0 only,
     and it requires at least 2 GPUs in the system for communication tests.
+
+## Ark Python Bindings  
+  
+This README provides instructions on how to build and test the Python bindings for Ark.  
+  
+## Building the Python Bindings  
+1. Install pybind11 using pip:  
+
+```bash
+pip3 install -r requirements.txt
+```
+
+2. Run the following command to build the Python bindings:  
+
+```bash
+python3 setup.py build_ext
+```
+
+After running this script, the `ark.cpython-38-x86_64-linux-gnu.so` will be generated in the `ark/python/build/lib.linux-x86_64-3.8` directory.  
+  
+3. Add the generated library to your PYTHONPATH:  
+
+```bash
+export PYTHONPATH="$ARK_DIR/ark/python/build/lib.linux-x86_64-3.8:${PYTHONPATH}"
+```
+  
+## Testing the Python Bindings  
+  
+Change to the `ark/python` directory and run the Python test script:  
+
+```bash
+cd ark/python
+python3 python_test.py
+```
+
+This will test the Python bindings for Ark. If the tests pass, you have successfully built and tested the Python bindings.  
+
