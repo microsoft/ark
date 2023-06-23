@@ -1,14 +1,8 @@
-# Project
+# Ark
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+GPU-driven system framework for scalable AI applications.
 
-As the maintainer of this project, please make a few updates:
-
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+[![License](https://img.shields.io/github/license/microsoft/ark.svg)](LICENSE)
 
 ## Contributing
 
@@ -31,3 +25,24 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## Citations
+
+If you use this project in your research, please cite our [NSDI'23 paper]:
+
+```bibtex
+@inproceedings{HwangPSQCX23,
+  author    = {Changho Hwang and
+               KyoungSoo Park and
+               Ran Shu and
+               Xinyuan Qu and
+               Peng Cheng and
+               Yongqiang Xiong},
+  title     = {ARK: GPU-driven Code Execution for Distributed Deep Learning},
+  booktitle = {20th {USENIX} Symposium on Networked Systems Design and Implementation ({NSDI} 23)},
+  year      = {2023},
+  publisher = {{USENIX} Association},
+}
+```
+
+[NSDI'23 paper]: https://www.usenix.org/conference/nsdi23/presentation/hwang
