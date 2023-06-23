@@ -364,25 +364,34 @@ class Model
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
-    // send a tensor to gpu_dst, different tensors can be sent to the same gpu,
-    // so id is needed to identify the tensor. A send must have a corresponding
-    // recv operation in the model of another gpu.
+    // Sends a tensor to a destination GPU (`gpu_dst`). Multiple tensors can be
+    // sent to the same GPU,so an identifier `id` is required to distinguish the
+    // tensor. Each 'send' operation must have a corresponding 'recv' operation
+    // that have the same id in another GPU's model.
     Tensor *send(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "send");
-    // block until the corresponding send operation is finished
+    // Blocks the execution until the corresponding 'send' operation with the
+    // specified `id` is completed.
     Tensor *send_done(Tensor *input, int id, Tensor *output = nullptr,
                       const std::string &name = "send_done");
-    // block until the corresponding recv operation is finished
+    // Receives a tensor from a source GPU (`gpu_src`), identified by the `id`
+    // parameter. Blocks the execution until the corresponding 'recv' operation
+    // is completed.
     Tensor *recv(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
-    // same as send_done, implemented by GPU-memcpy
+    // Similar to the 'send_done' function, but implemented using CUDA in-stream
+    // RDMA copy and Low Latency (LL) protocol.
     Tensor *send_mm(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "send_mm");
+    // Similar to the 'recv' function, but implemented using CUDA in-stream RDMA
+    // copy and Low Latency (LL) protocol.
     Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "recv_mm");
-    // all reduce operation among all gpus
+    // Performs an all-reduce operation across all GPUs, aggregating the input
+    // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
+    // total number of GPUs `gpu_num`.
     Tensor *all_reduce(Tensor *input, int gpu_id, int gpu_num,
                        Tensor *output = nullptr,
                        const std::string &name = "all_reduce");
@@ -391,6 +400,8 @@ class Model
     // the scheduler determine the value after the model is completely defined.
     TensorBuf *create_tensor_buf(const DimType bytes = 0);
     void destroy_tensor_buf(const TensorBuf *buf);
+    // Creates and returns an operation of the specified 'type'. This function
+    // serves as a base function for other model operation functions.
     Op *create_op(const OpType &type, const OpPrecType &prec_type,
                   const std::vector<Tensor *> &in_deps,
                   const std::vector<Tensor *> &out_deps,
