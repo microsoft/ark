@@ -1,7 +1,6 @@
 # ARK Architecture
 
-
-
+![ARK architecture illustration](../docs/imgs/GPU-driven_System_Architecture.png)
 
 
 
@@ -39,7 +38,9 @@ This directory contains files for implementing and testing various operations, s
 ### sched  
   
 The Scheduling folder contains all the files related to scheduling operations, including various scheduling algorithms, code generation, operation graph management, profiling, and testing.  
-  
+
+![ARK scheduler illustration](../docs/imgs/ark_scheduling_illustration.png)
+
 ### unittest  
   
 This directory contains utility files for unit testing.  
