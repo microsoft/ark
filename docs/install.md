@@ -69,7 +69,7 @@
 
     **NOTE:** current `gpumem` driver seems to be unstable as it sometimes stops working during runtime. If an ARK loop gets stuck, we may need to double-check whether it is working using the `tests/test_gpumem/` test code.
 
-## Install ARK & Run Unit Tests
+## Install ARK and Run Unit Tests
 
 1. Download third-parties & compile ARK and unittest.
 
@@ -115,7 +115,7 @@ export ARK_LOG_LEVEL=DEBUG
     export ARK_IPC_LISTEN_PORT_BASE=42000
     ```
 
-## Ark Python Bindings  
+## Install Ark Python Bindings  
   
 We offer Python bindings for Ark, allowing users to access and utilize Ark in their Python projects. These bindings are created using pybind11 and built on top of the C++ API.
   
@@ -123,16 +123,16 @@ We offer Python bindings for Ark, allowing users to access and utilize Ark in th
 1. Install pybind11 using pip:  
 
 ```bash
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 2. Run the following command to build the Python bindings:  
 
 ```bash
-python3 setup.py build_ext
+python setup.py build_ext
 ```
 
-After running this script, the `ark.cpython-38-x86_64-linux-gnu.so` will be generated in the `ark/python/build/lib.linux-x86_64-3.8` directory.  
+After running this script, the `ark.cpython-38-x86_64-linux-gnu.so` will be generated in the `ark/python/build/lib.linux-x86_64-3.8` directory. If --inplace is specified, a shared library will be generated in the current directory. Note that the name of the generated library may be different depending on the Python version and the operating system.
   
 3. Add the generated library to your PYTHONPATH:  
 
@@ -146,7 +146,7 @@ Change to the `ark/python` directory and run the Python test script:
 
 ```bash
 cd ark/python
-python3 python_test.py
+python unittest/api_test.py
 ```
 
 This will test the Python bindings for Ark. If the tests pass, you have successfully built and tested the Python bindings.  
