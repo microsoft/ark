@@ -46,3 +46,9 @@ If you use this project in your research, please cite our [NSDI'23 paper]:
 ```
 
 [NSDI'23 paper]: https://www.usenix.org/conference/nsdi23/presentation/hwang
+
+## Documentation
+
+* [Install][docs/install.md]
+* [Architecture][docs/architecture.md]
+* [Usage][docs/usage.md]

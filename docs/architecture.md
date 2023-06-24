@@ -1,3 +1,10 @@
+# ARK Architecture
+
+
+
+
+
+
 # Code Structure Overview  
   
 This codebase is organized into several top-level files and directories, each serving a specific purpose. Here's a brief overview of the structure:  
