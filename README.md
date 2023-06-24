@@ -49,6 +49,7 @@ If you use this project in your research, please cite our [NSDI'23 paper]:
 
 ## Documentation
 
-* [Install][docs/install.md]
-* [Architecture][docs/architecture.md]
-* [Usage][docs/usage.md]
+* [Install](./docs/install.md)
+* [Architecture](./docs/architecture.md)
+* [Usage](./docs/usage.md)
+
