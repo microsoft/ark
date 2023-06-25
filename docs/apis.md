@@ -46,57 +46,79 @@
   
 #### Tensor
 
-<!-- struct Tensor
-{
-    // Tensor constructor
-    Tensor(const Dims &shape, TensorType type, TensorBuf *buf,
+class Tensor
+
+ Tensor is a view of a TensorBuf. A TensorBuf can have multiple Tensor points to different area of the same TensorBuf.
+
+ Illustration of a single axis of a tensor:
+
+ 0           off ldim
+ |------------|-------------shape-------------|---------------------------|
+               <----------------------------->
+                  data range of this
+                  tensor
+
+
+
+
+Tensor is a basic unit in ARK's model. 
+
+- **Constructors**:
+
+Tensor(const Dims &shape, TensorType type, TensorBuf *buf,
            const Dims &ldims, const Dims &offs, const Dims &pads, bool exported,
            bool imported, int id, const std::string &name);
-    Tensor(const Tensor &) = default;
 
-    void update_pads(const std::vector<DimType> &pads);
-    // Offset to the element [i0][i1][i2][i3] of this tensor in the TensorBuf.
-    DimType offset(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
-                   DimType i3 = 0) const;
-    // Number of elements in the tensor excluding padding.
-    DimType size() const;
-    // Number of dimensions in the tensor.
-    int ndims() const;
-    // Shape of the tensor including padding.
-    Dims padded_shape() const;
-    // Number of bytes of each element in the tensor.
-    unsigned int type_bytes() const;
-    // Number of bytes of the tensor.
-    DimType shape_bytes() const;
-    // Should be the same as the number of bytes of the TensorBuf.
-    DimType ldims_bytes() const;
-    // Offset in bytes.
-    DimType offset_bytes(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
-                         DimType i3 = 0) const;
-    // TODO: deprecate this function.
-    bool is_sequential() const;
+- shape: shape of the tensor
+example: 
 
-    // TensorBuf that this tensor is associated with
-    TensorBuf *buf;
-    // Data type of each element in the tensor
-    TensorType type;
-    // Shape of the tensor
-    Dims shape;
-    // Leading dimensions of the underlying data array
-    Dims ldims;
-    // Offset of the tensor in the underlying data array
-    Dims offs;
-    // Unit dimensions of the underlying data array. ldims[x] should be always
-    // divided by udims[x].
-    Dims pads;
-    // Whether this tensor is accessed by remote devices
-    bool exported;
-    // if imported is true, the tensor is imported from another GPU and don't
-    // need to allocate a TensorBuf for it.
-    bool imported;
-    // Unique id of this tensor
-    int id;
-    // Name of this tensor
-    const std::string name;
-}; -->
+
+    TensorBuf *buf = this->create_tensor_buf();
+    Tensor *ret = new Tensor{shape,    type,     buf,
+                             ldims,    offs,     pads,
+                             exported, imported, (int)this->tns_storage.size(),
+                             name};
+
+This will create a tensor with shape {1, 16, 16} and half precision.
+
+
+# Model Class: An Essential Tool for Tensor Manipulation and Neural Network Operations
+
+The Model class is a powerful and versatile API designed to assist users in creating, manipulating, and performing operations on tensors in an efficient and user-friendly manner. This class offers a variety of functions that serve as essential building blocks for implementing complex deep learning models and other tensor-based algorithms.
+
+The Model class provides a wide range of functions for tensor manipulation, including:
+
+- **Tensor creation**: Create tensors with specified shapes and data types, with optional parameters such as buffer, layout dimensions, offsets, padding, and more.
+
+- **Reshaping**: Change the shape of a tensor according to specified dimensions, with options to allow zero-sized dimensions or infer a dimension's size from the input tensor.
+
+- **Identity**: Create an identical tensor with specified execution dependencies.
+
+- **Sharding**: Divide a tensor along a specified axis into smaller shards with a given dimension per shard.
+
+- **Reduction**: Perform reduction operations along a specified axis of a tensor, with support for ReLU activation.
+
+- **Layer normalization**: Apply layer normalization to a tensor, resulting in an output tensor.
+
+- **Softmax activation**: Apply the softmax activation function to a tensor, with the operation being performed on the last dimension of the input tensor.
+
+- **Transpose**: Rearrange a tensor's dimensions according to a specified permutation.
+
+- **Matrix multiplication**: Perform matrix multiplication between two tensors, with optional parameters to control transposition and ReLU activation.
+
+- **Linear layer**: Implement a fully connected layer of a neural network model, with support for bias and ReLU activation.
+
+- **2D convolution**: Implement a 2D convolution layer using the 'im2col' method, with options for bias and output tensor.
+
+- **Max-pooling**: Apply max-pooling to a tensor using specified kernel size and stride, reducing its spatial dimensions.
+
+- **Scalar multiplication**: Multiply a tensor by a scalar value, element-wise.
+
+- **GELU activation**: Apply the Gaussian Error Linear Unit (GELU) activation function to a tensor, element-wise.
+
+- **Element-wise addition**: Perform an element-wise addition operation between two tensors.
+
+- **Element-wise multiplication**: Perform an element-wise multiplication operation between two tensors.
+
+- **Tensor communication**: Send a tensor to a destination GPU and receive it on the other end, enabling multi-GPU operations.
 
