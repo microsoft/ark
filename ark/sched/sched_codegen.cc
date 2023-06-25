@@ -33,7 +33,10 @@ bool is_tiled_op(const SchedOp &sop)
            (sop.get_op()->type == OP_SCALE) ||
            (sop.get_op()->type == OP_GELU) ||
            (sop.get_op()->type == OP_IM2COL) ||
-           (sop.get_op()->type == OP_TRANSPOSE);
+           (sop.get_op()->type == OP_TRANSPOSE) ||
+           (sop.get_op()->type == OP_SEND_MM) ||
+              (sop.get_op()->type == OP_RECV_MM) 
+           ;
 }
 
 size_t SimpleCodeGenerator::get_tensor_offset(const Tensor *tensor)
