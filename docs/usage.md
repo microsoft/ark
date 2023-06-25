@@ -1,6 +1,17 @@
 # Building a Simple Model with ARK using C++
 
+In this tutorial, we will demonstrate how to use ARK to build a DNN application. The example source code is located at [examples/tutorial](../examples/tutorial).
 
+After we finish the [install](./install.md) and set ARK_ROOT, we can build the example and run it.
+
+```bash
+export ARK_ROOT=${HOME}/.ark
+cd examples/tutorial
+make
+./build/tutorial
+```
+
+There is some environment variables that can be used to configure ARK. We will introduce them in the following sections.
 
 ## Environment variables:  
 
@@ -27,6 +38,7 @@ export ARK_LOG_LEVEL=DEBUG
 ```
 export ARK_IPC_LISTEN_PORT_BASE=42000
 ```
+
 
 
 # Building a Simple Model with ARK in Python
