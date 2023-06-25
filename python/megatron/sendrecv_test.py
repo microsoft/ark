@@ -21,7 +21,7 @@ def my_function(rank):
         model.send(input_tensor, 0, 1, 2048)
         model.send_done(input_tensor, 0)
     if(rank == 1):
-        model.recv(input_tensor, 0, 0, 2048)
+        model.recv(input_tensor, 0, 0)
     # model.all_reduce(input_tensor, rank, world_size)
 
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
@@ -34,16 +34,17 @@ def my_function(rank):
   
 if __name__ == "__main__":  
     ark.init()
-
+    ark.cpu_timer()
     num_processes = world_size  # number of processes
     processes = []  
-  
     for i in range(num_processes):  
         process = multiprocessing.Process(target=my_function, args=(i,))  
         process.start()  
         processes.append(process)  
   
     for process in processes:  
-        process.join()  
+        process.join() 
+    ark.cpu_timer()
+
 
 

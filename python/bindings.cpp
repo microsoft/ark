@@ -7,8 +7,18 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sstream>
+#include <time.h>
 
 namespace py = pybind11;
+
+double cpu_timer()
+{
+    struct timespec tspec;
+    if (clock_gettime(CLOCK_MONOTONIC, &tspec) == -1) {
+        return -1;
+    }
+    return (tspec.tv_nsec / 1.0e9) + tspec.tv_sec;
+}
 
 void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
@@ -32,7 +42,8 @@ PYBIND11_MODULE(ark, m)
 {
     m.doc() = "pybind11 ark plugin"; // optional module docstring
     m.def("init", &ark::init, "A function that initializes the ark");
-
+    m.def("cpu_timer", &cpu_timer,
+          "A function that returns the current time in second");
     m.def("srand", &ark::srand, py::arg("seed") = -1,
           "Sets the seed for the random number generator");
     m.def("rand", &ark::rand, "Generates a random integer");
