@@ -83,6 +83,7 @@ if [ -z $TEST_NAME ]; then
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_all_reduce_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/dims_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/sched/sched_test"; ck;
+    ex "$PREFIX $ARK_BUILD_DIR/ops/ops_sendrecv_test"; ck;
     ex "$PREFIX $ARK_BUILD_DIR/ops/ops_sendrecv_mm_test"; ck;
 else
     ex "$PREFIX $ARK_BUILD_DIR/$TEST_NAME"; ck;

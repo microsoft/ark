@@ -175,9 +175,6 @@ int GpuKernel::get_function_attribute(CUfunction_attribute attr) const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-unique_ptr<GpuMem> global_flags;
-unique_ptr<GpuMem> global_clks;
-
 GpuLoopKernel::GpuLoopKernel(const string &name_,
                              const vector<string> &codes_body,
                              unsigned int num_sm, unsigned int num_warp,
@@ -197,18 +194,12 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
       timer_end{ctx_->create_event(false, nullptr)}
 {
     ctx_->set_current();
-    if (global_flags.get() == nullptr) {
-        global_flags.reset(new GpuMem{"flags", 2 * sizeof(int), false, true});
-        global_clks.reset(
-            new GpuMem{"clks", CLKS_CNT * sizeof(long long int), false, true});
-    }
-    this->flags = global_flags.get();
-    this->clks = global_clks.get();
-    *(GpuPtr *)this->params[0] = this->flags->ref(0);
-    *(GpuPtr *)this->params[1] = this->flags->ref(sizeof(int));
-    this->flag_href = (volatile int *)this->flags->href(0);
-    assert(this->flag_href != nullptr);
-    std::memset(this->clks->href(), 0, this->clks->get_bytes());
+    this->flag = make_unique<GpuMem>("", sizeof(int), true);
+    this->clocks = make_unique<GpuMem>("", CLKS_CNT * sizeof(long long int), true);
+    this->flag_href = (volatile int *)this->flag->href(0);
+
+    *(GpuPtr *)this->params[0] = this->flag->ref(0);
+    std::memset(this->clocks->href(), 0, this->clocks->get_bytes());
 
     if (codes_body.size() > 0) {
         const string *ark_loop_body_code = nullptr;
@@ -234,7 +225,6 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "__device__ long long int *_ARK_CLKS;\n"
         "__device__ int _ITER = 0;\n"
         "#include \"ark_kernels.h\"\n"
-        "#include <stdio.h>\n"
         "__device__ ark::sync::State " ARK_LSS_NAME ";\n"
         "__device__ char *" ARK_BUF_NAME ";\n"
         << *ark_loop_body_code <<
@@ -310,7 +300,7 @@ void GpuLoopKernel::load()
         CULOG(cuModuleGetGlobal(&db_ptr_addr, 0, this->module, ARK_DB_NAME));
         CULOG(cuMemcpyHtoD(db_ptr_addr, &db_ptr_val, sizeof(GpuPtr)));
         //
-        GpuPtr clks_ptr_val = this->clks->ref();
+        GpuPtr clks_ptr_val = this->clocks->ref();
         GpuPtr clks_ptr_addr;
         CULOG(
             cuModuleGetGlobal(&clks_ptr_addr, 0, this->module, ARK_CLKS_NAME));
@@ -415,7 +405,6 @@ void GpuLoopKernel::wait()
 {
     volatile int *href = this->flag_href;
     int cnt = MAX_LOOP_COUNTER;
-    printf("wait: href=%p %d\n", href, *href);
     while (*href > 0) {
         if (--cnt > 0) {
             continue;
@@ -437,7 +426,6 @@ void GpuLoopKernel::wait()
             CULOG(res);
         }
     }
-    printf("waitend: href=%p %d\n", href, *href);
 }
 
 void GpuLoopKernel::stop()

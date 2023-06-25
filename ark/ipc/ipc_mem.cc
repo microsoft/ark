@@ -36,6 +36,7 @@ namespace ark {
 IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
     : name{name_}, create{create_}
 {
+    assert(name_.size() > 0);
     string lock_name_str = NAME_PREFIX + name_ + NAME_LOCK_POSTFIX;
     const char *lock_name = lock_name_str.c_str();
     int fd;
