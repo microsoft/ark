@@ -7,18 +7,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sstream>
-#include <time.h>
 
 namespace py = pybind11;
-
-double cpu_timer()
-{
-    struct timespec tspec;
-    if (clock_gettime(CLOCK_MONOTONIC, &tspec) == -1) {
-        return -1;
-    }
-    return (tspec.tv_nsec / 1.0e9) + tspec.tv_sec;
-}
 
 void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
