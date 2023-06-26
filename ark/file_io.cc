@@ -179,9 +179,9 @@ void write_file(const string &path, const string &data)
     file << data;
 }
 
-void remove_file(const string &path)
+int remove_file(const string &path)
 {
-    remove(path.c_str());
+    return remove(path.c_str());
 }
 
 string get_dir(const string &path)

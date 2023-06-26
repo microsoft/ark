@@ -10,8 +10,12 @@
 
 using namespace std;
 
-#define ARK_IPC_LISTEN_PORT_BASE_DEFAULT 42000
-#define ARK_HOSTFILE_DEFAULT "hostfile"
+#define DEFAULT_ARK_ROOT "/usr/local/ark"
+#define DEFAULT_ARK_TMP "/tmp/ark"
+#define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
+#define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
+#define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
+#define DEFAULT_ARK_SCHEDULER "Default"
 
 namespace ark {
 
@@ -22,14 +26,13 @@ Env::Env()
     // Check if ARK_ROOT is set.
     const char *root_ca = getenv("ARK_ROOT");
     if (root_ca == nullptr) {
-        cerr << "ARK_ROOT is not set.\n";
-        exit(1);
+        root_ca = DEFAULT_ARK_ROOT;
     }
     this->path_root_dir = root_ca;
     // Set temporal directory path.
     const char *tmp_ca = getenv("ARK_TMP");
     if (tmp_ca == nullptr) {
-        this->path_tmp_dir = this->path_root_dir + "/tmp";
+        this->path_tmp_dir = DEFAULT_ARK_TMP;
     } else {
         this->path_tmp_dir = tmp_ca;
     }
@@ -50,21 +53,21 @@ Env::Env()
     // Get the hostfile path.
     const char *hostfile_ca = getenv("ARK_HOSTFILE");
     if (hostfile_ca == nullptr) {
-        this->hostfile = this->path_root_dir + "/" + ARK_HOSTFILE_DEFAULT;
+        this->hostfile = this->path_root_dir + "/" + DEFAULT_ARK_HOSTFILE_NAME;
     } else {
         this->hostfile = hostfile_ca;
     }
     // Get the listen socket port.
     const char *ipc_ca = getenv("ARK_IPC_LISTEN_PORT_BASE");
     if (ipc_ca == nullptr) {
-        this->ipc_listen_port_base = ARK_IPC_LISTEN_PORT_BASE_DEFAULT;
+        this->ipc_listen_port_base = DEFAULT_ARK_IPC_LISTEN_PORT_BASE;
     } else {
         this->ipc_listen_port_base = atoi(ipc_ca);
     }
     // Get the number of ranks per host.
     const char *ranks_ca = getenv("ARK_NUM_RANKS_PER_HOST");
     if (ranks_ca == nullptr) {
-        this->num_ranks_per_host = 8;
+        this->num_ranks_per_host = DEFAULT_ARK_NUM_RANKS_PER_HOST;
     } else {
         this->num_ranks_per_host = atoi(ranks_ca);
     }
@@ -85,7 +88,7 @@ Env::Env()
     }
     const char *scheduler_ca = getenv("ARK_SCHEDULER");
     if (scheduler_ca == nullptr) {
-        this->scheduler = "Default";
+        this->scheduler = DEFAULT_ARK_SCHEDULER;
     } else {
         this->scheduler = scheduler_ca;
     }

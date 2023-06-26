@@ -1,9 +1,9 @@
 # Environment variables:  
 
-- `ARK_ROOT`: The installation directory of ARK. Defaults to `${HOME}/.ark` when unset.  
+- `ARK_ROOT`: The installation directory of ARK. Defaults to `/usr/local/ark` when unset.  
 
 ```  
-export ARK_ROOT=${HOME}/.ark  
+export ARK_ROOT=/usr/local/ark  
 ```  
 
 - `ARK_SCHEDULER`: The scheduler used by ARK. The available schedulers are `Default` and `Simple`. Defaults to `Default` when unset. `Simple` is a simple scheduler that is used for debugging.

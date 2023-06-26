@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "ark/env.h"
 #include "ark/gpu/gpu_compile.h"
 #include "ark/gpu/gpu_logging.h"
 #include "ark/include/ark.h"
@@ -156,11 +157,7 @@ const string gpu_compile(const vector<string> &codes,
                          const GpuArchType &arch_type, unsigned int max_reg_cnt,
                          bool use_comm_sw)
 {
-    char *ark_root_env = getenv("ARK_ROOT");
-    if (ark_root_env == nullptr) {
-        LOGERR("ARK_ROOT is not set.");
-    }
-    const string ark_root{ark_root_env};
+    const string &ark_root = get_env().path_root_dir;
     string arch;
     if (arch_type == GPU_ARCH_CUDA_60) {
         arch = "60";

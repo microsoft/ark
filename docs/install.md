@@ -54,7 +54,7 @@
     ```
 
     Installation directory is specified as `ARK_ROOT` environment variable,
-    which is `${HOME}/.ark` by default when it is unset.
+    which is `/usr/local/ark` by default when it is unset.
 
 3. (Optional) Run unittest.
 
