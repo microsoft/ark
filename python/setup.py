@@ -8,10 +8,10 @@ import os
 
 pybind_include_path = pybind11.get_include()
 
-ark_root = os.environ["ARK_ROOT"]
+ark_root = os.environ.get("ARK_ROOT", None)
 if ark_root is None:
-    print("ARK_ROOT is not set.")
-    exit(-1)
+    print("ARK_ROOT is not set -- assume /usr/local/ark")
+    ark_root = "/usr/local/ark"
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 bindings_src = this_dir + "/bindings.cpp"
