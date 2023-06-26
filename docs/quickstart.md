@@ -8,9 +8,9 @@ After completing the [installation](./install.md) and setting the ARK_ROOT, you 
 python3 example/tutorial.py
 ```
 
-ARK is an innovative GPU-driven code execution system, consisting of several parts as depicted in the ![GPU-driven System Architecture](./imgs/GPU-driven_System_Architecture.png). 
+ARK is an innovative GPU-driven code execution system, its architecture are depicted here: ![GPU-driven System Architecture](./imgs/GPU-driven_System_Architecture.png)
 
-There are environment variables available to configure ARK. For more details about these variables, please refer to[Environment Variables](./env.md).
+There are environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
 
 Before diving in, let's import the required modules and initialize ARK:
 
@@ -48,7 +48,9 @@ exe.compile()
 
 At this step, users can see a compiling INFO such as:
 
-Compiling /tmp/ark_**********.cu
+```bash
+Compiling /tmp/ark_\*\*\*\*\*\*\*\*\*\*.cu
+```
 
 You can open the compiled file and inspect the generated CUDA kernel code. Here is a snippet of the generated CUDA kernel code:
 
@@ -76,6 +78,38 @@ __device__ void ark_loop_body(int _iter) {
 ```
 As seen in the code above, the generated CUDA kernel has one depth, which utilizes the first block and 32 threads to execute the unit operation uop0. The uop0 unit operation is the add operation we defined in the Python code. It employs the ark::add function from the ark_kernels.h to perform the operation.
 
+Before launching the kernel, it is necessary to initialize the input tensors. You can randomly initialize the input tensors with numpy and then copy the data to the GPU using exe.tensor_memcpy_host_to_device.
 
+```python
+# Initialize the input tensors
+input_np = np.random.rand(1, 32).astype(np.float16)
+other_np = np.random.rand(1, 32).astype(np.float16)
 
+exe.tensor_memcpy_host_to_device(input, input_np)
+exe.tensor_memcpy_host_to_device(other, other_np)
+```
+
+Next, you can launch the kernel and run it for one iteration. To wait for the kernel to finish, use exe.stop().
+
+```python
+# Launch the kernel and run for 1 iteration
+exe.launch()
+exe.run(1)
+
+# Wait for the kernel to finish
+exe.stop()
+```
+
+Lastly, copy the output tensor back to the host and verify the result.
+
+```python
+# Copy the output tensor back to host
+output_np = np.zeros((1, 32), dtype=np.float16)
+exe.tensor_memcpy_device_to_host(output_np, output)
+
+# test if the result is correct
+assert np.allclose(output_np, input_np + other_np)
+```
+
+Congratulations! You have successfully learned how to run a DNN model over ARK. Happy coding!
 
