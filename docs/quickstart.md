@@ -1,73 +1,39 @@
-# Building a Simple Model with ARK using C++
-
-In this tutorial, we will demonstrate how to use ARK to build a DNN application. The example source code is located at [examples/tutorial](../examples/tutorial).
-
-After we finish the [install](./install.md) and set ARK_ROOT, we can build the example and run it.
-
-```bash
-export ARK_ROOT=${HOME}/.ark
-cd examples/tutorial
-make
-./build/tutorial
-```
-
-There is some environment variables that can be used to configure ARK. Please refer to [Environment Variables](./env.md) for more details.
-
-# Building a Simple Model with ARK in Python
+# Quick Start for Using ARK with Python
 
 In this tutorial, we will demonstrate how to use ARK to run a simple DNN appication in Python. We will be using a basic Python example to illustrate the process.
 
-1. First, we import the `ark` module and initialize it:
+After we finish the [installation](./install.md) and set ARK_ROOT, we can build the example and run it.
 
-   ```python
-   import ark
+ARK is a novel GPU-driven code execution system. It consists of several parts as shown in [GPU-driven System Architecture](./imgs/GPU-driven_System_Architecture.png). 
 
-   ark.init()
-   ```
+There is some environment variables that can be used to configure ARK. In this tutorial, please set ARK_LOG_LEVEL to DEBUG to see more details of the execution process.
 
-2. Next, we create a `Dims` object and print its contents:
+```bash
+export ARK_LOG_LEVEL=DEBUG
+```
 
-   ```python
-   a = ark.Dims([1, 2, 3, 4])
-   print(ark.NO_DIM)
-   print(a[2])
-   ```
+Please refer to [Environment Variables](./env.md) for more details about the environment variables.
 
-3. We then set the random seed and generate a random number:
+Before we start, we need to import required modules and initialize ARK.
 
-   ```python
-   ark.srand(42)
+```python
+import ark
+import numpy as np
+# clean up the shared memory directory. 
+ark.init()
+```
 
-   random_number = ark.rand()
+First , we need to create the operational graph of our DNN models. 
+Here we define a simple model with two input tensors, the output tensor is the sum of the two input tensors.
 
-   print(random_number)
-   ```
+```python
+# Create a Model instance
+model = ark.Model()
 
-4. We create a `TensorBuf` object with a specified size and alignment:
+# Create two tensors
+input = model.tensor(ark.Dims(1, 1, 1, 32), ark.TensorType.FP16)
+other = model.tensor(ark.Dims(1, 1, 1, 32), ark.TensorType.FP16)
 
-   ```python
-   buf = ark.TensorBuf(1024, 1)
-   ```
-
-5. We define the dimensions for the tensor using `Dims` objects:
-
-   ```python
-   shape = ark.Dims(1, 2, 3, 4)
-   ldims = ark.Dims(4, 4, 4, 4)
-   offs = ark.Dims(0, 0, 0, 0)
-   pads = ark.Dims(1, 1, 1, 1)
-   ```
-
-6. We create a `Tensor` object using the dimensions and buffer:
-
-   ```python
-   tensor = ark.Tensor(
-       shape,
-       ark.TensorType.FP32,
-       buf,
-       ldims,
-       offs,
-       pads,
-       False,
-       False)
-
+# Add input and other to get output tensor
+output = model.add(input, other)
+```
