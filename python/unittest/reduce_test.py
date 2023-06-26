@@ -34,10 +34,7 @@ def test_reduce_internal(batch_size, m, n, data_type="float"):
 
     exe.stop()
 
-    output_tensor_host = np.zeros(
-        (batch_size, m, 1),
-        dtype=numpy_data_type,
-    )
+    output_tensor_host = np.zeros((batch_size, m, 1), dtype=numpy_data_type)
 
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
