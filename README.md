@@ -34,6 +34,9 @@ Any use of third-party trademarks or logos are subject to those third-party's po
 
 ## Citations
 
+<img src="./docs/imgs/logos.svg" alt="KAIST and Microsoft Logos" style="width: 350px;"/>
+
+ARK is a collaborative research initiative between KAIST and Microsoft Research.
 If you use this project in your research, please cite our [NSDI'23 paper]:
 
 ```bibtex
