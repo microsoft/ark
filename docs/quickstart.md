@@ -5,7 +5,7 @@ Welcome to this tutorial on using ARK to run a simple deep neural network (DNN) 
 After completing the [installation](./install.md) and setting the ARK_ROOT, you can run the tutorial example at [tutorial.py](./example/tutorial.py) to see how ARK works. 
 
 ```bash
-python3 example/tutorial.py
+python example/tutorial.py
 ```
 
 ARK is an innovative GPU-driven code execution system, its architecture are depicted here: ![GPU-driven System Architecture](./imgs/GPU-driven_System_Architecture.png)
@@ -49,7 +49,7 @@ exe.compile()
 At this step, users can see a compiling INFO such as:
 
 ```bash
-Compiling /tmp/ark_\*\*\*\*\*\*\*\*\*\*.cu
+Compiling /tmp/ark_xxxxxxxxxxx.cu
 ```
 
 You can open the compiled file and inspect the generated CUDA kernel code. Here is a snippet of the generated CUDA kernel code:
@@ -76,7 +76,7 @@ __device__ void ark_loop_body(int _iter) {
   depth0();
 }
 ```
-As seen in the code above, the generated CUDA kernel has one depth, which utilizes the first block and 32 threads to execute the unit operation uop0. The uop0 unit operation is the add operation we defined in the Python code. It employs the ark::add function from the ark_kernels.h to perform the operation.
+As seen in the code above, the generated CUDA kernel has one depth, which utilizes the first block and 32 threads to execute the unit operator uop0. The uop0 unit operator correspond to the add operator we defined in the Python code. It employs the ark::add function from the ark_kernels.h to perform the add operator.
 
 Before launching the kernel, it is necessary to initialize the input tensors. You can randomly initialize the input tensors with numpy and then copy the data to the GPU using exe.tensor_memcpy_host_to_device.
 
@@ -112,4 +112,3 @@ assert np.allclose(output_np, input_np + other_np)
 ```
 
 Congratulations! You have successfully learned how to run a DNN model over ARK. Happy coding!
-
