@@ -458,6 +458,9 @@ DEVICE void _transpose(float *out, float *in, int tx, int ty, int tz)
                                                   tz % OutShape::C, ty, tx);
 }
 
+// TODO: we need to use NelemPerThread=2 for half in the future, if out is a
+// __half pointer, this can cause a memory bug, because GPU DRAM access should
+// be always 4-byte aligned
 template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutShape, int ThreadsNum, int SmemBytes,
           typename Transpose>

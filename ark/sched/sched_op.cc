@@ -91,6 +91,10 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     }
     const OpConfig *cfg = &search->second[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);
+    // TODO: remove this hack way to set the out_deps_tiles[0].y. Probable
+    // solution: Split the layernorm and softmax into two ops, one for
+    // calulating the reduction of the mean and variance, the other for the
+    // normalization the input.
     if (op->type == OP_LAYERNORM || op->type == OP_SOFTMAX) {
         // The out_deps_tiles[0].y of the original config is 1, we need to make
         // out_deps_tiles[0].y equal to the output last dimension size, which is
