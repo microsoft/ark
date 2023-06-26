@@ -4,6 +4,7 @@
 import ark
 import numpy as np
 
+
 def main():
     # Initialize the ARK runtime
     ark.init()
@@ -12,8 +13,8 @@ def main():
     model = ark.Model()
 
     # Create two tensors
-    input = model.tensor(ark.Dims(32,), ark.TensorType.FP16)
-    other = model.tensor(ark.Dims(32,), ark.TensorType.FP16)
+    input = model.tensor(ark.Dims(32), ark.TensorType.FP16)
+    other = model.tensor(ark.Dims(32), ark.TensorType.FP16)
 
     # Add input and other to get output tensor
     output = model.add(input, other)
@@ -56,3 +57,7 @@ def main():
 
     print("max error: ", max_error, "mean error: ", mean_error)
     print("test_add passed")
+
+
+if __name__ == "__main__":
+    main()
