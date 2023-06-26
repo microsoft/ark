@@ -4,6 +4,7 @@
 from megatron_utils import *
 import ark
 
+
 class PoswiseFeedForwardNet:
     def __init__(self, model):
         self.model = model
@@ -21,5 +22,6 @@ class PoswiseFeedForwardNet:
         output_layernorm = self.model.layernorm(output)
         return output_layernorm
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     pass

@@ -6,9 +6,6 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
-#include <time.h>
-//  sleep
-#include <unistd.h>
 
 #include "ark/cpu_timer.h"
 #include "ark/env.h"
@@ -433,7 +430,6 @@ void GpuLoopKernel::stop()
 {
     this->wait();
     *(this->flag_href) = -1;
-    sleep(1);
     CULOG(cuStreamSynchronize(this->stream));
     if (is_recording) {
         CULOG(cuEventElapsedTime(&(this->elapsed_msec), this->timer_begin,

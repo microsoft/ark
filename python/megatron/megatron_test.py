@@ -4,19 +4,18 @@
 import megatron_pytorch
 import megatron_ark
 from megatron_utils import *
-import multiprocessing 
+import multiprocessing
 
 world_size = 2
-  
-def my_function(rank): 
-    print("rank:", rank) 
+
+
+def my_function(rank):
+    print("rank:", rank)
 
     # Create a Model instance
     model = ark.Model()
 
-    input_tensor = model.tensor(
-        ark.Dims(512), ark.TensorType.FP16
-    )
+    input_tensor = model.tensor(ark.Dims(512), ark.TensorType.FP16)
 
     model.all_reduce(input_tensor, rank, world_size)
 
@@ -28,20 +27,18 @@ def my_function(rank):
     exe.run(2)
     exe.stop()
 
-  
-if __name__ == "__main__":  
+
+if __name__ == "__main__":
     ark.init()
 
-    num_processes = world_size  # 设置进程数量  
-    processes = []  
-  
-    for i in range(num_processes):  
-        process = multiprocessing.Process(target=my_function, args=(i,))  
-        process.start()  
-        processes.append(process)  
-  
-    for process in processes:  
-        process.join()  
+    num_processes = world_size  # 设置进程数量
+    processes = []
+
+    for i in range(num_processes):
+        process = multiprocessing.Process(target=my_function, args=(i,))
+        process.start()
+        processes.append(process)
+
+    for process in processes:
+        process.join()
         process.wait()
-
-

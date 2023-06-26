@@ -24,11 +24,7 @@ ext_modules = [
         libraries=["ark"],
         library_dirs=[ark_root + "/lib"],
         define_macros=[("DEBUG", None)],
-    ),
+    )
 ]
 
-setup(
-    name="ark",
-    version="0.1",
-    ext_modules=ext_modules,
-)
+setup(name="ark", version="0.1", ext_modules=ext_modules)
