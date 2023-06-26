@@ -31,15 +31,15 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
 PYBIND11_MODULE(ark, m)
 {
     m.doc() = "pybind11 ark plugin"; // optional module docstring
-    m.def("init", &ark::init, "A function that initializes the ark");
+    m.def("init", &ark::init, "Init an ark program. Call this function to clean up the shared memory directory");
 
     m.def("srand", &ark::srand, py::arg("seed") = -1,
           "Sets the seed for the random number generator");
     m.def("rand", &ark::rand, "Generates a random integer");
-    m.attr("NO_DIM") = py::int_(static_cast<int>(ark::NO_DIM));
-    m.attr("DIMS_LEN") = py::int_(static_cast<int>(ark::DIMS_LEN));
+m.attr("DIMS_LEN") = py::int_(static_cast<int>(ark::DIMS_LEN));
+    m.attr("NO_DIM") = py::int_(static_cast<int>(ark::NO_DIM));    
 
-    py::class_<ark::Dims>(m, "Dims")
+    py::class_<ark::Dims>(m, "Dims", "Up-to-`DIMS_LEN`-dimensional vector.")
         .def(py::init([](ark::DimType d0, ark::DimType d1, ark::DimType d2,
                          ark::DimType d3) {
                  return std::make_unique<ark::Dims>(d0, d1, d2, d3);
@@ -52,10 +52,10 @@ PYBIND11_MODULE(ark, m)
                        "default value: NO_DIM"),
              py::arg_v("d3", static_cast<int>(ark::NO_DIM),
                        "default value: NO_DIM"))
-        .def(py::init<const ark::Dims &>())
-        .def(py::init<const std::vector<ark::DimType> &>())
-        .def("size", &ark::Dims::size)
-        .def("ndims", &ark::Dims::ndims)
+        .def(py::init<const ark::Dims &>(), "Copy another Dims object.")
+        .def(py::init<const std::vector<ark::DimType> &>(), "Construct from a vector. If the vector is shorter than DIMS_LEN, put following NO_DIMs. Raise an error if the vector is longer than DIMS_LEN.")
+        .def("size", &ark::Dims::size, "Return the volume of dimensions. If the dimensions are invalid, return -1")
+        .def("ndims", &ark::Dims::ndims, "Return the number of valid dimensions.")
         .def("__getitem__",
              [](const ark::Dims &d, ark::DimType idx) { return d[idx]; })
         .def("__setitem__", [](ark::Dims &d, ark::DimType idx,
@@ -67,14 +67,14 @@ PYBIND11_MODULE(ark, m)
         });
 
     // Register TensorType
-    py::enum_<ark::TensorType>(m, "TensorType")
+    py::enum_<ark::TensorType>(m, "TensorType", "Type of tensor data, FP16, FP32, or INT32")
         .value("FP16", ark::TensorType::FP16)
         .value("FP32", ark::TensorType::FP32)
         .value("INT32", ark::TensorType::INT32)
         .export_values();
 
     // Register TensorBuf
-    py::class_<ark::TensorBuf>(m, "TensorBuf")
+    py::class_<ark::TensorBuf>(m, "TensorBuf", "TensorBuf refers to a data array that can be shared by multiple tensors.")
         .def(py::init<const ark::DimType &, int>(), py::arg("bytes") = 0,
              py::arg("id") = -1)
         .def_readwrite("bytes", &ark::TensorBuf::bytes)
@@ -89,16 +89,16 @@ PYBIND11_MODULE(ark, m)
              py::arg("shape"), py::arg("type"), py::arg("buf"),
              py::arg("ldims"), py::arg("offs"), py::arg("pads"),
              py::arg("exported"), py::arg("imported"), py::arg("id"),
-             py::arg("name"))
+             py::arg("name"), "Tensor constructor")
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
-        .def("size", &ark::Tensor::size)
-        .def("ndims", &ark::Tensor::ndims)
-        .def("shape", &ark::Tensor::padded_shape)
-        .def("padded_shape", &ark::Tensor::padded_shape)
-        .def("type_bytes", &ark::Tensor::type_bytes)
-        .def("shape_bytes", &ark::Tensor::shape_bytes)
-        .def("ldims_bytes", &ark::Tensor::ldims_bytes)
+        .def("size", &ark::Tensor::size, "Number of elements in the tensor excluding padding.")
+        .def("ndims", &ark::Tensor::ndims, "Number of dimensions in the tensor.")
+        .def("shape", &ark::Tensor::padded_shape, "Shape of the tensor including padding.")
+        .def("padded_shape", &ark::Tensor::padded_shape, "Shape of the tensor including padding.")
+        .def("type_bytes", &ark::Tensor::type_bytes, "Number of bytes of each element in the tensor.")
+        .def("shape_bytes", &ark::Tensor::shape_bytes, "Number of bytes of the tensor.")
+        .def("ldims_bytes", &ark::Tensor::ldims_bytes, "Should be the same as the number of bytes of the TensorBuf.")
         .def("offset_bytes", &ark::Tensor::offset_bytes, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
