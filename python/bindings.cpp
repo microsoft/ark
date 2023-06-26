@@ -30,7 +30,7 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
 
 PYBIND11_MODULE(ark, m)
 {
-    m.doc() = "pybind11 ark plugin"; // optional module docstring
+    m.doc() = "ARK python module interface"; // optional module docstring
     m.def("init", &ark::init,
           "Init an ark program. Call this function to clean up the shared "
           "memory directory");
@@ -90,14 +90,14 @@ PYBIND11_MODULE(ark, m)
         .def_readwrite("id", &ark::TensorBuf::id)
         .def_readwrite("immutable", &ark::TensorBuf::immutable);
 
-    py::class_<ark::Tensor>(m, "Tensor", "Tensor is a view of a TensorBuf.")
+    py::class_<ark::Tensor>(m, "Tensor")
         .def(py::init<const ark::Dims &, ark::TensorType, ark::TensorBuf *,
                       const ark::Dims &, const ark::Dims &, const ark::Dims &,
                       bool, bool, int, const std::string &>(),
              py::arg("shape"), py::arg("type"), py::arg("buf"),
              py::arg("ldims"), py::arg("offs"), py::arg("pads"),
              py::arg("exported"), py::arg("imported"), py::arg("id"),
-             py::arg("name"), "Tensor constructor")
+             py::arg("name"))
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("size", &ark::Tensor::size,
@@ -180,7 +180,7 @@ PYBIND11_MODULE(ark, m)
              py::arg("output") = nullptr, py::arg("name") = "layernorm")
         .def("softmax", &ark::Model::softmax,
              "Applies softmax activation to the `input` tensor, with the "
-             "softmax operation being performed on the last dimension of the "
+             "softmax operator being performed on the last dimension of the "
              "input tensor.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "softmax")
@@ -253,13 +253,13 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "gelu")
         .def("add", &ark::Model::add,
-             "Performs an element-wise addition operation between the `input` "
+             "Performs an element-wise addition operator between the `input` "
              "tensor and the `other` tensor",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "add")
         .def("mul", &ark::Model::mul,
-             "Performs an element-wise multiplication operation between the "
+             "Performs an element-wise multiplication operator between the "
              "`input` tensor and the `other` tensor,",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
@@ -267,14 +267,14 @@ PYBIND11_MODULE(ark, m)
         .def("send", &ark::Model::send,
              "Sends a tensor to a destination GPU (`gpu_dst`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "
-             "required to distinguish the tensor. Each 'send' operation must "
-             "have a corresponding 'recv' operation that have the same id in "
+             "required to distinguish the tensor. Each 'send' operator must "
+             "have a corresponding 'recv' operator that have the same id in "
              "another GPU's model.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_dst"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "send")
         .def("send_done", &ark::Model::send_done,
-             "Blocks the execution until the corresponding 'send' operation "
+             "Blocks the execution until the corresponding 'send' operator "
              "with the specified `id` is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("output") = nullptr,
@@ -282,7 +282,7 @@ PYBIND11_MODULE(ark, m)
         .def("recv", &ark::Model::recv,
              "Receives a tensor from a source GPU (`gpu_src`), identified by "
              "the `id` parameter. Blocks the execution until the corresponding "
-             "'recv' operation is completed.",
+             "'recv' operator is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv")
@@ -299,7 +299,7 @@ PYBIND11_MODULE(ark, m)
              py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv_mm")
         .def("all_reduce", &ark::Model::all_reduce,
-             "Performs an all-reduce operation across all GPUs, aggregating "
+             "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),

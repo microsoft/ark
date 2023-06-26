@@ -162,7 +162,7 @@ struct Tensor
     // Name of this tensor
     const std::string name;
 };
-// Type of operation.
+// Type of operator.
 typedef enum
 {
     OP_UNKNOWN = 0,
@@ -187,7 +187,7 @@ typedef enum
     OP_SEND_MM,
     OP_RECV_MM,
 } OpType;
-// Type of precision of operation.
+// Type of precision of operator.
 typedef enum
 {
     OP_PREC_NONE,
@@ -202,7 +202,7 @@ typedef enum
     OP_ARCH_CUDA_80,
 } OpArchType;
 
-// Type of operation argument.
+// Type of operator argument.
 typedef enum
 {
     OP_ARG_INT,
@@ -211,7 +211,7 @@ typedef enum
     OP_ARG_BOOL,
     OP_ARG_FLOAT
 } OpArgType;
-// Stores an arbitrary type of argument given to an operation.
+// Stores an arbitrary type of argument given to an operator.
 struct OpArg
 {
     OpArg(int arg);
@@ -229,7 +229,7 @@ struct OpArg
     friend bool operator==(const OpArg &oa1, const OpArg &oa2);
 };
 
-// The Operation of a model.
+// The operator of a model.
 struct Op
 {
     Op(const OpType &type, const OpPrecType &prec_type,
@@ -239,13 +239,13 @@ struct Op
     Op(const Op &) = default;
     //
     OpType type;
-    // Precision type of the operation.
+    // Precision type of the operator.
     OpPrecType prec_type;
-    // The input tensors of the operation.
+    // The input tensors of the operator.
     std::vector<Tensor *> in_deps;
-    // The output tensors of the operation.
+    // The output tensors of the operator.
     std::vector<Tensor *> out_deps;
-    // Additional arguments of the operation.
+    // Additional arguments of the operator.
     std::vector<OpArg> args;
     std::string name;
     int gran_lev;
@@ -305,7 +305,7 @@ class Model
     Tensor *layernorm(Tensor *input, Tensor *output = nullptr,
                       const std::string &name = "layernorm");
     // Applies softmax activation to the `input` tensor, with the softmax
-    // operation
+    // operator
     // being performed on the last dimension of the input tensor.
     Tensor *softmax(Tensor *input, Tensor *output = nullptr,
                     const std::string &name = "softmax");
@@ -358,26 +358,26 @@ class Model
     // rectifier function and is widely used in deep learning models.
     Tensor *gelu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "gelu");
-    // Performs an element-wise addition operation between the `input` tensor
+    // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "add");
-    // Performs an element-wise multiplication operation between the `input`
+    // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
     // Sends a tensor to a destination GPU (`gpu_dst`). Multiple tensors can be
     // sent to the same GPU,so an identifier `id` is required to distinguish the
-    // tensor. Each 'send' operation must have a corresponding 'recv' operation
+    // tensor. Each 'send' operator must have a corresponding 'recv' operator
     // that have the same id in another GPU's model.
     Tensor *send(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "send");
-    // Blocks the execution until the corresponding 'send' operation with the
+    // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
     Tensor *send_done(Tensor *input, int id, Tensor *output = nullptr,
                       const std::string &name = "send_done");
     // Receives a tensor from a source GPU (`gpu_src`), identified by the `id`
-    // parameter. Blocks the execution until the corresponding 'recv' operation
+    // parameter. Blocks the execution until the corresponding 'recv' operator
     // is completed.
     Tensor *recv(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
@@ -391,7 +391,7 @@ class Model
     Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "recv_mm");
-    // Performs an all-reduce operation across all GPUs, aggregating the input
+    // Performs an all-reduce operator across all GPUs, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
     // total number of GPUs `gpu_num`.
     Tensor *all_reduce(Tensor *input, int gpu_id, int gpu_num,
@@ -402,8 +402,8 @@ class Model
     // the scheduler determine the value after the model is completely defined.
     TensorBuf *create_tensor_buf(const DimType bytes = 0);
     void destroy_tensor_buf(const TensorBuf *buf);
-    // Creates and returns an operation of the specified 'type'. This function
-    // serves as a base function for other model operation functions.
+    // Creates and returns an operator of the specified 'type'. This function
+    // serves as a base function for other model operator functions.
     Op *create_op(const OpType &type, const OpPrecType &prec_type,
                   const std::vector<Tensor *> &in_deps,
                   const std::vector<Tensor *> &out_deps,
