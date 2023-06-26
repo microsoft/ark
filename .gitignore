@@ -1,5 +1,6 @@
 # Build temp files
 build/
+**/build/
 
 # VS Code
 .vscode/

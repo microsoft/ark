@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "ark/env.h"
 #include "ark/logging.h"
 #include "third_party/kahypar/include/libkahypar.h"
 
@@ -26,14 +27,9 @@ template <typename ItemType> class KahyparGraph
     // Constructor.
     KahyparGraph()
     {
-        char *ark_root = getenv("ARK_ROOT");
-        if (ark_root == 0) {
-            LOGERR("ARK_ROOT is not set.");
-            throw;
-        }
         // Get the context file path.
         ctx_file_path =
-            std::string(ark_root) + "/cut_kKaHyPar_dissertation.ini";
+            get_env().path_root_dir + "/cut_kKaHyPar_dissertation.ini";
     };
 
     // Copy constructors.

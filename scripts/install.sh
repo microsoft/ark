@@ -26,7 +26,7 @@ if [ -z ${ARKDIR+x} ]; then
 fi
 
 # Select install path.
-DEFAULT_ARK_ROOT=$HOME/.ark
+DEFAULT_ARK_ROOT=/usr/local/ark
 if [ -z ${ARK_ROOT+x} ] || [ "$ARK_ROOT" == "" ]; then
     echo "ARK_ROOT is unset -- select default path $DEFAULT_ARK_ROOT"
     ARK_ROOT=$DEFAULT_ARK_ROOT
@@ -36,6 +36,7 @@ fi
 test -e $ARK_ROOT
 if [ $? != 0 ]; then
     mkdir -p $ARK_ROOT
+    ck "Failed to create $ARK_ROOT"
 fi
 
 KAHYPAR_BUILD_PATH="$ARKDIR/build/third_party/kahypar"
@@ -66,20 +67,22 @@ mkdir -p $ARK_ROOT/lib
 
 # Copy files into the install directory.
 ex "rsync -ar --delete $INCLUDE/* $ARK_ROOT/include"
-ck
+ck "Failed to copy include files."
 ex "rsync -ar --delete $LIB/* $ARK_ROOT/lib"
-ck
+ck "Failed to copy library files."
 if $USE_KAHYPAR; then
     ex "rsync -a $KAHYPAR_INI_PATH $ARK_ROOT"
-    ck
+    ck "Failed to copy kahypar ini file."
     ex "rsync -a $KAHYPAR_LIB $ARK_ROOT/lib"
-    ck
+    ck "Failed to copy kahypar library files."
 fi
 
 test -e $ARK_ROOT/hostfile
 if [ $? != 0 ]; then
     # Create a default hostfile.
     echo "127.0.0.1" > $ARK_ROOT/hostfile
+    ck "Failed to create hostfile."
 fi
 
 echo "ARK installation succeed: ARK_ROOT=$ARK_ROOT"
+echo "Please add $ARK_ROOT/lib to LD_LIBRARY_PATH"

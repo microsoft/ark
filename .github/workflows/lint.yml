@@ -1,22 +1,15 @@
 name: Lint
 
 on:
-  push:
+  pull_request:
     branches:
       - "**"
-  pull_request:
-    branches: [ main ]
 
 jobs:
   linters:
     runs-on: ubuntu-20.04
 
     steps:
-    - name: Check git version
-      env:
-        min-ver: "2.18"
-      run: dpkg --compare-versions $(git version | awk '{print $3}') ge ${{ env.min-ver }}
-
     - name: Check out Git repository
       uses: actions/checkout@v3
 
@@ -34,22 +27,13 @@ jobs:
     - name: Install Python dependencies
       run: python3.8 -m pip install black
 
-    - name: Run linters
-      uses: wearerequired/lint-action@v2
-      with:
-        black: true
-        black_auto_fix: false
-        black_args: "--config .black --check"
+    - name: Run pythonlint
+      run: make pythonlint
 
   spelling:
     runs-on: ubuntu-20.04
 
     steps:
-    - name: Check git version
-      env:
-        min-ver: "2.18"
-      run: dpkg --compare-versions $(git version | awk '{print $3}') ge ${{ env.min-ver }}
-
     - name: Check out Git repository
       uses: actions/checkout@v3
 
