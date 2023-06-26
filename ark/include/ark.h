@@ -27,8 +27,8 @@ void init();
 // Data type for dimension.
 typedef long long int DimType;
 
-
-// DIMS_LEN is the maximum number of dimensions of a tensor. If a tensor has less than DIMS_LEN dimensions, the remaining dimensions are padded with NO_DIM.
+// DIMS_LEN is the maximum number of dimensions of a tensor. If a tensor
+// has less than DIMS_LEN dimensions, the remaining dimensions will be NO_DIM.
 enum
 {
     DIMS_LEN = 4,
