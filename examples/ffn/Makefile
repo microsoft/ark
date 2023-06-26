@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-ARK_ROOT ?= /root/.ark
+ARK_ROOT ?= /usr/local/ark
 CUDIR    ?= /usr/local/cuda
 
 CXX      := g++

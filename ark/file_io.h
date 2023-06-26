@@ -19,7 +19,7 @@ std::vector<std::string> list_dir(const std::string &path);
 
 std::string read_file(const std::string &path);
 void write_file(const std::string &path, const std::string &data);
-void remove_file(const std::string &path);
+int remove_file(const std::string &path);
 std::string get_dir(const std::string &path);
 
 } // namespace ark

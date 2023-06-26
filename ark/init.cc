@@ -6,6 +6,7 @@
 
 #include "ark/file_io.h"
 #include "ark/include/ark.h"
+#include "ark/logging.h"
 
 using namespace std;
 
@@ -20,7 +21,10 @@ void init()
     vector<string> paths = list_dir("/dev/shm");
     for (auto &path : paths) {
         if (path.substr(0, 4) == "ark.") {
-            remove_file(path);
+            if (remove_file(path) != 0) {
+                LOGERR("init failed: failed to remove ", path, " (errno ",
+                       errno, ")");
+            }
         }
     }
 }

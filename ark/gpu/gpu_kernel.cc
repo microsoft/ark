@@ -325,7 +325,7 @@ void GpuLoopKernel::load()
                                                 data_buf_name.c_str());
                 // in some test code the symbol _ARK_BUF_0 is not defined
                 if (_e == CUDA_ERROR_NOT_FOUND) {
-                    LOG(INFO, "global variable ", data_buf_name, " not found");
+                    LOG(DEBUG, "global variable ", data_buf_name, " not found");
                     continue;
                 }
                 // CULOG(_e);
