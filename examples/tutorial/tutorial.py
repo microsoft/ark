@@ -16,7 +16,7 @@ other = model.tensor(ark.Dims(1, 1, 1, 32), ark.TensorType.FP16)
 # Add input and other to get output tensor
 output = model.add(input, other)
 
-# Create the executor instance, the scheduler will be created and 
+# Create the executor instance, the scheduler will be created and
 # start scheduling the model when the executor is created
 exe = ark.Executor(0, 0, 1, model, "test_add")
 
