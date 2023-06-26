@@ -17,7 +17,7 @@
 
 ## Install `gpudma`
 
-*NOTE: if you are using a Docker container, the following step 1, 2, and 3 should be done on the host, and step 4 should be done on both the host and the container.*
+*NOTE: if you are using a Docker container, the following steps should be done on the host.*
 
 1. Compile `gpudma`.
 
