@@ -3,6 +3,7 @@
 A GPU-driven system framework for scalable AI applications.
 
 [![License](https://img.shields.io/github/license/microsoft/ark.svg)](LICENSE)
+[![CodeQL](https://github.com/microsoft/ark/actions/workflows/codeql.yml/badge.svg)](https://github.com/microsoft/ark/actions/workflows/codeql.yml)
 
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
