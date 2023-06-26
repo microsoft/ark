@@ -110,6 +110,11 @@ exe.tensor_memcpy_device_to_host(output_np, output)
 
 # test if the result is correct
 assert np.allclose(output_np, input_np + other_np)
+
+max_error = np.max(np.abs(output_np - (input_np + other_np)))
+mean_error = np.mean(np.abs(output_np - (input_np + other_np)))
+
+print("max error: ", max_error, "mean error: ", mean_error)
 ```
 
 Congratulations! You have successfully learned how to run a DNN model over ARK. Happy coding!

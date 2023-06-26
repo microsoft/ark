@@ -32,6 +32,9 @@ def main():
     exe.tensor_memcpy_host_to_device(input, input_np)
     exe.tensor_memcpy_host_to_device(other, other_np)
 
+    print("input: ", input_np)
+    print("other: ", other_np)
+
     # Launch the kernel and run for 1 iteration
     exe.launch()
     exe.run(1)
@@ -43,8 +46,13 @@ def main():
     output_np = np.zeros((1, 32), dtype=np.float16)
     exe.tensor_memcpy_device_to_host(output_np, output)
 
+    print("output: ", output_np)
+
     # test if the result is correct
     assert np.allclose(output_np, input_np + other_np)
 
-if __name__ == "__main__":
-    main()
+    max_error = np.max(np.abs(output_np - (input_np + other_np)))
+    mean_error = np.mean(np.abs(output_np - (input_np + other_np)))
+
+    print("max error: ", max_error, "mean error: ", mean_error)
+    print("test_add passed")
