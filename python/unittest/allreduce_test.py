@@ -5,13 +5,9 @@ import ark
 import numpy as np
 import multiprocessing
 
-world_size = 2
 
-tensor_len = 32
-tensor_size = tensor_len * 2
-
-
-def all_reduce_test(rank, np_inputs):
+def all_reduce_test(rank, np_inputs, world_size, tensor_len):
+    tensor_size = tensor_len * 2
     print("rank:", rank)
 
     # Create a Model instance
@@ -45,7 +41,7 @@ def all_reduce_test(rank, np_inputs):
     print("rank:", rank, "done")
 
 
-if __name__ == "__main__":
+def all_reduce_test_main(world_size, tensor_len):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
@@ -54,10 +50,15 @@ if __name__ == "__main__":
         np_inputs.append(np.random.rand(tensor_len).astype(np.float16))
     for i in range(num_processes):
         process = multiprocessing.Process(
-            target=all_reduce_test, args=(i, np_inputs)
+            target=all_reduce_test, args=(i, np_inputs, world_size, tensor_len)
         )
         process.start()
         processes.append(process)
 
     for process in processes:
         process.join()
+
+
+if __name__ == "__main__":
+    all_reduce_test_main(2, 2048)
+    all_reduce_test_main(4, 2048)
