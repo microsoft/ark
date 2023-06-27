@@ -8,8 +8,6 @@
 #include <sstream>
 #include <string>
 
-#define ARK_LOG_SMEM_NAME "ark.log"
-
 namespace ark {
 
 typedef enum

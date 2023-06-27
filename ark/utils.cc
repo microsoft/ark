@@ -18,6 +18,9 @@
 
 using namespace std;
 
+/// @brief Convert cutlass::half_t to @ref ark::half_t
+/// @param cuh
+/// @return @ref ark::half_t
 inline static const ark::half_t convert(const cutlass::half_t &cuh)
 {
     ark::half_t ret;
@@ -25,8 +28,13 @@ inline static const ark::half_t convert(const cutlass::half_t &cuh)
     return ret;
 }
 
+/// @brief Numeric limits of @ref ark::half_t
 template <> struct std::numeric_limits<ark::half_t>
 {
+    static ark::half_t max()
+    {
+        return convert(std::numeric_limits<cutlass::half_t>::max());
+    }
     static ark::half_t min()
     {
         return convert(std::numeric_limits<cutlass::half_t>::min());
@@ -71,6 +79,7 @@ ark::half_t &operator-=(ark::half_t &lhs, ark::half_t const &rhs)
     return lhs;
 }
 
+/// @brief Return the absolute value of a @ref ark::half_t
 ark::half_t abs(ark::half_t const &val)
 {
     return convert(cutlass::abs(cutlass::half_t::bitcast(val.storage)));
@@ -78,11 +87,15 @@ ark::half_t abs(ark::half_t const &val)
 
 namespace ark {
 
+/// @brief Construct a @ref half_t from a float
+/// @param f
 half_t::half_t(float f)
 {
     this->storage = cutlass::half_t(f).raw();
 }
 
+/// @brief Convert a @ref half_t to a float
+/// @return float
 half_t::operator float() const
 {
     return float(cutlass::half_t::bitcast(this->storage));
@@ -90,19 +103,30 @@ half_t::operator float() const
 
 namespace utils {
 
-// Return a random half_t array.
+/// @brief Return a random @ref half_t array.
+/// @param num
+/// @param max_val
+/// @return std::unique_ptr<half_t[]> 
 unique_ptr<half_t[]> rand_halfs(size_t num, float max_val)
 {
     return rand_array<half_t>(num, max_val);
 }
 
-// Return a random float array.
+/// @brief Return a random float array.
+/// @param num
+/// @param max_val
+/// @return std::unique_ptr<float[]>
 unique_ptr<float[]> rand_floats(size_t num, float max_val)
 {
     return rand_array<float>(num, max_val);
 }
 
-// Return an array of range values.
+/// @brief Return an array of range values.
+/// @tparam T
+/// @param num
+/// @param begin
+/// @param diff
+/// @return std::unique_ptr<T[]>
 template <typename T>
 unique_ptr<T[]> range_array(size_t num, float begin, float diff)
 {
