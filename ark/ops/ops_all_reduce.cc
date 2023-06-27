@@ -59,28 +59,10 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         Tensor *add = this->add(recv_shard, recv_buf, recv_shard,
                                 name + "/add_" + to_string(i - 1));
     }
-    // for (int i = 1; i < gpu_num - 1; ++i) {
-    //     int shard_id = (gpu_id + gpu_num - i) % gpu_num;
-    //     Tensor *buf = bufs[shard_id];
-    //     Tensor *tmp = this->identity(buf, {send}, nullptr,
-    //                                  name + "/identity_" +
-    //                                  to_string(icnt++));
-    //     Tensor *recv = this->recv(tmp, base + shard_id, gpu_src, 0, nullptr,
-    //                               name + "/recv_" + to_string(rcnt++));
-    //     send =
-    //         this->send(this->identity(buf, {recv}, nullptr,
-    //                                   name + "/identity_" +
-    //                                   to_string(icnt++)),
-    //                    base + shard_id, gpu_dst, 0, nullptr,
-    //                    name + "/send_" + to_string(scnt++));
-    //     shard_send_id = shard_id;
-    // }
-    // int shard_recv_id = (shard_send_id + gpu_num - 1) % gpu_num;
-    // Tensor *tmp = this->identity(shards[shard_recv_id], {send}, nullptr,
-    //                              name + "/identity_" + to_string(icnt++));
-    // LOG(DEBUG, "recv# ", gpu_id, " ", shard_recv_id);
-    // this->recv(tmp, base + shard_recv_id, gpu_src, 0, nullptr,
-    //            name + "/recv_" + to_string(rcnt++));
+
+    // all-gather
+    for (int i = 1; i < gpu_num; ++i) {
+    }
 
     this->next_eid += gpu_num;
     return input;
