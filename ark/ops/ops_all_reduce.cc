@@ -32,38 +32,34 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
     DimType num_per_shard = math::div_up(total_num, gpu_num);
     vector<Tensor *> shards =
         this->sharding(input, 0, num_per_shard, name + "/sharding");
-    vector<Tensor *> bufs;
-    bufs.resize(gpu_num);
 
     int gpu_dst = (gpu_id + 1) % gpu_num;
     int gpu_src = (gpu_id + gpu_num - 1) % gpu_num;
     int base = this->next_eid;
 
-    int icnt = 0;
-    int rcnt = 0;
-    int scnt = 0;
     // reduce-scatter
     for (int i = 1; i < gpu_num; ++i) {
         int shard_send_id = (gpu_id + gpu_num - i + 1) % gpu_num;
 
         Tensor *send =
-            this->send(shards[shard_send_id], base + shard_send_id, gpu_dst, 0,
-                       nullptr, name + "/send_" + to_string(scnt++));
-        bufs[shard_send_id] = shards[shard_send_id];
+            this->send(shards[shard_send_id], base + shard_send_id, gpu_dst);
 
         int shard_recv_id = (gpu_id + gpu_num - i) % gpu_num;
         Tensor *recv_shard = shards[shard_recv_id];
         Tensor *recv_buf = this->tensor(recv_shard->shape, recv_shard->type);
         Tensor *recv = this->recv(this->identity(recv_buf, {send}),
-                                  base + shard_recv_id, gpu_src, 0, nullptr,
-                                  name + "/recv_" + to_string(rcnt++));
+                                  base + shard_recv_id, gpu_src);
         Tensor *add = this->add(this->identity(recv_shard, {recv}), recv_buf,
-                                this->identity(recv_shard),
-                                name + "/add_" + to_string(i - 1));
+                                this->identity(recv_shard));
     }
 
     // all-gather
     for (int i = 1; i < gpu_num; ++i) {
+        int shard_send_id = (gpu_id + gpu_num - i) % gpu_num;
+
+        // Tensor *send = this->send(shards[shard_send_id], base +
+        // shard_send_id,
+        //                           gpu_dst);
     }
 
     this->next_eid += gpu_num;
