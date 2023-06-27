@@ -7,7 +7,7 @@ import multiprocessing
 
 world_size = 2
 
-tensor_len = 8
+tensor_len = 32
 tensor_size = tensor_len * 2
 
 
