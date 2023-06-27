@@ -99,17 +99,18 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
 
     int base = this->next_eid;
     // all to all allreduce
-    Tensor *send_t;
+    vector<Tensor *> send_tensors;
     for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
         if (gpu_dst == gpu_id)
             continue;
-        send_t = this->send(input, base + gpu_dst, gpu_dst);
+        Tensor *send_t = this->send(input, base + gpu_dst, gpu_dst);
+        send_tensors.push_back(send_t);
     }
     Tensor *recv_buf = this->tensor(input->shape, input->type);
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
         if (gpu_src == gpu_id)
             continue;
-        Tensor *recv = this->recv(this->identity(recv_buf, {send_t}),
+        Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
                                   base + gpu_id, gpu_src);
         Tensor *add = this->add(this->identity(input, {recv}), recv_buf,
                                 this->identity(input));
