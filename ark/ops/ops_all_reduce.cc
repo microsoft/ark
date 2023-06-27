@@ -39,16 +39,16 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
     Tensor *reduce_scatter_dep;
     // reduce-scatter
     for (int i = 1; i < gpu_num; ++i) {
-        int shard_send_id = (gpu_id + gpu_num - i + 1) % gpu_num;
+        int send_shard_id = (gpu_id + gpu_num - i + 1) % gpu_num;
 
         Tensor *send =
-            this->send(shards[shard_send_id], base + shard_send_id, gpu_dst);
+            this->send(shards[send_shard_id], base + send_shard_id, gpu_dst);
 
-        int shard_recv_id = (gpu_id + gpu_num - i) % gpu_num;
-        Tensor *recv_shard = shards[shard_recv_id];
+        int recv_shard_id = (gpu_id + gpu_num - i) % gpu_num;
+        Tensor *recv_shard = shards[recv_shard_id];
         Tensor *recv_buf = this->tensor(recv_shard->shape, recv_shard->type);
         Tensor *recv = this->recv(this->identity(recv_buf, {send}),
-                                  base + shard_recv_id, gpu_src);
+                                  base + recv_shard_id, gpu_src);
         Tensor *add = this->add(this->identity(recv_shard, {recv}), recv_buf,
                                 this->identity(recv_shard));
         reduce_scatter_dep = add;
@@ -56,15 +56,22 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
 
     // all-gather
     for (int i = 1; i < gpu_num; ++i) {
-        int shard_send_id = (gpu_id + gpu_num - i) % gpu_num;
+        int send_shard_id = (gpu_id + gpu_num - i) % gpu_num;
         Tensor *send_shard =
-            this->identity(shards[shard_send_id], {reduce_scatter_dep});
-        Tensor *send = this->send(send_shard, base + shard_send_id, gpu_dst);
+            this->identity(shards[send_shard_id], {reduce_scatter_dep});
+        // send_shard->exported = true;
+        Tensor *send_t = this->send(send_shard, base + send_shard_id, gpu_dst);
 
-        int shard_recv_id = (gpu_id + gpu_num - i - 1) % gpu_num;
-        Tensor *recv_shard = shards[shard_recv_id];
-        Tensor *recv = this->recv(this->identity(recv_shard, {send}),
-                                  base + shard_recv_id, gpu_src);
+        int recv_shard_id = (gpu_id + gpu_num - i - 1) % gpu_num;
+        LOG(DEBUG, "GPU ", gpu_id, " send shard ", send_shard_id,
+            " recv shard ", recv_shard_id);
+        Tensor *recv_shard = shards[recv_shard_id];
+        Tensor *recv_buf = this->tensor(recv_shard->shape, recv_shard->type);
+        Tensor *recv = this->recv(this->identity(recv_shard, {send_t}),
+                                  base + recv_shard_id, gpu_src);
+        // Tensor *dummy = this->tensor(recv_shard->shape, recv_shard->type);
+        // this->add(this->identity(recv_buf, {recv}), dummy,
+        //           this->identity(recv_shard));
     }
 
     this->next_eid += gpu_num;
