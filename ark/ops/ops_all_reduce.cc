@@ -54,9 +54,11 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         int shard_recv_id = (gpu_id + gpu_num - i) % gpu_num;
         Tensor *recv_shard = shards[shard_recv_id];
         Tensor *recv_buf = this->tensor(recv_shard->shape, recv_shard->type);
-        this->recv(this->identity(recv_buf, {send}), base + shard_recv_id,
-                   gpu_src, 0, nullptr, name + "/recv_" + to_string(rcnt++));
-        Tensor *add = this->add(recv_shard, recv_buf, recv_shard,
+        Tensor *recv = this->recv(this->identity(recv_buf, {send}),
+                                  base + shard_recv_id, gpu_src, 0, nullptr,
+                                  name + "/recv_" + to_string(rcnt++));
+        Tensor *add = this->add(this->identity(recv_shard, {recv}), recv_buf,
+                                this->identity(recv_shard),
                                 name + "/add_" + to_string(i - 1));
     }
 
