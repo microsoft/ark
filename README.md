@@ -9,7 +9,27 @@ See [Quick Start](docs/quickstart.md) to quickly get started.
 
 ## Overview
 
+ARK is a deep learning framework especially designed for highly optimized performance over distributed GPUs. Specifically, ARK adopts a GPU-driven execution model, where the GPU autonomously schedule and execute both computation and communication without any CPU intervention.
 
+ARK provides a set of APIs for users to express their distributed deep learning applications. ARK then automatically schedules a GPU-driven execution plan for the application, which generates a GPU kernel code called *loop kernel*. The loop kernel is a GPU kernel that contains a loop that iteratively executes the entire application, including both computation and communication. ARK then executes the loop kernel on the distributed GPUs.
+
+![GPU-driven System Architecture](./docs/imgs/GPU-driven_System_Architecture.svg)
+
+## Status & Roadmap
+
+ARK is under active development and a part of its features will be added in a future release. The following describes key features of each version.
+
+### ARK v0.1 (Latest Release)
+
+TBU
+
+### ARK v0.2 (TBU)
+
+TBU
+
+### ARK v0.3 (TBU)
+
+TBU
 
 ## Contributing
 
