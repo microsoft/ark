@@ -11,7 +11,7 @@ tensor_len = 8
 tensor_size = tensor_len * 2
 
 
-def my_function(rank, np_inputs):
+def all_reduce_test(rank, np_inputs):
     print("rank:", rank)
 
     # Create a Model instance
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         np_inputs.append(np.random.rand(tensor_len).astype(np.float16))
     for i in range(num_processes):
         process = multiprocessing.Process(
-            target=my_function, args=(i, np_inputs)
+            target=all_reduce_test, args=(i, np_inputs)
         )
         process.start()
         processes.append(process)
