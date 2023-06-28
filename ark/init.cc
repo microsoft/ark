@@ -12,7 +12,7 @@ using namespace std;
 
 namespace ark {
 
-/// @brief Initialize the ARK runtime.
+/// Initialize the ARK runtime.
 ///
 /// This function should be called by the user before any other functions are
 /// called. It is safe to call this function multiple times.
