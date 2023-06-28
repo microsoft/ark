@@ -353,7 +353,8 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 {
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
-    LOG(DEBUG, "Exported GPU Buffer sid ", sid, " offset ", buf->get_offset() + offset);
+    LOG(DEBUG, "Exported GPU Buffer sid ", sid, " offset ",
+        buf->get_offset() + offset);
 }
 
 //

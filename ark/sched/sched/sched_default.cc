@@ -244,7 +244,8 @@ GpuMgrCtx *DefaultScheduler::create_context(const string &name)
             if (this->buf_trans.find(bi.tbuf) != this->buf_trans.end()) {
                 // Already allocated.
                 if (bi.sid != -1) {
-                    ctx->mem_export(this->buf_trans[bi.tbuf], bi.offset, bi.sid);
+                    ctx->mem_export(this->buf_trans[bi.tbuf], bi.offset,
+                                    bi.sid);
                 }
             } else if (bi.sid == -1) {
                 buf = ctx->mem_alloc(bi.bytes, 1);
