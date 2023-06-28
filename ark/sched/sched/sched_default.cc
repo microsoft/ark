@@ -240,7 +240,15 @@ GpuMgrCtx *DefaultScheduler::create_context(const string &name)
     for (BufInfo &bi : this->buf_infos) {
         GpuBuf *buf;
         if (bi.gpu_id == this->gpu_mgr->gpu_id) {
-            if (bi.sid == -1) {
+            auto search = this->buf_trans.find(bi.tbuf);
+            if (search != this->buf_trans.end()) {
+                // Already allocated.
+                buf = search->second;
+                if (bi.sid != -1) {
+                    ctx->mem_export(this->buf_trans[bi.tbuf], bi.offset,
+                                    bi.sid);
+                }
+            } else if (bi.sid == -1) {
                 buf = ctx->mem_alloc(bi.bytes, 1);
             } else {
                 // Align for RDMA performance.

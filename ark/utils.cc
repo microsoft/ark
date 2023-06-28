@@ -18,6 +18,9 @@
 
 using namespace std;
 
+/// Convert cutlass::half_t to @ref ark::half_t
+/// @param cuh cutlass::half_t
+/// @return @ref ark::half_t
 inline static const ark::half_t convert(const cutlass::half_t &cuh)
 {
     ark::half_t ret;
@@ -25,8 +28,13 @@ inline static const ark::half_t convert(const cutlass::half_t &cuh)
     return ret;
 }
 
+/// Numeric limits of @ref ark::half_t
 template <> struct std::numeric_limits<ark::half_t>
 {
+    static ark::half_t max()
+    {
+        return convert(std::numeric_limits<cutlass::half_t>::max());
+    }
     static ark::half_t min()
     {
         return convert(std::numeric_limits<cutlass::half_t>::min());
@@ -71,6 +79,9 @@ ark::half_t &operator-=(ark::half_t &lhs, ark::half_t const &rhs)
     return lhs;
 }
 
+/// Return the absolute value of a @ref ark::half_t
+/// @param val Input value
+/// @return @ref Absolute value of `val`
 ark::half_t abs(ark::half_t const &val)
 {
     return convert(cutlass::abs(cutlass::half_t::bitcast(val.storage)));
@@ -78,11 +89,15 @@ ark::half_t abs(ark::half_t const &val)
 
 namespace ark {
 
+/// Construct a @ref half_t from a float
+/// @param f Input value
 half_t::half_t(float f)
 {
     this->storage = cutlass::half_t(f).raw();
 }
 
+/// Convert a @ref half_t to a float
+/// @return float
 half_t::operator float() const
 {
     return float(cutlass::half_t::bitcast(this->storage));
@@ -90,19 +105,30 @@ half_t::operator float() const
 
 namespace utils {
 
-// Return a random half_t array.
+/// Return a random @ref half_t array.
+/// @param num Number of elements
+/// @param max_val Maximum value
+/// @return std::unique_ptr<half_t[]>
 unique_ptr<half_t[]> rand_halfs(size_t num, float max_val)
 {
     return rand_array<half_t>(num, max_val);
 }
 
-// Return a random float array.
+/// Return a random float array.
+/// @param num Number of elements
+/// @param max_val Maximum value
+/// @return std::unique_ptr<float[]>
 unique_ptr<float[]> rand_floats(size_t num, float max_val)
 {
     return rand_array<float>(num, max_val);
 }
 
-// Return an array of range values.
+/// Return an array of values starting from `begin` with difference `diff`.
+/// @tparam T Type of the array
+/// @param num Number of elements
+/// @param begin First value
+/// @param diff Difference between two values
+/// @return std::unique_ptr<T[]>
 template <typename T>
 unique_ptr<T[]> range_array(size_t num, float begin, float diff)
 {
@@ -114,19 +140,31 @@ unique_ptr<T[]> range_array(size_t num, float begin, float diff)
     return unique_ptr<T[]>(ret);
 }
 
-// Return a half_t range array.
+/// Return a @ref half_t range array.
+/// @param num Number of elements
+/// @param begin First value
+/// @param diff Difference between two values
+/// @return std::unique_ptr<half_t[]>
 unique_ptr<half_t[]> range_halfs(size_t num, float begin, float diff)
 {
     return range_array<half_t>(num, begin, diff);
 }
 
-// Return a float range array.
+/// Return a float range array.
+/// @param num Number of elements
+/// @param begin First value
+/// @param diff Difference between two values
+/// @return std::unique_ptr<float[]>
 unique_ptr<float[]> range_floats(size_t num, float begin, float diff)
 {
     return range_array<float>(num, begin, diff);
 }
 
-// Calculate the error rate between two values.
+/// Calculate the error rate between two values.
+/// @tparam T Type of the values
+/// @param a First value
+/// @param b Second value
+/// @return The error rate
 template <typename T> float error_rate(T a, T b)
 {
     T diff = abs(a - b);
@@ -145,24 +183,32 @@ template <typename T> float error_rate(T a, T b)
     return (float)diff / max(abs((float)a), abs((float)b));
 }
 
-//
+/// Calculate the error rate between two @ref half_t values.
+/// @param a First value
+/// @param b Second value
+/// @return The error rate
 float error_rate(half_t a, half_t b)
 {
     return error_rate<half_t>(a, b);
 }
 
-//
+/// Calculate the error rate between two floats.
+/// @param a First value
+/// @param b Second value
+/// @return The error rate
 float error_rate(float a, float b)
 {
     return error_rate<float>(a, b);
 }
 
-// Return mean squared error and max error rate between two matrices.
+/// Return mean squared error and max error rate between two matrices.
 template <typename T>
 pair<float, float> cmp_matrix(T *ground_truth, T *res, unsigned int m,
                               unsigned int n, unsigned int bs, unsigned int lm,
                               unsigned int ln, bool print)
 {
+    // TODO: deprecate this function.
+
     if (lm == 0) {
         lm = m;
     }
@@ -239,6 +285,8 @@ pair<float, float> cmp_matrix(half_t *ground_truth, half_t *res, unsigned int m,
                               unsigned int n, unsigned int bs, unsigned int lm,
                               unsigned int ln, bool print)
 {
+    // TODO: deprecate this function.
+
     return cmp_matrix<half_t>(ground_truth, res, m, n, bs, lm, ln, print);
 }
 
@@ -247,6 +295,8 @@ pair<float, float> cmp_matrix(float *ground_truth, float *res, unsigned int m,
                               unsigned int n, unsigned int bs, unsigned int lm,
                               unsigned int ln, bool print)
 {
+    // TODO: deprecate this function.
+
     return cmp_matrix<float>(ground_truth, res, m, n, bs, lm, ln, print);
 }
 
@@ -255,6 +305,8 @@ template <typename T>
 void print_matrix(T *val, unsigned int m, unsigned int n, unsigned int bs,
                   unsigned int lm, unsigned int ln)
 {
+    // TODO: deprecate this function.
+
     unsigned int x = 0;
     unsigned int cc = 0;
     cout << setprecision(4);
@@ -277,16 +329,26 @@ void print_matrix(T *val, unsigned int m, unsigned int n, unsigned int bs,
 void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
                   unsigned int lm, unsigned int ln)
 {
+    // TODO: deprecate this function.
+
     print_matrix<half_t>(val, m, n, bs, lm, ln);
 }
 
 void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
                   unsigned int lm, unsigned int ln)
 {
+    // TODO: deprecate this function.
+
     print_matrix<float>(val, m, n, bs, lm, ln);
 }
 
-// Return mean squared error and max error rate between two matrices.
+/// Return mean squared error and max error rate between two tensors.
+/// @tparam T data type of the tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
 template <typename T>
 std::pair<float, float> tensor_compare(T *ground_truth, T *res, Dims shape,
                                        bool print = false)
@@ -322,19 +384,34 @@ std::pair<float, float> tensor_compare(T *ground_truth, T *res, Dims shape,
     return {l2_loss / nelem, max_err};
 }
 
+/// Return mean squared error and max error rate between two @ref half_t
+/// tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
 std::pair<float, float> tensor_compare(half_t *ground_truth, half_t *res,
                                        Dims shape, bool print = false)
 {
     return tensor_compare<half_t>(ground_truth, res, shape, print);
 }
 
+/// Return mean squared error and max error rate between two float tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
 std::pair<float, float> tensor_compare(float *ground_truth, float *res,
                                        Dims shape, bool print = false)
 {
     return tensor_compare<float>(ground_truth, res, shape, print);
 }
 
-// Spawn a process that runs `func`. Returns PID of the spawned process.
+/// Spawn a process that runs `func`.
+/// @param func function to run in the spawned process.
+/// @return PID of the spawned process.
 int proc_spawn(const function<int()> &func)
 {
     pid_t pid = fork();
@@ -347,8 +424,9 @@ int proc_spawn(const function<int()> &func)
     return (int)pid;
 }
 
-// Wait for a spawned process with PID `pid`.
-// Return -1 on any unexpected failure, otherwise return the exit status.
+/// Wait for a spawned process with PID `pid`.
+/// @param pid PID of the spawned process.
+/// @return -1 on any unexpected failure, otherwise return the exit status.
 int proc_wait(int pid)
 {
     int status;
@@ -361,9 +439,10 @@ int proc_wait(int pid)
     return -1;
 }
 
-// Wait for multiple child processes.
-// Return 0 on success, -1 on any unexpected failure, otherwise the first seen
-// non-zero exit status.
+/// Wait for multiple child processes.
+/// @param pids PIDs of the spawned processes.
+/// @return 0 on success, -1 on any unexpected failure, otherwise the first seen
+/// non-zero exit status.
 int proc_wait(const vector<int> &pids)
 {
     int ret = 0;

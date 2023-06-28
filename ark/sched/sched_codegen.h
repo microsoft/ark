@@ -94,7 +94,6 @@ class DefaultCodeGenerator : BaseCodeGenerator
                                    const std::pair<int, int> &fdims);
     std::ostream &codegen_opseq(std::ostream &os, const std::string &name,
                                 const SchedOpSeq &opseq,
-                                std::map<std::string, int> &sropseq_map,
                                 std::map<std::string, int> &uop_map);
     // std::ostream &codegen_loop_body(
     //     std::ostream &os, const std::vector<SchedTileDepth *> &tile_depths);
