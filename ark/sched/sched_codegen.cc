@@ -428,7 +428,6 @@ ostream &DefaultCodeGenerator::codegen_tensor(ostream &os, const Tensor &tensor)
 //
 ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
                                              const SchedOpSeq &opseq,
-                                             map<string, int> &sropseq_map,
                                              map<string, int> &uop_map)
 {
     auto &sched_ops = opseq.get_sched_ops();
@@ -639,8 +638,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
         }
     }
     for (auto &opseq : non_sropseqs) {
-        this->codegen_opseq(os, "op" + to_string(opseq->get_id()), *opseq,
-                            sropseq_map, uop_map);
+        this->codegen_opseq(os, "op" + to_string(opseq->get_id()), *opseq, uop_map);
     }
     os << "DEVICE void " << name << "() {";
     brc->codegen(os);
