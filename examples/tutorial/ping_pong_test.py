@@ -27,7 +27,6 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         recv_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
         recv_dep = model.recv(recv_tensor, 0, 0)
         send_tensor = model.identity(recv_tensor, [recv_dep])
-        model.scale(send_tensor, 1.0)
         model.send(send_tensor, 1, 0, tensor_size)
         model.send_done(send_tensor, 1)
 
