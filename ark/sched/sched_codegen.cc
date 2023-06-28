@@ -638,7 +638,8 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
         }
     }
     for (auto &opseq : non_sropseqs) {
-        this->codegen_opseq(os, "op" + to_string(opseq->get_id()), *opseq, uop_map);
+        this->codegen_opseq(os, "op" + to_string(opseq->get_id()), *opseq,
+                            uop_map);
     }
     os << "DEVICE void " << name << "() {";
     brc->codegen(os);
