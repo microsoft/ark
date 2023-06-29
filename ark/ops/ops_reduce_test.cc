@@ -31,12 +31,12 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
                 int idx;
                 if (axis == 0) {
                     idx = i * m + j + l * m * n;
-                }
-                if (axis == 1) {
+                } else if (axis == 1) {
                     idx = i * m * k + j + l * m;
-                }
-                if (axis == 2) {
+                } else if (axis == 2) {
                     idx = i * m * k + j * k + l;
+                } else {
+                    assert(false);
                 }
                 ark::half_t x = data_a[idx];
                 v += x;

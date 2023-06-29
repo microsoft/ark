@@ -453,11 +453,10 @@ const string SchedOp::func_string_reduce() const
 
     const Tensor *tns_in = this->op->in_deps[0];
     const Tensor *tns_out = this->op->out_deps[0];
-    bool is_relu = *(bool *)this->op->args[0].val;
+    // bool is_relu = *(bool *)this->op->args[0].val;
 
     LOG(DEBUG, "func_string_reduce: ", tns_out->shape, " ", tns_out->ldims);
 
-    Dims shp_in = tns_in->shape;
     Dims shp_out = tns_out->shape;
 
     int ndims = shp_out.ndims();
@@ -486,7 +485,6 @@ const string SchedOp::func_string_layernorm() const
 
     LOG(DEBUG, "func_string_layernorm: ", tns_out->shape, " ", tns_out->ldims);
 
-    Dims shp_in = tns_in->shape;
     Dims shp_out = tns_out->shape;
 
     int ndims = shp_out.ndims();
@@ -513,7 +511,6 @@ const string SchedOp::func_string_softmax() const
 
     LOG(DEBUG, "func_string_softmax: ", tns_out->shape, " ", tns_out->ldims);
 
-    Dims shp_in = tns_in->shape;
     Dims shp_out = tns_out->shape;
 
     int ndims = shp_out.ndims();

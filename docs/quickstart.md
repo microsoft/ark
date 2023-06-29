@@ -8,8 +8,6 @@ After completing the [installation](./install.md), you can run the tutorial exam
 python examples/tutorial/tutorial.py
 ```
 
-ARK is a GPU-driven code execution system. The architecture is depicted here: ![GPU-driven System Architecture](./imgs/GPU-driven_System_Architecture.svg)
-
 There are environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
 
 Before diving in, let's import the required modules and initialize ARK:

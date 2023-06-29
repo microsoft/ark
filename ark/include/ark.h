@@ -427,13 +427,19 @@ class Model
     bool is_no_ref(Tensor *tns) const;
 
   private:
+    /// Stores all tensor buffers.
     std::list<std::unique_ptr<TensorBuf>> tns_bufs_storage;
+    /// Stores all tensors.
     std::list<std::unique_ptr<Tensor>> tns_storage;
+    /// Stores all operators.
     std::list<std::unique_ptr<Op>> ops_storage;
-
+    /// Maps a tensor to its generating operator.
     std::map<Tensor *, Op *> gen_op;
+    /// Maps a tensor to its referencing operators.
     std::map<Tensor *, std::set<Op *>> ref_ops;
+    /// Number of assigned EIDs.
     int next_eid = 0;
+    /// Count the number of tensors requested the same name.
     std::map<std::string, int> name_cnts;
 };
 
