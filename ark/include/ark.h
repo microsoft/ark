@@ -451,7 +451,7 @@ class Executor
   public:
     // Constructor.
 
-    Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
+    Executor(const int gpu_id_, int rank_, int world_size_, const Model &model,
              const std::string &name);
     ~Executor();
     // Compile the model. This must be called before `launch()`.
