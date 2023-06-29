@@ -37,8 +37,8 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         recv_id, recv_rank = 0, 0
         recv_dep = model.recv(recv_tensor, recv_id, recv_rank)
 
-        # The send must be executed after the recv, in the current scheduler, 
-        # in one depth their will be send operation, compute operation and 
+        # The send must be executed after the recv, in the current scheduler,
+        # in one depth their will be send operation, compute operation and
         # recv operation
         send_tensor = model.identity(recv_tensor, [recv_dep])
 
