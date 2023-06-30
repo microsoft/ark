@@ -36,12 +36,20 @@ class PoswiseFeedForwardNet:
 
     def init_model(self, param, exe, prefix=""):
         weight_1 = param[prefix + "weight_1"]
-        weight_1_shared = np.split(weight_1, num_gpu, axis=1)
-        exe.tensor_memcpy_host_to_device(
-            self.weight_1, weight_1_shared[self.rank]
+        weight_1_shared = np.split(weight_1, num_gpu, axis=1)[self.rank]
+        print(
+            "weight_1_shared.flags['C_CONTIGUOUS']",
+            weight_1_shared.flags["C_CONTIGUOUS"],
         )
+        weight_1_shared_copy = weight_1_shared.copy()
+        print(
+            "weight_1_shared_copy.flags['C_CONTIGUOUS']",
+            weight_1_shared_copy.flags["C_CONTIGUOUS"],
+        )
+        exe.tensor_memcpy_host_to_device(self.weight_1, weight_1_shared_copy)
         weight_2 = param[prefix + "weight_2"]
-        weight_2_shared = np.split(weight_2, num_gpu, axis=0)
+        weight_2_shared = np.split(weight_2, num_gpu, axis=0)[self.rank]
+        weight_2_shared_copy = weight_2_shared.copy()
         exe.tensor_memcpy_host_to_device(
-            self.weight_2, weight_2_shared[self.rank]
+            self.weight_2, weight_2_shared_copy
         )
