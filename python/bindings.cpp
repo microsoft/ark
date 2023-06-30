@@ -10,6 +10,8 @@
 
 namespace py = pybind11;
 
+// TODO: add more checks for the host_buffer, currently users must make sure
+// that the host_tensor's memory layout is contiguous
 void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
 {
