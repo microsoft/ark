@@ -16,3 +16,5 @@ n_heads = 8  # Number of heads in Multi-Head Attention set to 8
 batch_size = 2
 seq_len = 64
 src_vocab_size = 128
+
+num_gpu = 2
