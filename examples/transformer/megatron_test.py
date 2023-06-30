@@ -7,7 +7,7 @@ from transformer_utils import *
 import multiprocessing
 
 
-def test_PoswiseFeedForwardNetTensorParallel(rank, param):
+def test_PoswiseFeedForwardNet(rank, param):
     # Create a Model instance
     model = ark.Model()
 
@@ -15,14 +15,14 @@ def test_PoswiseFeedForwardNetTensorParallel(rank, param):
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
 
-    ark_model = megatron_ark.PoswiseFeedForwardNetTensorParallel(model, rank)
+    ark_model = megatron_ark.PoswiseFeedForwardNet(model, rank)
 
-    output_tensor=ark_model.forward(input_tensor)
+    output_tensor = ark_model.forward(input_tensor)
 
     exe = ark.Executor(rank, rank, num_gpu, model, "test_python_bindings")
     exe.compile()
-
-    exe.tensor_memcpy_host_to_device(input_tensor, param["input_tensor"])
+    input_tensor_host = param["input_tensor"]
+    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
     exe.launch()
     ark_model.init_model(param, exe)
@@ -48,9 +48,9 @@ def test_PoswiseFeedForwardNetTensorParallel(rank, param):
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
-    # print(input_tensor_host)
-    # print(output_tensor_host)
-    # print(gt)
+    print("input_tensor_host", input_tensor_host)
+    print("output_tensor_host", output_tensor_host)
+    print("gt", gt)
     print("poswise feed forward net test")
     print(
         "batch_size:",
@@ -63,6 +63,7 @@ def test_PoswiseFeedForwardNetTensorParallel(rank, param):
         d_ff,
     )
     print("max error: ", max_error, "avg error: ", avg_error)
+
 
 def multi_process_test_main(func, np_inputs):
     ark.init()
@@ -93,4 +94,4 @@ if __name__ == "__main__":
         "weight_1": weight_1_host,
         "weight_2": weight_2_host,
     }
-    multi_process_test_main(test_PoswiseFeedForwardNetTensorParallel, param)
+    multi_process_test_main(test_PoswiseFeedForwardNet, param)
