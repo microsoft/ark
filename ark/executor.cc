@@ -24,8 +24,8 @@ class ExecutorMember
 };
 
 // Constructor.
-Executor::Executor(const int gpu_id_, int rank_, int world_size_,
-                   const Model &model, const string &name)
+Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
+                   const string &name)
     : gpu_id{gpu_id_}, rank{rank_},
       world_size{world_size_}, member{make_unique<ExecutorMember>()}
 {

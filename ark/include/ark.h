@@ -410,6 +410,10 @@ class Model
                   const std::vector<OpArg> &args, const std::string &name,
                   int gran_lev = -1);
 
+    /// Delete an existing operator from the model.
+    /// @param op the existing op to be deleted.
+    void delete_op(Op *op);
+
     const std::list<std::unique_ptr<TensorBuf>> &get_tensor_bufs() const
     {
         return tns_bufs_storage;
@@ -451,7 +455,7 @@ class Executor
   public:
     // Constructor.
 
-    Executor(const int gpu_id_, int rank_, int world_size_, const Model &model,
+    Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
              const std::string &name);
     ~Executor();
     // Compile the model. This must be called before `launch()`.

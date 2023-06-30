@@ -14,17 +14,141 @@ using namespace std;
 
 namespace ark {
 
-static int sched_op_num_tiles(const Op &op, const OpTile &tile)
+/// Calculate the number of tiles for a given op and a tile.
+/// @param op input op
+/// @param tile input tile
+/// @return number of tiles
+static int calc_num_tiles(const Op &op, const OpTile &tile)
 {
     if (op.out_deps.size() == 0) {
+        // This op has no output.
         return 0;
     }
     assert(op.out_deps[0] != nullptr);
     auto &s = op.out_deps[0]->shape;
-    return s[0] * math::div_up(s[1], tile.y) * math::div_up(s[3], tile.x);
+    int ndims = s.ndims();
+    if (ndims == 0) {
+        // The output has no element.
+        return 0;
+    }
+    // tile.y corresponds to the last dimension.
+    int num_tiles = math::div_up(s[ndims - 1], tile.y);
+    // tile.x corresponds to the second last dimension.
+    if (ndims > 1) {
+        num_tiles *= math::div_up(s[ndims - 2], tile.x);
+    } else if (tile.x != 1) {
+        LOGERR("The tile is 2D, but the output is 1D.");
+    }
+    // The remaining dimensions are not tiled.
+    int remain_dims = ndims - 2;
+    while (remain_dims > 0) {
+        num_tiles *= s[remain_dims - 1];
+        remain_dims--;
+    }
+    return num_tiles;
 }
 
-void DefaultScheduler::configure_gpu_buf()
+/// Heuristic matmul optimization. Overwrite the input matmul op with an
+/// optimized op.
+/// @param model target model
+/// @param matmul_op matmul op in the target model
+/// @param gpu_info GPU info to optimize for
+/// @param num_sm number of SMs to use for this op. This should be equal to or
+/// less than the number of SMs on the GPU (`gpu_info.num_sm`).
+static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
+                                      const GpuInfo &gpu_info, int num_sm)
+{
+    if (matmul_op.type != OP_MATMUL) {
+        LOGERR("This is not a matmul op.");
+    }
+    if (num_sm > gpu_info.num_sm) {
+        LOGERR("The total number of SMs (%d) is less than the number of SMs "
+               "requested (%d).",
+               gpu_info.num_sm, num_sm);
+    }
+    const OpConfig *cfg = sched_op_config(&matmul_op, gpu_info);
+    assert(cfg->out_deps_tiles.size() == 1);
+    int num_tiles = calc_num_tiles(matmul_op, cfg->out_deps_tiles[0]);
+    if (num_tiles == 0) {
+        LOGERR("This matmul has no output tiles.");
+    }
+
+    // Heuristically select a split_k value. If split_k is larger than 1, split
+    // the inner dimension of the matmul into split_k parts, where each part is
+    // computed by a separate matmul op and the results are accumulated. Larger
+    // split_k is preferred when the number of tiles is small and the inner
+    // dimension is large.
+    int split_k = 1;
+    if (num_tiles < num_sm) {
+        // If the number of tiles is less than the number of SMs, we can
+        // potentially use more SMs to compute the matmul. We can split the
+        // inner dimension into multiple parts and distribute them to different
+        // SMs. We use a heuristic to determine the number of parts.
+
+        // Calculate the maximum possible split_k according to the tile shape.
+        const Dims &fst_input_shape = matmul_op.in_deps[0]->shape;
+        const OpTile &fst_input_tile = cfg->in_deps_tiles[0];
+        DimType inner_dim = fst_input_shape[fst_input_shape.ndims() - 1];
+        DimType inner_dim_tile_len = fst_input_tile.y;
+        size_t max_split_k = math::div_up(inner_dim, inner_dim_tile_len);
+
+        // Calcualte the max split_k to run two or less tiles per SM. Exceeding
+        // this limit is heuristically bad for performance.
+        size_t split_k_for_two_tiles_per_sm = num_sm * 2 / num_tiles;
+        size_t tmp_split_k = min(max_split_k, split_k_for_two_tiles_per_sm);
+
+        // Calculate the actual split_k if we can split the inner dimension
+        // into tmp_split_k parts.
+        size_t each_part_len =
+            math::pad(math::div_up(inner_dim, tmp_split_k), inner_dim_tile_len);
+        split_k = math::div_up(inner_dim, each_part_len);
+        assert(split_k > 0);
+    }
+    if (split_k == 1) {
+        // No optimization is needed.
+        return;
+    }
+    LOG(DEBUG, "Optimize matmul %s with split_k=%d.", matmul_op.name, split_k);
+
+    Tensor *input_a = matmul_op.in_deps[0];
+    Tensor *input_b = matmul_op.in_deps[1];
+    Tensor *output = matmul_op.out_deps[0];
+    bool trans_a = *(bool *)matmul_op.args[0].val;
+    bool trans_b = *(bool *)matmul_op.args[1].val;
+    bool is_relu = *(bool *)matmul_op.args[2].val;
+    std::string matmul_name = matmul_op.name;
+
+    // Remove the original matmul op from the model.
+    model.delete_op(&matmul_op);
+
+    // Create a new matmul op with the optimized split_k.
+    model.matmul(input_a, input_b, output, split_k, trans_a, trans_b, is_relu,
+                 matmul_name);
+}
+
+/// Heuristically optimize the model. Overwrite the model with an optimized
+/// model.
+/// @param model target model
+/// @param gpu_info GPU info to optimize for
+/// @param num_sm number of SMs to use for this op. This should be equal to or
+/// less than the number of SMs on the GPU (`gpu_info.num_sm`).
+static void heuristic_optimize_model(Model &model, const GpuInfo &gpu_info,
+                                     int num_sm)
+{
+    // Make a copy of the ops because we will modify the model.
+    std::vector<Op *> ops;
+    for (auto &op : model.get_ops()) {
+        ops.push_back(op.get());
+    }
+    for (auto &op : ops) {
+        if (op->type == OP_MATMUL) {
+            heuristic_optimize_matmul(model, *op, gpu_info, num_sm);
+        }
+    }
+}
+
+void DefaultScheduler::configure_gpu_buf(
+    const std::list<std::unique_ptr<Tensor>> &model_tensors)
 {
     //
     map<TensorBuf *, vector<Tensor *>> bufs;
@@ -99,7 +223,7 @@ void DefaultScheduler::configure_gpu_buf()
         }
     }
 #if (ALLOC_UNUSED_TENSORS)
-    for (auto &tns : this->opt_model->get_tensors()) {
+    for (auto &tns : model_tensors) {
         Tensor *t = tns.get();
         auto search = bufs.find(t->buf);
         if (search == bufs.end()) {
@@ -220,17 +344,25 @@ void DefaultScheduler::configure_gpu_buf()
 }
 
 DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
-                                   const Model &model, int wps_)
+                                   Model &model, int wps_)
     : SchedulerBase(gpu_id, rank_, world_size_, wps_), scg{buf_trans, 108, wps_,
                                                            world_size_}
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
-    this->opt_model = this->optimize_model(model);
-    this->op_graph =
-        new OpGraph(*this->opt_model, this->gpu_mgr->get_gpu_info());
-    this->configure_gpu_buf();
+
+#ifdef PRESERVE_WARP_FOR_COMM
+    // Number of SMs to use for computation. The last SM is preserved for
+    // communication only.
+    int num_sm_calc = gpu_info.num_sm - 1;
+#else
+    int num_sm_calc = gpu_info.num_sm;
+#endif
+    heuristic_optimize_model(model, gpu_info, num_sm_calc);
+
+    this->op_graph = new OpGraph(model, gpu_info);
+    this->configure_gpu_buf(model.get_tensors());
 }
 
 GpuMgrCtx *DefaultScheduler::create_context(const string &name)
@@ -274,11 +406,7 @@ GpuMgrCtx *DefaultScheduler::create_context(const string &name)
 
 Tensor *DefaultScheduler::get_tensor(Tensor *tns) const
 {
-    auto search = this->tns_trans.find(tns);
-    if (search == this->tns_trans.end()) {
-        return nullptr;
-    }
-    return search->second;
+    return tns;
 }
 
 GpuBuf *DefaultScheduler::get_gpu_buf(Tensor *tns) const
@@ -300,198 +428,6 @@ GpuBuf *DefaultScheduler::get_gpu_buf(Tensor *tns) const
 unsigned int DefaultScheduler::get_num_depths() const
 {
     return this->op_graph->depth_nodes.size();
-}
-
-static Tensor *copy_tensor_to_opt_model(
-    Model *opt_model, Tensor *tns, map<Tensor *, Tensor *> &tns_trans,
-    map<TensorBuf *, TensorBuf *> &tns_buf_trans)
-{
-    // Translate the original tensor address `tns` into the corresponding
-    // tensor address of `opt_model` and return it.
-    Tensor *t;
-    auto search = tns_trans.find(tns);
-    if (search != tns_trans.end()) {
-        // already exists.
-        t = search->second;
-    } else {
-        // Create a corresponding tensor. First, create a TensorBuf if needed.
-        auto search2 = tns_buf_trans.find(tns->buf);
-        TensorBuf *buf;
-        if (search2 != tns_buf_trans.end()) {
-            buf = search2->second;
-        } else {
-            // TensorBuf size will be determined later.
-            assert(tns->buf != nullptr);
-            buf = opt_model->create_tensor_buf();
-            tns_buf_trans[tns->buf] = buf;
-        }
-        t = opt_model->tensor(tns->shape, tns->type, buf, tns->ldims, tns->offs,
-                              tns->pads, {}, tns->exported, tns->imported);
-        tns_trans[tns] = t;
-        LOG(DEBUG, "translate: tns ", tns, " (tnsbuf ", tns->buf, ") -> tns ",
-            t, " (tnsbuf ", t->buf, ')');
-    }
-    return t;
-}
-
-Model *DefaultScheduler::optimize_model(const Model &model)
-{
-    LOG(DEBUG, "Optimizing model...");
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-#ifdef PRESERVE_WARP_FOR_COMM
-    // Number of SMs to use for computation. The last SM is preserved for
-    // communication only.
-    int num_sm_calc = gpu_info.num_sm - 1;
-#else
-    int num_sm_calc = gpu_info.num_sm;
-#endif
-    Model *opt_model = new Model;
-    auto &tns_trans = this->tns_trans;
-    map<TensorBuf *, TensorBuf *> tns_buf_trans;
-    for (auto &op : model.get_ops()) {
-        LOG(DEBUG, "Optimizing op: ", op->name);
-        // Scheduling configuration.
-        const OpConfig *cfg = sched_op_config(op.get(), gpu_info);
-        // Create input tensors if those don't exist in `opt_model`.
-        int idx = 0;
-        std::vector<Tensor *> in_deps;
-        for (auto &tns : op->in_deps) {
-            Tensor *t = copy_tensor_to_opt_model(opt_model, tns, tns_trans,
-                                                 tns_buf_trans);
-            in_deps.emplace_back(t);
-            if (cfg->num_warps == 0) {
-                continue;
-            }
-            // Update padding of tensor.
-            const OpTile &tile = cfg->in_deps_tiles[idx++];
-            LOG(DEBUG, "Tensor buf ", t->buf, " update_pads ", tile.x, " ",
-                tile.y);
-            t->update_pads({tile.x, tile.y});
-        }
-        // Replace optimizable Op patterns.
-        switch (op->type) {
-        case OP_MATMUL: {
-#if (MATMUL_GRAPH_OPT)
-            assert(op->in_deps.size() == 2);
-            assert(op->out_deps.size() == 1);
-            assert(cfg->num_warps > 0);
-
-            int num_tiles = sched_op_num_tiles(*op, cfg->out_deps_tiles[0]);
-            int num_sm = num_sm_calc;
-            int splitk = 1;
-            bool do_split = false;
-            if ((op->gran_lev == -1) && (num_tiles > 0) &&
-                (num_tiles <= num_sm)) {
-                // Split matmul.
-                DimType inner_dim = op->in_deps[0]->shape[3];
-                DimType inner_pad = cfg->in_deps_tiles[0].y;
-                inner_pad = max(inner_pad, op->in_deps[0]->pads[3]);
-                inner_pad = max(inner_pad, op->in_deps[1]->pads[1]);
-                size_t max_splitk =
-                    min((size_t)2 * num_sm / num_tiles,
-                        math::div_up(inner_dim, cfg->in_deps_tiles[0].y));
-                int unitk =
-                    math::pad(math::div_up(inner_dim, max_splitk), inner_pad);
-                splitk = math::div_up(inner_dim, unitk);
-                assert(splitk > 0);
-                if (splitk > 1) {
-                    do_split = true;
-                    LOG(DEBUG, "splitk ", splitk, " inner_dim ", inner_dim,
-                        " unitk ", unitk);
-                }
-            }
-            if (do_split) {
-                Tensor *input = tns_trans[op->in_deps[0]];
-                Tensor *other = tns_trans[op->in_deps[1]];
-                Tensor *output = nullptr;
-                auto search = tns_trans.find(op->out_deps[0]);
-                if (search != tns_trans.end()) {
-                    // If the output already exists, it means that the original
-                    // model specified an existing tensor as the output.
-                    // Thus we do the same here.
-                    output = search->second;
-                }
-                bool trans_input = *(bool *)op->args[0].val;
-                bool trans_other = *(bool *)op->args[1].val;
-                Tensor *t =
-                    opt_model->matmul(input, other, output, splitk, trans_input,
-                                      trans_other, false, op->name);
-                auto search2 = tns_buf_trans.find(t->buf);
-                if (search2 == tns_buf_trans.end()) {
-                    tns_buf_trans[op->out_deps[0]->buf] = t->buf;
-                }
-                auto search3 = tns_trans.find(t);
-                if (search3 == tns_trans.end()) {
-                    tns_trans[op->out_deps[0]] = t;
-                    LOG(DEBUG, "translate: tns ", op->out_deps[0], " (tnsbuf ",
-                        op->out_deps[0]->buf, ") -> tns ", t, " (tnsbuf ",
-                        t->buf, ')');
-                }
-                const OpTile &tile = cfg->out_deps_tiles[0];
-                // Update padding of each split tensor &
-                // the final output tensor.
-                const Op *latest_op = opt_model->get_gen_op(t);
-                vector<Tensor *> in_deps;
-                if (latest_op->type == OP_REDUCE) {
-                    const Op *id_op =
-                        opt_model->get_gen_op(latest_op->in_deps[0]);
-                    assert(id_op->type == OP_REFER);
-                    in_deps = id_op->in_deps;
-                } else if (latest_op->type == OP_MATMUL) {
-                    assert(false);
-                    in_deps.emplace_back(t);
-                }
-                for (auto &in_dep : in_deps) {
-                    in_dep->update_pads({tile.x, tile.y});
-                    const Op *in_dep_op = opt_model->get_gen_op(in_dep);
-                    if (in_dep_op == nullptr) {
-                        continue;
-                    }
-                    Tensor *in_dep_in = in_dep_op->in_deps[0];
-                    Tensor *in_dep_ot = in_dep_op->in_deps[1];
-                    assert(in_dep_in != nullptr);
-                    assert(in_dep_ot != nullptr);
-                    auto &tile_in = cfg->in_deps_tiles[0];
-                    auto &tile_ot = cfg->in_deps_tiles[1];
-                    in_dep_in->update_pads({tile_in.x, tile_in.y});
-                    in_dep_ot->update_pads({tile_ot.x, tile_ot.y});
-                }
-                break;
-            }
-            // Go to default.
-#endif // (MATMUL_GRAPH_OPT)
-        }
-        default: {
-            // By default, create the same Op in `opt_model`.
-            idx = 0;
-            std::vector<Tensor *> out_deps;
-            for (auto &tns : op->out_deps) {
-                Tensor *t = copy_tensor_to_opt_model(opt_model, tns, tns_trans,
-                                                     tns_buf_trans);
-                out_deps.emplace_back(t);
-                if (cfg->num_warps == 0) {
-                    continue;
-                }
-                // Update padding of tensor.
-                const OpTile &tile = cfg->out_deps_tiles[idx++];
-                LOG(DEBUG, "Tensor buf ", t->buf, " update_pads ", tile.x, " ",
-                    tile.y);
-                t->update_pads({tile.x, tile.y});
-            }
-            opt_model->create_op(op->type, op->prec_type, in_deps, out_deps,
-                                 op->args, op->name, op->gran_lev);
-        }
-        }
-    }
-#if (ALLOC_UNUSED_TENSORS)
-    // Allocate unused tensors.
-    for (auto &tns : model.get_tensors()) {
-        copy_tensor_to_opt_model(opt_model, tns.get(), tns_trans,
-                                 tns_buf_trans);
-    }
-#endif // (ALLOC_UNUSED_TENSORS)
-    LOG(DEBUG, "Model optimization finished");
-    return opt_model;
 }
 
 void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,

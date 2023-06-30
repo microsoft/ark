@@ -19,7 +19,7 @@ SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
     this->create_sched_opseq(model, gpu_info);
-    this->configure_gpu_buf();
+    this->configure_gpu_buf(model.get_tensors());
 }
 
 void SimpleScheduler::create_sched_opseq(const Model &model,
@@ -275,7 +275,8 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
     }
 }
 
-void SimpleScheduler::configure_gpu_buf()
+void SimpleScheduler::configure_gpu_buf(
+    const std::list<std::unique_ptr<Tensor>> &model_tensors)
 {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other
