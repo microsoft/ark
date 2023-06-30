@@ -50,6 +50,4 @@ class PoswiseFeedForwardNet:
         weight_2 = param[prefix + "weight_2"]
         weight_2_shared = np.split(weight_2, num_gpu, axis=0)[self.rank]
         weight_2_shared_copy = weight_2_shared.copy()
-        exe.tensor_memcpy_host_to_device(
-            self.weight_2, weight_2_shared_copy
-        )
+        exe.tensor_memcpy_host_to_device(self.weight_2, weight_2_shared_copy)

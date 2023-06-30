@@ -13,7 +13,7 @@ d_k = d_v = 64  # Dimensions of K(=Q) and V in the attention mechanism
 n_layers = 2  # Number of encoder and decoder layers
 n_heads = 8  # Number of heads in Multi-Head Attention set to 8
 
-batch_size = 2
+batch_size = 1
 seq_len = 64
 src_vocab_size = 128
 

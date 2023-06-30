@@ -80,6 +80,40 @@ class PoswiseFeedForwardNet(nn.Module):
         self.weight_2.data.copy_(torch.from_numpy(param[prefix + "weight_2"]))
 
 
+class PoswiseFeedForwardNetShard(nn.Module):
+    def __init__(self, rank):
+        super(PoswiseFeedForwardNetShard, self).__init__()
+        self.rank = rank
+        self.weight_1 = nn.Parameter(
+            torch.FloatTensor(d_model, d_ff // num_gpu)
+        )
+        self.weight_2 = nn.Parameter(
+            torch.FloatTensor(d_ff // num_gpu, d_model)
+        )
+
+    # inputs: [batch_size, seq_len, d_model]
+    def forward(self, inputs):
+        output = torch.matmul(
+            inputs, self.weight_1
+        )  # [batch_size, seq_len, d_ff]
+        # output = nn.ReLU()(output)
+        # output = torch.matmul(
+        #     output, self.weight_2
+        # )  # [batch_size, seq_len, d_model]
+        # output = nn.LayerNorm(d_model)(
+        #     output + inputs
+        # )  # [batch_size, seq_len, d_model]
+        return output
+
+    def init_model(self, param, prefix=""):
+        weight_1 = param[prefix + "weight_1"]
+        weight_1_shared = np.split(weight_1, num_gpu, axis=1)
+        weight_2 = param[prefix + "weight_2"]
+        weight_2_shared = np.split(weight_2, num_gpu, axis=0)
+        self.weight_1.data.copy_(torch.from_numpy(weight_1_shared[self.rank]))
+        self.weight_2.data.copy_(torch.from_numpy(weight_2_shared[self.rank]))
+
+
 class ScaledDotProductAttention(nn.Module):
     def __init__(self):
         super(ScaledDotProductAttention, self).__init__()

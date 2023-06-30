@@ -21,10 +21,11 @@ def test_PoswiseFeedForwardNet(rank, param):
 
     exe = ark.Executor(rank, rank, num_gpu, model, "test_python_bindings")
     exe.compile()
-    input_tensor_host = param["input_tensor"]
-    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
     exe.launch()
+
+    input_tensor_host = param["input_tensor"]
+    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
     ark_model.init_model(param, exe)
     exe.run(1)
     exe.stop()
@@ -80,6 +81,8 @@ def multi_process_test_main(func, np_inputs):
 
 
 if __name__ == "__main__":
+    # set random seed
+    np.random.seed(1234)
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
     ).astype(np.float16)
