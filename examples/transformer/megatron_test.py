@@ -117,7 +117,8 @@ def test_MultiHeadAttention_process(rank, param):
     ark_model = megatron_ark.MultiHeadAttention(model, rank)
 
     attn_mask = model.tensor(
-        ark.Dims(batch_size * n_heads, seq_len, seq_len), ark.TensorType.FP16
+        ark.Dims(batch_size * n_heads_per_gpu, seq_len, seq_len),
+        ark.TensorType.FP16,
     )
 
     context, attn = ark_model.forward(Q, K, V, attn_mask)

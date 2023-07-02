@@ -58,8 +58,9 @@ class PoswiseFeedForwardNet:
 # MultiHeadAttention that uses tensor parallelism, different heads are splited on different GPUs
 # The final fc layer is also splited on different GPUs
 class MultiHeadAttention:
-    def __init__(self, model):
+    def __init__(self, model, rank):
         self.model = model
+        self.rank = rank
         self.W_Q = model.tensor(
             ark.Dims(d_model, d_k * n_heads_per_gpu), ark.TensorType.FP16
         )
@@ -132,7 +133,15 @@ class MultiHeadAttention:
 
         # output: [batch_size, len_q, d_model]
         output = self.model.matmul(context3, self.fc)
-        output_allreduce = self.model.all_reduce(output, self.rank, num_gpu)
-        output_plus_residual = self.model.add(output_allreduce, input_Q)
+        output_reshape = self.model.reshape(
+            output, ark.Dims(batch_size * len_q * d_model)
+        )
+        output_allreduce = self.model.all_reduce(
+            output_reshape, self.rank, num_gpu
+        )
+        output_allreduce_reshape = self.model.reshape(
+            output_allreduce, ark.Dims(batch_size, len_q, d_model)
+        )
+        output_plus_residual = self.model.add(output_allreduce_reshape, input_Q)
         output_layernorm = self.model.layernorm(output_plus_residual)
         return output_layernorm, attn
