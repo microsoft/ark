@@ -145,3 +145,21 @@ class MultiHeadAttention:
         output_plus_residual = self.model.add(output_allreduce_reshape, input_Q)
         output_layernorm = self.model.layernorm(output_plus_residual)
         return output_layernorm, attn
+
+    def init_model(self, param, exe, prefix=""):
+        W_Q = param[prefix + "W_Q"]
+        W_Q_shared = np.split(W_Q, num_gpu, axis=1)[self.rank]
+        W_Q_shared_copy = W_Q_shared.copy()
+        exe.tensor_memcpy_host_to_device(self.W_Q, W_Q_shared_copy)
+        W_K = param[prefix + "W_K"]
+        W_K_shared = np.split(W_K, num_gpu, axis=1)[self.rank]
+        W_K_shared_copy = W_K_shared.copy()
+        exe.tensor_memcpy_host_to_device(self.W_K, W_K_shared_copy)
+        W_V = param[prefix + "W_V"]
+        W_V_shared = np.split(W_V, num_gpu, axis=1)[self.rank]
+        W_V_shared_copy = W_V_shared.copy()
+        exe.tensor_memcpy_host_to_device(self.W_V, W_V_shared_copy)
+        fc = param[prefix + "fc"]
+        fc_shared = np.split(fc, num_gpu, axis=0)[self.rank]
+        fc_shared_copy = fc_shared.copy()
+        exe.tensor_memcpy_host_to_device(self.fc, fc_shared_copy)

@@ -130,10 +130,10 @@ def test_MultiHeadAttention_process(rank, param):
     Q_host = param["Q"]
     K_host = param["K"]
     V_host = param["V"]
-    # exe.tensor_memcpy_host_to_device(Q, Q_host)
-    # exe.tensor_memcpy_host_to_device(K, K_host)
-    # exe.tensor_memcpy_host_to_device(V, V_host)
-    # ark_model.init_model(param, exe)
+    exe.tensor_memcpy_host_to_device(Q, Q_host)
+    exe.tensor_memcpy_host_to_device(K, K_host)
+    exe.tensor_memcpy_host_to_device(V, V_host)
+    ark_model.init_model(param, exe)
     exe.run(1)
     exe.stop()
 
