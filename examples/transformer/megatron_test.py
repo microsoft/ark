@@ -5,6 +5,7 @@ import transformer_pytorch
 import megatron_ark
 from transformer_utils import *
 import multiprocessing
+import transformer_ark
 
 
 def test_PoswiseFeedForwardNet_process(rank, param):
@@ -121,7 +122,7 @@ def test_MultiHeadAttention_process(rank, param):
         ark.TensorType.FP16,
     )
 
-    context, attn = ark_model.forward(Q, K, V, attn_mask)
+    context, attn = ark_model.forward(Q, K, V)
 
     exe = ark.Executor(rank, rank, num_gpu, model, "test_python_bindings")
     exe.compile()
@@ -133,6 +134,7 @@ def test_MultiHeadAttention_process(rank, param):
     exe.tensor_memcpy_host_to_device(Q, Q_host)
     exe.tensor_memcpy_host_to_device(K, K_host)
     exe.tensor_memcpy_host_to_device(V, V_host)
+    transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
     ark_model.init_model(param, exe)
     exe.run(1)
     exe.stop()
@@ -141,7 +143,7 @@ def test_MultiHeadAttention_process(rank, param):
         (batch_size, seq_len, n_heads * d_v), dtype=np.float16
     )
     attn_host = np.zeros(
-        (batch_size, n_heads, seq_len, seq_len), dtype=np.float16
+        (batch_size, n_heads_per_gpu, seq_len, seq_len), dtype=np.float16
     )
 
     exe.tensor_memcpy_device_to_host(context_host, context)
@@ -162,9 +164,7 @@ def test_MultiHeadAttention_process(rank, param):
     attn_mask_torch = transformer_pytorch.get_attn_pad_mask(
         input_seq_torch, input_seq_torch
     )
-    context_torch, attn_torch = torch_model(
-        torch_Q, torch_K, torch_V, attn_mask_torch
-    )
+    context_torch, attn_torch = torch_model(torch_Q, torch_K, torch_V)
 
     gt_context = context_torch.detach().numpy().astype(np.float16)
     # gt_context = gt_context.reshape(batch_size*n_heads* seq_len* d_v)
@@ -172,31 +172,48 @@ def test_MultiHeadAttention_process(rank, param):
 
     context_max_error = np.max(np.abs(context_host - gt_context))
     context_avg_error = np.mean(np.abs(context_host - gt_context))
-    attn_max_error = np.max(np.abs(attn_host - gt_attn))
-    attn_avg_error = np.mean(np.abs(attn_host - gt_attn))
-    print("multi head attention test")
-    print(
-        "batch_size:",
-        batch_size,
-        "seq_len:",
-        seq_len,
-        "d_model:",
-        d_model,
-        "d_ff:",
-        d_ff,
+    relative_context_error = np.max(
+        np.abs(context_host - gt_context)
+    ) / np.mean(np.abs(gt_context))
+    gt_attn_shard = np.split(gt_attn, num_gpu, axis=1)[rank]
+    attn_max_error = np.max(np.abs(attn_host - gt_attn_shard))
+    attn_avg_error = np.mean(np.abs(attn_host - gt_attn_shard))
+    relative_attn_error = np.max(np.abs(attn_host - gt_attn_shard)) / np.mean(
+        np.abs(gt_attn_shard)
     )
-    print(
-        "max context error: ",
-        context_max_error,
-        "avg context error: ",
-        context_avg_error,
-        "max attn error: ",
-        attn_max_error,
-        "avg attn error: ",
-        attn_avg_error,
-    )
-    # print(context_host)
-    # print(gt_context)
+
+    if rank == 0:
+        print("multi head attention test")
+        print(
+            "batch_size:",
+            batch_size,
+            "seq_len:",
+            seq_len,
+            "d_model:",
+            d_model,
+            "d_ff:",
+            d_ff,
+        )
+        print(
+            "max context error: ",
+            context_max_error,
+            "avg context error: ",
+            context_avg_error,
+            "relative context error: ",
+            relative_context_error,
+            "max attn error: ",
+            attn_max_error,
+            "avg attn error: ",
+            attn_avg_error,
+            "relative attn error: ",
+            relative_attn_error,
+        )
+        print("context_host", context_host)
+        print("gt_context", gt_context)
+        print("context_host - gt_context", context_host - gt_context)
+        print("attn_host", attn_host)
+        print("gt_attn", gt_attn)
+        print("attn_host - gt_attn", attn_host - gt_attn_shard)
 
 
 def test_MultiHeadAttention():
