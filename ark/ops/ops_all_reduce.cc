@@ -105,6 +105,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
             continue;
         Tensor *send_t =
             this->send(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
+        this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
         send_tensors.push_back(send_t);
     }
     Tensor *recv_buf = this->tensor(input->shape, input->type);

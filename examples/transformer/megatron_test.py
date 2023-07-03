@@ -181,39 +181,38 @@ def test_MultiHeadAttention_process(rank, param):
     relative_attn_error = np.max(np.abs(attn_host - gt_attn_shard)) / np.mean(
         np.abs(gt_attn_shard)
     )
-
-    if rank == 0:
-        print("multi head attention test")
-        print(
-            "batch_size:",
-            batch_size,
-            "seq_len:",
-            seq_len,
-            "d_model:",
-            d_model,
-            "d_ff:",
-            d_ff,
-        )
-        print(
-            "max context error: ",
-            context_max_error,
-            "avg context error: ",
-            context_avg_error,
-            "relative context error: ",
-            relative_context_error,
-            "max attn error: ",
-            attn_max_error,
-            "avg attn error: ",
-            attn_avg_error,
-            "relative attn error: ",
-            relative_attn_error,
-        )
-        print("context_host", context_host)
-        print("gt_context", gt_context)
-        print("context_host - gt_context", context_host - gt_context)
-        print("attn_host", attn_host)
-        print("gt_attn", gt_attn)
-        print("attn_host - gt_attn", attn_host - gt_attn_shard)
+    print("rank:", rank)
+    print("multi head attention test")
+    print(
+        "batch_size:",
+        batch_size,
+        "seq_len:",
+        seq_len,
+        "d_model:",
+        d_model,
+        "d_ff:",
+        d_ff,
+    )
+    print(
+        "max context error: ",
+        context_max_error,
+        "avg context error: ",
+        context_avg_error,
+        "relative context error: ",
+        relative_context_error,
+        "max attn error: ",
+        attn_max_error,
+        "avg attn error: ",
+        attn_avg_error,
+        "relative attn error: ",
+        relative_attn_error,
+    )
+    # print("context_host", context_host)
+    # print("gt_context", gt_context)
+    # print("context_host - gt_context", context_host - gt_context)
+    # print("attn_host", attn_host)
+    # print("gt_attn", gt_attn)
+    # print("attn_host - gt_attn", attn_host - gt_attn_shard)
 
 
 def test_MultiHeadAttention():

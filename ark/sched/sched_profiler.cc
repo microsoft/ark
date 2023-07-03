@@ -172,7 +172,8 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
     for (auto &depth : op_graph->depth_nodes) {
         for (auto &ogn : depth) {
             auto &opseq = ogn->opseq;
-            if (opseq.is_send() || opseq.is_recv() || opseq.is_virtual())
+            if (opseq.is_send() || opseq.is_recv() || opseq.is_send_done() ||
+                opseq.is_virtual())
                 continue;
             SchedOpSeqPerf &perf = res[&opseq];
             // Skip if this already has profiled results.
@@ -243,7 +244,8 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
         // Inter-Op profiling
         for (auto it0 = depth.begin(); it0 != depth.end(); ++it0) {
             const SchedOpSeq &opseq0 = (*it0)->opseq;
-            if (opseq0.is_send() || opseq0.is_recv() || opseq0.is_virtual())
+            if (opseq0.is_send() || opseq0.is_recv() || opseq0.is_send_done() ||
+                opseq0.is_virtual())
                 continue;
             if (opseq0.get_num_warps() >= this->wps)
                 continue;
