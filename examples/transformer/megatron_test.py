@@ -376,6 +376,6 @@ def test_EncoderLayer():
 
 
 if __name__ == "__main__":
-    # test_PoswiseFeedForwardNet()
-    # test_MultiHeadAttention()
+    test_PoswiseFeedForwardNet()
+    test_MultiHeadAttention()
     test_EncoderLayer()
