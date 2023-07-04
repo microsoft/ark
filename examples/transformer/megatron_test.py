@@ -20,7 +20,7 @@ def test_PoswiseFeedForwardNet_process(rank, param):
 
     output_tensor = ark_model.forward(input_tensor)
 
-    exe = ark.Executor(rank, rank, num_gpu, model, "test_python_bindings")
+    exe = ark.Executor(rank, rank, num_gpu, model, "test_poswiseFeedForwardNet")
     exe.compile()
 
     exe.launch()
@@ -124,7 +124,7 @@ def test_MultiHeadAttention_process(rank, param):
 
     context, attn = ark_model.forward(Q, K, V, attn_mask)
 
-    exe = ark.Executor(rank, rank, num_gpu, model, "test_python_bindings")
+    exe = ark.Executor(rank, rank, num_gpu, model, "test_multiHeadAttention")
     exe.compile()
 
     exe.launch()
@@ -253,6 +253,129 @@ def test_MultiHeadAttention():
     multi_process_test_main(test_MultiHeadAttention_process, param)
 
 
+def test_EncoderLayer_process(rank, param):
+    # Create a Model instance
+    model = ark.Model()
+
+    enc_inputs = model.tensor(
+        ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
+    )
+
+    ark_model = megatron_ark.EncoderLayer(model, rank)
+
+    attn_mask = model.tensor(
+        ark.Dims(batch_size * n_heads_per_gpu, seq_len, seq_len),
+        ark.TensorType.FP16,
+    )
+
+    context, attn = ark_model.forward(enc_inputs, attn_mask)
+    # Test the mul method
+    exe = ark.Executor(rank, rank, num_gpu, model, "test_encoderlayer")
+    exe.compile()
+    enc_inputs_host = param["enc_inputs"]
+    ark_model.init_model(param, exe)
+
+    exe.launch()
+    exe.tensor_memcpy_host_to_device(enc_inputs, enc_inputs_host)
+    transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
+    exe.run(1)
+    exe.stop()
+
+    context_host = np.zeros(
+        (batch_size, seq_len, n_heads * d_v), dtype=np.float16
+    )
+    attn_host = np.zeros(
+        (batch_size, n_heads_per_gpu, seq_len, seq_len), dtype=np.float16
+    )
+
+    exe.tensor_memcpy_device_to_host(context_host, context)
+    exe.tensor_memcpy_device_to_host(attn_host, attn)
+
+    torch_enc_inputs = torch.from_numpy(enc_inputs_host.astype(np.float32))
+
+    torch_model = transformer_pytorch.EncoderLayer()
+    torch_model.init_model(param)
+    input_seq = np.zeros((batch_size, seq_len), dtype=np.int32)
+    for i in range(batch_size):
+        for j in range(seq_len):
+            if j < input_seq_len:
+                input_seq[i][j] = 1
+    input_seq_torch = torch.from_numpy(input_seq)
+    attn_mask_torch = transformer_pytorch.get_attn_pad_mask(
+        input_seq_torch, input_seq_torch
+    )
+    context_torch, attn_torch = torch_model(torch_enc_inputs, attn_mask_torch)
+
+    gt_context = context_torch.detach().numpy().astype(np.float16)
+    # gt_context = gt_context.reshape(batch_size*n_heads* seq_len* d_v)
+    gt_attn = attn_torch.detach().numpy().astype(np.float16)
+    gt_attn_shard = np.split(gt_attn, num_gpu, axis=1)[rank]
+    context_max_error = np.max(np.abs(context_host - gt_context))
+    context_avg_error = np.mean(np.abs(context_host - gt_context))
+    attn_max_error = np.max(np.abs(attn_host - gt_attn_shard))
+    attn_avg_error = np.mean(np.abs(attn_host - gt_attn_shard))
+    print("EncoderLayer test")
+    print(
+        "batch_size:",
+        batch_size,
+        "seq_len:",
+        seq_len,
+        "d_model:",
+        d_model,
+        "d_ff:",
+        d_ff,
+    )
+    print(
+        "max context error: ",
+        context_max_error,
+        "avg context error: ",
+        context_avg_error,
+        "max attn error: ",
+        attn_max_error,
+        "avg attn error: ",
+        attn_avg_error,
+    )
+    # print(context_host)
+    # print(gt_context)
+
+
+def test_EncoderLayer():
+    enc_inputs_host = (
+        (np.random.rand(batch_size, seq_len, d_model) - 0.5)
+    ).astype(np.float16)
+
+    W_Q_host = ((np.random.rand(d_model, d_k * n_heads) - 0.5)).astype(
+        np.float16
+    )
+    W_K_host = ((np.random.rand(d_model, d_k * n_heads) - 0.5)).astype(
+        np.float16
+    )
+    W_V_host = ((np.random.rand(d_model, d_v * n_heads) - 0.5)).astype(
+        np.float16
+    )
+    fc_host = ((np.random.rand(d_v * n_heads, d_model) - 0.5)).astype(
+        np.float16
+    )
+    pos_ffn_weight_1_host = (
+        (np.random.rand(d_model, d_ff) - 0.5) * 0.1
+    ).astype(np.float16)
+    pos_ffn_weight_2_host = (
+        (np.random.rand(d_ff, d_model) - 0.5) * 0.1
+    ).astype(np.float16)
+
+    param = {
+        "enc_inputs": enc_inputs_host,
+        "enc_self_attn.W_Q": W_Q_host,
+        "enc_self_attn.W_K": W_K_host,
+        "enc_self_attn.W_V": W_V_host,
+        "enc_self_attn.fc": fc_host,
+        "pos_ffn.weight_1": pos_ffn_weight_1_host,
+        "pos_ffn.weight_2": pos_ffn_weight_2_host,
+    }
+    multi_process_test_main(test_EncoderLayer_process, param)
+
+
 if __name__ == "__main__":
     # test_PoswiseFeedForwardNet()
-    test_MultiHeadAttention()
+    # test_MultiHeadAttention()
+    test_EncoderLayer()

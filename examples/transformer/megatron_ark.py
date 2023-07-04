@@ -155,3 +155,30 @@ class MultiHeadAttention:
         fc_shared = np.split(fc, num_gpu, axis=0)[self.rank]
         fc_shared_copy = fc_shared.copy()
         exe.tensor_memcpy_host_to_device(self.fc, fc_shared_copy)
+
+
+class EncoderLayer:
+    def __init__(self, model, rank):
+        self.rank = rank
+        self.model = model
+        self.enc_self_attn = MultiHeadAttention(
+            model, rank
+        )  # Multi-Head Attention mechanism
+        self.pos_ffn = PoswiseFeedForwardNet(model, rank)
+
+    def forward(self, enc_inputs, enc_self_attn_mask=None):
+        enc_outputs, attn = self.enc_self_attn.forward(
+            enc_inputs,
+            enc_inputs,
+            enc_inputs,
+            # enc_outputs: [batch_size, src_len, d_model],
+            enc_self_attn_mask,
+        )  # attn: [batch_size, n_heads, src_len, src_len]
+        enc_outputs1 = self.pos_ffn.forward(
+            enc_outputs
+        )  # enc_outputs: [batch_size, src_len, d_model]
+        return enc_outputs1, attn
+
+    def init_model(self, param, exe, prefix=""):
+        self.enc_self_attn.init_model(param, exe, prefix + "enc_self_attn.")
+        self.pos_ffn.init_model(param, exe, prefix + "pos_ffn.")

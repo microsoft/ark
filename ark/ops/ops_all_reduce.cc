@@ -122,7 +122,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
                         this->identity(input));
     }
 
-    this->next_eid += 1;
+    this->next_eid += gpu_num * gpu_num;
     return input;
 }
 
