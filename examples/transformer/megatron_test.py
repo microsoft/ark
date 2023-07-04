@@ -122,7 +122,7 @@ def test_MultiHeadAttention_process(rank, param):
         ark.TensorType.FP16,
     )
 
-    context, attn = ark_model.forward(Q, K, V)
+    context, attn = ark_model.forward(Q, K, V, attn_mask)
 
     exe = ark.Executor(rank, rank, num_gpu, model, "test_python_bindings")
     exe.compile()
@@ -164,10 +164,11 @@ def test_MultiHeadAttention_process(rank, param):
     attn_mask_torch = transformer_pytorch.get_attn_pad_mask(
         input_seq_torch, input_seq_torch
     )
-    context_torch, attn_torch = torch_model(torch_Q, torch_K, torch_V)
+    context_torch, attn_torch = torch_model(
+        torch_Q, torch_K, torch_V, attn_mask_torch
+    )
 
     gt_context = context_torch.detach().numpy().astype(np.float16)
-    # gt_context = gt_context.reshape(batch_size*n_heads* seq_len* d_v)
     gt_attn = attn_torch.detach().numpy().astype(np.float16)
 
     context_max_error = np.max(np.abs(context_host - gt_context))
