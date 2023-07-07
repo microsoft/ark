@@ -202,13 +202,14 @@ void DefaultScheduler::configure_gpu_buf(
                     int sid = *(int *)sop.get_op()->args[0].val;
                     int dst_rank = *(int *)sop.get_op()->args[1].val;
                     size_t bytes = *(size_t *)sop.get_op()->args[2].val;
+                    size_t off = in->offset() * in->type_bytes();
                     // TODO: generalize converting rank to GPU ID.
                     int nrph = get_env().num_ranks_per_host;
                     int dst_gpu_id = dst_rank % nrph;
                     if ((dst_rank / nrph) == (this->rank / nrph)) {
                         // Same node.
                         this->buf_infos.emplace_back(dst_gpu_id, bytes, nullptr,
-                                                     sid, 0);
+                                                     sid, off);
                     }
                     tns_eids[in->buf].emplace_back(in, sid);
                     this->send_recv_ops.emplace_back(sop.get_op());

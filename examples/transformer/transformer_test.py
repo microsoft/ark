@@ -79,8 +79,6 @@ def test_PoswiseFeedForwardNet():
 
 
 def test_ScaledDotProductAttention():
-    # The number of input tokens is 10
-    input_seq_len = 10
     ark.init()
 
     # Create a Model instance
@@ -187,8 +185,6 @@ def test_ScaledDotProductAttention():
 
 
 def test_MultiHeadAttention():
-    # The number of input tokens is 10
-    input_seq_len = 10
     ark.init()
 
     # Create a Model instance
@@ -311,8 +307,6 @@ def test_MultiHeadAttention():
 
 
 def test_EncoderLayer():
-    # The number of input tokens is 10
-    input_seq_len = 10
     ark.init()
 
     # Create a Model instance
@@ -430,8 +424,6 @@ def test_EncoderLayer():
 
 
 def test_Encoder():
-    # The number of input tokens is 10
-    input_seq_len = 10
     ark.init()
 
     # Create a Model instance
