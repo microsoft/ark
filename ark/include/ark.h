@@ -78,8 +78,7 @@ struct Dims
     DimType data[DIMS_LEN];
 };
 
-// TensorBuf refers to a data array that
-// can be shared by multiple tensors.
+// TensorBuf refers to a data array that can be shared by multiple tensors.
 struct TensorBuf
 {
     TensorBuf(const DimType &bytes = 0, int id = -1);
@@ -100,14 +99,12 @@ typedef enum
 
 // Tensor is a view of a TensorBuf.
 //
-// Illustration of a single axis of a
-// tensor:
+// Illustration of a single axis of a tensor:
 //
-// 0           off ldim
+// 0           off                                                        ldim
 // |------------|-------------shape-------------|---------------------------|
 //               <----------------------------->
-//                  data range of this
-//                  tensor
+//                  data range of this tensor
 //
 struct Tensor
 {
