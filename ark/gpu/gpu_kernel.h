@@ -102,21 +102,21 @@ class GpuLoopKernel : public GpuKernel
     }
     const long long int *get_clocks() const
     {
-        return (const long long int *)clks->href();
+        return (const long long int *)clocks->href();
     }
 
   private:
     GpuMgrCtx *ctx;
-    GpuMem *flags;
-    GpuMem *clks;
     unsigned int num_depths;
-
-    volatile int *flag_href[2];
-    volatile bool flip_flag = true;
-
-    GpuStream stream = nullptr;
     GpuEvent timer_begin;
     GpuEvent timer_end;
+
+    std::unique_ptr<GpuMem> flag;
+    std::unique_ptr<GpuMem> clocks;
+
+    volatile int *flag_href;
+
+    GpuStream stream = nullptr;
     bool is_recording = false;
     float elapsed_msec = -1;
 };

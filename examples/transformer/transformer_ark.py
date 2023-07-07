@@ -88,6 +88,7 @@ class ScaledDotProductAttention:
             V, ark.Dims(V_shape[0] * V_shape[1], V_shape[2], V_shape[3])
         )
 
+        # context: [batch_size * n_heads, len_q, d_v]
         context = self.model.matmul(attn, V_reshape)
         return context, attn
 

@@ -1,8 +1,0 @@
-build/
-_pycache__/
-**/__pycache__/  
- *.pyc 
-**/*.pyc  
-*.pyo  
-**/*.pyo  
-

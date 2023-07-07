@@ -96,8 +96,12 @@ static void *map_pa_to_va(uint64_t pa, uint64_t bytes)
 
 //
 GpuMem::GpuMem(const string &name, size_t bytes, bool create, bool try_create)
-    : shm{name, create, try_create}
 {
+    if (name.size() > 0) {
+        this->shm = make_unique<IpcMem>(name, create, try_create);
+    } else {
+        this->shm.reset();
+    }
     if (bytes > 0) {
         this->alloc(bytes);
     }
@@ -106,7 +110,9 @@ GpuMem::GpuMem(const string &name, size_t bytes, bool create, bool try_create)
 // Destructor.
 GpuMem::~GpuMem()
 {
-    if (this->shm.is_create()) {
+    if (!this->shm.get()) {
+        return;
+    } else if (this->shm->is_create()) {
         if (this->addr != 0) {
             cuMemFree(this->addr);
             this->addr = 0;
@@ -129,25 +135,12 @@ void GpuMem::alloc(size_t bytes)
 {
     // Align the bytes by 64KB.
     this->bytes = ((bytes + 65535) >> 16) << 16;
-    if (this->shm.is_create()) {
-        if (this->bytes == 0) {
-            LOGERR("Tried to allocate zero byte.");
-        }
-        CULOG(cuMemAlloc(&this->addr, this->bytes));
-        int state = mem_expose(&this->exp_info, this->addr, this->bytes);
-        if (state != 0) {
-            LOGERR("mem_expose() failed with errno ", state);
-        }
-        //
-        IpcLockGuard lg{this->shm.get_lock()};
-        GpuMemInfo *info = (GpuMemInfo *)this->shm.alloc(sizeof(GpuMemInfo));
-        CULOG(cuIpcGetMemHandle(&info->ipc_hdl, this->addr));
-        info->phys_addr = this->exp_info.phys;
-        LOG(DEBUG, "Created GpuMem addr ", hex, this->addr, " map ",
-            this->exp_info.mmap, dec, " bytes ", this->bytes);
-    } else {
-        GpuMemInfo *info = (GpuMemInfo *)this->shm.alloc(sizeof(GpuMemInfo));
-        IpcLockGuard lg{this->shm.get_lock()};
+    if (this->bytes == 0) {
+        LOGERR("Tried to allocate zero byte.");
+    }
+    if (this->shm.get() && !this->shm->is_create()) {
+        GpuMemInfo *info = (GpuMemInfo *)this->shm->alloc(sizeof(GpuMemInfo));
+        IpcLockGuard lg{this->shm->get_lock()};
         CUresult res = cuIpcOpenMemHandle(&this->addr, info->ipc_hdl,
                                           CU_IPC_MEM_LAZY_ENABLE_PEER_ACCESS);
         if (res == CUDA_ERROR_PEER_ACCESS_UNSUPPORTED) {
@@ -162,6 +155,21 @@ void GpuMem::alloc(size_t bytes)
             LOGERR("map_pa_to_va failed");
         }
         LOG(DEBUG, "Imported GpuMem addr ", hex, this->addr, " map ",
+            this->exp_info.mmap, dec, " bytes ", this->bytes);
+    } else {
+        CULOG(cuMemAlloc(&this->addr, this->bytes));
+        int state = mem_expose(&this->exp_info, this->addr, this->bytes);
+        if (state != 0) {
+            LOGERR("mem_expose() failed with errno ", state);
+        }
+        if (this->shm.get()) {
+            IpcLockGuard lg{this->shm->get_lock()};
+            GpuMemInfo *info =
+                (GpuMemInfo *)this->shm->alloc(sizeof(GpuMemInfo));
+            CULOG(cuIpcGetMemHandle(&info->ipc_hdl, this->addr));
+            info->phys_addr = this->exp_info.phys;
+        }
+        LOG(DEBUG, "Created GpuMem addr ", hex, this->addr, " map ",
             this->exp_info.mmap, dec, " bytes ", this->bytes);
     }
 }

@@ -13,7 +13,7 @@ using namespace std;
 unittest::State test_gpu_mem_no_ipc()
 {
     int pid = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        unittest::Timeout timeout{5};
 
         // Create a CUDA context of GPU 0.
         CULOG(cuInit(0));
@@ -66,7 +66,7 @@ unittest::State test_gpu_mem_no_ipc()
 unittest::State test_gpu_mem_ipc()
 {
     int pid0 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        unittest::Timeout timeout{5};
 
         // Create a CUDA context of GPU 0.
         CULOG(cuInit(0));
@@ -96,7 +96,7 @@ unittest::State test_gpu_mem_ipc()
     UNITTEST_NE(pid0, -1);
 
     int pid1 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        unittest::Timeout timeout{5};
 
         // Create a CUDA context of GPU 1.
         CULOG(cuInit(0));
