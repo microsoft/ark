@@ -361,6 +361,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
             //     comm_found = true;
             // }
             if (ogn->opseq.is_send() || ogn->opseq.is_recv() ||
+                ogn->opseq.is_send_done() ||
                 (ogn->opseq.get_last_op()->type != OP_MATMUL)) {
                 new_depth_nodes.back().emplace_back(ogn);
                 seen2_tmp.emplace(ogn);

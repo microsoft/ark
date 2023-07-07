@@ -5,3 +5,11 @@ build/
 # VS Code
 .vscode/
 .settings/
+
+# Python
+_pycache__/
+**/__pycache__/  
+ *.pyc 
+**/*.pyc  
+*.pyo  
+**/*.pyo  

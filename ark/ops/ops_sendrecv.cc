@@ -35,7 +35,7 @@ Tensor *Model::send_done(Tensor *input, int id, Tensor *output,
 {
     LOG(DEBUG, "send_done ", input->shape, " ", id);
     if (output == nullptr) {
-        output = this->tensor(input->shape, input->type, input->buf);
+        output = this->tensor({1, 1, 1, 1}, INT32);
     }
     this->create_op(OP_SEND_DONE, OP_PREC_NONE, {input}, {output}, {id}, name);
     return output;

@@ -4,9 +4,9 @@
 #ifndef ARK_GPU_MEM_H_
 #define ARK_GPU_MEM_H_
 
-#include <cuda.h>
-
 #include "ark/ipc/ipc_mem.h"
+#include <cuda.h>
+#include <memory>
 
 namespace ark {
 
@@ -54,7 +54,7 @@ class GpuMem
 
   private:
     //
-    IpcMem shm;
+    std::unique_ptr<IpcMem> shm;
     //
     GpuPtr addr = 0;
     //

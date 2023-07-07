@@ -5,6 +5,7 @@
 #define ARK_KERNELS_COMM_H_
 
 #include "common.h"
+#include "unit_op.h"
 
 namespace ark {
 namespace comm {
@@ -40,6 +41,10 @@ template <unsigned int Cid, unsigned int SrcSid, unsigned int DstSid,
           unsigned long long int Length>
 DEVICE void send()
 {
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    if (UnitOp::thread_id() != 0) {
+        return;
+    }
     volatile unsigned int *done = &(_ARK_SC[SrcSid]);
     while (!(*done)) {
     }
@@ -73,25 +78,13 @@ DEVICE void send()
 #endif // (ARK_COMM_SW != 0)
 }
 
-//
-template <unsigned int Cid, unsigned int SrcEid, unsigned int DstEid,
-          unsigned long long int Length>
-DEVICE void send(State &state)
-{
-    constexpr unsigned int SrcSid = SrcEid * 2;
-    constexpr unsigned int DstSid = DstEid * 2;
-    if (state.flag) {
-        *_ARK_DOORBELL =
-            Doorbell<ReqType::Send, DstSid + 1, SrcSid + 1, Cid, Length>::value;
-    } else {
-        *_ARK_DOORBELL =
-            Doorbell<ReqType::Send, DstSid, SrcSid, Cid, Length>::value;
-    }
-}
-
 // Poll SC and reset.
 template <unsigned int SrcSid> DEVICE void send_done()
 {
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    if (UnitOp::thread_id() != 0) {
+        return;
+    }
     volatile unsigned int *done = &(_ARK_SC[SrcSid]);
     while (!(*done)) {
     }
@@ -99,19 +92,12 @@ template <unsigned int SrcSid> DEVICE void send_done()
 }
 
 //
-template <unsigned int SrcEid> DEVICE void send_done(State &state)
-{
-    constexpr unsigned int SrcSid = SrcEid * 2;
-    volatile unsigned int *done = &(_ARK_SC[SrcSid + state.flag]);
-    while (!(*done)) {
-    }
-    *done = 0;
-    state.flag ^= 1;
-}
-
-//
 template <unsigned int DstSid> DEVICE void recv()
 {
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    if (UnitOp::thread_id() != 0) {
+        return;
+    }
     volatile unsigned int *len = &(_ARK_RC[DstSid]);
     while (!(*len)) {
     }

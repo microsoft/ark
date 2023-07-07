@@ -9,7 +9,6 @@ using namespace std;
 
 namespace ark {
 
-//
 Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
                           Tensor *output, const string &name)
 {
@@ -28,69 +27,33 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
          (size_t)input->ldims[3])) {
         LOGERR("all_reduce of a split tensor is not supported");
     }
-    DimType total_num = input->ldims.size();
-    DimType num_per_shard = math::div_up(total_num, gpu_num);
-    vector<Tensor *> shards =
-        this->sharding(input, 0, num_per_shard, name + "/sharding");
-    vector<Tensor *> bufs;
-    bufs.resize(gpu_num);
 
-    int gpu_dst = (gpu_id + 1) % gpu_num;
-    int gpu_src = (gpu_id + gpu_num - 1) % gpu_num;
     int base = this->next_eid;
-    int shard_send_id = (gpu_id + gpu_num - 1) % gpu_num;
-
-    int icnt = 0;
-    int rcnt = 0;
-    int scnt = 0;
-
-    Tensor *send =
-        this->send(shards[shard_send_id], base + shard_send_id, gpu_dst, 0,
-                   nullptr, name + "/send_" + to_string(scnt++));
-    bufs[shard_send_id] = shards[shard_send_id];
-
-    for (int i = 1; i < gpu_num; ++i) {
-        int shard_id = (gpu_id + gpu_num - i - 1) % gpu_num;
-        Tensor *shard = shards[shard_id];
-        Tensor *buf = this->tensor(shard->shape, shard->type);
-        buf->exported = true;
-        bufs[shard_id] = buf;
-        Tensor *recv =
-            this->recv(this->identity(buf, {send}, nullptr,
-                                      name + "/identity_" + to_string(icnt++)),
-                       base + shard_id, gpu_src, 0, nullptr,
-                       name + "/recv_" + to_string(rcnt++));
-        Tensor *add =
-            this->add(this->identity(buf, {recv}, nullptr,
-                                     name + "/identity_" + to_string(icnt++)),
-                      shard, nullptr, name + "/add_" + to_string(i - 1));
-        send = this->send(add, base + shard_id, gpu_dst, 0, nullptr,
-                          name + "/send_" + to_string(scnt++));
-        shard_send_id = shard_id;
+    // all to all allreduce
+    vector<Tensor *> send_tensors;
+    for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
+        if (gpu_dst == gpu_id)
+            continue;
+        Tensor *send_t =
+            this->send(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
+        this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
+        send_tensors.push_back(send_t);
     }
-    for (int i = 1; i < gpu_num - 1; ++i) {
-        int shard_id = (gpu_id + gpu_num - i) % gpu_num;
-        Tensor *buf = bufs[shard_id];
-        Tensor *tmp = this->identity(buf, {send}, nullptr,
-                                     name + "/identity_" + to_string(icnt++));
-        Tensor *recv = this->recv(tmp, base + shard_id, gpu_src, 0, nullptr,
-                                  name + "/recv_" + to_string(rcnt++));
-        send =
-            this->send(this->identity(buf, {recv}, nullptr,
-                                      name + "/identity_" + to_string(icnt++)),
-                       base + shard_id, gpu_dst, 0, nullptr,
-                       name + "/send_" + to_string(scnt++));
-        shard_send_id = shard_id;
+    Tensor *recv_buf = this->tensor(input->shape, input->type);
+    Tensor *add = nullptr;
+    for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
+        if (gpu_src == gpu_id)
+            continue;
+        if (add != nullptr) {
+            send_tensors.push_back(add);
+        }
+        Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
+                                  base + gpu_src * gpu_num + gpu_id, gpu_src);
+        add = this->add(this->identity(input, {recv}), recv_buf,
+                        this->identity(input));
     }
-    int shard_recv_id = (shard_send_id + gpu_num - 1) % gpu_num;
-    Tensor *buf = bufs[shard_recv_id];
-    Tensor *tmp = this->identity(buf, {send}, nullptr,
-                                 name + "/identity_" + to_string(icnt++));
 
-    this->recv(tmp, base + shard_recv_id, gpu_src, 0, nullptr,
-               name + "/recv_" + to_string(rcnt++));
-
-    this->next_eid += gpu_num;
+    this->next_eid += gpu_num * gpu_num;
     return input;
 }
 
