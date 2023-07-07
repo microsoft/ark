@@ -92,7 +92,7 @@ static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
         DimType inner_dim_tile_len = fst_input_tile.y;
         size_t max_split_k = math::div_up(inner_dim, inner_dim_tile_len);
 
-        // Calcualte the max split_k to run two or less tiles per SM. Exceeding
+        // Calculate the max split_k to run two or less tiles per SM. Exceeding
         // this limit is heuristically bad for performance.
         size_t split_k_for_two_tiles_per_sm = num_sm * 2 / num_tiles;
         size_t tmp_split_k = min(max_split_k, split_k_for_two_tiles_per_sm);
