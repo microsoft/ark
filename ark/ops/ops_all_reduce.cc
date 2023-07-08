@@ -39,9 +39,9 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
         send_tensors.push_back(send_t);
     }
-    Tensor *recv_buf = this->tensor(input->shape, input->type);
     Tensor *add = nullptr;
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
+        Tensor *recv_buf = this->tensor(input->shape, input->type);
         if (gpu_src == gpu_id)
             continue;
         if (add != nullptr) {
