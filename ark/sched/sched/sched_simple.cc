@@ -11,7 +11,7 @@ using namespace std;
 namespace ark {
 SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
                                  const Model &model, int wps_)
-    : SchedulerBase(gpu_id, rank_, world_size_, wps_), codegen{this->buf_trans,
+    : BaseScheduler(gpu_id, rank_, world_size_, wps_), codegen{this->buf_trans,
                                                                108, wps_,
                                                                this->world_size}
 {
@@ -90,64 +90,18 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         if (cfg == &ARK_OP_CONFIG_VIRT) {
             continue;
         }
-        if (sched_op_seq.append(op, cfg)) {
-            LOG(DEBUG, "try_append sched_op", sched_op_name,
-                " to sched_op_seq");
-        } else {
-            LOG(DEBUG, "create new sched_op_seq");
-            this->sched_opseqs.emplace_back(opseq_idx);
-            opseq_idx++;
-            SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
-            sched_op_seq.append(op, cfg);
-        }
+        // We create an opseq for each op for simplicity, we don't merge ops
+        // into opseqs in SimpleScheduler
+        this->sched_opseqs.emplace_back(op_idx);
+        SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
+
+        LOG(DEBUG, "get_sched_ops: ", sched_op_seq.get_sched_ops().size());
+        sched_op_seq.append(op, cfg);
         op_idx++;
     }
     if (!all_ops.empty()) {
         LOGERR("Cannot schedule all ops");
     }
-}
-
-GpuMgrCtx *SimpleScheduler::create_context(const string &name)
-{
-    GpuMgrCtx *ctx =
-        this->gpu_mgr->create_context(name, this->rank, this->world_size);
-    for (BufInfo &bi : this->get_buf_infos()) {
-        GpuBuf *buf;
-        if (bi.gpu_id == this->gpu_mgr->gpu_id) {
-            if (bi.sid == -1) {
-                buf = ctx->mem_alloc(bi.bytes, 1);
-            } else {
-                // Align for RDMA performance.
-                buf = ctx->mem_alloc(bi.bytes, 65536);
-                ctx->mem_export(buf, bi.offset, bi.sid);
-            }
-        } else {
-            buf = ctx->mem_import(bi.bytes, bi.sid, bi.gpu_id);
-            LOG(DEBUG, "import buf: ", bi.bytes, " ", bi.offset, " ", bi.sid,
-                " ", buf->ref());
-        }
-        this->buf_trans[bi.tbuf] = buf;
-    }
-    // register the send recv op for the comm_sw
-    for (auto &sop : this->get_sched_ops()) {
-        const Op *op = sop.get_op();
-        if (op->type == OP_SEND || op->type == OP_RECV) {
-            LOG(DEBUG, "reg_sendrecv: sid=", *(int *)op->args[0].val,
-                " remote=", *(int *)op->args[1].val,
-                " is_recv=", op->type == OP_RECV);
-            ctx->reg_sendrecv(*(int *)op->args[0].val, *(int *)op->args[1].val,
-                              *(size_t *)op->args[2].val, op->type == OP_RECV);
-        }
-    }
-    ctx->freeze();
-    for (auto buf_info : this->get_buf_infos()) {
-        LOG(DEBUG, "GPU ", this->rank, " buf_info: ", " bytes:", buf_info.bytes,
-            " offset: ",
-            this->buf_trans.find(buf_info.tbuf)->second->get_offset(),
-            " sid: ", buf_info.sid, " gid: ", buf_info.gpu_id);
-    }
-
-    return ctx;
 }
 
 //
@@ -341,10 +295,12 @@ void SimpleScheduler::configure_gpu_buf()
                                              0);
             }
             export_tns_sids[in->buf].emplace_back(in, sid);
+            this->send_recv_ops.emplace_back(sop.get_op());
         } else if (sop.get_op()->type == OP_RECV) {
             Tensor *in = sop.get_op()->in_deps[0];
             int sid = *(int *)sop.get_op()->args[0].val;
             export_tns_sids[in->buf].emplace_back(in, sid);
+            this->send_recv_ops.emplace_back(sop.get_op());
         }
         for (auto &tns : sop.get_op()->in_deps) {
             // if the tensor is not imported, it should be allocated on this GPU

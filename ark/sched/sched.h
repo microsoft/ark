@@ -35,16 +35,16 @@ struct BufInfo
     size_t offset;
 };
 
-class SchedulerBase
+class BaseScheduler
 {
   public:
-    SchedulerBase(const int gpu_id, int rank_, int world_size_, int wps_ = 16)
+    BaseScheduler(const int gpu_id, int rank_, int world_size_, int wps_ = 16)
         : gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_},
           world_size{world_size_}, wps{wps_}
     {
     }
     // create context on gpu for the model
-    virtual GpuMgrCtx *create_context(const std::string &name) = 0;
+    GpuMgrCtx *create_context(const std::string &name);
     //
     virtual std::vector<std::string> schedule() = 0;
 
@@ -71,21 +71,20 @@ class SchedulerBase
     // GPU address space
     std::map<TensorBuf *, GpuBuf *> buf_trans;
 
+    std::vector<const Op *> send_recv_ops;
+    GpuMgrCtx *ctx;
     int rank;
     int world_size;
     int wps;
 };
 
-class SimpleScheduler : public SchedulerBase
+class SimpleScheduler : public BaseScheduler
 {
   public:
     SimpleScheduler(const int gpu_id, int rank_, int world_size_,
                     const Model &model, int wps_ = 16);
     void create_sched_opseq(const Model &model, const GpuInfo &gpu_info);
 
-    // create context on gpu for the model
-    GpuMgrCtx *create_context(const std::string &name);
-    //
     std::vector<std::string> schedule();
 
     Tensor *get_tensor(Tensor *tns) const
@@ -110,10 +109,6 @@ class SimpleScheduler : public SchedulerBase
     {
         return sched_opseqs;
     }
-    std::vector<BufInfo> &get_buf_infos()
-    {
-        return buf_infos;
-    }
     void schedule_sched_opseq(SchedOpSeq &sop, int max_wps, int max_sm_num,
                               std::vector<Sched> &scheds);
     // This function is used to configure the TensorBuf. The TensorBuf is an
@@ -131,14 +126,13 @@ class SimpleScheduler : public SchedulerBase
     // DefaultCodeGenerator scg;
 };
 
-class DefaultScheduler : public SchedulerBase
+class DefaultScheduler : public BaseScheduler
 {
   public:
     DefaultScheduler(const int gpu_id, int rank_, int world_size_,
                      const Model &model, int wps = 16);
 
     std::vector<std::string> schedule();
-    GpuMgrCtx *create_context(const std::string &name);
     Tensor *get_tensor(Tensor *tns) const;
     GpuBuf *get_gpu_buf(Tensor *tns) const;
     unsigned int get_num_depths() const;
@@ -156,8 +150,7 @@ class DefaultScheduler : public SchedulerBase
     OpGraph *op_graph;
 
     std::map<Tensor *, Tensor *> tns_trans;
-    std::vector<const Op *> send_recv_ops;
-    GpuMgrCtx *ctx;
+
     const std::string model_path = "model.json";
     DefaultCodeGenerator scg;
     unsigned int wps;

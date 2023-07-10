@@ -32,7 +32,7 @@ BSRC_IPC := ipc_mem.cc ipc_lock.cc ipc_shm.cc ipc_coll.cc ipc_socket.cc ipc_host
 BSRC_NET := net_ib.cc
 BSRC_GPU := gpu_mem.cc gpu_buf.cc gpu_comm_sw.cc gpu_mgr.cc
 BSRC_GPU += gpu_kernel.cc gpu_compile.cc
-BSRC_SCHED := sched_op.cc sched_opseq.cc sched_codegen.cc sched_opgraph.cc sched_profiler.cc sched_tile.cc
+BSRC_SCHED := sched.cc sched_op.cc sched_opseq.cc sched_codegen.cc sched_opgraph.cc sched_profiler.cc sched_tile.cc
 BSRC_SCHED_SCHED := sched_default.cc sched_simple.cc
 ifeq ($(KAHYPAR),1)
 BSRC_SCHED_SCHED += sched_kahypar.cc
