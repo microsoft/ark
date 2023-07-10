@@ -135,6 +135,10 @@ static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
 static void heuristic_optimize_model(Model &model, const GpuInfo &gpu_info,
                                      int num_sm)
 {
+    if (get_env().disable_graph_opt) {
+        LOG(INFO, "Graph optimization is disabled.");
+        return;
+    }
     // Make a copy of the ops because we will modify the model.
     std::vector<Op *> ops;
     for (auto &op : model.get_ops()) {
