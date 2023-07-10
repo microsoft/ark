@@ -18,7 +18,7 @@ class ExecutorMember
 {
   public:
     GpuMgrCtx *ctx;
-    SchedulerBase *sched;
+    BaseScheduler *sched;
     GpuLoopKernel *glk = nullptr;
     GpuStream stream = nullptr;
 };
