@@ -38,7 +38,8 @@ void retrieve_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
 
 /// Construct an @ref OpGraph from a @ref Model.
 ///
-/// The @ref OpGraph is a DAG of operators, where each @ref OpGraphNode is a node. The edges are the dependencies between @ref OpGraphNode.
+/// The @ref OpGraph is a DAG of operators, where each @ref OpGraphNode is a
+/// node. The edges are the dependencies between @ref OpGraphNode.
 ///
 /// @param model The @ref Model.
 /// @param gpu_info @ref GpuInfo of the GPU to run the model on.
@@ -186,7 +187,8 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                         // LOG(INFO, "OGN: ", ogn, " --> ", ssod.str());
                         depth_prev->emplace_back(ogn);
                         //
-                        ogn->out_deps.insert((*it)->out_deps.begin(), (*it)->out_deps.end());
+                        ogn->out_deps.insert((*it)->out_deps.begin(),
+                                             (*it)->out_deps.end());
                         for (auto &od : (*it)->out_deps) {
                             od->in_deps.insert(ogn);
                         }

@@ -15,8 +15,9 @@ using namespace std;
 // is_relu: Use ReLU activation if true.
 // iter: Number of iterations.
 void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
-                          unsigned int bs_a, unsigned int bs_b,
-                          int split_k = 1, bool is_relu = false, int gran_lev = -1, unsigned int iter = 1)
+                          unsigned int bs_a, unsigned int bs_b, int split_k = 1,
+                          bool is_relu = false, int gran_lev = -1,
+                          unsigned int iter = 1)
 {
     assert(bs_a == bs_b || bs_a == 1 || bs_b == 1);
     unsigned int bs_res = bs_a > bs_b ? bs_a : bs_b;
@@ -79,8 +80,8 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     ark::Model model;
     ark::Tensor *tns_a = model.tensor({m, k}, ark::FP16);
     ark::Tensor *tns_b = model.tensor({k, n}, ark::FP16);
-    ark::Tensor *tns_res = model.matmul(tns_a, tns_b, nullptr, split_k, false, false,
-                                        is_relu, "matmul", gran_lev);
+    ark::Tensor *tns_res = model.matmul(tns_a, tns_b, nullptr, split_k, false,
+                                        false, is_relu, "matmul", gran_lev);
 
     mgr->destroy_context(ctx);
 
@@ -129,9 +130,10 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     auto p =
         ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
     float max_err = p.second;
-    LOG(ark::INFO, "matmul:", m, 'x', n, 'x', k, "(split_k=", split_k, ",relu=", is_relu, ",gran_lev=", gran_lev, ") ",
-        setprecision(4), " mse ", p.first, " max_err ", max_err * 100, "%",
-        " elapsed ", elapsed, "ms iter ", iter);
+    LOG(ark::INFO, "matmul:", m, 'x', n, 'x', k, "(split_k=", split_k,
+        ",relu=", is_relu, ",gran_lev=", gran_lev, ") ", setprecision(4),
+        " mse ", p.first, " max_err ", max_err * 100, "%", " elapsed ", elapsed,
+        "ms iter ", iter);
 
     free(res);
     free(gt);
@@ -141,141 +143,267 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
 
 ark::unittest::State test_matmul_gran0()
 {
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
 
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
 
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/0);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/0);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_matmul_gran1()
 {
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
 
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
 
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/1);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/1);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_matmul_gran2()
 {
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
 
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
 
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/2);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/2);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_matmul_gran3()
 {
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/32, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false,
+                         /*gran_lev=*/3);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_matmul_relu()
 {
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/true);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/true);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_matmul_split()
 {
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false,
+                         /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/128, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
+                         /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
+                         /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
+                         /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
+                         /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
+                         /*gran_lev=*/2);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false,
+                         /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false,
+                         /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false,
+                         /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false,
+                         /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false,
+                         /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false,
+                         /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false,
+                         /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false,
+                         /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false,
+                         /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false,
+                         /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false,
+                         /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false,
+                         /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false, /*gran_lev=*/0);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false, /*gran_lev=*/1);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false, /*gran_lev=*/2);
-    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false, /*gran_lev=*/3);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false,
+                         /*gran_lev=*/0);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false,
+                         /*gran_lev=*/1);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false,
+                         /*gran_lev=*/2);
+    test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
+                         /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false,
+                         /*gran_lev=*/3);
 
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_matmul_perf()
 {
-    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1, /*iter=*/1000);
-    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1, /*iter=*/1000);
-    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1, /*iter=*/1000);
-    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1, /*iter=*/1000);
-    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1, /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1, /*iter=*/1000);
+    test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1,
+                         /*iter=*/1000);
+    test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1,
+                         /*iter=*/1000);
+    test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1,
+                         /*iter=*/1000);
+    test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1,
+                         /*iter=*/1000);
+    test_matmul_internal(/*m=*/256, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
+                         /*split_k=*/1, /*is_relu=*/false, /*gran_lev=*/-1,
+                         /*iter=*/1000);
     return ark::unittest::SUCCESS;
 }
 
