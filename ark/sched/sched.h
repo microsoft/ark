@@ -123,9 +123,6 @@ class SimpleScheduler : public SchedulerBase
                     const Model &model, int wps_ = 16);
     void create_sched_opseq(const Model &model, const GpuInfo &gpu_info);
 
-    // create context on gpu for the model
-    GpuMgrCtx *create_context(const std::string &name);
-    //
     std::vector<std::string> schedule();
 
     Tensor *get_tensor(Tensor *tns) const
@@ -174,7 +171,6 @@ class DefaultScheduler : public SchedulerBase
                      const Model &model, int wps = 16);
 
     std::vector<std::string> schedule();
-    GpuMgrCtx *create_context(const std::string &name);
     Tensor *get_tensor(Tensor *tns) const;
     GpuBuf *get_gpu_buf(Tensor *tns) const;
     unsigned int get_num_depths() const;
