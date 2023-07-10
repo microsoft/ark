@@ -81,11 +81,14 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (; it != depth_prev->end(); ++it) {
             SchedOpSeq &opseq = (*it)->opseq;
             // LOG(INFO, "retrieve: ", *it, ", last op ",
-            // (*it)->opseq.get_last_op()->type, " ",
-            // (*it)->opseq.get_last_op());
+            //     (*it)->opseq.get_last_op()->type, " ",
+            //     (*it)->opseq.get_last_op()->name);
             for (;;) {
-                // Get all Ops of which results are used by seen Ops only
-                // and at least one result is used by `opseq.back()`.
+                // Get all Ops of which results are used only by seen Ops
+                // and at least one result is used by `opseq.back()`. If there
+                // is only one such Op, it can be merged into `opseq` unless
+                // this Op requires a global sync after execution or `opseq`
+                // requires a global sync before execution.
                 set<const Op *> dep_ops;
                 for (Tensor *tns : opseq.get_last_op()->in_deps) {
                     const Op *op = model.get_gen_op(tns);
@@ -115,7 +118,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     }
                     if (is_only) {
                         dep_ops.emplace(op);
-                        // LOG(DEBUG, "retrieve: dep op ", op->type);
+                        // LOG(DEBUG, "retrieve: dep op ", op->name);
                     }
                 }
                 // If there is only one such Op, check if this can be
@@ -170,20 +173,20 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     // instead.
                     for (const Op *op : dep_ops) {
                         auto p = seen.emplace(op);
-                        assert(p.second);
+                        if (!p.second) {
+                            continue;
+                        }
                         const OpConfig *cfg = sched_op_config(op, gpu_info);
                         OpGraphNode *ogn =
                             this->get_or_create_node(opseq_id++, op, cfg);
-                        stringstream ssod;
-                        for (auto &od : (*it)->out_deps) {
-                            ssod << od << ",";
-                        }
+                        // stringstream ssod;
+                        // for (auto &od : (*it)->out_deps) {
+                        //     ssod << od << ",";
+                        // }
                         // LOG(INFO, "OGN: ", ogn, " --> ", ssod.str());
                         depth_prev->emplace_back(ogn);
                         //
-                        ogn->out_deps.insert(
-                            // ogn->out_deps.end(),
-                            (*it)->out_deps.begin(), (*it)->out_deps.end());
+                        ogn->out_deps.insert((*it)->out_deps.begin(), (*it)->out_deps.end());
                         for (auto &od : (*it)->out_deps) {
                             od->in_deps.insert(ogn);
                         }
