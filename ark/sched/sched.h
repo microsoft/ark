@@ -44,7 +44,45 @@ class SchedulerBase
     {
     }
     // create context on gpu for the model
-    virtual GpuMgrCtx *create_context(const std::string &name) = 0;
+    GpuMgrCtx *create_context(const std::string &name)
+    {
+        GpuMgrCtx *ctx =
+            this->gpu_mgr->create_context(name, this->rank, this->world_size);
+        for (BufInfo &bi : this->buf_infos) {
+            GpuBuf *buf;
+            if (bi.gpu_id == this->gpu_mgr->gpu_id) {
+                auto search = this->buf_trans.find(bi.tbuf);
+                if (search != this->buf_trans.end()) {
+                    // Already allocated.
+                    buf = search->second;
+                    if (bi.sid != -1) {
+                        ctx->mem_export(this->buf_trans[bi.tbuf], bi.offset,
+                                        bi.sid);
+                    }
+                } else if (bi.sid == -1) {
+                    buf = ctx->mem_alloc(bi.bytes, 1);
+                } else {
+                    // Align for RDMA performance.
+                    buf = ctx->mem_alloc(bi.bytes, 65536);
+                    ctx->mem_export(buf, bi.offset, bi.sid);
+                }
+            } else {
+                buf = ctx->mem_import(bi.bytes, bi.sid, bi.gpu_id);
+            }
+            this->buf_trans[bi.tbuf] = buf;
+        }
+        for (auto &srop : this->send_recv_ops) {
+            LOG(DEBUG, "reg_sendrecv: sid=", *(int *)srop->args[0].val,
+                " remote=", *(int *)srop->args[1].val,
+                " is_recv=", srop->type == OP_RECV);
+            ctx->reg_sendrecv(
+                *(int *)srop->args[0].val, *(int *)srop->args[1].val,
+                *(size_t *)srop->args[2].val, srop->type == OP_RECV);
+        }
+        ctx->freeze();
+        this->ctx = ctx;
+        return ctx;
+    }
     //
     virtual std::vector<std::string> schedule() = 0;
 
@@ -71,6 +109,8 @@ class SchedulerBase
     // GPU address space
     std::map<TensorBuf *, GpuBuf *> buf_trans;
 
+    std::vector<const Op *> send_recv_ops;
+    GpuMgrCtx *ctx;
     int rank;
     int world_size;
     int wps;
@@ -109,10 +149,6 @@ class SimpleScheduler : public SchedulerBase
     std::vector<SchedOpSeq> &get_sched_opseqs()
     {
         return sched_opseqs;
-    }
-    std::vector<BufInfo> &get_buf_infos()
-    {
-        return buf_infos;
     }
     void schedule_sched_opseq(SchedOpSeq &sop, int max_wps, int max_sm_num,
                               std::vector<Sched> &scheds);
@@ -156,8 +192,7 @@ class DefaultScheduler : public SchedulerBase
     OpGraph *op_graph;
 
     std::map<Tensor *, Tensor *> tns_trans;
-    std::vector<const Op *> send_recv_ops;
-    GpuMgrCtx *ctx;
+
     const std::string model_path = "model.json";
     DefaultCodeGenerator scg;
     unsigned int wps;
