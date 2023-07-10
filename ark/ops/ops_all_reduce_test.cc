@@ -118,8 +118,8 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
 
 ark::unittest::State test_all_reduce()
 {
-    test_all_reduce_internal(8, 2, 4);
-    // test_all_reduce_internal(16, 4, 4);
+    test_all_reduce_internal(8, 2, 1);
+    test_all_reduce_internal(16, 4, 1);
     return ark::unittest::SUCCESS;
 }
 
