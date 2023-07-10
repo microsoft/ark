@@ -90,7 +90,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         if (cfg == &ARK_OP_CONFIG_VIRT) {
             continue;
         }
-        // We create an opseq for each op. for simplicity, we don't merge ops
+        // We create an opseq for each op for simplicity, we don't merge ops
         // into opseqs in SimpleScheduler
         this->sched_opseqs.emplace_back(op_idx);
         SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
