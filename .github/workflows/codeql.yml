@@ -42,8 +42,8 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
-    - run: |
-        echo "Run, Build Application using script"
+    - name: Build ARK
+      run: |
         make -j
 
     - name: Perform CodeQL Analysis
