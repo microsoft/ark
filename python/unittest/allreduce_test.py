@@ -15,7 +15,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len):
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 
-    model.all_reduce(input_tensor, rank, world_size)
+    allreduce_result = model.all_reduce(input_tensor, rank, world_size)
 
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
     exe.compile()
@@ -27,7 +27,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len):
     exe.stop()
 
     host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, input_tensor)
+    exe.tensor_memcpy_device_to_host(host_output, allreduce_result)
     print("host_output:", host_output)
     gt = np.zeros(tensor_len, dtype=np.float16)
     for np_input in np_inputs:

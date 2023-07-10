@@ -66,12 +66,12 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
                     (ark::DimType)(bytes / sizeof(ark::half_t)),
                 },
                 FP16);
-            model.all_reduce(data, gpu_id, num_gpus);
+            Tensor *allreduce_result = model.all_reduce(data, gpu_id, num_gpus);
             Executor exe{gpu_id, gpu_id, num_gpus, model, "test_all_reduce"};
             exe.compile();
 
             // Get the auto-scheduled buffers.
-            ark::GpuBuf *buf_tns = exe.get_gpu_buf(data);
+            ark::GpuBuf *buf_tns = exe.get_gpu_buf(allreduce_result);
             UNITTEST_NE(buf_tns, (ark::GpuBuf *)nullptr);
 
             // Set data.

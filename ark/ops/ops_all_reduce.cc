@@ -39,21 +39,21 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
         send_tensors.push_back(send_t);
     }
-    Tensor *add = nullptr;
+    Tensor *add_tensor = input;
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
         Tensor *recv_buf = this->tensor(input->shape, input->type);
         if (gpu_src == gpu_id)
             continue;
-        if (add != nullptr) {
-            send_tensors.push_back(add);
+        if (add_tensor != nullptr) {
+            send_tensors.push_back(add_tensor);
         }
         Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
-        add = this->add(input, this->identity(recv_buf, {recv}));
+        add_tensor = this->add(add_tensor, this->identity(recv_buf, {recv}));
     }
 
     this->next_eid += gpu_num * gpu_num;
-    return add;
+    return add_tensor;
 }
 
 } // namespace ark
