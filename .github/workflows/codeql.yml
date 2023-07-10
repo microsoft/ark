@@ -34,7 +34,7 @@ jobs:
     - name: Check disk space
       run: |
         df -h
-        du -h -d 1 /
+        du -h -d 1 /opt || true
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
