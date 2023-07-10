@@ -42,7 +42,6 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
     }
     this->sched_opseqs.emplace_back(opseq_idx);
     opseq_idx++;
-    SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
 
     while (!all_ops.empty()) {
         // find the next op to schedule
@@ -230,7 +229,7 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
 }
 
 void SimpleScheduler::configure_gpu_buf(
-    const std::list<std::unique_ptr<Tensor>> &model_tensors)
+    const std::list<std::unique_ptr<Tensor>> &)
 {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other
