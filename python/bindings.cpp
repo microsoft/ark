@@ -313,8 +313,7 @@ PYBIND11_MODULE(ark, m)
     // register class Executor
     py::class_<ark::Executor>(m, "Executor",
                               "Convenience class for executing a model.")
-        .def(py::init<const int, int, int, const ark::Model &,
-                      const std::string &>(),
+        .def(py::init<const int, int, int, ark::Model &, const std::string &>(),
              py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
              py::arg("model"), py::arg("name"))
         .def("compile", &ark::Executor::compile,
