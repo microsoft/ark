@@ -44,7 +44,6 @@ jobs:
 
     - run: |
         echo "Run, Build Application using script"
-        git config --global --add safe.directory /__w/ark/ark
         make -j
 
     - name: Perform CodeQL Analysis
