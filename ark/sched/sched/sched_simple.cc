@@ -11,7 +11,7 @@ using namespace std;
 namespace ark {
 SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
                                  const Model &model, int wps_)
-    : SchedulerBase(gpu_id, rank_, world_size_, wps_), codegen{this->buf_trans,
+    : BaseScheduler(gpu_id, rank_, world_size_, wps_), codegen{this->buf_trans,
                                                                108, wps_,
                                                                this->world_size}
 {

@@ -222,7 +222,7 @@ void DefaultScheduler::configure_gpu_buf()
 
 DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
                                    const Model &model, int wps_)
-    : SchedulerBase(gpu_id, rank_, world_size_, wps_), scg{buf_trans, 108, wps_,
+    : BaseScheduler(gpu_id, rank_, world_size_, wps_), scg{buf_trans, 108, wps_,
                                                            world_size_}
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();

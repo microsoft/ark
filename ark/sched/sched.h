@@ -35,10 +35,10 @@ struct BufInfo
     size_t offset;
 };
 
-class SchedulerBase
+class BaseScheduler
 {
   public:
-    SchedulerBase(const int gpu_id, int rank_, int world_size_, int wps_ = 16)
+    BaseScheduler(const int gpu_id, int rank_, int world_size_, int wps_ = 16)
         : gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_},
           world_size{world_size_}, wps{wps_}
     {
@@ -116,7 +116,7 @@ class SchedulerBase
     int wps;
 };
 
-class SimpleScheduler : public SchedulerBase
+class SimpleScheduler : public BaseScheduler
 {
   public:
     SimpleScheduler(const int gpu_id, int rank_, int world_size_,
@@ -164,7 +164,7 @@ class SimpleScheduler : public SchedulerBase
     // DefaultCodeGenerator scg;
 };
 
-class DefaultScheduler : public SchedulerBase
+class DefaultScheduler : public BaseScheduler
 {
   public:
     DefaultScheduler(const int gpu_id, int rank_, int world_size_,
