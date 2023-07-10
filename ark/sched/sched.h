@@ -124,7 +124,7 @@ class SimpleScheduler : public BaseScheduler
     std::vector<SchedOpSeq> sched_opseqs;
     std::vector<SchedOp> sched_ops;
 
-    SimpleCodeGenerator codegen;
+    std::unique_ptr<SimpleCodeGenerator> codegen;
     // DefaultCodeGenerator scg;
 };
 
@@ -151,7 +151,7 @@ class DefaultScheduler : public BaseScheduler
     OpGraph *op_graph;
 
     const std::string model_path = "model.json";
-    DefaultCodeGenerator scg;
+    std::unique_ptr<DefaultCodeGenerator> codegen;
     unsigned int wps;
 };
 

@@ -7,20 +7,23 @@
 #include "ark/sched/sched_op.h"
 #include "ark/sched/sched_opseq.h"
 #include <map>
+
 namespace ark {
+
 class BaseCodeGenerator
 {
   public:
-    BaseCodeGenerator(std::map<TensorBuf *, GpuBuf *> &buf_trans, int sm_num,
-                      int wps, int world_size)
-        : buf_trans{buf_trans}, sm_num{sm_num}, wps{wps}, world_size{world_size}
+    BaseCodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
+                      const GpuInfo &gpu_info, int wps, int world_size)
+        : buf_trans{buf_trans}, sm_num{gpu_info.num_sm}, wps{wps},
+          world_size{world_size}
     {
     }
     virtual std::vector<std::string> codegen_codes_body(
         std::vector<Sched> &scheds) = 0;
 
   protected:
-    std::map<TensorBuf *, GpuBuf *> &buf_trans;
+    const std::map<TensorBuf *, GpuBuf *> &buf_trans;
     int sm_num;
     int wps;
     int world_size;
@@ -29,9 +32,9 @@ class BaseCodeGenerator
 class SimpleCodeGenerator : BaseCodeGenerator
 {
   public:
-    SimpleCodeGenerator(std::map<TensorBuf *, GpuBuf *> &buf_trans, int sm_num,
-                        int wps, int world_size)
-        : BaseCodeGenerator(buf_trans, sm_num, wps, world_size)
+    SimpleCodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
+                        const GpuInfo &gpu_info, int wps, int world_size)
+        : BaseCodeGenerator(buf_trans, gpu_info, wps, world_size)
     {
     }
     std::vector<std::string> codegen_codes_body(std::vector<Sched> &scheds);
@@ -81,9 +84,9 @@ class Brancher
 class DefaultCodeGenerator : BaseCodeGenerator
 {
   public:
-    DefaultCodeGenerator(std::map<TensorBuf *, GpuBuf *> &buf_trans, int sm_num,
-                         int wps, int world_size)
-        : BaseCodeGenerator(buf_trans, sm_num, wps, world_size)
+    DefaultCodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
+                         const GpuInfo &gpu_info, int wps, int world_size)
+        : BaseCodeGenerator(buf_trans, gpu_info, wps, world_size)
     {
     }
     std::vector<std::string> codegen_codes_body(std::vector<Sched> &scheds);

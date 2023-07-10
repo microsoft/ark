@@ -346,10 +346,11 @@ void DefaultScheduler::configure_gpu_buf(
 
 DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
                                    Model &model, int wps_)
-    : BaseScheduler(gpu_id, rank_, world_size_, wps_), scg{buf_trans, 108, wps_,
-                                                           world_size_}
+    : BaseScheduler(gpu_id, rank_, world_size_, wps_)
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    this->codegen = make_unique<DefaultCodeGenerator>(buf_trans, gpu_info, wps_,
+                                                      world_size_);
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
 
@@ -577,7 +578,7 @@ vector<string> DefaultScheduler::schedule()
         // Global sync.
         scheds.emplace_back(nullptr, 0, 0, 0, 0, 0, 0);
     }
-    return this->scg.codegen_codes_body(scheds);
+    return this->codegen->codegen_codes_body(scheds);
 }
 
 } // namespace ark

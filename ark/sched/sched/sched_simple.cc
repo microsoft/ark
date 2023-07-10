@@ -9,13 +9,14 @@
 using namespace std;
 
 namespace ark {
+
 SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
                                  const Model &model, int wps_)
-    : BaseScheduler(gpu_id, rank_, world_size_, wps_), codegen{this->buf_trans,
-                                                               108, wps_,
-                                                               this->world_size}
+    : BaseScheduler(gpu_id, rank_, world_size_, wps_)
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    this->codegen = make_unique<SimpleCodeGenerator>(this->buf_trans, gpu_info,
+                                                     wps_, this->world_size);
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
     this->create_sched_opseq(model, gpu_info);
@@ -112,7 +113,7 @@ vector<string> SimpleScheduler::schedule()
     for (auto &seq : this->sched_opseqs) {
         this->schedule_sched_opseq(seq, this->wps, num_sm, scheds);
     }
-    return this->codegen.codegen_codes_body(scheds);
+    return this->codegen->codegen_codes_body(scheds);
 }
 
 //
