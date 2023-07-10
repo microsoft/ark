@@ -49,12 +49,11 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         }
         Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
-        add = this->add(this->identity(input, {recv}), recv_buf,
-                        this->identity(input));
+        add = this->add(input, this->identity(recv_buf, {recv}));
     }
 
     this->next_eid += gpu_num * gpu_num;
-    return input;
+    return add;
 }
 
 } // namespace ark
