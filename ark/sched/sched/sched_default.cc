@@ -155,8 +155,10 @@ void DefaultScheduler::configure_gpu_buf(
     map<TensorBuf *, set<Tensor *>> buf_usage;
     map<TensorBuf *, vector<pair<Tensor *, int>>> tns_eids;
     // TODO:
-    for (auto &depth : this->op_graph->depth_nodes) {
-        for (auto &ogn : depth) {
+    size_t num_depth = this->op_graph->get_num_depth();
+    for (size_t depth = 0; depth < num_depth; ++depth) {
+        auto &depth_nodes = this->op_graph->get_depth(depth);
+        for (auto &ogn : depth_nodes) {
             for (auto &sop : ogn->opseq.get_sched_ops()) {
                 if (sop.get_op() == nullptr) {
                     continue;
@@ -177,8 +179,9 @@ void DefaultScheduler::configure_gpu_buf(
             }
         }
     }
-    for (auto &depth : this->op_graph->depth_nodes) {
-        for (auto &ogn : depth) {
+    for (size_t depth = 0; depth < num_depth; ++depth) {
+        auto &depth_nodes = this->op_graph->get_depth(depth);
+        for (auto &ogn : depth_nodes) {
             for (auto &sop : ogn->opseq.get_sched_ops()) {
                 if (sop.get_cfg()->num_warps == 0) {
                     continue;
@@ -390,7 +393,7 @@ GpuBuf *DefaultScheduler::get_gpu_buf(Tensor *tns) const
 
 unsigned int DefaultScheduler::get_num_depths() const
 {
-    return this->op_graph->depth_nodes.size();
+    return (int)this->op_graph->get_num_depth();
 }
 
 void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
@@ -552,13 +555,15 @@ vector<string> DefaultScheduler::schedule()
 
     vector<Sched> scheds;
     vector<GpuLoopKernel *> glks;
-    for (auto &depth : this->op_graph->depth_nodes) {
+    size_t num_depth = this->op_graph->get_num_depth();
+    for (size_t depth = 0; depth < num_depth; ++depth) {
+        auto &depth_nodes = this->op_graph->get_depth(depth);
         vector<Sched> ds;
         vector<SchedOpSeq *> calc_opseqs;
         vector<SchedOpSeq *> send_opseqs;
         vector<SchedOpSeq *> send_done_opseqs;
         vector<SchedOpSeq *> recv_opseqs;
-        for (auto &ogn : depth) {
+        for (auto &ogn : depth_nodes) {
             if (ogn->opseq.is_send()) {
                 send_opseqs.emplace_back(&(ogn->opseq));
             } else if (ogn->opseq.is_recv()) {

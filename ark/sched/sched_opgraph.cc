@@ -36,6 +36,13 @@ void retrieve_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
     }
 }
 
+/// Construct an @ref OpGraph from a @ref Model.
+///
+/// The @ref OpGraph is a DAG of operators, where each @ref OpGraphNode is a node. The edges are the dependencies between @ref OpGraphNode.
+///
+/// @param model The @ref Model.
+/// @param gpu_info @ref GpuInfo of the GPU to run the model on.
+///
 OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
 {
     int opseq_id = 0;
@@ -151,7 +158,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                                 if (opseq.append(op, cfg)) {
                                     auto p = seen.emplace(op);
                                     assert(p.second);
-                                    this->nodes[op] = *it;
+                                    this->op_to_node_map[op] = *it;
                                     // LOG(DEBUG, "retrieve: merge");
                                     continue;
                                 }

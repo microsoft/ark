@@ -169,8 +169,10 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
     map<ProfInfo, unsigned int> info2id;
     vector<vector<tuple<SchedTileDepth *, ProfCallback>>> to_prof;
     //
-    for (auto &depth : op_graph->depth_nodes) {
-        for (auto &ogn : depth) {
+    size_t num_depth = op_graph->get_num_depth();
+    for (size_t depth = 0; depth < num_depth; ++depth) {
+        auto &depth_nodes = op_graph->get_depth(depth);
+        for (auto &ogn : depth_nodes) {
             auto &opseq = ogn->opseq;
             if (opseq.is_send() || opseq.is_recv() || opseq.is_send_done() ||
                 opseq.is_virtual())
@@ -242,7 +244,7 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
             }
         }
         // Inter-Op profiling
-        for (auto it0 = depth.begin(); it0 != depth.end(); ++it0) {
+        for (auto it0 = depth_nodes.begin(); it0 != depth_nodes.end(); ++it0) {
             const SchedOpSeq &opseq0 = (*it0)->opseq;
             if (opseq0.is_send() || opseq0.is_recv() || opseq0.is_send_done() ||
                 opseq0.is_virtual())
@@ -250,7 +252,7 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
             if (opseq0.get_num_warps() >= this->wps)
                 continue;
             SchedOpSeqPerf &perf0 = res[&opseq0];
-            for (auto it1 = next(it0); it1 != depth.end(); ++it1) {
+            for (auto it1 = next(it0); it1 != depth_nodes.end(); ++it1) {
                 const SchedOpSeq &opseq1 = (*it1)->opseq;
                 if (perf0.mixed[&opseq1].is_set())
                     continue;
