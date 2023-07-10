@@ -18,7 +18,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/mscclpp/mscclpp:base-${{ matrix.cuda-version }}
+      image: ghcr.io/microsoft/ark/ark:base-${{ matrix.cuda-version }}
     permissions:
       actions: read
       contents: read
@@ -28,9 +28,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Claim disk space
+    - name: Check disk space
       run: |
-        rm -r /opt/nvidia
         df -h
 
     # Initializes the CodeQL tools for scanning.
@@ -41,9 +40,10 @@ jobs:
 
     - name: Build ARK
       run: |
+        git config --global --add safe.directory /__w/ark/ark
         make -j
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
-        category: "/language:${{matrix.language}}"
+        category: "/language:${{matrix.language}}/cuda-version:${{matrix.cuda-version}}"
