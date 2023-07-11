@@ -46,7 +46,7 @@ class OpGraph
     {
         return this->depth_nodes.size();
     }
-    const std::vector<OpGraphNode *>& get_depth(int depth) const
+    const std::vector<OpGraphNode *> &get_depth(int depth) const
     {
         return this->depth_nodes[depth];
     }
