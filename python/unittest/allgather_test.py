@@ -25,20 +25,20 @@ def all_gather_test(rank, np_inputs, world_size, tensor_len):
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
     exe.run(1)
     exe.stop()
+    for tensor_shard in range(world_size):
+        host_output = np.zeros(tensor_len, dtype=np.float16)
+        exe.tensor_memcpy_device_to_host(
+            host_output, allgather_result[tensor_shard]
+        )
+        print("host_output:", host_output)
+        gt = np_inputs[tensor_shard]
 
-    host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, allgather_result)
-    print("host_output:", host_output)
-    gt = np.zeros(tensor_len, dtype=np.float16)
-    for np_input in np_inputs:
-        gt += np_input
-
-    print("gt:", gt)
-    max_error = np.max(np.abs(host_output - gt))
-    mean_error = np.mean(np.abs(host_output - gt))
-    print("max error:", max_error)
-    print("mean error:", mean_error)
-    print("rank:", rank, "done")
+        print("gt:", gt)
+        max_error = np.max(np.abs(host_output - gt))
+        mean_error = np.mean(np.abs(host_output - gt))
+        print("max error:", max_error)
+        print("mean error:", mean_error)
+        print("rank:", rank, "done")
 
 
 def all_gather_test_main(world_size, tensor_len):
