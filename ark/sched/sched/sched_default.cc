@@ -61,6 +61,10 @@ static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
     if (matmul_op.type != OP_MATMUL) {
         LOGERR("This is not a matmul op.");
     }
+    if (matmul_op.gran_lev != -1) {
+        // `gran_lev` is manually set. Do not optimize.
+        return;
+    }
     if (num_sm > gpu_info.num_sm) {
         LOGERR("The total number of SMs (%d) is less than the number of SMs "
                "requested (%d).",
