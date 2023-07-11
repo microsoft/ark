@@ -15,14 +15,14 @@ def all_gather_test(rank, np_inputs, world_size, tensor_len):
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 
-    # output_tensor = model.tensor(
-    #     ark.Dims(tensor_size * world_size), ark.TensorType.FP16
-    # )
+    output_tensor = model.tensor(
+        ark.Dims(tensor_size * world_size), ark.TensorType.FP16
+    )
 
-    # recv_buffers = model.sharding(output_tensor, 0, tensor_size)
+    recv_buffers = model.sharding(output_tensor, 0, tensor_size)
     print(input_tensor)
     allgather_result = model.all_gather(input_tensor, rank, world_size)
-
+    print(allgather_result)
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
     exe.compile()
 
