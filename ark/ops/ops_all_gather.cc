@@ -9,10 +9,11 @@ using namespace std;
 
 namespace ark {
 
-std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
-                                         std::vector<Tensor *> output,
-                                         const string &name)
+std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
+                                        std::vector<Tensor *> output,
+                                        const string &name)
 {
+    LOG(DEBUG, "all_gather ", input);
     assert(input != nullptr);
     LOG(DEBUG, "all_gather ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
@@ -40,13 +41,12 @@ std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         send_tensors.push_back(send_t);
     }
     Tensor *add_tensor = input;
-    vector<Tensor *> *recv_tensors = new vector<Tensor *>();
     Tensor *recv_buf;
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
         recv_buf = nullptr;
         // if gpu_src == gpu_id, the tensor is local
         if (gpu_src == gpu_id) {
-            recv_tensors->push_back(input);
+            output.push_back(input);
             continue;
         }
         if (output.size() > gpu_src) {
@@ -54,17 +54,17 @@ std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         }
         if (recv_buf == nullptr) {
             recv_buf = this->tensor(input->shape, input->type);
+            output.push_back(recv_buf);
         }
         if (add_tensor != nullptr) {
             send_tensors.push_back(add_tensor);
         }
         Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
-        recv_tensors->push_back(recv_buf);
     }
 
     this->next_eid += gpu_num * gpu_num;
-    return recv_tensors;
+    return output;
 }
 
 } // namespace ark
