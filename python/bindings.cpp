@@ -303,6 +303,11 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv_mm")
+        .def("all_gather", &ark::Model::all_gather,
+             "Performs an all-gather operator across all GPUs",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("gpu_id"), py::arg("gpu_num"),
+             py::arg("name") = "all_gather")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current GPU's "

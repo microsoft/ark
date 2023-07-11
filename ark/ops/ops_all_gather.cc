@@ -9,14 +9,11 @@ using namespace std;
 
 namespace ark {
 
-Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
-                          Tensor *output, const string &name)
+std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
+                                         const string &name)
 {
     assert(input != nullptr);
-    if (output != nullptr) {
-        LOGERR("all_reduce output is not supported");
-    }
-    LOG(DEBUG, "all_reduce ", input->shape, " ", gpu_id, " ", gpu_num);
+    LOG(DEBUG, "all_gather ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
         LOGERR("supports only 1D input");
     }
@@ -28,11 +25,10 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
          (size_t)input->ldims[2]) ||
         (math::pad(input->shape[3], input->pads[3]) <
          (size_t)input->ldims[3])) {
-        LOGERR("all_reduce of a split tensor is not supported");
+        LOGERR("all_gather of a split tensor is not supported");
     }
 
     int base = this->next_eid;
-    // all to all allreduce
     vector<Tensor *> send_tensors;
     for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
         if (gpu_dst == gpu_id)
@@ -43,6 +39,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         send_tensors.push_back(send_t);
     }
     Tensor *add_tensor = input;
+    vector<Tensor *> *recv_tensors = new vector<Tensor *>();
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
         Tensor *recv_buf = this->tensor(input->shape, input->type);
         if (gpu_src == gpu_id)
@@ -52,11 +49,11 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         }
         Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
-        add_tensor = this->add(add_tensor, this->identity(recv_buf, {recv}));
+        recv_tensors->push_back(recv);
     }
 
     this->next_eid += gpu_num * gpu_num;
-    return add_tensor;
+    return recv_tensors;
 }
 
 } // namespace ark

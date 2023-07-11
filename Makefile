@@ -41,7 +41,7 @@ BSRC_UNITTEST := unittest_utils.cc
 
 BSRC_OPS := ops_common.cc ops_config.cc ops_tensor.cc ops_identity.cc ops_reshape.cc
 BSRC_OPS += ops_add.cc ops_mul.cc ops_scale.cc ops_gelu.cc ops_reduce.cc ops_layernorm.cc ops_softmax.cc ops_matmul.cc ops_linear.cc ops_im2col.cc
-BSRC_OPS += ops_conv.cc ops_max_pool.cc ops_sendrecv.cc ops_all_reduce.cc ops_sendrecv_mm.cc ops_transpose.cc
+BSRC_OPS += ops_conv.cc ops_max_pool.cc ops_sendrecv.cc ops_all_reduce.cc ops_all_gather.cc ops_sendrecv_mm.cc ops_transpose.cc
 
 BSRC := init.cc cpu_timer.cc logging.cc math.cc random.cc env.cc file_io.cc
 BSRC += model.cc model_io.cc tensor.cc dims.cc utils.cc
