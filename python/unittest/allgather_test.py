@@ -26,6 +26,8 @@ def all_gather_test(rank, np_inputs, world_size, tensor_len):
     exe.run(1)
     exe.stop()
     for tensor_shard in range(world_size):
+        if tensor_shard == rank:
+            print("local rank: ")
         host_output = np.zeros(tensor_len, dtype=np.float16)
         exe.tensor_memcpy_device_to_host(
             host_output, allgather_result[tensor_shard]

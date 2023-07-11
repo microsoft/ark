@@ -41,8 +41,9 @@ std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     }
     Tensor *add_tensor = input;
     vector<Tensor *> *recv_tensors = new vector<Tensor *>();
+    Tensor *recv_buf;
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
-        Tensor *recv_buf;
+        recv_buf = nullptr;
         // if gpu_src == gpu_id, the tensor is local
         if (gpu_src == gpu_id) {
             recv_tensors->push_back(input);
@@ -59,7 +60,7 @@ std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         }
         Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
-        recv_tensors->push_back(recv);
+        recv_tensors->push_back(recv_buf);
     }
 
     this->next_eid += gpu_num * gpu_num;
