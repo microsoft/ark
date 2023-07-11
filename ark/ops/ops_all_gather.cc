@@ -10,6 +10,7 @@ using namespace std;
 namespace ark {
 
 std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
+                                         std::vector<Tensor *> output,
                                          const string &name)
 {
     assert(input != nullptr);
@@ -41,9 +42,15 @@ std::vector<Tensor *> *Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     Tensor *add_tensor = input;
     vector<Tensor *> *recv_tensors = new vector<Tensor *>();
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
-        Tensor *recv_buf = this->tensor(input->shape, input->type);
+        Tensor *recv_buf;
         if (gpu_src == gpu_id)
             continue;
+        if (output.size() > gpu_src) {
+            recv_buf = output[gpu_src];
+        }
+        if (recv_buf == nullptr) {
+            recv_buf = this->tensor(input->shape, input->type);
+        }
         if (add_tensor != nullptr) {
             send_tensors.push_back(add_tensor);
         }
