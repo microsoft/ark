@@ -35,6 +35,7 @@ struct LayerNorm
                            int tw)
     {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
+        using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
 
         constexpr int NonReduceDimLength =
             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
@@ -60,20 +61,21 @@ struct LayerNorm
             (tid_h + th * UnitOutShape::H) * InDims::W +
             (tid_c + tc * UnitOutShape::C) * InDims::W * InDims::H +
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
-        using ReduceType = ReduceTypeAvg;
-        DataType reduced = ReduceType::template identity<DataType>();
+
+        DataType reduced;
+        ReduceTypeMean::singleIdentity(&reduced);
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            reduced = ReduceType::reduce(reduced, in[idx_in]);
+            ReduceTypeMean::singleReduce(&reduced, in[idx_in]);
         }
         ark::sync_warps<ThreadsNum>();
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow,
-                              ThreadsNum>(reduced, tid);
+        reduced = warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(reduced, tid);
         // get the average result.
-        reduced = ReduceType::postReduce(reduced, UnitOutShape::W);
-        DataType variance = ReduceType::template identity<DataType>();
+        ReduceTypeMean::singlePostReduce(&reduced, &reduced, UnitOutShape::W);
+        DataType variance;
+        ReduceTypeMean::singleIdentity<DataType>(&variance);
         // get the variance
         ark::sync_warps<ThreadsNum>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
@@ -82,15 +84,14 @@ struct LayerNorm
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
         ark::sync_warps<ThreadsNum>();
-        variance = warpsReduce<ReduceType, DataType, UnitOp, ThreadsPerRow,
-                               ThreadsNum>(variance, tid);
-        variance = ReduceType::postReduce(variance, UnitOutShape::W) + 1e-5f;
+        variance = warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(variance, tid);
+        ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutShape::W);
         ark::sync_warps<ThreadsNum>();
         // the output is (input - mean) / sqrt(variance)
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = (in[idx_in] - reduced) * rsqrtf(variance);
+            out[idx_in] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
         }
     }
 };

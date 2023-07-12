@@ -66,6 +66,9 @@ struct UnitOp
     static_assert(ThreadsNum > 0, "# of threads is not positive");
     static_assert(SmemBytes >= 0, "Bytes of shared memory is negative");
 
+    static const int ThreadsNum = ThreadsNum;
+    static const int SmemBytes = SmemBytes;
+
     // Do not use `threadIdx` and use this function instead.
     static DEVICE int thread_id()
     {

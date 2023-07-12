@@ -11,7 +11,7 @@ using namespace std;
 
 //
 void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
-                          ark::DimType axis, bool is_relu = false)
+                          int axis, bool is_relu = false)
 {
     size_t buf_x_sz = (size_t)m * (size_t)n * (size_t)k * sizeof(ark::half_t);
     size_t buf_y_sz = (size_t)m * (size_t)n * sizeof(ark::half_t);
@@ -67,7 +67,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
         LOGERR("invalid axis");
     }
 
-    model.reduce(tns_x, axis, tns_y, is_relu);
+    model.reduce_sum(tns_x, axis, tns_y);
 
     //
     ark::Executor exe{0, 0, 1, model, "test_reduce"};
