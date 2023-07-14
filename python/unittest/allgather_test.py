@@ -14,10 +14,8 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     model = ark.Model()
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-
-    print(input_tensor)
     allgather_result = model.all_gather(input_tensor, rank, world_size)
-    print(allgather_result)
+
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
     exe.compile()
 
@@ -55,18 +53,14 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
     output_tensor = model.tensor(
         ark.Dims(tensor_len * world_size), ark.TensorType.FP16
     )
-
-    print("output_tensor_shape", output_tensor.shape())
-
+    # Shard the output tensor into world_size shards
     output_shard = model.sharding(output_tensor, 0, tensor_len)
-    print("output_tensor_shape", output_tensor.shape())
-
+    # The input tensor is the rank'th shard of the output tensor
     input_tensor = output_shard[rank]
-    print(input_tensor)
     allgather_result = model.all_gather(
         input_tensor, rank, world_size, output_shard
     )
-    print(allgather_result)
+
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
     exe.compile()
 

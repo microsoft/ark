@@ -18,16 +18,6 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     if (input->ndims() > 1) {
         LOGERR("supports only 1D input");
     }
-    // if ((math::pad(input->shape[0], input->pads[0]) <
-    //      (size_t)input->ldims[0]) ||
-    //     (math::pad(input->shape[1], input->pads[1]) <
-    //      (size_t)input->ldims[1]) ||
-    //     (math::pad(input->shape[2], input->pads[2]) <
-    //      (size_t)input->ldims[2]) ||
-    //     (math::pad(input->shape[3], input->pads[3]) <
-    //      (size_t)input->ldims[3])) {
-    //     LOGERR("all_gather of a split tensor is not supported");
-    // }
     LOG(DEBUG, "all gather output size: ", output.size());
 
     int base = this->next_eid;
