@@ -472,7 +472,7 @@ const string SchedOp::func_string_reduce(const string& type) const
 
     CHECK(shp_out.ndims() < 4);
 
-    int axis = *(int *)this->op->args[1].val;
+    int axis = *(int *)this->op->args[0].val;
     // Translate the axis value into 4D representation.
     axis += 4 - shp_in.ndims();
 
@@ -480,7 +480,7 @@ const string SchedOp::func_string_reduce(const string& type) const
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
 
     string kernel_name = "reduce_" + type;
-    if (axis == 4) {
+    if (axis == 3) {
         // warp-wise reduction
         CHECK(type[0] == 'w');
     } else {

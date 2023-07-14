@@ -11,7 +11,7 @@ using namespace std;
 
 //
 void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
-                          int axis, bool is_relu = false)
+                          int axis)
 {
     size_t buf_x_sz = (size_t)m * (size_t)n * (size_t)k * sizeof(ark::half_t);
     size_t buf_y_sz = (size_t)m * (size_t)n * sizeof(ark::half_t);
@@ -40,11 +40,6 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
                 }
                 ark::half_t x = data_a[idx];
                 v += x;
-            }
-            if (is_relu) {
-                if ((float)v < 0) {
-                    v = 0;
-                }
             }
             ((ark::half_t *)gt)[i * m + j] = v;
         }
@@ -89,7 +84,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     auto p =
         ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
     float max_err = p.second;
-    LOG(ark::INFO, "reduce:", n, 'x', m, 'x', k, "(relu=", is_relu, ") ",
+    LOG(ark::INFO, "reduce:", n, 'x', m, 'x', k, " axis ", axis, " ",
         setprecision(4), " mse ", p.first, " max_err ", max_err * 100, "%");
 
     free(res);

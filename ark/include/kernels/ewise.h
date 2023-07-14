@@ -17,6 +17,7 @@ struct Ewise1
 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
+    using DataType = typename CompType::DataType;
 
     static_assert(CompType::NelemPerThread > 0, "NelemPerThread must be positive");
     static_assert(UnitOutShape::W % CompType::NelemPerThread == 0,
@@ -28,7 +29,7 @@ struct Ewise1
     // tc(int): index of the unit operator along the C dimension.
     // th(int): index of the unit operator along the H dimension.
     // tw(int): index of the unit operator along the W dimension.
-    static DEVICE void run(CompType::DataType *out, CompType::DataType *in, int tn, int tc, int th,
+    static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
                            int tw)
     {
         for (int tid = UnitOp::thread_id();; tid += ThreadsNum) {

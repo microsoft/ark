@@ -8,12 +8,14 @@
 
 namespace ark {
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose0132
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -31,12 +33,14 @@ struct Transpose0132
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose0213
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -54,12 +58,14 @@ struct Transpose0213
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose0231
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -77,12 +83,14 @@ struct Transpose0231
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose0312
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -100,12 +108,14 @@ struct Transpose0312
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose0321
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -123,12 +133,14 @@ struct Transpose0321
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose1023
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -146,12 +158,14 @@ struct Transpose1023
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose1032
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -169,12 +183,14 @@ struct Transpose1032
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose1203
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -192,12 +208,14 @@ struct Transpose1203
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose1230
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -215,12 +233,14 @@ struct Transpose1230
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose1302
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -238,12 +258,14 @@ struct Transpose1302
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose1320
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -261,12 +283,14 @@ struct Transpose1320
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose2013
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -284,12 +308,14 @@ struct Transpose2013
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose2031
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -307,12 +333,14 @@ struct Transpose2031
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose2103
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -330,12 +358,14 @@ struct Transpose2103
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose2130
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -353,12 +383,14 @@ struct Transpose2130
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose2301
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -376,12 +408,14 @@ struct Transpose2301
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose2310
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -399,12 +433,14 @@ struct Transpose2310
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose3012
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -422,12 +458,14 @@ struct Transpose3012
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose3021
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -445,12 +483,14 @@ struct Transpose3021
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose3102
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -468,12 +508,14 @@ struct Transpose3102
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose3120
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -491,12 +533,14 @@ struct Transpose3120
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose3201
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
@@ -514,12 +558,14 @@ struct Transpose3201
     }
 };
 
-template <typename InDims, typename OutDims, typename DataType,
-          int NelemPerThread>
+template <typename _InDims, typename _OutDims, typename _DataType,
+          int _NelemPerThread>
 struct Transpose3210
 {
-    using DataType = DataType;
-    using NelemPerThread = NelemPerThread;
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)

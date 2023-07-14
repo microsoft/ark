@@ -14,7 +14,7 @@ template <typename InDims, typename OutDims, typename DataType, int NelemPerThre
 template <typename InDims, typename OutDims> struct Gelu<InDims, OutDims, half, 2>
 {
     using DataType = ark::half;
-    using NelemPerThread = 2;
+    static const int NelemPerThread = 2;
 
     static DEVICE void compute(ark::half *out, ark::half *in, int idx_n, int idx_c,
                                int idx_h, int idx_w)
