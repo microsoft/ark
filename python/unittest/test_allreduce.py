@@ -4,6 +4,8 @@
 import ark
 import numpy as np
 import multiprocessing
+import unittest
+from parameterized import parameterized
 
 
 def all_reduce_test(rank, np_inputs, world_size, tensor_len):
@@ -41,7 +43,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len):
     print("rank:", rank, "done")
 
 
-def all_reduce_test_main(world_size, tensor_len):
+def allreduce_test_internal(world_size, tensor_len):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
@@ -50,7 +52,8 @@ def all_reduce_test_main(world_size, tensor_len):
         np_inputs.append(np.random.rand(tensor_len).astype(np.float16))
     for i in range(num_processes):
         process = multiprocessing.Process(
-            target=all_reduce_test, args=(i, np_inputs, world_size, tensor_len)
+            target=all_reduce_test,
+            args=(i, np_inputs, world_size, tensor_len),
         )
         process.start()
         processes.append(process)
@@ -59,6 +62,12 @@ def all_reduce_test_main(world_size, tensor_len):
         process.join()
 
 
+class TestAllreduce(unittest.TestCase):
+    def allreduce_test(self):
+        allreduce_test_internal(2, 2048)
+        allreduce_test_internal(4, 2048)
+        allreduce_test_internal(8, 2048)
+
+
 if __name__ == "__main__":
-    all_reduce_test_main(2, 2048)
-    all_reduce_test_main(4, 2048)
+    unittest.main()
