@@ -4,6 +4,7 @@
 import ark
 import numpy as np
 import multiprocessing
+import unittest
 
 world_size = 2
 

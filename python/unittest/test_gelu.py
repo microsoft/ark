@@ -64,8 +64,7 @@ class TestGelu(unittest.TestCase):
         max_error = np.max(np.abs(output_tensor_host - gt))
         avg_error = np.mean(np.abs(output_tensor_host - gt))
         np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-3, atol=1e-3)
-        print("max error: ", max_error)
-        print("avg error: ", avg_error)
+        print("max error: ", max_error, "avg error: ", avg_error)
         print("gelu test success")
 
 
