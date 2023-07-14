@@ -10,7 +10,7 @@ import unittest
 from parameterized import parameterized
 
 
-class TestSoftmax(unittest.TestCase):
+class TestReduce(unittest.TestCase):
     @parameterized.expand(
         [
             (1, 32, 4, "half"),
@@ -19,20 +19,20 @@ class TestSoftmax(unittest.TestCase):
             (1, 128, 128, "half"),
             (1, 256, 256, "half"),
             (1, 512, 512, "half"),
-            (1, 8, 4, "float"),
-            (1, 128, 128, "float"),
-            (1, 256, 256, "float"),
-            (1, 512, 512, "float"),
-            (1, 1024, 1024, "float"),
-            (1, 4096, 1024, "float"),
-            (1, 1024, 4096, "float"),
-            (2, 64, 64, "float"),
-            (2, 128, 128, "float"),
-            (8, 4096, 1024, "float"),
-            (8, 1024, 4096, "float"),
+            (1, 8, 4),
+            (1, 128, 128),
+            (1, 256, 256),
+            (1, 512, 512),
+            (1, 1024, 1024),
+            (1, 4096, 1024),
+            (1, 1024, 4096),
+            (2, 64, 64),
+            (2, 128, 128),
+            (8, 4096, 1024),
+            (8, 1024, 4096),
         ]
     )
-    def test_softmax_internal(self, batch_size, m, n, data_type="float"):
+    def test_reduce_internal(self, batch_size, m, n, data_type="float"):
         ark.init()
 
         # Create a Model instance
@@ -45,9 +45,9 @@ class TestSoftmax(unittest.TestCase):
             numpy_data_type = np.float16
         input_tensor = model.tensor(ark.Dims(batch_size, m, n), ark_data_type)
 
-        output_tensor = model.softmax(input_tensor)
+        output_tensor = model.reduce(input_tensor, 2)
         # Test the mul method
-        exe = ark.Executor(0, 0, 1, model, "ops_softmax_test")
+        exe = ark.Executor(0, 0, 1, model, "ops_reduce_test")
         exe.compile()
         input_tensor_host = np.random.rand(batch_size, m, n).astype(
             numpy_data_type
@@ -60,7 +60,7 @@ class TestSoftmax(unittest.TestCase):
 
         exe.stop()
 
-        output_tensor_host = np.zeros((batch_size, m, n), dtype=numpy_data_type)
+        output_tensor_host = np.zeros((batch_size, m, 1), dtype=numpy_data_type)
 
         exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
@@ -68,8 +68,8 @@ class TestSoftmax(unittest.TestCase):
 
         torch_input = torch.from_numpy(input_tensor_host_float32)
 
-        # get the ground truth
-        gt = F.softmax(torch_input, dim=-1).numpy()
+        gt = torch.sum(torch_input, dim=2, keepdim=True).numpy()
+
         # test if the result is correct
         max_error = np.max(np.abs(output_tensor_host - gt))
         avg_error = np.mean(np.abs(output_tensor_host - gt))
@@ -78,7 +78,7 @@ class TestSoftmax(unittest.TestCase):
         # print(output_tensor_host)
         # print(gt)
         print(
-            "softmax test ",
+            "reduce test ",
             "batch_size:",
             batch_size,
             "m:",
