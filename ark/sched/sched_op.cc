@@ -457,7 +457,7 @@ const string SchedOp::func_string_send_done() const
     return ss.str();
 }
 
-const string SchedOp::func_string_reduce(const string& type) const
+const string SchedOp::func_string_reduce(const string &type) const
 {
     CHECK(this->op->in_deps.size() == 1);
 
@@ -465,7 +465,8 @@ const string SchedOp::func_string_reduce(const string& type) const
     const Tensor *tns_out = this->op->out_deps[0];
     // bool is_relu = *(bool *)this->op->args[0].val;
 
-    LOG(DEBUG, "func_string_reduce: type ", type, " ", tns_out->shape, " ", tns_out->ldims);
+    LOG(DEBUG, "func_string_reduce: type ", type, " ", tns_out->shape, " ",
+        tns_out->ldims);
 
     Dims shp_in = tns_in->shape;
     Dims shp_out = tns_out->shape;
@@ -493,8 +494,8 @@ const string SchedOp::func_string_reduce(const string& type) const
        << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
        << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
        << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
-       << unit_out_shape << COM << this->cfg->num_warps * 32
-       << COM << this->cfg->smem_bytes << COM << axis << '>';
+       << unit_out_shape << COM << this->cfg->num_warps * 32 << COM
+       << this->cfg->smem_bytes << COM << axis << '>';
     return ss.str();
 }
 

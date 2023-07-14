@@ -84,7 +84,8 @@ struct LayerNorm
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
         ark::sync_warps<ThreadsNum>();
-        variance = warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(variance, tid);
+        variance =
+            warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(variance, tid);
         ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutShape::W);
         ark::sync_warps<ThreadsNum>();
         // the output is (input - mean) / sqrt(variance)

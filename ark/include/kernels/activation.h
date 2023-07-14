@@ -4,20 +4,23 @@
 #ifndef ARK_KERNELS_ACTIVATION_H_
 #define ARK_KERNELS_ACTIVATION_H_
 
-#include "half.h"
 #include "ewise.h"
+#include "half.h"
 
 namespace ark {
 
-template <typename InDims, typename OutDims, typename DataType, int NelemPerThread> struct Gelu;
+template <typename InDims, typename OutDims, typename DataType,
+          int NelemPerThread>
+struct Gelu;
 
-template <typename InDims, typename OutDims> struct Gelu<InDims, OutDims, half, 2>
+template <typename InDims, typename OutDims>
+struct Gelu<InDims, OutDims, half, 2>
 {
     using DataType = ark::half;
     static const int NelemPerThread = 2;
 
-    static DEVICE void compute(ark::half *out, ark::half *in, int idx_n, int idx_c,
-                               int idx_h, int idx_w)
+    static DEVICE void compute(ark::half *out, ark::half *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w)
     {
         out += idx_n * OutDims::C * OutDims::H * OutDims::W +
                idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
@@ -56,7 +59,8 @@ template <typename InDims, typename OutDims, typename OutShape,
 DEVICE void gelu(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
     Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
-           Gelu<InDims, OutDims, ark::half, 2>>::run(out, in, tz / OutShape::C, tz % OutShape::C, ty, tx);
+           Gelu<InDims, OutDims, ark::half, 2>>::run(out, in, tz / OutShape::C,
+                                                     tz % OutShape::C, ty, tx);
 }
 
 } // namespace ark

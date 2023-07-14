@@ -8,7 +8,8 @@ using namespace std;
 
 namespace ark {
 
-Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output, const string &name)
+Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
+                          const string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "reduce_sum ", input->shape, " ", input->ldims, " ", axis);
@@ -28,8 +29,8 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output, const string 
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR(
-            "output tensor cannot be the same as input tensor for reduce_sum op");
+        LOGERR("output tensor cannot be the same as input tensor for "
+               "reduce_sum op");
     }
     if (axis == input->shape.ndims() - 1) {
         this->create_op(OP_REDUCE_W_SUM, pt, {input}, {output}, {axis}, name);
@@ -39,7 +40,8 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output, const string 
     return output;
 }
 
-Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output, const string &name)
+Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
+                           const string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "reduce_mean ", input->shape, " ", input->ldims, " ", axis);
@@ -59,8 +61,8 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output, const string
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR(
-            "output tensor cannot be the same as input tensor for reduce_mean op");
+        LOGERR("output tensor cannot be the same as input tensor for "
+               "reduce_mean op");
     }
     if (axis == input->shape.ndims() - 1) {
         this->create_op(OP_REDUCE_W_MEAN, pt, {input}, {output}, {axis}, name);
@@ -70,7 +72,8 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output, const string
     return output;
 }
 
-Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output, const string &name)
+Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
+                          const string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "reduce_max ", input->shape, " ", input->ldims, " ", axis);
@@ -90,8 +93,8 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output, const string 
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR(
-            "output tensor cannot be the same as input tensor for reduce_max op");
+        LOGERR("output tensor cannot be the same as input tensor for "
+               "reduce_max op");
     }
     if (axis == input->shape.ndims() - 1) {
         this->create_op(OP_REDUCE_W_MAX, pt, {input}, {output}, {axis}, name);
