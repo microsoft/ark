@@ -5,16 +5,11 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
-// clang-format off
-#include "cutlass/numeric_types.h"
-#include "cutlass/half.h"
-// clang-format on
-
-namespace ark {
-using half = cutlass::half_t;
-} // namespace ark
-
 extern __shared__ int _ARK_SMEM[];
+
+// clang-format off
+#include "half.h"
+// clang-format on
 
 #include "activation.h"
 #include "arithmetic.h"

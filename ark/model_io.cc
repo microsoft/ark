@@ -184,27 +184,32 @@ ostream &operator<<(ostream &os, const OpType &s)
 {
     // clang-format off
     switch (s) {
-    case OP_UNKNOWN:    os << "OP_UNKNOWN";     break;
-    case OP_TENSOR:     os << "OP_TENSOR";      break;
-    case OP_REFER:      os << "OP_REFER";       break;
-    case OP_RESHAPE:    os << "OP_RESHAPE";     break;
-    case OP_MERGE:      os << "OP_MERGE";       break;
-    case OP_REDUCE:     os << "OP_REDUCE";      break;
-    case OP_SCALE:      os << "OP_SCALE";       break;
-    case OP_MATMUL:     os << "OP_MATMUL";      break;
-    case OP_MAX_POOL:   os << "OP_MAX_POOL";    break;
-    case OP_ADD:        os << "OP_ADD";         break;
-    case OP_MUL:        os << "OP_MUL";         break;
-    case OP_IM2COL:     os << "OP_IM2COL";      break;
-    case OP_TRANSPOSE:  os << "OP_TRANSPOSE";   break;
-    case OP_SEND:       os << "OP_SEND";        break;
-    case OP_SEND_DONE:  os << "OP_SEND_DONE";   break;
-    case OP_SEND_MM:    os << "OP_SEND_MM";     break;
-    case OP_RECV:       os << "OP_RECV";        break;
-    case OP_RECV_MM:    os << "OP_RECV_MM";     break;
-    case OP_LAYERNORM:  os << "OP_LAYERNORM";   break;
-    case OP_SOFTMAX:    os << "OP_SOFTMAX";     break;
-    case OP_GELU:       os << "OP_GELU";        break;
+    case OP_UNKNOWN:       os << "OP_UNKNOWN";       break;
+    case OP_TENSOR:        os << "OP_TENSOR";        break;
+    case OP_REFER:         os << "OP_REFER";         break;
+    case OP_RESHAPE:       os << "OP_RESHAPE";       break;
+    case OP_MERGE:         os << "OP_MERGE";         break;
+    case OP_REDUCE_E_SUM:  os << "OP_REDUCE_E_SUM";  break;
+    case OP_REDUCE_E_MEAN: os << "OP_REDUCE_E_MEAN"; break;
+    case OP_REDUCE_E_MAX:  os << "OP_REDUCE_E_MAX";  break;
+    case OP_REDUCE_W_SUM:  os << "OP_REDUCE_W_SUM";  break;
+    case OP_REDUCE_W_MEAN: os << "OP_REDUCE_W_MEAN"; break;
+    case OP_REDUCE_W_MAX:  os << "OP_REDUCE_W_MAX";  break;
+    case OP_SCALE:         os << "OP_SCALE";         break;
+    case OP_MATMUL:        os << "OP_MATMUL";        break;
+    case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
+    case OP_ADD:           os << "OP_ADD";           break;
+    case OP_MUL:           os << "OP_MUL";           break;
+    case OP_IM2COL:        os << "OP_IM2COL";        break;
+    case OP_TRANSPOSE:     os << "OP_TRANSPOSE";     break;
+    case OP_SEND:          os << "OP_SEND";          break;
+    case OP_SEND_DONE:     os << "OP_SEND_DONE";     break;
+    case OP_SEND_MM:       os << "OP_SEND_MM";       break;
+    case OP_RECV:          os << "OP_RECV";          break;
+    case OP_RECV_MM:       os << "OP_RECV_MM";       break;
+    case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
+    case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
+    case OP_GELU:          os << "OP_GELU";          break;
     }
     // clang-format on
     return os;

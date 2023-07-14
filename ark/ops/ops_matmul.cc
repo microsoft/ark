@@ -136,7 +136,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     // Reduce after all outputs are ready.
     Tensor *ref = this->identity(output_buffer, mat_y_shards, nullptr,
                                  name + "/identity");
-    return this->reduce(ref, 0, mat_y, is_relu, name + "/reduce");
+    return this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
 }
 
 } // namespace ark

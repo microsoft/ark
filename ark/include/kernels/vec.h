@@ -4,6 +4,8 @@
 #ifndef ARK_KERNELS_VEC_H_
 #define ARK_KERNELS_VEC_H_
 
+#include "static_math.h"
+
 namespace ark {
 
 using DimType = int;
@@ -30,6 +32,20 @@ struct Vec
     static const DimType X = _D0;
     static const DimType Y = _D1;
     static const DimType Z = _D2;
+
+    // Multiplied values.
+    static const DimType NCHW =
+        math::mul<N, math::mul<C, math::mul<H, W>::value>::value>::value;
+    static const DimType NCH = math::mul<N, math::mul<C, H>::value>::value;
+    static const DimType NCW = math::mul<N, math::mul<C, W>::value>::value;
+    static const DimType NHW = math::mul<N, math::mul<H, W>::value>::value;
+    static const DimType CHW = math::mul<C, math::mul<H, W>::value>::value;
+    static const DimType NC = math::mul<N, C>::value;
+    static const DimType NH = math::mul<N, H>::value;
+    static const DimType NW = math::mul<N, W>::value;
+    static const DimType CH = math::mul<C, H>::value;
+    static const DimType CW = math::mul<C, W>::value;
+    static const DimType HW = math::mul<H, W>::value;
 };
 
 } // namespace ark
