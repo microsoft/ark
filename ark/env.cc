@@ -16,6 +16,7 @@ using namespace std;
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
 #define DEFAULT_ARK_SCHEDULER "Default"
+#define DEFAULT_ARK_DISABLE_GRAPH_OPT true
 
 namespace ark {
 
@@ -86,11 +87,21 @@ Env::Env()
     } else {
         this->disable_p2p_memcpy = false;
     }
+    // Specify the scheduler implementation. Supports "Default" and "Simple".
     const char *scheduler_ca = getenv("ARK_SCHEDULER");
     if (scheduler_ca == nullptr) {
         this->scheduler = DEFAULT_ARK_SCHEDULER;
     } else {
         this->scheduler = scheduler_ca;
+    }
+    // If `ARK_DISABLE_GRAPH_OPT=1`, we disable graph optimization.
+    const char *disable_graph_opt_ca = getenv("ARK_DISABLE_GRAPH_OPT");
+    if (disable_graph_opt_ca == nullptr) {
+        this->disable_graph_opt = DEFAULT_ARK_DISABLE_GRAPH_OPT;
+    } else if (strncmp(disable_graph_opt_ca, "1", 2) == 0) {
+        this->disable_graph_opt = true;
+    } else {
+        this->disable_graph_opt = false;
     }
 }
 

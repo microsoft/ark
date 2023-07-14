@@ -180,30 +180,6 @@ const string type_str(const TensorType &type)
     return "none";
 }
 
-const string op_str(const Op &op)
-{
-    stringstream ss;
-    if (op.type == OP_MATMUL) {
-        ss << "OP_MATMUL[in: " << op.in_deps[0]->shape
-           << " ot: " << op.in_deps[1]->shape << ']';
-    } else if (op.type == OP_TENSOR) {
-        ss << "OP_TENSOR";
-    } else if (op.type == OP_REFER) {
-        ss << "OP_REFER";
-    } else if (op.type == OP_RESHAPE) {
-        ss << "OP_RESHAPE";
-    } else if (op.type == OP_REDUCE) {
-        ss << "OP_REDUCE";
-    } else if (op.type == OP_MAX_POOL) {
-        ss << "OP_MAX_POOL";
-    } else if (op.type == OP_ADD) {
-        ss << "OP_ADD";
-    } else if (op.type == OP_IM2COL) {
-        ss << "OP_IM2COL";
-    }
-    return ss.str();
-}
-
 ostream &operator<<(ostream &os, const OpType &s)
 {
     // clang-format off
@@ -226,9 +202,24 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_SEND_MM:    os << "OP_SEND_MM";     break;
     case OP_RECV:       os << "OP_RECV";        break;
     case OP_RECV_MM:    os << "OP_RECV_MM";     break;
+    case OP_LAYERNORM:  os << "OP_LAYERNORM";   break;
+    case OP_SOFTMAX:    os << "OP_SOFTMAX";     break;
+    case OP_GELU:       os << "OP_GELU";        break;
     }
     // clang-format on
     return os;
+}
+
+const string op_str(const Op &op)
+{
+    stringstream ss;
+    if (op.type == OP_MATMUL) {
+        ss << "OP_MATMUL[in: " << op.in_deps[0]->shape
+           << " ot: " << op.in_deps[1]->shape << ']';
+    } else {
+        ss << op.type;
+    }
+    return ss.str();
 }
 
 } // namespace ark

@@ -78,8 +78,7 @@ struct Dims
     DimType data[DIMS_LEN];
 };
 
-// TensorBuf refers to a data array that
-// can be shared by multiple tensors.
+// TensorBuf refers to a data array that can be shared by multiple tensors.
 struct TensorBuf
 {
     TensorBuf(const DimType &bytes = 0, int id = -1);
@@ -100,14 +99,12 @@ typedef enum
 
 // Tensor is a view of a TensorBuf.
 //
-// Illustration of a single axis of a
-// tensor:
+// Illustration of a single axis of a tensor:
 //
-// 0           off ldim
+// 0           off                                                        ldim
 // |------------|-------------shape-------------|---------------------------|
 //               <----------------------------->
-//                  data range of this
-//                  tensor
+//                  data range of this tensor
 //
 struct Tensor
 {
@@ -410,6 +407,10 @@ class Model
                   const std::vector<OpArg> &args, const std::string &name,
                   int gran_lev = -1);
 
+    /// Delete an existing operator from the model.
+    /// @param op the existing op to be deleted.
+    void delete_op(Op *op);
+
     const std::list<std::unique_ptr<TensorBuf>> &get_tensor_bufs() const
     {
         return tns_bufs_storage;
@@ -451,7 +452,7 @@ class Executor
   public:
     // Constructor.
 
-    Executor(const int gpu_id_, int rank_, int world_size_, const Model &model,
+    Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
              const std::string &name);
     ~Executor();
     // Compile the model. This must be called before `launch()`.

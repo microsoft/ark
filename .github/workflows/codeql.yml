@@ -14,11 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         language: [ 'cpp' ]
-        cuda-version: [ 'cuda11.8', 'cuda12.1' ]
 
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/ark/ark:base-${{ matrix.cuda-version }}
+      image: ghcr.io/microsoft/ark/ark:base-cuda12.1
     permissions:
       actions: read
       contents: read
@@ -46,4 +45,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
-        category: "/language:${{matrix.language}}/cuda-version:${{matrix.cuda-version}}"
+        category: "/language:${{matrix.language}}"

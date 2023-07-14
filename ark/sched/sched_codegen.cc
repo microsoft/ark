@@ -405,7 +405,11 @@ ostream &Brancher::codegen(ostream &os)
 
 ostream &DefaultCodeGenerator::codegen_tensor(ostream &os, const Tensor &tensor)
 {
-    size_t off = this->buf_trans[tensor.buf]->get_offset();
+    auto search = this->buf_trans.find(tensor.buf);
+    if (search == this->buf_trans.end()) {
+        LOGERR("unknown tensor buffer");
+    }
+    size_t off = search->second->get_offset();
     assert(off % 8 == 0);
     size_t data_size;
     if (tensor.type == FP16) {

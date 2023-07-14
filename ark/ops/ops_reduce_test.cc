@@ -60,7 +60,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     } else if (axis == 1) {
         tns_x = model.tensor({n, k, m}, ark::FP16);
         tns_y = model.tensor({n, 1, m}, ark::FP16);
-    } else if (axis = 2) {
+    } else if (axis == 2) {
         tns_x = model.tensor({n, m, k}, ark::FP16);
         tns_y = model.tensor({n, m, 1}, ark::FP16);
     } else {
