@@ -71,6 +71,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     if (output == nullptr) {
         output = this->tensor(out_shape, input->type);
     } else {
+        LOG(DEBUG, out_shape, output->shape);
         assert(output->shape == out_shape);
     }
     this->create_op(OP_TRANSPOSE, pt, {input}, {output}, {tp_type}, name);
