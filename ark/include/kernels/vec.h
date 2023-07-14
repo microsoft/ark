@@ -4,9 +4,11 @@
 #ifndef ARK_KERNELS_VEC_H_
 #define ARK_KERNELS_VEC_H_
 
+#include "static_math.h"
+
 namespace ark {
 
-using DimType = long long int;
+using DimType = int;
 
 template <DimType _D0 = 1, DimType _D1 = 1, DimType _D2 = 1, DimType _D3 = 1>
 struct Vec
@@ -32,17 +34,18 @@ struct Vec
     static const DimType Z = _D2;
 
     // Multiplied values.
-    static const DimType NCHW = N * C * H * W;
-    static const DimType NCH = N * C * H;
-    static const DimType NCW = N * C * W;
-    static const DimType NHW = N * H * W;
-    static const DimType CHW = C * H * W;
-    static const DimType NC = N * C;
-    static const DimType NH = N * H;
-    static const DimType NW = N * W;
-    static const DimType CH = C * H;
-    static const DimType CW = C * W;
-    static const DimType HW = H * W;
+    static const DimType NCHW =
+        math::mul<N, math::mul<C, math::mul<H, W>::value>::value>::value;
+    static const DimType NCH = math::mul<N, math::mul<C, H>::value>::value;
+    static const DimType NCW = math::mul<N, math::mul<C, W>::value>::value;
+    static const DimType NHW = math::mul<N, math::mul<H, W>::value>::value;
+    static const DimType CHW = math::mul<C, math::mul<H, W>::value>::value;
+    static const DimType NC = math::mul<N, C>::value;
+    static const DimType NH = math::mul<N, H>::value;
+    static const DimType NW = math::mul<N, W>::value;
+    static const DimType CH = math::mul<C, H>::value;
+    static const DimType CW = math::mul<C, W>::value;
+    static const DimType HW = math::mul<H, W>::value;
 };
 
 } // namespace ark

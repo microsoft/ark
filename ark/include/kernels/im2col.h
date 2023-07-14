@@ -9,30 +9,28 @@
 
 namespace ark {
 
-template <typename InShape, typename InLDims, unsigned int KernelHeight,
-          unsigned int KernelWidth, unsigned int StrideHeight,
-          unsigned int StrideWidth, unsigned int PadHeight,
-          unsigned int PadWidth, unsigned int DilationHeight,
-          unsigned int DilationWidth, int TN, int SB, int TDM, int TDN, int TDK>
+template <typename InShape, typename InLDims, int KernelHeight, int KernelWidth,
+          int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
+          int DilationHeight, int DilationWidth, int TN, int SB, int TDM,
+          int TDN, int TDK>
 struct TransformIm2Col
 {
-    static const unsigned int InN = InLDims::H * InLDims::W;
+    static const int InN = InLDims::H * InLDims::W;
 
-    static const unsigned int Height = InShape::H;
-    static const unsigned int Width = InShape::W;
+    static const int Height = InShape::H;
+    static const int Width = InShape::W;
 
-    static const unsigned int PatchNumHeight =
+    static const int PatchNumHeight =
         (Height - KernelHeight + 2 * PadHeight) / StrideHeight + 1;
-    static const unsigned int PatchNumWidth =
+    static const int PatchNumWidth =
         (Width - KernelWidth + 2 * PadWidth) / StrideWidth + 1;
-    static const unsigned int PatchNum =
-        math::mul<unsigned int, PatchNumHeight, PatchNumWidth>::value;
-    static const unsigned int OutHeight = math::pad<PatchNum, TDM>::value;
+    static const int PatchNum = math::mul<PatchNumHeight, PatchNumWidth>::value;
+    static const int OutHeight = math::pad<PatchNum, TDM>::value;
 
-    static const unsigned int KHW = KernelHeight * KernelWidth;
+    static const int KHW = math::mul<KernelHeight, KernelWidth>::value;
 
-    static const unsigned int MaxMIdx = PatchNum;
-    static const unsigned int MaxNIdx = InShape::N * InShape::C * KHW;
+    static const int MaxMIdx = PatchNum;
+    static const int MaxNIdx = math::mul<InShape::NC, KHW>::value;
 
     // Index of the input element is derived as follows:
     //   channel_idx = nidx / (KernelHeight*KernelWidth);
@@ -98,11 +96,10 @@ struct TransformIm2Col
 
 // Half-precision image to column operation.
 // TODO: support dilation.
-template <typename InShape, typename InLDims, unsigned int KernelHeight,
-          unsigned int KernelWidth, unsigned int StrideHeight,
-          unsigned int StrideWidth, unsigned int PadHeight,
-          unsigned int PadWidth, unsigned int DilationHeight,
-          unsigned int DilationWidth, int TN, int SB, int TDM, int TDN, int TDK>
+template <typename InShape, typename InLDims, int KernelHeight, int KernelWidth,
+          int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
+          int DilationHeight, int DilationWidth, int TN, int SB, int TDM,
+          int TDN, int TDK>
 DEVICE void im2col(ark::half *y, ark::half *x, int tx, int ty, int tz)
 {
     using TransformIm2Col =
