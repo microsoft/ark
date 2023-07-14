@@ -12,8 +12,8 @@
 #include <thread>
 #include <vector>
 
-#include "ark/gpu/gpu_buf.h"
-#include "ark/gpu/gpu_comm_sw.h"
+#include "gpu/gpu_buf.h"
+#include "gpu/gpu_comm_sw.h"
 
 namespace ark {
 

@@ -7,7 +7,7 @@
 #include <cuda.h>
 #include <sstream>
 
-#include "ark/logging.h"
+#include "logging.h"
 
 #define CULOG(cmd)                                                             \
     do {                                                                       \

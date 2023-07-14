@@ -4,7 +4,7 @@
 #ifndef ARK_GPU_MEM_H_
 #define ARK_GPU_MEM_H_
 
-#include "ark/ipc/ipc_mem.h"
+#include "ipc/ipc_mem.h"
 #include <cuda.h>
 #include <memory>
 

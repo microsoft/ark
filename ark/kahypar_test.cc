@@ -5,9 +5,9 @@
 // Environment variable `ARK_ROOT` should be set to run.
 // `LD_LIBRARY_PATH` should include `$ARK_ROOT/lib` directory.
 
-#include "ark/include/ark.h"
-#include "ark/kahypar.h"
-#include "ark/unittest/unittest_utils.h"
+#include "include/ark.h"
+#include "kahypar.h"
+#include "unittest/unittest_utils.h"
 
 #define ITERATION 3
 

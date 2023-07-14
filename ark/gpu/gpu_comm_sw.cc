@@ -4,13 +4,13 @@
 #include <cassert>
 #include <cerrno>
 
-#include "ark/cpu_timer.h"
-#include "ark/env.h"
-#include "ark/gpu/gpu_comm_sw.h"
-#include "ark/gpu/gpu_logging.h"
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/ipc/ipc_coll.h"
-#include "ark/ipc/ipc_hosts.h"
+#include "cpu_timer.h"
+#include "env.h"
+#include "gpu/gpu_comm_sw.h"
+#include "gpu/gpu_logging.h"
+#include "gpu/gpu_mgr.h"
+#include "ipc/ipc_coll.h"
+#include "ipc/ipc_hosts.h"
 
 using namespace std;
 

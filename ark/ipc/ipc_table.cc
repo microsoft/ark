@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <cstring>
 
-#include "ark/ipc/ipc_table.h"
-#include "ark/logging.h"
+#include "ipc/ipc_table.h"
+#include "logging.h"
 
 using namespace std;
 

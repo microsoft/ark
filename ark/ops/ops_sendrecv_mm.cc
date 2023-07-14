@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/model_io.h"
+#include "env.h"
+#include "logging.h"
+#include "model_io.h"
 
 using namespace std;
 

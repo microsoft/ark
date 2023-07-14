@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/include/ark.h"
-#include "ark/unittest/unittest_utils.h"
+#include "include/ark.h"
+#include "unittest/unittest_utils.h"
 #include "ops_test_common.h"
 
 ark::unittest::State test_add_fp32()

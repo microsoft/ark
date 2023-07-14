@@ -3,8 +3,8 @@
 
 #include "sstream"
 
-#include "ark/include/ark.h"
-#include "ark/unittest/unittest_utils.h"
+#include "include/ark.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 

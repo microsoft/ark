@@ -3,8 +3,8 @@
 
 #ifndef _ARK_SCHED_TILE_H_
 #define _ARK_SCHED_TILE_H_
-#include "ark/sched/sched_opseq.h"
-// #include "ark/sched/sched/sched_profiler.h"
+#include "sched/sched_opseq.h"
+// #include "sched/sched/sched_profiler.h"
 namespace ark {
 
 struct SchedTile

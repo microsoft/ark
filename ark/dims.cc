@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/include/ark.h"
-#include "ark/logging.h"
-#include "third_party/json/json.h"
+#include "include/ark.h"
+#include "logging.h"
+#include "json.h"
 #include <vector>
 using namespace std;
 

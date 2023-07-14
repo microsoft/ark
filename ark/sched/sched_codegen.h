@@ -3,9 +3,9 @@
 
 #ifndef ARK_SCHED_CODEGEN_H_
 #define ARK_SCHED_CODEGEN_H_
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/sched/sched_op.h"
-#include "ark/sched/sched_opseq.h"
+#include "gpu/gpu_kernel.h"
+#include "sched/sched_op.h"
+#include "sched/sched_opseq.h"
 #include <map>
 
 namespace ark {

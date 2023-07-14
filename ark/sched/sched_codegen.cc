@@ -7,11 +7,11 @@
 #include <ostream>
 #include <unistd.h>
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
-#include "ark/sched/sched_codegen.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
+#include "sched/sched_codegen.h"
 
 using namespace std;
 

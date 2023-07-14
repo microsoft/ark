@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "ark/ipc/ipc_lock.h"
+#include "ipc/ipc_lock.h"
 
 namespace ark {
 

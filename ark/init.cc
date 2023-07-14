@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "ark/file_io.h"
-#include "ark/include/ark.h"
-#include "ark/logging.h"
+#include "file_io.h"
+#include "include/ark.h"
+#include "logging.h"
 
 using namespace std;
 

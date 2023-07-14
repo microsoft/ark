@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/sched/sched.h"
-#include "ark/logging.h"
+#include "sched/sched.h"
+#include "logging.h"
 
 using namespace std;
 

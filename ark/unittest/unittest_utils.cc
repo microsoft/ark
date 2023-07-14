@@ -7,9 +7,9 @@
 #include <unistd.h>
 #include <vector>
 
-#include "ark/file_io.h"
-#include "ark/logging.h"
-#include "ark/unittest/unittest_utils.h"
+#include "file_io.h"
+#include "logging.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 
@@ -88,7 +88,7 @@ void wait_all_processes()
         pid_t pid;
         int status;
         do {
-            pid_t pid = wait(&status);
+            pid = wait(&status);
             if (pid == -1) {
                 UNITTEST_UEXIT("wait() failed");
             }

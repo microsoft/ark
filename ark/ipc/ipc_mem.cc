@@ -8,10 +8,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "ark/cpu_timer.h"
-#include "ark/ipc/ipc_mem.h"
-#include "ark/ipc/ipc_shm.h"
-#include "ark/logging.h"
+#include "cpu_timer.h"
+#include "ipc/ipc_mem.h"
+#include "ipc/ipc_shm.h"
+#include "logging.h"
 
 using namespace std;
 
