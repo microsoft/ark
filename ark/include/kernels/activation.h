@@ -5,19 +5,29 @@
 #define ARK_KERNELS_ACTIVATION_H_
 
 #include "ewise.h"
+#include "half.h"
 
 namespace ark {
-template <typename InDims, typename OutDims> struct Gelu
+
+template <typename InDims, typename OutDims, typename DataType,
+          int NelemPerThread>
+struct Gelu;
+
+template <typename InDims, typename OutDims>
+struct Gelu<InDims, OutDims, half, 2>
 {
-    template <int NelemPerThread>
-    static DEVICE void compute(__half *out, __half *in, int idx_n, int idx_c,
-                               int idx_h, int idx_w)
+    using DataType = ark::half;
+    static const int NelemPerThread = 2;
+
+    static DEVICE void compute(ark::half *out, ark::half *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w)
     {
         out += idx_n * OutDims::C * OutDims::H * OutDims::W +
                idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
 
-        in += idx_n * OutDims::C * OutDims::H * OutDims::W +
-              idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        in += idx_n * InDims::C * InDims::H * InDims::W +
+              idx_c * InDims::H * InDims::W + idx_h * InDims::W + idx_w;
+
         __half2 input = *(__half2 *)in;
         __half2 half_pi =
             __float2half2_rn(0.7978845608f); // sqrt(2 / pi) = 0.7978845608
@@ -48,13 +58,9 @@ template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutShape, int ThreadsNum, int SmemBytes>
 DEVICE void gelu(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
-    constexpr int NelemPerThread = 2;
-    Ewise1<InDims, OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
-           Gelu<InDims, OutDims>, __half, NelemPerThread>::run((__half *)out,
-                                                               (__half *)in,
-                                                               tz / OutShape::C,
-                                                               tz % OutShape::C,
-                                                               ty, tx);
+    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+           Gelu<InDims, OutDims, ark::half, 2>>::run(out, in, tz / OutShape::C,
+                                                     tz % OutShape::C, ty, tx);
 }
 
 } // namespace ark

@@ -26,7 +26,12 @@ namespace ark {
 bool is_tiled_op(const SchedOp &sop)
 {
     return (sop.get_op()->type == OP_MATMUL) ||
-           (sop.get_op()->type == OP_REDUCE) ||
+           (sop.get_op()->type == OP_REDUCE_E_SUM) ||
+           (sop.get_op()->type == OP_REDUCE_E_MEAN) ||
+           (sop.get_op()->type == OP_REDUCE_E_MAX) ||
+           (sop.get_op()->type == OP_REDUCE_W_SUM) ||
+           (sop.get_op()->type == OP_REDUCE_W_MEAN) ||
+           (sop.get_op()->type == OP_REDUCE_W_MAX) ||
            (sop.get_op()->type == OP_LAYERNORM) ||
            (sop.get_op()->type == OP_SOFTMAX) ||
            (sop.get_op()->type == OP_ADD) || (sop.get_op()->type == OP_MUL) ||
@@ -557,7 +562,12 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
             auto p = uop_map.emplace(sop_func_str, uop_id);
             if (p.second) {
                 // If this is a new function, define it.
-                if ((sop.get_op()->type == OP_REDUCE) ||
+                if ((sop.get_op()->type == OP_REDUCE_E_SUM) ||
+                    (sop.get_op()->type == OP_REDUCE_E_MEAN) ||
+                    (sop.get_op()->type == OP_REDUCE_E_MAX) ||
+                    (sop.get_op()->type == OP_REDUCE_W_SUM) ||
+                    (sop.get_op()->type == OP_REDUCE_W_MEAN) ||
+                    (sop.get_op()->type == OP_REDUCE_W_MAX) ||
                     (sop.get_op()->type == OP_SCALE) ||
                     (sop.get_op()->type == OP_GELU) ||
                     (sop.get_op()->type == OP_ADD)) {

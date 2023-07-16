@@ -33,7 +33,7 @@ help()
 SCRIPT=$(readlink -f "$0")
 SCRIPT_DIR=$(dirname ${SCRIPT})
 ARK_BUILD_DIR=${SCRIPT_DIR}/../build/ark
-DEFAULT_ARK_ROOT=/usr/local/ark
+DEFAULT_ARK_ROOT="$(realpath ${SCRIPT_DIR}/../build)"
 
 if [ -z ${ARK_ROOT+x} ]; then
     echo "ARK_ROOT is unset - select default path $DEFAULT_ARK_ROOT"

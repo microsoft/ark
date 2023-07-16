@@ -31,10 +31,16 @@ struct Softmax
         UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
+
+    // TODO(chhwang): support NelemPerThread > 1.
+    static_assert(NelemPerThread == 1, "Unimplemented");
+
     static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
                            int tw)
     {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
+        using ReduceTypeMax = ReduceTypeMax<DataType, NelemPerThread>;
+        using ReduceTypeSum = ReduceTypeSum<DataType, NelemPerThread>;
 
         constexpr int NonReduceDimLength =
             UnitOutShape::N * UnitOutShape::C * UnitOutShape::H;
@@ -62,22 +68,25 @@ struct Softmax
             (tid_n + tn * UnitOutShape::N) * InDims::W * InDims::H * InDims::C;
 
         // get the max input.
-        DataType max_input = ReduceTypeMax::template identity<DataType>();
+        DataType max_input;
+        ReduceTypeMax::singleIdentity(&max_input);
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            max_input = ReduceTypeMax::reduce(max_input, in[idx_in]);
+            ReduceTypeMax::singleReduce(&max_input, &max_input, &in[idx_in]);
         }
         ark::sync_warps<ThreadsNum>();
 
         // final reduction on shared memory using warp shuffle.
-        max_input = warpsReduce<ReduceTypeMax, DataType, UnitOp, ThreadsPerRow,
-                                ThreadsNum>(max_input, tid);
+        max_input =
+            warpsReduce<ReduceTypeMax, UnitOp, ThreadsPerRow>(max_input, tid);
         // get the max input.
-        max_input = ReduceTypeMax::postReduce(max_input, UnitOutShape::W);
+        ReduceTypeMax::singlePostReduce(&max_input, &max_input,
+                                        UnitOutShape::W);
 
         // get the exp input sum, use float to avoid overflow.
-        DataType exp_sum_input = ReduceTypeSum::template identity<DataType>();
+        DataType exp_sum_input;
+        ReduceTypeSum::singleIdentity(&exp_sum_input);
         ark::sync_warps<ThreadsNum>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
@@ -85,10 +94,9 @@ struct Softmax
             exp_sum_input = exp_sum_input + expf(in[idx_in] - max_input);
         }
         ark::sync_warps<ThreadsNum>();
-        exp_sum_input =
-            warpsReduce<ReduceTypeSum, DataType, UnitOp, ThreadsPerRow,
-                        ThreadsNum>(exp_sum_input, tid);
-        exp_sum_input = ReduceTypeSum::postReduce(exp_sum_input);
+        exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
+            exp_sum_input, tid);
+        ReduceTypeSum::singlePostReduce(&exp_sum_input, &exp_sum_input);
         ark::sync_warps<ThreadsNum>();
         // the output is
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;

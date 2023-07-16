@@ -167,7 +167,12 @@ typedef enum
     OP_REFER,
     OP_RESHAPE,
     OP_MERGE,
-    OP_REDUCE,
+    OP_REDUCE_E_SUM,
+    OP_REDUCE_E_MEAN,
+    OP_REDUCE_E_MAX,
+    OP_REDUCE_W_SUM,
+    OP_REDUCE_W_MEAN,
+    OP_REDUCE_W_MAX,
     OP_LAYERNORM,
     OP_SOFTMAX,
     OP_SCALE,
@@ -294,8 +299,12 @@ class Model
     // Performs reduction along the `axis` of the `input` tensor and stores the
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
-    Tensor *reduce(Tensor *input, DimType axis, Tensor *output = nullptr,
-                   bool is_relu = false, const std::string &name = "reduce");
+    Tensor *reduce_sum(Tensor *input, int axis, Tensor *output = nullptr,
+                       const std::string &name = "reduce_sum");
+    Tensor *reduce_mean(Tensor *input, int axis, Tensor *output = nullptr,
+                        const std::string &name = "reduce_mean");
+    Tensor *reduce_max(Tensor *input, int axis, Tensor *output = nullptr,
+                       const std::string &name = "reduce_max");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
 

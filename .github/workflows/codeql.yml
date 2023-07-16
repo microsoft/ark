@@ -8,17 +8,25 @@ on:
     - cron: '42 20 * * 4'
 
 jobs:
+  cancel:
+    name: Cancel previous runs
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cancel previous runs
+      uses: styfle/cancel-workflow-action@0.8.0
+      with:
+        access_token: ${{ secrets.GITHUB_TOKEN }}
+
   analyze:
     name: Analyze
     strategy:
       fail-fast: false
       matrix:
         language: [ 'cpp' ]
-        cuda-version: [ 'cuda11.8', 'cuda12.1' ]
 
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/ark/ark:base-${{ matrix.cuda-version }}
+      image: ghcr.io/microsoft/ark/ark:base-cuda12.1
     permissions:
       actions: read
       contents: read
@@ -46,4 +54,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
-        category: "/language:${{matrix.language}}/cuda-version:${{matrix.cuda-version}}"
+        category: "/language:${{matrix.language}}"

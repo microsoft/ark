@@ -171,13 +171,24 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("dim_per_shard"),
              py::arg("name") = "sharding")
-        .def("reduce", &ark::Model::reduce,
+        .def("reduce_sum", &ark::Model::reduce_sum,
              "Performs reduction along the `axis` of the `input` tensor and "
-             "stores the result in `output`.\nCurrently, only reduction along "
-             "the last dimension is supported.",
+             "stores the result in `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("output") = nullptr,
-             py::arg("is_relu") = false, py::arg("name") = "reduce")
+             py::arg("name") = "reduce_sum")
+        .def("reduce_mean", &ark::Model::reduce_mean,
+             "Performs reduction along the `axis` of the `input` tensor and "
+             "stores the result in `output`.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("name") = "reduce_mean")
+        .def("reduce_max", &ark::Model::reduce_max,
+             "Performs reduction along the `axis` of the `input` tensor and "
+             "stores the result in `output`.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("name") = "reduce_max")
         .def("layernorm", &ark::Model::layernorm,
              "Applies layer normalization to the `input` tensor and returns "
              "the normalized tensor as `output`.",
