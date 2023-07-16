@@ -16,7 +16,9 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     assert(input != nullptr);
     LOG(DEBUG, "all_gather ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
-        LOGERR("supports only 1D input");
+        LOG(INFO,
+            "warning: if the send tensor if not contiguous, the all_gather "
+            "may not work correctly");
     }
     LOG(DEBUG, "all gather output size: ", output.size());
 

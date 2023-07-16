@@ -5,7 +5,7 @@ import ark
 import numpy as np
 import multiprocessing
 
-M, N, K = 64, 64, 8
+M, N, K = 64, 128, 8
 
 
 def all_gather_test_not_inplace(rank, np_inputs, world_size):
@@ -21,11 +21,9 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size):
 
     whole_output_trans = model.tensor(ark.Dims(N, M), ark.TensorType.FP16)
 
+    # shard the other at the first dim
     whole_output_shard = model.sharding(whole_output_trans, 0, N_pergpu)
 
-    # output_tensor_shard_trans = model.reshape(
-    #     whole_output_shard[rank], ark.Dims(N_pergpu, M)
-    # )
     output_tensor_shard_trans = whole_output_shard[rank]
     print("output_tensor_shard_trans shape", output_tensor_shard_trans.shape())
     # output_tensor_shard = matmul(input, other) => output_tensor_shard.transpose = matmul(other.transpose, input.transpose)
@@ -37,13 +35,10 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size):
         trans_input=True,
         trans_other=True,
     )
-    # output_tensor_shard_trans = model.reshape(
-    #     output_tensor_shard_trans, ark.Dims(M * N_pergpu)
-    # )
 
-    # allgather_result = model.all_gather(
-    #     output_tensor_shard_trans, rank, world_size, whole_output_shard
-    # )
+    allgather_result = model.all_gather(
+        output_tensor_shard_trans, rank, world_size, whole_output_shard
+    )
     exe = ark.Executor(rank, rank, world_size, model, "test_all_gather")
     exe.compile()
 
