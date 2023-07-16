@@ -16,22 +16,30 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size):
     input_tensor = model.tensor(ark.Dims(M, K), ark.TensorType.FP16)
     other_tensor = model.tensor(ark.Dims(K, N_pergpu), ark.TensorType.FP16)
 
-    output_tensor_shard = model.matmul(input_tensor, other_tensor)
-
     whole_output = model.tensor(ark.Dims(M * N), ark.TensorType.FP16)
 
     whole_output_shard = model.sharding(whole_output, 0, M * N_pergpu)
-    whole_output_shard[rank] = model.reshape(
+
+    output_tensor_shard_transpose = model.reshape(
         whole_output_shard[rank], ark.Dims(N_pergpu, M)
     )
 
-    model.transpose(
-        output_tensor_shard, ark.Dims(1, 0), whole_output_shard[rank]
+    model.matmul(
+        other_tensor,
+        input_tensor,
+        output_tensor_shard_transpose,
+        1,
+        trans_input=True,
+        trans_other=True,
     )
-
-    whole_output_shard = model.reshape(whole_output_shard, ark.Dims(M * N))
-    allgather_result = model.all_gather(whole_output_shard, rank, world_size)
-    exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
+    output_tensor_shard_transpose = model.reshape(
+        output_tensor_shard_transpose, ark.Dims(M * N_pergpu)
+    )
+    
+    allgather_result = model.all_gather(
+        output_tensor_shard_transpose, rank, world_size, whole_output_shard
+    )
+    exe = ark.Executor(rank, rank, world_size, model, "test_all_gather")
     exe.compile()
 
     exe.launch()
