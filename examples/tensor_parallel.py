@@ -19,13 +19,15 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size):
         ark.Dims(K, N_pergpu), ark.TensorType.FP16
     )
 
-    whole_output_trans = model.tensor(ark.Dims(M * N), ark.TensorType.FP16)
+    whole_output_trans = model.tensor(ark.Dims(N, M), ark.TensorType.FP16)
 
-    whole_output_shard = model.sharding(whole_output_trans, 0, M * N_pergpu)
+    whole_output_shard = model.sharding(whole_output_trans, 0, N_pergpu)
 
-    output_tensor_shard_trans = model.reshape(
-        whole_output_shard[rank], ark.Dims(N_pergpu, M)
-    )
+    # output_tensor_shard_trans = model.reshape(
+    #     whole_output_shard[rank], ark.Dims(N_pergpu, M)
+    # )
+    output_tensor_shard_trans = whole_output_shard[rank]
+    print("output_tensor_shard_trans shape", output_tensor_shard_trans.shape())
     # output_tensor_shard = matmul(input, other) => output_tensor_shard.transpose = matmul(other.transpose, input.transpose)
     model.matmul(
         other_tensor_shard,
@@ -35,9 +37,9 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size):
         trans_input=True,
         trans_other=True,
     )
-    output_tensor_shard_trans = model.reshape(
-        output_tensor_shard_trans, ark.Dims(M * N_pergpu)
-    )
+    # output_tensor_shard_trans = model.reshape(
+    #     output_tensor_shard_trans, ark.Dims(M * N_pergpu)
+    # )
 
     # allgather_result = model.all_gather(
     #     output_tensor_shard_trans, rank, world_size, whole_output_shard
@@ -67,6 +69,8 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size):
     print("avg error:", avg_error)
     print("output_host:", output_host)
     print("gt:", gt)
+    gt_shard = np.split(gt, world_size, axis=1)[rank]
+    print("gt_shard", gt_shard)
 
 
 def all_gather_test_main(
