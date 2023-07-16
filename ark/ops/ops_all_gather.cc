@@ -23,16 +23,19 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     LOG(DEBUG, "all gather output size: ", output.size());
 
     int base = this->next_eid;
-    vector<Tensor *> send_tensors;
+    vector<Tensor *> recv_dep_tensors;
     for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
         if (gpu_dst == gpu_id)
             continue;
-        Tensor *send_t =
+        Tensor *send_tensor =
             this->send(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
-        this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
-        send_tensors.push_back(send_t);
+        Tensor *send_done_tensor =
+            this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
+        recv_dep_tensors.push_back(send_tensor);
+        recv_dep_tensors.push_back(send_done_tensor);
     }
-    Tensor *add_tensor = input;
+    recv_dep_tensors.push_back(input);
+
     Tensor *recv_buf;
     for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
         recv_buf = nullptr;
@@ -48,10 +51,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
             recv_buf = this->tensor(input->shape, input->type);
             output.push_back(recv_buf);
         }
-        if (add_tensor != nullptr) {
-            send_tensors.push_back(add_tensor);
-        }
-        Tensor *recv = this->recv(this->identity(recv_buf, send_tensors),
+        Tensor *recv = this->recv(this->identity(recv_buf, recv_dep_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
     }
 
