@@ -8,6 +8,15 @@ on:
     - cron: '42 20 * * 4'
 
 jobs:
+  cancel:
+    name: Cancel previous runs
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cancel previous runs
+      uses: styfle/cancel-workflow-action@0.8.0
+      with:
+        access_token: ${{ secrets.GITHUB_TOKEN }}
+
   analyze:
     name: Analyze
     strategy:
