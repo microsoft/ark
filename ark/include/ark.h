@@ -403,6 +403,13 @@ class Model
     Tensor *all_reduce(Tensor *input, int gpu_id, int gpu_num,
                        Tensor *output = nullptr,
                        const std::string &name = "all_reduce");
+    // Performs an all-gather operator across all GPUs, aggregating the input
+    // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
+    // total number of GPUs `gpu_num`. Returns a vector of tensors, each
+    // containing the aggregated data from all GPUs.
+    std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
+                                     std::vector<Tensor *> output,
+                                     const std::string &name);
     // Create a new TensorBuf object with `bytes` bytes.
     // A common usage is setting `bytes` to 0 during declaring a model and let
     // the scheduler determine the value after the model is completely defined.
