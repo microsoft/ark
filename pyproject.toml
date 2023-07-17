@@ -7,7 +7,10 @@ name = "ark"
 version = "0.1.0"
 
 [tool.scikit-build]
-cmake.minimum-version = "3.25.0"
+cmake.minimum-version = "3.25"
+cmake.args = []
+cmake.build-type = "Release"
+wheel.packages = ["python/ark"]
 build-dir = "build/{wheel_tag}"
 
 [tool.scikit-build.cmake.define]
