@@ -3,9 +3,10 @@
 
 #include <cstring>
 
-#include "ark/cpu_timer.h"
-#include "ark/ipc/ipc_coll.h"
-#include "ark/logging.h"
+#include "cpu_timer.h"
+#include "ipc/ipc_coll.h"
+#include "logging.h"
+
 namespace ark {
 
 // Constructor.

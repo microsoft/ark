@@ -9,9 +9,9 @@
 #include <map>
 #include <unistd.h>
 
-#include "ark/file_io.h"
-#include "ark/logging.h"
-#include "ark/net/net_ib.h"
+#include "file_io.h"
+#include "logging.h"
+#include "net/net_ib.h"
 
 namespace ark {
 

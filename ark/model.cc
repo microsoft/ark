@@ -3,9 +3,9 @@
 
 #include <cassert>
 
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
 
 using namespace std;
 

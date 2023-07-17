@@ -9,7 +9,7 @@
 #include <thread>
 #include <vector>
 
-#include "ark/gpu/gpu_mgr.h"
+#include "gpu/gpu_mgr.h"
 
 #define ARK_BUF_NAME "_ARK_BUF"
 #define ARK_SC_NAME "_ARK_SC"

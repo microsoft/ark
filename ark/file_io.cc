@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "ark/file_io.h"
-#include "ark/logging.h"
+#include "file_io.h"
+#include "logging.h"
 
 using namespace std;
 

@@ -12,11 +12,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "ark/env.h"
-#include "ark/gpu/gpu_compile.h"
-#include "ark/gpu/gpu_logging.h"
-#include "ark/include/ark.h"
-#include "ark/threading.h"
+#include "env.h"
+#include "gpu/gpu_compile.h"
+#include "gpu/gpu_logging.h"
+#include "include/ark.h"
+#include "threading.h"
 
 #define ARK_USE_NVRTC 0
 #define ARK_DEBUG_KERNEL 0

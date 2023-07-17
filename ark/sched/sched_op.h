@@ -4,9 +4,9 @@
 #ifndef ARK_SCHED_OP_H_
 #define ARK_SCHED_OP_H_
 
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/ops/ops_config.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "ops/ops_config.h"
 
 namespace ark {
 

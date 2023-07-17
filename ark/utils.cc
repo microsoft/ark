@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <vector>
 
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
 
 // clang-format off
 #include "vector_types.h"

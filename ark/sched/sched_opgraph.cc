@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "third_party/json/json.h"
+#include "json.h"
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -9,11 +9,11 @@
 #include <ostream>
 #include <unistd.h>
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
-#include "ark/sched/sched_opgraph.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
+#include "sched/sched_opgraph.h"
 using namespace std;
 
 namespace ark {

@@ -13,10 +13,10 @@
 #include <thread>
 #include <vector>
 
-#include "ark/gpu/gpu_buf.h"
-#include "ark/gpu/gpu_common.h"
-#include "ark/ipc/ipc_socket.h"
-#include "ark/net/net_ib.h"
+#include "gpu/gpu_buf.h"
+#include "gpu/gpu_common.h"
+#include "ipc/ipc_socket.h"
+#include "net/net_ib.h"
 
 namespace ark {
 

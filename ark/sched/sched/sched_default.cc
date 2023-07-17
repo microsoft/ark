@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/sched/sched.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "sched/sched.h"
 
 using namespace std;
 

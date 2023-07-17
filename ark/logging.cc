@@ -7,9 +7,9 @@
 #include <sstream>
 #include <unistd.h>
 
-#include "ark/cpu_timer.h"
-#include "ark/env.h"
-#include "ark/logging.h"
+#include "cpu_timer.h"
+#include "env.h"
+#include "logging.h"
 
 using namespace std;
 

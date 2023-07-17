@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/sched/sched_op.h"
-#include "ark/logging.h"
-#include "ark/math.h"
+#include "sched/sched_op.h"
+#include "logging.h"
+#include "math.h"
 
 using namespace std;
 #define COM ", "

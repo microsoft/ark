@@ -4,7 +4,7 @@
 #ifndef ARK_IPC_COLL_H_
 #define ARK_IPC_COLL_H_
 
-#include "ark/ipc/ipc_mem.h"
+#include "ipc/ipc_mem.h"
 
 namespace ark {
 
