@@ -15,7 +15,7 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size):
     # The number of columns per GPU
     N_pergpu = N // world_size
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     # The input and other tensor of the matmul, note that the other is only a shard of the whole other tensor, we split the other tensor to perform tensor parallel matmul
     input_tensor = model.tensor(ark.Dims(M, K), ark.TensorType.FP16)

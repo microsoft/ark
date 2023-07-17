@@ -20,11 +20,11 @@ struct ReqType
 /// Constructs a 64-bit Request to be sent to the proxy.
 /// @tparam ReqType Request type.
 template <unsigned int ReqType, unsigned int DstSid, unsigned int SrcSid,
-          unsigned int Rank, unsigned long long int Length>
+          unsigned int DstRank, unsigned long long int Length>
 struct Request
 {
     static const unsigned long long int value =
-        ((Length & 0x3ffffffff) << 25) + ((Rank & 0x7f) << 18) +
+        ((Length & 0x3ffffffff) << 25) + ((DstRank & 0x7f) << 18) +
         ((SrcSid & 0xff) << 10) + ((DstSid & 0xff) << 2) + (ReqType & 0x3);
 };
 
@@ -32,8 +32,8 @@ struct Request
 __device__ int _ARK_COMM_SW_SEND_LOCK = 0;
 #endif // (ARK_COMM_SW != 0)
 
-// Send a Request to FPGA to request transaction.
-template <unsigned int Rank, unsigned int SrcSid, unsigned int DstSid,
+// Send a Request to the proxy.
+template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid, unsigned int DstSid,
           unsigned long long int Length>
 DEVICE void send()
 {
@@ -46,7 +46,7 @@ DEVICE void send()
     }
     *done = 0;
     constexpr unsigned long long int dbval =
-        Request<ReqType::Send, DstSid, SrcSid, Rank, Length>::value;
+        Request<ReqType::Send, DstSid, SrcSid, DstRank, Length>::value;
 #if (ARK_COMM_SW != 0)
 #if 1
     constexpr unsigned long long int invalid = (unsigned long long int)-1;
@@ -75,7 +75,7 @@ DEVICE void send()
 }
 
 // Poll SC and reset.
-template <unsigned int SrcSid> DEVICE void send_done()
+template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid> DEVICE void send_done()
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
@@ -88,7 +88,7 @@ template <unsigned int SrcSid> DEVICE void send_done()
 }
 
 //
-template <unsigned int DstSid> DEVICE void recv()
+template <unsigned int Rank, unsigned int SrcRank, unsigned int DstSid> DEVICE void recv()
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {

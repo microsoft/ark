@@ -123,7 +123,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
     py::class_<ark::Model>(m, "Model")
-        .def(py::init<>())
+        .def(py::init<int>(), py::arg("rank"))
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
              py::return_value_policy::reference_internal, py::arg("shape"),
@@ -272,26 +272,26 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "mul")
         .def("send", &ark::Model::send,
-             "Sends a tensor to a destination GPU (`gpu_dst`). Multiple "
+             "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "
              "required to distinguish the tensor. Each 'send' operator must "
              "have a corresponding 'recv' operator that have the same id in "
              "another GPU's model.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("gpu_dst"), py::arg("bytes") = 0,
+             py::arg("id"), py::arg("dst_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "send")
         .def("send_done", &ark::Model::send_done,
              "Blocks the execution until the corresponding 'send' operator "
              "with the specified `id` is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("output") = nullptr,
+             py::arg("id"), py::arg("dst_rank"), py::arg("output") = nullptr,
              py::arg("name") = "send_done")
         .def("recv", &ark::Model::recv,
-             "Receives a tensor from a source GPU (`gpu_src`), identified by "
+             "Receives a tensor from a source GPU (`src_rank`), identified by "
              "the `id` parameter. Blocks the execution until the corresponding "
              "'recv' operator is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
+             py::arg("id"), py::arg("src_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv")
         .def("send_mm", &ark::Model::send_mm,
              "Similar to the 'send_done' function, but implemented using CUDA "

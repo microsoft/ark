@@ -10,7 +10,7 @@ import transformer_ark
 
 def test_PoswiseFeedForwardNet_process(rank, param):
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     input_tensor = model.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
@@ -103,7 +103,7 @@ def test_PoswiseFeedForwardNet():
 
 def test_MultiHeadAttention_process(rank, param):
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     Q = model.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
@@ -255,7 +255,7 @@ def test_MultiHeadAttention():
 
 def test_EncoderLayer_process(rank, param):
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     enc_inputs = model.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16

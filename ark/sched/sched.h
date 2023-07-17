@@ -64,7 +64,6 @@ class BaseScheduler
   protected:
     GpuMgr *gpu_mgr;
 
-    // Model model;
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
     // map from TensorBuf to gpu buffer, the TensorBuf is an abstract of the

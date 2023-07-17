@@ -416,9 +416,10 @@ const string SchedOp::func_string_send() const
     CHECK(in->is_sequential());
     int eid = *(int *)this->op->args[0].val;
     int rank = *(int *)this->op->args[1].val;
-    size_t bytes = *(size_t *)this->op->args[2].val;
+    int dst_rank = *(int *)this->op->args[2].val;
+    size_t bytes = *(size_t *)this->op->args[3].val;
     stringstream ss;
-    ss << "  ark::comm::send<" << rank << ", " << eid << ", " << eid << ", "
+    ss << "  ark::comm::send<" << rank << ", " << dst_rank << ", " << eid << ", " << eid << ", "
        << bytes << ">();\n";
     return ss.str();
 }
@@ -426,16 +427,20 @@ const string SchedOp::func_string_send() const
 const string SchedOp::func_string_recv() const
 {
     int eid = *(int *)this->op->args[0].val;
+    int rank = *(int *)this->op->args[1].val;
+    int src_rank = *(int *)this->op->args[2].val;
     stringstream ss;
-    ss << "  ark::comm::recv<" << eid << ">();\n";
+    ss << "  ark::comm::recv<" << rank << ", " << src_rank << ", " << eid << ">();\n";
     return ss.str();
 }
 
 const string SchedOp::func_string_send_done() const
 {
     int eid = *(int *)this->op->args[0].val;
+    int rank = *(int *)this->op->args[1].val;
+    int dst_rank = *(int *)this->op->args[2].val;
     stringstream ss;
-    ss << "  ark::comm::send_done<" << eid << ">();\n";
+    ss << "  ark::comm::send_done<" << rank << ", " << dst_rank << ", " << eid << ">();\n";
     return ss.str();
 }
 

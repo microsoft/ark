@@ -260,7 +260,7 @@ class Model
 {
   public:
     // Constructors.
-    Model()
+    Model(int rank_ = 0) : rank(rank_)
     {
     }
     Model(const Model &) = delete;
@@ -366,28 +366,28 @@ class Model
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
-    /// Sends a tensor to a destination GPU (@p rank). Multiple tensors can be
+    /// Sends a tensor to a destination GPU (@p dst_rank). Multiple tensors can be
     /// sent to the same GPU,so an identifier `id` is required to distinguish the
     /// tensor. Each 'send' operator must have a corresponding 'recv' operator
     /// that have the same id in another GPU's model.
     ///
     /// @param input 
     /// @param id 
-    /// @param rank Rank of the GPU to send to.
+    /// @param dst_rank Rank of the GPU to send to.
     /// @param bytes 
     /// @param output 
     /// @param name 
     /// @return 
-    Tensor *send(Tensor *input, int id, int rank, std::size_t bytes = 0,
+    Tensor *send(Tensor *input, int id, int dst_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "send");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
-    Tensor *send_done(Tensor *input, int id, Tensor *output = nullptr,
+    Tensor *send_done(Tensor *input, int id, int dst_rank, Tensor *output = nullptr,
                       const std::string &name = "send_done");
-    // Receives a tensor from a source GPU (`gpu_src`), identified by the `id`
+    // Receives a tensor from a source GPU (@p src_rank), identified by the `id`
     // parameter. Blocks the execution until the corresponding 'recv' operator
     // is completed.
-    Tensor *recv(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
+    Tensor *recv(Tensor *input, int id, int src_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
     // Similar to the 'send_done' function, but implemented using CUDA in-stream
     // RDMA copy and Low Latency (LL) protocol.
@@ -446,6 +446,8 @@ class Model
     bool is_no_ref(Tensor *tns) const;
 
   private:
+    /// Rank of this model.
+    const int rank;
     /// Stores all tensor buffers.
     std::list<std::unique_ptr<TensorBuf>> tns_bufs_storage;
     /// Stores all tensors.
