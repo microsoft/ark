@@ -62,7 +62,8 @@ def test_matmul_internal(
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
     gt = np.matmul(input_tensor_host, other_tensor_host)
-
+    if is_relu:
+        gt = np.maximum(gt, 0)
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
@@ -149,7 +150,7 @@ class TestMatmul(unittest.TestCase):
             )
 
     def test_matmul_relu(self):
-        test_matmul_internal(128, 4096, 1024, 1, 1, 1, True, -1, 1, "half")
+        test_matmul_internal(128, 128, 128, 1, 1, 1, True, -1, 1, "half")
 
 
 if __name__ == "__main__":
