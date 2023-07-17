@@ -14,32 +14,30 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     model = ark.Model()
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    # The all_gather operation will create the recv tensor shards and return them as a list. The allgather_result[rank] is the same as input_tensor
     allgather_result = model.all_gather(input_tensor, rank, world_size)
 
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
     exe.compile()
 
     exe.launch()
-    print("rank:", rank, " input_tensor:", np_inputs[rank])
+
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
     exe.run(1)
     exe.stop()
     for tensor_shard in range(world_size):
-        if tensor_shard == rank:
-            print("local rank: ")
+        # if tensor_shard == rank, then this is a local shard. The allgather_result[tensor_shard] is the same as input_tensor
         host_output = np.zeros(tensor_len, dtype=np.float16)
         exe.tensor_memcpy_device_to_host(
             host_output, allgather_result[tensor_shard]
         )
-        print("host_output:", host_output)
         gt = np_inputs[tensor_shard]
 
-        print("gt:", gt)
         max_error = np.max(np.abs(host_output - gt))
         mean_error = np.mean(np.abs(host_output - gt))
         print("max error:", max_error)
         print("mean error:", mean_error)
-        print("rank:", rank, "done")
+    print("rank:", rank, "done")
 
 
 def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
@@ -80,12 +78,11 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
     print("host_output:", host_output)
     # gt = np_inputs[tensor_shard]
 
-    # print("gt:", gt)
-    # max_error = np.max(np.abs(host_output - gt))
-    # mean_error = np.mean(np.abs(host_output - gt))
-    # print("max error:", max_error)
-    # print("mean error:", mean_error)
-    # print("rank:", rank, "done")
+    max_error = np.max(np.abs(host_output - gt))
+    mean_error = np.mean(np.abs(host_output - gt))
+    print("max error:", max_error)
+    print("mean error:", mean_error)
+    print("rank:", rank, "done")
 
 
 def all_gather_test_main(
