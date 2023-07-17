@@ -5,7 +5,7 @@ import ark
 import numpy as np
 import multiprocessing
 
-M, N, K = 64, 128, 8
+M, N, K = 64, 256, 8
 
 
 # Use all-gather operation to perform tensor parallel matmul
@@ -103,4 +103,4 @@ def all_gather_test_main(
 
 if __name__ == "__main__":
     all_gather_test_main(2, all_gather_tensor_parallel)
-    # all_gather_test_main(4, all_gather_tensor_parallel)
+    all_gather_test_main(4, all_gather_tensor_parallel)
