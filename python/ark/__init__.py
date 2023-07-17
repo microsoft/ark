@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 import os
 
 ark_root = os.environ.get("ARK_ROOT", None)
