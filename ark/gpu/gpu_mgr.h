@@ -114,7 +114,7 @@ class GpuMgrCtx
     GpuBuf *mem_import(size_t bytes, int sid, int gpu_id);
     void reg_sendrecv(int sid, int gpu_dst, std::size_t bytes, bool is_recv);
     void freeze();
-    void send(int src, int dst, int cid, size_t bytes);
+    void send(int src, int dst, int rank, size_t bytes);
     GpuState set_current();
     const int &get_world_size() const
     {
@@ -143,7 +143,7 @@ class GpuMgrCtx
     // Get the GPU memory address of an RC flag.
     GpuPtr get_rc_ref(int sid) const;
     //
-    GpuPtr get_doorbell_ref() const;
+    GpuPtr get_request_ref() const;
 
     //
     bool is_comm_sw() const

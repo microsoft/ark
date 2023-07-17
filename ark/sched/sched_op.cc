@@ -415,10 +415,10 @@ const string SchedOp::func_string_send() const
     const Tensor *in = this->op->in_deps[0];
     CHECK(in->is_sequential());
     int eid = *(int *)this->op->args[0].val;
-    int gpu_dst = *(int *)this->op->args[1].val;
+    int rank = *(int *)this->op->args[1].val;
     size_t bytes = *(size_t *)this->op->args[2].val;
     stringstream ss;
-    ss << "  ark::comm::send<" << gpu_dst << ", " << eid << ", " << eid << ", "
+    ss << "  ark::comm::send<" << rank << ", " << eid << ", " << eid << ", "
        << bytes << ">();\n";
     return ss.str();
 }
@@ -428,24 +428,6 @@ const string SchedOp::func_string_recv() const
     int eid = *(int *)this->op->args[0].val;
     stringstream ss;
     ss << "  ark::comm::recv<" << eid << ">();\n";
-    return ss.str();
-}
-
-const string SchedOp::func_string_signal() const
-{
-    int eid = *(int *)this->op->args[0].val;
-    int gpu_dst = *(int *)this->op->args[1].val;
-    stringstream ss;
-    ss << "  ark::comm::send<" << gpu_dst << ", " << eid << ", " << eid
-       << ", 4>();\n";
-    return ss.str();
-}
-
-const string SchedOp::func_string_wait() const
-{
-    int eid = *(int *)this->op->args[0].val;
-    stringstream ss;
-    ss << "  ark::comm::recv<" << eid << ">(); \n";
     return ss.str();
 }
 

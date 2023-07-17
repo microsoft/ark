@@ -175,8 +175,8 @@ unittest::State test_gpu_mgr_remote_lazy_import()
     return unittest::SUCCESS;
 }
 
-// Test inter-GPU communication via sending a doorbell.
-unittest::State test_gpu_mgr_doorbell()
+// Test inter-GPU communication via sending a request.
+unittest::State test_gpu_mgr_request()
 {
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
@@ -195,7 +195,7 @@ unittest::State test_gpu_mgr_doorbell()
             data[i] = i + 1;
         }
 
-        // Send a doorbell.
+        // Send a request.
         ctx->send(7, 5, 1, 1024 * sizeof(int));
 
         // Wait for the send completion.
@@ -244,6 +244,6 @@ int main()
     UNITTEST(test_gpu_mgr_basic);
     UNITTEST(test_gpu_mgr_remote);
     UNITTEST(test_gpu_mgr_remote_lazy_import);
-    UNITTEST(test_gpu_mgr_doorbell);
+    UNITTEST(test_gpu_mgr_request);
     return 0;
 }

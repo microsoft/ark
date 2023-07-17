@@ -52,16 +52,16 @@ class GpuCommSw
                    std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
     void import_buf(const int gid, GpuBuf *buf);
 
-    void doorbell_loop();
-    void launch_doorbell_loop();
-    void stop_doorbell_loop();
+    void request_loop();
+    void launch_request_loop();
+    void stop_request_loop();
 
-    void set_doorbell(const Doorbell &db);
+    void set_request(const Request &db);
 
     GpuMem *get_data_mem(const int gid);
     GpuMem *get_sc_rc_mem(const int gid);
     IpcMem *get_info(const int gid);
-    GpuPtr get_doorbell_ref() const;
+    GpuPtr get_request_ref() const;
     bool is_using_ib() const
     {
         return this->net_ib_mgr != nullptr;
@@ -87,9 +87,9 @@ class GpuCommSw
     //
     std::vector<std::vector<GpuPtr>> addr_table;
     //
-    Doorbell *doorbell = nullptr;
-    std::thread *doorbell_loop_thread = nullptr;
-    volatile bool run_doorbell_loop_thread = false;
+    Request *request = nullptr;
+    std::thread *request_loop_thread = nullptr;
+    volatile bool run_request_loop_thread = false;
     //
     IpcSocket *ipc_socket = nullptr;
     //

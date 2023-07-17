@@ -15,7 +15,7 @@
 #define ARK_SC_NAME "_ARK_SC"
 #define ARK_RC_NAME "_ARK_RC"
 #define ARK_LSS_NAME "_ARK_LOOP_SYNC_STATE"
-#define ARK_DB_NAME "_ARK_DOORBELL"
+#define ARK_REQ_NAME "_ARK_REQUEST"
 #define ARK_CLKS_NAME "_ARK_CLKS"
 
 namespace ark {

@@ -366,11 +366,19 @@ class Model
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
-    // Sends a tensor to a destination GPU (`gpu_dst`). Multiple tensors can be
-    // sent to the same GPU,so an identifier `id` is required to distinguish the
-    // tensor. Each 'send' operator must have a corresponding 'recv' operator
-    // that have the same id in another GPU's model.
-    Tensor *send(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
+    /// Sends a tensor to a destination GPU (@p rank). Multiple tensors can be
+    /// sent to the same GPU,so an identifier `id` is required to distinguish the
+    /// tensor. Each 'send' operator must have a corresponding 'recv' operator
+    /// that have the same id in another GPU's model.
+    ///
+    /// @param input 
+    /// @param id 
+    /// @param rank Rank of the GPU to send to.
+    /// @param bytes 
+    /// @param output 
+    /// @param name 
+    /// @return 
+    Tensor *send(Tensor *input, int id, int rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "send");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.

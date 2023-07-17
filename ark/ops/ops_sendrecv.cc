@@ -9,7 +9,7 @@ using namespace std;
 namespace ark {
 
 //
-Tensor *Model::send(Tensor *input, int id, int gpu_dst, size_t bytes,
+Tensor *Model::send(Tensor *input, int id, int rank, size_t bytes,
                     Tensor *output, const string &name)
 {
     size_t max_bytes = input->shape_bytes();
@@ -19,13 +19,13 @@ Tensor *Model::send(Tensor *input, int id, int gpu_dst, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "send ", input->shape, " ", id, " ", gpu_dst, " ", bytes);
+    LOG(DEBUG, "send ", input->shape, " ", id, " ", rank, " ", bytes);
     input->exported = true;
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
     this->create_op(OP_SEND, OP_PREC_NONE, {input}, {output},
-                    {id, gpu_dst, bytes}, name);
+                    {id, rank, bytes}, name);
     return output;
 }
 
