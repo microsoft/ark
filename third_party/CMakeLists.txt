@@ -16,15 +16,10 @@ add_custom_target(tp-cutlass-patch
 )
 add_dependencies(tp-cutlass-patch tp-update)
 
-# Install CUTLASS header files
-add_library(tp-cutlass INTERFACE)
-add_dependencies(tp-cutlass tp-cutlass-patch)
-file(GLOB_RECURSE CUTLASS_HEADERS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include/*.h)
-target_sources(tp-cutlass PUBLIC FILE_SET HEADERS
-    BASE_DIRS ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
-    FILES ${CUTLASS_HEADERS}
+# Copy CUTLASS header files to the build directory
+add_custom_target(tp-cutlass
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include ${BUILD_DIR}/include/kernels
 )
-install(TARGETS tp-cutlass FILE_SET HEADERS DESTINATION include/kernels)
 
 # Build GPUDMA
 add_custom_target(tp-gpudma
