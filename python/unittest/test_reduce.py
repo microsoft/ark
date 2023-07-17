@@ -50,11 +50,13 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
     # The numeric error of half precision of the machine
     numeric_epsilon_half = np.finfo(np.float16).eps
-    # reduce add n numbers so we assume the atol to be n * numeric_epsilon_half
+    # reduce add n numbers, so we assume the atol to be n * numeric_epsilon_half
+    # rtol should be atol/max(abs(gt) + epsilon). The epsilon is to avoid
+    # divide by zero, here we set it to be numeric_epsilon_half
 
-    np.testing.assert_allclose(
-        output_tensor_host, gt, rtol=1e-5, atol=numeric_epsilon_half * n
-    )
+    atol = numeric_epsilon_half * n
+    rtol = atol / (np.max(np.abs(gt)) + numeric_epsilon_half)
+    np.testing.assert_allclose(output_tensor_host, gt, rtol=rtol, atol=atol)
 
     print(
         "reduce test",
@@ -70,6 +72,10 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
         "{:.5f}".format(max_abs_error),
         "mean_abs_error:",
         "{:.5f}".format(mean_abs_error),
+        "rtol:",
+        "{:.8f}".format(rtol),
+        "atol:",
+        "{:.8f}".format(atol),
         "elapsed",
         "{:.5f}".format(elapsed),
         " ms ",
