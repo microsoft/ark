@@ -9,34 +9,27 @@ import numpy as np
 import unittest
 
 
-def test_gelu_internal(batch_size, m, n):
+def test_gelu_internal(batch_size, m, n, iter=1):
     ark.init()
-
     # Create a Model instance
     model = ark.Model()
 
-    input_tensor = model.tensor(
-        ark.Dims(batch_size, m, n), ark.TensorType.FP16
-    )
+    input_tensor = model.tensor(ark.Dims(batch_size, m, n), ark.TensorType.FP16)
 
     output_tensor = model.gelu(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_gelu_test")
     exe.compile()
-    input_tensor_host = np.random.rand(batch_size, m, n).astype(
-        np.float16
-    )
+    input_tensor_host = np.random.rand(batch_size, m, n).astype(np.float16)
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
-    exe.run(1)
+    exe.run(iter)
 
-    exe.stop()
+    elapsed = exe.stop()
 
-    output_tensor_host = np.zeros(
-        (batch_size, m, n), dtype=np.float16
-    )
+    output_tensor_host = np.zeros((batch_size, m, n), dtype=np.float16)
 
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
@@ -49,8 +42,25 @@ def test_gelu_internal(batch_size, m, n):
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
+
+    print(
+        "gelu test:",
+        "batch_size",
+        batch_size,
+        "m",
+        "{:6d}".format(m),
+        "n",
+        "{:6d}".format(n),
+        "max_error",
+        "{:.5f}".format(max_error),
+        "avg_error",
+        "{:.5f}".format(avg_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        "iter",
+        iter,
+    )
     np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-3, atol=1e-3)
-    print("max error: ", max_error, "avg error: ", avg_error)
 
 
 class TestGelu(unittest.TestCase):
