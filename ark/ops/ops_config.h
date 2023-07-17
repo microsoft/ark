@@ -4,8 +4,8 @@
 #ifndef ARK_OPS_CONFIG_H_
 #define ARK_OPS_CONFIG_H_
 
-#include "ark/include/ark.h"
-#include "third_party/json/json.h"
+#include "include/ark.h"
+#include "json.h"
 #include <map>
 #include <vector>
 

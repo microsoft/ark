@@ -3,8 +3,8 @@
 
 #include <sstream>
 
-#include "ark/model_io.h"
-#include "third_party/json/json.h"
+#include "json.h"
+#include "model_io.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -180,55 +180,51 @@ const string type_str(const TensorType &type)
     return "none";
 }
 
+ostream &operator<<(ostream &os, const OpType &s)
+{
+    // clang-format off
+    switch (s) {
+    case OP_UNKNOWN:       os << "OP_UNKNOWN";       break;
+    case OP_TENSOR:        os << "OP_TENSOR";        break;
+    case OP_REFER:         os << "OP_REFER";         break;
+    case OP_RESHAPE:       os << "OP_RESHAPE";       break;
+    case OP_MERGE:         os << "OP_MERGE";         break;
+    case OP_REDUCE_E_SUM:  os << "OP_REDUCE_E_SUM";  break;
+    case OP_REDUCE_E_MEAN: os << "OP_REDUCE_E_MEAN"; break;
+    case OP_REDUCE_E_MAX:  os << "OP_REDUCE_E_MAX";  break;
+    case OP_REDUCE_W_SUM:  os << "OP_REDUCE_W_SUM";  break;
+    case OP_REDUCE_W_MEAN: os << "OP_REDUCE_W_MEAN"; break;
+    case OP_REDUCE_W_MAX:  os << "OP_REDUCE_W_MAX";  break;
+    case OP_SCALE:         os << "OP_SCALE";         break;
+    case OP_MATMUL:        os << "OP_MATMUL";        break;
+    case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
+    case OP_ADD:           os << "OP_ADD";           break;
+    case OP_MUL:           os << "OP_MUL";           break;
+    case OP_IM2COL:        os << "OP_IM2COL";        break;
+    case OP_TRANSPOSE:     os << "OP_TRANSPOSE";     break;
+    case OP_SEND:          os << "OP_SEND";          break;
+    case OP_SEND_DONE:     os << "OP_SEND_DONE";     break;
+    case OP_SEND_MM:       os << "OP_SEND_MM";       break;
+    case OP_RECV:          os << "OP_RECV";          break;
+    case OP_RECV_MM:       os << "OP_RECV_MM";       break;
+    case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
+    case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
+    case OP_GELU:          os << "OP_GELU";          break;
+    }
+    // clang-format on
+    return os;
+}
+
 const string op_str(const Op &op)
 {
     stringstream ss;
     if (op.type == OP_MATMUL) {
         ss << "OP_MATMUL[in: " << op.in_deps[0]->shape
            << " ot: " << op.in_deps[1]->shape << ']';
-    } else if (op.type == OP_TENSOR) {
-        ss << "OP_TENSOR";
-    } else if (op.type == OP_REFER) {
-        ss << "OP_REFER";
-    } else if (op.type == OP_RESHAPE) {
-        ss << "OP_RESHAPE";
-    } else if (op.type == OP_REDUCE) {
-        ss << "OP_REDUCE";
-    } else if (op.type == OP_MAX_POOL) {
-        ss << "OP_MAX_POOL";
-    } else if (op.type == OP_ADD) {
-        ss << "OP_ADD";
-    } else if (op.type == OP_IM2COL) {
-        ss << "OP_IM2COL";
+    } else {
+        ss << op.type;
     }
     return ss.str();
-}
-
-ostream &operator<<(ostream &os, const OpType &s)
-{
-    // clang-format off
-    switch (s) {
-    case OP_UNKNOWN:    os << "OP_UNKNOWN";     break;
-    case OP_TENSOR:     os << "OP_TENSOR";      break;
-    case OP_REFER:      os << "OP_REFER";       break;
-    case OP_RESHAPE:    os << "OP_RESHAPE";     break;
-    case OP_MERGE:      os << "OP_MERGE";       break;
-    case OP_REDUCE:     os << "OP_REDUCE";      break;
-    case OP_SCALE:      os << "OP_SCALE";       break;
-    case OP_MATMUL:     os << "OP_MATMUL";      break;
-    case OP_MAX_POOL:   os << "OP_MAX_POOL";    break;
-    case OP_ADD:        os << "OP_ADD";         break;
-    case OP_MUL:        os << "OP_MUL";         break;
-    case OP_IM2COL:     os << "OP_IM2COL";      break;
-    case OP_TRANSPOSE:  os << "OP_TRANSPOSE";   break;
-    case OP_SEND:       os << "OP_SEND";        break;
-    case OP_SEND_DONE:  os << "OP_SEND_DONE";   break;
-    case OP_SEND_MM:    os << "OP_SEND_MM";     break;
-    case OP_RECV:       os << "OP_RECV";        break;
-    case OP_RECV_MM:    os << "OP_RECV_MM";     break;
-    }
-    // clang-format on
-    return os;
 }
 
 } // namespace ark

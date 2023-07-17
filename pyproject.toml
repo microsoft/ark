@@ -1,0 +1,24 @@
+[build-system]
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "ark"
+version = "0.1.0"
+
+[tool.scikit-build]
+cmake.minimum-version = "3.25"
+cmake.args = []
+cmake.verbose = false
+cmake.build-type = "Release"
+wheel.packages = ["python/ark"]
+build-dir = "build/{wheel_tag}"
+
+[tool.scikit-build.cmake.define]
+BUILD_PYTHON = "ON"
+
+[tool.black]
+line-length = 80
+target-version = ['py38']
+include = '\.pyi?$'
+exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|third_party|docs|ark)/'

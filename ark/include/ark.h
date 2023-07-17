@@ -78,8 +78,7 @@ struct Dims
     DimType data[DIMS_LEN];
 };
 
-// TensorBuf refers to a data array that
-// can be shared by multiple tensors.
+// TensorBuf refers to a data array that can be shared by multiple tensors.
 struct TensorBuf
 {
     TensorBuf(const DimType &bytes = 0, int id = -1);
@@ -100,14 +99,12 @@ typedef enum
 
 // Tensor is a view of a TensorBuf.
 //
-// Illustration of a single axis of a
-// tensor:
+// Illustration of a single axis of a tensor:
 //
-// 0           off ldim
+// 0           off                                                        ldim
 // |------------|-------------shape-------------|---------------------------|
 //               <----------------------------->
-//                  data range of this
-//                  tensor
+//                  data range of this tensor
 //
 struct Tensor
 {
@@ -170,7 +167,12 @@ typedef enum
     OP_REFER,
     OP_RESHAPE,
     OP_MERGE,
-    OP_REDUCE,
+    OP_REDUCE_E_SUM,
+    OP_REDUCE_E_MEAN,
+    OP_REDUCE_E_MAX,
+    OP_REDUCE_W_SUM,
+    OP_REDUCE_W_MEAN,
+    OP_REDUCE_W_MAX,
     OP_LAYERNORM,
     OP_SOFTMAX,
     OP_SCALE,
@@ -297,8 +299,12 @@ class Model
     // Performs reduction along the `axis` of the `input` tensor and stores the
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
-    Tensor *reduce(Tensor *input, DimType axis, Tensor *output = nullptr,
-                   bool is_relu = false, const std::string &name = "reduce");
+    Tensor *reduce_sum(Tensor *input, int axis, Tensor *output = nullptr,
+                       const std::string &name = "reduce_sum");
+    Tensor *reduce_mean(Tensor *input, int axis, Tensor *output = nullptr,
+                        const std::string &name = "reduce_mean");
+    Tensor *reduce_max(Tensor *input, int axis, Tensor *output = nullptr,
+                       const std::string &name = "reduce_max");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
 
@@ -397,6 +403,13 @@ class Model
     Tensor *all_reduce(Tensor *input, int gpu_id, int gpu_num,
                        Tensor *output = nullptr,
                        const std::string &name = "all_reduce");
+    // Performs an all-gather operator across all GPUs, aggregating the input
+    // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
+    // total number of GPUs `gpu_num`. Returns a vector of tensors, each
+    // containing the aggregated data from all GPUs.
+    std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
+                                     std::vector<Tensor *> output,
+                                     const std::string &name);
     // Create a new TensorBuf object with `bytes` bytes.
     // A common usage is setting `bytes` to 0 during declaring a model and let
     // the scheduler determine the value after the model is completely defined.
@@ -409,6 +422,10 @@ class Model
                   const std::vector<Tensor *> &out_deps,
                   const std::vector<OpArg> &args, const std::string &name,
                   int gran_lev = -1);
+
+    /// Delete an existing operator from the model.
+    /// @param op the existing op to be deleted.
+    void delete_op(Op *op);
 
     const std::list<std::unique_ptr<TensorBuf>> &get_tensor_bufs() const
     {
@@ -451,7 +468,7 @@ class Executor
   public:
     // Constructor.
 
-    Executor(const int gpu_id_, int rank_, int world_size_, const Model &model,
+    Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
              const std::string &name);
     ~Executor();
     // Compile the model. This must be called before `launch()`.

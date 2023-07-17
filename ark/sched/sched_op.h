@@ -4,9 +4,9 @@
 #ifndef ARK_SCHED_OP_H_
 #define ARK_SCHED_OP_H_
 
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/ops/ops_config.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "ops/ops_config.h"
 
 namespace ark {
 
@@ -45,7 +45,7 @@ class SchedOp
     const std::string func_string_send_done() const;
     const std::string func_string_send_mm() const;
     const std::string func_string_recv_mm() const;
-    const std::string func_string_reduce() const;
+    const std::string func_string_reduce(const std::string &type) const;
     const std::string func_string_layernorm() const;
     const std::string func_string_softmax() const;
     const std::string func_string_scale() const;

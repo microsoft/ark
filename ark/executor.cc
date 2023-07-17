@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/env.h"
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
+#include "env.h"
+#include "gpu/gpu_kernel.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
 
-#include "ark/logging.h"
-#include "ark/sched/sched.h"
+#include "logging.h"
+#include "sched/sched.h"
 #include <algorithm>
 #include <string>
 using namespace std;
@@ -24,8 +24,8 @@ class ExecutorMember
 };
 
 // Constructor.
-Executor::Executor(const int gpu_id_, int rank_, int world_size_,
-                   const Model &model, const string &name)
+Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
+                   const string &name)
     : gpu_id{gpu_id_}, rank{rank_},
       world_size{world_size_}, member{make_unique<ExecutorMember>()}
 {

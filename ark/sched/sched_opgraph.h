@@ -3,13 +3,16 @@
 
 #ifndef _ARK_SCHED_OPGRAPH_H_
 #define _ARK_SCHED_OPGRAPH_H_
-#include "ark/sched/sched_opseq.h"
-#include "third_party/json/json.h"
+
+#include "json.h"
+#include "sched/sched_opseq.h"
 #include <cassert>
 #include <map>
 #include <string>
 #include <tuple>
+
 namespace ark {
+
 class OpGraphNode
 {
   public:
@@ -38,29 +41,40 @@ class OpGraph
 {
   public:
     OpGraph(const Model &model, const GpuInfo &gpu_info);
+
+    size_t get_num_depth() const
+    {
+        return this->depth_nodes.size();
+    }
+    const std::vector<OpGraphNode *> &get_depth(int depth) const
+    {
+        return this->depth_nodes[depth];
+    }
+
+  private:
     OpGraphNode *get_or_create_node(int id, const Op *op, const OpConfig *cfg)
     {
-        auto search = this->nodes.find(op);
-        if (search != this->nodes.end()) {
+        auto search = this->op_to_node_map.find(op);
+        if (search != this->op_to_node_map.end()) {
             return search->second;
         }
         OpGraphNode *ogn = new OpGraphNode{id, op, cfg, ""};
         this->nodes_storage.emplace_back(ogn);
-        this->nodes[op] = ogn;
+        this->op_to_node_map[op] = ogn;
         return ogn;
     }
 
     OpGraphNode *get_node(const Op *op) const
     {
-        auto search = this->nodes.find(op);
-        if (search != this->nodes.end()) {
+        auto search = this->op_to_node_map.find(op);
+        if (search != this->op_to_node_map.end()) {
             return search->second;
         }
         return nullptr;
     }
 
     std::list<std::unique_ptr<OpGraphNode>> nodes_storage;
-    std::map<const ark::Op *, OpGraphNode *> nodes;
+    std::map<const ark::Op *, OpGraphNode *> op_to_node_map;
     std::vector<std::vector<OpGraphNode *>> depth_nodes;
 };
 

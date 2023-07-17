@@ -7,11 +7,11 @@
 #include <ostream>
 #include <unistd.h>
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
-#include "ark/sched/sched_codegen.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
+#include "sched/sched_codegen.h"
 
 using namespace std;
 
@@ -26,7 +26,12 @@ namespace ark {
 bool is_tiled_op(const SchedOp &sop)
 {
     return (sop.get_op()->type == OP_MATMUL) ||
-           (sop.get_op()->type == OP_REDUCE) ||
+           (sop.get_op()->type == OP_REDUCE_E_SUM) ||
+           (sop.get_op()->type == OP_REDUCE_E_MEAN) ||
+           (sop.get_op()->type == OP_REDUCE_E_MAX) ||
+           (sop.get_op()->type == OP_REDUCE_W_SUM) ||
+           (sop.get_op()->type == OP_REDUCE_W_MEAN) ||
+           (sop.get_op()->type == OP_REDUCE_W_MAX) ||
            (sop.get_op()->type == OP_LAYERNORM) ||
            (sop.get_op()->type == OP_SOFTMAX) ||
            (sop.get_op()->type == OP_ADD) || (sop.get_op()->type == OP_MUL) ||
@@ -405,7 +410,11 @@ ostream &Brancher::codegen(ostream &os)
 
 ostream &DefaultCodeGenerator::codegen_tensor(ostream &os, const Tensor &tensor)
 {
-    size_t off = this->buf_trans[tensor.buf]->get_offset();
+    auto search = this->buf_trans.find(tensor.buf);
+    if (search == this->buf_trans.end()) {
+        LOGERR("unknown tensor buffer");
+    }
+    size_t off = search->second->get_offset();
     assert(off % 8 == 0);
     size_t data_size;
     if (tensor.type == FP16) {
@@ -553,7 +562,12 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
             auto p = uop_map.emplace(sop_func_str, uop_id);
             if (p.second) {
                 // If this is a new function, define it.
-                if ((sop.get_op()->type == OP_REDUCE) ||
+                if ((sop.get_op()->type == OP_REDUCE_E_SUM) ||
+                    (sop.get_op()->type == OP_REDUCE_E_MEAN) ||
+                    (sop.get_op()->type == OP_REDUCE_E_MAX) ||
+                    (sop.get_op()->type == OP_REDUCE_W_SUM) ||
+                    (sop.get_op()->type == OP_REDUCE_W_MEAN) ||
+                    (sop.get_op()->type == OP_REDUCE_W_MAX) ||
                     (sop.get_op()->type == OP_SCALE) ||
                     (sop.get_op()->type == OP_GELU) ||
                     (sop.get_op()->type == OP_ADD)) {

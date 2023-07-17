@@ -1,25 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/sched/sched.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "sched/sched.h"
 
 using namespace std;
 
 namespace ark {
+
 SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
                                  const Model &model, int wps_)
-    : BaseScheduler(gpu_id, rank_, world_size_, wps_), codegen{this->buf_trans,
-                                                               108, wps_,
-                                                               this->world_size}
+    : BaseScheduler(gpu_id, rank_, world_size_, wps_)
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    this->codegen = make_unique<SimpleCodeGenerator>(this->buf_trans, gpu_info,
+                                                     wps_, this->world_size);
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
     this->create_sched_opseq(model, gpu_info);
-    this->configure_gpu_buf();
+    this->configure_gpu_buf(model.get_tensors());
 }
 
 void SimpleScheduler::create_sched_opseq(const Model &model,
@@ -42,7 +43,6 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
     }
     this->sched_opseqs.emplace_back(opseq_idx);
     opseq_idx++;
-    SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
 
     while (!all_ops.empty()) {
         // find the next op to schedule
@@ -113,7 +113,7 @@ vector<string> SimpleScheduler::schedule()
     for (auto &seq : this->sched_opseqs) {
         this->schedule_sched_opseq(seq, this->wps, num_sm, scheds);
     }
-    return this->codegen.codegen_codes_body(scheds);
+    return this->codegen->codegen_codes_body(scheds);
 }
 
 //
@@ -229,7 +229,8 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
     }
 }
 
-void SimpleScheduler::configure_gpu_buf()
+void SimpleScheduler::configure_gpu_buf(
+    const std::list<std::unique_ptr<Tensor>> &)
 {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other

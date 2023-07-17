@@ -12,11 +12,11 @@
 
 #include <nvml.h>
 
-#include "ark/env.h"
-#include "ark/gpu/gpu_logging.h"
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/math.h"
+#include "env.h"
+#include "gpu/gpu_logging.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "math.h"
 
 using namespace std;
 

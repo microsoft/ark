@@ -34,6 +34,8 @@ struct Env
     bool disable_p2p_memcpy;
     // The scheduler to use.
     std::string scheduler;
+    // Disable the heuristic ARK graph optimization.
+    bool disable_graph_opt;
 };
 
 // Get the global Env.

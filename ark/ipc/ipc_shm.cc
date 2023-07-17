@@ -13,8 +13,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "ark/ipc/ipc_shm.h"
-#include "ark/logging.h"
+#include "ipc/ipc_shm.h"
+#include "logging.h"
 
 #define SHM_DIR "/dev/shm/"
 #define SHM_MODE 0666

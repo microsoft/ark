@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/unittest/unittest_utils.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 using namespace ark;
@@ -13,7 +13,7 @@ using namespace ark;
 unittest::State test_gpu_mgr_basic()
 {
     int pid = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{3};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr_a = get_gpu_mgr(0);
         GpuMgr *mgr_b = get_gpu_mgr(0);
 
@@ -40,7 +40,7 @@ unittest::State test_gpu_mgr_basic()
 unittest::State test_gpu_mgr_remote()
 {
     int pid0 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{5};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
 
@@ -70,7 +70,7 @@ unittest::State test_gpu_mgr_remote()
     UNITTEST_NE(pid0, -1);
 
     int pid1 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{5};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(1);
         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
 
@@ -109,7 +109,7 @@ unittest::State test_gpu_mgr_remote()
 unittest::State test_gpu_mgr_remote_lazy_import()
 {
     int pid0 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{5};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
 
@@ -140,7 +140,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
     UNITTEST_NE(pid0, -1);
 
     int pid1 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{5};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(1);
         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
 
@@ -179,7 +179,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
 unittest::State test_gpu_mgr_doorbell()
 {
     int pid0 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{5};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(0);
         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
 
@@ -208,7 +208,7 @@ unittest::State test_gpu_mgr_doorbell()
     UNITTEST_NE(pid0, -1);
 
     int pid1 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{5};
+        unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(1);
         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
 

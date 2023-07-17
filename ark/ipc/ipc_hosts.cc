@@ -6,9 +6,9 @@
 #include <netdb.h>
 #include <vector>
 
-#include "ark/env.h"
-#include "ark/ipc/ipc_hosts.h"
-#include "ark/logging.h"
+#include "env.h"
+#include "ipc/ipc_hosts.h"
+#include "logging.h"
 
 namespace ark {
 

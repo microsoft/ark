@@ -7,11 +7,11 @@
 #include <fstream>
 #include <sstream>
 
-#include "ark/cpu_timer.h"
-#include "ark/env.h"
-#include "ark/gpu/gpu_compile.h"
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/gpu/gpu_logging.h"
+#include "cpu_timer.h"
+#include "env.h"
+#include "gpu/gpu_compile.h"
+#include "gpu/gpu_kernel.h"
+#include "gpu/gpu_logging.h"
 
 using namespace std;
 

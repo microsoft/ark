@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/sched/sched_op.h"
-#include "ark/logging.h"
-#include "ark/math.h"
+#include "sched/sched_op.h"
+#include "logging.h"
+#include "math.h"
 
 using namespace std;
 #define COM ", "
@@ -205,8 +205,18 @@ const string SchedOp::func_string() const
         return this->func_string_send_mm();
     } else if (this->op->type == OP_RECV_MM) {
         return this->func_string_recv_mm();
-    } else if (this->op->type == OP_REDUCE) {
-        return this->func_string_reduce();
+    } else if (this->op->type == OP_REDUCE_E_SUM) {
+        return this->func_string_reduce("e_sum");
+    } else if (this->op->type == OP_REDUCE_E_MEAN) {
+        return this->func_string_reduce("e_mean");
+    } else if (this->op->type == OP_REDUCE_E_MAX) {
+        return this->func_string_reduce("e_max");
+    } else if (this->op->type == OP_REDUCE_W_SUM) {
+        return this->func_string_reduce("w_sum");
+    } else if (this->op->type == OP_REDUCE_W_MEAN) {
+        return this->func_string_reduce("w_mean");
+    } else if (this->op->type == OP_REDUCE_W_MAX) {
+        return this->func_string_reduce("w_max");
     } else if (this->op->type == OP_LAYERNORM) {
         return this->func_string_layernorm();
     } else if (this->op->type == OP_SOFTMAX) {
@@ -447,7 +457,7 @@ const string SchedOp::func_string_send_done() const
     return ss.str();
 }
 
-const string SchedOp::func_string_reduce() const
+const string SchedOp::func_string_reduce(const string &type) const
 {
     CHECK(this->op->in_deps.size() == 1);
 
@@ -455,24 +465,37 @@ const string SchedOp::func_string_reduce() const
     const Tensor *tns_out = this->op->out_deps[0];
     // bool is_relu = *(bool *)this->op->args[0].val;
 
-    LOG(DEBUG, "func_string_reduce: ", tns_out->shape, " ", tns_out->ldims);
+    LOG(DEBUG, "func_string_reduce: type ", type, " ", tns_out->shape, " ",
+        tns_out->ldims);
 
+    Dims shp_in = tns_in->shape;
     Dims shp_out = tns_out->shape;
 
-    int ndims = shp_out.ndims();
-    CHECK(ndims < 4);
+    CHECK(shp_out.ndims() < 4);
 
-    int axis = *(int *)this->op->args[1].val;
+    int axis = *(int *)this->op->args[0].val;
+    // Translate the axis value into 4D representation.
+    axis += 4 - shp_in.ndims();
 
     const OpTile &tile_out = this->cfg->out_deps_tiles[0];
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+
+    string kernel_name = "reduce_" + type;
+    if (axis == 3) {
+        // warp-wise reduction
+        CHECK(type[0] == 'w');
+    } else {
+        // element-wise reduction
+        CHECK(type[0] == 'e');
+    }
+
     stringstream ss;
-    ss << "ark::reduce_w_sum<"
+    ss << "ark::" << kernel_name << "<"
        << "ark::Vec" << tns_in->ldims.dims4() << COM << "ark::Vec"
        << tns_in->shape.dims4() << COM << "ark::Vec" << tns_out->ldims.dims4()
        << COM << "ark::Vec" << tns_out->shape.dims4() << COM << "ark::Vec"
-       << unit_out_shape << COM << axis << COM << this->cfg->num_warps * 32
-       << COM << this->cfg->smem_bytes << '>';
+       << unit_out_shape << COM << this->cfg->num_warps * 32 << COM
+       << this->cfg->smem_bytes << COM << axis << '>';
     return ss.str();
 }
 

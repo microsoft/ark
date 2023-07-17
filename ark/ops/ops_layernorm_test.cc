@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/logging.h"
-#include "ark/unittest/unittest_utils.h"
+#include "gpu/gpu_kernel.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "logging.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 
@@ -26,7 +26,7 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
     //
     ark::Model model;
     ark::Tensor *tns_x = model.tensor({m, n, k}, ark::FP32);
-    ark::Tensor *tns_y = model.layernorm(tns_x);
+    /* ark::Tensor *tns_y = */ model.layernorm(tns_x);
 
     //
     ark::Executor exe{0, 0, 1, model, "test_layernorm"};

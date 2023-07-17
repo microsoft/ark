@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/logging.h"
-#include "ark/unittest/unittest_utils.h"
+#include "gpu/gpu_kernel.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "logging.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 
 //
 void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
-                          ark::DimType axis, bool is_relu = false)
+                          int axis)
 {
     size_t buf_x_sz = (size_t)m * (size_t)n * (size_t)k * sizeof(ark::half_t);
     size_t buf_y_sz = (size_t)m * (size_t)n * sizeof(ark::half_t);
@@ -41,11 +41,6 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
                 ark::half_t x = data_a[idx];
                 v += x;
             }
-            if (is_relu) {
-                if ((float)v < 0) {
-                    v = 0;
-                }
-            }
             ((ark::half_t *)gt)[i * m + j] = v;
         }
     }
@@ -60,14 +55,14 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     } else if (axis == 1) {
         tns_x = model.tensor({n, k, m}, ark::FP16);
         tns_y = model.tensor({n, 1, m}, ark::FP16);
-    } else if (axis = 2) {
+    } else if (axis == 2) {
         tns_x = model.tensor({n, m, k}, ark::FP16);
         tns_y = model.tensor({n, m, 1}, ark::FP16);
     } else {
         LOGERR("invalid axis");
     }
 
-    model.reduce(tns_x, axis, tns_y, is_relu);
+    model.reduce_sum(tns_x, axis, tns_y);
 
     //
     ark::Executor exe{0, 0, 1, model, "test_reduce"};
@@ -89,7 +84,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     auto p =
         ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, m, n);
     float max_err = p.second;
-    LOG(ark::INFO, "reduce:", n, 'x', m, 'x', k, "(relu=", is_relu, ") ",
+    LOG(ark::INFO, "reduce:", n, 'x', m, 'x', k, " axis ", axis, " ",
         setprecision(4), " mse ", p.first, " max_err ", max_err * 100, "%");
 
     free(res);

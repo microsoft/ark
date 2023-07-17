@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/include/ark.h"
-#include "third_party/json/json.h"
+#include "include/ark.h"
+#include "json.h"
 
 using namespace std;
 

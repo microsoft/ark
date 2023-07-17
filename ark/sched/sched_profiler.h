@@ -4,14 +4,14 @@
 #ifndef _ARK_SCHED_PROFILER_H_
 #define _ARK_SCHED_PROFILER_H_
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/sched/sched_codegen.h"
-#include "ark/sched/sched_op.h"
-#include "ark/sched/sched_opgraph.h"
-#include "ark/sched/sched_opseq.h"
-#include "ark/sched/sched_tile.h"
+#include "gpu/gpu_kernel.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "sched/sched_codegen.h"
+#include "sched/sched_op.h"
+#include "sched/sched_opgraph.h"
+#include "sched/sched_opseq.h"
+#include "sched/sched_tile.h"
 namespace ark {
 
 struct SchedPerf

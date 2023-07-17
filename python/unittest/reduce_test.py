@@ -21,7 +21,7 @@ def test_reduce_internal(batch_size, m, n, data_type="float"):
         numpy_data_type = np.float16
     input_tensor = model.tensor(ark.Dims(batch_size, m, n), ark_data_type)
 
-    output_tensor = model.reduce(input_tensor, 2)
+    output_tensor = model.reduce_sum(input_tensor, 2)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "ops_reduce_test")
     exe.compile()

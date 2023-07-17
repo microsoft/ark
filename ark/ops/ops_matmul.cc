@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
 
 using namespace std;
 
@@ -15,9 +15,9 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
 {
     assert(mat_a != nullptr);
     assert(mat_b != nullptr);
+    assert(splitk >= 1);
     LOG(DEBUG, "matmul ", mat_a->shape, " ", mat_b->shape, " ", mat_a->ldims,
         " ", mat_b->ldims, " ", splitk);
-    assert(splitk >= 1);
     // Shape verification.
     const Dims &shp_a = mat_a->shape;
     const Dims &shp_b = mat_b->shape;
@@ -136,7 +136,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     // Reduce after all outputs are ready.
     Tensor *ref = this->identity(output_buffer, mat_y_shards, nullptr,
                                  name + "/identity");
-    return this->reduce(ref, 0, mat_y, is_relu, name + "/reduce");
+    return this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
 }
 
 } // namespace ark

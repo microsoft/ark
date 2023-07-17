@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/env.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/ipc/ipc_hosts.h"
-#include "ark/ipc/ipc_socket.h"
-#include "ark/logging.h"
-#include "ark/unittest/unittest_utils.h"
+#include "env.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "ipc/ipc_hosts.h"
+#include "ipc/ipc_socket.h"
+#include "logging.h"
+#include "unittest/unittest_utils.h"
 
 using namespace ark;
 

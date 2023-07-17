@@ -16,7 +16,7 @@ void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = tns->ldims_bytes();
+    size_t bytes = tns->shape_bytes();
     void *host_buffer_ptr = info.ptr;
     executor->tensor_memcpy(tns, (const void *)host_buffer_ptr, bytes);
 }
@@ -25,12 +25,12 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
                                   py::buffer host_buffer, ark::Tensor *tns)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = tns->ldims_bytes();
+    size_t bytes = tns->shape_bytes();
     void *host_buffer_ptr = info.ptr;
     executor->tensor_memcpy((void *)host_buffer_ptr, tns, bytes);
 }
 
-PYBIND11_MODULE(ark, m)
+PYBIND11_MODULE(_ark_core, m)
 {
     m.doc() = "ARK python module interface"; // optional module docstring
     m.def("init", &ark::init,
@@ -171,13 +171,24 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("dim_per_shard"),
              py::arg("name") = "sharding")
-        .def("reduce", &ark::Model::reduce,
+        .def("reduce_sum", &ark::Model::reduce_sum,
              "Performs reduction along the `axis` of the `input` tensor and "
-             "stores the result in `output`.\nCurrently, only reduction along "
-             "the last dimension is supported.",
+             "stores the result in `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("axis"), py::arg("output") = nullptr,
-             py::arg("is_relu") = false, py::arg("name") = "reduce")
+             py::arg("name") = "reduce_sum")
+        .def("reduce_mean", &ark::Model::reduce_mean,
+             "Performs reduction along the `axis` of the `input` tensor and "
+             "stores the result in `output`.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("name") = "reduce_mean")
+        .def("reduce_max", &ark::Model::reduce_max,
+             "Performs reduction along the `axis` of the `input` tensor and "
+             "stores the result in `output`.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("name") = "reduce_max")
         .def("layernorm", &ark::Model::layernorm,
              "Applies layer normalization to the `input` tensor and returns "
              "the normalized tensor as `output`.",
@@ -303,6 +314,12 @@ PYBIND11_MODULE(ark, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv_mm")
+        .def("all_gather", &ark::Model::all_gather,
+             "Performs an all-gather operator across all GPUs",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("gpu_id"), py::arg("gpu_num"),
+             py::arg("output") = std::vector<ark::Tensor *>(),
+             py::arg("name") = "all_gather")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current GPU's "
@@ -313,8 +330,7 @@ PYBIND11_MODULE(ark, m)
     // register class Executor
     py::class_<ark::Executor>(m, "Executor",
                               "Convenience class for executing a model.")
-        .def(py::init<const int, int, int, const ark::Model &,
-                      const std::string &>(),
+        .def(py::init<const int, int, int, ark::Model &, const std::string &>(),
              py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
              py::arg("model"), py::arg("name"))
         .def("compile", &ark::Executor::compile,

@@ -9,8 +9,8 @@
 #include <string>
 #include <tuple>
 
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/sched/sched_op.h"
+#include "gpu/gpu_mgr.h"
+#include "sched/sched_op.h"
 
 namespace ark {
 class SchedOpSeq

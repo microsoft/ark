@@ -3,9 +3,9 @@
 
 #include <cassert>
 
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
 
 using namespace std;
 
@@ -49,10 +49,10 @@ vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
             shard_pads[axis] = 1;
         }
         shard_shape[axis] = dim;
-        Tensor *shard = this->identity(
-            this->tensor(shard_shape, input->type, input->buf, input->ldims,
-                         shard_offs, shard_pads),
-            {input}, nullptr, name + "/identity_" + to_string(i));
+        Tensor *shard =
+            this->identity(this->tensor(shard_shape, input->type, input->buf,
+                                        input->ldims, shard_offs, shard_pads),
+                           {input}, nullptr, name + "/shard_" + to_string(i));
         shards.emplace_back(shard);
         shard_offs[axis] += dim;
     }
@@ -140,6 +140,52 @@ Op *Model::create_op(const OpType &type, const OpPrecType &prec_type,
         this->gen_op[tns] = op;
     }
     return op;
+}
+
+/// Delete an existing operator from the model.
+/// @param op the existing op to be deleted.
+void Model::delete_op(Op *op)
+{
+    // Remove the operator from the set of operators that have the given tensor
+    // as one of their inputs.
+    for (auto &tns : op->in_deps) {
+        auto search = this->ref_ops.find(tns);
+        if (search == this->ref_ops.end()) {
+            LOGERR("Not an existing tensor.");
+        }
+        search->second.erase(op);
+    }
+    // Remove the operator from the set of operators that have the given tensor
+    // as its output.
+    for (auto &tns : op->out_deps) {
+        auto search = this->gen_op.find(tns);
+        if (search == this->gen_op.end()) {
+            LOGERR("Not an existing tensor.");
+        }
+        this->gen_op.erase(search);
+    }
+    // Remove the operator from the model.
+    bool is_found = false;
+    auto it = this->ops_storage.begin();
+    for (; it != this->ops_storage.end(); ++it) {
+        if (it->get() == op) {
+            this->ops_storage.erase(it);
+            is_found = true;
+            break;
+        }
+    }
+    if (!is_found) {
+        LOGERR("the given Op is not found");
+    }
+    auto search = this->name_cnts.find(op->name);
+    if (search != this->name_cnts.end()) {
+        if (search->second == 1) {
+            this->name_cnts.erase(search);
+        }
+        // If there are multiple operators with the same name, we do not
+        // decrease the counter to avoid conflicts when creating new operators
+        // with the same name.
+    }
 }
 
 // Returns the latest-declared operator that has the given tensor as its output.

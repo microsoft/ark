@@ -56,28 +56,11 @@ template <int N, int Count> struct log2_up<N, 1, Count>
 ////////////////////////////////////////////////////////////////////////////////
 
 // Safe multiplication for preventing overflow.
-template <typename T, T A, T B> struct mul
-{
-    enum
-    {
-        value = 0
-    }; // Never used
-};
-template <int A, int B> struct mul<int, A, B>
+template <int A, int B> struct mul
 {
     static const int Log2AbsA = log2_up<abs<A>::value>::value;
     static const int Log2AbsB = log2_up<abs<B>::value>::value;
     static_assert(Log2AbsA + Log2AbsB <= 31, "overflow detected");
-    enum
-    {
-        value = A * B
-    };
-};
-template <unsigned int A, unsigned int B> struct mul<unsigned int, A, B>
-{
-    static const unsigned int Log2A = log2_up<A>::value;
-    static const unsigned int Log2B = log2_up<B>::value;
-    static_assert(Log2A + Log2B <= 32, "overflow detected");
     enum
     {
         value = A * B
@@ -100,7 +83,7 @@ template <int A, int B> struct lm
 {
     enum
     {
-        value = mul<int, div_up<A, B>::value, B>::value
+        value = mul<div_up<A, B>::value, B>::value
     };
 };
 
@@ -127,7 +110,7 @@ template <int X, int Pad> struct pad
 {
     enum
     {
-        value = mul<int, div_up<X, Pad>::value, Pad>::value
+        value = mul<div_up<X, Pad>::value, Pad>::value
     };
 };
 

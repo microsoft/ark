@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "third_party/json/json.h"
+#include "json.h"
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -9,11 +9,11 @@
 #include <ostream>
 #include <unistd.h>
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
-#include "ark/sched/sched_opgraph.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
+#include "sched/sched_opgraph.h"
 using namespace std;
 
 namespace ark {
@@ -36,6 +36,14 @@ void retrieve_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
     }
 }
 
+/// Construct an @ref OpGraph from a @ref Model.
+///
+/// The @ref OpGraph is a DAG of operators, where each @ref OpGraphNode is a
+/// node. The edges are the dependencies between @ref OpGraphNode.
+///
+/// @param model The @ref Model.
+/// @param gpu_info @ref GpuInfo of the GPU to run the model on.
+///
 OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
 {
     int opseq_id = 0;
@@ -74,11 +82,14 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (; it != depth_prev->end(); ++it) {
             SchedOpSeq &opseq = (*it)->opseq;
             // LOG(INFO, "retrieve: ", *it, ", last op ",
-            // (*it)->opseq.get_last_op()->type, " ",
-            // (*it)->opseq.get_last_op());
+            //     (*it)->opseq.get_last_op()->type, " ",
+            //     (*it)->opseq.get_last_op()->name);
             for (;;) {
-                // Get all Ops of which results are used by seen Ops only
-                // and at least one result is used by `opseq.back()`.
+                // Get all Ops of which results are used only by seen Ops
+                // and at least one result is used by `opseq.back()`. If there
+                // is only one such Op, it can be merged into `opseq` unless
+                // this Op requires a global sync after execution or `opseq`
+                // requires a global sync before execution.
                 set<const Op *> dep_ops;
                 for (Tensor *tns : opseq.get_last_op()->in_deps) {
                     const Op *op = model.get_gen_op(tns);
@@ -108,7 +119,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     }
                     if (is_only) {
                         dep_ops.emplace(op);
-                        // LOG(DEBUG, "retrieve: dep op ", op->type);
+                        // LOG(DEBUG, "retrieve: dep op ", op->name);
                     }
                 }
                 // If there is only one such Op, check if this can be
@@ -151,7 +162,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                                 if (opseq.append(op, cfg)) {
                                     auto p = seen.emplace(op);
                                     assert(p.second);
-                                    this->nodes[op] = *it;
+                                    this->op_to_node_map[op] = *it;
                                     // LOG(DEBUG, "retrieve: merge");
                                     continue;
                                 }
@@ -163,20 +174,21 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     // instead.
                     for (const Op *op : dep_ops) {
                         auto p = seen.emplace(op);
-                        assert(p.second);
+                        if (!p.second) {
+                            continue;
+                        }
                         const OpConfig *cfg = sched_op_config(op, gpu_info);
                         OpGraphNode *ogn =
                             this->get_or_create_node(opseq_id++, op, cfg);
-                        stringstream ssod;
-                        for (auto &od : (*it)->out_deps) {
-                            ssod << od << ",";
-                        }
+                        // stringstream ssod;
+                        // for (auto &od : (*it)->out_deps) {
+                        //     ssod << od << ",";
+                        // }
                         // LOG(INFO, "OGN: ", ogn, " --> ", ssod.str());
                         depth_prev->emplace_back(ogn);
                         //
-                        ogn->out_deps.insert(
-                            // ogn->out_deps.end(),
-                            (*it)->out_deps.begin(), (*it)->out_deps.end());
+                        ogn->out_deps.insert((*it)->out_deps.begin(),
+                                             (*it)->out_deps.end());
                         for (auto &od : (*it)->out_deps) {
                             od->in_deps.insert(ogn);
                         }
