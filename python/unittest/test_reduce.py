@@ -66,7 +66,8 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
         "{:.5f}".format(avg_error),
         "elapsed",
         "{:.5f}".format(elapsed),
-        "iter",
+        " ms ",
+        " iter ",
         iter,
     )
 

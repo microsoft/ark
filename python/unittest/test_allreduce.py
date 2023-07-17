@@ -7,7 +7,7 @@ import multiprocessing
 import unittest
 
 
-def all_reduce_test(rank, np_inputs, world_size, tensor_len):
+def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     tensor_size = tensor_len * 2
     print("rank:", rank)
 
@@ -22,27 +22,39 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len):
     exe.compile()
 
     exe.launch()
-    print("rank:", rank, " input_tensor:", np_inputs[rank])
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(1)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
 
     host_output = np.zeros(tensor_len, dtype=np.float16)
     exe.tensor_memcpy_device_to_host(host_output, allreduce_result)
-    print("host_output:", host_output)
     gt = np.zeros(tensor_len, dtype=np.float16)
     for np_input in np_inputs:
         gt += np_input
 
-    print("gt:", gt)
     max_error = np.max(np.abs(host_output - gt))
-    mean_error = np.mean(np.abs(host_output - gt))
-    print("max error:", max_error)
-    print("mean error:", mean_error)
-    print("rank:", rank, "done")
+    avg_error = np.mean(np.abs(host_output - gt))
+    print(
+        "allreduce test:",
+        "world_size",
+        world_size,
+        "rank",
+        rank,
+        "tensor_len",
+        "{:6d}".format(tensor_len),
+        "max_error",
+        "{:.5f}".format(max_error),
+        "avg_error",
+        "{:.5f}".format(avg_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        "ms",
+        "iter",
+        iter,
+    )
 
 
-def allreduce_test_internal(world_size, tensor_len):
+def test_allreduce_internal(world_size, tensor_len):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
@@ -62,10 +74,10 @@ def allreduce_test_internal(world_size, tensor_len):
 
 
 class TestAllreduce(unittest.TestCase):
-    def allreduce_test(self):
-        allreduce_test_internal(2, 2048)
-        allreduce_test_internal(4, 2048)
-        allreduce_test_internal(8, 2048)
+    def test_allreduce(self):
+        test_allreduce_internal(2, 2048)
+        test_allreduce_internal(4, 2048)
+        test_allreduce_internal(8, 2048)
 
 
 if __name__ == "__main__":

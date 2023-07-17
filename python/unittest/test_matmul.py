@@ -93,7 +93,8 @@ def test_matmul_internal(
         "{:.5f}".format(max_error),
         " elapsed ",
         "{:.5f}".format(elapsed),
-        " ms iter ",
+        " ms ",
+        " iter ",
         iter,
     )
     return True

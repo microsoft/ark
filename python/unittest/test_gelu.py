@@ -57,6 +57,7 @@ def test_gelu_internal(batch_size, m, n, iter=1):
         "{:.5f}".format(avg_error),
         "elapsed",
         "{:.5f}".format(elapsed),
+        "ms",
         "iter",
         iter,
     )
