@@ -72,10 +72,10 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size):
     avg_error = np.mean(np.abs(output_host - gt))
     print("max error:", max_error)
     print("avg error:", avg_error)
-    print("output_host:", output_host)
-    print("gt:", gt)
-    gt_shard = np.split(gt, world_size, axis=1)[rank]
-    print("gt_shard", gt_shard)
+    # print("output_host:", output_host)
+    # print("gt:", gt)
+    # gt_shard = np.split(gt, world_size, axis=1)[rank]
+    # print("gt_shard", gt_shard)
 
 
 def all_gather_test_main(
