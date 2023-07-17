@@ -2,7 +2,7 @@
 
 Welcome to this tutorial on using ARK to run a simple deep neural network (DNN) application in Python. We will walk you through a basic Python example to illustrate the process.
 
-After completing the [installation](./install.md), you can run the tutorial example at [tutorial.py](../examples/tutorial/tutorial.py) to see how ARK works. 
+After completing the [installation](./install.md), you can run the tutorial example at [tutorial.py](../examples/tutorial/tutorial.py) to see how ARK works.
 
 ```bash
 python examples/tutorial/tutorial.py

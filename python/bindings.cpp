@@ -30,7 +30,7 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
     executor->tensor_memcpy((void *)host_buffer_ptr, tns, bytes);
 }
 
-PYBIND11_MODULE(_ark_cpp, m)
+PYBIND11_MODULE(_ark_core, m)
 {
     m.doc() = "ARK python module interface"; // optional module docstring
     m.def("init", &ark::init,
