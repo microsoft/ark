@@ -46,7 +46,7 @@ def test_gelu_internal(batch_size, m, n, iter=1):
     print(
         "gelu test:",
         "batch_size",
-        batch_size,
+        "{:6d}".format(batch_size),
         "m",
         "{:6d}".format(m),
         "n",
