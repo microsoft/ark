@@ -31,8 +31,8 @@ struct LayerNorm
         UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
-                           int tw)
+    static DEVICE void run(DataType *out, const DataType *in, int tn, int tc,
+                           int th, int tw)
     {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
         using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
@@ -67,15 +67,16 @@ struct LayerNorm
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            ReduceTypeMean::singleReduce(&reduced, in[idx_in]);
+            ReduceTypeMean::singleReduce(&reduced, &reduced, &in[idx_in]);
         }
         ark::sync_warps<ThreadsNum>();
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(reduced, tid);
+        reduced =
+            warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(reduced, tid);
         // get the average result.
         ReduceTypeMean::singlePostReduce(&reduced, &reduced, UnitOutShape::W);
         DataType variance;
-        ReduceTypeMean::singleIdentity<DataType>(&variance);
+        ReduceTypeMean::singleIdentity(&variance);
         // get the variance
         ark::sync_warps<ThreadsNum>();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
@@ -85,7 +86,7 @@ struct LayerNorm
         }
         ark::sync_warps<ThreadsNum>();
         variance =
-            warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(variance, tid);
+            warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(variance, tid);
         ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutShape::W);
         ark::sync_warps<ThreadsNum>();
         // the output is (input - mean) / sqrt(variance)
@@ -100,7 +101,7 @@ struct LayerNorm
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
           int SmemBytes>
-DEVICE void layernorm(float *out, float *in, int tx, int ty, int tz)
+DEVICE void layernorm(float *out, const float *in, int tx, int ty, int tz)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
@@ -111,7 +112,8 @@ DEVICE void layernorm(float *out, float *in, int tx, int ty, int tz)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutShape, int ThreadsNum,
           int SmemBytes>
-DEVICE void layernorm(ark::half *out, ark::half *in, int tx, int ty, int tz)
+DEVICE void layernorm(ark::half *out, const ark::half *in, int tx, int ty,
+                      int tz)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutShape, ThreadsNum,
