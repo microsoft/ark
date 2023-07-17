@@ -32,8 +32,8 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     for np_input in np_inputs:
         gt += np_input
 
-    max_error = np.max(np.abs(host_output - gt))
-    avg_error = np.mean(np.abs(host_output - gt))
+    max_abs_error = np.max(np.abs(host_output - gt))
+    mean_abs_error = np.mean(np.abs(host_output - gt))
     print(
         "allreduce test:",
         "world_size",
@@ -42,10 +42,10 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
         rank,
         "tensor_len",
         "{:6d}".format(tensor_len),
-        "max_error",
-        "{:.5f}".format(max_error),
-        "avg_error",
-        "{:.5f}".format(avg_error),
+        "max_abs_error",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error",
+        "{:.5f}".format(mean_abs_error),
         "elapsed",
         "{:.5f}".format(elapsed),
         "ms",

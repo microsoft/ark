@@ -46,8 +46,11 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
     gt = torch.sum(torch_input, dim=2, keepdim=True).numpy()
 
     # test if the result is correct
-    max_error = np.max(np.abs(output_tensor_host - gt))
-    avg_error = np.mean(np.abs(output_tensor_host - gt))
+    max_abs_error = np.max(np.abs(output_tensor_host - gt))
+    mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
+    # The numeric error of half precision of the machine
+    numeric_epsilon_half = np.finfo(np.float16).eps
+    print("numeric_epsilon_half", numeric_epsilon_half)
     np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
 
     print(
@@ -60,10 +63,10 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
         "{:6d}".format(n),
         "data_type:",
         data_type,
-        "max error:",
-        "{:.5f}".format(max_error),
-        "avg error:",
-        "{:.5f}".format(avg_error),
+        "max abs error:",
+        "{:.5f}".format(max_abs_error),
+        "mean abs error:",
+        "{:.5f}".format(mean_abs_error),
         "elapsed",
         "{:.5f}".format(elapsed),
         " ms ",

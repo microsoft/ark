@@ -40,8 +40,8 @@ def test_gelu_internal(batch_size, m, n, iter=1):
     gt = F.gelu(torch_input).detach().numpy().astype(np.float16)
 
     # test if the result is correct
-    max_error = np.max(np.abs(output_tensor_host - gt))
-    avg_error = np.mean(np.abs(output_tensor_host - gt))
+    max_abs_error = np.max(np.abs(output_tensor_host - gt))
+    mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
 
     print(
         "gelu test:",
@@ -51,10 +51,10 @@ def test_gelu_internal(batch_size, m, n, iter=1):
         "{:6d}".format(m),
         "n",
         "{:6d}".format(n),
-        "max_error",
-        "{:.5f}".format(max_error),
-        "avg_error",
-        "{:.5f}".format(avg_error),
+        "max_abs_error",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error",
+        "{:.5f}".format(mean_abs_error),
         "elapsed",
         "{:.5f}".format(elapsed),
         "ms",

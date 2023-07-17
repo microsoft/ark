@@ -65,8 +65,8 @@ def test_matmul_internal(
     if is_relu:
         gt = np.maximum(gt, 0)
     # test if the result is correct
-    max_error = np.max(np.abs(output_tensor_host - gt))
-    avg_error = np.mean(np.abs(output_tensor_host - gt))
+    max_abs_error = np.max(np.abs(output_tensor_host - gt))
+    mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
     # np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
 
     print(
@@ -88,11 +88,11 @@ def test_matmul_internal(
         ", gran_lev=",
         gran_lev,
         ") ",
-        " mse ",
-        "{:.5f}".format(avg_error),
-        " max_err ",
-        "{:.5f}".format(max_error),
+        " max abs error ",
+        "{:.5f}".format(max_abs_error),
         " elapsed ",
+        " mse ",
+        "{:.5f}".format(mean_abs_error),
         "{:.5f}".format(elapsed),
         " ms ",
         " iter ",
@@ -150,7 +150,7 @@ class TestMatmul(unittest.TestCase):
     def test_matmul_split(self):
         print("test_matmul_split")
         for split_k in range(2, 4):
-            test_matmul_small_sizes(split_k, False, gran_lev)
+            test_matmul_small_sizes(split_k, False, -1)
         for split_k in range(3, 8):
             for gran_lev in range(-1, 4):
                 test_matmul_internal(

@@ -12,6 +12,14 @@ tensor_len = 2048
 tensor_size = tensor_len * 2
 
 
+def calculate_errors(arr1, arr2, epsilon=2e-10):
+    abs_errors = np.abs(arr1 - arr2)
+    relative_errors = np.abs(arr1 - arr2) / (
+        np.maximum(np.abs(arr1), np.abs(arr2)) + epsilon
+    )
+    return abs_errors, relative_errors
+
+
 def sendrecv_test_one_dir_function(rank, np_inputs):
     print("rank:", rank)
 
@@ -39,9 +47,9 @@ def sendrecv_test_one_dir_function(rank, np_inputs):
         exe.tensor_memcpy_device_to_host(host_output, input_tensor)
         print("host_output:", host_output)
         print("np_inputs:", np_inputs)
-        max_error = np.max(np.abs(host_output - np_inputs))
+        max_abs_error = np.max(np.abs(host_output - np_inputs))
         mean_error = np.mean(np.abs(host_output - np_inputs))
-        print("max error:", max_error)
+        print("max abs error:", max_abs_error)
         print("mean error:", mean_error)
     print("rank:", rank, "done")
 
@@ -87,9 +95,14 @@ def sendrecv_test_bi_dir_function(rank, np_inputs):
     exe.tensor_memcpy_device_to_host(host_output, recv_tensor)
     print("host_output:", host_output)
     print("np_inputs:", np_inputs[0])
-    max_error = np.max(np.abs(host_output - np_inputs[other_rank]))
+    abs_errors, relative_errors = calculate_errors(
+        host_output, np_inputs[other_rank]
+    )
+
+    max_abs_error = np.max(np.abs(host_output - np_inputs[other_rank]))
     mean_error = np.mean(np.abs(host_output - np_inputs[other_rank]))
-    print("max error:", max_error)
+
+    print("max abs error:", max_abs_error)
     print("mean error:", mean_error)
     print("rank:", rank, "done")
 
