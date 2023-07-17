@@ -110,7 +110,9 @@ def all_gather_test_main(
 
 
 if __name__ == "__main__":
-    all_gather_test_main(2, 64, all_gather_test_not_inplace)
-    all_gather_test_main(3, 64, all_gather_test_not_inplace)
-    all_gather_test_main(2, 64, all_gather_test_inplace)
-    all_gather_test_main(3, 64, all_gather_test_inplace)
+    all_gather_test_main(2, 2048, all_gather_test_not_inplace)
+    all_gather_test_main(4, 2048, all_gather_test_not_inplace)
+    all_gather_test_main(2, 2048, all_gather_test_inplace)
+    all_gather_test_main(4, 2048, all_gather_test_inplace)
+    all_gather_test_main(6, 2048, all_gather_test_inplace)
+    all_gather_test_main(8, 2048, all_gather_test_inplace)

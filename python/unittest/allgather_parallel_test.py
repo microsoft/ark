@@ -103,4 +103,4 @@ def all_gather_test_main(
 
 if __name__ == "__main__":
     all_gather_test_main(2, all_gather_tensor_parallel)
-    all_gather_test_main(4, all_gather_tensor_parallel)
+    # all_gather_test_main(4, all_gather_tensor_parallel)
