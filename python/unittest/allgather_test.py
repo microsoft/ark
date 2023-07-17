@@ -68,13 +68,9 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
     exe.run(1)
     exe.stop()
     host_output = np.zeros(tensor_len * world_size, dtype=np.float16)
-    # for tensor_shard in range(world_size):
-    # if tensor_shard == rank:
-    # print("local rank: ")
-    print(allgather_result)
 
     exe.tensor_memcpy_device_to_host(host_output, output_tensor)
-    # return
+
     gt = np.concatenate(np_inputs, axis=0)
 
     max_error = np.max(np.abs(host_output - gt))
