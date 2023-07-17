@@ -4,8 +4,8 @@
 #ifndef _ARK_SCHED_OPGRAPH_H_
 #define _ARK_SCHED_OPGRAPH_H_
 
-#include "sched/sched_opseq.h"
 #include "json.h"
+#include "sched/sched_opseq.h"
 #include <cassert>
 #include <map>
 #include <string>

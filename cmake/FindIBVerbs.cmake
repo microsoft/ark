@@ -16,29 +16,32 @@
 # An imported target ARK::ibverbs is created if the library is found.
 
 find_path(IBVERBS_INCLUDE_DIRS
-  NAMES infiniband/verbs.h
-  HINTS
-  ${IBVERBS_INCLUDE_DIR}
-  ${IBVERBS_ROOT_DIR}
-  ${IBVERBS_ROOT_DIR}/include)
+    NAMES infiniband/verbs.h
+    HINTS
+    ${IBVERBS_INCLUDE_DIR}
+    ${IBVERBS_ROOT_DIR}
+    ${IBVERBS_ROOT_DIR}/include
+)
 
 find_library(IBVERBS_LIBRARIES
-  NAMES ibverbs
-  HINTS
-  ${IBVERBS_LIB_DIR}
-  ${IBVERBS_ROOT_DIR}
-  ${IBVERBS_ROOT_DIR}/lib)
+    NAMES ibverbs
+    HINTS
+    ${IBVERBS_LIB_DIR}
+    ${IBVERBS_ROOT_DIR}
+    ${IBVERBS_ROOT_DIR}/lib
+)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(IBVerbs DEFAULT_MSG IBVERBS_INCLUDE_DIRS IBVERBS_LIBRARIES)
 mark_as_advanced(IBVERBS_INCLUDE_DIR IBVERBS_LIBRARIES)
 
 if(IBVERBS_FOUND)
-  if(NOT TARGET ARK::ibverbs)
-    add_library(ARK::ibverbs UNKNOWN IMPORTED)
-  endif()
-  set_target_properties(ARK::ibverbs PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${IBVERBS_INCLUDE_DIR}"
-    IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-    IMPORTED_LOCATION "${IBVERBS_LIBRARIES}")
+    if(NOT TARGET ARK::ibverbs)
+        add_library(ARK::ibverbs UNKNOWN IMPORTED)
+    endif()
+    set_target_properties(ARK::ibverbs PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${IBVERBS_INCLUDE_DIR}"
+        IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+        IMPORTED_LOCATION "${IBVERBS_LIBRARIES}"
+    )
 endif()

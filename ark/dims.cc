@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 #include "include/ark.h"
-#include "logging.h"
 #include "json.h"
+#include "logging.h"
 #include <vector>
 using namespace std;
 

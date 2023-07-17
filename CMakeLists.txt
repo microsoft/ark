@@ -15,19 +15,26 @@ project(ark LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
+# Find ibverbs
 include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
 
-# Third party libraries
-add_subdirectory(third_party)
+# Find NUMA
+include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
 
 # Find CUDAToolkit
 find_package(CUDAToolkit REQUIRED)
 
-# ARK object & unit tests
+# Third party libraries
+add_subdirectory(third_party)
+
+# ARK object
 add_library(ark_obj OBJECT)
-add_dependencies(ark_obj tp-cutlass-patch)
-add_subdirectory(ark)
+set_target_properties(ark_obj PROPERTIES
+    LINKER_LANGUAGE CXX
+    POSITION_INDEPENDENT_CODE 1
+    VERSION ${ARK_VERSION}
+    SOVERSION ${ARK_SOVERSION}
+)
 
 # ARK shared library
 add_library(ark SHARED)
@@ -45,11 +52,20 @@ set_target_properties(ark_static PROPERTIES
     SOVERSION ${ARK_SOVERSION}
 )
 
-# Install
+# Details
+add_subdirectory(ark)
+
+# Install libraries
 install(TARGETS ark ark_static
     LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)
-# if(NOT SKBUILD)
-#     install(TARGETS ark FILE_SET HEADERS)
-# endif()
+    ARCHIVE DESTINATION lib
+    FILE_SET HEADERS DESTINATION include
+)
 
+# Install Python module
+if(BUILD_PYTHON)
+    add_subdirectory(python)
+endif()
+
+# Utils
+include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)

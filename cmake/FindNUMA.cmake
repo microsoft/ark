@@ -16,29 +16,32 @@
 # An imported target ARK::numa is created if the library is found.
 
 find_path(NUMA_INCLUDE_DIRS
-  NAMES numa.h
-  HINTS
-  ${NUMA_INCLUDE_DIR}
-  ${NUMA_ROOT_DIR}
-  ${NUMA_ROOT_DIR}/include)
+    NAMES numa.h
+    HINTS
+    ${NUMA_INCLUDE_DIR}
+    ${NUMA_ROOT_DIR}
+    ${NUMA_ROOT_DIR}/include
+)
 
 find_library(NUMA_LIBRARIES
-  NAMES numa
-  HINTS
-  ${NUMA_LIB_DIR}
-  ${NUMA_ROOT_DIR}
-  ${NUMA_ROOT_DIR}/lib)
+    NAMES numa
+    HINTS
+    ${NUMA_LIB_DIR}
+    ${NUMA_ROOT_DIR}
+    ${NUMA_ROOT_DIR}/lib
+)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(NUMA DEFAULT_MSG NUMA_INCLUDE_DIRS NUMA_LIBRARIES)
 mark_as_advanced(NUMA_INCLUDE_DIR NUMA_LIBRARIES)
 
 if(NUMA_FOUND)
-  if(NOT TARGET ARK::numa)
-    add_library(ARK::numa UNKNOWN IMPORTED)
-  endif()
-  set_target_properties(ARK::numa PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${NUMA_INCLUDE_DIR}"
-    IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-    IMPORTED_LOCATION "${NUMA_LIBRARIES}")
+    if(NOT TARGET ARK::numa)
+        add_library(ARK::numa UNKNOWN IMPORTED)
+    endif()
+    set_target_properties(ARK::numa PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${NUMA_INCLUDE_DIR}"
+        IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+        IMPORTED_LOCATION "${NUMA_LIBRARIES}"
+    )
 endif()

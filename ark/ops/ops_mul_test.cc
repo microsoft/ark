@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 #include "include/ark.h"
-#include "unittest/unittest_utils.h"
 #include "ops_test_common.h"
+#include "unittest/unittest_utils.h"
 
 ark::unittest::State test_mul_fp32()
 {

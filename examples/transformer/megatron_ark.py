@@ -65,8 +65,8 @@ class MultiHeadAttention:
         self.fc = model.tensor(
             ark.Dims(d_v * n_heads_per_gpu, d_model), ark.TensorType.FP16
         )
-        self.scaled_dot_product_attention = (
-            transformer_ark.ScaledDotProductAttention(model)
+        self.scaled_dot_product_attention = transformer_ark.ScaledDotProductAttention(
+            model
         )
 
     def forward(self, input_Q, input_K, input_V, attn_mask=None):

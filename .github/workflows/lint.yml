@@ -14,10 +14,10 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install ClangFormat
-      run: sudo apt-get install -y clang-format-12
+      run: sudo apt-get install -y clang-format
 
-    - name: Run cpplint
-      run: make cpplint
+    - name: Run clang-format
+      run: clang-format -style=file --dry-run `find ark python examples -type f -name *.h -o -name *.hpp -o -name *.c -o -name *.cc -o -name *.cpp -o -name *.cu`
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -27,8 +27,8 @@ jobs:
     - name: Install Python dependencies
       run: python3.8 -m pip install black
 
-    - name: Run pythonlint
-      run: make pythonlint
+    - name: Run black
+      run: black --check --config pyproject.toml .
 
   spelling:
     runs-on: ubuntu-20.04
