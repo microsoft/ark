@@ -109,6 +109,48 @@ class TestMatmul(unittest.TestCase):
         test_matmul_internal(256, 256, 64, 1, 1, 1, False, -1, 1, "half")
         test_matmul_internal(512, 512, 128, 1, 1, 1, False, -1, 1, "half")
 
+    def test_matmul_gran(self):
+        for gran_lev in range(0, 4):
+            print("test_matmul_gran gran_lev=", gran_lev)
+            test_matmul_internal(
+                64, 64, 32, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                128, 64, 32, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                64, 128, 32, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                128, 128, 32, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+
+            test_matmul_internal(
+                64, 64, 64, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                128, 64, 64, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                64, 128, 64, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                128, 128, 64, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                256, 128, 64, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+
+            test_matmul_internal(
+                128, 128, 256, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+            test_matmul_internal(
+                128, 4096, 1024, 1, 1, 1, False, gran_lev, 1, "half"
+            )
+
+    def test_matmul_relu(self):
+        test_matmul_internal(128, 4096, 1024, 1, 1, 1, True, -1, 1, "half")
+
 
 if __name__ == "__main__":
     unittest.main()
