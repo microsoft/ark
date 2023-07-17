@@ -12,7 +12,7 @@ namespace ark {
 Tensor *Model::send(Tensor *input, int id, int gpu_dst, size_t bytes,
                     Tensor *output, const string &name)
 {
-    size_t max_bytes = input->ldims_bytes();
+    size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
         LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
     }
@@ -46,7 +46,7 @@ Tensor *Model::recv(Tensor *input, int id, int gpu_src, size_t bytes,
                     Tensor *output, const string &name)
 {
     assert(input != nullptr);
-    size_t max_bytes = input->ldims_bytes();
+    size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
         LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
     }
