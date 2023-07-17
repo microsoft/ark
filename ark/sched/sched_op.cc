@@ -419,8 +419,8 @@ const string SchedOp::func_string_send() const
     int dst_rank = *(int *)this->op->args[2].val;
     size_t bytes = *(size_t *)this->op->args[3].val;
     stringstream ss;
-    ss << "  ark::comm::send<" << rank << ", " << dst_rank << ", " << eid << ", " << eid << ", "
-       << bytes << ">();\n";
+    ss << "  ark::comm::send<" << rank << ", " << dst_rank << ", " << eid
+       << ", " << eid << ", " << bytes << ">();\n";
     return ss.str();
 }
 
@@ -430,7 +430,8 @@ const string SchedOp::func_string_recv() const
     int rank = *(int *)this->op->args[1].val;
     int src_rank = *(int *)this->op->args[2].val;
     stringstream ss;
-    ss << "  ark::comm::recv<" << rank << ", " << src_rank << ", " << eid << ">();\n";
+    ss << "  ark::comm::recv<" << rank << ", " << src_rank << ", " << eid
+       << ">();\n";
     return ss.str();
 }
 
@@ -440,7 +441,8 @@ const string SchedOp::func_string_send_done() const
     int rank = *(int *)this->op->args[1].val;
     int dst_rank = *(int *)this->op->args[2].val;
     stringstream ss;
-    ss << "  ark::comm::send_done<" << rank << ", " << dst_rank << ", " << eid << ">();\n";
+    ss << "  ark::comm::send_done<" << rank << ", " << dst_rank << ", " << eid
+       << ">();\n";
     return ss.str();
 }
 

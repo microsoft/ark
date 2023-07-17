@@ -37,7 +37,8 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->create_op(OP_SEND_DONE, OP_PREC_NONE, {input}, {output}, {id, this->rank, dst_rank}, name);
+    this->create_op(OP_SEND_DONE, OP_PREC_NONE, {input}, {output},
+                    {id, this->rank, dst_rank}, name);
     return output;
 }
 

@@ -33,8 +33,8 @@ __device__ int _ARK_COMM_SW_SEND_LOCK = 0;
 #endif // (ARK_COMM_SW != 0)
 
 // Send a Request to the proxy.
-template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid, unsigned int DstSid,
-          unsigned long long int Length>
+template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid,
+          unsigned int DstSid, unsigned long long int Length>
 DEVICE void send()
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
@@ -75,7 +75,8 @@ DEVICE void send()
 }
 
 // Poll SC and reset.
-template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid> DEVICE void send_done()
+template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid>
+DEVICE void send_done()
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
@@ -88,7 +89,8 @@ template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid> DEVICE v
 }
 
 //
-template <unsigned int Rank, unsigned int SrcRank, unsigned int DstSid> DEVICE void recv()
+template <unsigned int Rank, unsigned int SrcRank, unsigned int DstSid>
+DEVICE void recv()
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
