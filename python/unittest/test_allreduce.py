@@ -5,7 +5,6 @@ import ark
 import numpy as np
 import multiprocessing
 import unittest
-from parameterized import parameterized
 
 
 def all_reduce_test(rank, np_inputs, world_size, tensor_len):
