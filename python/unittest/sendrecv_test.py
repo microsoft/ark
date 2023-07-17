@@ -15,12 +15,12 @@ def sendrecv_test_one_dir_function(rank, np_inputs):
     print("rank:", rank)
 
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
     if rank == 0:
         model.send(input_tensor, 0, 1, tensor_size)
-        model.send_done(input_tensor, 0)
+        model.send_done(input_tensor, 0, 1)
     if rank == 1:
         model.recv(input_tensor, 0, 0)
     # model.all_reduce(input_tensor, rank, world_size)
@@ -65,12 +65,12 @@ def sendrecv_test_bi_dir_function(rank, np_inputs):
     print("rank:", rank)
     other_rank = 1 - rank
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     send_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
     recv_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
     model.send(send_tensor, rank, other_rank, tensor_size)
-    model.send_done(send_tensor, rank)
+    model.send_done(send_tensor, rank, other_rank)
     model.recv(recv_tensor, other_rank, other_rank)
     # model.all_reduce(input_tensor, rank, world_size)
 

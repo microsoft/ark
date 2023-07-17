@@ -40,8 +40,6 @@ class SchedOp
     const std::string func_string_matmul() const;
     const std::string func_string_send() const;
     const std::string func_string_recv() const;
-    const std::string func_string_signal() const;
-    const std::string func_string_wait() const;
     const std::string func_string_send_done() const;
     const std::string func_string_send_mm() const;
     const std::string func_string_recv_mm() const;

@@ -123,7 +123,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
     py::class_<ark::Model>(m, "Model")
-        .def(py::init<>())
+        .def(py::init<int>(), py::arg("rank"))
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
              py::return_value_policy::reference_internal, py::arg("shape"),
@@ -219,15 +219,6 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("splitk") = 1, py::arg("trans_input") = false,
              py::arg("trans_other") = false, py::arg("is_relu") = false,
              py::arg("name") = "matmul", py::arg("gran_lev") = -1)
-        .def(
-            "linear", &ark::Model::linear,
-            "Implements a linear (fully connected) layer of the neural network "
-            "model Note that support for bias is currently not available.",
-            py::return_value_policy::reference_internal, py::arg("input"),
-            py::arg("out_features"), py::arg("bias") = true,
-            py::arg("output") = nullptr, py::arg("splitk") = 1,
-            py::arg("is_relu") = false, py::arg("name") = "linear",
-            py::arg("gran_lev") = -1)
         .def("im2col", &ark::Model::im2col,
              "Implements the 'im2col' method for 2D convolution layers, which "
              "takes an `input` tensor and reshapes it to a 2D matrix by "
@@ -281,26 +272,26 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "mul")
         .def("send", &ark::Model::send,
-             "Sends a tensor to a destination GPU (`gpu_dst`). Multiple "
+             "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "
              "required to distinguish the tensor. Each 'send' operator must "
              "have a corresponding 'recv' operator that have the same id in "
              "another GPU's model.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("gpu_dst"), py::arg("bytes") = 0,
+             py::arg("id"), py::arg("dst_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "send")
         .def("send_done", &ark::Model::send_done,
              "Blocks the execution until the corresponding 'send' operator "
              "with the specified `id` is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("output") = nullptr,
+             py::arg("id"), py::arg("dst_rank"), py::arg("output") = nullptr,
              py::arg("name") = "send_done")
         .def("recv", &ark::Model::recv,
-             "Receives a tensor from a source GPU (`gpu_src`), identified by "
+             "Receives a tensor from a source GPU (`src_rank`), identified by "
              "the `id` parameter. Blocks the execution until the corresponding "
              "'recv' operator is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
+             py::arg("id"), py::arg("src_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv")
         .def("send_mm", &ark::Model::send_mm,
              "Similar to the 'send_done' function, but implemented using CUDA "

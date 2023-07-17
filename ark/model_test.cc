@@ -22,7 +22,7 @@ ark::unittest::State test_simple_mm()
     ark::Model m;
     ark::Tensor *input = m.tensor({batch_size, channel, in_dim}, ark::FP16);
     ark::Tensor *weight = m.tensor({in_dim, units}, ark::FP16);
-    ark::Tensor *output = m.matmul(input, weight);
+    m.matmul(input, weight);
 
     return ark::unittest::SUCCESS;
 }

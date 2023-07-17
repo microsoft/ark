@@ -17,19 +17,19 @@ namespace ark {
 // Constants.
 enum
 {
-    DOORBELL_INVALID = -1,
+    REQUEST_INVALID = -1,
     MAX_NUM_SID = 256
 };
 
 //
-union alignas(8) Doorbell {
-    uint64_t value = DOORBELL_INVALID;
+union alignas(8) Request {
+    uint64_t value = REQUEST_INVALID;
     struct
     {
         uint64_t req : 2;  // Request type
         uint64_t dst : 8;  // Dst segment ID
         uint64_t src : 8;  // Src segment ID
-        uint64_t cid : 7;  // Connection ID
+        uint64_t rank : 7; // Rank
         uint64_t len : 34; // Length
         uint64_t rsv : 5;  // Unused (reserved)
     } fields;

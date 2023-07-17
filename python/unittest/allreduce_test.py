@@ -11,7 +11,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len):
     print("rank:", rank)
 
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 

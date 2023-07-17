@@ -60,7 +60,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
         ark::unittest::spawn_process([gpu_id, num_gpus, &input_data, &gt, bytes,
                                       iter]() {
             // define model.
-            Model model;
+            Model model{gpu_id};
             Tensor *data = model.tensor(
                 {
                     (ark::DimType)(bytes / sizeof(ark::half_t)),

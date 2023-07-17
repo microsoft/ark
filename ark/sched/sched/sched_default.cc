@@ -211,8 +211,9 @@ void DefaultScheduler::configure_gpu_buf(
                     //
                     Tensor *in = sop.get_op()->in_deps[0];
                     int sid = *(int *)sop.get_op()->args[0].val;
-                    int dst_rank = *(int *)sop.get_op()->args[1].val;
-                    size_t bytes = *(size_t *)sop.get_op()->args[2].val;
+                    int rank = *(int *)sop.get_op()->args[1].val;
+                    int dst_rank = *(int *)sop.get_op()->args[2].val;
+                    size_t bytes = *(size_t *)sop.get_op()->args[3].val;
                     size_t off = in->offset() * in->type_bytes();
                     LOG(DEBUG, "OP_SEND: sid: ", sid, " dst_rank: ", dst_rank,
                         " bytes: ", bytes, " off: ", off);

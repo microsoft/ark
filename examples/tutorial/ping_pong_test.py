@@ -14,7 +14,7 @@ tensor_size = tensor_len * 2
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     # Define the behavior for rank 0
     if rank == 0:
@@ -24,7 +24,7 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         # send the tensor to rank 1
         send_id, dst_rank = 0, 1
         model.send(send_tensor, send_id, dst_rank, tensor_size)
-        model.send_done(send_tensor, send_id)
+        model.send_done(send_tensor, send_id, dst_rank)
 
         # recv the tensor from rank 1
         recv_id, recv_rank = 1, 1
@@ -45,7 +45,7 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         # Send the received tensor back to rank 0 after an identity operation
         send_id, dst_rank = 1, 0
         model.send(send_tensor, send_id, dst_rank, tensor_size)
-        model.send_done(send_tensor, 1)
+        model.send_done(send_tensor, send_id, dst_rank)
 
     # Create an executor for the model
     exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
