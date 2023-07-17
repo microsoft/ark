@@ -51,7 +51,7 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
     np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
 
     print(
-        "layernorm test",
+        "reduce test",
         "batch_size:",
         "{:6d}".format(batch_size),
         "m:",
