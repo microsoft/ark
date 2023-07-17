@@ -328,12 +328,6 @@ class Model
                    DimType splitk = 1, bool trans_input = false,
                    bool trans_other = false, bool is_relu = false,
                    const std::string &name = "matmul", int gran_lev = -1);
-    // Implements a linear (fully connected) layer of the neural network model
-    // Note that support for bias is currently not available.
-    Tensor *linear(Tensor *input, DimType out_features, bool bias = true,
-                   Tensor *output = nullptr, DimType splitk = 1,
-                   bool is_relu = false, const std::string &name = "linear",
-                   int gran_lev = -1);
     // Implements the 'im2col' method for 2D convolution layers, which takes an
     // `input` tensor and reshapes it to a 2D matrix by extracting image patches
     // from the input tensor based on the provided parameters.

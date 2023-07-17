@@ -16,8 +16,7 @@ float gelu(float x)
 }
 
 //
-void test_gelu_internal(unsigned int bs, unsigned int n, unsigned int m,
-                        float val = 0.7)
+void test_gelu_internal(unsigned int bs, unsigned int n, unsigned int m)
 {
     unsigned int len = bs * m * n;
     // Set data.

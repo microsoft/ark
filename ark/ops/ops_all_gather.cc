@@ -44,7 +44,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
             output.push_back(input);
             continue;
         }
-        if (output.size() > gpu_src) {
+        if (output.size() > (size_t)gpu_src) {
             recv_buf = output[gpu_src];
         }
         if (recv_buf == nullptr) {
