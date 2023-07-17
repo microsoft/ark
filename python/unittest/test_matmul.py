@@ -58,7 +58,7 @@ def test_matmul_internal(
     exe.tensor_memcpy_host_to_device(other_tensor, other_tensor_host)
     exe.run(1)
 
-    exe.stop()
+    elapsed = exe.stop()
 
     output_tensor_host = np.zeros((batch_size, m, n), dtype=numpy_data_type)
 
@@ -70,27 +70,29 @@ def test_matmul_internal(
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
     np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
-    # print(input_tensor_host)
-    # print(output_tensor_host)
-    # print(gt)
-    # LOG(ark::INFO, "matmul:", m, 'x', n, 'x', k, "(split_k=", split_k,
-    # ",relu=", is_relu, ",gran_lev=", gran_lev, ") ", setprecision(4),
-    # " mse ", p.first, " max_err ", max_err * 100, "%", " elapsed ", elapsed,
-    # "ms iter ", iter);
+
     print(
-        "matmul test ",
-        "batch_size:",
-        batch_size,
-        "m:",
+        "matmul:",
         m,
-        "n:",
+        "x",
         n,
-        "data_type:",
-        data_type,
-        "max error: ",
-        max_error,
-        "avg error: ",
+        "x",
+        k,
+        "(split_k=",
+        split_k,
+        ", relu=",
+        is_relu,
+        ", gran_lev=",
+        gran_lev,
+        ") ",
+        " mse ",
         avg_error,
+        " max_err ",
+        max_error,
+        " elapsed ",
+        elapsed,
+        " ms iter ",
+        iter,
     )
     return True
 
@@ -98,28 +100,17 @@ def test_matmul_internal(
 class TestMatmul(unittest.TestCase):
     @parameterized.expand(
         [
-            (1, 32, 4, "half"),
-            # (1, 32, 512, "half"),
-            # (1, 64, 4, "half"),
-            # (1, 128, 128, "half"),
-            # (1, 256, 256, "half"),
-            # (1, 512, 512, "half"),
-            # (1, 8, 4),
-            # (1, 128, 128),
-            # (1, 256, 256),
-            # (1, 512, 512),
-            # (1, 1024, 1024),
-            # (1, 4096, 1024),
-            # (1, 1024, 4096),
-            # (2, 64, 64),
-            # (2, 128, 128),
-            # (8, 4096, 1024),
-            # (8, 1024, 4096),
+            (1, 32, 32, 4, "half"),
+            (1, 32, 32, 8, "half"),
+            (1, 64, 64, 4, "half"),
+            (1, 128, 128, 64, "half"),
+            (1, 256, 256, 64, "half"),
+            (1, 512, 512, 128, "half"),
         ]
     )
-    def test_matmul(self, batch_size, m, n, data_type):
+    def test_matmul(self, batch_size, m, n, k, data_type):
         ret = test_matmul_internal(
-            self, batch_size, m, n, n, 1, 1, 1, False, -1, 1, data_type
+            self, batch_size, m, n, k, 1, 1, 1, False, -1, 1, data_type
         )
         self.assertTrue(ret)
 
