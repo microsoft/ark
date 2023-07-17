@@ -75,8 +75,7 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
 
     exe.tensor_memcpy_device_to_host(host_output, output_tensor)
     # return
-    print("host_output:", host_output)
-    # gt = np_inputs[tensor_shard]
+    gt = np.concatenate(np_inputs, axis=0)
 
     max_error = np.max(np.abs(host_output - gt))
     mean_error = np.mean(np.abs(host_output - gt))
