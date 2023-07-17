@@ -12,17 +12,7 @@ tensor_len = 2048
 tensor_size = tensor_len * 2
 
 
-def calculate_errors(arr1, arr2, epsilon=2e-10):
-    abs_errors = np.abs(arr1 - arr2)
-    relative_errors = np.abs(arr1 - arr2) / (
-        np.maximum(np.abs(arr1), np.abs(arr2)) + epsilon
-    )
-    return abs_errors, relative_errors
-
-
-def sendrecv_test_one_dir_function(rank, np_inputs):
-    print("rank:", rank)
-
+def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     # Create a Model instance
     model = ark.Model()
 
@@ -40,18 +30,35 @@ def sendrecv_test_one_dir_function(rank, np_inputs):
     exe.launch()
     if rank == 0:
         exe.tensor_memcpy_host_to_device(input_tensor, np_inputs)
-    exe.run(1)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
     if rank == 1:
         host_output = np.zeros(tensor_len, dtype=np.float16)
         exe.tensor_memcpy_device_to_host(host_output, input_tensor)
-        print("host_output:", host_output)
-        print("np_inputs:", np_inputs)
+
         max_abs_error = np.max(np.abs(host_output - np_inputs))
-        mean_error = np.mean(np.abs(host_output - np_inputs))
-        print("max_abs_error:", max_abs_error)
-        print("mean error:", mean_error)
-    print("rank:", rank, "done")
+        mean_abs_error = np.mean(np.abs(host_output - np_inputs))
+        # The numeric error of half precision of the machine
+        numeric_epsilon_half = np.finfo(np.float16).eps
+        atol = numeric_epsilon_half
+        rtol = atol / (np.max(np.abs(np_inputs)) + numeric_epsilon_half)
+        np.testing.assert_allclose(host_output, np_inputs, rtol=rtol, atol=atol)
+        print(
+            "sendrecv_test_one_dir:",
+            "rank",
+            rank,
+            "tensor_len",
+            "{:6d}".format(tensor_len),
+            "max_abs_error:",
+            "{:.5f}".format(max_abs_error),
+            "mean_abs_error:",
+            "{:.5f}".format(mean_abs_error),
+            "elapsed",
+            "{:.5f}".format(elapsed),
+            " ms ",
+            " iter ",
+            iter,
+        )
 
 
 def sendrecv_test_one_dir():
@@ -70,8 +77,7 @@ def sendrecv_test_one_dir():
         process.join()
 
 
-def sendrecv_test_bi_dir_function(rank, np_inputs):
-    print("rank:", rank)
+def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
     other_rank = 1 - rank
     # Create a Model instance
     model = ark.Model()
@@ -88,23 +94,32 @@ def sendrecv_test_bi_dir_function(rank, np_inputs):
     exe.launch()
     exe.tensor_memcpy_host_to_device(send_tensor, np_inputs[rank])
 
-    exe.run(1)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
 
     host_output = np.zeros(tensor_len, dtype=np.float16)
     exe.tensor_memcpy_device_to_host(host_output, recv_tensor)
-    print("host_output:", host_output)
-    print("np_inputs:", np_inputs[0])
-    abs_errors, relative_errors = calculate_errors(
-        host_output, np_inputs[other_rank]
+
+    gt = np_inputs[other_rank]
+    max_abs_error = np.max(np.abs(host_output - gt))
+    mean_abs_error = np.mean(np.abs(host_output - gt))
+
+    print(
+        "sendrecv_test_bi_dir:",
+        "rank",
+        rank,
+        "tensor_len",
+        "{:6d}".format(tensor_len),
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        " ms ",
+        " iter ",
+        iter,
     )
-
-    max_abs_error = np.max(np.abs(host_output - np_inputs[other_rank]))
-    mean_error = np.mean(np.abs(host_output - np_inputs[other_rank]))
-
-    print("max_abs_error:", max_abs_error)
-    print("mean error:", mean_error)
-    print("rank:", rank, "done")
 
 
 def sendrecv_test_bi_dir():
