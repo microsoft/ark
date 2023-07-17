@@ -21,22 +21,12 @@ else()
 endif()
 
 # black
-find_program(BLACK black)
-if(BLACK)
-    message(STATUS "Found black: ${BLACK}")
-    set(FIND_DIRS
-        ${PROJECT_SOURCE_DIR}/python
-        ${PROJECT_SOURCE_DIR}/examples
-    )
-    add_custom_target(pylint
-        COMMAND ${BLACK} --check --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
-    )
-    add_custom_target(pylint-autofix
-        COMMAND ${BLACK} --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
-    )
-else()
-    message(STATUS "black not found.")
-endif()
+add_custom_target(pylint
+    COMMAND python3.8 -m black --check --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
+)
+add_custom_target(pylint-autofix
+    COMMAND python3.8 -m black --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
+)
 
 # Insert gpumem module
 add_custom_target(gpumem
