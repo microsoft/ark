@@ -88,7 +88,7 @@ def test_matmul_internal(
         ", gran_lev=",
         gran_lev,
         ") ",
-        " max abs error ",
+        " max_abs_error ",
         "{:.5f}".format(max_abs_error),
         " elapsed ",
         " mse ",

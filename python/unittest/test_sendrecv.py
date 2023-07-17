@@ -49,7 +49,7 @@ def sendrecv_test_one_dir_function(rank, np_inputs):
         print("np_inputs:", np_inputs)
         max_abs_error = np.max(np.abs(host_output - np_inputs))
         mean_error = np.mean(np.abs(host_output - np_inputs))
-        print("max abs error:", max_abs_error)
+        print("max_abs_error:", max_abs_error)
         print("mean error:", mean_error)
     print("rank:", rank, "done")
 
@@ -102,7 +102,7 @@ def sendrecv_test_bi_dir_function(rank, np_inputs):
     max_abs_error = np.max(np.abs(host_output - np_inputs[other_rank]))
     mean_error = np.mean(np.abs(host_output - np_inputs[other_rank]))
 
-    print("max abs error:", max_abs_error)
+    print("max_abs_error:", max_abs_error)
     print("mean error:", mean_error)
     print("rank:", rank, "done")
 
