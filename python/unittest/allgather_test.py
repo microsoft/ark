@@ -7,7 +7,6 @@ import multiprocessing
 
 
 def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
-    tensor_size = tensor_len * 2
     print("rank:", rank)
 
     # Create a Model instance
@@ -63,7 +62,6 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
     exe.compile()
 
     exe.launch()
-    print("rank:", rank, " input_tensor:", np_inputs[rank])
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
     exe.run(1)
     exe.stop()
