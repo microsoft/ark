@@ -25,8 +25,8 @@ def all_gather_test_not_inplace(
     exe.launch()
 
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    elapsed = exe.run(iter)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
     max_abs_error = 0
     for tensor_shard in range(world_size):
         # if tensor_shard == rank, then this is a local shard. The allgather_result[tensor_shard] is the same as input_tensor

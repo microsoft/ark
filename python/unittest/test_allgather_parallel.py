@@ -9,7 +9,7 @@ m, n, k = 64, 256, 8
 
 
 # Use all-gather operation to perform tensor parallel matmul
-def all_gather_tensor_parallel(rank, np_inputs, world_size):
+def all_gather_tensor_parallel(rank, np_inputs, world_size, iter=1):
     print("rank:", rank)
 
     # The number of columns per GPU
@@ -57,7 +57,7 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size):
     exe.tensor_memcpy_host_to_device(other_tensor_shard, np_other_shard_copy)
 
     # Run the executor
-    exe.run(1)
+    exe.run(iter)
     elapsed = exe.stop()
 
     # Copy output tensor to host
