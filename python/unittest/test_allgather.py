@@ -7,7 +7,9 @@ import multiprocessing
 import unittest
 
 
-def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
+def all_gather_test_not_inplace(
+    rank, np_inputs, world_size, tensor_len, iter=1
+):
     # Create a Model instance
     model = ark.Model(rank)
 
@@ -23,7 +25,7 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     exe.launch()
 
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    elapsed = exe.run(1)
+    elapsed = exe.run(iter)
     exe.stop()
     max_abs_error = 0
     for tensor_shard in range(world_size):
@@ -37,11 +39,12 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
         max_abs_error = max(max_abs_error, np.max(np.abs(host_output - gt)))
         numeric_epsilon_half = np.finfo(np.float16).eps
         np.testing.assert_allclose(host_output, gt, rtol=numeric_epsilon_half)
-    print("max error:", max_abs_error)
     print(
-        "allgather test",
+        "allgather not-inplace test",
         "world_size:",
         world_size,
+        "rank:",
+        rank,
         "tensor_len:",
         "{:6d}".format(tensor_len),
         "max_abs_error:",
@@ -57,9 +60,7 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     )
 
 
-def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
-    print("rank:", rank)
-
+def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len, iter=1):
     # Create a Model instance
     model = ark.Model(rank)
 
@@ -81,8 +82,8 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(1)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
     host_output = np.zeros(tensor_len * world_size, dtype=np.float16)
 
     exe.tensor_memcpy_device_to_host(host_output, output_tensor)
@@ -90,10 +91,28 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
     gt = np.concatenate(np_inputs, axis=0)
 
     max_abs_error = np.max(np.abs(host_output - gt))
-    mean_error = np.mean(np.abs(host_output - gt))
-    print("max error:", max_abs_error)
-    print("mean error:", mean_error)
-    print("rank:", rank, "done")
+    mean_abs_error = np.mean(np.abs(host_output - gt))
+    print(
+        "allgather-inplace test",
+        "world_size:",
+        world_size,
+        "rank:",
+        rank,
+        "tensor_len:",
+        "{:6d}".format(tensor_len),
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        " ms ",
+        " iter ",
+        iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
+    )
 
 
 def all_gather_test_main(

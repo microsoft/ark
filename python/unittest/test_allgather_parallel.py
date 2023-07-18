@@ -58,7 +58,7 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size):
 
     # Run the executor
     exe.run(1)
-    exe.stop()
+    elapsed = exe.stop()
 
     # Copy output tensor to host
     output_host_trans = np.zeros((n, m), dtype=np.float16)
@@ -76,7 +76,7 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size):
         world_size,
         "rank:",
         rank,
-        "m"
+        "m",
         m,
         "n",
         n,
