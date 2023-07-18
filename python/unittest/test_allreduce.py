@@ -9,8 +9,6 @@ import unittest
 
 def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     tensor_size = tensor_len * 2
-    print("rank:", rank)
-
     # Create a Model instance
     model = ark.Model(rank)
 
@@ -56,6 +54,9 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
         "ms",
         "iter",
         iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
     )
 
 
