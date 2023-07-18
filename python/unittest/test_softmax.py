@@ -48,7 +48,11 @@ def test_softmax_internal(batch_size, m, n, data_type="float", iter=1):
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
-    np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
+    # The numeric error of half precision of the machine
+    numeric_epsilon_half = np.finfo(np.float16).eps
+    np.testing.assert_allclose(
+        output_tensor_host, gt, atol=numeric_epsilon_half
+    )
 
     print(
         "softmax test",

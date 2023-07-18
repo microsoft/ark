@@ -41,8 +41,7 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
         # The numeric error of half precision of the machine
         numeric_epsilon_half = np.finfo(np.float16).eps
         atol = numeric_epsilon_half
-        rtol = atol / (np.max(np.abs(np_inputs)) + numeric_epsilon_half)
-        np.testing.assert_allclose(host_output, np_inputs, rtol=rtol, atol=atol)
+        np.testing.assert_allclose(host_output, np_inputs, atol=atol)
         print(
             "sendrecv_test_one_dir:",
             "rank",
@@ -103,7 +102,9 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
     gt = np_inputs[other_rank]
     max_abs_error = np.max(np.abs(host_output - gt))
     mean_abs_error = np.mean(np.abs(host_output - gt))
-
+    # The numeric error of half precision of the machine
+    numeric_epsilon_half = np.finfo(np.float16).eps
+    np.testing.assert_allclose(host_output, gt, atol=numeric_epsilon_half)
     print(
         "sendrecv_test_bi_dir:",
         "rank",

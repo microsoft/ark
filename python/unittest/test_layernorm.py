@@ -50,7 +50,11 @@ def test_layernorm_internal(batch_size, m, n, data_type="float", iter=1):
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
-    np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-1, atol=1e-1)
+    numeric_epsilon_half = np.finfo(np.float16).eps
+
+    np.testing.assert_allclose(
+        output_tensor_host, gt, atol=numeric_epsilon_half
+    )
 
     print(
         "layernorm test",

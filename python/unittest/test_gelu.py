@@ -43,6 +43,12 @@ def test_gelu_internal(batch_size, m, n, iter=1):
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
 
+    numeric_epsilon_half = np.finfo(np.float16).eps
+
+    np.testing.assert_allclose(
+        output_tensor_host, gt, atol=numeric_epsilon_half
+    )
+
     print(
         "gelu test:",
         "batch_size",
@@ -60,8 +66,9 @@ def test_gelu_internal(batch_size, m, n, iter=1):
         "ms",
         "iter",
         iter,
+        "elapsed per iter",
+        "{:.5f}".format(elapsed / iter),
     )
-    np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-3, atol=1e-3)
 
 
 class TestGelu(unittest.TestCase):

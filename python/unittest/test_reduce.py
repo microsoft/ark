@@ -55,8 +55,7 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
     # divide by zero, here we set it to be numeric_epsilon_half
 
     atol = numeric_epsilon_half * n
-    rtol = atol / (np.max(np.abs(gt)) + numeric_epsilon_half)
-    np.testing.assert_allclose(output_tensor_host, gt, rtol=rtol, atol=atol)
+    np.testing.assert_allclose(output_tensor_host, gt, atol=atol)
 
     print(
         "reduce test",

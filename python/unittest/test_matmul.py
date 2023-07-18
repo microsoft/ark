@@ -67,7 +67,9 @@ def test_matmul_internal(
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
-    # np.testing.assert_allclose(output_tensor_host, gt, rtol=1e-2, atol=1e-2)
+    numeric_epsilon_half = np.finfo(np.float16).eps
+    atol = numeric_epsilon_half * k
+    np.testing.assert_allclose(output_tensor_host, gt, atol=atol)
 
     print(
         "matmul test:",
