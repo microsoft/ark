@@ -9,13 +9,13 @@
 #include <unistd.h>
 
 #include "cpu_timer.h"
+#include "env.h"
 #include "ipc/ipc_mem.h"
 #include "ipc/ipc_shm.h"
 #include "logging.h"
 
 using namespace std;
 
-#define NAME_PREFIX "ark."
 #define NAME_LOCK_POSTFIX ".lock"
 #define NAME_DATA_POSTFIX ".data"
 
@@ -37,7 +37,8 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
     : name{name_}, create{create_}
 {
     assert(name_.size() > 0);
-    string lock_name_str = NAME_PREFIX + name_ + NAME_LOCK_POSTFIX;
+    string lock_name_str =
+        get_env().shm_name_prefix + name_ + NAME_LOCK_POSTFIX;
     const char *lock_name = lock_name_str.c_str();
     int fd;
     if (create_ || try_create) {
@@ -98,14 +99,16 @@ IpcMem::~IpcMem()
 {
     if (this->lock != nullptr) {
         if (this->create) {
-            string lock_name = NAME_PREFIX + this->name + NAME_LOCK_POSTFIX;
+            string lock_name =
+                get_env().shm_name_prefix + this->name + NAME_LOCK_POSTFIX;
             shm_unlink(lock_name.c_str());
         }
         munmap(this->lock, sizeof(IpcLock));
     }
     if (this->addr != nullptr) {
         if (this->create) {
-            string data_name = NAME_PREFIX + this->name + NAME_DATA_POSTFIX;
+            string data_name =
+                get_env().shm_name_prefix + this->name + NAME_DATA_POSTFIX;
             shm_unlink(data_name.c_str());
         }
         munmap(this->addr, this->total_bytes);
@@ -123,7 +126,8 @@ void *IpcMem::alloc(size_t bytes)
         return this->addr;
     }
     // Open the data file.
-    string data_name_str = NAME_PREFIX + this->name + NAME_DATA_POSTFIX;
+    string data_name_str =
+        get_env().shm_name_prefix + this->name + NAME_DATA_POSTFIX;
     const char *data_name = data_name_str.c_str();
     int fd;
     if ((this->total_bytes == 0) && this->create) {
