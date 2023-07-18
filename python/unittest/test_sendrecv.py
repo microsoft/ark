@@ -57,6 +57,9 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
             " ms ",
             " iter ",
             iter,
+            "elapsed_per_iter",
+            "{:.5f}".format(elapsed / iter),
+            " ms ",
         )
 
 

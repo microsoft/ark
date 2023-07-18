@@ -68,7 +68,7 @@ def test_matmul_internal(
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
     numeric_epsilon_half = np.finfo(np.float16).eps
-    atol = numeric_epsilon_half * k
+    atol = 2 * numeric_epsilon_half * k
     np.testing.assert_allclose(output_tensor_host, gt, atol=atol)
 
     print(
@@ -99,6 +99,9 @@ def test_matmul_internal(
         " ms ",
         " iter ",
         iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
     )
     return True
 

@@ -23,8 +23,9 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     exe.launch()
 
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(1)
+    elapsed = exe.run(1)
     exe.stop()
+    max_abs_error = 0
     for tensor_shard in range(world_size):
         # if tensor_shard == rank, then this is a local shard. The allgather_result[tensor_shard] is the same as input_tensor
         host_output = np.zeros(tensor_len, dtype=np.float16)
@@ -33,12 +34,27 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
         )
         gt = np_inputs[tensor_shard]
 
-        max_error = np.max(np.abs(host_output - gt))
-        mean_error = np.mean(np.abs(host_output - gt))
+        max_abs_error = max(max_abs_error, np.max(np.abs(host_output - gt)))
         numeric_epsilon_half = np.finfo(np.float16).eps
-        np.assert_allclose(host_output, gt, rtol=numeric_epsilon_half)
-    print("max error:", max_error)
-    print("mean error:", mean_error)
+        np.testing.assert_allclose(host_output, gt, rtol=numeric_epsilon_half)
+    print("max error:", max_abs_error)
+    print(
+        "allgather test",
+        "world_size:",
+        world_size,
+        "tensor_len:",
+        "{:6d}".format(tensor_len),
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        " ms ",
+        " iter ",
+        iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
+    )
 
 
 def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
@@ -73,9 +89,9 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
 
     gt = np.concatenate(np_inputs, axis=0)
 
-    max_error = np.max(np.abs(host_output - gt))
+    max_abs_error = np.max(np.abs(host_output - gt))
     mean_error = np.mean(np.abs(host_output - gt))
-    print("max error:", max_error)
+    print("max error:", max_abs_error)
     print("mean error:", mean_error)
     print("rank:", rank, "done")
 

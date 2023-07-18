@@ -68,6 +68,7 @@ def test_gelu_internal(batch_size, m, n, iter=1):
         iter,
         "elapsed per iter",
         "{:.5f}".format(elapsed / iter),
+        " ms ",
     )
 
 

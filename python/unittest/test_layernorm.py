@@ -75,6 +75,9 @@ def test_layernorm_internal(batch_size, m, n, data_type="float", iter=1):
         " ms ",
         " iter ",
         iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
     )
 
 
