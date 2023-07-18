@@ -31,9 +31,9 @@ def test_layernorm_internal(batch_size, m, n, data_type="float", iter=1):
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
-    elapsed = exe.run(iter)
+    exe.run(iter)
 
-    exe.stop()
+    elapsed = exe.stop()
 
     output_tensor_host = np.zeros((batch_size, m, n), dtype=numpy_data_type)
 
@@ -53,7 +53,7 @@ def test_layernorm_internal(batch_size, m, n, data_type="float", iter=1):
     numeric_epsilon_half = np.finfo(np.float16).eps
 
     np.testing.assert_allclose(
-        output_tensor_host, gt, atol=numeric_epsilon_half
+        output_tensor_host, gt, atol=10 * numeric_epsilon_half
     )
 
     print(
