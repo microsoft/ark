@@ -51,7 +51,7 @@ def test_layernorm_internal(batch_size, m, n, data_type="float", iter=1):
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
     mean_abs_error = np.mean(np.abs(output_tensor_host - gt))
     numeric_epsilon_half = np.finfo(np.float16).eps
-    # layernorm error is too large now
+    # layernorm half precision error is too large now
     # np.testing.assert_allclose(
     #     output_tensor_host, gt, atol=10 * numeric_epsilon_half
     # )
