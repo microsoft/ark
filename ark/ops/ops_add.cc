@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -51,7 +52,7 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
     } else if (output == input) {
         output = this->identity(output);
     }
-    this->create_op(OP_ADD, pt, {input, other}, {output}, {}, name);
+    this->impl->add_op(OP_ADD, pt, {input, other}, {output}, {}, name);
     return output;
 }
 

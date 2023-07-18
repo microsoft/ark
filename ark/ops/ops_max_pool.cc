@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -29,7 +30,7 @@ Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
     if (output == nullptr) {
         output = this->tensor(os, input->type);
     }
-    this->create_op(OP_MAX_POOL, pt, {input}, {output}, {}, name);
+    this->impl->add_op(OP_MAX_POOL, pt, {input}, {output}, {}, name);
     return output;
 }
 

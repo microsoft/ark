@@ -7,6 +7,7 @@
 using namespace std;
 
 namespace ark {
+
 // create context on gpu for the model
 GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
 {

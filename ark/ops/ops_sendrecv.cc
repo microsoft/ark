@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
 
 using namespace std;
 
@@ -24,8 +24,8 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->create_op(OP_SEND, OP_PREC_NONE, {input}, {output},
-                    {id, this->rank, dst_rank, bytes}, name);
+    this->impl->add_op(OP_SEND, OP_PREC_NONE, {input}, {output},
+                       {id, this->impl->rank, dst_rank, bytes}, name);
     return output;
 }
 
@@ -37,8 +37,8 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->create_op(OP_SEND_DONE, OP_PREC_NONE, {input}, {output},
-                    {id, this->rank, dst_rank}, name);
+    this->impl->add_op(OP_SEND_DONE, OP_PREC_NONE, {input}, {output},
+                       {id, this->impl->rank, dst_rank}, name);
     return output;
 }
 
@@ -59,8 +59,8 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->create_op(OP_RECV, OP_PREC_NONE, {input}, {output},
-                    {id, this->rank, src_rank, bytes}, name);
+    this->impl->add_op(OP_RECV, OP_PREC_NONE, {input}, {output},
+                       {id, this->impl->rank, src_rank, bytes}, name);
     return output;
 }
 

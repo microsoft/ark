@@ -10,11 +10,12 @@
 #include "sched/sched.h"
 #include <algorithm>
 #include <string>
+
 using namespace std;
 
 namespace ark {
 
-class ExecutorMember
+class Executor::Impl
 {
   public:
     GpuMgrCtx *ctx;
@@ -27,51 +28,51 @@ class ExecutorMember
 Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
                    const string &name)
     : gpu_id{gpu_id_}, rank{rank_},
-      world_size{world_size_}, member{make_unique<ExecutorMember>()}
+      world_size{world_size_}, impl{make_unique<Impl>()}
 {
     //
     GpuMgr *mgr = get_gpu_mgr(gpu_id);
     const GpuInfo &ginfo = mgr->get_gpu_info();
     if (get_env().scheduler == "Simple") {
-        this->member->sched =
+        this->impl->sched =
             new SimpleScheduler{gpu_id_, rank_, world_size_, model};
     }
     if (get_env().scheduler == "Default") {
-        this->member->sched =
+        this->impl->sched =
             new DefaultScheduler{gpu_id_, rank_, world_size_, model};
     }
 #ifdef USE_KAHYPAR
     if (get_env().scheduler == "Kahypar") {
-        this->member->sched =
+        this->impl->sched =
             new KahyparScheduler{gpu_id_, rank_, world_size_, model};
     }
 #endif // USE_KAHYPAR
 
-    this->member->ctx = this->member->sched->create_context(name);
-    this->member->stream = this->member->ctx->create_stream();
-    auto codes = this->member->sched->schedule();
-    unsigned int num_depths = this->member->sched->get_num_depths();
+    this->impl->ctx = this->impl->sched->create_context(name);
+    this->impl->stream = this->impl->ctx->create_stream();
+    auto codes = this->impl->sched->schedule();
+    unsigned int num_depths = this->impl->sched->get_num_depths();
 
-    this->member->glk = new GpuLoopKernel{name,
-                                          codes,
-                                          (unsigned int)ginfo.num_sm,
-                                          16,
-                                          (unsigned int)ginfo.smem_block_total,
-                                          "",
-                                          this->member->ctx,
-                                          num_depths};
+    this->impl->glk = new GpuLoopKernel{name,
+                                        codes,
+                                        (unsigned int)ginfo.num_sm,
+                                        16,
+                                        (unsigned int)ginfo.smem_block_total,
+                                        "",
+                                        this->impl->ctx,
+                                        num_depths};
 }
 
 // Destructor.
 Executor::~Executor()
 {
-    if (this->member->glk != nullptr) {
-        delete this->member->glk;
+    if (this->impl->glk != nullptr) {
+        delete this->impl->glk;
     }
-    if (this->member->ctx != nullptr) {
+    if (this->impl->ctx != nullptr) {
         GpuMgr *mgr = get_gpu_mgr(this->gpu_id);
-        mgr->destroy_context(this->member->ctx);
-        this->member->ctx = nullptr;
+        mgr->destroy_context(this->impl->ctx);
+        this->impl->ctx = nullptr;
     }
 }
 
@@ -79,14 +80,14 @@ Executor::~Executor()
 void Executor::compile()
 {
     GpuMgr *mgr = get_gpu_mgr(gpu_id);
-    this->member->glk->compile(mgr->get_gpu_info());
+    this->impl->glk->compile(mgr->get_gpu_info());
 }
 
 // Launch the model (not running yet). This must be called after `compile()`.
 void Executor::launch()
 {
-    this->member->glk->load();
-    GpuState ret = this->member->glk->launch(this->member->stream, false);
+    this->impl->glk->load();
+    GpuState ret = this->impl->glk->launch(this->impl->stream, false);
     if (ret != 0) {
         LOGERR("failed to launch this executor.");
     }
@@ -95,21 +96,21 @@ void Executor::launch()
 // Run the model for `iter` iterations.
 void Executor::run(int iter)
 {
-    this->member->glk->run(iter);
+    this->impl->glk->run(iter);
 }
 
 // Wait for the previous run to finish.
 void Executor::wait()
 {
-    this->member->glk->wait();
+    this->impl->glk->wait();
 }
 
 // Stop the model and return the elapsed time in milliseconds.
 // Once this is called, we need to call `launch()` again to run the model again.
 float Executor::stop()
 {
-    this->member->glk->stop();
-    return this->member->glk->get_elapsed_msec();
+    this->impl->glk->stop();
+    return this->impl->glk->get_elapsed_msec();
 }
 
 // Get the corresponding tensor of the executor from the given model tensor.
@@ -117,13 +118,13 @@ float Executor::stop()
 // out of the original one.
 Tensor *Executor::get_tensor(Tensor *tns) const
 {
-    return this->member->sched->get_tensor(tns);
+    return this->impl->sched->get_tensor(tns);
 }
 
 // Get the corresponding GPU buffer of the executor from the given model tensor.
 GpuBuf *Executor::get_gpu_buf(Tensor *tns) const
 {
-    return this->member->sched->get_gpu_buf(tns);
+    return this->impl->sched->get_gpu_buf(tns);
 }
 
 // Copy contiguous data from a host buffer to the given tensor's (possibly

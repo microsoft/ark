@@ -3,7 +3,8 @@
 
 #include "env.h"
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -44,8 +45,9 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
         },
         INT32);
     send_ready_flag->exported = true;
-    this->create_op(OP_SEND_MM, OP_PREC_NONE, {input, recvbuf, send_ready_flag},
-                    {output}, {id, gpu_dst, bytes}, name);
+    this->impl->add_op(OP_SEND_MM, OP_PREC_NONE,
+                       {input, recvbuf, send_ready_flag}, {output},
+                       {id, gpu_dst, bytes}, name);
 
     return output;
 }
@@ -86,8 +88,9 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
         },
         INT32);
     send_ready_flag->imported = true;
-    this->create_op(OP_RECV_MM, OP_PREC_NONE, {input, recvbuf, send_ready_flag},
-                    {output}, {id, gpu_src, bytes}, name);
+    this->impl->add_op(OP_RECV_MM, OP_PREC_NONE,
+                       {input, recvbuf, send_ready_flag}, {output},
+                       {id, gpu_src, bytes}, name);
     return output;
 }
 

@@ -3,7 +3,8 @@
 
 #include "logging.h"
 #include "math.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -97,8 +98,8 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     DimType spu = math::pad(math::div_up(k, splitk), 32);
     splitk = math::div_up(k, spu);
     if (splitk == 1) {
-        this->create_op(OP_MATMUL, pt, {mat_a, mat_b}, {mat_y},
-                        {trans_a, trans_b, is_relu}, name, gran_lev);
+        this->impl->add_op(OP_MATMUL, pt, {mat_a, mat_b}, {mat_y},
+                           {trans_a, trans_b, is_relu}, name, gran_lev);
         return mat_y;
     } else if (splitk > k) {
         LOGERR("Split-K given larger than the K dimension size.");

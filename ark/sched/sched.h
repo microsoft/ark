@@ -58,7 +58,7 @@ class BaseScheduler
     // of the TensorBuf and stores the TensorBuf information in buf_infos for
     // later use
     virtual void configure_gpu_buf(
-        const std::list<std::unique_ptr<Tensor>> &model_tensors) = 0;
+        const std::list<Tensor *> &model_tensors) = 0;
     virtual Tensor *get_tensor(Tensor *tns) const = 0;
 
   protected:
@@ -116,8 +116,7 @@ class SimpleScheduler : public BaseScheduler
     // _ARK_BUF. This function will configure the allocation, import and export
     // of the TensorBuf and stores the TensorBuf information in buf_infos for
     // later use
-    void configure_gpu_buf(
-        const std::list<std::unique_ptr<Tensor>> &model_tensors);
+    void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
 
   private:
     std::vector<SchedOpSeq> sched_opseqs;
@@ -139,12 +138,16 @@ class DefaultScheduler : public BaseScheduler
     unsigned int get_num_depths() const;
 
   protected:
-    void configure_gpu_buf(
-        const std::list<std::unique_ptr<Tensor>> &model_tensors);
+    void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
     void schedule_depth(std::vector<SchedOpSeq *> &depth,
                         std::vector<Sched> &scheds);
     void schedule_depth_comm(std::vector<SchedOpSeq *> &depth,
                              std::vector<Sched> &scheds);
+    void heuristic_optimize_model(Model &model, Model::Impl *model_impl,
+                                  const GpuInfo &gpu_info, int num_sm);
+    void heuristic_optimize_matmul(Model &model, Model::Impl *model_impl,
+                                   Op &matmul_op, const GpuInfo &gpu_info,
+                                   int num_sm);
 
     size_t dbytes;
     OpGraph *op_graph;

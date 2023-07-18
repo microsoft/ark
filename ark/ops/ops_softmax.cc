@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -28,7 +29,7 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)
     } else if (output == input) {
         output = this->identity(output);
     }
-    this->create_op(OP_SOFTMAX, pt, {input}, {output}, {}, name);
+    this->impl->add_op(OP_SOFTMAX, pt, {input}, {output}, {}, name);
     return output;
 }
 

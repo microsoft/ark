@@ -12,29 +12,12 @@
 #include "env.h"
 #include "logging.h"
 #include "math.h"
-#include "model_io.h"
+#include "model.h"
 #include "sched/sched_opgraph.h"
+
 using namespace std;
 
 namespace ark {
-
-void retrieve_no_virt_dep_ops(const Model &model, const GpuInfo &gpu_info,
-                              const Op *target, set<const Op *> &dep_ops)
-{
-    for (Tensor *tns : target->in_deps) {
-        const Op *op = model.get_gen_op(tns);
-        if (op == nullptr) {
-            // No Op generates this tensor.
-            continue;
-        }
-        const OpConfig *cfg = sched_op_config(op, gpu_info);
-        if (cfg->num_warps == 0) {
-            retrieve_no_virt_dep_ops(model, gpu_info, op, dep_ops);
-        } else {
-            dep_ops.emplace(op);
-        }
-    }
-}
 
 /// Construct an @ref OpGraph from a @ref Model.
 ///
@@ -53,13 +36,13 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
     list<OpGraphNode *> *depth = &(tmp_depth_nodes.front());
     {
         set<Tensor *> final_outputs;
-        for (auto &tns : model.get_tensors()) {
-            if (model.is_no_ref(tns.get())) {
-                final_outputs.emplace(tns.get());
+        for (auto &tns : model.impl->get_tensors()) {
+            if (model.impl->is_no_ref(tns)) {
+                final_outputs.emplace(tns);
             }
         }
         for (Tensor *out : final_outputs) {
-            const Op *op = model.get_gen_op(out);
+            const Op *op = model.impl->get_gen_op(out);
             if (op != nullptr) {
                 const OpConfig *cfg = sched_op_config(op, gpu_info);
                 OpGraphNode *ogn =
@@ -92,7 +75,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                 // requires a global sync before execution.
                 set<const Op *> dep_ops;
                 for (Tensor *tns : opseq.get_last_op()->in_deps) {
-                    const Op *op = model.get_gen_op(tns);
+                    const Op *op = model.impl->get_gen_op(tns);
                     if (op == nullptr) {
                         // No Op generates this tensor.
                         continue;
@@ -100,11 +83,11 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     // Ignore if any output of `op` is referred by an unseen Op.
                     bool is_only = true;
                     for (auto &out_tns : op->out_deps) {
-                        if (model.is_no_ref(out_tns)) {
+                        if (model.impl->is_no_ref(out_tns)) {
                             // `out_tns` is used nowhere. (pass)
                             continue;
                         }
-                        for (auto &ref_op : model.get_ref_ops(out_tns)) {
+                        for (auto &ref_op : model.impl->get_ref_ops(out_tns)) {
                             auto search = seen.find(ref_op);
                             if (search == seen.end()) {
                                 // `out_tns` is used by an unseen Op. (fail)
@@ -133,10 +116,11 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                         // Get all Ops which depends on results of `op`.
                         set<const Op *> out_dep_ops;
                         for (auto &out_tns : op->out_deps) {
-                            if (model.is_no_ref(out_tns)) {
+                            if (model.impl->is_no_ref(out_tns)) {
                                 continue;
                             }
-                            for (auto &ref_op : model.get_ref_ops(out_tns)) {
+                            for (auto &ref_op :
+                                 model.impl->get_ref_ops(out_tns)) {
                                 out_dep_ops.emplace(ref_op);
                             }
                         }
@@ -207,7 +191,8 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                         (*it)->in_deps.emplace(ogn);
 
                         for (Tensor *tns : op->out_deps) {
-                            for (const Op *out_dep : model.get_ref_ops(tns)) {
+                            for (const Op *out_dep :
+                                 model.impl->get_ref_ops(tns)) {
                                 OpGraphNode *out_dep_node =
                                     this->get_node(out_dep);
                                 assert(out_dep_node != nullptr);

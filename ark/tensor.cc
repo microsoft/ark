@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "include/ark.h"
+#include "tensor.h"
 #include "logging.h"
 #include "math.h"
+#include <string>
 
 using namespace std;
 
@@ -229,5 +230,14 @@ bool Tensor::is_sequential() const
 //     j.at("pads").get_to(tns.pads);
 //     j.at("exported").get_to(tns.exported);
 // }
+
+const string type_str(const TensorType &type)
+{
+    if (type == FP16)
+        return "fp16";
+    else if (type == FP32)
+        return "fp32";
+    return "none";
+}
 
 } // namespace ark

@@ -159,112 +159,17 @@ struct Tensor
     // Name of this tensor
     const std::string name;
 };
-// Type of operator.
-typedef enum
-{
-    OP_UNKNOWN = 0,
-    OP_TENSOR,
-    OP_REFER,
-    OP_RESHAPE,
-    OP_MERGE,
-    OP_REDUCE_E_SUM,
-    OP_REDUCE_E_MEAN,
-    OP_REDUCE_E_MAX,
-    OP_REDUCE_W_SUM,
-    OP_REDUCE_W_MEAN,
-    OP_REDUCE_W_MAX,
-    OP_LAYERNORM,
-    OP_SOFTMAX,
-    OP_SCALE,
-    OP_GELU,
-    OP_MATMUL,
-    OP_MAX_POOL,
-    OP_ADD,
-    OP_MUL,
-    OP_IM2COL,
-    OP_TRANSPOSE,
-    OP_SEND,
-    OP_SEND_DONE,
-    OP_RECV,
-    OP_SEND_MM,
-    OP_RECV_MM,
-} OpType;
-// Type of precision of operator.
-typedef enum
-{
-    OP_PREC_NONE,
-    OP_PREC_FP16,
-    OP_PREC_FP32,
-} OpPrecType;
-
-// Type of hardware architecture support.
-typedef enum
-{
-    OP_ARCH_CUDA_70,
-    OP_ARCH_CUDA_80,
-} OpArchType;
-
-// Type of operator argument.
-typedef enum
-{
-    OP_ARG_INT,
-    OP_ARG_INT64,
-    OP_ARG_UINT64,
-    OP_ARG_BOOL,
-    OP_ARG_FLOAT
-} OpArgType;
-// Stores an arbitrary type of argument given to an operator.
-struct OpArg
-{
-    OpArg(int arg);
-    OpArg(DimType arg);
-    OpArg(uint64_t arg);
-    OpArg(bool arg);
-    OpArg(float arg);
-    OpArg(const OpArg &);
-    ~OpArg();
-    //
-    OpArgType type;
-    void *val;
-
-    friend bool operator<(const OpArg &oa1, const OpArg &oa2);
-    friend bool operator==(const OpArg &oa1, const OpArg &oa2);
-};
-
-// The operator of a model.
-struct Op
-{
-    Op(const OpType &type, const OpPrecType &prec_type,
-       const std::vector<Tensor *> &in_deps,
-       const std::vector<Tensor *> &out_deps, const std::vector<OpArg> &args,
-       const std::string &name, int gran_lev);
-    Op(const Op &) = default;
-    //
-    OpType type;
-    // Precision type of the operator.
-    OpPrecType prec_type;
-    // The input tensors of the operator.
-    std::vector<Tensor *> in_deps;
-    // The output tensors of the operator.
-    std::vector<Tensor *> out_deps;
-    // Additional arguments of the operator.
-    std::vector<OpArg> args;
-    std::string name;
-    int gran_lev;
-
-    friend bool operator<(const Op &op1, const Op &op2);
-    friend bool operator==(const Op &op1, const Op &op2);
-};
 
 class Model
 {
   public:
     // Constructors.
-    Model(int rank_ = 0) : rank(rank_)
-    {
-    }
+    Model(int rank_ = 0);
     Model(const Model &) = delete;
     Model &operator=(const Model &) = delete;
+
+    ~Model();
+
     // construct a tensor with given shape and data type.
     Tensor *tensor(const Dims &shape, TensorType dtype,
                    TensorBuf *buf = nullptr, const Dims &ldims = {},
@@ -413,60 +318,19 @@ class Model
     std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
                                      std::vector<Tensor *> output,
                                      const std::string &name);
-    // Create a new TensorBuf object with `bytes` bytes.
-    // A common usage is setting `bytes` to 0 during declaring a model and let
-    // the scheduler determine the value after the model is completely defined.
-    TensorBuf *create_tensor_buf(const DimType bytes = 0);
-    void destroy_tensor_buf(const TensorBuf *buf);
-    // Creates and returns an operator of the specified 'type'. This function
-    // serves as a base function for other model operator functions.
-    Op *create_op(const OpType &type, const OpPrecType &prec_type,
-                  const std::vector<Tensor *> &in_deps,
-                  const std::vector<Tensor *> &out_deps,
-                  const std::vector<OpArg> &args, const std::string &name,
-                  int gran_lev = -1);
 
-    /// Delete an existing operator from the model.
-    /// @param op the existing op to be deleted.
-    void delete_op(Op *op);
-
-    const std::list<std::unique_ptr<TensorBuf>> &get_tensor_bufs() const
-    {
-        return tns_bufs_storage;
-    };
-    const std::list<std::unique_ptr<Tensor>> &get_tensors() const
-    {
-        return tns_storage;
-    };
-    const std::list<std::unique_ptr<Op>> &get_ops() const
-    {
-        return ops_storage;
-    };
-    const Op *get_gen_op(Tensor *tns) const;
-    const std::set<Op *> &get_ref_ops(Tensor *tns) const;
-    bool is_no_ref(Tensor *tns) const;
+  protected:
+    class Impl;
+    friend class OpGraph;
+    friend class SimpleScheduler;
+    friend class DefaultScheduler;
 
   private:
-    /// Rank of this model.
-    const int rank;
-    /// Stores all tensor buffers.
-    std::list<std::unique_ptr<TensorBuf>> tns_bufs_storage;
-    /// Stores all tensors.
-    std::list<std::unique_ptr<Tensor>> tns_storage;
-    /// Stores all operators.
-    std::list<std::unique_ptr<Op>> ops_storage;
-    /// Maps a tensor to its generating operator.
-    std::map<Tensor *, Op *> gen_op;
-    /// Maps a tensor to its referencing operators.
-    std::map<Tensor *, std::set<Op *>> ref_ops;
-    /// Number of assigned EIDs.
-    int next_eid = 0;
-    /// Count the number of tensors requested the same name.
-    std::map<std::string, int> name_cnts;
+    std::unique_ptr<Impl> impl;
 };
 
-class ExecutorMember;
 class GpuBuf;
+
 // Convenience class for executing a model.
 class Executor
 {
@@ -509,11 +373,14 @@ class Executor
     // Print the content of `tns` to stdout.
     void print_tensor(Tensor *tns);
 
+  protected:
+    class Impl;
+
   private:
     const int gpu_id;
     const int rank;
     const int world_size;
-    std::unique_ptr<ExecutorMember> member;
+    std::unique_ptr<Impl> impl;
 };
 
 } // namespace ark

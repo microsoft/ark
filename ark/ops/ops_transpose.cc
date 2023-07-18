@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -73,7 +74,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     } else {
         assert(output->shape == out_shape);
     }
-    this->create_op(OP_TRANSPOSE, pt, {input}, {output}, {tp_type}, name);
+    this->impl->add_op(OP_TRANSPOSE, pt, {input}, {output}, {tp_type}, name);
     return output;
 }
 

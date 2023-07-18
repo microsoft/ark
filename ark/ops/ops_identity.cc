@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
 
 using namespace std;
 
