@@ -124,7 +124,13 @@ int clear_dir(const string &path)
 
 vector<string> list_dir(const string &path)
 {
-    const char *path_c = path.c_str();
+    string path_str;
+    if (path[path.size() - 1] == '/') {
+        path_str = path.substr(0, path.size() - 1);
+    } else {
+        path_str = path;
+    }
+    const char *path_c = path_str.c_str();
     DIR *d = opendir(path_c);
     size_t path_len = strlen(path_c);
     int r = -1;
@@ -180,6 +186,7 @@ void write_file(const string &path, const string &data)
 
 int remove_file(const string &path)
 {
+    LOG(DEBUG, "remove file: ", path);
     return remove(path.c_str());
 }
 
