@@ -53,6 +53,9 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         }
         Tensor *recv = this->recv(this->identity(recv_buf, recv_dep_tensors),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
+        // The output should depend on the recv tensor
+        recv_buf = this->identity(recv_buf, {recv});
+        output[gpu_src] = recv_buf;
     }
 
     this->next_eid += gpu_num * gpu_num;
