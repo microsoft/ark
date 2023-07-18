@@ -5,6 +5,7 @@
 #define ARK_OPS_COMMON_H_
 
 #include <ostream>
+#include <vector>
 
 namespace ark {
 

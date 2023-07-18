@@ -215,7 +215,7 @@ bool Model::Impl::is_no_ref(Tensor *tns) const
 // }
 
 //
-Model::Model(int rank_)
+Model::Model(int rank_) : impl{make_unique<Model::Impl>()}
 {
     this->impl->rank = rank_;
 }
