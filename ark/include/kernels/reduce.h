@@ -35,35 +35,35 @@ DEVICE DataType warpReduce(DataType val)
     DataType res = val;
     DataType tmp;
     if (LanesNum >= 32) {
-        tmp = __shfl_down_sync(0xffffffff, res, 16, 32);
+        tmp = __shfl_xor_sync(0xffffffff, res, 16, 32);
         ReduceType::singleReduce(&res, &res, &tmp);
-        tmp = __shfl_down_sync(0xffffffff, res, 8, 16);
+        tmp = __shfl_xor_sync(0xffffffff, res, 8, 16);
         ReduceType::singleReduce(&res, &res, &tmp);
-        tmp = __shfl_down_sync(0xffffffff, res, 4, 8);
+        tmp = __shfl_xor_sync(0xffffffff, res, 4, 8);
         ReduceType::singleReduce(&res, &res, &tmp);
-        tmp = __shfl_down_sync(0xffffffff, res, 2, 4);
+        tmp = __shfl_xor_sync(0xffffffff, res, 2, 4);
         ReduceType::singleReduce(&res, &res, &tmp);
-        tmp = __shfl_down_sync(0xffffffff, res, 1, 2);
+        tmp = __shfl_xor_sync(0xffffffff, res, 1, 2);
         ReduceType::singleReduce(&res, &res, &tmp);
     } else {
         if (LanesNum > 16) {
-            tmp = __shfl_down_sync(0xffffffff, res, 16, 32);
+            tmp = __shfl_xor_sync(0xffffffff, res, 16, 32);
             ReduceType::singleReduce(&res, &res, &tmp);
         }
         if (LanesNum > 8) {
-            tmp = __shfl_down_sync(0xffffffff, res, 8, 16);
+            tmp = __shfl_xor_sync(0xffffffff, res, 8, 16);
             ReduceType::singleReduce(&res, &res, &tmp);
         }
         if (LanesNum > 4) {
-            tmp = __shfl_down_sync(0xffffffff, res, 4, 8);
+            tmp = __shfl_xor_sync(0xffffffff, res, 4, 8);
             ReduceType::singleReduce(&res, &res, &tmp);
         }
         if (LanesNum > 2) {
-            tmp = __shfl_down_sync(0xffffffff, res, 2, 4);
+            tmp = __shfl_xor_sync(0xffffffff, res, 2, 4);
             ReduceType::singleReduce(&res, &res, &tmp);
         }
         if (LanesNum > 1) {
-            tmp = __shfl_down_sync(0xffffffff, res, 1, 2);
+            tmp = __shfl_xor_sync(0xffffffff, res, 1, 2);
             ReduceType::singleReduce(&res, &res, &tmp);
         }
     }
@@ -232,7 +232,9 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
     }
     static DEVICE void singleIdentity(DataType *v)
     {
-        *v = std::numeric_limits<DataType>::lowest();
+        static const float HALF_FLT_MAX = 65504.F;
+        *v = DataType((std::is_same<DataType, half>::value) ? -HALF_FLT_MAX
+                                                            : -FLT_MAX);
     }
     static DEVICE void singleReduce(DataType *out, const DataType *in0,
                                     const DataType *in1)
@@ -277,7 +279,9 @@ template <> struct ReduceTypeMax<half, 2>
     }
     static DEVICE void singleIdentity(half *v)
     {
-        *v = std::numeric_limits<half>::lowest();
+        static const float HALF_FLT_MAX = 65504.F;
+        *v = DataType((std::is_same<DataType, half>::value) ? -HALF_FLT_MAX
+                                                            : -FLT_MAX);
     }
     static DEVICE void singleReduce(half *out, const half *in0, const half *in1)
     {
