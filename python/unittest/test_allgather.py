@@ -4,10 +4,9 @@
 import ark
 import numpy as np
 import multiprocessing
-
+import unittest
 
 def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
-    print("rank:", rank)
 
     # Create a Model instance
     model = ark.Model(rank)
@@ -36,7 +35,6 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
         mean_error = np.mean(np.abs(host_output - gt))
         print("max error:", max_error)
         print("mean error:", mean_error)
-    print("rank:", rank, "done")
 
 
 def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
@@ -98,11 +96,14 @@ def all_gather_test_main(
     for process in processes:
         process.join()
 
-
+class TestAllgather(unittest.TestCase):
+    def test_allgather_not_inplace(self):
+        all_gather_test_main(2, 2048, all_gather_test_not_inplace)
+        all_gather_test_main(4, 2048, all_gather_test_not_inplace)
+    def test_allgather_inplace(self):
+        all_gather_test_main(2, 2048, all_gather_test_inplace)
+        all_gather_test_main(4, 2048, all_gather_test_inplace)
+        all_gather_test_main(6, 2048, all_gather_test_inplace)
+        all_gather_test_main(8, 2048, all_gather_test_inplace)
 if __name__ == "__main__":
-    all_gather_test_main(2, 2048, all_gather_test_not_inplace)
-    all_gather_test_main(4, 2048, all_gather_test_not_inplace)
-    all_gather_test_main(2, 2048, all_gather_test_inplace)
-    all_gather_test_main(4, 2048, all_gather_test_inplace)
-    all_gather_test_main(6, 2048, all_gather_test_inplace)
-    all_gather_test_main(8, 2048, all_gather_test_inplace)
+    unittest.main()
