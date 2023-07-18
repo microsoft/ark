@@ -15,7 +15,9 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     # The all_gather operation will create the recv tensor shards and return them as a list. The allgather_result[rank] is the same as input_tensor
     allgather_result = model.all_gather(input_tensor, rank, world_size)
 
-    exe = ark.Executor(rank, rank, world_size, model, "all_gather_test_not_inplace")
+    exe = ark.Executor(
+        rank, rank, world_size, model, "all_gather_test_not_inplace"
+    )
     exe.compile()
 
     exe.launch()
