@@ -48,7 +48,7 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         model.send_done(send_tensor, send_id, dst_rank)
 
     # Create an executor for the model
-    exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
+    exe = ark.Executor(rank, rank, world_size, model, "test_sendrecv_ping_pong")
     exe.compile()
 
     # Launch the execution and perform data transfers

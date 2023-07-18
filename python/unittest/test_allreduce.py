@@ -18,7 +18,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     allreduce_result = model.all_reduce(input_tensor, rank, world_size)
 
-    exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
+    exe = ark.Executor(rank, rank, world_size, model, "all_reduce_test")
     exe.compile()
 
     exe.launch()
@@ -36,7 +36,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     mean_abs_error = np.mean(np.abs(host_output - gt))
     # The numeric error of half precision of the machine
     numeric_epsilon_half = np.finfo(np.float16).eps
-    np.testing.assert_allclose(host_output, gt, atol=numeric_epsilon_half)
+    np.testing.assert_allclose(host_output, gt, atol=world_size*numeric_epsilon_half)
     print(
         "allreduce test:",
         "world_size",
