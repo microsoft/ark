@@ -10,7 +10,7 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     print("rank:", rank)
 
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
     # The all_gather operation will create the recv tensor shards and return them as a list. The allgather_result[rank] is the same as input_tensor
@@ -43,7 +43,7 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
     print("rank:", rank)
 
     # Create a Model instance
-    model = ark.Model()
+    model = ark.Model(rank)
 
     # input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 

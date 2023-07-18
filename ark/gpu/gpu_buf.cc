@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#include "ark/gpu/gpu_buf.h"
+#include "gpu/gpu_buf.h"
 
 using namespace std;
 

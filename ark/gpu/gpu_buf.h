@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "ark/gpu/gpu_mem.h"
+#include "gpu/gpu_mem.h"
 
 namespace ark {
 

@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "ark/ipc/ipc_mem.h"
+#include "ipc/ipc_mem.h"
 
 namespace ark {
 

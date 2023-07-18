@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/kahypar.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/sched/sched.h"
+#include "kahypar.h"
+#include "logging.h"
+#include "math.h"
+#include "sched/sched.h"
 
 using namespace std;
 

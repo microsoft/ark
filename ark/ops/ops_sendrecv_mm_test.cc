@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/gpu/gpu_logging.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/logging.h"
-#include "ark/sched/sched.h"
-#include "ark/unittest/unittest_utils.h"
+#include "gpu/gpu_kernel.h"
+#include "gpu/gpu_logging.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "logging.h"
+#include "sched/sched.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 using namespace ark;

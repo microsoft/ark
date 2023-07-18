@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/logging.h"
-#include "ark/unittest/unittest_utils.h"
+#include "gpu/gpu_kernel.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "logging.h"
+#include "unittest/unittest_utils.h"
 
 using namespace std;
 using namespace ark;
@@ -60,7 +60,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
         ark::unittest::spawn_process([gpu_id, num_gpus, &input_data, &gt, bytes,
                                       iter]() {
             // define model.
-            Model model;
+            Model model{gpu_id};
             Tensor *data = model.tensor(
                 {
                     (ark::DimType)(bytes / sizeof(ark::half_t)),

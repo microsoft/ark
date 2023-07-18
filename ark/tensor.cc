@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/include/ark.h"
-#include "ark/logging.h"
-#include "ark/math.h"
+#include "include/ark.h"
+#include "logging.h"
+#include "math.h"
 
 using namespace std;
 
@@ -180,7 +180,6 @@ bool Tensor::is_sequential() const
     // if a tensor's last (ndims-1) shape is the same as its ldims, the tensor
     // is sequential
     int ndims = this->shape.ndims();
-    int cnt = 0;
     for (int i = 1; i < ndims; ++i) {
         if (this->shape[i] != this->ldims[i]) {
             return false;

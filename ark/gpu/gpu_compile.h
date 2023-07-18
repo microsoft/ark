@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "ark/gpu/gpu_mgr.h"
+#include "gpu/gpu_mgr.h"
 
 namespace ark {
 

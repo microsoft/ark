@@ -4,13 +4,13 @@
 #include <cassert>
 #include <cerrno>
 
-#include "ark/cpu_timer.h"
-#include "ark/env.h"
-#include "ark/gpu/gpu_comm_sw.h"
-#include "ark/gpu/gpu_logging.h"
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/ipc/ipc_coll.h"
-#include "ark/ipc/ipc_hosts.h"
+#include "cpu_timer.h"
+#include "env.h"
+#include "gpu/gpu_comm_sw.h"
+#include "gpu/gpu_logging.h"
+#include "gpu/gpu_mgr.h"
+#include "ipc/ipc_coll.h"
+#include "ipc/ipc_hosts.h"
 
 using namespace std;
 
@@ -20,10 +20,10 @@ namespace ark {
 GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
                      const int world_size_, GpuMem *data_mem, GpuMem *sc_rc_mem)
     : name{name_}, gpu_id{gpu_id_}, rank{rank_},
-      world_size{world_size_}, doorbell{new Doorbell}
+      world_size{world_size_}, request{new Request}
 {
-    // Register `this->doorbell` as a mapped & pinned address.
-    CULOG(cuMemHostRegister((void *)this->doorbell, sizeof(Doorbell),
+    // Register `this->request` as a mapped & pinned address.
+    CULOG(cuMemHostRegister((void *)this->request, sizeof(request),
                             CU_MEMHOSTREGISTER_DEVICEMAP));
 
     // Reserve entries for GPU communication stack information.
@@ -60,10 +60,10 @@ GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
 
 GpuCommSw::~GpuCommSw()
 {
-    this->stop_doorbell_loop();
-    if (this->doorbell != nullptr) {
-        cuMemHostUnregister((void *)this->doorbell);
-        delete this->doorbell;
+    this->stop_request_loop();
+    if (this->request != nullptr) {
+        cuMemHostUnregister((void *)this->request);
+        delete this->request;
     }
     delete this->ipc_socket;
 }
@@ -287,28 +287,28 @@ void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
 }
 
 //
-void GpuCommSw::launch_doorbell_loop()
+void GpuCommSw::launch_request_loop()
 {
-    if (this->doorbell_loop_thread == nullptr) {
-        this->run_doorbell_loop_thread = true;
-        this->doorbell_loop_thread = new thread([&, gid = this->gpu_id] {
+    if (this->request_loop_thread == nullptr) {
+        this->run_request_loop_thread = true;
+        this->request_loop_thread = new thread([&, gid = this->gpu_id] {
             //
             GpuState ret = get_gpu_mgr(gid)->set_current();
             if (ret == CUDA_SUCCESS) {
                 //
-                this->doorbell_loop();
+                this->request_loop();
             } else if (ret != CUDA_ERROR_DEINITIALIZED) {
                 CULOG(ret);
             }
         });
-        assert(this->doorbell_loop_thread != nullptr);
+        assert(this->request_loop_thread != nullptr);
     } else {
-        assert(this->run_doorbell_loop_thread);
+        assert(this->run_request_loop_thread);
     }
 }
 
 //
-void GpuCommSw::doorbell_loop()
+void GpuCommSw::request_loop()
 {
     const size_t sc_offset = 0;
     const size_t rc_offset = MAX_NUM_SID * sizeof(int);
@@ -341,10 +341,10 @@ void GpuCommSw::doorbell_loop()
     bool is_idle = false;
     unsigned int busy_counter = 0;
     const unsigned int max_busy_counter = 3000000000;
-    // Doorbell pointer.
-    volatile uint64_t *db_val = &(this->doorbell->value);
-    // Doorbell processing loop.
-    while (this->run_doorbell_loop_thread) {
+    // Request pointer.
+    volatile uint64_t *db_val = &(this->request->value);
+    // Request processing loop.
+    while (this->run_request_loop_thread) {
         int wcn = 0;
         if (is_using_ib) {
             wcn = this->net_ib_mgr->poll_cq();
@@ -382,7 +382,7 @@ void GpuCommSw::doorbell_loop()
             LOGERR("poll_cq() returns ", wcn);
         }
         uint64_t v = *db_val;
-        if (v == (uint64_t)DOORBELL_INVALID) {
+        if (v == (uint64_t)REQUEST_INVALID) {
             if (wcn == 0) {
                 if (is_idle) {
                     if (cpu_ntimer_sleep(0) != 0) {
@@ -395,39 +395,39 @@ void GpuCommSw::doorbell_loop()
             }
             continue;
         }
-        *db_val = (uint64_t)DOORBELL_INVALID;
-        Doorbell &db = (Doorbell &)v;
-        LOG(DEBUG, "Doorbell arrived.");
+        *db_val = (uint64_t)REQUEST_INVALID;
+        Request &db = (Request &)v;
+        LOG(DEBUG, "Request arrived.");
         //
         GpuPtr src = this->addr_table[this->gpu_id][db.fields.src];
         if (src == 0) {
             LOGERR("Invalid SRC SID ", db.fields.src, " in GPU ", this->gpu_id);
         }
-        LOG(DEBUG, "Doorbell SRC: RANK ", this->rank, ", sid ", db.fields.src,
+        LOG(DEBUG, "Request SRC: RANK ", this->rank, ", sid ", db.fields.src,
             ", ", (void *)src);
         GpuPtr dst = 0;
         // TODO: generalize converting rank to GPU ID.
         int nrph = get_env().num_ranks_per_host;
-        int gid_dst = db.fields.cid % nrph;
-        if ((db.fields.cid / nrph) != (this->rank / nrph)) {
+        int gid_dst = db.fields.rank % nrph;
+        if ((db.fields.rank / nrph) != (this->rank / nrph)) {
             // This GPU is not in this machine.
             gid_dst = -1;
-            LOG(DEBUG, "Doorbell DST: RANK ", db.fields.cid, ", sid ",
+            LOG(DEBUG, "Request DST: RANK ", db.fields.rank, ", sid ",
                 db.fields.dst, ", remote");
         } else {
             dst = this->addr_table[gid_dst][db.fields.dst];
             if (dst == 0) {
                 LOGERR("Invalid DST SID ", db.fields.dst, " in GPU ", gid_dst);
             }
-            LOG(DEBUG, "Doorbell DST: RANK ", db.fields.cid, ", sid ",
+            LOG(DEBUG, "Request DST: RANK ", db.fields.rank, ", sid ",
                 db.fields.dst, ", ", (void *)dst);
         }
-        LOG(DEBUG, "Doorbell LEN: ", db.fields.len);
+        LOG(DEBUG, "Request LEN: ", db.fields.len);
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {
             CULOG(cuMemcpyDtoD(dst, src, db.fields.len));
-            GpuMem *mem = this->get_sc_rc_mem(db.fields.cid);
+            GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
             volatile int *rc_array = (volatile int *)mem->href(rc_offset);
             if (rc_array != nullptr) {
                 rc_array[db.fields.dst] = 1;
@@ -438,10 +438,10 @@ void GpuCommSw::doorbell_loop()
             }
             sc_href[db.fields.src] = 1;
         } else {
-            NetIbQp *qp = this->qps[db.fields.cid];
+            NetIbQp *qp = this->qps[db.fields.rank];
             int ret = qp->stage_send(
                 this->sid_mrs[db.fields.src],
-                &this->mris[db.fields.cid][db.fields.dst], db.fields.len,
+                &this->mris[db.fields.rank][db.fields.dst], db.fields.len,
                 (db.fields.src << sid_shift), db.fields.dst);
             if (ret != 1) {
                 LOGERR("stage_send() returns ", ret);
@@ -451,7 +451,7 @@ void GpuCommSw::doorbell_loop()
                 LOGERR("post_send() returns ", ret);
             }
         }
-        LOG(DEBUG, "Doorbell processed.");
+        LOG(DEBUG, "Request processed.");
         //
         is_idle = false;
         busy_counter = 0;
@@ -459,23 +459,23 @@ void GpuCommSw::doorbell_loop()
 }
 
 //
-void GpuCommSw::stop_doorbell_loop()
+void GpuCommSw::stop_request_loop()
 {
-    this->run_doorbell_loop_thread = false;
-    if (this->doorbell_loop_thread != nullptr) {
-        if (this->doorbell_loop_thread->joinable()) {
-            this->doorbell_loop_thread->join();
+    this->run_request_loop_thread = false;
+    if (this->request_loop_thread != nullptr) {
+        if (this->request_loop_thread->joinable()) {
+            this->request_loop_thread->join();
         }
-        delete this->doorbell_loop_thread;
-        this->doorbell_loop_thread = nullptr;
+        delete this->request_loop_thread;
+        this->request_loop_thread = nullptr;
     }
 }
 
 //
-void GpuCommSw::set_doorbell(const Doorbell &db)
+void GpuCommSw::set_request(const Request &db)
 {
-    if (this->doorbell != nullptr) {
-        *(this->doorbell) = db;
+    if (this->request != nullptr) {
+        *(this->request) = db;
     }
 }
 
@@ -549,10 +549,10 @@ IpcMem *GpuCommSw::get_info(const int gid)
 }
 
 //
-GpuPtr GpuCommSw::get_doorbell_ref() const
+GpuPtr GpuCommSw::get_request_ref() const
 {
     GpuPtr ref;
-    CULOG(cuMemHostGetDevicePointer(&ref, this->doorbell, 0));
+    CULOG(cuMemHostGetDevicePointer(&ref, this->request, 0));
     return ref;
 }
 

@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/include/ark.h"
-#include "ark/include/ark_utils.h"
-#include "ark/logging.h"
-#include "ark/unittest/unittest_utils.h"
+#include "gpu/gpu_kernel.h"
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "logging.h"
+#include "unittest/unittest_utils.h"
 #include <cmath>
 
 using namespace std;
@@ -16,8 +16,7 @@ float gelu(float x)
 }
 
 //
-void test_gelu_internal(unsigned int bs, unsigned int n, unsigned int m,
-                        float val = 0.7)
+void test_gelu_internal(unsigned int bs, unsigned int n, unsigned int m)
 {
     unsigned int len = bs * m * n;
     // Set data.

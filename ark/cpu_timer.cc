@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/cpu_timer.h"
-#include "ark/logging.h"
+#include "cpu_timer.h"
+#include "logging.h"
 #include <iostream>
 #include <time.h>
 

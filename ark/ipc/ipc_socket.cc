@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "ark/ipc/ipc_socket.h"
-#include "ark/logging.h"
+#include "ipc/ipc_socket.h"
+#include "logging.h"
 
 #define MAX_LISTEN_LEN 4096
 #define MAX_ITEM_NAME_LEN 256

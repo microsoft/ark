@@ -455,7 +455,7 @@ int main(int argc, const char **argv)
         pids.emplace_back(ark::utils::proc_spawn([&] {
             ark::srand(args.seed);
 
-            Model model;
+            Model model{gpu_id};
             Trainer trainer{model, args.dims, args.batch_size, gpu_id,
                             args.num_gpus};
             trainer.init_data();

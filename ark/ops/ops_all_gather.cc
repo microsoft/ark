@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/model_io.h"
+#include "logging.h"
+#include "math.h"
+#include "model_io.h"
 
 using namespace std;
 
@@ -30,7 +30,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         Tensor *send_tensor =
             this->send(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
         Tensor *send_done_tensor =
-            this->send_done(input, base + gpu_id * gpu_num + gpu_dst);
+            this->send_done(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
         recv_dep_tensors.push_back(send_tensor);
         recv_dep_tensors.push_back(send_done_tensor);
     }
@@ -44,7 +44,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
             output.push_back(input);
             continue;
         }
-        if (output.size() > gpu_src) {
+        if (output.size() > (size_t)gpu_src) {
             recv_buf = output[gpu_src];
         }
         if (recv_buf == nullptr) {

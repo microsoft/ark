@@ -4,12 +4,12 @@
 #ifndef ARK_SCHED_H_
 #define ARK_SCHED_H_
 
-#include "ark/gpu/gpu_kernel.h"
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/sched/sched_codegen.h"
-#include "ark/sched/sched_opgraph.h"
-#include "ark/sched/sched_profiler.h"
+#include "gpu/gpu_kernel.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "sched/sched_codegen.h"
+#include "sched/sched_opgraph.h"
+#include "sched/sched_profiler.h"
 
 namespace ark {
 
@@ -64,7 +64,6 @@ class BaseScheduler
   protected:
     GpuMgr *gpu_mgr;
 
-    // Model model;
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
     // map from TensorBuf to gpu buffer, the TensorBuf is an abstract of the

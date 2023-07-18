@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "ark/file_io.h"
-#include "ark/logging.h"
+#include "file_io.h"
+#include "logging.h"
 
 using namespace std;
 
@@ -98,7 +98,6 @@ int clear_dir(const string &path)
 {
     const char *path_c = path.c_str();
     DIR *d = opendir(path_c);
-    size_t path_len = strlen(path_c);
     int r = -1;
 
     if (d) {

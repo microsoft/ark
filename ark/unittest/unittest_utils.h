@@ -10,9 +10,9 @@
 #include <string>
 #include <thread>
 
-#include "ark/cpu_timer.h"
-#include "ark/gpu/gpu_buf.h"
-#include "ark/logging.h"
+#include "cpu_timer.h"
+#include "gpu/gpu_buf.h"
+#include "logging.h"
 
 namespace ark {
 namespace unittest {

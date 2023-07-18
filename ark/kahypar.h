@@ -15,8 +15,8 @@
 #include <string>
 #include <vector>
 
-#include "ark/env.h"
-#include "ark/logging.h"
+#include "env.h"
+#include "logging.h"
 #include "third_party/kahypar/include/libkahypar.h"
 
 namespace ark {

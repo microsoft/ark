@@ -8,11 +8,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "third_party/gpudma/module/gpumemioctl.h"
+#include "gpumemioctl.h"
 #define GPUMEM_DRIVER_PATH "/dev/" GPUMEM_DRIVER_NAME
 
-#include "ark/gpu/gpu_logging.h"
-#include "ark/gpu/gpu_mem.h"
+#include "gpu/gpu_logging.h"
+#include "gpu/gpu_mem.h"
 
 using namespace std;
 

@@ -7,7 +7,7 @@
 #include <unistd.h>
 #define gettid() syscall(SYS_gettid)
 
-#include "ark/include/ark.h"
+#include "include/ark.h"
 
 namespace ark {
 

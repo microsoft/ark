@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/env.h"
-#include "ark/logging.h"
-#include "ark/math.h"
-#include "ark/sched/sched.h"
+#include "env.h"
+#include "logging.h"
+#include "math.h"
+#include "sched/sched.h"
 
 using namespace std;
 
@@ -211,8 +211,9 @@ void DefaultScheduler::configure_gpu_buf(
                     //
                     Tensor *in = sop.get_op()->in_deps[0];
                     int sid = *(int *)sop.get_op()->args[0].val;
-                    int dst_rank = *(int *)sop.get_op()->args[1].val;
-                    size_t bytes = *(size_t *)sop.get_op()->args[2].val;
+                    int rank = *(int *)sop.get_op()->args[1].val;
+                    int dst_rank = *(int *)sop.get_op()->args[2].val;
+                    size_t bytes = *(size_t *)sop.get_op()->args[3].val;
                     size_t off = in->offset() * in->type_bytes();
                     LOG(DEBUG, "OP_SEND: sid: ", sid, " dst_rank: ", dst_rank,
                         " bytes: ", bytes, " off: ", off);

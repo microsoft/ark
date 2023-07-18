@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/include/ark.h"
-#include "ark/unittest/unittest_utils.h"
+#include "include/ark.h"
+#include "unittest/unittest_utils.h"
 
 #define ITERATION 1
 
@@ -20,9 +20,9 @@ ark::unittest::State test_simple_mm()
     unsigned int batch_size = 1;
 
     ark::Model m;
-    ark::Tensor *input = m.tensor({batch_size, channel, 1, in_dim}, ark::FP16);
-    ark::Tensor *weight = m.tensor({1, in_dim, 1, units}, ark::FP16);
-    ark::Tensor *output = m.matmul(input, weight);
+    ark::Tensor *input = m.tensor({batch_size, channel, in_dim}, ark::FP16);
+    ark::Tensor *weight = m.tensor({in_dim, units}, ark::FP16);
+    m.matmul(input, weight);
 
     return ark::unittest::SUCCESS;
 }

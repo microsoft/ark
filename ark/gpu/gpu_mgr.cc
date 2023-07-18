@@ -12,11 +12,11 @@
 
 #include <nvml.h>
 
-#include "ark/env.h"
-#include "ark/gpu/gpu_logging.h"
-#include "ark/gpu/gpu_mgr.h"
-#include "ark/include/ark.h"
-#include "ark/math.h"
+#include "env.h"
+#include "gpu/gpu_logging.h"
+#include "gpu/gpu_mgr.h"
+#include "include/ark.h"
+#include "math.h"
 
 using namespace std;
 
@@ -403,12 +403,12 @@ void GpuMgrCtx::freeze()
     //
     if (this->comm_sw != nullptr) {
         this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
-        this->comm_sw->launch_doorbell_loop();
+        this->comm_sw->launch_request_loop();
     }
 }
 
-// Write a doorbell.
-void GpuMgrCtx::send(int src, int dst, int cid, size_t bytes)
+// Write a request.
+void GpuMgrCtx::send(int src, int dst, int rank, size_t bytes)
 {
     // Wait for the send completion.
     volatile int *sc = this->get_sc_href(src);
@@ -416,15 +416,15 @@ void GpuMgrCtx::send(int src, int dst, int cid, size_t bytes)
     }
     *sc = 0;
 
-    Doorbell db;
+    Request db;
     db.fields.req = 0;
     db.fields.dst = dst;
     db.fields.src = src;
-    db.fields.cid = cid;
+    db.fields.rank = rank;
     db.fields.len = bytes;
     db.fields.rsv = 0;
     if (this->comm_sw != nullptr) {
-        this->comm_sw->set_doorbell(db);
+        this->comm_sw->set_request(db);
     }
 }
 
@@ -473,10 +473,10 @@ GpuPtr GpuMgrCtx::get_rc_ref(int sid) const
 }
 
 //
-GpuPtr GpuMgrCtx::get_doorbell_ref() const
+GpuPtr GpuMgrCtx::get_request_ref() const
 {
     if (this->comm_sw != nullptr) {
-        return this->comm_sw->get_doorbell_ref();
+        return this->comm_sw->get_request_ref();
     } else {
         LOGERR("Unexpected error.");
     }
