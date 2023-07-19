@@ -123,7 +123,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
     py::class_<ark::Model>(m, "Model")
-        .def(py::init<int>(), py::arg("rank"))
+        .def(py::init<int>(), py::arg("rank") = 0)
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
              py::return_value_policy::reference_internal, py::arg("shape"),

@@ -19,7 +19,7 @@ def test_PoswiseFeedForwardNet():
     ark_model = transformer_ark.PoswiseFeedForwardNet(model)
     output_tensor = ark_model.forward(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
+    exe = ark.Executor(0, 0, 1, model, "test_PoswiseFeedForwardNet")
     exe.compile()
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
@@ -103,7 +103,7 @@ def test_ScaledDotProductAttention():
     context, attn = ark_model.forward(Q, K, V, attn_mask)
 
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
+    exe = ark.Executor(0, 0, 1, model, "test_ScaledDotProductAttention")
     exe.compile()
     Q_host = ((np.random.rand(batch_size, n_heads, seq_len, d_k) - 0.5)).astype(
         np.float16
@@ -208,7 +208,7 @@ def test_MultiHeadAttention():
 
     context, attn = ark_model.forward(Q, K, V, attn_mask)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
+    exe = ark.Executor(0, 0, 1, model, "test_MultiHeadAttention")
     exe.compile()
     Q_host = ((np.random.rand(batch_size, seq_len, d_model) - 0.5)).astype(
         np.float16
@@ -324,7 +324,7 @@ def test_EncoderLayer():
 
     context, attn = ark_model.forward(enc_inputs, attn_mask)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
+    exe = ark.Executor(0, 0, 1, model, "test_EncoderLayer")
     exe.compile()
     enc_inputs_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5)
@@ -441,7 +441,7 @@ def test_Encoder():
 
     context, attns = ark_model.forward(enc_inputs, attn_mask)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_python_bindings")
+    exe = ark.Executor(0, 0, 1, model, "test_Encoder")
     exe.compile()
     enc_inputs_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5)

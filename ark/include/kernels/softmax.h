@@ -35,8 +35,8 @@ struct Softmax
     // TODO(chhwang): support NelemPerThread > 1.
     static_assert(NelemPerThread == 1, "Unimplemented");
 
-    static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
-                           int tw)
+    static DEVICE void run(DataType *out, const DataType *in, int tn, int tc,
+                           int th, int tw)
     {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
         using ReduceTypeMax = ReduceTypeMax<DataType, NelemPerThread>;
