@@ -336,9 +336,8 @@ class Executor
 {
   public:
     // Constructor.
-
     Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
-             const std::string &name);
+             const std::string &name, int num_warps_per_sm_ = 16);
     ~Executor();
     // Compile the model. This must be called before `launch()`.
     void compile();
@@ -356,10 +355,6 @@ class Executor
     // Get the corresponding GPU buffer of the executor from the given model
     // tensor.
     GpuBuf *get_gpu_buf(Tensor *tns) const;
-    // Get the corresponding tensor of the executor from the given model tensor.
-    // Both tensors may be different if the scheduler creates an optimized model
-    // out of the original one.
-    Tensor *get_tensor(Tensor *tns) const;
     // Copy contiguous data from a host buffer to the given tensor's (possibly
     // non-contiguous) data range on GPU.
     void tensor_memcpy(Tensor *tns, const void *src, size_t bytes);

@@ -120,7 +120,7 @@ vector<string> SimpleScheduler::schedule()
 //
 GpuBuf *SimpleScheduler::get_gpu_buf(Tensor *tns) const
 {
-    auto search = this->buf_trans.find(this->get_tensor(tns)->buf);
+    auto search = this->buf_trans.find(tns->buf);
     if (search == buf_trans.end()) {
         return nullptr;
     }

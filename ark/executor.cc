@@ -26,7 +26,7 @@ class Executor::Impl
 
 // Constructor.
 Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
-                   const string &name)
+                   const string &name, int num_warps_per_sm_)
     : gpu_id{gpu_id_}, rank{rank_},
       world_size{world_size_}, impl{make_unique<Impl>()}
 {
@@ -56,7 +56,7 @@ Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
     this->impl->glk = new GpuLoopKernel{name,
                                         codes,
                                         (unsigned int)ginfo.num_sm,
-                                        16,
+                                        (unsigned int)num_warps_per_sm_,
                                         (unsigned int)ginfo.smem_block_total,
                                         "",
                                         this->impl->ctx,
@@ -113,14 +113,6 @@ float Executor::stop()
     return this->impl->glk->get_elapsed_msec();
 }
 
-// Get the corresponding tensor of the executor from the given model tensor.
-// Both tensors may be different if the scheduler creates an optimized model
-// out of the original one.
-Tensor *Executor::get_tensor(Tensor *tns) const
-{
-    return this->impl->sched->get_tensor(tns);
-}
-
 // Get the corresponding GPU buffer of the executor from the given model tensor.
 GpuBuf *Executor::get_gpu_buf(Tensor *tns) const
 {
@@ -135,7 +127,7 @@ void Executor::tensor_memcpy(Tensor *dst, const void *src, size_t bytes)
     if (buf == nullptr) {
         LOGERR("failed to get GPU buffer for tensor ", dst->id);
     }
-    Tensor *tns = this->get_tensor(dst);
+    Tensor *tns = dst;
     if (bytes > (size_t)tns->shape_bytes()) {
         LOGERR("the given number of bytes (", bytes,
                ") is larger than the tensor size (", tns->shape_bytes(), ")");
@@ -196,7 +188,7 @@ void Executor::tensor_memcpy(void *dst, Tensor *src, size_t bytes)
     if (buf == nullptr) {
         LOGERR("failed to get GPU buffer for tensor ", src->id);
     }
-    Tensor *tns = this->get_tensor(src);
+    Tensor *tns = src;
     if (bytes == 0) {
         bytes = tns->shape_bytes();
     } else if (bytes > (size_t)tns->shape_bytes()) {
@@ -256,23 +248,22 @@ void Executor::tensor_clear(Tensor *tns)
     if (buf == nullptr) {
         LOGERR("failed to get GPU buffer for tensor ", tns->id);
     }
-    Tensor *_tns = this->get_tensor(tns);
-    int ndims = _tns->ndims();
-    size_t bytes = _tns->shape_bytes();
+    int ndims = tns->ndims();
+    size_t bytes = tns->shape_bytes();
     assert(bytes % 4 == 0);
     size_t num = bytes >> 2;
     if (ndims == 1) {
-        gpu_memset(buf->ref(_tns->offset_bytes(0)), 0, num);
+        gpu_memset(buf->ref(tns->offset_bytes(0)), 0, num);
         return;
     }
     size_t done = 0;
     size_t rem = num;
-    for (DimType i = 0; i < _tns->shape[0]; ++i) {
+    for (DimType i = 0; i < tns->shape[0]; ++i) {
         if (ndims == 2) {
-            bytes = (size_t)_tns->shape[1] * _tns->type_bytes();
+            bytes = (size_t)tns->shape[1] * tns->type_bytes();
             assert(bytes % 4 == 0);
             size_t cn = min(rem, bytes >> 2);
-            gpu_memset(buf->ref(_tns->offset_bytes(i, 0)), 0, cn);
+            gpu_memset(buf->ref(tns->offset_bytes(i, 0)), 0, cn);
             rem -= cn;
             done += cn;
             if (rem == 0) {
@@ -280,12 +271,12 @@ void Executor::tensor_clear(Tensor *tns)
             }
             continue;
         }
-        for (DimType j = 0; j < _tns->shape[1]; ++j) {
+        for (DimType j = 0; j < tns->shape[1]; ++j) {
             if (ndims == 3) {
-                bytes = (size_t)_tns->shape[2] * _tns->type_bytes();
+                bytes = (size_t)tns->shape[2] * tns->type_bytes();
                 assert(bytes % 4 == 0);
                 size_t cn = min(rem, bytes >> 2);
-                gpu_memset(buf->ref(_tns->offset_bytes(i, j, 0)), 0, cn);
+                gpu_memset(buf->ref(tns->offset_bytes(i, j, 0)), 0, cn);
                 rem -= cn;
                 done += cn;
                 if (rem == 0) {
@@ -293,11 +284,11 @@ void Executor::tensor_clear(Tensor *tns)
                 }
                 continue;
             }
-            for (DimType k = 0; k < _tns->shape[2]; ++k) {
-                bytes = (size_t)_tns->shape[3] * _tns->type_bytes();
+            for (DimType k = 0; k < tns->shape[2]; ++k) {
+                bytes = (size_t)tns->shape[3] * tns->type_bytes();
                 assert(bytes % 4 == 0);
                 size_t cn = min(rem, bytes >> 2);
-                gpu_memset(buf->ref(_tns->offset_bytes(i, j, k, 0)), 0, cn);
+                gpu_memset(buf->ref(tns->offset_bytes(i, j, k, 0)), 0, cn);
                 rem -= cn;
                 done += cn;
                 if (rem == 0) {
@@ -314,12 +305,11 @@ void Executor::print_tensor(Tensor *tns)
 {
     half_t *p = (half_t *)malloc(tns->shape_bytes());
     this->tensor_memcpy(p, tns, tns->shape_bytes());
-    Tensor *_tns = this->get_tensor(tns);
-    for (DimType i = 0; i < _tns->shape[0]; ++i) {
-        for (DimType j = 0; j < _tns->shape[1]; ++j) {
-            for (DimType k = 0; k < _tns->shape[2]; ++k) {
-                for (DimType l = 0; l < _tns->shape[3]; ++l) {
-                    printf("%f ", (float)p[_tns->offset(i, j, k, l)]);
+    for (DimType i = 0; i < tns->shape[0]; ++i) {
+        for (DimType j = 0; j < tns->shape[1]; ++j) {
+            for (DimType k = 0; k < tns->shape[2]; ++k) {
+                for (DimType l = 0; l < tns->shape[3]; ++l) {
+                    printf("%f ", (float)p[tns->offset(i, j, k, l)]);
                 }
                 printf("\n");
             }

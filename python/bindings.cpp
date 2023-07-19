@@ -323,7 +323,8 @@ PYBIND11_MODULE(_ark_core, m)
                               "Convenience class for executing a model.")
         .def(py::init<const int, int, int, ark::Model &, const std::string &>(),
              py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
-             py::arg("model"), py::arg("name"))
+             py::arg("model"), py::arg("name"),
+             py::arg("num_warps_per_sm") = 16)
         .def("compile", &ark::Executor::compile,
              "Compile the model. This must be called before `launch()`.")
         .def("launch", &ark::Executor::launch,
@@ -337,11 +338,6 @@ PYBIND11_MODULE(_ark_core, m)
              "Stop the model and return the elapsed time in milliseconds. Once "
              "this is called, we need to call `launch()` again to run the "
              "model again.")
-        .def("get_tensor", &ark::Executor::get_tensor, py::arg("tns"),
-             "Get the corresponding tensor of the executor from the given "
-             "model tensor. The two tensors may be different if the scheduler "
-             "creates an optimized model out of the original one.",
-             py::return_value_policy::reference_internal)
         .def("tensor_memcpy_host_to_device", &tensor_memcpy_host_to_device,
              "Copy contiguous data from a host buffer to the given tensor's "
              "(possibly non-contiguous) data range on GPU.",
