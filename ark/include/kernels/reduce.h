@@ -210,7 +210,7 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
     {
 #pragma unroll
         for (int elem = 0; elem < NelemPerThread; ++elem) {
-            this->singleIdentity(&v[elem]);
+            v[elem] = platform::numeric_limits<DataType>::lowest();
         }
     }
     static DEVICE void reduce(DataType *out, const DataType *in0,
