@@ -4,65 +4,16 @@
 #include <cassert>
 
 #include "logging.h"
-#include "math.h"
-#include "model_io.h"
+#include "model.h"
 
 using namespace std;
 
 namespace ark {
 
-// Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
-vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
-                                 DimType dim_per_shard, const string &name)
-{
-    assert(input != nullptr);
-    LOG(DEBUG, "sharding ", input->shape, " ", axis, " ", dim_per_shard);
-    if (axis >= DIMS_LEN) {
-        LOGERR("invlaid axis value: ", axis);
-    }
-    if ((input->shape[axis] % dim_per_shard) != 0) {
-        // If the total dimension is not divided by the per-shard size,
-        // we need to check whether we can put a padding here.
-        // If the padded dimension of the input tensor is smaller than
-        // the leading dimension size, it means that the input tensor refers to
-        // a part of a buffer -- in this case, we cannot put a padding because
-        // the tensor has adjacent data.
-        DimType pdim = math::pad(input->shape[axis], input->pads[axis]);
-        if (pdim < input->ldims[axis]) {
-            LOGERR("the dimension of axis ", axis, " (", input->shape[axis],
-                   ") is not divided by the dimension per shard (",
-                   dim_per_shard, ") and this tensor cannot be padded.");
-        }
-    }
-    vector<Tensor *> shards;
-    DimType num_shard = math::div_up(input->shape[axis], dim_per_shard);
-    Dims shard_shape = input->shape;
-    Dims shard_offs = input->offs;
-    Dims shard_pads = input->pads;
-    for (DimType i = 0; i < num_shard; ++i) {
-        DimType dim;
-        if (i == (num_shard - 1)) {
-            dim = input->shape[axis] - (i * dim_per_shard);
-            shard_pads[axis] = input->pads[axis];
-        } else {
-            dim = dim_per_shard;
-            shard_pads[axis] = 1;
-        }
-        shard_shape[axis] = dim;
-        Tensor *shard =
-            this->identity(this->tensor(shard_shape, input->type, input->buf,
-                                        input->ldims, shard_offs, shard_pads),
-                           {input}, nullptr, name + "/shard_" + to_string(i));
-        shards.emplace_back(shard);
-        shard_offs[axis] += dim;
-    }
-    return shards;
-}
-
 // Create a new TensorBuf object with `bytes` bytes.
 // A common usage is setting `bytes` to 0 during declaring a model and let the
 // scheduler determine the value after the model is completely defined.
-TensorBuf *Model::create_tensor_buf(const DimType bytes)
+TensorBuf *Model::Impl::create_tensor_buf(const DimType bytes)
 {
     TensorBuf *buf = new TensorBuf{bytes, (int)this->tns_bufs_storage.size()};
     assert(buf != nullptr);
@@ -71,7 +22,7 @@ TensorBuf *Model::create_tensor_buf(const DimType bytes)
 }
 
 // Remove a TensorBuf object from the model.
-void Model::destroy_tensor_buf(const TensorBuf *buf)
+void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
 {
     for (auto &tns : this->tns_storage) {
         if (tns->buf == buf) {
@@ -108,11 +59,11 @@ void Model::destroy_tensor_buf(const TensorBuf *buf)
 //      finer-grained operators. If it is -1, the granularity level will be
 //      automatically determined by the scheduler.
 //
-Op *Model::create_op(const OpType &type, const OpPrecType &prec_type,
-                     const vector<Tensor *> &in_deps,
-                     const vector<Tensor *> &out_deps,
-                     const vector<OpArg> &args, const string &name,
-                     int gran_lev)
+Op *Model::Impl::add_op(const OpType type, const OpPrecType prec_type,
+                        const vector<Tensor *> &in_deps,
+                        const vector<Tensor *> &out_deps,
+                        const vector<OpArg> &args, const string &name,
+                        int gran_lev)
 {
     string suffix_str;
     auto p = this->name_cnts.emplace(name, 1);
@@ -144,7 +95,7 @@ Op *Model::create_op(const OpType &type, const OpPrecType &prec_type,
 
 /// Delete an existing operator from the model.
 /// @param op the existing op to be deleted.
-void Model::delete_op(Op *op)
+void Model::Impl::delete_op(Op *op)
 {
     // Remove the operator from the set of operators that have the given tensor
     // as one of their inputs.
@@ -188,8 +139,35 @@ void Model::delete_op(Op *op)
     }
 }
 
+std::list<TensorBuf *> Model::Impl::get_tensor_bufs() const
+{
+    std::list<TensorBuf *> tns_buf_list;
+    for (auto &tns_buf : this->tns_bufs_storage) {
+        tns_buf_list.emplace_back(tns_buf.get());
+    }
+    return tns_buf_list;
+};
+
+std::list<Tensor *> Model::Impl::get_tensors() const
+{
+    std::list<Tensor *> tns_list;
+    for (auto &tns : this->tns_storage) {
+        tns_list.emplace_back(tns.get());
+    }
+    return tns_list;
+};
+
+std::list<Op *> Model::Impl::get_ops() const
+{
+    std::list<Op *> ops;
+    for (auto &op : ops_storage) {
+        ops.emplace_back(op.get());
+    }
+    return ops;
+};
+
 // Returns the latest-declared operator that has the given tensor as its output.
-const Op *Model::get_gen_op(Tensor *tns) const
+const Op *Model::Impl::get_gen_op(Tensor *tns) const
 {
     auto search = this->gen_op.find(tns);
     if (search == this->gen_op.end()) {
@@ -200,7 +178,7 @@ const Op *Model::get_gen_op(Tensor *tns) const
 
 // Returns the set of operators that have the given tensor as one of their
 // inputs.
-const std::set<Op *> &Model::get_ref_ops(Tensor *tns) const
+const std::set<Op *> &Model::Impl::get_ref_ops(Tensor *tns) const
 {
     auto search = this->ref_ops.find(tns);
     if (search == this->ref_ops.end()) {
@@ -210,7 +188,7 @@ const std::set<Op *> &Model::get_ref_ops(Tensor *tns) const
 }
 
 // Returns true if the given tensor is not an input of any operator.
-bool Model::is_no_ref(Tensor *tns) const
+bool Model::Impl::is_no_ref(Tensor *tns) const
 {
     auto search = this->ref_ops.find(tns);
     if (search == this->ref_ops.end()) {
@@ -235,5 +213,13 @@ bool Model::is_no_ref(Tensor *tns) const
 // void from_json(const nlohmann::json &j, Model &model)
 // {
 // }
+
+//
+Model::Model(int rank_) : impl{make_unique<Model::Impl>()}
+{
+    this->impl->rank = rank_;
+}
+
+Model::~Model() = default;
 
 } // namespace ark

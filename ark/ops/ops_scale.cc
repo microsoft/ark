@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -30,7 +31,7 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
     } else if (output->shape != input->shape) {
         LOGERR("invalid output shape: ", output->shape);
     }
-    this->create_op(OP_SCALE, pt, {input}, {output}, {val}, name);
+    this->impl->add_op(OP_SCALE, pt, {input}, {output}, {val}, name);
     return output;
 }
 

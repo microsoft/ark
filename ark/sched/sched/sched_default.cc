@@ -4,6 +4,7 @@
 #include "env.h"
 #include "logging.h"
 #include "math.h"
+#include "model.h"
 #include "sched/sched.h"
 
 using namespace std;
@@ -55,8 +56,11 @@ static int calc_num_tiles(const Op &op, const OpTile &tile)
 /// @param gpu_info GPU info to optimize for
 /// @param num_sm number of SMs to use for this op. This should be equal to or
 /// less than the number of SMs on the GPU (`gpu_info.num_sm`).
-static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
-                                      const GpuInfo &gpu_info, int num_sm)
+void DefaultScheduler::heuristic_optimize_matmul(Model &model,
+                                                 Model::Impl *model_impl,
+                                                 Op &matmul_op,
+                                                 const GpuInfo &gpu_info,
+                                                 int num_sm)
 {
     if (matmul_op.type != OP_MATMUL) {
         LOGERR("This is not a matmul op.");
@@ -123,7 +127,7 @@ static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
     std::string matmul_name = matmul_op.name;
 
     // Remove the original matmul op from the model.
-    model.delete_op(&matmul_op);
+    model_impl->delete_op(&matmul_op);
 
     // Create a new matmul op with the optimized split_k.
     model.matmul(input_a, input_b, output, split_k, trans_a, trans_b, is_relu,
@@ -136,8 +140,10 @@ static void heuristic_optimize_matmul(Model &model, Op &matmul_op,
 /// @param gpu_info GPU info to optimize for
 /// @param num_sm number of SMs to use for this op. This should be equal to or
 /// less than the number of SMs on the GPU (`gpu_info.num_sm`).
-static void heuristic_optimize_model(Model &model, const GpuInfo &gpu_info,
-                                     int num_sm)
+void DefaultScheduler::heuristic_optimize_model(Model &model,
+                                                Model::Impl *model_impl,
+                                                const GpuInfo &gpu_info,
+                                                int num_sm)
 {
     if (get_env().disable_graph_opt) {
         LOG(INFO, "Graph optimization is disabled.");
@@ -145,18 +151,18 @@ static void heuristic_optimize_model(Model &model, const GpuInfo &gpu_info,
     }
     // Make a copy of the ops because we will modify the model.
     std::vector<Op *> ops;
-    for (auto &op : model.get_ops()) {
-        ops.push_back(op.get());
+    for (auto &op : model_impl->get_ops()) {
+        ops.push_back(op);
     }
     for (auto &op : ops) {
         if (op->type == OP_MATMUL) {
-            heuristic_optimize_matmul(model, *op, gpu_info, num_sm);
+            heuristic_optimize_matmul(model, model_impl, *op, gpu_info, num_sm);
         }
     }
 }
 
 void DefaultScheduler::configure_gpu_buf(
-    const std::list<std::unique_ptr<Tensor>> &model_tensors)
+    const std::list<Tensor *> &model_tensors)
 {
     //
     map<TensorBuf *, vector<Tensor *>> bufs;
@@ -215,8 +221,9 @@ void DefaultScheduler::configure_gpu_buf(
                     int dst_rank = *(int *)sop.get_op()->args[2].val;
                     size_t bytes = *(size_t *)sop.get_op()->args[3].val;
                     size_t off = in->offset() * in->type_bytes();
-                    LOG(DEBUG, "OP_SEND: sid: ", sid, " dst_rank: ", dst_rank,
-                        " bytes: ", bytes, " off: ", off);
+                    LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
+                        " dst_rank: ", dst_rank, " bytes: ", bytes,
+                        " off: ", off);
                     // TODO: generalize converting rank to GPU ID.
                     int nrph = get_env().num_ranks_per_host;
                     int dst_gpu_id = dst_rank % nrph;
@@ -239,10 +246,9 @@ void DefaultScheduler::configure_gpu_buf(
     }
 #if (ALLOC_UNUSED_TENSORS)
     for (auto &tns : model_tensors) {
-        Tensor *t = tns.get();
-        auto search = bufs.find(t->buf);
+        auto search = bufs.find(tns->buf);
         if (search == bufs.end()) {
-            bufs[t->buf].emplace_back(t);
+            bufs[tns->buf].emplace_back(tns);
         }
     }
 #endif // (ALLOC_UNUSED_TENSORS)
@@ -375,10 +381,10 @@ DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
 #else
     int num_sm_calc = gpu_info.num_sm;
 #endif
-    heuristic_optimize_model(model, gpu_info, num_sm_calc);
+    heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
 
     this->op_graph = new OpGraph(model, gpu_info);
-    this->configure_gpu_buf(model.get_tensors());
+    this->configure_gpu_buf(model.impl->get_tensors());
 }
 
 Tensor *DefaultScheduler::get_tensor(Tensor *tns) const

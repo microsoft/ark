@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -33,9 +34,11 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
                "reduce_sum op");
     }
     if (axis == input->shape.ndims() - 1) {
-        this->create_op(OP_REDUCE_W_SUM, pt, {input}, {output}, {axis}, name);
+        this->impl->add_op(OP_REDUCE_W_SUM, pt, {input}, {output}, {axis},
+                           name);
     } else {
-        this->create_op(OP_REDUCE_E_SUM, pt, {input}, {output}, {axis}, name);
+        this->impl->add_op(OP_REDUCE_E_SUM, pt, {input}, {output}, {axis},
+                           name);
     }
     return output;
 }
@@ -65,9 +68,11 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
                "reduce_mean op");
     }
     if (axis == input->shape.ndims() - 1) {
-        this->create_op(OP_REDUCE_W_MEAN, pt, {input}, {output}, {axis}, name);
+        this->impl->add_op(OP_REDUCE_W_MEAN, pt, {input}, {output}, {axis},
+                           name);
     } else {
-        this->create_op(OP_REDUCE_E_MEAN, pt, {input}, {output}, {axis}, name);
+        this->impl->add_op(OP_REDUCE_E_MEAN, pt, {input}, {output}, {axis},
+                           name);
     }
     return output;
 }
@@ -97,9 +102,11 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
                "reduce_max op");
     }
     if (axis == input->shape.ndims() - 1) {
-        this->create_op(OP_REDUCE_W_MAX, pt, {input}, {output}, {axis}, name);
+        this->impl->add_op(OP_REDUCE_W_MAX, pt, {input}, {output}, {axis},
+                           name);
     } else {
-        this->create_op(OP_REDUCE_E_MAX, pt, {input}, {output}, {axis}, name);
+        this->impl->add_op(OP_REDUCE_E_MAX, pt, {input}, {output}, {axis},
+                           name);
     }
     return output;
 }

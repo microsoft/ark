@@ -5,7 +5,6 @@
 #include "json.h"
 #include "logging.h"
 #include <vector>
-using namespace std;
 
 namespace ark {
 
@@ -34,7 +33,7 @@ Dims::Dims(const Dims &dims_)
 
 // Construct from a vector. If the vector is shorter than DIMS_LEN, put
 // following NO_DIMs. Raise an error if the vector is longer than DIMS_LEN.
-Dims::Dims(const vector<DimType> &vec)
+Dims::Dims(const std::vector<DimType> &vec)
 {
     int ds = (int)vec.size();
     if (ds > DIMS_LEN) {
@@ -156,10 +155,10 @@ void to_json(nlohmann::json &j, const Dims &dims)
 
 void from_json(const nlohmann::json &j, Dims &dims)
 {
-    dims = Dims{j.get<vector<DimType>>()};
+    dims = Dims{j.get<std::vector<DimType>>()};
 }
 
-ostream &operator<<(ostream &os, const Dims &dims)
+std::ostream &operator<<(std::ostream &os, const Dims &dims)
 {
     if (dims.is_invalid()) {
         LOGERR("invalid dims given");

@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -66,7 +67,6 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
     if (output == nullptr) {
         output = model->tensor(new_shape, input->type, input->buf, shape);
     }
-    model->create_op(OP_RESHAPE, OP_PREC_NONE, {input}, {output}, {}, name);
     return output;
 }
 
@@ -74,7 +74,9 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
 Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
                        Tensor *output, const string &name)
 {
-    return _reshape(this, input, shape, allowzero, output, name);
+    output = _reshape(this, input, shape, allowzero, output, name);
+    this->impl->add_op(OP_RESHAPE, OP_PREC_NONE, {input}, {output}, {}, name);
+    return output;
 }
 
 // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
@@ -134,7 +136,10 @@ Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
         LOGERR("number of elements mismatch: reshape from ", input->shape,
                " to ", Dims(shape_vec));
     }
-    return _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
+    output =
+        _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
+    this->impl->add_op(OP_RESHAPE, OP_PREC_NONE, {input}, {output}, {}, name);
+    return output;
 }
 
 } // namespace ark

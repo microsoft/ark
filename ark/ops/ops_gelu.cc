@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -27,7 +28,7 @@ Tensor *Model::gelu(Tensor *input, Tensor *output, const string &name)
     } else if (output->shape != input->shape) {
         LOGERR("invalid output shape: ", output->shape);
     }
-    this->create_op(OP_GELU, pt, {input}, {output}, {}, name);
+    this->impl->add_op(OP_GELU, pt, {input}, {output}, {}, name);
     return output;
 }
 

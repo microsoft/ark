@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 #include "logging.h"
-#include "model_io.h"
+#include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -61,10 +62,11 @@ Tensor *Model::im2col(Tensor *input, DimType kernel_height,
     } else {
         assert(output->shape == out_shape);
     }
-    this->create_op(OP_IM2COL, pt, {input}, {output},
-                    {kernel_height, kernel_width, stride_height, stride_width,
-                     pad_height, pad_width, dilation_height, dilation_width},
-                    name);
+    this->impl->add_op(OP_IM2COL, pt, {input}, {output},
+                       {kernel_height, kernel_width, stride_height,
+                        stride_width, pad_height, pad_width, dilation_height,
+                        dilation_width},
+                       name);
     return output;
 }
 

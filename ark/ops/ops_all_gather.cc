@@ -3,7 +3,8 @@
 
 #include "logging.h"
 #include "math.h"
-#include "model_io.h"
+#include "model.h"
+#include "ops_common.h"
 
 using namespace std;
 
@@ -22,7 +23,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     }
     LOG(DEBUG, "all gather output size: ", output.size());
 
-    int base = this->next_eid;
+    int base = this->impl->next_eid;
     vector<Tensor *> recv_dep_tensors;
     for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
         if (gpu_dst == gpu_id)
@@ -58,7 +59,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         output[gpu_src] = recv_buf;
     }
 
-    this->next_eid += gpu_num * gpu_num;
+    this->impl->next_eid += gpu_num * gpu_num;
     return output;
 }
 

@@ -4,6 +4,7 @@
 #include "env.h"
 #include "logging.h"
 #include "math.h"
+#include "model.h"
 #include "sched/sched.h"
 
 using namespace std;
@@ -20,7 +21,7 @@ SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->wps = max(wps_, min_wps);
     this->create_sched_opseq(model, gpu_info);
-    this->configure_gpu_buf(model.get_tensors());
+    this->configure_gpu_buf(model.impl->get_tensors());
 }
 
 void SimpleScheduler::create_sched_opseq(const Model &model,
@@ -29,16 +30,16 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
     int op_idx = 0;
     int opseq_idx = 0;
     std::vector<Op *> all_ops;
-    for (auto &op : model.get_ops()) {
-        all_ops.push_back(op.get());
+    for (auto &op : model.impl->get_ops()) {
+        all_ops.push_back(op);
     }
     std::vector<Tensor *> finished_tensors;
 
     // get the input tensors of the model, and add them to the
     // finished_tensors vector
-    for (auto &tns : model.get_tensors()) {
-        if (model.get_gen_op(tns.get()) == nullptr) {
-            finished_tensors.push_back(tns.get());
+    for (auto &tns : model.impl->get_tensors()) {
+        if (model.impl->get_gen_op(tns) == nullptr) {
+            finished_tensors.push_back(tns);
         }
     }
     this->sched_opseqs.emplace_back(opseq_idx);
@@ -229,8 +230,7 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
     }
 }
 
-void SimpleScheduler::configure_gpu_buf(
-    const std::list<std::unique_ptr<Tensor>> &)
+void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
 {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other

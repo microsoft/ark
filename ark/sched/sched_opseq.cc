@@ -11,6 +11,7 @@
 using namespace std;
 
 namespace ark {
+
 SchedOpSeq::SchedOpSeq(int id_) : id{id_}
 {
     LOG(DEBUG, "create SchedOpSeq", id);

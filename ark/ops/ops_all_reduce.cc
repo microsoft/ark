@@ -3,7 +3,8 @@
 
 #include "logging.h"
 #include "math.h"
-#include "model_io.h"
+#include "model.h"
+#include "ops_common.h"
 
 using namespace std;
 
@@ -31,7 +32,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         LOGERR("all_reduce of a split tensor is not supported");
     }
 
-    int base = this->next_eid;
+    int base = this->impl->next_eid;
     // all to all allreduce
     vector<Tensor *> recv_dep_tensors;
     for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
@@ -57,7 +58,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         add_tensor = this->add(add_tensor, this->identity(recv_buf, {recv}));
     }
 
-    this->next_eid += gpu_num * gpu_num;
+    this->impl->next_eid += gpu_num * gpu_num;
     return add_tensor;
 }
 

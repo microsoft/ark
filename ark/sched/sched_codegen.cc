@@ -10,7 +10,6 @@
 #include "env.h"
 #include "logging.h"
 #include "math.h"
-#include "model_io.h"
 #include "sched/sched_codegen.h"
 
 using namespace std;
