@@ -6,9 +6,8 @@
 
 #include "ewise.h"
 #include "half.h"
+#include "platform.h"
 #include "transform.h"
-#include <cfloat>
-#include <limits>
 #include <type_traits>
 
 namespace ark {
@@ -230,14 +229,9 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
             out[elem] = in[elem];
         }
     }
-    static DEVICE void singleIdentity(half *v)
+    static DEVICE void singleIdentity(DataType *v)
     {
-        *v = platform::numeric_limits<half>::lowest();
-    }
-
-    static DEVICE void singleIdentity(float *v)
-    {
-        *v = -FLT_MAX;
+        *v = platform::numeric_limits<DataType>::lowest();
     }
 
     static DEVICE void singleReduce(DataType *out, const DataType *in0,
