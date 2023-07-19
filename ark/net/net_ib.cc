@@ -58,12 +58,14 @@ NetIbQp::NetIbQp(void *qp_, int port_)
     this->info.link_layer = port_attr.link_layer;
     this->info.qpn = ((struct ibv_qp *)qp_)->qp_num;
     this->info.mtu = port_attr.active_mtu;
-    if (port_attr.link_layer != IBV_LINK_LAYER_INFINIBAND) {
+    this->info.is_grh = (port_attr.flags & IBV_QPF_GRH_REQUIRED);
+    if (port_attr.link_layer != IBV_LINK_LAYER_INFINIBAND || this->info.is_grh) {
         union ibv_gid gid;
         if (ibv_query_gid(ctx, port_, 0, &gid) != 0) {
             LOGERR("failed to query GID");
         }
         this->info.spn = gid.global.subnet_prefix;
+        this->info.iid = gid.global.interface_id;
     }
     if (this->init() != 0) {
         LOGERR("failed to modify QP to INIT");
@@ -103,23 +105,23 @@ int NetIbQp::rtr(const NetIbQp::Info *info)
     struct ibv_qp_attr qp_attr;
     std::memset(&qp_attr, 0, sizeof(struct ibv_qp_attr));
     qp_attr.qp_state = IBV_QPS_RTR;
-    qp_attr.path_mtu = IBV_MTU_1024;
+    qp_attr.path_mtu = static_cast<ibv_mtu>(info->mtu);
     qp_attr.dest_qp_num = info->qpn;
     qp_attr.rq_psn = 0;
     qp_attr.max_dest_rd_atomic = 1;
     qp_attr.min_rnr_timer = 0x12;
-    if (info->link_layer == IBV_LINK_LAYER_ETHERNET) {
+    if (info->link_layer == IBV_LINK_LAYER_ETHERNET || info->is_grh) {
         qp_attr.ah_attr.is_global = 1;
         qp_attr.ah_attr.grh.dgid.global.subnet_prefix = info->spn;
-        qp_attr.ah_attr.grh.dgid.global.interface_id = info->lid;
+        qp_attr.ah_attr.grh.dgid.global.interface_id = info->iid;
         qp_attr.ah_attr.grh.flow_label = 0;
         qp_attr.ah_attr.grh.sgid_index = 0;
         qp_attr.ah_attr.grh.hop_limit = 255;
         qp_attr.ah_attr.grh.traffic_class = 0;
     } else {
         qp_attr.ah_attr.is_global = 0;
-        qp_attr.ah_attr.dlid = info->lid;
     }
+    qp_attr.ah_attr.dlid = info->lid;
     qp_attr.ah_attr.sl = 0;
     qp_attr.ah_attr.src_path_bits = 0;
     qp_attr.ah_attr.port_num = info->port;
@@ -191,6 +193,9 @@ int NetIbQp::stage_send(void *mr, const NetIbMr::Info *info, int size,
 
 int NetIbQp::post_send()
 {
+    if (this->wrn == 0) {
+        return 0;
+    }
     struct ibv_send_wr *bad_wr;
     int ret = ibv_post_send((struct ibv_qp *)this->qp,
                             (struct ibv_send_wr *)this->wrs, &bad_wr);
@@ -330,8 +335,8 @@ NetIbQp *NetIbMgr::create_qp(int port)
         qp_init_attr.recv_cq = (struct ibv_cq *)this->cq;
     }
     qp_init_attr.qp_type = IBV_QPT_RC;
-    qp_init_attr.cap.max_send_wr = 1024;
-    qp_init_attr.cap.max_recv_wr = 128;
+    qp_init_attr.cap.max_send_wr = 8192;
+    qp_init_attr.cap.max_recv_wr = 8192;
     qp_init_attr.cap.max_send_sge = 1;
     qp_init_attr.cap.max_recv_sge = 1;
     qp_init_attr.cap.max_inline_data = 0;
