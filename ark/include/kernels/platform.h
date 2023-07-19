@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "half.h"
+#include "cutlass/platform/platform.h"
 #include <cfloat>
 #include <limits>
 namespace platform {
