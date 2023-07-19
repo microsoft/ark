@@ -211,9 +211,7 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
     {
 #pragma unroll
         for (int elem = 0; elem < NelemPerThread; ++elem) {
-            v[elem] = (std::is_same<DataType, half>::value)
-                          ? platform::numeric_limits<DataType>::lowest()
-                          : -FLT_MAX;
+            this->singleIdentity(&v[elem]);
         }
     }
     static DEVICE void reduce(DataType *out, const DataType *in0,
@@ -232,12 +230,16 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
             out[elem] = in[elem];
         }
     }
-    static DEVICE void singleIdentity(DataType *v)
+    static DEVICE void singleIdentity(half *v)
     {
-        *v = DataType((std::is_same<DataType, half>::value)
-                          ? platform::numeric_limits<DataType>::lowest()
-                          : -FLT_MAX);
+        *v = platform::numeric_limits<half>::lowest();
     }
+
+    static DEVICE void singleIdentity(float *v)
+    {
+        *v = -FLT_MAX;
+    }
+
     static DEVICE void singleReduce(DataType *out, const DataType *in0,
                                     const DataType *in1)
     {
