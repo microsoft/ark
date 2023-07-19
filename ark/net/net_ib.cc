@@ -59,7 +59,8 @@ NetIbQp::NetIbQp(void *qp_, int port_)
     this->info.qpn = ((struct ibv_qp *)qp_)->qp_num;
     this->info.mtu = port_attr.active_mtu;
     this->info.is_grh = (port_attr.flags & IBV_QPF_GRH_REQUIRED);
-    if (port_attr.link_layer != IBV_LINK_LAYER_INFINIBAND || this->info.is_grh) {
+    if (port_attr.link_layer != IBV_LINK_LAYER_INFINIBAND ||
+        this->info.is_grh) {
         union ibv_gid gid;
         if (ibv_query_gid(ctx, port_, 0, &gid) != 0) {
             LOGERR("failed to query GID");

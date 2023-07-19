@@ -59,7 +59,6 @@ class BaseScheduler
     // later use
     virtual void configure_gpu_buf(
         const std::list<Tensor *> &model_tensors) = 0;
-    virtual Tensor *get_tensor(Tensor *tns) const = 0;
 
   protected:
     GpuMgr *gpu_mgr;
@@ -87,10 +86,6 @@ class SimpleScheduler : public BaseScheduler
 
     std::vector<std::string> schedule();
 
-    Tensor *get_tensor(Tensor *tns) const
-    {
-        return tns;
-    }
     GpuBuf *get_gpu_buf(Tensor *tns) const;
     // the num of the depth is equal to the num of the op
     unsigned int get_num_depths() const
@@ -133,7 +128,6 @@ class DefaultScheduler : public BaseScheduler
                      int wps = 16);
 
     std::vector<std::string> schedule();
-    Tensor *get_tensor(Tensor *tns) const;
     GpuBuf *get_gpu_buf(Tensor *tns) const;
     unsigned int get_num_depths() const;
 

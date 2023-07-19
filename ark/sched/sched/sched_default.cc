@@ -387,21 +387,15 @@ DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
     this->configure_gpu_buf(model.impl->get_tensors());
 }
 
-Tensor *DefaultScheduler::get_tensor(Tensor *tns) const
-{
-    return tns;
-}
-
 GpuBuf *DefaultScheduler::get_gpu_buf(Tensor *tns) const
 {
-    Tensor *t = get_tensor(tns);
-    if (t == nullptr) {
+    if (tns == nullptr) {
         return nullptr;
     }
-    if (t->buf == nullptr) {
+    if (tns->buf == nullptr) {
         return nullptr;
     }
-    auto search = this->buf_trans.find(t->buf);
+    auto search = this->buf_trans.find(tns->buf);
     if (search == this->buf_trans.end()) {
         return nullptr;
     }
