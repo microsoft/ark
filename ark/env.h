@@ -36,6 +36,8 @@ struct Env
     std::string scheduler;
     // Disable the heuristic ARK graph optimization.
     bool disable_graph_opt;
+    // Prefix of shared memory file names.
+    std::string shm_name_prefix;
 };
 
 // Get the global Env.

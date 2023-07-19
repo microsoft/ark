@@ -17,6 +17,7 @@ using namespace std;
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
 #define DEFAULT_ARK_SCHEDULER "Default"
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT true
+#define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 
 namespace ark {
 
@@ -102,6 +103,13 @@ Env::Env()
         this->disable_graph_opt = true;
     } else {
         this->disable_graph_opt = false;
+    }
+    //
+    const char *shm_name_prefix_ca = getenv("ARK_SHM_NAME_PREFIX");
+    if (shm_name_prefix_ca == nullptr) {
+        this->shm_name_prefix = DEFAULT_ARK_SHM_NAME_PREFIX;
+    } else {
+        this->shm_name_prefix = shm_name_prefix_ca;
     }
 }
 
