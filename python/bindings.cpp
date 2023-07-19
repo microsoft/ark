@@ -321,7 +321,8 @@ PYBIND11_MODULE(_ark_core, m)
     // register class Executor
     py::class_<ark::Executor>(m, "Executor",
                               "Convenience class for executing a model.")
-        .def(py::init<const int, int, int, ark::Model &, const std::string &>(),
+        .def(py::init<const int, int, int, ark::Model &, const std::string &,
+                      int>(),
              py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
              py::arg("model"), py::arg("name"),
              py::arg("num_warps_per_sm") = 16)
