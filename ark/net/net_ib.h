@@ -64,7 +64,9 @@ class NetIbQp
         uint8_t link_layer;
         uint32_t qpn;
         uint64_t spn;
+        uint64_t iid;
         int mtu;
+        bool is_grh;
     };
 
     NetIbQp(void *qp_, int port_);
