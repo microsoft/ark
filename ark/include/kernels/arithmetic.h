@@ -7,7 +7,6 @@
 #include "broadcast.h"
 #include "half.h"
 #include "transform.h"
-#include <type_traits>
 
 namespace ark {
 
@@ -118,7 +117,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
         if (_In0Shape::W == 1) {
             longlong2 reg_b;
             longlong2 reg_c;
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_b.x), "=l"(reg_b.y)
                          : "l"(b)
                          : "memory");
@@ -129,14 +128,14 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
             pc->x = _ArithmeticType::compute(v, pb->x);
             pc->y = _ArithmeticType::compute(v, pb->y);
             pc->z = _ArithmeticType::compute(v, pb->z);
-            asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};"
+            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
                          :
                          : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
                          : "memory");
         } else if (_In1Shape::W == 1) {
             longlong2 reg_a;
             longlong2 reg_c;
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_a.x), "=l"(reg_a.y)
                          : "l"(a)
                          : "memory");
@@ -147,7 +146,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
             pc->x = _ArithmeticType::compute(pa->x, v);
             pc->y = _ArithmeticType::compute(pa->y, v);
             pc->z = _ArithmeticType::compute(pa->z, v);
-            asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};"
+            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
                          :
                          : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
                          : "memory");
@@ -155,11 +154,11 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
             longlong2 reg_a;
             longlong2 reg_b;
             longlong2 reg_c;
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_a.x), "=l"(reg_a.y)
                          : "l"(a)
                          : "memory");
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_b.x), "=l"(reg_b.y)
                          : "l"(b)
                          : "memory");
@@ -170,7 +169,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
             pc->x = _ArithmeticType::compute(pa->x, pb->x);
             pc->y = _ArithmeticType::compute(pa->y, pb->y);
             pc->z = _ArithmeticType::compute(pa->z, pb->z);
-            asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};"
+            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
                          :
                          : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
                          : "memory");
@@ -254,7 +253,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
         if (_In0Shape::W == 1) {
             longlong2 reg_b;
             longlong2 reg_c;
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_b.x), "=l"(reg_b.y)
                          : "l"(b)
                          : "memory");
@@ -265,14 +264,14 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
             pc[1] = _ArithmeticType::compute(v, pb[1]);
             pc[2] = _ArithmeticType::compute(v, pb[2]);
             pc[3] = _ArithmeticType::compute(v, pb[3]);
-            asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};"
+            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
                          :
                          : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
                          : "memory");
         } else if (_In1Shape::W == 1) {
             longlong2 reg_a;
             longlong2 reg_c;
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_a.x), "=l"(reg_a.y)
                          : "l"(a)
                          : "memory");
@@ -283,7 +282,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
             pc[1] = _ArithmeticType::compute(pa[1], v);
             pc[2] = _ArithmeticType::compute(pa[2], v);
             pc[3] = _ArithmeticType::compute(pa[3], v);
-            asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};"
+            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
                          :
                          : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
                          : "memory");
@@ -291,11 +290,11 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
             longlong2 reg_a;
             longlong2 reg_b;
             longlong2 reg_c;
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_a.x), "=l"(reg_a.y)
                          : "l"(a)
                          : "memory");
-            asm volatile("ld.volatile.global.v2.u64 {%0,%1}, [%2];"
+            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
                          : "=l"(reg_b.x), "=l"(reg_b.y)
                          : "l"(b)
                          : "memory");
@@ -306,7 +305,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
             pc[1] = _ArithmeticType::compute(pa[1], pb[1]);
             pc[2] = _ArithmeticType::compute(pa[2], pb[2]);
             pc[3] = _ArithmeticType::compute(pa[3], pb[3]);
-            asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};"
+            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
                          :
                          : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
                          : "memory");
