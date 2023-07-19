@@ -4,11 +4,12 @@
 import ark
 import numpy as np
 import multiprocessing
+import unittest
 
 
-def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
-    print("rank:", rank)
-
+def all_gather_test_not_inplace(
+    rank, np_inputs, world_size, tensor_len, iter=1
+):
     # Create a Model instance
     model = ark.Model(rank)
 
@@ -16,14 +17,17 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
     # The all_gather operation will create the recv tensor shards and return them as a list. The allgather_result[rank] is the same as input_tensor
     allgather_result = model.all_gather(input_tensor, rank, world_size)
 
-    exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
+    exe = ark.Executor(
+        rank, rank, world_size, model, "all_gather_test_not_inplace"
+    )
     exe.compile()
 
     exe.launch()
 
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(1)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
+    max_abs_error = 0
     for tensor_shard in range(world_size):
         # if tensor_shard == rank, then this is a local shard. The allgather_result[tensor_shard] is the same as input_tensor
         host_output = np.zeros(tensor_len, dtype=np.float16)
@@ -32,16 +36,31 @@ def all_gather_test_not_inplace(rank, np_inputs, world_size, tensor_len):
         )
         gt = np_inputs[tensor_shard]
 
-        max_error = np.max(np.abs(host_output - gt))
-        mean_error = np.mean(np.abs(host_output - gt))
-        print("max error:", max_error)
-        print("mean error:", mean_error)
-    print("rank:", rank, "done")
+        max_abs_error = max(max_abs_error, np.max(np.abs(host_output - gt)))
+        numeric_epsilon_half = np.finfo(np.float16).eps
+        np.testing.assert_allclose(host_output, gt, rtol=numeric_epsilon_half)
+    print(
+        "allgather not-inplace test",
+        "world_size:",
+        world_size,
+        "rank:",
+        rank,
+        "tensor_len:",
+        "{:6d}".format(tensor_len),
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        " ms ",
+        " iter ",
+        iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
+    )
 
 
-def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
-    print("rank:", rank)
-
+def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len, iter=1):
     # Create a Model instance
     model = ark.Model(rank)
 
@@ -58,24 +77,42 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len):
         input_tensor, rank, world_size, output_shard
     )
 
-    exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
+    exe = ark.Executor(rank, rank, world_size, model, "all_gather_test_inplace")
     exe.compile()
 
     exe.launch()
     exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(1)
-    exe.stop()
+    exe.run(iter)
+    elapsed = exe.stop()
     host_output = np.zeros(tensor_len * world_size, dtype=np.float16)
 
     exe.tensor_memcpy_device_to_host(host_output, output_tensor)
 
     gt = np.concatenate(np_inputs, axis=0)
 
-    max_error = np.max(np.abs(host_output - gt))
-    mean_error = np.mean(np.abs(host_output - gt))
-    print("max error:", max_error)
-    print("mean error:", mean_error)
-    print("rank:", rank, "done")
+    max_abs_error = np.max(np.abs(host_output - gt))
+    mean_abs_error = np.mean(np.abs(host_output - gt))
+    print(
+        "allgather-inplace test",
+        "world_size:",
+        world_size,
+        "rank:",
+        rank,
+        "tensor_len:",
+        "{:6d}".format(tensor_len),
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        " ms ",
+        " iter ",
+        iter,
+        "elapsed_per_iter",
+        "{:.5f}".format(elapsed / iter),
+        " ms ",
+    )
 
 
 def all_gather_test_main(
@@ -99,10 +136,17 @@ def all_gather_test_main(
         process.join()
 
 
+class TestAllgather(unittest.TestCase):
+    def test_allgather_not_inplace(self):
+        all_gather_test_main(2, 2048, all_gather_test_not_inplace)
+        all_gather_test_main(4, 2048, all_gather_test_not_inplace)
+
+    def test_allgather_inplace(self):
+        all_gather_test_main(2, 2048, all_gather_test_inplace)
+        all_gather_test_main(4, 2048, all_gather_test_inplace)
+        all_gather_test_main(6, 2048, all_gather_test_inplace)
+        all_gather_test_main(8, 2048, all_gather_test_inplace)
+
+
 if __name__ == "__main__":
-    all_gather_test_main(2, 2048, all_gather_test_not_inplace)
-    all_gather_test_main(4, 2048, all_gather_test_not_inplace)
-    all_gather_test_main(2, 2048, all_gather_test_inplace)
-    all_gather_test_main(4, 2048, all_gather_test_inplace)
-    all_gather_test_main(6, 2048, all_gather_test_inplace)
-    all_gather_test_main(8, 2048, all_gather_test_inplace)
+    unittest.main()
