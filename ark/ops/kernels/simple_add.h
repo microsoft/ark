@@ -7,14 +7,11 @@
 template <typename T>
 __device__ void simple_add(T *c, T *a, T *b, unsigned int bs, unsigned int len)
 {
-    unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    while (tid < len) {
-        for (unsigned int i = 0; i < bs; ++i) {
-            for (unsigned int j = 0; j < len; ++j) {
-                c[i * len + j] = a[i * len + j] + b[j];
-            }
+    for (unsigned int i = 0; i < bs; ++i) {
+        for (unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+             tid < len; tid += blockDim.x * gridDim.x) {
+            c[i * len + tid] = a[i * len + tid] + b[tid];
         }
-        tid += gridDim.x * blockDim.x;
     }
 }
 

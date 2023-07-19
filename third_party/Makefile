@@ -29,10 +29,10 @@ $(GPUDMA_TARGET): $(GPUDMA_PATCHES)
 	rm -r $(TMPDIR)
 
 cutlass:
-	$(MAKE) -j $(CUTLASS_PATCH_TARGETS)
+	@$(MAKE) -j $(CUTLASS_PATCH_TARGETS)
 
 patch-$(MKDIR)/patches/%.patch: $(MKDIR)/% $(MKDIR)/patches/%.patch
-	patch -sN $< -i $(word 2,$^) -r /dev/null | true
+	@patch -sN $< -i $(word 2,$^) -r /dev/null | true
 
 clean:
 	$(MAKE) -C $(GPUDMA_DIR)/module -f $(GPUDMA_DIR)/module/Makefile clean
