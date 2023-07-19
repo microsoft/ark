@@ -6,9 +6,8 @@
 
 #include "ewise.h"
 #include "half.h"
+#include "platform.h"
 #include "transform.h"
-#include <cfloat>
-#include <limits>
 #include <type_traits>
 
 namespace ark {
@@ -211,7 +210,7 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
     {
 #pragma unroll
         for (int elem = 0; elem < NelemPerThread; ++elem) {
-            v[elem] = std::numeric_limits<DataType>::lowest();
+            v[elem] = platform::numeric_limits<DataType>::lowest();
         }
     }
     static DEVICE void reduce(DataType *out, const DataType *in0,
@@ -232,10 +231,9 @@ template <typename _DataType, int _NelemPerThread> struct ReduceTypeMax
     }
     static DEVICE void singleIdentity(DataType *v)
     {
-        static const float HALF_FLT_MAX = 65504.F;
-        *v = DataType((std::is_same<DataType, half>::value) ? -HALF_FLT_MAX
-                                                            : -FLT_MAX);
+        *v = platform::numeric_limits<DataType>::lowest();
     }
+
     static DEVICE void singleReduce(DataType *out, const DataType *in0,
                                     const DataType *in1)
     {
@@ -279,9 +277,7 @@ template <> struct ReduceTypeMax<half, 2>
     }
     static DEVICE void singleIdentity(half *v)
     {
-        static const float HALF_FLT_MAX = 65504.F;
-        *v = DataType((std::is_same<DataType, half>::value) ? -HALF_FLT_MAX
-                                                            : -FLT_MAX);
+        *v = platform::numeric_limits<half>::lowest();
     }
     static DEVICE void singleReduce(half *out, const half *in0, const half *in1)
     {
