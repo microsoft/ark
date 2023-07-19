@@ -5,8 +5,8 @@
 #define ARK_KERNELS_PLATFORM_H_
 
 #include "common.h"
-#include "half.h"
 #include "cutlass/platform/platform.h"
+#include "half.h"
 #include <cfloat>
 #include <limits>
 namespace platform {
