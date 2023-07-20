@@ -54,7 +54,7 @@ jobs:
   
     - name: Dubious ownership exception
       run: |
-        git config --global --add safe.directory /__w/ark/ark
+        git config --global --add safe.directory /__w/mscclpp-ark/mscclpp-ark
   
     - name: Autobuild
       uses: github/codeql-action/autobuild@v2
