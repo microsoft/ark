@@ -1,0 +1,32 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+--- depthwise_fprop_pipelined.h
++++ depthwise_fprop_pipelined.h
+@@ -45,6 +45,8 @@
+ #include "cutlass/gemm/gemm.h"
+ #include "cutlass/gemm/threadblock/mma_base.h"
+ 
++#include "sync.h"
++
+ /////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ namespace cutlass {
+@@ -218,7 +220,7 @@ public:
+     ++this->smem_iterator_A_;
+     ++this->smem_iterator_B_;
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math instructions
+     WarpFragmentA warp_frag_A[2];
+@@ -272,7 +274,7 @@ public:
+ 
+           this->smem_iterator_B_.store(transform_B(tb_frag_B));
+ 
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * 32>();
+           
+           if(rs_plane_idx == gemm_k_iterations_per_channel - 1){
+             // Move to next set of filter groups.

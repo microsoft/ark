@@ -1,0 +1,65 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches:
+      - "**"
+  schedule:
+    - cron: '42 20 * * 4'
+
+jobs:
+  cancel:
+    name: Cancel previous runs
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cancel previous runs
+      uses: styfle/cancel-workflow-action@0.8.0
+      with:
+        access_token: ${{ secrets.GITHUB_TOKEN }}
+
+  analyze:
+    name: Analyze
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/microsoft/ark/ark:base-cuda12.1
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Check disk space
+      run: |
+        df -h
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Install cmake
+      run: |
+        curl -L https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-linux-x86_64.tar.gz -o /tmp/cmake-3.26.4-linux-x86_64.tar.gz
+        tar xzf /tmp/cmake-3.26.4-linux-x86_64.tar.gz -C /tmp
+        sudo ln -s /tmp/cmake-3.26.4-linux-x86_64/bin/cmake /usr/bin/cmake
+  
+    - name: Dubious ownership exception
+      run: |
+        git config --global --add safe.directory /__w/ark/ark
+  
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+  
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"

@@ -1,0 +1,7 @@
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = https://github.com/NVIDIA/cutlass
+
+[submodule "third_party/gpudma"]
+	path = third_party/gpudma
+	url = https://github.com/karakozov/gpudma

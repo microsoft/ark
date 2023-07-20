@@ -1,0 +1,2 @@
+scikit-build-core
+pyproject_metadata

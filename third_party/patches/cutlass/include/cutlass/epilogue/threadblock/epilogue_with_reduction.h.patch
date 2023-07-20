@@ -1,0 +1,62 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+--- epilogue_with_reduction.h
++++ epilogue_with_reduction.h
+@@ -64,6 +64,8 @@
+ #include "cutlass/epilogue/threadblock/epilogue_base.h"
+ #include "cutlass/epilogue/threadblock/predicated_tile_iterator.h"
+ 
++#include "sync.h"
++
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ namespace cutlass {
+@@ -349,7 +351,7 @@ private:
+     //
+ 
+     // Guard against uses of the existing SMEM tile
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * 32>();
+     
+     using AccessType = AlignedArray<ElementAccumulator, ThreadMap::kElementsPerAccess>;
+ 
+@@ -378,7 +380,7 @@ private:
+       aligned_reduction_ptr[col_idx] = frag_ptr[column];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+     //
+     // Now, threads are assigned several columns of the output. They fetch over all rows from
+@@ -477,12 +479,12 @@ private:
+       tensor_iterator.load(tensor_fragment);
+       ++tensor_iterator;
+       
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+       acc2smem<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+           iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+       //
+       // Load fragments from shared memory
+@@ -585,12 +587,12 @@ private:
+       // Convert and store fragment
+       //
+       
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+       acc2smem<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+           iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * 32>();
+ 
+       //
+       // Load fragments from shared memory
