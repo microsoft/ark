@@ -8,6 +8,45 @@ using namespace std;
 
 namespace ark {
 
+class SendOp : public Op
+{
+  public:
+    SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                   const string &name);
+};
+
+class SendDoneOp : public Op
+{
+  public:
+    SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                           const string &name);
+};
+
+class RecvOp : public Op
+{
+  public:
+    RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                   const string &name);
+};
+
+SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : Op{OP_SEND, prec_type, {input}, {output}, {}, name, -1}
+{
+}
+
+SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                       const string &name)
+    : Op{OP_SEND_DONE, prec_type, {input}, {output}, {}, name, -1}
+{
+}
+
+RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : Op{OP_RECV, prec_type, {input}, {output}, {}, name, -1}
+{
+}
+
 //
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
                     Tensor *output, const string &name)
@@ -24,8 +63,8 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->impl->add_op(OP_SEND, OP_PREC_NONE, {input}, {output},
-                       {id, this->impl->rank, dst_rank, bytes}, name);
+    SendOp op{OP_PREC_NONE, input, output, name};
+    this->impl->add_op(op);
     return output;
 }
 
@@ -37,8 +76,8 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->impl->add_op(OP_SEND_DONE, OP_PREC_NONE, {input}, {output},
-                       {id, this->impl->rank, dst_rank}, name);
+    SendDoneOp op{OP_PREC_NONE, input, output, name};
+    this->impl->add_op(op);
     return output;
 }
 
@@ -59,8 +98,8 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    this->impl->add_op(OP_RECV, OP_PREC_NONE, {input}, {output},
-                       {id, this->impl->rank, src_rank, bytes}, name);
+    RecvOp op{OP_PREC_NONE, input, output, name};
+    this->impl->add_op(op);
     return output;
 }
 

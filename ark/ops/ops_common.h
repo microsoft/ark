@@ -6,6 +6,7 @@
 
 #include <ostream>
 #include <vector>
+#include "include/ark.h"
 
 namespace ark {
 
@@ -16,7 +17,8 @@ typedef enum
     OP_ARG_INT64,
     OP_ARG_UINT64,
     OP_ARG_BOOL,
-    OP_ARG_FLOAT
+    OP_ARG_FLOAT,
+    OP_ARG_DIMS
 } OpArgType;
 
 // Stores an arbitrary type of argument given to an operator.
@@ -27,6 +29,7 @@ struct OpArg
     OpArg(uint64_t arg);
     OpArg(bool arg);
     OpArg(float arg);
+    OpArg(const Dims &arg);
     OpArg(const OpArg &);
     ~OpArg();
 
@@ -36,6 +39,32 @@ struct OpArg
 
     friend bool operator<(const OpArg &oa1, const OpArg &oa2);
     friend bool operator==(const OpArg &oa1, const OpArg &oa2);
+};
+
+class Op;
+
+class OpArgs
+{
+  public:
+    OpArgs(const std::vector<OpArg>& args = {});
+    OpArgs(const OpArgs &) = default;
+
+    OpArgs &operator=(const OpArgs &opargs);
+
+    void get(int *arg, int idx) const;
+    void get(long long int *arg, int idx) const;
+    void get(uint64_t *arg, int idx) const;
+    void get(bool *arg, int idx) const;
+    void get(float *arg, int idx) const;
+    void get(Dims *arg, int idx) const;
+
+  protected:
+    std::vector<OpArg> args;
+
+    friend class Op;
+    friend bool operator<(const OpArgs &opargs1, const OpArgs &opargs2);
+    friend bool operator==(const OpArgs &opargs1, const OpArgs &opargs2);
+    friend bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2);
 };
 
 // Type of operator.
@@ -55,6 +84,7 @@ typedef enum
     OP_LAYERNORM,
     OP_SOFTMAX,
     OP_SCALE,
+    OP_RELU,
     OP_GELU,
     OP_MATMUL,
     OP_MAX_POOL,
@@ -86,14 +116,37 @@ typedef enum
 
 struct Tensor;
 
-// The operator of a model.
-struct Op
+// 2-dimensional op tile
+struct OpTile
 {
+    DimType x;
+    DimType y;
+};
+
+// Configurations for execution of an operation.
+struct OpConfig
+{
+    int num_warps = 0;
+    int smem_bytes = 0;
+    std::vector<OpTile> in_deps_tiles;
+    std::vector<OpTile> out_deps_tiles;
+    bool sync_pre = false;
+    bool sync_post = false;
+};
+
+// The operator of a model.
+class Op
+{
+  public:
+    Op() = default;
     Op(const OpType &type, const OpPrecType &prec_type,
        const std::vector<Tensor *> &in_deps,
-       const std::vector<Tensor *> &out_deps, const std::vector<OpArg> &args,
+       const std::vector<Tensor *> &out_deps, const OpArgs& args,
        const std::string &name, int gran_lev);
     Op(const Op &) = default;
+
+    virtual std::string function_string(const OpConfig &cfg) const { return ""; };
+
     //
     OpType type;
     // Precision type of the operator.
@@ -103,12 +156,16 @@ struct Op
     // The output tensors of the operator.
     std::vector<Tensor *> out_deps;
     // Additional arguments of the operator.
-    std::vector<OpArg> args;
+    OpArgs args;
     std::string name;
     int gran_lev;
 
     friend bool operator<(const Op &op1, const Op &op2);
     friend bool operator==(const Op &op1, const Op &op2);
+
+  protected:
+    std::string function_name(const std::string &kernel_name,
+                              const OpArgs &template_args) const;
 };
 
 std::ostream &operator<<(std::ostream &os, const OpType &s);

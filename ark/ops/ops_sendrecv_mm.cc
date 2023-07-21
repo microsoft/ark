@@ -10,6 +10,38 @@ using namespace std;
 
 namespace ark {
 
+class SendMMOp : public Op
+{
+  public:
+    SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                       Tensor *send_ready_flag, Tensor *output, int id,
+                       int gpu_dst, size_t bytes, const string &name);
+};
+
+class RecvMMOp : public Op
+{
+  public:
+    RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                       Tensor *send_ready_flag, Tensor *output, int id,
+                       int gpu_src, size_t bytes, const string &name);
+};
+
+SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                   Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
+                   size_t bytes, const string &name)
+    : Op{OP_SEND_MM, prec_type, {input, recvbuf, send_ready_flag}, {output},
+         {{id, gpu_dst, bytes}}, name, -1}
+{
+}
+
+RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                   Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
+                   size_t bytes, const string &name)
+    : Op{OP_RECV_MM, prec_type, {input, recvbuf, send_ready_flag}, {output},
+         {{id, gpu_src, bytes}}, name, -1}
+{
+}
+
 // TODO: set the max_tile_num according to the tile number of the op
 const int max_tile_num = 2048;
 
@@ -45,9 +77,9 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
         },
         INT32);
     send_ready_flag->exported = true;
-    this->impl->add_op(OP_SEND_MM, OP_PREC_NONE,
-                       {input, recvbuf, send_ready_flag}, {output},
-                       {id, gpu_dst, bytes}, name);
+    SendMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
+                gpu_dst, bytes, name};
+    this->impl->add_op(op);
 
     return output;
 }
@@ -88,9 +120,9 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
         },
         INT32);
     send_ready_flag->imported = true;
-    this->impl->add_op(OP_RECV_MM, OP_PREC_NONE,
-                       {input, recvbuf, send_ready_flag}, {output},
-                       {id, gpu_src, bytes}, name);
+    RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
+                gpu_src, bytes, name};
+    this->impl->add_op(op);
     return output;
 }
 

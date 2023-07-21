@@ -9,6 +9,19 @@ using namespace std;
 
 namespace ark {
 
+class ScaleOp : public Op
+{
+  public:
+    ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     float val, const string &name);
+};
+
+ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                 float val, const string &name)
+    : Op{OP_SCALE, prec_type, {input}, {output}, {{val}}, name, -1}
+{
+}
+
 // Multiply `input` by `val`.
 // TODO: make it into a general element-wise operation
 Tensor *Model::scale(Tensor *input, float val, Tensor *output,
@@ -31,7 +44,8 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
     } else if (output->shape != input->shape) {
         LOGERR("invalid output shape: ", output->shape);
     }
-    this->impl->add_op(OP_SCALE, pt, {input}, {output}, {val}, name);
+    ScaleOp op{pt, input, output, val, name};
+    this->impl->add_op(op);
     return output;
 }
 

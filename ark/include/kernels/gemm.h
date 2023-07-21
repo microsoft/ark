@@ -34,6 +34,7 @@
 #endif // defined(CUTLASS_ARCH_WMMA_ENABLED)
 
 #include "smem.h"
+#include "static_math.h"
 #include "vec.h"
 
 namespace cutlass {
@@ -959,29 +960,24 @@ struct GemmKernelBase
 
 // Half-precision GEMM. Row-major.
 // TODO: this kernel returns the error code 716 'misaligned address'
-// when TA is false and the kernel is compiled with "-G" option
+// when TransposeA is false and the kernel is compiled with "-G" option
 // (which turns off all optimizations on device code).
-template <int M, int N, int K, bool TA, bool TB, int BcastType, bool IsRelu,
-          int ThreadsNum, int SmemBytes, int TDimM, int TDimN, int TDimK>
+template <typename NCA, typename NCB, typename Shape, typename ProblemSize,
+          typename LeadingDims, bool IsColumnA, bool IsColumnB, bool IsRelu, int ThreadsNum, int SmemBytes>
 DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
-                 ark::half beta, int tx, int ty, int tz)
+                 ark::half beta, int tn, int tc, int th, int tw)
 {
-    // BcastType = 0: both A and B are batched with the same size.
-    // BcastType = 1: only A is batched.
-    // BcastType = 2: only B is batched.
-    static_assert(BcastType == 0 || BcastType == 1 || BcastType == 2,
-                  "invalid broadcast type.");
-    static_assert(M % TDimM == 0, "");
-    static_assert(N % TDimN == 0, "");
-    static_assert(K % TDimK == 0, "");
+    static_assert(NCA::D2 == 1 && NCA::D3 == 1, "NCA should be two dimensional.");
+    static_assert(NCB::D2 == 1 && NCB::D3 == 1, "NCB should be two dimensional.");
+    static_assert(Shape::D3 == 1, "Shape should be three dimensional.");
+    static_assert(ProblemSize::D3 == 1, "ProblemSize should be three dimensional.");
+
     using LayoutA = typename cutlass::platform::conditional<
-        TA, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
+        IsColumnA, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
     using LayoutB = typename cutlass::platform::conditional<
-        TB, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
-    constexpr int LdA = TA ? M : K;
-    constexpr int LdB = TB ? K : N;
+        IsColumnB, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
     using GemmKernel = GemmKernelBase<
-        Vec<TDimM, TDimN, TDimK>, ThreadsNum, Vec<M, N, K>, Vec<LdA, N, N, LdB>,
+        Shape, ThreadsNum, ProblemSize, LeadingDims,
         cutlass::half_t, LayoutA, cutlass::half_t, LayoutB, cutlass::half_t,
         cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
 #if (ARK_TARGET_CUDA_ARCH == 60)
@@ -1002,23 +998,38 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
                   "traits mismatch with the actual implementation.");
     using Smem = SharedMemory<typename GemmKernel::SharedStorage, ThreadsNum>;
 
-    constexpr int SizeA = K * M;
-    constexpr int SizeB = K * N;
-    constexpr int SizeC = N * M;
+    constexpr int SizeA = math::mul<ProblemSize::D0, ProblemSize::D2>::value;
+    constexpr int SizeB = math::mul<ProblemSize::D1, ProblemSize::D2>::value;
+    constexpr int SizeC = math::mul<ProblemSize::D0, ProblemSize::D1>::value;
+
+    // N dimension of C is max(N dimension of A, N dimension of B)
+    constexpr int NC = (NCA::D0 > NCB::D0) ? NCA::D0 : NCB::D0;
+    // C dimension of C is max(C dimension of A, C dimension of B)
+    constexpr int CC = (NCA::D1 > NCB::D1) ? NCA::D1 : NCB::D1;
+
+    // Broadcasting
     cutlass::half_t *pA, *pB;
-    cutlass::half_t *pC = &C[tz * SizeC];
-    if (BcastType == 0) {
-        pA = &A[tz * SizeA];
-        pB = &B[tz * SizeB];
-    } else if (BcastType == 1) {
-        pA = &A[tz * SizeA];
-        pB = B;
-    } else if (BcastType == 2) {
+    cutlass::half_t *pC = &C[tn * math::mul<CC, SizeC>::value + tc * SizeC];
+    if (NCA::D0 == 1 && NCA::D1 == 1) {
         pA = A;
-        pB = &B[tz * SizeB];
+    } else if (NCA::D0 == 1) {
+        pA = &A[tc * SizeA];
+    } else if (NCA::D1 == 1) {
+        pA = &A[tn * SizeA];
+    } else {
+        pA = &A[tn * math::mul<CC, SizeA>::value + tc * SizeA];
+    }
+    if (NCB::D0 == 1 && NCB::D1 == 1) {
+        pB = B;
+    } else if (NCB::D0 == 1) {
+        pB = &B[tc * SizeB];
+    } else if (NCB::D1 == 1) {
+        pB = &B[tn * SizeB];
+    } else {
+        pB = &B[tn * math::mul<CC, SizeB>::value + tc * SizeB];
     }
     typename GemmKernel::SharedStorage *ps = Smem();
-    GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, tx, ty);
+    GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, tw, th);
 }
 
 } // namespace ark

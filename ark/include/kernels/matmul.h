@@ -9,15 +9,13 @@
 namespace ark {
 
 // Matrix multiplication. Reuse GEMM kernels. Row-major.
-template <int M, int N, int K, bool TA, bool TB, int BcastType, bool IsRelu,
-          int ThreadsNum, int SmemBytes, int TDimM, int TDimN, int TDimK>
+template <typename NCA, typename NCB, typename Shape, typename ProblemSize,
+          typename LeadingDims, bool IsColumnA, bool IsColumnB, bool IsRelu, int ThreadsNum, int SmemBytes>
 DEVICE void matmul(ark::half *C, ark::half *A, ark::half *B, int tx, int ty,
                    int tz)
 {
     // 0x3c00 represents constant 1.0 in half-precision floating point format.
-    gemm<M, N, K, TA, TB, BcastType, IsRelu, ThreadsNum, SmemBytes, TDimM,
-         TDimN, TDimK>(C, A, B, ark::half::bitcast(0x3c00),
-                       ark::half::bitcast(0x0), tx, ty, tz);
+    gemm<NCA, NCB, Shape, ProblemSize, LeadingDims, IsColumnA, IsColumnB, IsRelu, ThreadsNum, SmemBytes>(C, A, B, ark::half::bitcast(0x3c00), ark::half::bitcast(0x0), tz / OutShape::C, tz % OutShape::C, ty, tx);
 }
 
 // /* Fused matrix multiplication and scale kernel. */

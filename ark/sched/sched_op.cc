@@ -193,65 +193,13 @@ const string SchedOp::func_string() const
 {
     if (this->cfg == &ARK_OP_CONFIG_VIRT) {
         return "";
-    } else if (this->op->type == OP_MATMUL) {
-        return this->func_string_matmul();
-    } else if (this->op->type == OP_SEND) {
-        return this->func_string_send();
-    } else if (this->op->type == OP_RECV) {
-        return this->func_string_recv();
-    } else if (this->op->type == OP_SEND_DONE) {
-        return this->func_string_send_done();
-    } else if (this->op->type == OP_SEND_MM) {
-        return this->func_string_send_mm();
-    } else if (this->op->type == OP_RECV_MM) {
-        return this->func_string_recv_mm();
-    } else if (this->op->type == OP_REDUCE_E_SUM) {
-        return this->func_string_reduce("e_sum");
-    } else if (this->op->type == OP_REDUCE_E_MEAN) {
-        return this->func_string_reduce("e_mean");
-    } else if (this->op->type == OP_REDUCE_E_MAX) {
-        return this->func_string_reduce("e_max");
-    } else if (this->op->type == OP_REDUCE_W_SUM) {
-        return this->func_string_reduce("w_sum");
-    } else if (this->op->type == OP_REDUCE_W_MEAN) {
-        return this->func_string_reduce("w_mean");
-    } else if (this->op->type == OP_REDUCE_W_MAX) {
-        return this->func_string_reduce("w_max");
-    } else if (this->op->type == OP_LAYERNORM) {
-        return this->func_string_layernorm();
-    } else if (this->op->type == OP_SOFTMAX) {
-        return this->func_string_softmax();
-    } else if (this->op->type == OP_SCALE) {
-        return this->func_string_scale();
-    } else if (this->op->type == OP_GELU) {
-        return this->func_string_gelu();
-    } else if (this->op->type == OP_ADD) {
-        return this->func_string_add();
-    } else if (this->op->type == OP_MUL) {
-        return this->func_string_mul();
-    } else if (this->op->type == OP_IM2COL) {
-        return this->func_string_im2col();
-    } else if (this->op->type == OP_TRANSPOSE) {
-        return this->func_string_transpose();
     }
-    return "";
+    return this->op->function_string(*this->cfg);
 }
-
-#define CHECK(cond)                                                            \
-    do {                                                                       \
-        if (!(cond)) {                                                         \
-            LOGERR("failed condition: " #cond);                                \
-        }                                                                      \
-    } while (0)
 
 const string SchedOp::func_string_matmul() const
 {
     CHECK(this->op->in_deps.size() == 2);
-    CHECK(this->op->args.size() == 3);
-    CHECK(this->op->args[0].type == OP_ARG_BOOL);
-    CHECK(this->op->args[1].type == OP_ARG_BOOL);
-    CHECK(this->op->args[2].type == OP_ARG_BOOL);
-
     const Tensor *tns_in_0 = this->op->in_deps[0];
     const Tensor *tns_in_1 = this->op->in_deps[1];
     const Tensor *tns_out = this->op->out_deps[0];
@@ -260,9 +208,12 @@ const string SchedOp::func_string_matmul() const
     Dims shp_in_1 = tns_in_1->shape;
     Dims shp_out = tns_out->shape;
 
-    bool trans_in_0 = *(bool *)this->op->args[0].val;
-    bool trans_in_1 = *(bool *)this->op->args[1].val;
-    bool is_relu = *(bool *)this->op->args[2].val;
+    bool trans_in_0;
+    bool trans_in_1;
+    bool is_relu;
+    this->op->args.get_template(&trans_in_0, 0);
+    this->op->args.get_template(&trans_in_1, 1);
+    this->op->args.get_template(&is_relu, 2);
 
     int ndims_in_0 = shp_in_0.ndims();
     int ndims_in_1 = shp_in_1.ndims();

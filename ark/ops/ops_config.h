@@ -23,24 +23,6 @@ struct OpConfigKey
 bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
 bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
-// 2-dimensional op tile
-struct OpTile
-{
-    DimType x;
-    DimType y;
-};
-
-// Configurations for execution of an operation.
-struct OpConfig
-{
-    int num_warps = 0;
-    int smem_bytes = 0;
-    std::vector<OpTile> in_deps_tiles;
-    std::vector<OpTile> out_deps_tiles;
-    bool sync_pre = false;
-    bool sync_post = false;
-};
-
 void to_json(nlohmann::json &j, const OpConfig &cfg);
 void from_json(const nlohmann::json &j, OpConfig &cfg);
 

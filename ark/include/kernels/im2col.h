@@ -9,13 +9,13 @@
 
 namespace ark {
 
-template <typename InShape, typename InLDims, int KernelHeight, int KernelWidth,
+template <typename InShape, typename InDims, int KernelHeight, int KernelWidth,
           int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
           int DilationHeight, int DilationWidth, int TN, int SB, int TDM,
           int TDN, int TDK>
 struct TransformIm2Col
 {
-    static const int InN = InLDims::H * InLDims::W;
+    static const int InN = InDims::HW;
 
     static const int Height = InShape::H;
     static const int Width = InShape::W;
@@ -96,14 +96,14 @@ struct TransformIm2Col
 
 // Half-precision image to column operation.
 // TODO: support dilation.
-template <typename InShape, typename InLDims, int KernelHeight, int KernelWidth,
+template <typename InShape, typename InDims, int KernelHeight, int KernelWidth,
           int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
           int DilationHeight, int DilationWidth, int TN, int SB, int TDM,
           int TDN, int TDK>
 DEVICE void im2col(ark::half *y, ark::half *x, int tx, int ty, int tz)
 {
     using TransformIm2Col =
-        TransformIm2Col<InShape, InLDims, KernelHeight, KernelWidth,
+        TransformIm2Col<InShape, InDims, KernelHeight, KernelWidth,
                         StrideHeight, StrideWidth, PadHeight, PadWidth,
                         DilationHeight, DilationWidth, TN, SB, TDM, TDN, TDK>;
     Transform<TransformIm2Col, TransformIm2Col::OutHeight, -1, -1, TN, SB, TDM,

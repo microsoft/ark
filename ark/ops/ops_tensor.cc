@@ -8,6 +8,17 @@ using namespace std;
 
 namespace ark {
 
+class TensorOp : public Op
+{
+  public:
+    TensorOp(const vector<Tensor *> &deps, Tensor *output, const string &name);
+};
+
+TensorOp::TensorOp(const vector<Tensor *> &deps, Tensor *output, const string &name)
+    : Op{OP_TENSOR, OP_PREC_NONE, deps, {output}, {}, name, -1}
+{
+}
+
 Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
                       const Dims &ldims, const Dims &offs, const Dims &pads,
                       const vector<Tensor *> &deps, bool exported,
@@ -33,7 +44,8 @@ Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
     for (auto &dep : dep_set) {
         dep_vec.emplace_back(dep);
     }
-    this->impl->add_op(OP_TENSOR, OP_PREC_NONE, dep_vec, {ret}, {}, name);
+    TensorOp op{dep_vec, ret, name};
+    this->impl->add_op(op);
     return ret;
 }
 

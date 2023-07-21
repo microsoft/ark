@@ -11,6 +11,30 @@ namespace ark {
 
 template <typename InDims, typename OutDims, typename DataType,
           int NelemPerThread>
+struct Relu;
+
+template <typename InDims, typename OutDims>
+struct Relu<InDims, OutDims, half, 2>
+{
+    using DataType = ark::half;
+    static const int NelemPerThread = 2;
+
+    static DEVICE void compute(ark::half *out, ark::half *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w)
+    {
+        out += idx_n * OutDims::CHW +
+               idx_c * OutDims::HW + idx_h * OutDims::W + idx_w;
+
+        in += idx_n * InDims::CHW +
+              idx_c * InDims::HW + idx_h * InDims::W + idx_w;
+
+        __half2 input = *(__half2 *)in;
+        *(__half2 *)out = __hmax2(input, (__half2_raw){0, 0});
+    }
+};
+
+template <typename InDims, typename OutDims, typename DataType,
+          int NelemPerThread>
 struct Gelu;
 
 template <typename InDims, typename OutDims>
@@ -22,11 +46,11 @@ struct Gelu<InDims, OutDims, half, 2>
     static DEVICE void compute(ark::half *out, ark::half *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW +
+               idx_c * OutDims::HW + idx_h * OutDims::W + idx_w;
 
-        in += idx_n * InDims::C * InDims::H * InDims::W +
-              idx_c * InDims::H * InDims::W + idx_h * InDims::W + idx_w;
+        in += idx_n * InDims::CHW +
+              idx_c * InDims::HW + idx_h * InDims::W + idx_w;
 
         __half2 input = *(__half2 *)in;
         __half2 half_pi =
@@ -53,6 +77,15 @@ struct Gelu<InDims, OutDims, half, 2>
         *(__half2 *)out = gelu;
     }
 };
+
+template <typename InDims, typename OutDims, typename OutShape,
+          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+DEVICE void relu(ark::half *out, ark::half *in, int tx, int ty, int tz)
+{
+    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+           Relu<InDims, OutDims, ark::half, 2>>::run(out, in, tz / OutShape::C,
+                                                     tz % OutShape::C, ty, tx);
+}
 
 template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutShape, int ThreadsNum, int SmemBytes>

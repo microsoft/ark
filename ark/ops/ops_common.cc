@@ -4,6 +4,7 @@
 #include "ops_common.h"
 #include "include/ark.h"
 #include "json.h"
+#include "logging.h"
 #include <ostream>
 
 using namespace std;
@@ -39,6 +40,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_RECV_MM:       os << "OP_RECV_MM";       break;
     case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
     case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
+    case OP_RELU:          os << "OP_RELU";          break;
     case OP_GELU:          os << "OP_GELU";          break;
     }
     // clang-format on
@@ -65,6 +67,10 @@ OpArg::OpArg(float arg) : type{OP_ARG_FLOAT}, val{new float{arg}}
 {
     assert(this->val != nullptr);
 }
+OpArg::OpArg(const Dims &arg) : type{OP_ARG_DIMS}, val{new Dims{arg}}
+{
+    assert(this->val != nullptr);
+}
 OpArg::OpArg(const OpArg &arg) : type{arg.type}
 {
     if (this->type == OP_ARG_INT) {
@@ -77,6 +83,8 @@ OpArg::OpArg(const OpArg &arg) : type{arg.type}
         this->val = new bool{*(bool *)arg.val};
     } else if (this->type == OP_ARG_FLOAT) {
         this->val = new float{*(float *)arg.val};
+    } else if (this->type == OP_ARG_DIMS) {
+        this->val = new Dims{*(Dims *)arg.val};
     }
 }
 OpArg::~OpArg()
@@ -91,6 +99,8 @@ OpArg::~OpArg()
         delete static_cast<bool *>(this->val);
     } else if (this->type == OP_ARG_FLOAT) {
         delete static_cast<float *>(this->val);
+    } else if (this->type == OP_ARG_DIMS) {
+        delete static_cast<Dims *>(this->val);
     }
 }
 bool operator<(const OpArg &oa1, const OpArg &oa2)
@@ -111,6 +121,8 @@ bool operator<(const OpArg &oa1, const OpArg &oa2)
         return *(bool *)oa1.val < *(bool *)oa2.val;
     case OP_ARG_FLOAT:
         return *(float *)oa1.val < *(float *)oa2.val;
+    case OP_ARG_DIMS:
+        return *(Dims *)oa1.val < *(Dims *)oa2.val;
     }
     assert(false);
     return false;
@@ -133,6 +145,8 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
         return *(bool *)oa1.val == *(bool *)oa2.val;
     case OP_ARG_FLOAT:
         return *(float *)oa1.val == *(float *)oa2.val;
+    case OP_ARG_DIMS:
+        return *(Dims *)oa1.val == *(Dims *)oa2.val;
     }
     assert(false);
     return false;
@@ -172,9 +186,114 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
 //     }
 // }
 
+OpArgs::OpArgs(const std::vector<OpArg>& args) : args{args}
+{
+}
+
+OpArgs& OpArgs::operator=(const OpArgs& opargs)
+{
+    if (this != &opargs) {
+        this->args = opargs.args;
+    }
+    return *this;
+}
+
+void OpArgs::get(int *arg, int idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_INT) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<int *>(this->args[idx].val);
+}
+
+void OpArgs::get(long long int *arg, int idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_INT64) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<long long int *>(this->args[idx].val);
+}
+
+void OpArgs::get(uint64_t *arg, int idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_UINT64) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<uint64_t *>(this->args[idx].val);
+}
+
+void OpArgs::get(bool *arg, int idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_BOOL) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<bool *>(this->args[idx].val);
+}
+
+void OpArgs::get(float *arg, int idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_FLOAT) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<float *>(this->args[idx].val);
+}
+
+void OpArgs::get(Dims *arg, int idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_DIMS) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<Dims *>(this->args[idx].val);
+}
+
+bool operator<(const OpArgs &opargs1, const OpArgs &opargs2)
+{
+    for (size_t i = 0; i < opargs1.args.size(); ++i) {
+        if (opargs1.args[i] == opargs2.args[i]) {
+            continue;
+        }
+        return opargs1.args[i] < opargs2.args[i];
+    }
+    return false;
+}
+
+bool operator==(const OpArgs &opargs1, const OpArgs &opargs2)
+{
+    for (size_t i = 0; i < opargs1.args.size(); ++i) {
+        if (opargs1.args[i] == opargs2.args[i]) {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
+bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2)
+{
+    return !(opargs1 == opargs2);
+}
+
 Op::Op(const OpType &type_, const OpPrecType &prec_type_,
        const vector<Tensor *> &in_deps_, const vector<Tensor *> &out_deps_,
-       const vector<OpArg> &args_, const string &name_, int gran_lev_)
+       const OpArgs &args_, const string &name_, int gran_lev_)
     : type{type_}, prec_type{prec_type_}, in_deps{in_deps_},
       out_deps{out_deps_}, args{args_}, name{name_}, gran_lev{gran_lev_}
 {
@@ -185,22 +304,64 @@ Op::Op(const OpType &type_, const OpPrecType &prec_type_,
         assert(tns != nullptr);
     }
 }
+
+std::string Op::function_name(const std::string &kernel_name,
+                              const OpArgs &template_args) const
+{
+    std::stringstream ss;
+    ss << kernel_name;
+    size_t num_args = template_args.args.size();
+    if (num_args == 0) {
+        return ss.str();
+    }
+    ss << "<";
+    for (size_t i = 0; i < num_args; ++i) {
+        auto &arg = template_args.args[i];
+        if (arg.type == OP_ARG_INT) {
+            int val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_INT64) {
+            long long int val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_UINT64) {
+            uint64_t val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_BOOL) {
+            bool val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_FLOAT) {
+            LOGERR("float template args not supported");
+        } else if (arg.type == OP_ARG_DIMS) {
+            Dims val;
+            template_args.get(&val, i);
+            ss << "ark::Vec" << val;
+        }
+        if (i < num_args - 1) {
+            ss << ", ";
+        }
+    }
+    ss << ">";
+    return ss.str();
+}
+
 bool operator<(const Op &op1, const Op &op2)
 {
-    if (op1.type != op2.type) {
-        return op1.type < op2.type;
+    if (op1.type < op2.type) {
+        return true;
     }
-    if (op1.prec_type != op2.prec_type) {
-        return op1.prec_type < op2.prec_type;
+    if (op1.prec_type < op2.prec_type) {
+        return true;
     }
-    for (size_t i = 0; i < op1.args.size(); ++i) {
-        if (op1.args[i] == op2.args[i]) {
-            continue;
-        }
-        return op1.args[i] < op2.args[i];
+    if (op1.args < op2.args) {
+        return true;
     }
     return false;
 }
+
 bool operator==(const Op &op1, const Op &op2)
 {
     if (op1.type != op2.type) {
@@ -209,10 +370,7 @@ bool operator==(const Op &op1, const Op &op2)
     if (op1.prec_type != op2.prec_type) {
         return false;
     }
-    for (size_t i = 0; i < op1.args.size(); ++i) {
-        if (op1.args[i] == op2.args[i]) {
-            continue;
-        }
+    if (op1.args != op2.args) {
         return false;
     }
     return true;

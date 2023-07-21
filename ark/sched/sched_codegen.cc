@@ -35,6 +35,7 @@ bool is_tiled_op(const SchedOp &sop)
            (sop.get_op()->type == OP_SOFTMAX) ||
            (sop.get_op()->type == OP_ADD) || (sop.get_op()->type == OP_MUL) ||
            (sop.get_op()->type == OP_SCALE) ||
+           (sop.get_op()->type == OP_RELU) ||
            (sop.get_op()->type == OP_GELU) ||
            (sop.get_op()->type == OP_IM2COL) ||
            (sop.get_op()->type == OP_TRANSPOSE) ||
@@ -568,6 +569,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
                     (sop.get_op()->type == OP_REDUCE_W_MEAN) ||
                     (sop.get_op()->type == OP_REDUCE_W_MAX) ||
                     (sop.get_op()->type == OP_SCALE) ||
+                    (sop.get_op()->type == OP_RELU) ||
                     (sop.get_op()->type == OP_GELU) ||
                     (sop.get_op()->type == OP_ADD)) {
                     os << "DEVICE void uop" << uop_id << "(";

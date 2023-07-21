@@ -9,6 +9,90 @@ using namespace std;
 
 namespace ark {
 
+class ReduceWSumOp : public Op
+{
+  public:
+    ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int axis, const string &name);
+    std::string ReduceWSumOp::function_string(const OpConfig &cfg) const;
+};
+
+class ReduceESumOp : public Op
+{
+  public:
+    ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int axis, const string &name);
+    std::string ReduceESumOp::function_string(const OpConfig &cfg) const;
+};
+
+class ReduceWMaxOp : public Op
+{
+  public:
+    ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int axis, const string &name);
+    std::string ReduceWMaxOp::function_string(const OpConfig &cfg) const;
+};
+
+class ReduceEMaxOp : public Op
+{
+  public:
+    ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int axis, const string &name);
+    std::string ReduceEMaxOp::function_string(const OpConfig &cfg) const;
+};
+
+class ReduceWMeanOp : public Op
+{
+  public:
+    ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int axis, const string &name);
+    std::string ReduceWMeanOp::function_string(const OpConfig &cfg) const;
+};
+
+class ReduceEMeanOp : public Op
+{
+  public:
+    ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int axis, const string &name);
+    std::string ReduceEMeanOp::function_string(const OpConfig &cfg) const;
+};
+
+ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     int axis, const string &name)
+    : Op{OP_REDUCE_W_SUM, prec_type, {input}, {output}, {{axis}}, name, -1}
+{
+}
+
+ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     int axis, const string &name)
+    : Op{OP_REDUCE_E_SUM, prec_type, {input}, {output}, {{axis}}, name, -1}
+{
+}
+
+ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     int axis, const string &name)
+    : Op{OP_REDUCE_W_MAX, prec_type, {input}, {output}, {{axis}}, name, -1}
+{
+}
+
+ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     int axis, const string &name)
+    : Op{OP_REDUCE_E_MAX, prec_type, {input}, {output}, {{axis}}, name, -1}
+{
+}
+
+ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     int axis, const string &name)
+    : Op{OP_REDUCE_W_MEAN, prec_type, {input}, {output}, {{axis}}, name, -1}
+{
+}
+
+ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     int axis, const string &name)
+    : Op{OP_REDUCE_E_MEAN, prec_type, {input}, {output}, {{axis}}, name, -1}
+{
+}
+
 Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
                           const string &name)
 {
@@ -34,11 +118,11 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
                "reduce_sum op");
     }
     if (axis == input->shape.ndims() - 1) {
-        this->impl->add_op(OP_REDUCE_W_SUM, pt, {input}, {output}, {axis},
-                           name);
+        ReduceWSumOp op{pt, input, output, axis, name};
+        this->impl->add_op(op);
     } else {
-        this->impl->add_op(OP_REDUCE_E_SUM, pt, {input}, {output}, {axis},
-                           name);
+        ReduceESumOp op{pt, input, output, axis, name};
+        this->impl->add_op(op);
     }
     return output;
 }
@@ -68,11 +152,11 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
                "reduce_mean op");
     }
     if (axis == input->shape.ndims() - 1) {
-        this->impl->add_op(OP_REDUCE_W_MEAN, pt, {input}, {output}, {axis},
-                           name);
+        ReduceWMeanOp op{pt, input, output, axis, name};
+        this->impl->add_op(op);
     } else {
-        this->impl->add_op(OP_REDUCE_E_MEAN, pt, {input}, {output}, {axis},
-                           name);
+        ReduceEMeanOp op{pt, input, output, axis, name};
+        this->impl->add_op(op);
     }
     return output;
 }
@@ -102,11 +186,11 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
                "reduce_max op");
     }
     if (axis == input->shape.ndims() - 1) {
-        this->impl->add_op(OP_REDUCE_W_MAX, pt, {input}, {output}, {axis},
-                           name);
+        ReduceWMaxOp op{pt, input, output, axis, name};
+        this->impl->add_op(op);
     } else {
-        this->impl->add_op(OP_REDUCE_E_MAX, pt, {input}, {output}, {axis},
-                           name);
+        ReduceEMaxOp op{pt, input, output, axis, name};
+        this->impl->add_op(op);
     }
     return output;
 }

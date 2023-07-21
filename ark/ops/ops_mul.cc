@@ -9,6 +9,49 @@ using namespace std;
 
 namespace ark {
 
+class MulOp : public Op
+{
+  public:
+    MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+                       const string &name);
+    std::string MulOp::function_string(const OpConfig &cfg) const;
+};
+
+MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+                    const string &name)
+    : Op{OP_MUL, prec_type, {input, other}, {output}, {}, name, -1}
+{
+}
+
+std::string MulOp::function_string(const OpConfig &cfg) const
+{
+    Tensor *input = this->in_deps[0];
+    Tensor *other = this->in_deps[1];
+    Tensor *output = this->out_deps[0];
+
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    return this->function_name("ark::mul", {{
+            input->ldims.dims4(),   // In0Dims
+            input->shape.dims4(),   // In0Shape
+            other->ldims.dims4(),   // In1Dims
+            other->shape.dims4(),   // In1Shape
+            output->ldims.dims4(),  // OutDims
+            output->shape.dims4(),  // OutShape
+            unit_out_shape,         // UnitOutShape
+            cfg.num_warps * 32,     // ThreadsNum
+            cfg.smem_bytes,         // SmemBytes
+        }});
+}
+
 Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
                    const string &name)
 {
@@ -52,7 +95,8 @@ Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
     } else if (output == input) {
         output = this->identity(output);
     }
-    this->impl->add_op(OP_MUL, pt, {input, other}, {output}, {}, name);
+    MulOp op{pt, input, other, output, name};
+    this->impl->add_op(op);
     return output;
 }
 

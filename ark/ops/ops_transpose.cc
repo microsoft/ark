@@ -9,6 +9,19 @@ using namespace std;
 
 namespace ark {
 
+class TransposeOp : public Op
+{
+  public:
+    TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int tp_type, const string &name);
+};
+
+TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                             int tp_type, const string &name)
+    : Op{OP_TRANSPOSE, prec_type, {input}, {output}, {{tp_type}}, name, -1}
+{
+}
+
 Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
                          const std::string &name)
 {
@@ -74,7 +87,8 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     } else {
         assert(output->shape == out_shape);
     }
-    this->impl->add_op(OP_TRANSPOSE, pt, {input}, {output}, {tp_type}, name);
+    TransposeOp op{pt, input, output, tp_type, name};
+    this->impl->add_op(op);
     return output;
 }
 

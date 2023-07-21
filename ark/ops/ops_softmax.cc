@@ -9,6 +9,19 @@ using namespace std;
 
 namespace ark {
 
+class SoftmaxOp : public Op
+{
+  public:
+    SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                         const string &name);
+};
+
+SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     const string &name)
+    : Op{OP_SOFTMAX, prec_type, {input}, {output}, {}, name, -1}
+{
+}
+
 Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
@@ -29,7 +42,8 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)
     } else if (output == input) {
         output = this->identity(output);
     }
-    this->impl->add_op(OP_SOFTMAX, pt, {input}, {output}, {}, name);
+    SoftmaxOp op{pt, input, output, name};
+    this->impl->add_op(op);
     return output;
 }
 

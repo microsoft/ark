@@ -9,12 +9,55 @@ using namespace std;
 
 namespace ark {
 
+class AddOp : public Op
+{
+  public:
+    AddOp::AddOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+                       const string &name);
+    std::string AddOp::function_string(const OpConfig &cfg) const;
+};
+
+AddOp::AddOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+                    const string &name)
+    : Op{OP_ADD, prec_type, {input, other}, {output}, {}, name, -1}
+{
+}
+
+std::string AddOp::function_string(const OpConfig &cfg) const
+{
+    Tensor *input = this->in_deps[0];
+    Tensor *other = this->in_deps[1];
+    Tensor *output = this->out_deps[0];
+
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    return this->function_name("ark::add", {{
+            input->ldims.dims4(),   // In0Dims
+            input->shape.dims4(),   // In0Shape
+            other->ldims.dims4(),   // In1Dims
+            other->shape.dims4(),   // In1Shape
+            output->ldims.dims4(),  // OutDims
+            output->shape.dims4(),  // OutShape
+            unit_out_shape,         // UnitOutShape
+            cfg.num_warps * 32,     // ThreadsNum
+            cfg.smem_bytes,         // SmemBytes
+        }});
+}
+
 Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
                    const string &name)
 {
     LOG(DEBUG, "add ", input->shape, " ", other->shape);
-    assert(input != nullptr);
-    assert(other != nullptr);
+    CHECK(input != nullptr);
+    CHECK(other != nullptr);
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -52,7 +95,8 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
     } else if (output == input) {
         output = this->identity(output);
     }
-    this->impl->add_op(OP_ADD, pt, {input, other}, {output}, {}, name);
+    AddOp op{pt, input, other, output, name};
+    this->impl->add_op(op);
     return output;
 }
 
