@@ -42,7 +42,8 @@ Tensor *Model::conv2d(Tensor *input, DimType in_channels, DimType out_channels,
     //     i2c = this->reshape(input, {is[0], os[1] * os[2], 1, in_dim});
     // } else {
     i2c = this->tensor({is[0], os[1] * os[2], 1, in_dim}, input->type);
-    this->impl->add_op(OP_IM2COL, pt, {input}, {i2c}, {}, name + "/im2col", nullptr);
+    this->impl->add_op(OP_IM2COL, pt, {input}, {i2c}, {}, name + "/im2col",
+                       nullptr);
     // }
     Tensor *weight = this->tensor({1, out_channels, 1, in_dim}, input->type);
     Tensor *conv = this->matmul(i2c, weight, output, 1, false, true, false,

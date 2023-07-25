@@ -13,7 +13,8 @@ extern const OpConfigMap SoftmaxConfigMap;
 
 SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const string &name)
-    : Op{OP_SOFTMAX, prec_type, {input}, {output}, {}, name, &SoftmaxConfigMap, -1}
+    : Op{OP_SOFTMAX, prec_type, {input},           {output},
+         {},         name,      &SoftmaxConfigMap, -1}
 {
 }
 

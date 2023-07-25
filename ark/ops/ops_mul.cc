@@ -13,7 +13,9 @@ extern const OpConfigMap ArithmeticConfigMap;
 
 MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
              const string &name)
-    : Op{OP_MUL, prec_type, {input, other}, {output}, {}, name, &ArithmeticConfigMap, -1, true}
+    : Op{OP_MUL, prec_type, {input, other},       {output},
+         {},     name,      &ArithmeticConfigMap, -1,
+         true}
 {
 }
 

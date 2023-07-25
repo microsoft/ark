@@ -13,7 +13,8 @@ extern const OpConfigMap TransposeConfigMap;
 
 TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                          int tp_type, const string &name)
-    : Op{OP_TRANSPOSE, prec_type, {input}, {output}, {{tp_type}}, name, &TransposeConfigMap, -1}
+    : Op{OP_TRANSPOSE, prec_type,           {input}, {output}, {{tp_type}},
+         name,         &TransposeConfigMap, -1}
 {
 }
 

@@ -62,7 +62,8 @@ void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
 Op *Model::Impl::add_op(const OpType type, const OpPrecType prec_type,
                         const vector<Tensor *> &in_deps,
                         const vector<Tensor *> &out_deps, const OpArgs &args,
-                        const string &name, const OpConfigMap *cfg_map, int gran_lev)
+                        const string &name, const OpConfigMap *cfg_map,
+                        int gran_lev)
 {
     string suffix_str;
     auto p = this->name_cnts.emplace(name, 1);

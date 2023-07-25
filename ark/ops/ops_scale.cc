@@ -13,7 +13,8 @@ extern const OpConfigMap ScaleConfigMap;
 
 ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
                  const string &name)
-    : Op{OP_SCALE, prec_type, {input}, {output}, {{val}}, name, &ScaleConfigMap, -1, true}
+    : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
+         name,     &ScaleConfigMap, -1,      true}
 {
 }
 

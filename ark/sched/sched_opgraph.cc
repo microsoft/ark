@@ -111,10 +111,11 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     const Op *op = *dep_ops.begin();
                     const OpConfig *cfg = sched_op_config(op, gpu_info);
                     // Cannot merge if `opseq` needs a global sync.
-                    const OpConfig *prev_op_cfg = opseq.get_sched_ops().back().get_cfg();
+                    const OpConfig *prev_op_cfg =
+                        opseq.get_sched_ops().back().get_cfg();
                     bool can_merge = true;
                     if (cfg != nullptr && cfg->sync_post) {
-                        can_merge = false; 
+                        can_merge = false;
                     }
                     if (prev_op_cfg != nullptr && prev_op_cfg->sync_pre) {
                         can_merge = false;
@@ -148,7 +149,8 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                             }
                             if (out_dep_ops.size() == 0) {
                                 // Try merge and continue if succeed.
-                                if (opseq.append(op, sched_op_config(op, gpu_info))) {
+                                if (opseq.append(
+                                        op, sched_op_config(op, gpu_info))) {
                                     auto p = seen.emplace(op);
                                     assert(p.second);
                                     this->op_to_node_map[op] = *it;

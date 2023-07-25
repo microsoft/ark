@@ -13,7 +13,8 @@ extern const OpConfigMap ActivationConfigMap;
 
 ReluOp::ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                const string &name)
-    : Op{OP_RELU, prec_type, {input}, {output}, {}, name, &ActivationConfigMap, -1, true}
+    : Op{OP_RELU, prec_type, {input}, {output}, {}, name, &ActivationConfigMap,
+         -1,      true}
 {
 }
 

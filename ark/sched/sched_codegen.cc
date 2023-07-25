@@ -422,7 +422,8 @@ ostream &DefaultCodeGenerator::codegen_tensor(ostream &os, const Tensor &tensor)
     return os;
 }
 
-std::ostream &DefaultCodeGenerator::codegen_arg(std::ostream &os, const OpArg &arg)
+std::ostream &DefaultCodeGenerator::codegen_arg(std::ostream &os,
+                                                const OpArg &arg)
 {
     if (arg.type == OP_ARG_TENSOR) {
         Tensor *tns;
@@ -454,7 +455,9 @@ std::ostream &DefaultCodeGenerator::codegen_arg(std::ostream &os, const OpArg &a
     return os;
 }
 
-std::ostream &DefaultCodeGenerator::codegen_arg_def(std::ostream &os, const OpArg &arg, const std::string &name)
+std::ostream &DefaultCodeGenerator::codegen_arg_def(std::ostream &os,
+                                                    const OpArg &arg,
+                                                    const std::string &name)
 {
     if (arg.type == OP_ARG_TENSOR) {
         Tensor *tns;
@@ -591,7 +594,8 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
     return os;
 }
 
-ostream &DefaultCodeGenerator::codegen_uop_def(ostream &os, const SchedOp &sop, int uop_id)
+ostream &DefaultCodeGenerator::codegen_uop_def(ostream &os, const SchedOp &sop,
+                                               int uop_id)
 {
     std::string uop_name = "uop" + std::to_string(uop_id);
     std::string func_name = sop.func_string();

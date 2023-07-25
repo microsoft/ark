@@ -27,7 +27,8 @@ class Model::Impl
     Op *add_op(const OpType type, const OpPrecType prec_type,
                const std::vector<Tensor *> &in_deps,
                const std::vector<Tensor *> &out_deps, const OpArgs &args,
-               const std::string &name, const OpConfigMap *cfg_map, int gran_lev = -1);
+               const std::string &name, const OpConfigMap *cfg_map,
+               int gran_lev = -1);
     Op *add_op(Op &op);
 
     /// Delete an existing operator from the model.

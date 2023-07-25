@@ -12,8 +12,10 @@ namespace ark {
 ReduceOp::ReduceOp(const OpType &type, const OpPrecType &prec_type,
                    const std::vector<Tensor *> &in_deps,
                    const std::vector<Tensor *> &out_deps, const OpArgs &args,
-                   const std::string &name, const OpConfigMap *cfg_map, int gran_lev)
-    : Op{type, prec_type, in_deps, out_deps, args, name, cfg_map, gran_lev, true}
+                   const std::string &name, const OpConfigMap *cfg_map,
+                   int gran_lev)
+    : Op{type, prec_type, in_deps,  out_deps, args,
+         name, cfg_map,   gran_lev, true}
 {
 }
 
@@ -67,7 +69,7 @@ extern const OpConfigMap ReduceEConfigMap;
 
 ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
-    : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input}, {output},
+    : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceWConfigMap, -1}
 {
 }
@@ -79,7 +81,7 @@ std::string ReduceWSumOp::function_name(const OpConfig &cfg) const
 
 ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
-    : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input}, {output},
+    : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceEConfigMap, -1}
 {
 }
@@ -91,7 +93,7 @@ std::string ReduceESumOp::function_name(const OpConfig &cfg) const
 
 ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
-    : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input}, {output},
+    : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceWConfigMap, -1}
 {
 }
@@ -103,7 +105,7 @@ std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const
 
 ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
-    : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input}, {output},
+    : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceEConfigMap, -1}
 {
 }
@@ -115,7 +117,7 @@ std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const
 
 ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input,
                              Tensor *output, int axis, const string &name)
-    : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input}, {output},
+    : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input},           {output},
                {{axis}},         name,      &ReduceWConfigMap, -1}
 {
 }
@@ -127,7 +129,7 @@ std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const
 
 ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input,
                              Tensor *output, int axis, const string &name)
-    : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input}, {output},
+    : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input},           {output},
                {{axis}},         name,      &ReduceEConfigMap, -1}
 {
 }

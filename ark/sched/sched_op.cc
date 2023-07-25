@@ -167,8 +167,7 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
         this->op->out_deps[i]->update_pads(pads);
     }
     // claculate the tile size for the SchedOp
-    if ((this->op->out_deps.size() == 1) &&
-        (this->cfg != nullptr)) {
+    if ((this->op->out_deps.size() == 1) && (this->cfg != nullptr)) {
         const OpTile &tile = this->cfg->out_deps_tiles[0];
         const Dims &s = this->op->out_deps[0]->shape;
         int ndims = s.ndims();

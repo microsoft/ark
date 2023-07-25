@@ -12,8 +12,15 @@ extern const OpConfigMap CommConfigMap;
 
 SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
                int rank, int dst_rank, size_t bytes, const string &name)
-    : Op{OP_SEND, prec_type, {input}, {output}, {{sid, rank, dst_rank, bytes}},
-         name,    &CommConfigMap, -1,        true}
+    : Op{OP_SEND,
+         prec_type,
+         {input},
+         {output},
+         {{sid, rank, dst_rank, bytes}},
+         name,
+         &CommConfigMap,
+         -1,
+         true}
 {
 }
 
@@ -47,8 +54,15 @@ OpArgs SendOp::function_call_args(const OpConfig &cfg) const
 
 SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                        int sid, int rank, int dst_rank, const string &name)
-    : Op{OP_SEND_DONE, prec_type, {input}, {output}, {{sid, rank, dst_rank}},
-         name,         &CommConfigMap, -1,        true}
+    : Op{OP_SEND_DONE,
+         prec_type,
+         {input},
+         {output},
+         {{sid, rank, dst_rank}},
+         name,
+         &CommConfigMap,
+         -1,
+         true}
 {
 }
 
@@ -75,8 +89,15 @@ OpArgs SendDoneOp::function_call_args(const OpConfig &cfg) const
 
 RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
                int rank, int src_rank, size_t bytes, const string &name)
-    : Op{OP_RECV, prec_type, {input}, {output}, {{sid, rank, src_rank, bytes}},
-         name,    &CommConfigMap, -1,        true}
+    : Op{OP_RECV,
+         prec_type,
+         {input},
+         {output},
+         {{sid, rank, src_rank, bytes}},
+         name,
+         &CommConfigMap,
+         -1,
+         true}
 {
 }
 
