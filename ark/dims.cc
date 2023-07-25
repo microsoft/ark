@@ -135,21 +135,67 @@ bool Dims::is_invalid() const
     return false;
 }
 
+DimType Dims::erase(int idx)
+{
+    int nd = this->ndims();
+    if (idx >= nd || -idx > nd) {
+        LOGERR("invalid index given: ", idx, " for ", *this);
+    }
+    if (idx < 0) {
+        idx += nd;
+    }
+    DimType ret = this->data[idx];
+    for (int i = idx; i < nd - 1; ++i) {
+        this->data[i] = this->data[i + 1];
+    }
+    this->data[nd - 1] = NO_DIM;
+    return ret;
+}
+
+DimType &Dims::operator[](int idx)
+{
+    int nd = this->ndims();
+    if (idx >= nd || -idx > nd) {
+        LOGERR("invalid index given: ", idx, " for ", *this);
+    }
+    if (idx < 0) {
+        idx += nd;
+    }
+    return this->data[idx];
+}
+
+const DimType &Dims::operator[](int idx) const
+{
+    int nd = this->ndims();
+    if (idx >= nd || -idx > nd) {
+        LOGERR("invalid index given: ", idx, " for ", *this);
+    }
+    if (idx < 0) {
+        idx += nd;
+    }
+    return this->data[idx];
+}
+
 bool operator==(const Dims &a, const Dims &b)
 {
-    return (a[0] == b[0]) && (a[1] == b[1]) && (a[2] == b[2]) && (a[3] == b[3]);
+    for (int i = 0; i < DIMS_LEN; ++i) {
+        if (a.data[i] != b.data[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool operator!=(const Dims &a, const Dims &b)
 {
-    return (a[0] != b[0]) || (a[1] != b[1]) || (a[2] != b[2]) || (a[3] != b[3]);
+    return !(a == b);
 }
 
 void to_json(nlohmann::json &j, const Dims &dims)
 {
     j.clear();
     for (int i = 0; i < dims.ndims(); ++i) {
-        j.push_back(dims[i]);
+        j.push_back(dims.data[i]);
     }
 }
 
@@ -164,13 +210,13 @@ std::ostream &operator<<(std::ostream &os, const Dims &dims)
         LOGERR("invalid dims given");
     }
     os << '<';
-    if (dims[0] != NO_DIM) {
-        os << dims[0];
+    if (dims.data[0] != NO_DIM) {
+        os << dims.data[0];
         for (int i = 1; i < DIMS_LEN; ++i) {
-            if (dims[i] == NO_DIM) {
+            if (dims.data[i] == NO_DIM) {
                 break;
             }
-            os << ", " << dims[i];
+            os << ", " << dims.data[i];
         }
     }
     os << '>';

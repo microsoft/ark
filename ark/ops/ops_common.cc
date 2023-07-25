@@ -5,11 +5,34 @@
 #include "include/ark.h"
 #include "json.h"
 #include "logging.h"
+#include <algorithm>
 #include <ostream>
 
 using namespace std;
 
 namespace ark {
+
+Dims broadcast(const Dims &dims1, const Dims &dims2)
+{
+    std::vector<DimType> output_dims_reversed;
+    int ndims = std::max(dims1.ndims(), dims2.ndims());
+    for (int i = 1; i < ndims + 1; ++i) {
+        int d1 = (i - 1 < dims1.ndims()) ? dims1[-i] : 1;
+        int d2 = (i - 1 < dims2.ndims()) ? dims2[-i] : 1;
+        if (d1 == d2) {
+            output_dims_reversed.push_back(d1);
+        } else if (d1 == 1) {
+            output_dims_reversed.push_back(d2);
+        } else if (d2 == 1) {
+            output_dims_reversed.push_back(d1);
+        } else {
+            LOGERR("input and other cannot be broadcasted: ", dims1, ", ",
+                   dims2);
+        }
+    }
+    std::reverse(output_dims_reversed.begin(), output_dims_reversed.end());
+    return Dims{output_dims_reversed};
+}
 
 ostream &operator<<(ostream &os, const OpType &s)
 {
@@ -71,6 +94,10 @@ OpArg::OpArg(const Dims &arg) : type{OP_ARG_DIMS}, val{new Dims{arg}}
 {
     assert(this->val != nullptr);
 }
+OpArg::OpArg(Tensor *arg) : type{OP_ARG_TENSOR}, val{arg}
+{
+    assert(this->val != nullptr);
+}
 OpArg::OpArg(const OpArg &arg) : type{arg.type}
 {
     if (this->type == OP_ARG_INT) {
@@ -85,6 +112,10 @@ OpArg::OpArg(const OpArg &arg) : type{arg.type}
         this->val = new float{*(float *)arg.val};
     } else if (this->type == OP_ARG_DIMS) {
         this->val = new Dims{*(Dims *)arg.val};
+    } else if (this->type == OP_ARG_TENSOR) {
+        this->val = arg.val;
+    } else {
+        LOGERR("invalid argument type ", this->type);
     }
 }
 OpArg::~OpArg()
@@ -101,8 +132,68 @@ OpArg::~OpArg()
         delete static_cast<float *>(this->val);
     } else if (this->type == OP_ARG_DIMS) {
         delete static_cast<Dims *>(this->val);
+    } else if (this->type == OP_ARG_TENSOR) {
+        // Do nothing
+    } else {
+        LOGERR("invalid argument type ", this->type);
     }
 }
+void OpArg::get(int *arg) const
+{
+    if (this->type != OP_ARG_INT) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<int *>(this->val);
+}
+
+void OpArg::get(long long int *arg) const
+{
+    if (this->type != OP_ARG_INT64) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<long long int *>(this->val);
+}
+
+void OpArg::get(uint64_t *arg) const
+{
+    if (this->type != OP_ARG_UINT64) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<uint64_t *>(this->val);
+}
+
+void OpArg::get(bool *arg) const
+{
+    if (this->type != OP_ARG_BOOL) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<bool *>(this->val);
+}
+
+void OpArg::get(float *arg) const
+{
+    if (this->type != OP_ARG_FLOAT) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<float *>(this->val);
+}
+
+void OpArg::get(Dims *arg) const
+{
+    if (this->type != OP_ARG_DIMS) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<Dims *>(this->val);
+}
+
+void OpArg::get(Tensor **arg) const
+{
+    if (this->type != OP_ARG_TENSOR) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = static_cast<Tensor *>(this->val);
+}
+
 bool operator<(const OpArg &oa1, const OpArg &oa2)
 {
     if (oa1.type != oa2.type) {
@@ -123,6 +214,8 @@ bool operator<(const OpArg &oa1, const OpArg &oa2)
         return *(float *)oa1.val < *(float *)oa2.val;
     case OP_ARG_DIMS:
         return *(Dims *)oa1.val < *(Dims *)oa2.val;
+    case OP_ARG_TENSOR:
+        return (uintptr_t)oa1.val < (uintptr_t)oa2.val;
     }
     assert(false);
     return false;
@@ -147,44 +240,12 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
         return *(float *)oa1.val == *(float *)oa2.val;
     case OP_ARG_DIMS:
         return *(Dims *)oa1.val == *(Dims *)oa2.val;
+    case OP_ARG_TENSOR:
+        return oa1.val == oa2.val;
     }
     assert(false);
     return false;
 }
-
-// void to_json(nlohmann::json &j, const OpArg &oparg)
-// {
-//     j = nlohmann::json{
-//         {"type", oparg.type},
-//     };
-//     if (oparg.type == OP_ARG_INT) {
-//         j.emplace("val", *static_cast<int *>(oparg.val));
-//     } else if (oparg.type == OP_ARG_INT64) {
-//         j.emplace("val", *static_cast<DimType *>(oparg.val));
-//     } else if (oparg.type == OP_ARG_UINT64) {
-//         j.emplace("val", *static_cast<uint64_t *>(oparg.val));
-//     } else if (oparg.type == OP_ARG_BOOL) {
-//         j.emplace("val", *static_cast<bool *>(oparg.val));
-//     } else if (oparg.type == OP_ARG_FLOAT) {
-//         j.emplace("val", *static_cast<float *>(oparg.val));
-//     }
-// }
-
-// void from_json(const nlohmann::json &j, OpArg &oparg)
-// {
-//     j.at("type").get_to(oparg.type);
-//     if (oparg.type == OP_ARG_INT) {
-//         oparg.val = new int{j.at("val").get<int>()};
-//     } else if (oparg.type == OP_ARG_INT64) {
-//         oparg.val = new DimType{j.at("val").get<DimType>()};
-//     } else if (oparg.type == OP_ARG_UINT64) {
-//         oparg.val = new uint64_t{j.at("val").get<uint64_t>()};
-//     } else if (oparg.type == OP_ARG_BOOL) {
-//         oparg.val = new bool{j.at("val").get<bool>()};
-//     } else if (oparg.type == OP_ARG_FLOAT) {
-//         oparg.val = new float{j.at("val").get<float>()};
-//     }
-// }
 
 OpArgs::OpArgs(const std::vector<OpArg> &args) : args{args}
 {
@@ -196,6 +257,11 @@ OpArgs &OpArgs::operator=(const OpArgs &opargs)
         this->args = opargs.args;
     }
     return *this;
+}
+
+void OpArgs::put(const OpArg &arg)
+{
+    this->args.emplace_back(arg);
 }
 
 void OpArgs::get(int *arg, size_t idx) const
@@ -264,6 +330,22 @@ void OpArgs::get(Dims *arg, size_t idx) const
     *arg = *static_cast<Dims *>(this->args[idx].val);
 }
 
+void OpArgs::get(Tensor **arg, size_t idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_TENSOR) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = static_cast<Tensor *>(this->args[idx].val);
+}
+
+const std::vector<OpArg> &OpArgs::get_args() const
+{
+    return this->args;
+}
+
 bool operator<(const OpArgs &opargs1, const OpArgs &opargs2)
 {
     for (size_t i = 0; i < opargs1.args.size(); ++i) {
@@ -293,9 +375,11 @@ bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2)
 
 Op::Op(const OpType &type_, const OpPrecType &prec_type_,
        const vector<Tensor *> &in_deps_, const vector<Tensor *> &out_deps_,
-       const OpArgs &args_, const string &name_, int gran_lev_)
+       const OpArgs &args_, const string &name_, int gran_lev_,
+       bool force_inline_)
     : type{type_}, prec_type{prec_type_}, in_deps{in_deps_},
-      out_deps{out_deps_}, args{args_}, name{name_}, gran_lev{gran_lev_}
+      out_deps{out_deps_}, args{args_}, name{name_}, gran_lev{gran_lev_},
+      force_inline{force_inline_}
 {
     for (auto &tns : in_deps_) {
         assert(tns != nullptr);
@@ -305,8 +389,90 @@ Op::Op(const OpType &type_, const OpPrecType &prec_type_,
     }
 }
 
+std::string Op::function_name(const OpConfig &cfg) const
+{
+    switch (this->type) {
+    case OP_REDUCE_E_SUM:
+        return static_cast<const ReduceESumOp *>(this)->function_name(cfg);
+    case OP_REDUCE_E_MEAN:
+        return static_cast<const ReduceEMeanOp *>(this)->function_name(cfg);
+    case OP_REDUCE_E_MAX:
+        return static_cast<const ReduceEMaxOp *>(this)->function_name(cfg);
+    case OP_REDUCE_W_SUM:
+        return static_cast<const ReduceWSumOp *>(this)->function_name(cfg);
+    case OP_REDUCE_W_MEAN:
+        return static_cast<const ReduceWMeanOp *>(this)->function_name(cfg);
+    case OP_REDUCE_W_MAX:
+        return static_cast<const ReduceWMaxOp *>(this)->function_name(cfg);
+    case OP_SCALE:
+        return static_cast<const ScaleOp *>(this)->function_name(cfg);
+    case OP_MATMUL:
+        return static_cast<const MatmulOp *>(this)->function_name(cfg);
+    case OP_MAX_POOL:
+        return static_cast<const MaxPoolOp *>(this)->function_name(cfg);
+    case OP_ADD:
+        return static_cast<const AddOp *>(this)->function_name(cfg);
+    case OP_MUL:
+        return static_cast<const MulOp *>(this)->function_name(cfg);
+    case OP_IM2COL:
+        return static_cast<const Im2colOp *>(this)->function_name(cfg);
+    case OP_TRANSPOSE:
+        return static_cast<const TransposeOp *>(this)->function_name(cfg);
+    case OP_SEND:
+        return static_cast<const SendOp *>(this)->function_name(cfg);
+    case OP_SEND_DONE:
+        return static_cast<const SendDoneOp *>(this)->function_name(cfg);
+    case OP_SEND_MM:
+        return static_cast<const SendMMOp *>(this)->function_name(cfg);
+    case OP_RECV:
+        return static_cast<const RecvOp *>(this)->function_name(cfg);
+    case OP_RECV_MM:
+        return static_cast<const RecvMMOp *>(this)->function_name(cfg);
+    case OP_LAYERNORM:
+        return static_cast<const LayernormOp *>(this)->function_name(cfg);
+    case OP_SOFTMAX:
+        return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
+    case OP_RELU:
+        return static_cast<const ReluOp *>(this)->function_name(cfg);
+    case OP_GELU:
+        return static_cast<const GeluOp *>(this)->function_name(cfg);
+    default:
+        return "";
+    }
+    // Never reach here.
+    return "";
+}
+
+OpArgs Op::function_call_args(const OpConfig &cfg) const
+{
+    switch (this->type) {
+    case OP_SCALE:
+        return static_cast<const ScaleOp *>(this)->function_call_args(cfg);
+    case OP_SEND:
+        return static_cast<const SendOp *>(this)->function_call_args(cfg);
+    case OP_SEND_DONE:
+        return static_cast<const SendDoneOp *>(this)->function_call_args(cfg);
+    // case OP_SEND_MM:
+    //     return static_cast<const SendMMOp *>(this)->function_call_args(cfg);
+    case OP_RECV:
+        return static_cast<const RecvOp *>(this)->function_call_args(cfg);
+    // case OP_RECV_MM:
+    //     return static_cast<const RecvMMOp *>(this)->function_call_args(cfg);
+    default:
+        OpArgs opargs;
+        std::vector<Tensor *> deps = this->out_deps;
+        deps.insert(deps.end(), this->in_deps.begin(), this->in_deps.end());
+        for (Tensor *tns : deps) {
+            opargs.put(tns);
+        }
+        return opargs;
+    }
+    // Never reach here.
+    return {};
+}
+
 std::string Op::function_name(const std::string &kernel_name,
-                              const OpArgs &template_args) const
+                              const OpArgs &template_args)
 {
     std::stringstream ss;
     ss << kernel_name;
@@ -334,7 +500,7 @@ std::string Op::function_name(const std::string &kernel_name,
             template_args.get(&val, i);
             ss << val;
         } else if (arg.type == OP_ARG_FLOAT) {
-            LOGERR("float template args not supported");
+            LOGERR("float template args are not supported");
         } else if (arg.type == OP_ARG_DIMS) {
             Dims val;
             template_args.get(&val, i);

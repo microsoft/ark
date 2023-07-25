@@ -90,6 +90,43 @@ ark::unittest::State test_dims_from_vector()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_dims_neg_index()
+{
+    ark::Dims d0{10, 20, 30, 40};
+
+    UNITTEST_EQ(d0[-0], 10);
+    UNITTEST_EQ(d0[-1], 40);
+    UNITTEST_EQ(d0[-2], 30);
+    UNITTEST_EQ(d0[-3], 20);
+    UNITTEST_EQ(d0[-4], 10);
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_dims_erase()
+{
+    ark::Dims d0{10, 20, 30, 40};
+
+    UNITTEST_EQ(d0[0], 10);
+    UNITTEST_EQ(d0[1], 20);
+    UNITTEST_EQ(d0[2], 30);
+    UNITTEST_EQ(d0[3], 40);
+    UNITTEST_EQ(d0.ndims(), 4);
+
+    ark::DimType ret = d0.erase(1);
+    UNITTEST_EQ(ret, 20);
+
+    UNITTEST_EQ(d0[0], 10);
+    UNITTEST_EQ(d0[1], 30);
+    UNITTEST_EQ(d0[2], 40);
+    UNITTEST_EQ(d0.ndims(), 3);
+    UNITTEST_EQ(d0.size(), 12000);
+    UNITTEST_TRUE(!d0.is_invalid());
+    UNITTEST_TRUE(!d0.is_no_dim());
+
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -98,5 +135,7 @@ int main()
     UNITTEST(test_dims_zero);
     UNITTEST(test_dims_from_dims);
     UNITTEST(test_dims_from_vector);
+    UNITTEST(test_dims_neg_index);
+    UNITTEST(test_dims_erase);
     return 0;
 }

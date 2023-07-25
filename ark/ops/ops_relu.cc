@@ -9,21 +9,13 @@ using namespace std;
 
 namespace ark {
 
-class ReluOp : public Op
-{
-  public:
-    ReluOp::ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                   const string &name);
-    std::string ReluOp::function_string(const OpConfig &cfg) const;
-};
-
 ReluOp::ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const string &name)
-    : Op{OP_RELU, prec_type, {input}, {output}, {}, name, -1}
+               const string &name)
+    : Op{OP_RELU, prec_type, {input}, {output}, {}, name, -1, true}
 {
 }
 
-std::string ReluOp::function_string(const OpConfig &cfg) const
+std::string ReluOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->in_deps[0];
     Tensor *output = this->out_deps[0];
@@ -38,14 +30,14 @@ std::string ReluOp::function_string(const OpConfig &cfg) const
     }
 
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
-    return this->function_name("ark::relu", {{
-            input->ldims.dims4(),   // In0Dims
-            output->ldims.dims4(),  // OutDims
-            output->shape.dims4(),  // OutShape
-            unit_out_shape,         // UnitOutShape
-            cfg.num_warps * 32,     // ThreadsNum
-            cfg.smem_bytes,         // SmemBytes
-        }});
+    return Op::function_name("ark::relu", {{
+                                              input->ldims.dims4(),  // In0Dims
+                                              output->ldims.dims4(), // OutDims
+                                              output->shape.dims4(), // OutShape
+                                              unit_out_shape, // UnitOutShape
+                                              cfg.num_warps * 32, // ThreadsNum
+                                              cfg.smem_bytes,     // SmemBytes
+                                          }});
 }
 
 Tensor *Model::relu(Tensor *input, Tensor *output, const string &name)

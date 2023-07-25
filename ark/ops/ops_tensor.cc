@@ -8,12 +8,6 @@ using namespace std;
 
 namespace ark {
 
-class TensorOp : public Op
-{
-  public:
-    TensorOp(const vector<Tensor *> &deps, Tensor *output, const string &name);
-};
-
 TensorOp::TensorOp(const vector<Tensor *> &deps, Tensor *output,
                    const string &name)
     : Op{OP_TENSOR, OP_PREC_NONE, deps, {output}, {}, name, -1}

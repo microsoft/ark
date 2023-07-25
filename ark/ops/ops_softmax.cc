@@ -9,17 +9,34 @@ using namespace std;
 
 namespace ark {
 
-class SoftmaxOp : public Op
-{
-  public:
-    SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                         const string &name);
-};
-
 SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const string &name)
     : Op{OP_SOFTMAX, prec_type, {input}, {output}, {}, name, -1}
 {
+}
+
+std::string SoftmaxOp::function_name(const OpConfig &cfg) const
+{
+    Tensor *input = this->in_deps[0];
+    Tensor *output = this->out_deps[0];
+
+    Dims shp_out = output->shape;
+    int ndims = shp_out.ndims();
+    CHECK(ndims < 4);
+
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+
+    return Op::function_name("ark::softmax",
+                             {{
+                                 input->ldims.dims4(),  // InDims
+                                 input->shape.dims4(),  // InShape
+                                 output->ldims.dims4(), // OutDims
+                                 output->shape.dims4(), // OutShape
+                                 unit_out_shape,        // UnitOutShape
+                                 cfg.num_warps * 32,    // ThreadsNum
+                                 cfg.smem_bytes,        // SmemBytes
+                             }});
 }
 
 Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)

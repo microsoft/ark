@@ -9,88 +9,129 @@ using namespace std;
 
 namespace ark {
 
-class ReduceWSumOp : public Op
+ReduceOp::ReduceOp(const OpType &type, const OpPrecType &prec_type,
+                   const std::vector<Tensor *> &in_deps,
+                   const std::vector<Tensor *> &out_deps, const OpArgs &args,
+                   const std::string &name, int gran_lev)
+    : Op{type, prec_type, in_deps, out_deps, args, name, gran_lev, true}
 {
-  public:
-    ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int axis, const string &name);
-    std::string ReduceWSumOp::function_string(const OpConfig &cfg) const;
-};
+}
 
-class ReduceESumOp : public Op
+///
+/// @param cfg
+/// @param type "[w|e]_[sum|max|mean]"
+/// @return
+std::string ReduceOp::function_name(const OpConfig &cfg,
+                                    const std::string &type) const
 {
-  public:
-    ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int axis, const string &name);
-    std::string ReduceESumOp::function_string(const OpConfig &cfg) const;
-};
+    Tensor *input = this->in_deps[0];
+    Tensor *output = this->out_deps[0];
 
-class ReduceWMaxOp : public Op
-{
-  public:
-    ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int axis, const string &name);
-    std::string ReduceWMaxOp::function_string(const OpConfig &cfg) const;
-};
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
 
-class ReduceEMaxOp : public Op
-{
-  public:
-    ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int axis, const string &name);
-    std::string ReduceEMaxOp::function_string(const OpConfig &cfg) const;
-};
+    Dims shp_in = input->shape;
+    int axis;
+    this->args.get(&axis, 0);
 
-class ReduceWMeanOp : public Op
-{
-  public:
-    ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int axis, const string &name);
-    std::string ReduceWMeanOp::function_string(const OpConfig &cfg) const;
-};
+    // Translate the axis value into 4D representation.
+    axis += 4 - shp_in.ndims();
 
-class ReduceEMeanOp : public Op
-{
-  public:
-    ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int axis, const string &name);
-    std::string ReduceEMeanOp::function_string(const OpConfig &cfg) const;
-};
+    if (type[0] == 'w') {
+        // Warp-wise reduction is supported only for the last axis.
+        CHECK(axis == 3);
+    }
+
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    return Op::function_name("ark::reduce_" + type,
+                             {{
+                                 input->ldims.dims4(),  // InDims
+                                 input->shape.dims4(),  // InShape
+                                 output->ldims.dims4(), // OutDims
+                                 output->shape.dims4(), // OutShape
+                                 unit_out_shape,        // UnitOutShape
+                                 cfg.num_warps * 32,    // ThreadsNum
+                                 cfg.smem_bytes,        // SmemBytes
+                                 axis,                  // Axis
+                             }});
+}
 
 ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     int axis, const string &name)
-    : Op{OP_REDUCE_W_SUM, prec_type, {input}, {output}, {{axis}}, name, -1}
+                           int axis, const string &name)
+    : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input}, {output},
+               {{axis}},        name,      -1}
 {
+}
+
+std::string ReduceWSumOp::function_name(const OpConfig &cfg) const
+{
+    return ReduceOp::function_name(cfg, "w_sum");
 }
 
 ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     int axis, const string &name)
-    : Op{OP_REDUCE_E_SUM, prec_type, {input}, {output}, {{axis}}, name, -1}
+                           int axis, const string &name)
+    : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input}, {output},
+               {{axis}},        name,      -1}
 {
+}
+
+std::string ReduceESumOp::function_name(const OpConfig &cfg) const
+{
+    return ReduceOp::function_name(cfg, "e_sum");
 }
 
 ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     int axis, const string &name)
-    : Op{OP_REDUCE_W_MAX, prec_type, {input}, {output}, {{axis}}, name, -1}
+                           int axis, const string &name)
+    : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input}, {output},
+               {{axis}},        name,      -1}
 {
+}
+
+std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const
+{
+    return ReduceOp::function_name(cfg, "w_max");
 }
 
 ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     int axis, const string &name)
-    : Op{OP_REDUCE_E_MAX, prec_type, {input}, {output}, {{axis}}, name, -1}
+                           int axis, const string &name)
+    : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input}, {output},
+               {{axis}},        name,      -1}
 {
 }
 
-ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     int axis, const string &name)
-    : Op{OP_REDUCE_W_MEAN, prec_type, {input}, {output}, {{axis}}, name, -1}
+std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const
+{
+    return ReduceOp::function_name(cfg, "e_max");
+}
+
+ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input,
+                             Tensor *output, int axis, const string &name)
+    : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input}, {output},
+               {{axis}},         name,      -1}
 {
 }
 
-ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     int axis, const string &name)
-    : Op{OP_REDUCE_E_MEAN, prec_type, {input}, {output}, {{axis}}, name, -1}
+std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const
 {
+    return ReduceOp::function_name(cfg, "w_mean");
+}
+
+ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input,
+                             Tensor *output, int axis, const string &name)
+    : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input}, {output},
+               {{axis}},         name,      -1}
+{
+}
+
+std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const
+{
+    return ReduceOp::function_name(cfg, "e_mean");
 }
 
 Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,

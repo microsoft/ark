@@ -9,21 +9,13 @@ using namespace std;
 
 namespace ark {
 
-class MulOp : public Op
-{
-  public:
-    MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-                       const string &name);
-    std::string MulOp::function_string(const OpConfig &cfg) const;
-};
-
 MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-                    const string &name)
+             const string &name)
     : Op{OP_MUL, prec_type, {input, other}, {output}, {}, name, -1}
 {
 }
 
-std::string MulOp::function_string(const OpConfig &cfg) const
+std::string MulOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->in_deps[0];
     Tensor *other = this->in_deps[1];
@@ -39,17 +31,17 @@ std::string MulOp::function_string(const OpConfig &cfg) const
     }
 
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
-    return this->function_name("ark::mul", {{
-            input->ldims.dims4(),   // In0Dims
-            input->shape.dims4(),   // In0Shape
-            other->ldims.dims4(),   // In1Dims
-            other->shape.dims4(),   // In1Shape
-            output->ldims.dims4(),  // OutDims
-            output->shape.dims4(),  // OutShape
-            unit_out_shape,         // UnitOutShape
-            cfg.num_warps * 32,     // ThreadsNum
-            cfg.smem_bytes,         // SmemBytes
-        }});
+    return Op::function_name("ark::mul", {{
+                                             input->ldims.dims4(),  // In0Dims
+                                             input->shape.dims4(),  // In0Shape
+                                             other->ldims.dims4(),  // In1Dims
+                                             other->shape.dims4(),  // In1Shape
+                                             output->ldims.dims4(), // OutDims
+                                             output->shape.dims4(), // OutShape
+                                             unit_out_shape,     // UnitOutShape
+                                             cfg.num_warps * 32, // ThreadsNum
+                                             cfg.smem_bytes,     // SmemBytes
+                                         }});
 }
 
 Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
@@ -73,21 +65,7 @@ Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
     if (output != nullptr && input->type != output->type) {
         LOGERR("invalid output data type: ", type_str(output->type));
     }
-    //
-    for (int i = 0; i < DIMS_LEN; ++i) {
-        if ((input->shape[i] != other->shape[i]) && (input->shape[i] != 1) &&
-            (other->shape[i] != 1)) {
-            LOGERR("invalid input shapes: ", input->shape, ", ", other->shape);
-        }
-    }
-    Dims output_shape{{(input->shape[0] > other->shape[0]) ? input->shape[0]
-                                                           : other->shape[0],
-                       (input->shape[1] > other->shape[1]) ? input->shape[1]
-                                                           : other->shape[1],
-                       (input->shape[2] > other->shape[2]) ? input->shape[2]
-                                                           : other->shape[2],
-                       (input->shape[3] > other->shape[3]) ? input->shape[3]
-                                                           : other->shape[3]}};
+    Dims output_shape = broadcast(input->shape, other->shape);
     if (output == nullptr) {
         output = this->tensor(output_shape, input->type);
     } else if (output->shape != output_shape) {

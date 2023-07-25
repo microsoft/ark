@@ -22,21 +22,6 @@ bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2)
            ops1.prec_type == ops2.prec_type;
 }
 
-void to_json(nlohmann::json &j, const OpConfig &cfg)
-{
-    // j = nlohmann::json{
-    //     {"num_warps", cfg.num_warps},
-    //     {"smem_bytes", cfg.smem_bytes},
-    //     {"in_deps_tiles", cfg.in_deps_tiles},
-    //     {"out_deps_tiles", cfg.out_deps_tiles},
-    //     {"sync_pre", cfg.sync_pre},
-    //     {"sync_post", cfg.sync_post},
-    // };
-}
-void from_json(const nlohmann::json &j, OpConfig &cfg)
-{
-}
-
 // OpConfig for virtual ops.
 const OpConfig ARK_OP_CONFIG_VIRT;
 

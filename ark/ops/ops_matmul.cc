@@ -10,25 +10,22 @@ using namespace std;
 
 namespace ark {
 
-class MatmulOp : public Op
-{
-  public:
-    MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
-                       Dims nca, Dims ncb, Dims problem_size, Dims leading_dims,
-                       bool is_column_a, bool is_column_b, bool is_relu,
-                       const string &name, int gran_lev);
-    std::string function_string(const OpConfig &cfg) const;
-};
-
-MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
-                       Dims nca, Dims ncb, Dims problem_size, Dims leading_dims,
-                       bool is_column_a, bool is_column_b, bool is_relu,
-                       const string &name, int gran_lev)
-    : Op{OP_MATMUL, prec_type, {mat_a, mat_b}, {mat_y}, {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b, is_relu}}, name, gran_lev}
+MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
+                   Tensor *mat_y, Dims nca, Dims ncb, Dims problem_size,
+                   Dims leading_dims, bool is_column_a, bool is_column_b,
+                   bool is_relu, const string &name, int gran_lev)
+    : Op{OP_MATMUL,
+         prec_type,
+         {mat_a, mat_b},
+         {mat_y},
+         {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b,
+           is_relu}},
+         name,
+         gran_lev}
 {
 }
 
-std::string MatmulOp::function_string(const OpConfig &cfg) const
+std::string MatmulOp::function_name(const OpConfig &cfg) const
 {
     Tensor *mat_y = this->out_deps[0];
 
@@ -61,27 +58,28 @@ std::string MatmulOp::function_string(const OpConfig &cfg) const
     CHECK(tile_in0.y == tile_in1.x);
     Dims shape{tile_out.x, tile_out.y, tile_in0.y};
 
-    return this->function_name("ark::matmul", {{
-            nca,   // NCA
-            ncb,   // NCB
-            shape, // Shape
-            problem_size,   // ProblemSize
-            leading_dims,   // LeadingDims
-            is_column_a,    // IsColumnA
-            is_column_b,    // IsColumnB
-            is_relu,        // IsRelu
-            cfg.num_warps * 32,     // ThreadsNum
-            cfg.smem_bytes,         // SmemBytes
-        }});
+    return Op::function_name("ark::matmul",
+                             {{
+                                 nca,                // NCA
+                                 ncb,                // NCB
+                                 shape,              // Shape
+                                 problem_size,       // ProblemSize
+                                 leading_dims,       // LeadingDims
+                                 is_column_a,        // IsColumnA
+                                 is_column_b,        // IsColumnB
+                                 is_relu,            // IsRelu
+                                 cfg.num_warps * 32, // ThreadsNum
+                                 cfg.smem_bytes,     // SmemBytes
+                             }});
 }
 
 Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
                       DimType split_k, bool trans_a, bool trans_b, bool is_relu,
                       const string &name, int gran_lev)
 {
-    assert(mat_a != nullptr);
-    assert(mat_b != nullptr);
-    assert(split_k >= 1);
+    CHECK(mat_a != nullptr);
+    CHECK(mat_b != nullptr);
+    CHECK(split_k >= 1);
     LOG(DEBUG, "matmul ", mat_a->shape, " ", mat_b->shape, " ", mat_a->ldims,
         " ", mat_b->ldims, " ", split_k);
 
@@ -169,34 +167,31 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     // N and C dimension of output matrix
     Dims ncc{max(nca[0], ncb[0]), max(nca[1], ncb[1])};
 
+    Dims output_shape;
+    if (max(ndims_a, ndims_b) == 4) {
+        output_shape = Dims{ncc[0], ncc[1], m, n};
+    } else if (max(ndims_a, ndims_b) == 3) {
+        output_shape = Dims{ncc[1], m, n};
+    } else {
+        output_shape = Dims{m, n};
+    }
+
     // Create an output Tensor.
     if (mat_y == nullptr) {
-        if (max(ndims_a, ndims_b) == 4) {
-            mat_y = this->tensor({ncc[0], ncc[1], m, n}, mat_a->type);
-        } else if (max(ndims_a, ndims_b) == 3) {
-            mat_y = this->tensor({ncc[1], m, n}, mat_a->type);
-        } else {
-            mat_y = this->tensor({m, n}, mat_a->type);
-        }
+        mat_y = this->tensor(output_shape, mat_a->type);
     } else {
         if (mat_y->type != mat_a->type) {
-            LOGERR("output data type mismatch: ", type_str(mat_y->type), " and ",
-                   type_str(mat_a->type));
+            LOGERR("output data type mismatch: ", type_str(mat_y->type),
+                   " and ", type_str(mat_a->type));
         }
-        if (max(ndims_a, ndims_b) == 4 &&
-            mat_y->shape != Dims(ncc[0], ncc[1], m, n)) {
+        if (mat_y->shape != output_shape) {
             LOGERR("output shape mismatch: ", mat_y->shape, " and ",
-                   Dims(ncc[0], ncc[1], m, n));
-        } else if (max(ndims_a, ndims_b) == 3 &&
-                   mat_y->shape != Dims(ncc[1], m, n)) {
-            LOGERR("output shape mismatch: ", mat_y->shape, " and ",
-                   Dims(ncc[1], m, n));
-        } else if (max(ndims_a, ndims_b) == 2 && mat_y->shape != Dims(m, n)) {
-            LOGERR("output shape mismatch: ", mat_y->shape, " and ", Dims(m, n));
+                   output_shape);
         }
     }
 
-    // TODO: change matmul interface to receive `spu` value instead of `split_k`.
+    // TODO: change matmul interface to receive `spu` value instead of
+    // `split_k`.
     DimType spu = math::pad(math::div_up(k, split_k), 32);
     split_k = math::div_up(k, spu);
     if (split_k == 1) {
@@ -206,11 +201,11 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         Dims problem_size{m, n, k};
         Dims leading_dims{
             trans_a ? ldims_a[ndims_a - 2] : ldims_a[ndims_a - 1],
-            ldims_y[ldims_y.ndims() - 1],
-            ldims_y[ldims_y.ndims() - 1],
-            trans_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1]
-        };
-        MatmulOp op{pt, mat_a, mat_b, mat_y, nca, ncb, problem_size, leading_dims, trans_a, trans_b, is_relu, name, gran_lev};
+            ldims_y[ldims_y.ndims() - 1], ldims_y[ldims_y.ndims() - 1],
+            trans_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1]};
+        MatmulOp op{pt,      mat_a,        mat_b,        mat_y,   nca,
+                    ncb,     problem_size, leading_dims, trans_a, trans_b,
+                    is_relu, name,         gran_lev};
         this->impl->add_op(op);
         return mat_y;
     } else if (split_k > k) {
@@ -221,11 +216,28 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     Tensor *output_buffer;
     vector<Tensor *> mat_y_shards;
     if (mat_y->shape.ndims() == 4) {
-        output_buffer = this->tensor({ncc[0] * split_k, ncc[1], m, n}, mat_y->type);
-        mat_y_shards = this->sharding(output_buffer, 0, ncc[0], name + "/sharding_mat_y");
+        output_buffer =
+            this->tensor({ncc[0] * split_k, ncc[1], m, n}, mat_y->type);
+        mat_y_shards =
+            this->sharding(output_buffer, 0, ncc[0], name + "/sharding_mat_y");
     } else {
         output_buffer = this->tensor({ncc[1] * split_k, m, n}, mat_y->type);
-        mat_y_shards = this->sharding(output_buffer, 0, ncc[1], name + "/sharding_mat_y");
+        mat_y_shards =
+            this->sharding(output_buffer, 0, ncc[1], name + "/sharding_mat_y");
+    }
+    for (size_t i = 0; i < mat_y_shards.size(); ++i) {
+        Tensor *t = mat_y_shards[i];
+        // If the output dimension is not matching, drop the leading 1s.
+        if (t->shape.ndims() != output_shape.ndims()) {
+            Dims new_shape = t->shape;
+            while (new_shape.ndims() != output_shape.ndims()) {
+                if (new_shape[0] != 1) {
+                    LOGERR("invalid shard shape: ", t->shape);
+                }
+                new_shape.erase(0);
+            }
+            mat_y_shards[i] = this->reshape(t, new_shape);
+        }
     }
 
     int axis_a;
@@ -245,9 +257,9 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     vector<Tensor *> mat_b_shards =
         this->sharding(mat_b, axis_b, spu, name + "/sharding_mat_b");
 
-    assert(mat_y_shards.size() == (size_t)split_k);
-    assert(mat_a_shards.size() == (size_t)split_k);
-    assert(mat_b_shards.size() == (size_t)split_k);
+    CHECK(mat_y_shards.size() == (size_t)split_k);
+    CHECK(mat_a_shards.size() == (size_t)split_k);
+    CHECK(mat_b_shards.size() == (size_t)split_k);
 
     for (DimType i = 0; i < split_k; ++i) {
         this->matmul(mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1,

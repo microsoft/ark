@@ -9,21 +9,13 @@ using namespace std;
 
 namespace ark {
 
-class GeluOp : public Op
-{
-  public:
-    GeluOp::GeluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                   const string &name);
-    std::string GeluOp::function_string(const OpConfig &cfg) const;
-};
-
 GeluOp::GeluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const string &name)
-    : Op{OP_GELU, prec_type, {input}, {output}, {}, name, -1}
+               const string &name)
+    : Op{OP_GELU, prec_type, {input}, {output}, {}, name, -1, true}
 {
 }
 
-std::string GeluOp::function_string(const OpConfig &cfg) const
+std::string GeluOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->in_deps[0];
     Tensor *output = this->out_deps[0];
@@ -38,14 +30,14 @@ std::string GeluOp::function_string(const OpConfig &cfg) const
     }
 
     Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
-    return this->function_name("ark::gelu", {{
-            input->ldims.dims4(),   // In0Dims
-            output->ldims.dims4(),  // OutDims
-            output->shape.dims4(),  // OutShape
-            unit_out_shape,         // UnitOutShape
-            cfg.num_warps * 32,     // ThreadsNum
-            cfg.smem_bytes,         // SmemBytes
-        }});
+    return Op::function_name("ark::gelu", {{
+                                              input->ldims.dims4(),  // In0Dims
+                                              output->ldims.dims4(), // OutDims
+                                              output->shape.dims4(), // OutShape
+                                              unit_out_shape, // UnitOutShape
+                                              cfg.num_warps * 32, // ThreadsNum
+                                              cfg.smem_bytes,     // SmemBytes
+                                          }});
 }
 
 Tensor *Model::gelu(Tensor *input, Tensor *output, const string &name)

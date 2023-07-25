@@ -9,17 +9,51 @@ using namespace std;
 
 namespace ark {
 
-class ScaleOp : public Op
+ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
+                 const string &name)
+    : Op{OP_SCALE, prec_type, {input}, {output}, {{val}}, name, -1, true}
 {
-  public:
-    ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     float val, const string &name);
-};
+}
 
-ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                 float val, const string &name)
-    : Op{OP_SCALE, prec_type, {input}, {output}, {{val}}, name, -1}
+std::string ScaleOp::function_name(const OpConfig &cfg) const
 {
+    Tensor *output = this->out_deps[0];
+
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    DimType ldm = output->ldims[ndims - 1];
+    DimType ldn = (ndims > 1) ? output->ldims[ndims - 2] : 1;
+
+    return Op::function_name("ark::scale", {{
+                                               ldm,                // M
+                                               ldn,                // N
+                                               cfg.num_warps * 32, // TN
+                                               cfg.smem_bytes,     // SB
+                                               tile_out.y,         // TDM
+                                               tile_out.x,         // TDN
+                                               1,                  // TDK
+                                           }});
+}
+
+OpArgs ScaleOp::function_call_args(const OpConfig &) const
+{
+    OpArgs opargs;
+    std::vector<Tensor *> deps = this->out_deps;
+    deps.insert(deps.end(), this->in_deps.begin(), this->in_deps.end());
+    for (Tensor *tns : deps) {
+        opargs.put(tns);
+    }
+    float val;
+    this->args.get(&val, 0);
+    opargs.put(val);
+    return opargs;
 }
 
 // Multiply `input` by `val`.

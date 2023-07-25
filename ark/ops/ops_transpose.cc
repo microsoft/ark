@@ -9,17 +9,39 @@ using namespace std;
 
 namespace ark {
 
-class TransposeOp : public Op
-{
-  public:
-    TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int tp_type, const string &name);
-};
-
 TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                             int tp_type, const string &name)
+                         int tp_type, const string &name)
     : Op{OP_TRANSPOSE, prec_type, {input}, {output}, {{tp_type}}, name, -1}
 {
+}
+
+std::string TransposeOp::function_name(const OpConfig &cfg) const
+{
+    int tp_type;
+    this->args.get(&tp_type, 0);
+
+    std::string tp_type_str = to_string(tp_type);
+    if (tp_type_str.size() == DIMS_LEN - 1) {
+        tp_type_str = "0" + tp_type_str;
+    }
+    if (tp_type_str.size() != DIMS_LEN) {
+        LOGERR("Unexpected error");
+    }
+
+    Tensor *input = this->in_deps[0];
+    Tensor *output = this->out_deps[0];
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+
+    return Op::function_name("ark::transpose" + tp_type_str,
+                             {{
+                                 input->ldims.dims4(),  // InDims
+                                 output->ldims.dims4(), // OutDims
+                                 output->shape.dims4(), // OutShape
+                                 unit_out_shape,        // UnitOutShape
+                                 cfg.num_warps * 32,    // ThreadsNum
+                                 cfg.smem_bytes,        // SmemBytes
+                             }});
 }
 
 Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
@@ -34,25 +56,13 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
         LOGERR("unsupported input data type: ", type_str(input->type));
     }
     int input_ndims = input->ndims();
-    Dims in_shape;
-    if (input_ndims == 2) {
-        in_shape[0] = 1;
-        in_shape[1] = 1;
-        in_shape[2] = input->shape[0];
-        in_shape[3] = input->shape[1];
-    } else if (input_ndims == 3) {
-        in_shape[0] = 1;
-        in_shape[1] = input->shape[0];
-        in_shape[2] = input->shape[1];
-        in_shape[3] = input->shape[2];
-    } else if (input_ndims == 4) {
-        in_shape[0] = input->shape[0];
-        in_shape[1] = input->shape[1];
-        in_shape[2] = input->shape[2];
-        in_shape[3] = input->shape[3];
-    } else {
+    Dims in_shape{1, 1, 1, 1};
+    if (input_ndims < 2 || input_ndims > 4) {
         LOGERR("Invalid # of input dimensions. Expected 2, 3, or 4, but given ",
                input_ndims);
+    }
+    for (int i = 0; i < input_ndims; ++i) {
+        in_shape[4 - input_ndims + i] = input->shape[i];
     }
     if (perm.ndims() != input_ndims) {
         LOGERR("Permutation should have the same number of dimensions as the "
@@ -77,11 +87,8 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
         count[perm[i]]++;
     }
     int tp_type = perm[0] * 1000 + perm[1] * 100 + perm[2] * 10 + perm[3];
-    Dims out_shape;
-    out_shape[0] = in_shape[perm[0]];
-    out_shape[1] = in_shape[perm[1]];
-    out_shape[2] = in_shape[perm[2]];
-    out_shape[3] = in_shape[perm[3]];
+    Dims out_shape{in_shape[perm[0]], in_shape[perm[1]], in_shape[perm[2]],
+                   in_shape[perm[3]]};
     if (output == nullptr) {
         output = this->tensor(out_shape, input->type);
     } else {

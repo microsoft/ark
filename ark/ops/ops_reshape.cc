@@ -9,13 +9,6 @@ using namespace std;
 
 namespace ark {
 
-class ReshapeOp : public Op
-{
-  public:
-    ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-              const string &name);
-};
-
 ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const string &name)
     : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, -1}
