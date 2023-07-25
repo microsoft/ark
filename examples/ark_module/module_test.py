@@ -4,7 +4,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
-
+import sys
 import ark
 
 d_model = 512  # Dimension of word embeddings
@@ -45,6 +45,7 @@ class TestModelARK(ark.Module):
         output_layernorm = self.model.layernorm(output)
         return output_layernorm
 
+
 class TestModel(nn.Module):
     def __init__(self):
         super(TestModel, self).__init__()
@@ -70,7 +71,7 @@ class TestModel(nn.Module):
         self.weight_2.data.copy_(torch.from_numpy(param[prefix + "weight_2"]))
 
 
-def test_TestModel():
+def test_TestModel(state_dict_file):
     ark.init()
 
     # Create a Model instance
@@ -84,6 +85,7 @@ def test_TestModel():
     output_tensor = ark_model.forward(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_TestModel")
+    ark_model.set_executor(exe)
     exe.compile()
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
@@ -100,7 +102,7 @@ def test_TestModel():
     )
 
     param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-    ark_model.load_state_dict(exe, param)
+    ark.save_state_dict(ark_model, state_dict_file)
 
     exe.run(1)
     exe.stop()
@@ -108,7 +110,7 @@ def test_TestModel():
     output_tensor_host = np.zeros(
         (batch_size, seq_len, d_model), dtype=np.float16
     )
-
+    ark.save_state_dict(exe, param)
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
@@ -142,4 +144,8 @@ def test_TestModel():
 
 
 if __name__ == "__main__":
-    test_TestModel()
+    state_dict_file = sys.argv[1]
+    if state_dict_file == None:
+        print("Usage: python module_test.py state_dict_file")
+        exit(-1)
+    test_TestModel(state_dict_file)

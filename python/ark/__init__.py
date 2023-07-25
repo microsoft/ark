@@ -9,6 +9,7 @@ if ark_root is None:
 
 from ._ark_core import init, srand, rand, Dims,Model, Executor, Tensor, TensorBuf, TensorType
 from .module import Module
+from .serialize import save_state_dict, load_state_dict
 
 __all__ = [
     "init",
@@ -20,4 +21,7 @@ __all__ = [
     "TensorType",
     "Model",
     "Executor",
+    "Module",
+    "save_state_dict",
+    "load_state_dict",
 ]
