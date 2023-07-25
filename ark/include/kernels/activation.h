@@ -22,11 +22,11 @@ struct Relu<InDims, OutDims, half, 2>
     static DEVICE void compute(ark::half *out, ark::half *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::CHW +
-               idx_c * OutDims::HW + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
 
-        in += idx_n * InDims::CHW +
-              idx_c * InDims::HW + idx_h * InDims::W + idx_w;
+        in += idx_n * InDims::CHW + idx_c * InDims::HW + idx_h * InDims::W +
+              idx_w;
 
         __half2 input = *(__half2 *)in;
         *(__half2 *)out = __hmax2(input, (__half2_raw){0, 0});
@@ -46,11 +46,11 @@ struct Gelu<InDims, OutDims, half, 2>
     static DEVICE void compute(ark::half *out, ark::half *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::CHW +
-               idx_c * OutDims::HW + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
 
-        in += idx_n * InDims::CHW +
-              idx_c * InDims::HW + idx_h * InDims::W + idx_w;
+        in += idx_n * InDims::CHW + idx_c * InDims::HW + idx_h * InDims::W +
+              idx_w;
 
         __half2 input = *(__half2 *)in;
         __half2 half_pi =

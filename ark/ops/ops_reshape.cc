@@ -12,8 +12,8 @@ namespace ark {
 class ReshapeOp : public Op
 {
   public:
-    ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                         const string &name);
+    ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+              const string &name);
 };
 
 ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,

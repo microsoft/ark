@@ -6,7 +6,7 @@
 
 #include "include/ark.h"
 #include "json.h"
-#include "ops/ops_common.h"
+#include "ops_common.h"
 #include <map>
 #include <vector>
 

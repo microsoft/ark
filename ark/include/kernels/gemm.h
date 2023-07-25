@@ -963,35 +963,42 @@ struct GemmKernelBase
 // when TransposeA is false and the kernel is compiled with "-G" option
 // (which turns off all optimizations on device code).
 template <typename NCA, typename NCB, typename Shape, typename ProblemSize,
-          typename LeadingDims, bool IsColumnA, bool IsColumnB, bool IsRelu, int ThreadsNum, int SmemBytes>
+          typename LeadingDims, bool IsColumnA, bool IsColumnB, bool IsRelu,
+          int ThreadsNum, int SmemBytes>
 DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
                  ark::half beta, int tn, int tc, int th, int tw)
 {
-    static_assert(NCA::D2 == 1 && NCA::D3 == 1, "NCA should be two dimensional.");
-    static_assert(NCB::D2 == 1 && NCB::D3 == 1, "NCB should be two dimensional.");
+    static_assert(NCA::D2 == 1 && NCA::D3 == 1,
+                  "NCA should be two dimensional.");
+    static_assert(NCB::D2 == 1 && NCB::D3 == 1,
+                  "NCB should be two dimensional.");
     static_assert(Shape::D3 == 1, "Shape should be three dimensional.");
-    static_assert(ProblemSize::D3 == 1, "ProblemSize should be three dimensional.");
+    static_assert(ProblemSize::D3 == 1,
+                  "ProblemSize should be three dimensional.");
 
     using LayoutA = typename cutlass::platform::conditional<
-        IsColumnA, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
+        IsColumnA, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
     using LayoutB = typename cutlass::platform::conditional<
-        IsColumnB, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
-    using GemmKernel = GemmKernelBase<
-        Shape, ThreadsNum, ProblemSize, LeadingDims,
-        cutlass::half_t, LayoutA, cutlass::half_t, LayoutB, cutlass::half_t,
-        cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
+        IsColumnB, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
+    using GemmKernel =
+        GemmKernelBase<Shape, ThreadsNum, ProblemSize, LeadingDims,
+                       cutlass::half_t, LayoutA, cutlass::half_t, LayoutB,
+                       cutlass::half_t, cutlass::layout::RowMajor,
+                       cutlass::arch::OpClassTensorOp,
 #if (ARK_TARGET_CUDA_ARCH == 60)
-        cutlass::arch::Sm60,
+                       cutlass::arch::Sm60,
 #elif (ARK_TARGET_CUDA_ARCH == 70)
-        cutlass::arch::Sm70,
+                       cutlass::arch::Sm70,
 #elif (ARK_TARGET_CUDA_ARCH == 75)
-        cutlass::arch::Sm75,
+                       cutlass::arch::Sm75,
 #elif (ARK_TARGET_CUDA_ARCH == 80)
-        cutlass::arch::Sm80,
+                       cutlass::arch::Sm80,
 #else
-        cutlass::arch::Sm60,
+                       cutlass::arch::Sm60,
 #endif
-        IsRelu>;
+                       IsRelu>;
     static_assert(GemmKernel::ThreadMask == ThreadsNum - 1,
                   "traits mismatch with the actual implementation.");
     static_assert(sizeof(typename GemmKernel::SharedStorage) <= SmemBytes,

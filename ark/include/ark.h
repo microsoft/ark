@@ -147,7 +147,7 @@ struct Tensor
     // Offset of the tensor in the underlying data array
     Dims offs;
     // Unit dimensions of the underlying data array. ldims[x] should be always
-    // divided by udims[x].
+    // divided by pads[x].
     Dims pads;
     // Whether this tensor is accessed by remote devices
     bool exported;

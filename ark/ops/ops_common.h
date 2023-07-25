@@ -4,9 +4,9 @@
 #ifndef ARK_OPS_COMMON_H_
 #define ARK_OPS_COMMON_H_
 
+#include "include/ark.h"
 #include <ostream>
 #include <vector>
-#include "include/ark.h"
 
 namespace ark {
 
@@ -46,17 +46,17 @@ class Op;
 class OpArgs
 {
   public:
-    OpArgs(const std::vector<OpArg>& args = {});
+    OpArgs(const std::vector<OpArg> &args = {});
     OpArgs(const OpArgs &) = default;
 
     OpArgs &operator=(const OpArgs &opargs);
 
-    void get(int *arg, int idx) const;
-    void get(long long int *arg, int idx) const;
-    void get(uint64_t *arg, int idx) const;
-    void get(bool *arg, int idx) const;
-    void get(float *arg, int idx) const;
-    void get(Dims *arg, int idx) const;
+    void get(int *arg, size_t idx) const;
+    void get(long long int *arg, size_t idx) const;
+    void get(uint64_t *arg, size_t idx) const;
+    void get(bool *arg, size_t idx) const;
+    void get(float *arg, size_t idx) const;
+    void get(Dims *arg, size_t idx) const;
 
   protected:
     std::vector<OpArg> args;

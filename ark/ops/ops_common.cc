@@ -186,11 +186,11 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
 //     }
 // }
 
-OpArgs::OpArgs(const std::vector<OpArg>& args) : args{args}
+OpArgs::OpArgs(const std::vector<OpArg> &args) : args{args}
 {
 }
 
-OpArgs& OpArgs::operator=(const OpArgs& opargs)
+OpArgs &OpArgs::operator=(const OpArgs &opargs)
 {
     if (this != &opargs) {
         this->args = opargs.args;
@@ -198,7 +198,7 @@ OpArgs& OpArgs::operator=(const OpArgs& opargs)
     return *this;
 }
 
-void OpArgs::get(int *arg, int idx) const
+void OpArgs::get(int *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
@@ -209,7 +209,7 @@ void OpArgs::get(int *arg, int idx) const
     *arg = *static_cast<int *>(this->args[idx].val);
 }
 
-void OpArgs::get(long long int *arg, int idx) const
+void OpArgs::get(long long int *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
@@ -220,7 +220,7 @@ void OpArgs::get(long long int *arg, int idx) const
     *arg = *static_cast<long long int *>(this->args[idx].val);
 }
 
-void OpArgs::get(uint64_t *arg, int idx) const
+void OpArgs::get(uint64_t *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
@@ -231,7 +231,7 @@ void OpArgs::get(uint64_t *arg, int idx) const
     *arg = *static_cast<uint64_t *>(this->args[idx].val);
 }
 
-void OpArgs::get(bool *arg, int idx) const
+void OpArgs::get(bool *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
@@ -242,7 +242,7 @@ void OpArgs::get(bool *arg, int idx) const
     *arg = *static_cast<bool *>(this->args[idx].val);
 }
 
-void OpArgs::get(float *arg, int idx) const
+void OpArgs::get(float *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
@@ -253,7 +253,7 @@ void OpArgs::get(float *arg, int idx) const
     *arg = *static_cast<float *>(this->args[idx].val);
 }
 
-void OpArgs::get(Dims *arg, int idx) const
+void OpArgs::get(Dims *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
