@@ -180,7 +180,7 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.get_op() == nullptr) {
                     continue;
                 }
-                if (sop.get_cfg()->num_warps == 0) {
+                if (sop.is_virtual()) {
                     continue;
                 }
                 for (unsigned int i = 0; i < sop.get_op()->in_deps.size();
@@ -200,7 +200,7 @@ void DefaultScheduler::configure_gpu_buf(
         auto &depth_nodes = this->op_graph->get_depth(depth);
         for (auto &ogn : depth_nodes) {
             for (auto &sop : ogn->opseq.get_sched_ops()) {
-                if (sop.get_cfg()->num_warps == 0) {
+                if (sop.is_virtual()) {
                     continue;
                 }
                 for (auto &tns : sop.get_op()->in_deps) {
@@ -518,12 +518,6 @@ void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
                                     (i + 1) * wnum * 32, num, tidx + i);
             }
             DimType cnt = (sm_e - sm_b) * num;
-            // const SchedOp& so = opseq->get_sched_ops().back();
-            // assert(&so.cfg != &VIRT_SCHED_OP_CONFIG);
-            // const OpTile& tile = so.cfg.out_deps_tiles[0];
-            // LOG(INFO, "    div ", div, " rem ", rem,
-            //      ": sm ", sm_b, "-", sm_e - 1, " cnt ", cnt,
-            //      " <", tile.x, ",", tile.y, ">");
             tidx += cnt;
             sidx = sm_e - 1;
             warps_remain -= cnt * wnum;

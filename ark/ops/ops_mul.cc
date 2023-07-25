@@ -9,9 +9,11 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap ArithmeticConfigMap;
+
 MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
              const string &name)
-    : Op{OP_MUL, prec_type, {input, other}, {output}, {}, name, -1}
+    : Op{OP_MUL, prec_type, {input, other}, {output}, {}, name, &ArithmeticConfigMap, -1, true}
 {
 }
 

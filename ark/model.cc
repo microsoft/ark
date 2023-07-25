@@ -62,7 +62,7 @@ void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
 Op *Model::Impl::add_op(const OpType type, const OpPrecType prec_type,
                         const vector<Tensor *> &in_deps,
                         const vector<Tensor *> &out_deps, const OpArgs &args,
-                        const string &name, int gran_lev)
+                        const string &name, const OpConfigMap *cfg_map, int gran_lev)
 {
     string suffix_str;
     auto p = this->name_cnts.emplace(name, 1);
@@ -74,7 +74,7 @@ Op *Model::Impl::add_op(const OpType type, const OpPrecType prec_type,
         suffix_str = "";
     }
     Op *op = new Op{type, prec_type,         in_deps, out_deps,
-                    args, name + suffix_str, gran_lev};
+                    args, name + suffix_str, cfg_map, gran_lev};
     assert(op != nullptr);
     this->ops_storage.emplace_back(op);
     for (auto &tns : in_deps) {

@@ -11,7 +11,7 @@ namespace ark {
 
 ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const string &name)
-    : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, -1}
+    : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, nullptr, -1}
 {
 }
 

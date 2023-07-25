@@ -8,10 +8,12 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap CommConfigMap;
+
 SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
                int rank, int dst_rank, size_t bytes, const string &name)
     : Op{OP_SEND, prec_type, {input}, {output}, {{sid, rank, dst_rank, bytes}},
-         name,    -1,        true}
+         name,    &CommConfigMap, -1,        true}
 {
 }
 
@@ -46,7 +48,7 @@ OpArgs SendOp::function_call_args(const OpConfig &cfg) const
 SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                        int sid, int rank, int dst_rank, const string &name)
     : Op{OP_SEND_DONE, prec_type, {input}, {output}, {{sid, rank, dst_rank}},
-         name,         -1,        true}
+         name,         &CommConfigMap, -1,        true}
 {
 }
 
@@ -74,7 +76,7 @@ OpArgs SendDoneOp::function_call_args(const OpConfig &cfg) const
 RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
                int rank, int src_rank, size_t bytes, const string &name)
     : Op{OP_RECV, prec_type, {input}, {output}, {{sid, rank, src_rank, bytes}},
-         name,    -1,        true}
+         name,    &CommConfigMap, -1,        true}
 {
 }
 
@@ -160,5 +162,18 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     this->impl->add_op(op);
     return output;
 }
+
+const OpConfigMap CommConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 0, {{1, 1}}, {{1, 1}}, true, true},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 0, {{1, 1}}, {{1, 1}}, true, true},
+     }},
+};
 
 } // namespace ark

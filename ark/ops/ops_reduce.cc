@@ -12,8 +12,8 @@ namespace ark {
 ReduceOp::ReduceOp(const OpType &type, const OpPrecType &prec_type,
                    const std::vector<Tensor *> &in_deps,
                    const std::vector<Tensor *> &out_deps, const OpArgs &args,
-                   const std::string &name, int gran_lev)
-    : Op{type, prec_type, in_deps, out_deps, args, name, gran_lev, true}
+                   const std::string &name, const OpConfigMap *cfg_map, int gran_lev)
+    : Op{type, prec_type, in_deps, out_deps, args, name, cfg_map, gran_lev, true}
 {
 }
 
@@ -62,10 +62,13 @@ std::string ReduceOp::function_name(const OpConfig &cfg,
                              }});
 }
 
+extern const OpConfigMap ReduceWConfigMap;
+extern const OpConfigMap ReduceEConfigMap;
+
 ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
     : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input}, {output},
-               {{axis}},        name,      -1}
+               {{axis}},        name,      &ReduceWConfigMap, -1}
 {
 }
 
@@ -77,7 +80,7 @@ std::string ReduceWSumOp::function_name(const OpConfig &cfg) const
 ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
     : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input}, {output},
-               {{axis}},        name,      -1}
+               {{axis}},        name,      &ReduceEConfigMap, -1}
 {
 }
 
@@ -89,7 +92,7 @@ std::string ReduceESumOp::function_name(const OpConfig &cfg) const
 ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
     : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input}, {output},
-               {{axis}},        name,      -1}
+               {{axis}},        name,      &ReduceWConfigMap, -1}
 {
 }
 
@@ -101,7 +104,7 @@ std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const
 ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const string &name)
     : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input}, {output},
-               {{axis}},        name,      -1}
+               {{axis}},        name,      &ReduceEConfigMap, -1}
 {
 }
 
@@ -113,7 +116,7 @@ std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const
 ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input,
                              Tensor *output, int axis, const string &name)
     : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input}, {output},
-               {{axis}},         name,      -1}
+               {{axis}},         name,      &ReduceWConfigMap, -1}
 {
 }
 
@@ -125,7 +128,7 @@ std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const
 ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input,
                              Tensor *output, int axis, const string &name)
     : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input}, {output},
-               {{axis}},         name,      -1}
+               {{axis}},         name,      &ReduceEConfigMap, -1}
 {
 }
 
@@ -235,5 +238,75 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
     }
     return output;
 }
+
+const OpConfigMap ReduceEConfigMap = {
+    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
+         {8, 0, {{256, 128}, {256, 128}}, {{256, 128}}, true, false},
+         {8, 0, {{128, 128}, {128, 128}}, {{128, 128}}, true, false},
+         {4, 0, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+         {2, 0, {{32, 64}, {32, 64}}, {{32, 64}}, true, false},
+         {1, 0, {{16, 64}, {16, 64}}, {{16, 64}}, true, false},
+         {1, 0, {{8, 64}, {8, 64}}, {{8, 64}}, true, false},
+         {1, 0, {{2, 128}, {2, 128}}, {{2, 128}}, true, false},
+         {1, 0, {{4, 64}, {4, 64}}, {{4, 64}}, true, false},
+         {1, 0, {{2, 64}, {2, 64}}, {{2, 64}}, true, false},
+         {1, 0, {{1, 64}, {1, 64}}, {{1, 64}}, true, false},
+         {1, 0, {{1, 32}, {1, 32}}, {{1, 32}}, true, false},
+     }},
+};
+
+const OpConfigMap ReduceWConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_70, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+};
 
 } // namespace ark

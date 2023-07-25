@@ -111,8 +111,15 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     const Op *op = *dep_ops.begin();
                     const OpConfig *cfg = sched_op_config(op, gpu_info);
                     // Cannot merge if `opseq` needs a global sync.
-                    if (!opseq.get_sched_ops().back().get_cfg()->sync_pre &&
-                        !cfg->sync_post) {
+                    const OpConfig *prev_op_cfg = opseq.get_sched_ops().back().get_cfg();
+                    bool can_merge = true;
+                    if (cfg != nullptr && cfg->sync_post) {
+                        can_merge = false; 
+                    }
+                    if (prev_op_cfg != nullptr && prev_op_cfg->sync_pre) {
+                        can_merge = false;
+                    }
+                    if (can_merge) {
                         // Get all Ops which depends on results of `op`.
                         set<const Op *> out_dep_ops;
                         for (auto &out_tns : op->out_deps) {
@@ -126,7 +133,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                         }
                         // If both `op` and `opseq` are not virtual,
                         // the batch size should be the same.
-                        if ((cfg->num_warps == 0) || (opseq.is_virtual()) ||
+                        if ((cfg == nullptr) || (opseq.is_virtual()) ||
                             (opseq.get_tdim_z() == op->out_deps[0]->shape[0])) {
                             // Check if all Ops in `out_dep_ops` are in `opseq`.
                             // If so, we can merge `op` into `opseq`.
@@ -140,10 +147,8 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                                 }
                             }
                             if (out_dep_ops.size() == 0) {
-                                const OpConfig *cfg =
-                                    sched_op_config(op, gpu_info);
                                 // Try merge and continue if succeed.
-                                if (opseq.append(op, cfg)) {
+                                if (opseq.append(op, sched_op_config(op, gpu_info))) {
                                     auto p = seen.emplace(op);
                                     assert(p.second);
                                     this->op_to_node_map[op] = *it;

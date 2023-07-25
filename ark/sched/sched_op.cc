@@ -15,8 +15,8 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     assert(op != nullptr);
     assert(op->out_deps.size() > 0);
     Tensor *output = op->out_deps[0];
-    if (output == nullptr) {
-        return &ARK_OP_CONFIG_VIRT;
+    if (output == nullptr || op->cfg_map == nullptr) {
+        return nullptr;
     }
     OpArchType arch_type;
     if (gpu_info.arch == GPU_ARCH_CUDA_70) {
@@ -26,9 +26,9 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     } else {
         LOGERR("unsupported GPU architecture: ", gpu_info.arch);
     }
-    auto search = ARK_OP_CONFIG_MAP.find({op->type, arch_type, op->prec_type});
-    if (search == ARK_OP_CONFIG_MAP.end()) {
-        return &ARK_OP_CONFIG_VIRT;
+    auto search = op->cfg_map->find({arch_type, op->prec_type});
+    if (search == op->cfg_map->end()) {
+        return nullptr;
     } else if (op->gran_lev >= 0) {
         if (search->second.size() > (unsigned int)op->gran_lev) {
             return &search->second[op->gran_lev];
@@ -112,7 +112,7 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
     if (op_ == nullptr) {
         return;
     }
-    if (cfg_ == &ARK_OP_CONFIG_VIRT) {
+    if (cfg_ == nullptr) {
         LOG(DEBUG, "virtual op: ", op_->name);
         return;
     }
@@ -168,7 +168,7 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
     }
     // claculate the tile size for the SchedOp
     if ((this->op->out_deps.size() == 1) &&
-        (this->cfg != &ARK_OP_CONFIG_VIRT)) {
+        (this->cfg != nullptr)) {
         const OpTile &tile = this->cfg->out_deps_tiles[0];
         const Dims &s = this->op->out_deps[0]->shape;
         int ndims = s.ndims();
@@ -191,12 +191,15 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
 
 const string SchedOp::func_string() const
 {
+    if (this->cfg == nullptr) {
+        return "";
+    }
     return this->op->function_name(*this->cfg);
 }
 
 bool SchedOp::is_virtual() const
 {
-    return this->cfg == &ARK_OP_CONFIG_VIRT;
+    return this->cfg == nullptr;
 }
 
 } // namespace ark

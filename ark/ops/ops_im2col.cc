@@ -9,6 +9,8 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap Im2colConfigMap;
+
 Im2colOp::Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                    int kernel_height, int kernel_width, int stride_height,
                    int stride_width, int pad_height, int pad_width,
@@ -20,6 +22,7 @@ Im2colOp::Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
          {{kernel_height, kernel_width, stride_height, stride_width, pad_height,
            pad_width, dilation_height, dilation_width}},
          name,
+         &Im2colConfigMap,
          -1,
          true}
 {
@@ -133,5 +136,24 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
     this->impl->add_op(op);
     return output;
 }
+
+const OpConfigMap Im2colConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+     }},
+};
 
 } // namespace ark

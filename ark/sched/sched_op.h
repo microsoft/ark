@@ -6,7 +6,8 @@
 
 #include "gpu/gpu_mgr.h"
 #include "include/ark.h"
-#include "ops/ops_config.h"
+#include "ops/ops_common.h"
+#include "json.h"
 
 namespace ark {
 

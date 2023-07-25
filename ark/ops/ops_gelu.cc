@@ -9,9 +9,11 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap ActivationConfigMap;
+
 GeluOp::GeluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                const string &name)
-    : Op{OP_GELU, prec_type, {input}, {output}, {}, name, -1, true}
+    : Op{OP_GELU, prec_type, {input}, {output}, {}, name, &ActivationConfigMap, -1, true}
 {
 }
 

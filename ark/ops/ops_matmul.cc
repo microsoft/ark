@@ -10,6 +10,8 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap MatmulConfigMap;
+
 MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
                    Tensor *mat_y, Dims nca, Dims ncb, Dims problem_size,
                    Dims leading_dims, bool is_column_a, bool is_column_b,
@@ -21,6 +23,7 @@ MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
          {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b,
            is_relu}},
          name,
+         &MatmulConfigMap,
          gran_lev}
 {
 }
@@ -276,5 +279,24 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     }
     return reduced;
 }
+
+const OpConfigMap MatmulConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 49152, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {4, 24576, {{64, 32}, {32, 128}}, {{64, 128}}, true, false},
+         {4, 24576, {{128, 32}, {32, 64}}, {{128, 64}}, true, false},
+         {4, 24576, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 166912, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
+         {8, 166912, {{256, 64}, {64, 128}}, {{256, 128}}, true, false},
+         {8, 166912, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
+         {4, 83456, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+     }},
+};
 
 } // namespace ark

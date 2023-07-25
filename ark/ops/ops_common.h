@@ -157,6 +157,20 @@ struct OpConfig
     bool sync_post = false;
 };
 
+// Key to find a list of OpConfigs from OpConfigMap.
+struct OpConfigKey
+{
+    OpArchType arch_type;
+    OpPrecType prec_type;
+};
+
+bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
+
+bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
+
+// Map from OpConfigKey to a list of OpConfigs.
+using OpConfigMap = std::map<OpConfigKey, std::vector<OpConfig>>;
+
 // The operator of a model.
 class Op
 {
@@ -165,7 +179,8 @@ class Op
     Op(const OpType &type, const OpPrecType &prec_type,
        const std::vector<Tensor *> &in_deps,
        const std::vector<Tensor *> &out_deps, const OpArgs &args,
-       const std::string &name, int gran_lev, bool force_inline = false);
+       const std::string &name, const OpConfigMap *cfg_map = nullptr,
+       int gran_lev = -1, bool force_inline = false);
     Op(const Op &) = default;
     ~Op(){};
 
@@ -184,6 +199,8 @@ class Op
     OpArgs args;
     //
     std::string name;
+    //
+    const OpConfigMap *cfg_map;
     //
     int gran_lev;
     //
@@ -264,7 +281,7 @@ class ReduceOp : public Op
     ReduceOp(const OpType &type, const OpPrecType &prec_type,
              const std::vector<Tensor *> &in_deps,
              const std::vector<Tensor *> &out_deps, const OpArgs &args,
-             const std::string &name, int gran_lev);
+             const std::string &name, const OpConfigMap *cfg_map, int gran_lev);
 
   protected:
     std::string function_name(const OpConfig &cfg,

@@ -9,9 +9,11 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap SoftmaxConfigMap;
+
 SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const string &name)
-    : Op{OP_SOFTMAX, prec_type, {input}, {output}, {}, name, -1}
+    : Op{OP_SOFTMAX, prec_type, {input}, {output}, {}, name, &SoftmaxConfigMap, -1}
 {
 }
 
@@ -63,5 +65,56 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)
     this->impl->add_op(op);
     return output;
 }
+
+const OpConfigMap SoftmaxConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_70, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+};
 
 } // namespace ark

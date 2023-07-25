@@ -10,6 +10,8 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap SendRecvMMConfigMap;
+
 SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
                    size_t bytes, const string &name)
@@ -19,6 +21,7 @@ SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          {output},
          {{id, gpu_dst, bytes}},
          name,
+         &SendRecvMMConfigMap,
          -1}
 {
 }
@@ -70,6 +73,7 @@ RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          {output},
          {{id, gpu_src, bytes}},
          name,
+         &SendRecvMMConfigMap,
          -1}
 {
 }
@@ -195,5 +199,30 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     this->impl->add_op(op);
     return output;
 }
+
+const OpConfigMap SendRecvMMConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+     }},
+};
 
 } // namespace ark

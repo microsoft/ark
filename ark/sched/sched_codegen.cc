@@ -58,7 +58,7 @@ std::ostream &SimpleCodeGenerator::codegen_opseq(std::ostream &os,
        << "opseq_" << sopseq->get_id() << "_tile_task"
        << "(int tile_idx) {\n";
     for (SchedOp sop : sopseq->get_sched_ops()) {
-        if (sop.get_cfg() == &ARK_OP_CONFIG_VIRT) {
+        if (sop.get_cfg() == nullptr) {
             continue;
         }
         os << "// tile nums: " << sop.get_tnums() << "\n";

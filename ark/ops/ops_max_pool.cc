@@ -12,7 +12,7 @@ namespace ark {
 MaxPoolOp::MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      DimType kernel_size, DimType stride, const string &name)
     : Op{OP_MAX_POOL, prec_type, {input}, {output}, {{kernel_size, stride}},
-         name,        -1}
+         name,        nullptr, -1}
 {
 }
 

@@ -34,6 +34,20 @@ Dims broadcast(const Dims &dims1, const Dims &dims2)
     return Dims{output_dims_reversed};
 }
 
+bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2)
+{
+    if (ops1.arch_type != ops2.arch_type) {
+        return ops1.arch_type < ops2.arch_type;
+    } else {
+        return ops1.prec_type < ops2.prec_type;
+    }
+}
+
+bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2)
+{
+    return ops1.arch_type == ops2.arch_type && ops1.prec_type == ops2.prec_type;
+}
+
 ostream &operator<<(ostream &os, const OpType &s)
 {
     // clang-format off
@@ -375,11 +389,11 @@ bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2)
 
 Op::Op(const OpType &type_, const OpPrecType &prec_type_,
        const vector<Tensor *> &in_deps_, const vector<Tensor *> &out_deps_,
-       const OpArgs &args_, const string &name_, int gran_lev_,
-       bool force_inline_)
+       const OpArgs &args_, const string &name_, const OpConfigMap *cfg_map_,
+       int gran_lev_, bool force_inline_)
     : type{type_}, prec_type{prec_type_}, in_deps{in_deps_},
       out_deps{out_deps_}, args{args_}, name{name_}, gran_lev{gran_lev_},
-      force_inline{force_inline_}
+      cfg_map{cfg_map_}, force_inline{force_inline_}
 {
     for (auto &tns : in_deps_) {
         assert(tns != nullptr);
@@ -541,22 +555,5 @@ bool operator==(const Op &op1, const Op &op2)
     }
     return true;
 }
-// void to_json(nlohmann::json &j, const Op &op)
-// {
-//     j = nlohmann::json{
-//         {"type", op.type},          {"prec_type", op.prec_type},
-//         {"in_deps", vector<int>{}}, {"out_deps", vector<int>{}},
-//         {"args", op.args},          {"name", op.name},
-//     };
-//     for (Tensor *pt : op.in_deps) {
-//         j.at("in_deps").emplace_back(pt->id);
-//     }
-//     for (Tensor *pt : op.out_deps) {
-//         j.at("out_deps").emplace_back(pt->id);
-//     }
-// }
-// void from_json(const nlohmann::json &j, Op &op)
-// {
-// }
 
 } // namespace ark

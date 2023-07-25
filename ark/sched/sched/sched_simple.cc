@@ -88,7 +88,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         // some virtual ops like ops_tensor are not scheduled, but we need to
         // allocated gpu_buf for them
         this->sched_ops.push_back(sched_op);
-        if (cfg == &ARK_OP_CONFIG_VIRT) {
+        if (cfg == nullptr) {
             continue;
         }
         // We create an opseq for each op for simplicity, we don't merge ops
