@@ -45,15 +45,6 @@ class TestModelARK(ark.Module):
         output_layernorm = self.model.layernorm(output)
         return output_layernorm
 
-    def init_model(self, param, exe, prefix=""):
-        exe.tensor_memcpy_host_to_device(
-            self.weight_1, param[prefix + "weight_1"]
-        )
-        exe.tensor_memcpy_host_to_device(
-            self.weight_2, param[prefix + "weight_2"]
-        )
-
-
 class TestModel(nn.Module):
     def __init__(self):
         super(TestModel, self).__init__()
@@ -109,8 +100,7 @@ def test_TestModel():
     )
 
     param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-
-    ark_model.init_model(param, exe)
+    ark_model.load_state_dict(exe, param)
 
     exe.run(1)
     exe.stop()
