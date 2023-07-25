@@ -28,9 +28,9 @@ n_heads_per_gpu = n_heads // num_gpu
 import ark
 
 
-class PoswiseFeedForwardNet:
+class TestModelARK(ark.Module):
     def __init__(self, model):
-        self.model = model
+        super(TestModelARK, self).__init__(model)
         self.weight_1 = model.tensor(
             ark.Dims(d_model, d_ff), ark.TensorType.FP16
         )
@@ -54,9 +54,9 @@ class PoswiseFeedForwardNet:
         )
 
 
-class PoswiseFeedForwardNet(nn.Module):
+class TestModel(nn.Module):
     def __init__(self):
-        super(PoswiseFeedForwardNet, self).__init__()
+        super(TestModel, self).__init__()
         self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
         self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
 
@@ -79,7 +79,7 @@ class PoswiseFeedForwardNet(nn.Module):
         self.weight_2.data.copy_(torch.from_numpy(param[prefix + "weight_2"]))
 
 
-def test_PoswiseFeedForwardNet():
+def test_TestModel():
     ark.init()
 
     # Create a Model instance
@@ -89,10 +89,10 @@ def test_PoswiseFeedForwardNet():
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
 
-    ark_model = PoswiseFeedForwardNet(model)
+    ark_model = TestModelARK(model)
     output_tensor = ark_model.forward(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_PoswiseFeedForwardNet")
+    exe = ark.Executor(0, 0, 1, model, "test_TestModel")
     exe.compile()
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
@@ -125,7 +125,7 @@ def test_PoswiseFeedForwardNet():
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    torch_model = PoswiseFeedForwardNet()
+    torch_model = TestModel()
 
     torch_model.init_model(param)
 
@@ -149,3 +149,7 @@ def test_PoswiseFeedForwardNet():
         d_ff,
     )
     print("max error: ", max_error, "avg error: ", avg_error)
+
+
+if __name__ == "__main__":
+    test_TestModel()

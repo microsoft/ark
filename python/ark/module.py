@@ -2,19 +2,18 @@
 # Licensed under the MIT license.
 
 import pickle
-import Dict
 from typing import Optional, Dict, Callable, Any
 import numpy as np
 from ._ark_core import Model, Executor, Tensor 
 
 class Module:
+    # Base class for all neural network modules.
     _modules: Dict[str, Optional['Module']]
     _parameters: Dict[str, Optional['Tensor']]
-    def __init__(self,model):
-        self._modules = Dict[str, Optional['Module']]()
-        self._Tensors = Dict[str, Optional['Tensor']]()
-        self._model = model
-        super().__init__()
+    def __init__(self, model):
+        self._modules = dict()
+        self._parameters = dict()
+        self.model = model
 
     # Adds a child module to the current module.
     def register_module(self, name: str, module: Optional['Module']) -> None:
@@ -29,8 +28,7 @@ class Module:
             self.register_module(__name, __value)
         elif isinstance(__value, Tensor):
             self.register_parameter(__name, __value)
-        else:
-            super().__setattr__(__name, __value)
+        super().__setattr__(__name, __value)
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
     # Must be called after the executor is launched.
@@ -56,3 +54,7 @@ class Module:
 
     forward: Callable[..., Any] = NotImplemented
     backward: Callable[..., Any] = NotImplemented
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return self.forward(*args, **kwds)
+
