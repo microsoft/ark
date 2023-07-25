@@ -3,9 +3,9 @@
 
 import pickle
 import Dict
-from typing import Optional, Dict
-
-from ._ark_core import Model, Executor, Tensor
+from typing import Optional, Dict, Callable, Any
+import numpy as np
+from ._ark_core import Model, Executor, Tensor 
 
 class Module:
     _modules: Dict[str, Optional['Module']]
@@ -33,12 +33,16 @@ class Module:
             executor.tensor_memcpy_host_to_device(param, state_dict[prefix + name])
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
-    def state_dict(self):
+    def state_dict(self,executor):
         state_dict = {}
         for name, module in self._modules.items():
             if module is not None:
                 state_dict.update(module.state_dict())
         for name, param in self._parameters.items():
-            param_np = param.to_numpy()
-            state_dict[name] = param
+            param_np = np.zeros(param.shape, dtype=np.float16)
+            executor.tensor_memcpy_device_to_host(param_np, param)
+            state_dict[name] = param_np
         return state_dict
+
+    forward: Callable[..., Any] = NotImplemented
+    backward: Callable[..., Any] = NotImplemented
