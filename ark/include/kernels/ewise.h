@@ -9,7 +9,7 @@
 
 namespace ark {
 
-// Element-wise computation operator with a single input.
+/// Element-wise computation operator with a single input.
 template <typename OutDims, typename OutShape, typename UnitOutDims,
           int NumThreads, int SmemBytes, typename CompType>
 struct Ewise1
@@ -23,15 +23,18 @@ struct Ewise1
     static_assert(UnitOutDims::W % NelemPerThread == 0,
                   "UnitOutDims::W must be divisible by NelemPerThread");
 
-    // Conduct element-wise computation on input and write the result on output.
-    //
-    // tn(int): index of the unit operator along the N dimension.
-    // tc(int): index of the unit operator along the C dimension.
-    // th(int): index of the unit operator along the H dimension.
-    // tw(int): index of the unit operator along the W dimension.
-    static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
-                           int tw)
+    /// Conduct element-wise computation on input and write the result on
+    /// output.
+    /// @param out Output data.
+    /// @param in Input data.
+    /// @param uop_idx Index of the unit operator.
+    static DEVICE void run(DataType *out, DataType *in, int uop_idx)
     {
+        int un = UnitOp::uop_idx_n(uop_idx);
+        int uc = UnitOp::uop_idx_c(uop_idx);
+        int uh = UnitOp::uop_idx_h(uop_idx);
+        int uw = UnitOp::uop_idx_w(uop_idx);
+
         for (int tid = UnitOp::thread_id();; tid += NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
@@ -44,10 +47,10 @@ struct Ewise1
                 break;
             }
 
-            CompType::compute(out, in, tid_n + tn * UnitOutDims::N,
-                              tid_c + tc * UnitOutDims::C,
-                              tid_h + th * UnitOutDims::H,
-                              tid_w + tw * UnitOutDims::W);
+            CompType::compute(out, in, tid_n + un * UnitOutDims::N,
+                              tid_c + uc * UnitOutDims::C,
+                              tid_h + uh * UnitOutDims::H,
+                              tid_w + uw * UnitOutDims::W);
         }
     }
 };

@@ -35,8 +35,7 @@ struct Softmax
     // TODO(chhwang): support NelemPerThread > 1.
     static_assert(NelemPerThread == 1, "Unimplemented");
 
-    static DEVICE void run(DataType *out, const DataType *in, int tn, int tc,
-                           int th, int tw)
+    static DEVICE void run(DataType *out, const DataType *in, int uop_idx)
     {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
         using ReduceTypeMax = ReduceTypeMax<DataType, NelemPerThread>;
@@ -60,9 +59,13 @@ struct Softmax
                     UnitOutDims::C;
         int tid_n = (tid * NelemPerThread) / ThreadsPerRow / UnitOutDims::CH;
 
-        int idx_in_base = (tid_h + th * UnitOutDims::H) * InDims::W +
-                          (tid_c + tc * UnitOutDims::C) * InDims::HW +
-                          (tid_n + tn * UnitOutDims::N) * InDims::CHW;
+        int un = UnitOp::uop_idx_n(uop_idx);
+        int uc = UnitOp::uop_idx_c(uop_idx);
+        int uh = UnitOp::uop_idx_h(uop_idx);
+
+        int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
+                          (tid_c + uc * UnitOutDims::C) * InDims::HW +
+                          (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
         // get the max input.
         DataType max_input;
@@ -72,7 +75,7 @@ struct Softmax
             int idx_in = idx_in_base + idx_in_w;
             ReduceTypeMax::singleReduce(&max_input, &max_input, &in[idx_in]);
         }
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
 
         // final reduction on shared memory using warp shuffle.
         max_input =
@@ -83,17 +86,17 @@ struct Softmax
         // get the exp input sum, use float to avoid overflow.
         DataType exp_sum_input;
         ReduceTypeSum::singleIdentity(&exp_sum_input);
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
             exp_sum_input = exp_sum_input + expf(in[idx_in] - max_input);
         }
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
             exp_sum_input, tid);
         ReduceTypeSum::singlePostReduce(&exp_sum_input, &exp_sum_input);
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         // the output is
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
@@ -106,25 +109,21 @@ struct Softmax
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void softmax(float *out, float *in, int tx, int ty, int tz)
+DEVICE void softmax(float *out, float *in, int uop_idx)
 {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, float, NelemPerThread>::run(out, in, tz / OutShape::C,
-                                                   tz % OutShape::C, ty, tx);
+            SmemBytes, float, NelemPerThread>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void softmax(ark::half *out, ark::half *in, int tx, int ty, int tz)
+DEVICE void softmax(ark::half *out, ark::half *in, int uop_idx)
 {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, ark::half, NelemPerThread>::run(out, in,
-                                                       tz / OutShape::C,
-                                                       tz % OutShape::C, ty,
-                                                       tx);
+            SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx);
 }
 
 } // namespace ark

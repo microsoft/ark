@@ -278,7 +278,6 @@ void DefaultScheduler::configure_gpu_buf(
             // TODO: more verficiations.
             auto &sh = tns->shape;
             auto &ld = tns->ldims;
-            stringstream ss;
             LOG(DEBUG, "Tensor buf ", tns->buf, " pads ", tns->pads,
                 " padding ", sh, " -> ", ld, " exported ", tns->exported);
         }

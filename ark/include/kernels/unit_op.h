@@ -7,6 +7,8 @@
 #include "common.h"
 #include "smem.h"
 #include "static_math.h"
+#include "sync.h"
+#include "vec.h"
 
 namespace ark {
 
@@ -62,21 +64,65 @@ struct UnitOp
     static_assert(_NumThreads > 0, "# of threads is not positive");
     static_assert(_SmemBytes >= 0, "Bytes of shared memory is negative");
 
+    // Number of unit operators in each dimension.
+    using UnitOpDims =
+        Vec<_OutDims::N / _UnitOutDims::N, _OutDims::C / _UnitOutDims::C,
+            _OutDims::H / _UnitOutDims::H, _OutDims::W / _UnitOutDims::W>;
+
     static const int NumThreads = _NumThreads;
     static const int SmemBytes = _SmemBytes;
 
-    // Do not use `threadIdx` and use this function instead.
+    /// Do not use `threadIdx` and use this function instead.
     static DEVICE int thread_id()
     {
         return math::mod<NumThreads>(threadIdx.x);
     }
 
-    // Return a shared memory pointer.
+    /// Convert a unit operator ID to the corresponding index along the N
+    /// dimension.
+    /// @param uop_id Unit operator ID.
+    static DEVICE int uop_idx_n(int uop_id)
+    {
+        return uop_id / UnitOpDims::CHW;
+    }
+
+    /// Convert a unit operator ID to the corresponding index along the C
+    /// dimension.
+    /// @param uop_id Unit operator ID.
+    static DEVICE int uop_idx_c(int uop_id)
+    {
+        return (uop_id / UnitOpDims::HW) % UnitOpDims::C;
+    }
+
+    /// Convert a unit operator ID to the corresponding index along the H
+    /// dimension.
+    /// @param uop_id Unit operator ID.
+    static DEVICE int uop_idx_h(int uop_id)
+    {
+        return (uop_id / UnitOpDims::W) % UnitOpDims::H;
+    }
+
+    /// Convert a unit operator ID to the corresponding index along the W
+    /// dimension.
+    /// @param uop_id Unit operator ID.
+    static DEVICE int uop_idx_w(int uop_id)
+    {
+        return uop_id % UnitOpDims::W;
+    }
+
+    /// Return a shared memory pointer.
+    /// @tparam T Type of the underlying data.
     template <typename T> static DEVICE T *shared_memory()
     {
         static_assert(sizeof(T) <= SmemBytes,
                       "Shared memory is not large enough");
         return SharedMemory<T, NumThreads>();
+    }
+
+    /// Do not use `__syncthreads()` and use this function instead.
+    static DEVICE void sync_threads()
+    {
+        sync_warps<NumThreads>();
     }
 };
 

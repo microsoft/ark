@@ -30,6 +30,8 @@ MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
 
 std::string MatmulOp::function_name(const OpConfig &cfg) const
 {
+    Tensor *mat_a = this->in_deps[0];
+    Tensor *mat_b = this->in_deps[1];
     Tensor *mat_y = this->out_deps[0];
 
     int ndims_y = mat_y->shape.ndims();
@@ -56,6 +58,21 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
     this->args.get(&is_column_b, 5);
     this->args.get(&is_relu, 6);
 
+    /// Re-calculate the exact leading dimensions. Assume this function is
+    /// called after scheduling is done.
+
+    const Dims &ldims_a = mat_a->ldims;
+    const Dims &ldims_b = mat_b->ldims;
+    const Dims &ldims_y = mat_y->ldims;
+    int ndims_a = ldims_a.ndims();
+    int ndims_b = ldims_b.ndims();
+    leading_dims[0] = is_column_a ? ldims_a[ndims_a - 2] : ldims_a[ndims_a - 1];
+    leading_dims[1] = ldims_y[ldims_y.ndims() - 1];
+    leading_dims[2] = ldims_y[ldims_y.ndims() - 1];
+    leading_dims[3] = is_column_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1];
+
+    // TODO: verify `leading_dims`
+
     const OpTile &tile_in0 = cfg.in_deps_tiles[0];
     const OpTile &tile_in1 = cfg.in_deps_tiles[1];
     CHECK(tile_in0.y == tile_in1.x);
@@ -63,16 +80,17 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::matmul",
                              {{
-                                 nca,                // NCA
-                                 ncb,                // NCB
-                                 shape,              // Shape
-                                 problem_size,       // ProblemSize
-                                 leading_dims,       // LeadingDims
-                                 is_column_a,        // IsColumnA
-                                 is_column_b,        // IsColumnB
-                                 is_relu,            // IsRelu
-                                 cfg.num_warps * 32, // NumThreads
-                                 cfg.smem_bytes,     // SmemBytes
+                                 mat_y->ldims.dims4(), // OutDims
+                                 nca,                  // NCA
+                                 ncb,                  // NCB
+                                 shape,                // Shape
+                                 problem_size,         // ProblemSize
+                                 leading_dims,         // LeadingDims
+                                 is_column_a,          // IsColumnA
+                                 is_column_b,          // IsColumnB
+                                 is_relu,              // IsRelu
+                                 cfg.num_warps * 32,   // NumThreads
+                                 cfg.smem_bytes,       // SmemBytes
                              }});
 }
 
@@ -201,11 +219,14 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         const Dims &ldims_a = mat_a->ldims;
         const Dims &ldims_b = mat_b->ldims;
         const Dims &ldims_y = mat_y->ldims;
-        Dims problem_size{m, n, k};
+        // NOTE: `leading_dims` here is just an expected value. We can
+        // calculate the exact value after the OpConfig is given in
+        // `MatmulOp::function_name()`.
         Dims leading_dims{
             trans_a ? ldims_a[ndims_a - 2] : ldims_a[ndims_a - 1],
             ldims_y[ldims_y.ndims() - 1], ldims_y[ldims_y.ndims() - 1],
             trans_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1]};
+        Dims problem_size{m, n, k};
         MatmulOp op{pt,      mat_a,        mat_b,        mat_y,   nca,
                     ncb,     problem_size, leading_dims, trans_a, trans_b,
                     is_relu, name,         gran_lev};

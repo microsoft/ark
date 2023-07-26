@@ -4,33 +4,47 @@
 #ifndef ARK_KERNELS_IM2COL_H_
 #define ARK_KERNELS_IM2COL_H_
 
+#include "ewise.h"
+#include "half.h"
 #include "sync.h"
-#include "transform.h"
 
 namespace ark {
 
-template <typename InShape, typename InDims, int KernelHeight, int KernelWidth,
+template <typename _InShape, typename _InDims, typename _OutDims,
+          typename _UnitOutDims, typename _DataType, int _NelemPerThread,
+          int KernelHeight, int KernelWidth, int StrideHeight, int StrideWidth,
+          int PadHeight, int PadWidth, int DilationHeight, int DilationWidth>
+struct Im2Col;
+
+template <typename _InShape, typename _InDims, typename _OutDims,
+          typename _UnitOutDims, int KernelHeight, int KernelWidth,
           int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
-          int DilationHeight, int DilationWidth, int TN, int SB, int TDM,
-          int TDN, int TDK>
-struct TransformIm2Col
+          int DilationHeight, int DilationWidth>
+struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
+              KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
+              DilationHeight, DilationWidth>
 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = half;
+    static const int NelemPerThread = 2;
+
     static const int InN = InDims::HW;
 
-    static const int Height = InShape::H;
-    static const int Width = InShape::W;
+    static const int Height = _InShape::H;
+    static const int Width = _InShape::W;
 
     static const int PatchNumHeight =
         (Height - KernelHeight + 2 * PadHeight) / StrideHeight + 1;
     static const int PatchNumWidth =
         (Width - KernelWidth + 2 * PadWidth) / StrideWidth + 1;
     static const int PatchNum = math::mul<PatchNumHeight, PatchNumWidth>::value;
-    static const int OutHeight = math::pad<PatchNum, TDM>::value;
+    static const int OutHeight = math::pad<PatchNum, _UnitOutDims::H>::value;
 
     static const int KHW = math::mul<KernelHeight, KernelWidth>::value;
 
     static const int MaxMIdx = PatchNum;
-    static const int MaxNIdx = math::mul<InShape::NC, KHW>::value;
+    static const int MaxNIdx = math::mul<_InShape::NC, KHW>::value;
 
     // Index of the input element is derived as follows:
     //   channel_idx = nidx / (KernelHeight*KernelWidth);
@@ -57,7 +71,7 @@ struct TransformIm2Col
     // This function reads a half value while avoiding 2-byte misaligned access.
     // Return the value as a float for efficiency.
     // CAUTION: This function assumes that `x` address is 4-byte aligned.
-    static DEVICE float read_elem(__half *x, int midx, int nidx)
+    static DEVICE float read_elem(half *x, int midx, int nidx)
     {
         int elem_width = math::mod<PatchNumWidth>(midx) * StrideWidth +
                          math::mod<KernelWidth>(nidx) - PadWidth;
@@ -76,39 +90,44 @@ struct TransformIm2Col
         return ((float *)&fx)[idx & 1];
     }
 
-    //
-    static DEVICE __half2 compute(__half2 *x, int midx, int nidx)
+    static DEVICE void compute(half *out, half *in, int idx_n, int idx_c,
+                               int idx_h, int idx_w)
     {
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+
+        int midx = idx_w;
+        int nidx = idx_h + idx_c * OutDims::H + idx_n * OutDims::CH;
+
         float f1 = 0;
         float f2 = 0;
         if (nidx <= MaxNIdx) {
             if (midx <= MaxMIdx) {
-                f1 = read_elem((__half *)x, midx, nidx);
+                f1 = read_elem(in, midx, nidx);
             }
             if (midx + 1 <= MaxMIdx) {
-                f2 = read_elem((__half *)x, midx + 1, nidx);
+                f2 = read_elem(in, midx + 1, nidx);
             }
         }
         __syncwarp();
-        return __floats2half2_rn(f1, f2);
+        *(__half2 *)out = __floats2half2_rn(f1, f2);
     }
 };
 
 // Half-precision image to column operation.
 // TODO: support dilation.
-template <typename InShape, typename InDims, int KernelHeight, int KernelWidth,
-          int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
-          int DilationHeight, int DilationWidth, int TN, int SB, int TDM,
-          int TDN, int TDK>
-DEVICE void im2col(ark::half *y, ark::half *x, int tx, int ty, int tz)
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes, int KernelHeight, int KernelWidth, int StrideHeight,
+          int StrideWidth, int PadHeight, int PadWidth, int DilationHeight,
+          int DilationWidth>
+DEVICE void im2col(half *y, half *x, int uop_idx)
 {
-    using TransformIm2Col =
-        TransformIm2Col<InShape, InDims, KernelHeight, KernelWidth,
-                        StrideHeight, StrideWidth, PadHeight, PadWidth,
-                        DilationHeight, DilationWidth, TN, SB, TDM, TDN, TDK>;
-    Transform<TransformIm2Col, TransformIm2Col::OutHeight, -1, -1, TN, SB, TDM,
-              TDN, TDK>::run(y, x, tx, ty, tz);
-    sync_warps<TN>();
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
+           Im2Col<InShape, InDims, OutDims, UnitOutDims, half, 2, KernelHeight,
+                  KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
+                  DilationHeight, DilationWidth>>::run(y, x, uop_idx);
+    sync_warps<NumThreads>();
 }
 
 } // namespace ark

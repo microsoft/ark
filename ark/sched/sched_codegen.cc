@@ -16,8 +16,7 @@ using namespace std;
 
 #define COM ", "
 #define OP_PREFIX "op"
-
-#define COMPRESS_BRANCH 1
+#define UNIT_OP_PREFIX "uop"
 
 namespace ark {
 
@@ -111,51 +110,8 @@ std::ostream &SimpleCodeGenerator::codegen_opseq(std::ostream &os,
             os << val << COM;
         }
 
-        const Dims &tnums = sop.get_tnums();
-        int ndims = tnums.ndims();
-        assert(ndims > 0);
-        DimType tnum_0 = tnums[ndims - 1];
-        DimType tnum_1 = (ndims > 1) ? tnums[ndims - 2] : 1;
-        // the first tile index
-        if (tnum_0 == 1) {
-            os << '0';
-        } else if (math::is_pow2(tnum_0)) {
-            os << "(tile_idx & " << (tnum_0 - 1) << ')';
-        } else {
-            os << "tile_idx % " << tnum_0;
-        }
-        os << COM;
-        // the second tile index
-        if (tnum_1 == 1) {
-            os << '0';
-        } else {
-            if (tnum_0 == 1) {
-                os << "tile_idx ";
-            } else {
-                if (math::is_pow2(tnum_0)) {
-                    os << "(tile_idx >> " << math::ilog2(tnum_0) << ") ";
-                } else {
-                    os << "(tile_idx / " << tnum_0 << ") ";
-                }
-            }
-            if (math::is_pow2(tnum_1)) {
-                os << "& " << (tnum_1 - 1);
-            } else {
-                os << "% " << tnum_1;
-            }
-        }
-        os << COM;
-        // the third tile index
-        int tnum_01 = tnum_0 * tnum_1;
-        if (tnum_01 == 1) {
-            os << "tile_idx);\n";
-        } else {
-            if (math::is_pow2(tnum_01)) {
-                os << "tile_idx >> " << math::ilog2(tnum_01) << ");\n";
-            } else {
-                os << "tile_idx / " << tnum_01 << ");\n";
-            }
-        }
+        // the tile index
+        os << "tile_idx);\n";
     }
     os << "}\n";
     return os;
@@ -233,7 +189,7 @@ void Brancher::add(const Sched &sc)
             new_tb.th_e = sc.th_e;
             new_tb.ops.emplace_back(sc.opseq, sc.alpha, sc.beta);
         } else {
-            LOGERR("op", sc.opseq->get_id(), " ", tb.th_e, " ", sc.th_b);
+            LOGERR(OP_PREFIX, sc.opseq->get_id(), " ", tb.th_e, " ", sc.th_b);
         }
     } else if ((sb.sm_e <= sc.sm_b) || (sc.sm_b == 0)) {
         sbs.emplace_back();
@@ -346,7 +302,7 @@ ostream &Brancher::codegen(ostream &os)
             int beta;
             for (unsigned int i = 0; i < it_b->ops.size(); ++i) {
                 tie(opseq, alpha, beta) = it_b->ops[i];
-                os << "      op" << opseq->get_id() << '(';
+                os << "      " << OP_PREFIX << opseq->get_id() << '(';
                 if (alpha != 0) {
                     if (alpha != 1) {
                         os << alpha << " * ";
@@ -509,84 +465,19 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
             os << "// tile dims: (" << opseq.get_tdims()[0] << COM
                << opseq.get_tdims()[1] << COM << opseq.get_tdims()[2] << ")\n"
                << "__noinline__ __device__ void " << name
-#if (COMPRESS_BRANCH)
-               << "(int _ti) {\n";
-#else  // (COMPRESS_BRANCH)
-               << "(int _tx, int _ty, int _tz) {\n";
-#endif // (COMPRESS_BRANCH)
+               << "(int _uop_idx) {\n";
         }
         --idx;
         auto uop_map_it = uop_map.find(sop.function_name());
         assert(uop_map_it != uop_map.end());
-        os << "  uop" << uop_map_it->second << '(';
+        os << "  " << UNIT_OP_PREFIX << uop_map_it->second << '(';
 
         OpArgs call_args = sop.get_op()->function_call_args(*sop.get_cfg());
         for (const OpArg &arg : call_args.get_args()) {
             this->codegen_arg(os, arg) << ", ";
         }
-        // Tile indexes.
-        const pair<int, int> &fdims = opseq.get_fdims()[idx];
 
-#if (COMPRESS_BRANCH)
-        const array<int, 3> &tdims = opseq.get_tdims();
-        if (tdims[2] == 1) {
-            os << '0';
-        } else {
-            if (math::is_pow2(tdims[2])) {
-                os << "(_ti & " << (tdims[2] - 1) << ')';
-            } else {
-                os << "_ti % " << tdims[2];
-            }
-        }
-#else  // (COMPRESS_BRANCH)
-        os << "_tx";
-#endif // (COMPRESS_BRANCH)
-        if (fdims.first == 1) {
-            os << ", ";
-        } else {
-            os << " * " << fdims.first << COM;
-        }
-#if (COMPRESS_BRANCH)
-        if (tdims[1] == 1) {
-            os << '0';
-        } else {
-            if (tdims[2] == 1) {
-                os << "_ti ";
-            } else {
-                if (math::is_pow2(tdims[2])) {
-                    os << "(_ti >> " << math::ilog2(tdims[2]) << ") ";
-                } else {
-                    os << "(_ti / " << tdims[2] << ") ";
-                }
-            }
-            if (math::is_pow2(tdims[1])) {
-                os << "& " << (tdims[1] - 1);
-            } else {
-                os << "% " << tdims[1];
-            }
-        }
-#else  // (COMPRESS_BRANCH)
-        os << "_ty";
-#endif // (COMPRESS_BRANCH)
-        if (fdims.second == 1) {
-            os << ", ";
-        } else {
-            os << " * " << fdims.second << COM;
-        }
-#if (COMPRESS_BRANCH)
-        int xydims = tdims[2] * tdims[1];
-        if (xydims == 1) {
-            os << "_ti);\n";
-        } else {
-            if (math::is_pow2(xydims)) {
-                os << "_ti >> " << math::ilog2(xydims) << ");\n";
-            } else {
-                os << "_ti / " << xydims << ");\n";
-            }
-        }
-#else  // (COMPRESS_BRANCH)
-        os << "_tz);\n";
-#endif // (COMPRESS_BRANCH)
+        os << "_uop_idx);\n";
     }
     if (idx != sched_ops.size()) {
         os << "}\n";
@@ -597,7 +488,7 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
 ostream &DefaultCodeGenerator::codegen_uop_def(ostream &os, const SchedOp &sop,
                                                int uop_id)
 {
-    std::string uop_name = "uop" + std::to_string(uop_id);
+    std::string uop_name = UNIT_OP_PREFIX + std::to_string(uop_id);
     std::string func_name = sop.function_name();
     assert(!func_name.empty());
 
@@ -616,13 +507,13 @@ ostream &DefaultCodeGenerator::codegen_uop_def(ostream &os, const SchedOp &sop,
         ++cnt_param;
     }
 
-    os << "int tx, int ty, int tz) {\n";
+    os << "int _uop_idx) {\n";
     os << "  " << func_name << "(";
 
     for (int i = 0; i < cnt_param; ++i) {
         os << '_' << i << ", ";
     }
-    os << "tx, ty, tz);\n}\n";
+    os << "_uop_idx);\n}\n";
     return os;
 }
 
@@ -651,7 +542,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
         if (opseq->is_virtual()) {
             continue;
         }
-        this->codegen_opseq(os, "op" + to_string(opseq->get_id()), *opseq,
+        this->codegen_opseq(os, OP_PREFIX + to_string(opseq->get_id()), *opseq,
                             uop_map);
     }
     os << "DEVICE void " << name << "() {";

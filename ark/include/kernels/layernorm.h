@@ -31,8 +31,7 @@ struct LayerNorm
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static DEVICE void run(DataType *out, const DataType *in, int tn, int tc,
-                           int th, int tw)
+    static DEVICE void run(DataType *out, const DataType *in, int uop_idx)
     {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
         using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
@@ -55,9 +54,13 @@ struct LayerNorm
                     UnitOutDims::C;
         int tid_n = (tid * NelemPerThread) / ThreadsPerRow / UnitOutDims::CH;
 
-        int idx_in_base = (tid_h + th * UnitOutDims::H) * InDims::W +
-                          (tid_c + tc * UnitOutDims::C) * InDims::HW +
-                          (tid_n + tn * UnitOutDims::N) * InDims::CHW;
+        int un = UnitOp::uop_idx_n(uop_idx);
+        int uc = UnitOp::uop_idx_c(uop_idx);
+        int uh = UnitOp::uop_idx_h(uop_idx);
+
+        int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
+                          (tid_c + uc * UnitOutDims::C) * InDims::HW +
+                          (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
         DataType reduced;
         ReduceTypeMean::singleIdentity(&reduced);
@@ -66,7 +69,7 @@ struct LayerNorm
             int idx_in = idx_in_base + idx_in_w;
             ReduceTypeMean::singleReduce(&reduced, &reduced, &in[idx_in]);
         }
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         // final reduction on shared memory using warp shuffle.
         reduced =
             warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(reduced, tid);
@@ -75,17 +78,17 @@ struct LayerNorm
         DataType variance;
         ReduceTypeMean::singleIdentity(&variance);
         // get the variance
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         variance =
             warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(variance, tid);
         ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutDims::W);
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
         // the output is (input - mean) / sqrt(variance)
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
@@ -98,26 +101,21 @@ struct LayerNorm
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void layernorm(float *out, const float *in, int tx, int ty, int tz)
+DEVICE void layernorm(float *out, const float *in, int uop_idx)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-              SmemBytes, float, NelemPerThread>::run(out, in, tz / OutShape::C,
-                                                     tz % OutShape::C, ty, tx);
+              SmemBytes, float, NelemPerThread>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void layernorm(ark::half *out, const ark::half *in, int tx, int ty,
-                      int tz)
+DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-              SmemBytes, ark::half, NelemPerThread>::run(out, in,
-                                                         tz / OutShape::C,
-                                                         tz % OutShape::C, ty,
-                                                         tx);
+              SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx);
 }
 
 } // namespace ark

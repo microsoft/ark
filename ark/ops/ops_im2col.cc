@@ -59,23 +59,24 @@ std::string Im2colOp::function_name(const OpConfig &cfg) const
     this->args.get(&dilation_height, 6);
     this->args.get(&dilation_width, 7);
 
+    Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::im2col",
                              {{
-                                 input->shape.dims4(), // InShape
-                                 input->ldims.dims4(), // InDims
-                                 kernel_height,        // KernelHeight
-                                 kernel_width,         // KernelWidth
-                                 stride_height,        // StrideHeight
-                                 stride_width,         // StrideWidth
-                                 pad_height,           // PadHeight
-                                 pad_width,            // PadWidth
-                                 dilation_height,      // DilationHeight
-                                 dilation_width,       // DilationWidth
-                                 cfg.num_warps * 32,   // TN
-                                 cfg.smem_bytes,       // SB
-                                 tile_out.y,           // TDM
-                                 tile_out.x,           // TDN
-                                 0,                    // TDK
+                                 input->ldims.dims4(),  // InDims
+                                 input->shape.dims4(),  // InShape
+                                 output->ldims.dims4(), // OutDims
+                                 output->shape.dims4(), // OutShape
+                                 unit_out_dims,         // UnitOutDims
+                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.smem_bytes,        // SmemBytes
+                                 kernel_height,         // KernelHeight
+                                 kernel_width,          // KernelWidth
+                                 stride_height,         // StrideHeight
+                                 stride_width,          // StrideWidth
+                                 pad_height,            // PadHeight
+                                 pad_width,             // PadWidth
+                                 dilation_height,       // DilationHeight
+                                 dilation_width,        // DilationWidth
                              }});
 }
 

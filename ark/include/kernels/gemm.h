@@ -962,11 +962,11 @@ struct GemmKernelBase
 // TODO: this kernel returns the error code 716 'misaligned address'
 // when TransposeA is false and the kernel is compiled with "-G" option
 // (which turns off all optimizations on device code).
-template <typename NCA, typename NCB, typename Shape, typename ProblemSize,
-          typename LeadingDims, bool IsColumnA, bool IsColumnB, bool IsRelu,
-          int NumThreads, int SmemBytes>
+template <typename OutDims, typename NCA, typename NCB, typename Shape,
+          typename ProblemSize, typename LeadingDims, bool IsColumnA,
+          bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>
 DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
-                 ark::half beta, int tn, int tc, int th, int tw)
+                 ark::half beta, int uop_idx)
 {
     static_assert(NCA::D2 == 1 && NCA::D3 == 1,
                   "NCA should be two dimensional.");
@@ -1003,7 +1003,6 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
                   "traits mismatch with the actual implementation.");
     static_assert(sizeof(typename GemmKernel::SharedStorage) <= SmemBytes,
                   "traits mismatch with the actual implementation.");
-    using Smem = SharedMemory<typename GemmKernel::SharedStorage, NumThreads>;
 
     constexpr int SizeA = math::mul<ProblemSize::D0, ProblemSize::D2>::value;
     constexpr int SizeB = math::mul<ProblemSize::D1, ProblemSize::D2>::value;
@@ -1014,29 +1013,40 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
     // C dimension of C is max(C dimension of A, C dimension of B)
     constexpr int CC = (NCA::D1 > NCB::D1) ? NCA::D1 : NCB::D1;
 
+    using OutShape = Vec<NC, CC, ProblemSize::D0, ProblemSize::D1>;
+    using UnitOutDims = Vec<1, 1, Shape::D0, Shape::D1>;
+    using UnitOp =
+        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+
+    int un = UnitOp::uop_idx_n(uop_idx);
+    int uc = UnitOp::uop_idx_c(uop_idx);
+    int uh = UnitOp::uop_idx_h(uop_idx);
+    int uw = UnitOp::uop_idx_w(uop_idx);
+
     // Broadcasting
     cutlass::half_t *pA, *pB;
-    cutlass::half_t *pC = &C[tn * math::mul<CC, SizeC>::value + tc * SizeC];
+    cutlass::half_t *pC = &C[un * math::mul<CC, SizeC>::value + uc * SizeC];
     if (NCA::D0 == 1 && NCA::D1 == 1) {
         pA = A;
     } else if (NCA::D0 == 1) {
-        pA = &A[tc * SizeA];
+        pA = &A[uc * SizeA];
     } else if (NCA::D1 == 1) {
-        pA = &A[tn * SizeA];
+        pA = &A[un * SizeA];
     } else {
-        pA = &A[tn * math::mul<CC, SizeA>::value + tc * SizeA];
+        pA = &A[un * math::mul<CC, SizeA>::value + uc * SizeA];
     }
     if (NCB::D0 == 1 && NCB::D1 == 1) {
         pB = B;
     } else if (NCB::D0 == 1) {
-        pB = &B[tc * SizeB];
+        pB = &B[uc * SizeB];
     } else if (NCB::D1 == 1) {
-        pB = &B[tn * SizeB];
+        pB = &B[un * SizeB];
     } else {
-        pB = &B[tn * math::mul<CC, SizeB>::value + tc * SizeB];
+        pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
     }
-    typename GemmKernel::SharedStorage *ps = Smem();
-    GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, tw, th);
+    typename GemmKernel::SharedStorage *ps =
+        UnitOp::template shared_memory<GemmKernel::SharedStorage>();
+    GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, uw, uh);
 }
 
 } // namespace ark

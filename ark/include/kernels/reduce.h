@@ -83,7 +83,7 @@ DEVICE DataType warpsReduce(DataType val, int tid)
         if (laneId == 0) {
             shared->storage[warpId] = val;
         }
-        ark::sync_warps<UnitOp::NumThreads>();
+        UnitOp::sync_threads();
         if (laneId < (LanesNum >> 5)) {
             val = shared->storage[laneId];
         } else {
@@ -495,14 +495,11 @@ struct EwiseReduce
     static_assert(UnitOutDims::W % NelemPerThread == 0,
                   "UnitOutDims::W must be divisible by NelemPerThread");
 
-    // Conduct reduction of the input.
-    //
-    // tn(int): index of the unit operator along the N dimension.
-    // tc(int): index of the unit operator along the C dimension.
-    // th(int): index of the unit operator along the H dimension.
-    // tw(int): index of the unit operator along the W dimension.
-    static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
-                           int tw)
+    /// Conduct reduction of the input.
+    /// @param out Output tensor.
+    /// @param in Input tensor.
+    /// @param uop_idx Index of the unit operator.
+    static DEVICE void run(DataType *out, DataType *in, int uop_idx)
     {
         static_assert(Axis == AxisType::N || Axis == AxisType::C ||
                           Axis == AxisType::H || Axis == AxisType::W,
@@ -513,7 +510,7 @@ struct EwiseReduce
 
         Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
                EwiseReduceCompType<InDims, InShape, OutDims, ReduceType,
-                                   Axis>>::run(out, in, tn, tc, th, tw);
+                                   Axis>>::run(out, in, uop_idx);
     }
 };
 
@@ -536,14 +533,11 @@ struct WwiseReduce
     // TODO(chhwang): support NelemPerThread > 1.
     static_assert(NelemPerThread == 1, "Unimplemented");
 
-    // Conduct reduction on W dimension of the input.
-    //
-    // tn(int): index of the unit operator along the N dimension.
-    // tc(int): index of the unit operator along the C dimension.
-    // th(int): index of the unit operator along the H dimension.
-    // tw(int): index of the unit operator along the W dimension (should be 0).
-    static DEVICE void runW(DataType *out, DataType *in, int tn, int tc, int th,
-                            int tw)
+    /// Conduct reduction on W dimension of the input.
+    /// @param out Output tensor.
+    /// @param in Input tensor.
+    /// @param uop_idx Index of the unit operator.
+    static DEVICE void runW(DataType *out, DataType *in, int uop_idx)
     {
         using ShapeChecker =
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
@@ -566,12 +560,16 @@ struct WwiseReduce
                     UnitOutDims::C;
         int tid_n = (tid * NelemPerThread) / ThreadsPerRow / UnitOutDims::CH;
 
-        int idx_out = (tid_h + th * UnitOutDims::H) * OutDims::W +
-                      (tid_c + tc * UnitOutDims::C) * OutDims::HW +
-                      (tid_n + tn * UnitOutDims::N) * OutDims::CHW;
-        int idx_in_base = (tid_h + th * UnitOutDims::H) * InDims::W +
-                          (tid_c + tc * UnitOutDims::C) * InDims::HW +
-                          (tid_n + tn * UnitOutDims::N) * InDims::CHW;
+        int un = UnitOp::uop_idx_n(uop_idx);
+        int uc = UnitOp::uop_idx_c(uop_idx);
+        int uh = UnitOp::uop_idx_h(uop_idx);
+
+        int idx_out = (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                      (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                      (tid_n + un * UnitOutDims::N) * OutDims::CHW;
+        int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
+                          (tid_c + uc * UnitOutDims::C) * InDims::HW +
+                          (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
         DataType reduced[NelemPerThread];
 
@@ -590,7 +588,7 @@ struct WwiseReduce
             ReduceType::singleReduce(&finalSum, &finalSum, &reduced[i]);
         }
 
-        ark::sync_warps<NumThreads>();
+        UnitOp::sync_threads();
 
         // final reduction on shared memory using warp shuffle.
         finalSum =
@@ -606,148 +604,119 @@ struct WwiseReduce
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_sum(half *out, half *in, int tx, int ty, int tz)
+DEVICE void reduce_e_sum(half *out, half *in, int uop_idx)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-                SmemBytes, ReduceTypeSum<half, 2>, Axis>::run(out, in,
-                                                              tz / OutShape::C,
-                                                              tz % OutShape::C,
-                                                              ty, tx);
+                SmemBytes, ReduceTypeSum<half, 2>, Axis>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_sum(float *out, float *in, int tx, int ty, int tz)
+DEVICE void reduce_e_sum(float *out, float *in, int uop_idx)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeSum<float, 1>, Axis>::run(out, in,
-                                                               tz / OutShape::C,
-                                                               tz % OutShape::C,
-                                                               ty, tx);
+                                                               uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_mean(half *out, half *in, int tx, int ty, int tz)
+DEVICE void reduce_e_mean(half *out, half *in, int uop_idx)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMean<half, 2>, Axis>::run(out, in,
-                                                               tz / OutShape::C,
-                                                               tz % OutShape::C,
-                                                               ty, tx);
+                                                               uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_mean(float *out, float *in, int tx, int ty, int tz)
+DEVICE void reduce_e_mean(float *out, float *in, int uop_idx)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-                SmemBytes, ReduceTypeMean<float, 1>,
-                Axis>::run(out, in, tz / OutShape::C, tz % OutShape::C, ty, tx);
+                SmemBytes, ReduceTypeMean<float, 1>, Axis>::run(out, in,
+                                                                uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_max(half *out, half *in, int tx, int ty, int tz)
+DEVICE void reduce_e_max(half *out, half *in, int uop_idx)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-                SmemBytes, ReduceTypeMax<half, 2>, Axis>::run(out, in,
-                                                              tz / OutShape::C,
-                                                              tz % OutShape::C,
-                                                              ty, tx);
+                SmemBytes, ReduceTypeMax<half, 2>, Axis>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_max(float *out, float *in, int tx, int ty, int tz)
+DEVICE void reduce_e_max(float *out, float *in, int uop_idx)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMax<float, 1>, Axis>::run(out, in,
-                                                               tz / OutShape::C,
-                                                               tz % OutShape::C,
-                                                               ty, tx);
+                                                               uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_w_sum(half *out, half *in, int tx, int ty, int tz)
+DEVICE void reduce_w_sum(half *out, half *in, int uop_idx)
 {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeSum<half, 1>, Axis>::runW(out, in,
-                                                               tz / OutShape::C,
-                                                               tz % OutShape::C,
-                                                               ty, tx);
+                                                               uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_w_sum(float *out, float *in, int tx, int ty, int tz)
+DEVICE void reduce_w_sum(float *out, float *in, int uop_idx)
 {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeSum<float, 1>, Axis>::runW(out, in,
-                                                                tz /
-                                                                    OutShape::C,
-                                                                tz %
-                                                                    OutShape::C,
-                                                                ty, tx);
+                                                                uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_w_mean(half *out, half *in, int tx, int ty, int tz)
+DEVICE void reduce_w_mean(half *out, half *in, int uop_idx)
 {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMean<half, 1>, Axis>::runW(out, in,
-                                                                tz /
-                                                                    OutShape::C,
-                                                                tz %
-                                                                    OutShape::C,
-                                                                ty, tx);
+                                                                uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_w_mean(float *out, float *in, int tx, int ty, int tz)
+DEVICE void reduce_w_mean(float *out, float *in, int uop_idx)
 {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-                SmemBytes, ReduceTypeMean<float, 1>,
-                Axis>::runW(out, in, tz / OutShape::C, tz % OutShape::C, ty,
-                            tx);
+                SmemBytes, ReduceTypeMean<float, 1>, Axis>::runW(out, in,
+                                                                 uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_w_max(half *out, half *in, int tx, int ty, int tz)
+DEVICE void reduce_w_max(half *out, half *in, int uop_idx)
 {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMax<half, 1>, Axis>::runW(out, in,
-                                                               tz / OutShape::C,
-                                                               tz % OutShape::C,
-                                                               ty, tx);
+                                                               uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_w_max(float *out, float *in, int tx, int ty, int tz)
+DEVICE void reduce_w_max(float *out, float *in, int uop_idx)
 {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMax<float, 1>, Axis>::runW(out, in,
-                                                                tz /
-                                                                    OutShape::C,
-                                                                tz %
-                                                                    OutShape::C,
-                                                                ty, tx);
+                                                                uop_idx);
 }
 
 } // namespace ark

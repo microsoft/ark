@@ -34,7 +34,8 @@ std::string GeluOp::function_name(const OpConfig &cfg) const
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::gelu", {{
-                                              input->ldims.dims4(),  // In0Dims
+                                              input->ldims.dims4(),  // InDims
+                                              input->shape.dims4(),  // InShape
                                               output->ldims.dims4(), // OutDims
                                               output->shape.dims4(), // OutShape
                                               unit_out_dims,      // UnitOutDims

@@ -20,6 +20,7 @@ ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
 
 std::string ScaleOp::function_name(const OpConfig &cfg) const
 {
+    Tensor *input = this->in_deps[0];
     Tensor *output = this->out_deps[0];
 
     int ndims = output->shape.ndims();
@@ -31,18 +32,17 @@ std::string ScaleOp::function_name(const OpConfig &cfg) const
         CHECK(tile_out.x == 1);
     }
 
-    DimType ldm = output->ldims[ndims - 1];
-    DimType ldn = (ndims > 1) ? output->ldims[ndims - 2] : 1;
-
-    return Op::function_name("ark::scale", {{
-                                               ldm,                // M
-                                               ldn,                // N
-                                               cfg.num_warps * 32, // TN
-                                               cfg.smem_bytes,     // SB
-                                               tile_out.y,         // TDM
-                                               tile_out.x,         // TDN
-                                               1,                  // TDK
-                                           }});
+    Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
+    return Op::function_name("ark::scale",
+                             {{
+                                 input->ldims.dims4(),  // InDims
+                                 input->shape.dims4(),  // InShape
+                                 output->ldims.dims4(), // OutDims
+                                 output->shape.dims4(), // OutShape
+                                 unit_out_dims,         // UnitOutDims
+                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.smem_bytes,        // SmemBytes
+                             }});
 }
 
 OpArgs ScaleOp::function_call_args(const OpConfig &) const
@@ -60,7 +60,6 @@ OpArgs ScaleOp::function_call_args(const OpConfig &) const
 }
 
 // Multiply `input` by `val`.
-// TODO: make it into a general element-wise operation
 Tensor *Model::scale(Tensor *input, float val, Tensor *output,
                      const string &name)
 {
