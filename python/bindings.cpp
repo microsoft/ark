@@ -254,6 +254,9 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("val"), py::arg("output") = nullptr,
              py::arg("name") = "scale")
+        .def("relu", &ark::Model::relu, "ReLU activation",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "relu")
         .def("gelu", &ark::Model::gelu,
              "Applies the Gaussian Error Linear Unit (GELU) activation "
              "function to the `input` tensor, element-wise. GELU is a smooth "

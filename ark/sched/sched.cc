@@ -37,12 +37,16 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
         this->buf_trans[bi.tbuf] = buf;
     }
     for (auto &srop : this->send_recv_ops) {
-        LOG(DEBUG, "reg_sendrecv: sid=", *(int *)srop->args[0].val,
-            " remote=", *(int *)srop->args[2].val,
-            " bytes=", *(size_t *)srop->args[3].val,
-            " is_recv=", srop->type == OP_RECV);
-        ctx->reg_sendrecv(*(int *)srop->args[0].val, *(int *)srop->args[2].val,
-                          *(size_t *)srop->args[3].val, srop->type == OP_RECV);
+        int sid;
+        int remote_rank;
+        size_t bytes;
+        srop->args.get(&sid, 0);
+        srop->args.get(&remote_rank, 2);
+        srop->args.get(&bytes, 3);
+
+        LOG(DEBUG, "reg_sendrecv: sid=", sid, " remote=", remote_rank,
+            " bytes=", bytes, " is_recv=", srop->type == OP_RECV);
+        ctx->reg_sendrecv(sid, remote_rank, bytes, srop->type == OP_RECV);
     }
     ctx->freeze();
     this->ctx = ctx;

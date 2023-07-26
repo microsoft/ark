@@ -114,8 +114,9 @@ GpuMem::~GpuMem()
         return;
     } else if (this->shm->is_create()) {
         if (this->addr != 0) {
-            cuMemFree(this->addr);
+            cuMemFree(this->raw_addr);
             this->addr = 0;
+            this->raw_addr = 0;
         }
         if (this->exp_info.mmap != 0) {
             munmap(this->exp_info.mmap, this->exp_info.npage << 16);
@@ -157,7 +158,9 @@ void GpuMem::alloc(size_t bytes)
         LOG(DEBUG, "Imported GpuMem addr ", hex, this->addr, " map ",
             this->exp_info.mmap, dec, " bytes ", this->bytes);
     } else {
-        CULOG(cuMemAlloc(&this->addr, this->bytes));
+        CULOG(cuMemAlloc(&this->raw_addr, this->bytes + 65536));
+        this->addr = (CUdeviceptr)(((uint64_t)this->raw_addr + 65535) & ~65535);
+        LOG(DEBUG, "request bytes ", this->bytes, " addr ", hex, this->addr);
         int state = mem_expose(&this->exp_info, this->addr, this->bytes);
         if (state != 0) {
             LOGERR("mem_expose() failed with errno ", state);

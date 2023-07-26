@@ -58,7 +58,7 @@ const string nvrtc_compile(const string &ark_root, const string &arch,
     string opt_inc_2 = "-I" + ark_root + "/include/kernels/nvrtc";
     const char *opts[] = {
         opt_arch.c_str(),
-        "-std=c++14",
+        "-std=c++17",
         "-default-device",
 #if (ARK_DEBUG_KERNEL)
         "--device-debug",
@@ -223,7 +223,7 @@ const string gpu_compile(const vector<string> &codes,
                 exec_cmd << "-maxrregcount " << max_reg_cnt << " ";
             }
             // clang-format off
-            exec_cmd << "-ccbin g++ -std c++14 -lcuda "
+            exec_cmd << "-ccbin g++ -std c++17 -lcuda "
                 "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
                 "--define-macro=ARK_COMM_SW=" << (int)use_comm_sw << " "
                 "-I" << ark_root << "/include "

@@ -121,17 +121,20 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     Tensor *input_a = matmul_op.in_deps[0];
     Tensor *input_b = matmul_op.in_deps[1];
     Tensor *output = matmul_op.out_deps[0];
-    bool trans_a = *(bool *)matmul_op.args[0].val;
-    bool trans_b = *(bool *)matmul_op.args[1].val;
-    bool is_relu = *(bool *)matmul_op.args[2].val;
+    bool is_column_a;
+    bool is_column_b;
+    bool is_relu;
+    matmul_op.args.get(&is_column_a, 4);
+    matmul_op.args.get(&is_column_b, 5);
+    matmul_op.args.get(&is_relu, 6);
     std::string matmul_name = matmul_op.name;
 
     // Remove the original matmul op from the model.
     model_impl->delete_op(&matmul_op);
 
     // Create a new matmul op with the optimized split_k.
-    model.matmul(input_a, input_b, output, split_k, trans_a, trans_b, is_relu,
-                 matmul_name);
+    model.matmul(input_a, input_b, output, split_k, is_column_a, is_column_b,
+                 is_relu, matmul_name);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized
@@ -177,7 +180,7 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.get_op() == nullptr) {
                     continue;
                 }
-                if (sop.get_cfg()->num_warps == 0) {
+                if (sop.is_virtual()) {
                     continue;
                 }
                 for (unsigned int i = 0; i < sop.get_op()->in_deps.size();
@@ -197,7 +200,7 @@ void DefaultScheduler::configure_gpu_buf(
         auto &depth_nodes = this->op_graph->get_depth(depth);
         for (auto &ogn : depth_nodes) {
             for (auto &sop : ogn->opseq.get_sched_ops()) {
-                if (sop.get_cfg()->num_warps == 0) {
+                if (sop.is_virtual()) {
                     continue;
                 }
                 for (auto &tns : sop.get_op()->in_deps) {
@@ -216,10 +219,14 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.get_op()->type == OP_SEND) {
                     //
                     Tensor *in = sop.get_op()->in_deps[0];
-                    int sid = *(int *)sop.get_op()->args[0].val;
-                    int rank = *(int *)sop.get_op()->args[1].val;
-                    int dst_rank = *(int *)sop.get_op()->args[2].val;
-                    size_t bytes = *(size_t *)sop.get_op()->args[3].val;
+                    int sid;
+                    int rank;
+                    int dst_rank;
+                    size_t bytes;
+                    sop.get_op()->args.get(&sid, 0);
+                    sop.get_op()->args.get(&rank, 1);
+                    sop.get_op()->args.get(&dst_rank, 2);
+                    sop.get_op()->args.get(&bytes, 3);
                     size_t off = in->offset() * in->type_bytes();
                     LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
                         " dst_rank: ", dst_rank, " bytes: ", bytes,
@@ -237,8 +244,9 @@ void DefaultScheduler::configure_gpu_buf(
                 } else if (sop.get_op()->type == OP_RECV) {
                     //
                     Tensor *in = sop.get_op()->in_deps[0];
-                    int eid = *(int *)sop.get_op()->args[0].val;
-                    tns_eids[in->buf].emplace_back(in, eid);
+                    int sid;
+                    sop.get_op()->args.get(&sid, 0);
+                    tns_eids[in->buf].emplace_back(in, sid);
                     this->send_recv_ops.emplace_back(sop.get_op());
                 }
             }
@@ -270,7 +278,6 @@ void DefaultScheduler::configure_gpu_buf(
             // TODO: more verficiations.
             auto &sh = tns->shape;
             auto &ld = tns->ldims;
-            stringstream ss;
             LOG(DEBUG, "Tensor buf ", tns->buf, " pads ", tns->pads,
                 " padding ", sh, " -> ", ld, " exported ", tns->exported);
         }
@@ -429,50 +436,71 @@ void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
         }
     } dec_num_warps;
     sort(depth.begin(), depth.end(), dec_num_warps);
-    DimType warps_remain = 0;
+    DimType warps_to_schedule = 0;
     for (auto &opseq : depth) {
-        warps_remain +=
+        warps_to_schedule +=
             (DimType)opseq->get_tdims_size() * (DimType)opseq->get_num_warps();
     }
-    LOG(DEBUG, warps_remain, " warps in depth");
+    LOG(DEBUG, warps_to_schedule, " warps in depth");
     DimType sidx = 0;
     DimType widx = 0;
     for (auto &opseq : depth) {
-        DimType tnum = opseq->get_tdims_size();
-        DimType wnum = opseq->get_num_warps();
-        DimType tidx = 0;
-        LOG(DEBUG, "  op", opseq->get_id(), ": tnum ", tnum, " wnum ", wnum,
-            " wrem ", warps_remain);
-        while ((tidx < tnum) && (warps_remain > 0)) {
+        DimType num_uop = opseq->get_tdims_size();
+        DimType warps_per_uop = opseq->get_num_warps();
+        DimType smem_per_uop = opseq->get_smem_bytes();
+        DimType uop_idx = 0;
+        LOG(DEBUG, "  op", opseq->get_id(), ": num_uop ", num_uop,
+            " warps_per_uop ", warps_per_uop, " warps_to_schedule ",
+            warps_to_schedule);
+        while ((uop_idx < num_uop) && (warps_to_schedule > 0)) {
             DimType snum = num_sm_calc - sidx;
-            DimType div = warps_remain / snum;
-            DimType rem = warps_remain % snum;
-            if (div >= this->wps) {
-                div = this->wps;
-                rem = 0;
+            DimType warps_per_sm = warps_to_schedule / snum;
+            DimType warps_remainder = warps_to_schedule % snum;
+            if (warps_per_sm > this->wps) {
+                warps_per_sm = this->wps;
+            }
+            if (warps_per_sm + warps_per_uop > this->wps) {
+                // No spare resources to schedule remainders.
+                warps_remainder = 0;
+            }
+            DimType num_uop_per_sm = math::div_up(warps_per_sm, warps_per_uop);
+            DimType needed_smem = num_uop_per_sm * smem_per_uop;
+            if (needed_smem > gpu_info.smem_block_total) {
+                // The shared memory needed by this opseq is too large to fit in
+                // a SM. We need to reduce the number of warps per SM.
+                warps_per_sm =
+                    gpu_info.smem_block_total / smem_per_uop * warps_per_uop;
+                num_uop_per_sm = warps_per_sm / warps_per_uop;
+            }
+            if (needed_smem + smem_per_uop > gpu_info.smem_block_total) {
+                // No spare resources to schedule remainders.
+                warps_remainder = 0;
             }
             if (widx > 0) {
                 DimType cnt = 0;
-                while (tidx < tnum) {
+                while (uop_idx < num_uop) {
                     // An SM is not occupied enough by the previous opseq.
-                    DimType wend = rem ? div + 1 : div;
-                    if ((widx >= div) || (widx + wnum > wend)) {
+                    DimType wend =
+                        warps_remainder ? warps_per_sm + 1 : warps_per_sm;
+                    if ((widx >= warps_per_sm) ||
+                        (widx + warps_per_uop > wend)) {
                         widx = 0;
                         sidx = (sidx + 1) % num_sm_calc;
                         break;
                     }
                     DimType th_b = widx * 32;
-                    DimType th_e = (widx + wnum) * 32;
+                    DimType th_e = (widx + warps_per_uop) * 32;
                     LOG(DEBUG, "      sched ", sidx, " ", sidx + 1, " ", th_b,
                         " ", th_e);
                     scheds.emplace_back(opseq, sidx, sidx + 1, th_b, th_e, 0,
-                                        tidx++);
-                    widx += wnum;
-                    warps_remain -= wnum;
+                                        uop_idx++);
+                    widx += warps_per_uop;
+                    warps_to_schedule -= warps_per_uop;
                     ++cnt;
                 }
                 if (cnt > 0) {
-                    LOG(DEBUG, "    div ", div, " rem ", rem, ": sm ", sidx,
+                    LOG(DEBUG, "    warps_per_sm ", warps_per_sm,
+                        " warps_remainder ", warps_remainder, ": sm ", sidx,
                         " cnt ", cnt);
                 }
                 continue;
@@ -481,51 +509,46 @@ void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
             DimType num;
             DimType sm_b;
             DimType sm_e;
-            if (rem > 0) {
-                num = math::div_up(div + 1, wnum);
-                if (tnum - tidx < num) {
-                    num = tnum - tidx;
+            if (warps_remainder > 0) {
+                num = math::div_up(warps_per_sm + 1, warps_per_uop);
+                if (num_uop - uop_idx < num) {
+                    num = num_uop - uop_idx;
                 }
                 sm_b = sidx;
-                sm_e = sidx + min(rem, (tnum - tidx) / num);
+                sm_e = sidx + min(warps_remainder, (num_uop - uop_idx) / num);
                 assert(sm_e < num_sm_calc);
-            } else if (div > 0) {
-                num = math::div_up(div, wnum);
-                if (tnum - tidx < num) {
-                    num = tnum - tidx;
-                }
+            } else if (warps_per_sm > 0) {
+                num = math::div_up(warps_per_sm, warps_per_uop);
+                if (num_uop - uop_idx < num) {
+                    num = num_uop - uop_idx;
+                };
                 sm_b = sidx;
-                sm_e = min((DimType)num_sm_calc, sidx + (tnum - tidx) / num);
+                sm_e =
+                    min((DimType)num_sm_calc, sidx + (num_uop - uop_idx) / num);
             } else {
                 // Should not reach here.
                 num = 0;
                 assert(false);
             }
             for (DimType i = 0; i < num; ++i) {
-#if 0
-                LOG(DEBUG, "      sched ", sm_b, " ", sm_e, " ",
-                    i * wnum * 32, " ", (i + 1) * wnum * 32);
-#endif
-                scheds.emplace_back(opseq, sm_b, sm_e, i * wnum * 32,
-                                    (i + 1) * wnum * 32, num, tidx + i);
+                LOG(DEBUG, "      sched sm [", sm_b, ", ", sm_e, ") thread [",
+                    i * warps_per_uop * 32, ", ", (i + 1) * warps_per_uop * 32,
+                    ") smem ", smem_per_uop, " bytes");
+                scheds.emplace_back(opseq, sm_b, sm_e, i * warps_per_uop * 32,
+                                    (i + 1) * warps_per_uop * 32, num,
+                                    uop_idx + i);
             }
             DimType cnt = (sm_e - sm_b) * num;
-            // const SchedOp& so = opseq->get_sched_ops().back();
-            // assert(&so.cfg != &VIRT_SCHED_OP_CONFIG);
-            // const OpTile& tile = so.cfg.out_deps_tiles[0];
-            // LOG(INFO, "    div ", div, " rem ", rem,
-            //      ": sm ", sm_b, "-", sm_e - 1, " cnt ", cnt,
-            //      " <", tile.x, ",", tile.y, ">");
-            tidx += cnt;
+            uop_idx += cnt;
             sidx = sm_e - 1;
-            warps_remain -= cnt * wnum;
-            widx = num * wnum;
+            warps_to_schedule -= cnt * warps_per_uop;
+            widx = num * warps_per_uop;
             if (widx >= this->wps) {
                 widx = 0;
                 sidx = (sidx + 1) % num_sm_calc;
             }
         }
-        assert(tidx == tnum);
+        assert(uop_idx == num_uop);
     }
 }
 

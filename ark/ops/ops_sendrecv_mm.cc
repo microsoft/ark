@@ -10,6 +10,112 @@ using namespace std;
 
 namespace ark {
 
+extern const OpConfigMap SendRecvMMConfigMap;
+
+SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                   Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
+                   size_t bytes, const string &name)
+    : Op{OP_SEND_MM,
+         prec_type,
+         {input, recvbuf, send_ready_flag},
+         {output},
+         {{id, gpu_dst, bytes}},
+         name,
+         &SendRecvMMConfigMap,
+         -1}
+{
+}
+
+std::string SendMMOp::function_name(const OpConfig &cfg) const
+{
+    Tensor *input = this->in_deps[0];
+    Dims shp_in = input->shape;
+    Tensor *output = this->out_deps[0];
+
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    CHECK(ndims == 2);
+    DimType m = shp_in[ndims - 1];
+    DimType n = shp_in[ndims - 2];
+    Dims pad_in = input->pads;
+    const OpTile &tile_in = cfg.in_deps_tiles[0];
+    // Verify paddings
+    CHECK((shp_in[ndims - 2] % tile_in.x == 0) ||
+          (pad_in[ndims - 2] >= tile_in.x));
+    CHECK((shp_in[ndims - 1] % tile_in.y == 0) ||
+          (pad_in[ndims - 1] >= tile_in.y));
+
+    return Op::function_name("ark::comm::sendLL",
+                             {{
+                                 m,                  // LDM
+                                 n,                  // LDN
+                                 cfg.num_warps * 32, // TN
+                                 cfg.smem_bytes,     // SmemBytes
+                                 tile_in.y,          // TDM
+                                 tile_in.x,          // TDN
+                                 1,                  // FLAG
+                             }});
+}
+
+RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                   Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
+                   size_t bytes, const string &name)
+    : Op{OP_RECV_MM,
+         prec_type,
+         {input, recvbuf, send_ready_flag},
+         {output},
+         {{id, gpu_src, bytes}},
+         name,
+         &SendRecvMMConfigMap,
+         -1}
+{
+}
+
+std::string RecvMMOp::function_name(const OpConfig &cfg) const
+{
+    Tensor *input = this->in_deps[0];
+    Dims shp_in = input->shape;
+    Tensor *output = this->out_deps[0];
+
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    CHECK(ndims == 2);
+    DimType m = shp_in[ndims - 1];
+    DimType n = shp_in[ndims - 2];
+    Dims pad_in = input->pads;
+    const OpTile &tile_in = cfg.in_deps_tiles[0];
+    // Verify paddings
+    CHECK((shp_in[ndims - 2] % tile_in.x == 0) ||
+          (pad_in[ndims - 2] >= tile_in.x));
+    CHECK((shp_in[ndims - 1] % tile_in.y == 0) ||
+          (pad_in[ndims - 1] >= tile_in.y));
+
+    return Op::function_name("ark::comm::recvLL",
+                             {{
+                                 m,                  // LDM
+                                 n,                  // LDN
+                                 cfg.num_warps * 32, // TN
+                                 cfg.smem_bytes,     // SmemBytes
+                                 tile_in.y,          // TDM
+                                 tile_in.x,          // TDN
+                                 1,                  // FLAG
+                             }});
+}
+
 // TODO: set the max_tile_num according to the tile number of the op
 const int max_tile_num = 2048;
 
@@ -45,9 +151,9 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
         },
         INT32);
     send_ready_flag->exported = true;
-    this->impl->add_op(OP_SEND_MM, OP_PREC_NONE,
-                       {input, recvbuf, send_ready_flag}, {output},
-                       {id, gpu_dst, bytes}, name);
+    SendMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
+                gpu_dst,      bytes, name};
+    this->impl->add_op(op);
 
     return output;
 }
@@ -88,10 +194,35 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
         },
         INT32);
     send_ready_flag->imported = true;
-    this->impl->add_op(OP_RECV_MM, OP_PREC_NONE,
-                       {input, recvbuf, send_ready_flag}, {output},
-                       {id, gpu_src, bytes}, name);
+    RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
+                gpu_src,      bytes, name};
+    this->impl->add_op(op);
     return output;
 }
+
+const OpConfigMap SendRecvMMConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+     }},
+};
 
 } // namespace ark

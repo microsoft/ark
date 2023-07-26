@@ -9,16 +9,16 @@ using namespace std;
 
 namespace ark {
 
-extern const OpConfigMap ScaleConfigMap;
+extern const OpConfigMap ActivationConfigMap;
 
-ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
-                 const string &name)
-    : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
-         name,     &ScaleConfigMap, -1,      true}
+ReluOp::ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : Op{OP_RELU, prec_type, {input}, {output}, {}, name, &ActivationConfigMap,
+         -1,      true}
 {
 }
 
-std::string ScaleOp::function_name(const OpConfig &cfg) const
+std::string ReluOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->in_deps[0];
     Tensor *output = this->out_deps[0];
@@ -33,35 +33,18 @@ std::string ScaleOp::function_name(const OpConfig &cfg) const
     }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
-    return Op::function_name("ark::scale",
-                             {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
-                             }});
+    return Op::function_name("ark::relu", {{
+                                              input->ldims.dims4(),  // InDims
+                                              input->shape.dims4(),  // InShape
+                                              output->ldims.dims4(), // OutDims
+                                              output->shape.dims4(), // OutShape
+                                              unit_out_dims,      // UnitOutDims
+                                              cfg.num_warps * 32, // NumThreads
+                                              cfg.smem_bytes,     // SmemBytes
+                                          }});
 }
 
-OpArgs ScaleOp::function_call_args(const OpConfig &) const
-{
-    OpArgs opargs;
-    std::vector<Tensor *> deps = this->out_deps;
-    deps.insert(deps.end(), this->in_deps.begin(), this->in_deps.end());
-    for (Tensor *tns : deps) {
-        opargs.put(tns);
-    }
-    float val;
-    this->args.get(&val, 0);
-    opargs.put(val);
-    return opargs;
-}
-
-// Multiply `input` by `val`.
-Tensor *Model::scale(Tensor *input, float val, Tensor *output,
-                     const string &name)
+Tensor *Model::relu(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
     OpPrecType pt;
@@ -80,12 +63,12 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
     } else if (output->shape != input->shape) {
         LOGERR("invalid output shape: ", output->shape);
     }
-    ScaleOp op{pt, input, output, val, name};
+    ReluOp op{pt, input, output, name};
     this->impl->add_op(op);
     return output;
 }
 
-const OpConfigMap ScaleConfigMap = {
+const OpConfigMap ActivationConfigMap = {
     {{OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
