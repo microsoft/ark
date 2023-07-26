@@ -3,9 +3,10 @@
 
 from typing import Optional, Dict, Callable, Any
 import numpy as np
-from ._ark_core import Model, _Tensor
+from ._ark_core import _Tensor
 from .tensor import Tensor 
 from .executor import Executor
+from .model import Model
 class Module:
     """
     Base class for all neural network modules.
