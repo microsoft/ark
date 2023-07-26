@@ -7,7 +7,6 @@
 #include "ewise.h"
 #include "half.h"
 #include "platform.h"
-#include "transform.h"
 #include <type_traits>
 
 namespace ark {
