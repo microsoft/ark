@@ -6,6 +6,7 @@ import numpy as np
 import torch.nn as nn
 import sys
 import ark
+import os
 
 d_model = 512  # Dimension of word embeddings
 d_ff = 2048  # Dimension of the hidden layer in the feed-forward network
@@ -100,8 +101,11 @@ def test_TestModel(state_dict_file):
     weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
         np.float16
     )
-
-    param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
+    if os.path.exists(state_dict_file):
+        print("load state dict from file", state_dict_file)
+        param = ark.load(state_dict_file)
+    else:
+        param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
     ark_model.load_state_dict(param)
     exe.run(1)
     exe.stop()

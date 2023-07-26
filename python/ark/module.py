@@ -7,7 +7,27 @@ from ._ark_core import Model, Tensor
 from .executor import Executor
 class Module:
     # Base class for all neural network modules.
+    # Usage:
+    # class TestModel(ark.Module):
+    #     def __init__(self, model):
+    #         super(TestModel, self).__init__(model)
+    #         self.weight_1 = model.tensor(
+    #             ark.Dims(64, 128), ark.TensorType.FP16
+    #         )
+    #         self.weight_2 = model.tensor(
+    #             ark.Dims(128, 64), ark.TensorType.FP16
+    #         )
+    #
+    #     def forward(self, inputs):
+    #         middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
+    #         middle_result1 = self.model.matmul(middle_result, self.weight_2)
+    #         output = self.model.add(middle_result1, inputs)
+    #         output_layernorm = self.model.layernorm(output)
+    #         return output_layernorm
+
+    # The submodules of the module.
     _modules: Dict[str, Optional['Module']]
+    # The parameters of the module.
     _parameters: Dict[str, Optional['Tensor']]
     def __init__(self, model):
         self._modules = dict()
