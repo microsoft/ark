@@ -169,6 +169,13 @@ const LogLevel &get_log_level();
         throw std::runtime_error("ARK runtime error");                         \
     } while (0)
 
+#define CHECK(cond)                                                            \
+    do {                                                                       \
+        if (!(cond)) {                                                         \
+            LOGERR("failed condition: " #cond);                                \
+        }                                                                      \
+    } while (0)
+
 } // namespace ark
 
 #endif // ARK_LOGGING_H_

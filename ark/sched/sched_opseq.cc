@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-// #include <algorithm>
-
 #include "sched/sched_opseq.h"
 #include "env.h"
 #include "logging.h"
@@ -25,7 +23,7 @@ SchedOpSeq::SchedOpSeq(int id_, const Op *op, const OpConfig *cfg) : id{id_}
 bool SchedOpSeq::is_send() const
 {
     for (auto &sop : this->seq) {
-        if (sop.get_cfg()->num_warps == 0) {
+        if (sop.is_virtual()) {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
@@ -40,7 +38,7 @@ bool SchedOpSeq::is_send() const
 bool SchedOpSeq::is_send_done() const
 {
     for (auto &sop : this->seq) {
-        if (sop.get_cfg()->num_warps == 0) {
+        if (sop.is_virtual()) {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
@@ -55,7 +53,7 @@ bool SchedOpSeq::is_send_done() const
 bool SchedOpSeq::is_recv() const
 {
     for (auto &sop : this->seq) {
-        if (sop.get_cfg()->num_warps == 0) {
+        if (sop.is_virtual()) {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
@@ -70,13 +68,19 @@ bool SchedOpSeq::is_recv() const
 bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
 {
     assert(op != nullptr);
-    assert(cfg != nullptr);
-    int wn = cfg->num_warps;
-    int sb = cfg->smem_bytes;
     int dx = 0;
     int dy = 0;
     int dz = 0;
-    if ((op->out_deps.size() > 0) && (cfg->num_warps > 0)) {
+    int wn;
+    int sb;
+    if (cfg != nullptr) {
+        wn = cfg->num_warps;
+        sb = cfg->smem_bytes;
+    } else {
+        wn = 0;
+        sb = 0;
+    }
+    if ((op->out_deps.size() > 0) && (wn > 0)) {
         const Dims &s = op->out_deps[0]->shape;
         const OpTile &tile = cfg->out_deps_tiles[0];
         // TODO: temporal.
@@ -214,22 +218,5 @@ bool operator==(const SchedOpSeq &ops1, const SchedOpSeq &ops2)
     }
     return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-// void to_json(nlohmann::json &j, const SchedOpSeq &opseq)
-// {
-//     // j = nlohmann::json{
-//     //     {"id", opseq.get_id()},
-//     //     {"seq", opseq.get_sched_ops()},
-//     //     {"seq_fdims", opseq.get_fdims()},
-//     //     {"num_warps", opseq.get_num_warps()},
-//     //     {"smem_bytes", opseq.get_smem_bytes()},
-//     //     {"tdims", opseq.get_tdims()},
-//     // };
-// }
-// void from_json(const nlohmann::json &j, SchedOpSeq &opseq)
-// {
-// }
 
 } // namespace ark

@@ -20,11 +20,11 @@ struct Transpose0132
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_n * InDims::C * InDims::H * InDims::W +
-              idx_c * InDims::H * InDims::W + idx_w * InDims::W + idx_h;
+        in += idx_n * InDims::CHW + idx_c * InDims::HW + idx_w * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -45,11 +45,11 @@ struct Transpose0213
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_n * InDims::C * InDims::H * InDims::W +
-              idx_h * InDims::H * InDims::W + idx_c * InDims::W + idx_w;
+        in += idx_n * InDims::CHW + idx_h * InDims::HW + idx_c * InDims::W +
+              idx_w;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -70,11 +70,11 @@ struct Transpose0231
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_n * InDims::C * InDims::H * InDims::W +
-              idx_h * InDims::H * InDims::W + idx_w * InDims::W + idx_c;
+        in += idx_n * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -95,15 +95,15 @@ struct Transpose0312
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_n * InDims::C * InDims::H * InDims::W +
-              idx_w * InDims::H * InDims::W + idx_c * InDims::W + idx_h;
+        in += idx_n * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::H * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -120,15 +120,15 @@ struct Transpose0321
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_n * InDims::C * InDims::H * InDims::W +
-              idx_w * InDims::H * InDims::W + idx_h * InDims::W + idx_c;
+        in += idx_n * InDims::CHW + idx_w * InDims::HW + idx_h * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::H * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -145,11 +145,11 @@ struct Transpose1023
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_c * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_h * InDims::W + idx_w;
+        in += idx_c * InDims::CHW + idx_n * InDims::HW + idx_h * InDims::W +
+              idx_w;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -170,11 +170,11 @@ struct Transpose1032
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_c * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_w * InDims::W + idx_h;
+        in += idx_c * InDims::CHW + idx_n * InDims::HW + idx_w * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -195,11 +195,11 @@ struct Transpose1203
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_c * InDims::C * InDims::H * InDims::W +
-              idx_h * InDims::H * InDims::W + idx_n * InDims::W + idx_w;
+        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
+              idx_w;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -220,11 +220,11 @@ struct Transpose1230
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_c * InDims::C * InDims::H * InDims::W +
-              idx_h * InDims::H * InDims::W + idx_w * InDims::W + idx_n;
+        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -245,15 +245,15 @@ struct Transpose1302
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_c * InDims::C * InDims::H * InDims::W +
-              idx_w * InDims::H * InDims::W + idx_n * InDims::W + idx_h;
+        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::H * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -270,15 +270,15 @@ struct Transpose1320
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_c * InDims::C * InDims::H * InDims::W +
-              idx_w * InDims::H * InDims::W + idx_h * InDims::W + idx_n;
+        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_h * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::H * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -295,11 +295,11 @@ struct Transpose2013
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_c * InDims::W + idx_w;
+        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_c * InDims::W +
+              idx_w;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -320,11 +320,11 @@ struct Transpose2031
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_w * InDims::W + idx_c;
+        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_w * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -345,11 +345,11 @@ struct Transpose2103
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_c * InDims::H * InDims::W + idx_n * InDims::W + idx_w;
+        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_n * InDims::W +
+              idx_w;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -370,11 +370,11 @@ struct Transpose2130
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_c * InDims::H * InDims::W + idx_w * InDims::W + idx_n;
+        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_w * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
@@ -395,15 +395,15 @@ struct Transpose2301
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_w * InDims::H * InDims::W + idx_n * InDims::W + idx_c;
+        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::H * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -420,15 +420,15 @@ struct Transpose2310
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_h * InDims::C * InDims::H * InDims::W +
-              idx_w * InDims::H * InDims::W + idx_c * InDims::W + idx_n;
+        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::H * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -445,15 +445,15 @@ struct Transpose3012
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_w * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_c * InDims::W + idx_h;
+        in += idx_w * InDims::CHW + idx_n * InDims::HW + idx_c * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::C * InDims::H * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -470,15 +470,15 @@ struct Transpose3021
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_w * InDims::C * InDims::H * InDims::W +
-              idx_n * InDims::H * InDims::W + idx_h * InDims::W + idx_c;
+        in += idx_w * InDims::CHW + idx_n * InDims::HW + idx_h * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::C * InDims::H * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -495,15 +495,15 @@ struct Transpose3102
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_w * InDims::C * InDims::H * InDims::W +
-              idx_c * InDims::H * InDims::W + idx_n * InDims::W + idx_h;
+        in += idx_w * InDims::CHW + idx_c * InDims::HW + idx_n * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::C * InDims::H * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -520,15 +520,15 @@ struct Transpose3120
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_w * InDims::C * InDims::H * InDims::W +
-              idx_c * InDims::H * InDims::W + idx_h * InDims::W + idx_n;
+        in += idx_w * InDims::CHW + idx_c * InDims::HW + idx_h * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::C * InDims::H * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -545,15 +545,15 @@ struct Transpose3201
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_w * InDims::C * InDims::H * InDims::W +
-              idx_h * InDims::H * InDims::W + idx_n * InDims::W + idx_c;
+        in += idx_w * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::C * InDims::H * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -570,15 +570,15 @@ struct Transpose3210
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        out += idx_n * OutDims::C * OutDims::H * OutDims::W +
-               idx_c * OutDims::H * OutDims::W + idx_h * OutDims::W + idx_w;
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
         //
-        in += idx_w * InDims::C * InDims::H * InDims::W +
-              idx_h * InDims::H * InDims::W + idx_c * InDims::W + idx_n;
+        in += idx_w * InDims::CHW + idx_h * InDims::HW + idx_c * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::C * InDims::H * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -586,37 +586,36 @@ struct Transpose3210
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes,
+          typename UnitOutDims, int NumThreads, int SmemBytes,
           typename Transpose>
-DEVICE void _transpose(float *out, float *in, int tx, int ty, int tz)
+DEVICE void _transpose(float *out, float *in, int uop_idx)
 {
-    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
-           Transpose>::run(out, in, tz / OutShape::C, tz % OutShape::C, ty, tx);
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
+           Transpose>::run(out, in, uop_idx);
 }
 
 // TODO: we need to use NelemPerThread=2 for half in the future, if out is a
 // __half pointer, this can cause a memory bug, because GPU DRAM access should
 // be always 4-byte aligned
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes,
+          typename UnitOutDims, int NumThreads, int SmemBytes,
           typename Transpose>
-DEVICE void _transpose(ark::half *out, ark::half *in, int tx, int ty, int tz)
+DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx)
 {
-    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
-           Transpose>::run(out, in, tz / OutShape::C, tz % OutShape::C, ty, tx);
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
+           Transpose>::run(out, in, uop_idx);
 }
 
 #define _DEC_TRANSPOSE(tp_type)                                                \
     template <typename InDims, typename OutDims, typename OutShape,            \
-              typename UnitOutShape, int ThreadsNum, int SmemBytes,            \
+              typename UnitOutDims, int NumThreads, int SmemBytes,             \
               typename DataType>                                               \
-    DEVICE void transpose##tp_type(DataType *out, DataType *in, int tx,        \
-                                   int ty, int tz)                             \
+    DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx)   \
     {                                                                          \
-        _transpose<InDims, OutDims, OutShape, UnitOutShape, ThreadsNum,        \
+        _transpose<InDims, OutDims, OutShape, UnitOutDims, NumThreads,         \
                    SmemBytes,                                                  \
-                   Transpose##tp_type<InDims, OutDims, DataType, 1>>(          \
-            out, in, tx, ty, tz);                                              \
+                   Transpose##tp_type<InDims, OutDims, DataType, 1>>(out, in,  \
+                                                                     uop_idx); \
     }
 
 _DEC_TRANSPOSE(0132)

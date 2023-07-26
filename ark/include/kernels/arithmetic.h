@@ -6,7 +6,6 @@
 
 #include "broadcast.h"
 #include "half.h"
-#include "transform.h"
 
 namespace ark {
 
@@ -313,80 +312,82 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
     }
 };
 
-template <int M> struct TransformScale
-{
-    static DEVICE __half2 compute(__half2 *a, __half2 *b, int midx, int nidx)
-    {
-        return __hmul2(*(__half2 *)&((__half *)a)[midx + nidx * M], *b);
-    }
-};
-
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
-DEVICE void add(float *c, const float *a, const float *b, int tx, int ty,
-                int tz)
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void add(float *c, const float *a, const float *b, int uop_idx)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 4 == 0)   ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
-    Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
-              Arithmetic<Add, In0Shape, In1Shape, float, NelemPerThread>>::
-        run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
+    constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Add, In0Shape, In1Shape, float,
+                          NelemPerThread>>::run(c, a, b, uop_idx);
 }
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
-DEVICE void add(half *c, const half *a, const half *b, int tx, int ty, int tz)
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void add(half *c, const half *a, const half *b, int uop_idx)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 8 == 0)   ? 8
-                                   : (UnitOutShape::W % 4 == 0) ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
-    Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
-              Arithmetic<Add, In0Shape, In1Shape, half, NelemPerThread>>::
-        run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Add, In0Shape, In1Shape, half,
+                          NelemPerThread>>::run(c, a, b, uop_idx);
 }
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
-DEVICE void mul(float *c, float *a, float *b, int tx, int ty, int tz)
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void mul(float *c, float *a, float *b, int uop_idx)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 4 == 0)   ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
-    Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
-              Arithmetic<Mul, In0Shape, In1Shape, float, NelemPerThread>>::
-        run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
+    constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Mul, In0Shape, In1Shape, float,
+                          NelemPerThread>>::run(c, a, b, uop_idx);
 }
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
-DEVICE void mul(ark::half *c, ark::half *a, ark::half *b, int tx, int ty,
-                int tz)
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void mul(half *c, half *a, half *b, int uop_idx)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 8 == 0)   ? 8
-                                   : (UnitOutShape::W % 4 == 0) ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
-    Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
-              Arithmetic<Mul, In0Shape, In1Shape, half, NelemPerThread>>::
-        run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Mul, In0Shape, In1Shape, half,
+                          NelemPerThread>>::run(c, a, b, uop_idx);
 }
 
-template <int M, int N, int VAL, int TN, int SB, int TDM, int TDN, int TDK>
-DEVICE void scale(ark::half *y, ark::half *x, float val, int tx, int ty, int tz)
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void scale(half *y, half *x, float val, int uop_idx)
 {
-    __half2 val2 = __float2half2_rn(val);
-    Transform<TransformScale<M>, M, N, 1, TN, SB, TDM, TDN, TDK>::run(
-        y, x, (ark::half *)&val2, tx, ty, tz);
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    half val_h(val);
+    using ValDims = Vec<1, 1, 1, 1>;
+    using ValShape = Vec<1, 1, 1, 1>;
+    Broadcast2<
+        InDims, InShape, ValDims, ValShape, OutDims, OutShape, UnitOutDims,
+        NumThreads, SmemBytes,
+        Arithmetic<Mul, InShape, ValShape, half, NelemPerThread>>::run(y, x,
+                                                                       &val_h,
+                                                                       uop_idx);
 }
 
 } // namespace ark

@@ -10,9 +10,29 @@
 
 namespace ark {
 
+// Static checker if InShape can be broadcasted into OutShape.
+template <typename InShape, typename OutShape> struct BroadcastShapeChecker1
+{
+    static_assert(InShape::N == 1 || OutShape::N == 1 ||
+                      InShape::N == OutShape::N,
+                  "Cannot broadcast dimension N of the input");
+    static_assert(InShape::C == 1 || OutShape::C == 1 ||
+                      InShape::C == OutShape::C,
+                  "Cannot broadcast dimension C of the input");
+    static_assert(InShape::H == 1 || OutShape::H == 1 ||
+                      InShape::H == OutShape::H,
+                  "Cannot broadcast dimension H of the input");
+    static_assert(InShape::W == 1 || OutShape::W == 1 ||
+                      InShape::W == OutShape::W,
+                  "Cannot broadcast dimension W of the input");
+
+    // Derived OutShape.
+    using DerOutShape = OutShape;
+};
+
 // Static checker if In0Shape and In1Shape can be broadcasted into OutShape.
 template <typename In0Shape, typename In1Shape, typename OutShape>
-struct BroadcastShapeChecker
+struct BroadcastShapeChecker2
 {
     static_assert(In0Shape::N == 1 || In1Shape::N == 1 ||
                       In0Shape::N == In1Shape::N,
@@ -48,66 +68,149 @@ struct BroadcastShapeChecker
 
 // Broadcast a unit operator. Follows NumPy-style broadcasting:
 // https://numpy.org/doc/stable/user/basics.broadcasting.html
-template <typename In0Dims, typename In0Shape, typename In1Dims,
-          typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes,
-          typename CompType>
-struct Broadcast
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes, typename CompType>
+struct Broadcast1
 {
     using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
+        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using DataType = typename CompType::DataType;
     static const int NelemPerThread = CompType::NelemPerThread;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static_assert(UnitOutShape::W % NelemPerThread == 0,
-                  "UnitOutShape::W must be divisible by NelemPerThread");
+    static_assert(UnitOutDims::W % NelemPerThread == 0,
+                  "UnitOutDims::W must be divisible by NelemPerThread");
 
-    // Conduct computation on input and broadcast the result to output.
-    //
-    // tn(int): index of the unit operator along the N dimension.
-    // tc(int): index of the unit operator along the C dimension.
-    // th(int): index of the unit operator along the H dimension.
-    // tw(int): index of the unit operator along the W dimension.
-    static DEVICE void run(DataType *out, const DataType *in0,
-                           const DataType *in1, int tn, int tc, int th, int tw)
+    /// Conduct computation on one input and broadcast the result to output.
+    /// @param out Output data.
+    /// @param in1 Input data.
+    /// @param uop_idx Index of the unit operator.
+    static DEVICE void run(DataType *out, const DataType *in, int uop_idx)
     {
-        using InOutChk = BroadcastShapeChecker<In0Shape, In1Shape, OutShape>;
+        using InOutChk = BroadcastShapeChecker1<InShape, OutShape>;
 
-        for (int tid = UnitOp::thread_id();; tid += ThreadsNum) {
-            int tid_w = (tid * NelemPerThread) % UnitOutShape::W;
+        int un = UnitOp::uop_idx_n(uop_idx);
+        int uc = UnitOp::uop_idx_c(uop_idx);
+        int uh = UnitOp::uop_idx_h(uop_idx);
+        int uw = UnitOp::uop_idx_w(uop_idx);
+
+        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
-                ((tid * NelemPerThread) / UnitOutShape::W) % UnitOutShape::H;
+                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
             int tid_c =
-                ((tid * NelemPerThread) / UnitOutShape::HW) % UnitOutShape::C;
-            int tid_n = (tid * NelemPerThread) / UnitOutShape::CHW;
+                ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
+            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
 
-            if (tid_n >= UnitOutShape::N) {
+            if (tid_n >= UnitOutDims::N) {
                 break;
             }
 
-            int idx_out = (tid_w + tw * UnitOutShape::W) +
-                          (tid_h + th * UnitOutShape::H) * OutDims::W +
-                          (tid_c + tc * UnitOutShape::C) * OutDims::HW +
-                          (tid_n + tn * UnitOutShape::N) * OutDims::CHW;
+            int idx_out = (tid_w + uw * UnitOutDims::W) +
+                          (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                          (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                          (tid_n + un * UnitOutDims::N) * OutDims::CHW;
 
-            int idx_in0 =
-                ((In0Shape::W == 1) ? 0 : (tid_w + tw * UnitOutShape::W)) +
-                ((In0Shape::H == 1) ? 0 : (tid_h + th * UnitOutShape::H)) *
-                    In0Dims::W +
-                ((In0Shape::C == 1) ? 0 : (tid_c + tc * UnitOutShape::C)) *
-                    In0Dims::HW +
-                ((In0Shape::N == 1) ? 0 : (tid_n + tn * UnitOutShape::N)) *
-                    In0Dims::CHW;
+            int idx_in;
 
-            int idx_in1 =
-                ((In1Shape::W == 1) ? 0 : (tid_w + tw * UnitOutShape::W)) +
-                ((In1Shape::H == 1) ? 0 : (tid_h + th * UnitOutShape::H)) *
-                    In1Dims::W +
-                ((In1Shape::C == 1) ? 0 : (tid_c + tc * UnitOutShape::C)) *
-                    In1Dims::HW +
-                ((In1Shape::N == 1) ? 0 : (tid_n + tn * UnitOutShape::N)) *
-                    In1Dims::CHW;
+            if constexpr (VecIsEq<InShape, OutShape>::value) {
+                idx_in = idx_out;
+            } else {
+                idx_in =
+                    ((InShape::W == 1) ? 0 : (tid_w + uw * UnitOutDims::W)) +
+                    ((InShape::H == 1) ? 0 : (tid_h + uh * UnitOutDims::H)) *
+                        InDims::W +
+                    ((InShape::C == 1) ? 0 : (tid_c + uc * UnitOutDims::C)) *
+                        InDims::HW +
+                    ((InShape::N == 1) ? 0 : (tid_n + un * UnitOutDims::N)) *
+                        InDims::CHW;
+            }
+
+            CompType::compute(&out[idx_out], &in[idx_in]);
+        }
+    }
+};
+
+// Broadcast a unit operator. Follows NumPy-style broadcasting:
+// https://numpy.org/doc/stable/user/basics.broadcasting.html
+template <typename In0Dims, typename In0Shape, typename In1Dims,
+          typename In1Shape, typename OutDims, typename OutShape,
+          typename UnitOutDims, int NumThreads, int SmemBytes,
+          typename CompType>
+struct Broadcast2
+{
+    using UnitOp =
+        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using DataType = typename CompType::DataType;
+    static const int NelemPerThread = CompType::NelemPerThread;
+
+    static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
+    static_assert(UnitOutDims::W % NelemPerThread == 0,
+                  "UnitOutDims::W must be divisible by NelemPerThread");
+
+    /// Conduct computation on two inputs and broadcast the result to output.
+    /// @param out Output data.
+    /// @param in0 Input data 0.
+    /// @param in1 Input data 1.
+    /// @param uop_idx Index of the unit operator.
+    static DEVICE void run(DataType *out, const DataType *in0,
+                           const DataType *in1, int uop_idx)
+    {
+        using InOutChk = BroadcastShapeChecker2<In0Shape, In1Shape, OutShape>;
+
+        int un = UnitOp::uop_idx_n(uop_idx);
+        int uc = UnitOp::uop_idx_c(uop_idx);
+        int uh = UnitOp::uop_idx_h(uop_idx);
+        int uw = UnitOp::uop_idx_w(uop_idx);
+
+        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
+            int tid_h =
+                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+            int tid_c =
+                ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
+            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
+
+            if (tid_n >= UnitOutDims::N) {
+                break;
+            }
+
+            int idx_out = (tid_w + uw * UnitOutDims::W) +
+                          (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                          (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                          (tid_n + un * UnitOutDims::N) * OutDims::CHW;
+
+            int idx_in0;
+            int idx_in1;
+
+            if constexpr (VecIsEq<In0Shape, OutShape>::value) {
+                idx_in0 = idx_out;
+            } else {
+                idx_in0 =
+                    ((In0Shape::W == 1) ? 0 : (tid_w + uw * UnitOutDims::W)) +
+                    ((In0Shape::H == 1) ? 0 : (tid_h + uh * UnitOutDims::H)) *
+                        In0Dims::W +
+                    ((In0Shape::C == 1) ? 0 : (tid_c + uc * UnitOutDims::C)) *
+                        In0Dims::HW +
+                    ((In0Shape::N == 1) ? 0 : (tid_n + un * UnitOutDims::N)) *
+                        In0Dims::CHW;
+            }
+
+            if constexpr (VecIsEq<In1Shape, OutShape>::value) {
+                idx_in1 = idx_out;
+            } else if constexpr (VecIsEq<In1Shape, In0Shape>::value) {
+                idx_in1 = idx_in0;
+            } else {
+                idx_in1 =
+                    ((In1Shape::W == 1) ? 0 : (tid_w + uw * UnitOutDims::W)) +
+                    ((In1Shape::H == 1) ? 0 : (tid_h + uh * UnitOutDims::H)) *
+                        In1Dims::W +
+                    ((In1Shape::C == 1) ? 0 : (tid_c + uc * UnitOutDims::C)) *
+                        In1Dims::HW +
+                    ((In1Shape::N == 1) ? 0 : (tid_n + un * UnitOutDims::N)) *
+                        In1Dims::CHW;
+            }
 
             CompType::compute(&out[idx_out], &in0[idx_in0], &in1[idx_in1]);
         }

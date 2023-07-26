@@ -88,7 +88,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         // some virtual ops like ops_tensor are not scheduled, but we need to
         // allocated gpu_buf for them
         this->sched_ops.push_back(sched_op);
-        if (cfg == &ARK_OP_CONFIG_VIRT) {
+        if (cfg == nullptr) {
             continue;
         }
         // We create an opseq for each op for simplicity, we don't merge ops
@@ -250,8 +250,10 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
 
         LOG(DEBUG, "configure_gpu_buf: ", sop.get_op()->name);
         if (sop.get_op()->type == OP_SEND_MM) {
-            int sid = *(int *)sop.get_op()->args[0].val;
-            int dst_gid = *(int *)sop.get_op()->args[1].val;
+            int sid;
+            int dst_gid;
+            sop.get_op()->args.get(&sid, 0);
+            sop.get_op()->args.get(&dst_gid, 1);
             // import the recvbuf, the recvbuf should be allocated on the
             // receiver GPU
             Tensor *recvbuf = sop.get_op()->in_deps[1];
@@ -266,8 +268,10 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             export_tns_sids[send_ready_flag->buf].emplace_back(
                 send_ready_flag, sid + send_ready_flag_sid_offset);
         } else if (sop.get_op()->type == OP_RECV_MM) {
-            int sid = *(int *)sop.get_op()->args[0].val;
-            int src_gid = *(int *)sop.get_op()->args[1].val;
+            int sid;
+            int src_gid;
+            sop.get_op()->args.get(&sid, 0);
+            sop.get_op()->args.get(&src_gid, 1);
             // configure the recvbuf, the recvbuf needed to be export the to the
             // sender GPU, the sid is the same as the sid of the send_mm op and
             // the recv_mm op
@@ -284,9 +288,14 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
 
         if (sop.get_op()->type == OP_SEND) {
             Tensor *in = sop.get_op()->in_deps[0];
-            int sid = *(int *)sop.get_op()->args[0].val;
-            int dst_rank = *(int *)sop.get_op()->args[1].val;
-            size_t bytes = *(size_t *)sop.get_op()->args[2].val;
+            int sid;
+            int rank;
+            int dst_rank;
+            size_t bytes;
+            sop.get_op()->args.get(&sid, 0);
+            sop.get_op()->args.get(&rank, 1);
+            sop.get_op()->args.get(&dst_rank, 2);
+            sop.get_op()->args.get(&bytes, 3);
             // TODO: generalize converting rank to GPU ID.
             int nrph = get_env().num_ranks_per_host;
             int dst_gpu_id = dst_rank % nrph;
@@ -299,7 +308,8 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             this->send_recv_ops.emplace_back(sop.get_op());
         } else if (sop.get_op()->type == OP_RECV) {
             Tensor *in = sop.get_op()->in_deps[0];
-            int sid = *(int *)sop.get_op()->args[0].val;
+            int sid;
+            sop.get_op()->args.get(&sid, 0);
             export_tns_sids[in->buf].emplace_back(in, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         }
