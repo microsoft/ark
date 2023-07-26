@@ -122,7 +122,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def("offset_bytes", &ark::Tensor::offset_bytes, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
-    py::class_<ark::Model>(m, "_Model")
+    py::class_<ark::Model>(m, "Model")
         .def(py::init<int>(), py::arg("rank") = 0)
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
