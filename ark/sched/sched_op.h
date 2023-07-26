@@ -37,7 +37,7 @@ class SchedOp
     {
         return cfg;
     }
-    const std::string func_string() const;
+    const std::string function_name() const;
     bool is_virtual() const;
 
   private:

@@ -63,7 +63,7 @@ std::ostream &SimpleCodeGenerator::codegen_opseq(std::ostream &os,
         }
         os << "// tile nums: " << sop.get_tnums() << "\n";
 
-        os << sop.func_string();
+        os << sop.function_name();
         // communication op does not need to be tiled
         // if (!is_tiled_op(sop)) {
         //     continue;
@@ -516,7 +516,7 @@ ostream &DefaultCodeGenerator::codegen_opseq(ostream &os, const string &name,
 #endif // (COMPRESS_BRANCH)
         }
         --idx;
-        auto uop_map_it = uop_map.find(sop.func_string());
+        auto uop_map_it = uop_map.find(sop.function_name());
         assert(uop_map_it != uop_map.end());
         os << "  uop" << uop_map_it->second << '(';
 
@@ -598,7 +598,7 @@ ostream &DefaultCodeGenerator::codegen_uop_def(ostream &os, const SchedOp &sop,
                                                int uop_id)
 {
     std::string uop_name = "uop" + std::to_string(uop_id);
-    std::string func_name = sop.func_string();
+    std::string func_name = sop.function_name();
     assert(!func_name.empty());
 
     const Op *op = sop.get_op();
@@ -638,7 +638,8 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
             }
             int uop_id = uop_map.size();
             // Insert only if it does not exist
-            string sop_func_str = sop.func_string();
+            // TODO: check if runtime args are the same
+            string sop_func_str = sop.function_name();
             auto p = uop_map.emplace(sop_func_str, uop_id);
             if (p.second) {
                 // If this is a new function, define it.

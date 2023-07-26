@@ -188,7 +188,7 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
     }
 }
 
-const string SchedOp::func_string() const
+const string SchedOp::function_name() const
 {
     if (this->cfg == nullptr) {
         return "";
