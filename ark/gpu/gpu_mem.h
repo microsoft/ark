@@ -58,6 +58,8 @@ class GpuMem
     //
     GpuPtr addr = 0;
     //
+    GpuPtr raw_addr = 0;
+    //
     uint64_t bytes = 0;
     //
     GpuMemExposalInfo exp_info;
