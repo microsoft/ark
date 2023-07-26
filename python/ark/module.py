@@ -3,7 +3,8 @@
 
 from typing import Optional, Dict, Callable, Any
 import numpy as np
-from ._ark_core import Model, Tensor 
+from ._ark_core import Model, _Tensor
+from .tensor import Tensor 
 from .executor import Executor
 class Module:
     """
@@ -26,7 +27,7 @@ class Module:
             output_layernorm = self.model.layernorm(output)
             return output_layernorm
     """
-    
+
     # The submodules of the module.
     _modules: Dict[str, Optional['Module']]
     # The parameters of the module.
@@ -47,19 +48,21 @@ class Module:
     def __setattr__(self, __name: str, __value: Any) -> None:
         if isinstance(__value, Module):
             self.register_module(__name, __value)
-        elif isinstance(__value, Tensor):
+        elif isinstance(__value, Tensor) or isinstance(__value, _Tensor):
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
     # Must be called after the executor is launched.
     def load_state_dict(self, state_dict, prefix='', executor=None):
+        print("Loading model from state_dict", self._parameters)
         if executor is None:
             executor = Executor.get_executor()
         for name, module in self._modules.items():
             if module is not None:
                 module.load_state_dict(self.executor, state_dict, prefix=prefix + name + '.')
         for name, param in self._parameters.items():
+            print("Loading parameter: " + prefix + name)
             executor.tensor_memcpy_host_to_device(param, state_dict[prefix + name])
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.

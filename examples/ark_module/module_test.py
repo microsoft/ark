@@ -67,9 +67,13 @@ class TestModel(nn.Module):
         )  # [batch_size, seq_len, d_model]
         return output
 
-    def init_model(self, param, prefix=""):
-        self.weight_1.data.copy_(torch.from_numpy(param[prefix + "weight_1"]))
-        self.weight_2.data.copy_(torch.from_numpy(param[prefix + "weight_2"]))
+    def init_model(self, state_dict, prefix=""):
+        self.weight_1.data.copy_(
+            torch.from_numpy(state_dict[prefix + "weight_1"])
+        )
+        self.weight_2.data.copy_(
+            torch.from_numpy(state_dict[prefix + "weight_2"])
+        )
 
 
 def test_TestModel(state_dict_file):
@@ -101,12 +105,13 @@ def test_TestModel(state_dict_file):
     weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
         np.float16
     )
-    if os.path.exists(state_dict_file):
-        print("load state dict from file", state_dict_file)
-        param = ark.load(state_dict_file)
-    else:
-        param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-    ark_model.load_state_dict(param)
+    # if os.path.exists(state_dict_file):
+    #     print("load state dict from file", state_dict_file)
+    #     # state_dict = ark.load(state_dict_file)
+    # else:
+    state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
+    print("state_dict: ", state_dict)
+    ark_model.load_state_dict(state_dict)
     exe.run(1)
     exe.stop()
 
@@ -122,16 +127,16 @@ def test_TestModel(state_dict_file):
 
     torch_model = TestModel()
 
-    torch_model.init_model(param)
+    torch_model.init_model(state_dict)
 
     gt = torch_model(torch_input).detach().numpy().astype(np.float16)
 
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
-    # print(input_tensor_host)
-    # print(output_tensor_host)
-    # print(gt)
+    print(input_tensor_host)
+    print(output_tensor_host)
+    print(gt)
     print("poswise feed forward net test")
     print(
         "batch_size:",
