@@ -319,7 +319,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
              py::arg("name") = "all_reduce");
     // register class Executor
-    py::class_<ark::Executor>(m, "Executor",
+    py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")
         .def(py::init<const int, int, int, ark::Model &, const std::string &,
                       int>(),

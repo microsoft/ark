@@ -3,7 +3,7 @@
 
 from typing import Optional, Dict, Callable, Any
 import numpy as np
-from ._ark_core import Model, Executor, Tensor 
+from ._ark_core import Model, Tensor 
 
 class Module:
     # Base class for all neural network modules.
@@ -13,9 +13,6 @@ class Module:
         self._modules = dict()
         self._parameters = dict()
         self.model = model
-
-    def set_executor(self, executor):
-        self.executor = executor
 
     # Adds a child module to the current module.
     def register_module(self, name: str, module: Optional['Module']) -> None:
@@ -34,27 +31,27 @@ class Module:
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
     # Must be called after the executor is launched.
-    def load_state_dict(self, state_dict, prefix=''):
-        if self.executor is None:
-            raise RuntimeError("Must call set_executor() before load_state_dict()")
+    def load_state_dict(self, executor, state_dict, prefix=''):
         for name, module in self._modules.items():
             if module is not None:
                 module.load_state_dict(self.executor, state_dict, prefix=prefix + name + '.')
         for name, param in self._parameters.items():
-            self.executor.tensor_memcpy_host_to_device(param, state_dict[prefix + name])
+            executor.tensor_memcpy_host_to_device(param, state_dict[prefix + name])
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
     # Must be called after the executor is launched.
-    def state_dict(self):
-        if self.executor is None:
-            raise RuntimeError("Must call set_executor() before state_dict()")
+    def state_dict(self, executor):
         state_dict = {}
         for name, module in self._modules.items():
             if module is not None:
                 state_dict.update(module.state_dict())
         for name, param in self._parameters.items():
-            param_np = np.zeros(param.shape, dtype=np.float16)
-            self.executor.tensor_memcpy_device_to_host(param_np, param)
+            ark_shape = param.shape()
+            np_shape = []
+            for i in range(param.ndims()):
+                np_shape.append(ark_shape[i])
+            param_np = np.zeros(np_shape, dtype=np.float16)
+            executor.tensor_memcpy_device_to_host(param_np, param)
             state_dict[name] = param_np
         return state_dict
 

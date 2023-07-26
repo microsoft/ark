@@ -85,7 +85,7 @@ def test_TestModel(state_dict_file):
     output_tensor = ark_model.forward(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_TestModel")
-    ark_model.set_executor(exe)
+
     exe.compile()
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
@@ -102,15 +102,14 @@ def test_TestModel(state_dict_file):
     )
 
     param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-    ark.save_state_dict(ark_model, state_dict_file)
-
+    ark_model.load_state_dict(exe, param)
     exe.run(1)
     exe.stop()
 
     output_tensor_host = np.zeros(
         (batch_size, seq_len, d_model), dtype=np.float16
     )
-    ark.save_state_dict(exe, param)
+    ark.save(ark_model.state_dict(exe), state_dict_file)
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
@@ -144,7 +143,8 @@ def test_TestModel(state_dict_file):
 
 
 if __name__ == "__main__":
-    state_dict_file = sys.argv[1]
+    state_dict_file = "/home/v-lifanwu/module_test.pt"
+    print("state_dict_file: ", state_dict_file)
     if state_dict_file == None:
         print("Usage: python module_test.py state_dict_file")
         exit(-1)
