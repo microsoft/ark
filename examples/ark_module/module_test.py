@@ -115,12 +115,9 @@ def test_TestModel(state_dict_file):
     exe.run(1)
     exe.stop()
 
-    output_tensor_host = np.zeros(
-        (batch_size, seq_len, d_model), dtype=np.float16
-    )
     ark.save(ark_model.state_dict(), state_dict_file)
 
-    ark.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
+    output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 

@@ -133,6 +133,8 @@ struct Tensor
     // Offset in bytes.
     DimType offset_bytes(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
                          DimType i3 = 0) const;
+    // TensorType of the tensor.
+    TensorType tensor_type() const;
     // TODO: deprecate this function.
     bool is_sequential() const;
 

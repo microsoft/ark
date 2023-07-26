@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Executor
+from ._ark_core import _Executor, TensorType
 import numpy as np
 
 
@@ -33,15 +33,16 @@ def tensor_memcpy_host_to_device(dst, src, executor_id=0):
     return dst
 
 def tensor_memcpy_device_to_host(dst, src, executor_id=0):
+    if dst is None:
+        np_shape = []
+        ark_dims = src.shape()
+        for i in range(src.ndims()):
+            np_shape.append(ark_dims[i])
+        np_type = None
+        if src.tensor_type() == TensorType.FP32:
+            np_type = np.float32
+        elif src.tensor_type() == TensorType.FP16:
+            np_type = np.float16
+        dst = np.empty(np_shape, dtype=np_type)
     Executor.get_executor(executor_id).tensor_memcpy_device_to_host(dst, src)
     return dst
-
-def tensor_from_device(src, executor_id=0):
-    np_shape = []
-    ark_dims = src.shape()
-    for i in range(src.ndim()):
-        np_shape.append(ark_dims[i])
-    dst = np.empty(np_shape, dtype=src.dtype)
-    Executor.get_executor(executor_id).tensor_memcpy_device_to_host(dst, src)
-    return dst
-
