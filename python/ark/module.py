@@ -28,19 +28,19 @@ class Module:
     """
 
     # The submodules of the module.
-    _modules: Dict[str, Optional['Module']]
+    _sub_modules: Dict[str, Optional['Module']]
     # The parameters of the module.
     _parameters: Dict[str, Optional['Tensor']]
     # The gradient computed at backward stage. A map from parameter to gradient.
     _grads: Dict[Optional['Tensor'], Optional['Tensor']]
     def __init__(self, model):
-        self._modules = dict()
+        self._sub_modules = dict()
         self._parameters = dict()
         self.model = model
 
     # Adds a child module to the current module.
     def register_module(self, name: str, module: Optional['Module']) -> None:
-        self._modules[name] = module
+        self._sub_modules[name] = module
 
     # Adds a parameter to the module.
     def register_parameter(self, name: str, param: Optional['Tensor']) -> None:
@@ -59,7 +59,7 @@ class Module:
         print("Loading model from state_dict", self._parameters)
         if executor is None:
             executor = Executor.get_executor()
-        for name, module in self._modules.items():
+        for name, module in self._sub_modules.items():
             if module is not None:
                 module.load_state_dict(self.executor, state_dict, prefix=prefix + name + '.')
         for name, param in self._parameters.items():
@@ -71,7 +71,7 @@ class Module:
         if executor is None:
             executor = Executor.get_executor()
         state_dict = {}
-        for name, module in self._modules.items():
+        for name, module in self._sub_modules.items():
             if module is not None:
                 state_dict.update(module.state_dict())
         for name, param in self._parameters.items():
