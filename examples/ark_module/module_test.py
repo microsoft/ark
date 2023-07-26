@@ -97,7 +97,7 @@ def test_TestModel(state_dict_file):
     ).astype(np.float16)
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+    ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
         np.float16
@@ -120,7 +120,7 @@ def test_TestModel(state_dict_file):
     )
     ark.save(ark_model.state_dict(), state_dict_file)
 
-    exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
+    ark.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 

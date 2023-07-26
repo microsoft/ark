@@ -9,7 +9,7 @@ if ark_root is None:
 
 from ._ark_core import init, srand, rand, Dims, Tensor, TensorBuf, TensorType, Model
 from .module import Module
-from .executor import Executor
+from .executor import Executor, tensor_memcpy_device_to_host, tensor_memcpy_host_to_device, tensor_from_device
 from .serialize import save, load
 
 __all__ = [
