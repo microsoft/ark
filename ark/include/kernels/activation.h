@@ -79,19 +79,19 @@ struct Gelu<InDims, OutDims, half, 2>
 };
 
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+          typename UnitOutDims, int NumThreads, int SmemBytes>
 DEVICE void relu(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
-    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Relu<InDims, OutDims, ark::half, 2>>::run(out, in, tz / OutShape::C,
                                                      tz % OutShape::C, ty, tx);
 }
 
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+          typename UnitOutDims, int NumThreads, int SmemBytes>
 DEVICE void gelu(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
-    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Gelu<InDims, OutDims, ark::half, 2>>::run(out, in, tz / OutShape::C,
                                                      tz % OutShape::C, ty, tx);
 }

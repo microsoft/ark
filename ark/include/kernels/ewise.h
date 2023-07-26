@@ -10,18 +10,18 @@
 namespace ark {
 
 // Element-wise computation operator with a single input.
-template <typename OutDims, typename OutShape, typename UnitOutShape,
-          int ThreadsNum, int SmemBytes, typename CompType>
+template <typename OutDims, typename OutShape, typename UnitOutDims,
+          int NumThreads, int SmemBytes, typename CompType>
 struct Ewise1
 {
     using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
+        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using DataType = typename CompType::DataType;
     static const int NelemPerThread = CompType::NelemPerThread;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static_assert(UnitOutShape::W % NelemPerThread == 0,
-                  "UnitOutShape::W must be divisible by NelemPerThread");
+    static_assert(UnitOutDims::W % NelemPerThread == 0,
+                  "UnitOutDims::W must be divisible by NelemPerThread");
 
     // Conduct element-wise computation on input and write the result on output.
     //
@@ -32,22 +32,22 @@ struct Ewise1
     static DEVICE void run(DataType *out, DataType *in, int tn, int tc, int th,
                            int tw)
     {
-        for (int tid = UnitOp::thread_id();; tid += ThreadsNum) {
-            int tid_w = (tid * NelemPerThread) % UnitOutShape::W;
+        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
-                ((tid * NelemPerThread) / UnitOutShape::W) % UnitOutShape::H;
+                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
             int tid_c =
-                ((tid * NelemPerThread) / UnitOutShape::HW) % UnitOutShape::C;
-            int tid_n = (tid * NelemPerThread) / UnitOutShape::CHW;
+                ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
+            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
 
-            if (tid_n >= UnitOutShape::N) {
+            if (tid_n >= UnitOutDims::N) {
                 break;
             }
 
-            CompType::compute(out, in, tid_n + tn * UnitOutShape::N,
-                              tid_c + tc * UnitOutShape::C,
-                              tid_h + th * UnitOutShape::H,
-                              tid_w + tw * UnitOutShape::W);
+            CompType::compute(out, in, tid_n + tn * UnitOutDims::N,
+                              tid_c + tc * UnitOutDims::C,
+                              tid_h + th * UnitOutDims::H,
+                              tid_w + tw * UnitOutDims::W);
         }
     }
 };

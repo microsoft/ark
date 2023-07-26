@@ -50,18 +50,18 @@ struct BroadcastShapeChecker
 // https://numpy.org/doc/stable/user/basics.broadcasting.html
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes,
+          typename UnitOutDims, int NumThreads, int SmemBytes,
           typename CompType>
 struct Broadcast
 {
     using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes>;
+        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using DataType = typename CompType::DataType;
     static const int NelemPerThread = CompType::NelemPerThread;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static_assert(UnitOutShape::W % NelemPerThread == 0,
-                  "UnitOutShape::W must be divisible by NelemPerThread");
+    static_assert(UnitOutDims::W % NelemPerThread == 0,
+                  "UnitOutDims::W must be divisible by NelemPerThread");
 
     // Conduct computation on input and broadcast the result to output.
     //
@@ -74,39 +74,39 @@ struct Broadcast
     {
         using InOutChk = BroadcastShapeChecker<In0Shape, In1Shape, OutShape>;
 
-        for (int tid = UnitOp::thread_id();; tid += ThreadsNum) {
-            int tid_w = (tid * NelemPerThread) % UnitOutShape::W;
+        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
-                ((tid * NelemPerThread) / UnitOutShape::W) % UnitOutShape::H;
+                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
             int tid_c =
-                ((tid * NelemPerThread) / UnitOutShape::HW) % UnitOutShape::C;
-            int tid_n = (tid * NelemPerThread) / UnitOutShape::CHW;
+                ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
+            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
 
-            if (tid_n >= UnitOutShape::N) {
+            if (tid_n >= UnitOutDims::N) {
                 break;
             }
 
-            int idx_out = (tid_w + tw * UnitOutShape::W) +
-                          (tid_h + th * UnitOutShape::H) * OutDims::W +
-                          (tid_c + tc * UnitOutShape::C) * OutDims::HW +
-                          (tid_n + tn * UnitOutShape::N) * OutDims::CHW;
+            int idx_out = (tid_w + tw * UnitOutDims::W) +
+                          (tid_h + th * UnitOutDims::H) * OutDims::W +
+                          (tid_c + tc * UnitOutDims::C) * OutDims::HW +
+                          (tid_n + tn * UnitOutDims::N) * OutDims::CHW;
 
             int idx_in0 =
-                ((In0Shape::W == 1) ? 0 : (tid_w + tw * UnitOutShape::W)) +
-                ((In0Shape::H == 1) ? 0 : (tid_h + th * UnitOutShape::H)) *
+                ((In0Shape::W == 1) ? 0 : (tid_w + tw * UnitOutDims::W)) +
+                ((In0Shape::H == 1) ? 0 : (tid_h + th * UnitOutDims::H)) *
                     In0Dims::W +
-                ((In0Shape::C == 1) ? 0 : (tid_c + tc * UnitOutShape::C)) *
+                ((In0Shape::C == 1) ? 0 : (tid_c + tc * UnitOutDims::C)) *
                     In0Dims::HW +
-                ((In0Shape::N == 1) ? 0 : (tid_n + tn * UnitOutShape::N)) *
+                ((In0Shape::N == 1) ? 0 : (tid_n + tn * UnitOutDims::N)) *
                     In0Dims::CHW;
 
             int idx_in1 =
-                ((In1Shape::W == 1) ? 0 : (tid_w + tw * UnitOutShape::W)) +
-                ((In1Shape::H == 1) ? 0 : (tid_h + th * UnitOutShape::H)) *
+                ((In1Shape::W == 1) ? 0 : (tid_w + tw * UnitOutDims::W)) +
+                ((In1Shape::H == 1) ? 0 : (tid_h + th * UnitOutDims::H)) *
                     In1Dims::W +
-                ((In1Shape::C == 1) ? 0 : (tid_c + tc * UnitOutShape::C)) *
+                ((In1Shape::C == 1) ? 0 : (tid_c + tc * UnitOutDims::C)) *
                     In1Dims::HW +
-                ((In1Shape::N == 1) ? 0 : (tid_n + tn * UnitOutShape::N)) *
+                ((In1Shape::N == 1) ? 0 : (tid_n + tn * UnitOutDims::N)) *
                     In1Dims::CHW;
 
             CompType::compute(&out[idx_out], &in0[idx_in0], &in1[idx_in1]);

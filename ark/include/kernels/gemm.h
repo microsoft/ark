@@ -490,7 +490,7 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,13 +513,13 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
                    cutlass::arch::Sm80, EpilogueOutputOp, LeadingDimC, Shape,
-                   ThreadsNum>
+                   NumThreads>
 {
-    static const int WarpsNum = ThreadsNum / 32;
+    static const int WarpsNum = NumThreads / 32;
     static const int NumM = Shape::kM > Shape::kN ? WarpsNum / 2 : 2;
     static const int NumN = WarpsNum / NumM;
     using ThreadblockShape = Shape;
@@ -586,11 +586,11 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
                    cutlass::arch::Sm75, EpilogueOutputOp, LeadingDimC, Shape,
-                   ThreadsNum>
+                   NumThreads>
 {
     using ThreadblockShape = cutlass::gemm::GemmShape<128, 256, 32>;
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 32>;
@@ -640,13 +640,13 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
                    cutlass::arch::Sm70, EpilogueOutputOp, LeadingDimC, Shape,
-                   ThreadsNum>
+                   NumThreads>
 {
-    static const int WarpsNum = ThreadsNum / 32;
+    static const int WarpsNum = NumThreads / 32;
     static const int NumM = Shape::kM > Shape::kN ? WarpsNum / 2 : 2;
     static const int NumN = WarpsNum / NumM;
     using ThreadblockShape = Shape;
@@ -708,10 +708,10 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassSimt,
-                   ArchTag, EpilogueOutputOp, LeadingDimC, Shape, ThreadsNum>
+                   ArchTag, EpilogueOutputOp, LeadingDimC, Shape, NumThreads>
 {
     using ThreadblockShape = cutlass::gemm::GemmShape<128, 128, 8>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 8>;
@@ -764,10 +764,10 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC, LayoutC,
                    cutlass::arch::OpClassWmmaTensorOp, ArchTag,
-                   EpilogueOutputOp, LeadingDimC, Shape, ThreadsNum>
+                   EpilogueOutputOp, LeadingDimC, Shape, NumThreads>
 {
     using ThreadblockShape = cutlass::gemm::GemmShape<64, 64, 64>; // ??
     using WarpShape = cutlass::gemm::GemmShape<32, 32, 64>;        // ??
@@ -813,7 +813,7 @@ template <
     // Shape of the unit multiplication
     typename Shape,
     //
-    int ThreadsNum,
+    int NumThreads,
     //
     typename ProblemSize,
     //
@@ -851,7 +851,7 @@ struct GemmKernelBase
     using Gemm = DefaultGemm<
         ElementA, LayoutA, ElementB, LayoutB, ElementC, LayoutC, OperatorClass,
         ArchTag, GemmEpilogueOutputOp, LeadingDims::D1,
-        cutlass::gemm::GemmShape<Shape::X, Shape::Y, Shape::Z>, ThreadsNum>;
+        cutlass::gemm::GemmShape<Shape::X, Shape::Y, Shape::Z>, NumThreads>;
     // Define the threadblock-scoped matrix multiply-accumulate
     using Mma = typename Gemm::Mma;
     // Define the epilogue
@@ -964,7 +964,7 @@ struct GemmKernelBase
 // (which turns off all optimizations on device code).
 template <typename NCA, typename NCB, typename Shape, typename ProblemSize,
           typename LeadingDims, bool IsColumnA, bool IsColumnB, bool IsRelu,
-          int ThreadsNum, int SmemBytes>
+          int NumThreads, int SmemBytes>
 DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
                  ark::half beta, int tn, int tc, int th, int tw)
 {
@@ -983,7 +983,7 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
         IsColumnB, cutlass::layout::ColumnMajor,
         cutlass::layout::RowMajor>::type;
     using GemmKernel =
-        GemmKernelBase<Shape, ThreadsNum, ProblemSize, LeadingDims,
+        GemmKernelBase<Shape, NumThreads, ProblemSize, LeadingDims,
                        cutlass::half_t, LayoutA, cutlass::half_t, LayoutB,
                        cutlass::half_t, cutlass::layout::RowMajor,
                        cutlass::arch::OpClassTensorOp,
@@ -999,11 +999,11 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
                        cutlass::arch::Sm60,
 #endif
                        IsRelu>;
-    static_assert(GemmKernel::ThreadMask == ThreadsNum - 1,
+    static_assert(GemmKernel::ThreadMask == NumThreads - 1,
                   "traits mismatch with the actual implementation.");
     static_assert(sizeof(typename GemmKernel::SharedStorage) <= SmemBytes,
                   "traits mismatch with the actual implementation.");
-    using Smem = SharedMemory<typename GemmKernel::SharedStorage, ThreadsNum>;
+    using Smem = SharedMemory<typename GemmKernel::SharedStorage, NumThreads>;
 
     constexpr int SizeA = math::mul<ProblemSize::D0, ProblemSize::D2>::value;
     constexpr int SizeB = math::mul<ProblemSize::D1, ProblemSize::D2>::value;

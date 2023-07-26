@@ -323,60 +323,60 @@ template <int M> struct TransformScale
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+          typename UnitOutDims, int NumThreads, int SmemBytes>
 DEVICE void add(float *c, const float *a, const float *b, int tx, int ty,
                 int tz)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 4 == 0)   ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
+    constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
     Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
+              UnitOutDims, NumThreads, SmemBytes,
               Arithmetic<Add, In0Shape, In1Shape, float, NelemPerThread>>::
         run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
 }
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+          typename UnitOutDims, int NumThreads, int SmemBytes>
 DEVICE void add(half *c, const half *a, const half *b, int tx, int ty, int tz)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 8 == 0)   ? 8
-                                   : (UnitOutShape::W % 4 == 0) ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
     Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
+              UnitOutDims, NumThreads, SmemBytes,
               Arithmetic<Add, In0Shape, In1Shape, half, NelemPerThread>>::
         run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
 }
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+          typename UnitOutDims, int NumThreads, int SmemBytes>
 DEVICE void mul(float *c, float *a, float *b, int tx, int ty, int tz)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 4 == 0)   ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
+    constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
     Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
+              UnitOutDims, NumThreads, SmemBytes,
               Arithmetic<Mul, In0Shape, In1Shape, float, NelemPerThread>>::
         run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
 }
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes>
+          typename UnitOutDims, int NumThreads, int SmemBytes>
 DEVICE void mul(ark::half *c, ark::half *a, ark::half *b, int tx, int ty,
                 int tz)
 {
-    constexpr int NelemPerThread = (UnitOutShape::W % 8 == 0)   ? 8
-                                   : (UnitOutShape::W % 4 == 0) ? 4
-                                   : (UnitOutShape::W % 2 == 0) ? 2
-                                                                : 1;
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
     Broadcast<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-              UnitOutShape, ThreadsNum, SmemBytes,
+              UnitOutDims, NumThreads, SmemBytes,
               Arithmetic<Mul, In0Shape, In1Shape, half, NelemPerThread>>::
         run(c, a, b, tz / OutShape::C, tz % OutShape::C, ty, tx);
 }

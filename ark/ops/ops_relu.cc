@@ -32,13 +32,13 @@ std::string ReluOp::function_name(const OpConfig &cfg) const
         CHECK(tile_out.x == 1);
     }
 
-    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::relu", {{
                                               input->ldims.dims4(),  // In0Dims
                                               output->ldims.dims4(), // OutDims
                                               output->shape.dims4(), // OutShape
-                                              unit_out_shape, // UnitOutShape
-                                              cfg.num_warps * 32, // ThreadsNum
+                                              unit_out_dims,      // UnitOutDims
+                                              cfg.num_warps * 32, // NumThreads
                                               cfg.smem_bytes,     // SmemBytes
                                           }});
 }

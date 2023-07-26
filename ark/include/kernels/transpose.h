@@ -586,11 +586,11 @@ struct Transpose3210
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes,
+          typename UnitOutDims, int NumThreads, int SmemBytes,
           typename Transpose>
 DEVICE void _transpose(float *out, float *in, int tx, int ty, int tz)
 {
-    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Transpose>::run(out, in, tz / OutShape::C, tz % OutShape::C, ty, tx);
 }
 
@@ -598,22 +598,22 @@ DEVICE void _transpose(float *out, float *in, int tx, int ty, int tz)
 // __half pointer, this can cause a memory bug, because GPU DRAM access should
 // be always 4-byte aligned
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutShape, int ThreadsNum, int SmemBytes,
+          typename UnitOutDims, int NumThreads, int SmemBytes,
           typename Transpose>
 DEVICE void _transpose(ark::half *out, ark::half *in, int tx, int ty, int tz)
 {
-    Ewise1<OutDims, OutShape, UnitOutShape, ThreadsNum, SmemBytes,
+    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Transpose>::run(out, in, tz / OutShape::C, tz % OutShape::C, ty, tx);
 }
 
 #define _DEC_TRANSPOSE(tp_type)                                                \
     template <typename InDims, typename OutDims, typename OutShape,            \
-              typename UnitOutShape, int ThreadsNum, int SmemBytes,            \
+              typename UnitOutDims, int NumThreads, int SmemBytes,             \
               typename DataType>                                               \
     DEVICE void transpose##tp_type(DataType *out, DataType *in, int tx,        \
                                    int ty, int tz)                             \
     {                                                                          \
-        _transpose<InDims, OutDims, OutShape, UnitOutShape, ThreadsNum,        \
+        _transpose<InDims, OutDims, OutShape, UnitOutDims, NumThreads,         \
                    SmemBytes,                                                  \
                    Transpose##tp_type<InDims, OutDims, DataType, 1>>(          \
             out, in, tx, ty, tz);                                              \

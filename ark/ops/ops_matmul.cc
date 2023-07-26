@@ -71,7 +71,7 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
                                  is_column_a,        // IsColumnA
                                  is_column_b,        // IsColumnB
                                  is_relu,            // IsRelu
-                                 cfg.num_warps * 32, // ThreadsNum
+                                 cfg.num_warps * 32, // NumThreads
                                  cfg.smem_bytes,     // SmemBytes
                              }});
 }

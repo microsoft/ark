@@ -8,13 +8,13 @@
 
 namespace ark {
 
-template <int LeadingDim, int ThreadsNum, int SmemBytes, int TDimM, int TDimN,
+template <int LeadingDim, int NumThreads, int SmemBytes, int TDimM, int TDimN,
           int TDimK>
 struct BaseOp
 {
     static DEVICE int thread_id()
     {
-        return math::mod<ThreadsNum>(threadIdx.x);
+        return math::mod<NumThreads>(threadIdx.x);
     }
     static DEVICE int tile_offset(int tx, int ty)
     {

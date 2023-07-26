@@ -28,7 +28,7 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
     CHECK(ndims < 4);
 
     const OpTile &tile_out = cfg.out_deps_tiles[0];
-    Dims unit_out_shape{1, 1, tile_out.x, tile_out.y};
+    Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
 
     return Op::function_name("ark::softmax",
                              {{
@@ -36,8 +36,8 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
                                  input->shape.dims4(),  // InShape
                                  output->ldims.dims4(), // OutDims
                                  output->shape.dims4(), // OutShape
-                                 unit_out_shape,        // UnitOutShape
-                                 cfg.num_warps * 32,    // ThreadsNum
+                                 unit_out_dims,         // UnitOutDims
+                                 cfg.num_warps * 32,    // NumThreads
                                  cfg.smem_bytes,        // SmemBytes
                              }});
 }
