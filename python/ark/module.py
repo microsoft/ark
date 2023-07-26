@@ -4,7 +4,7 @@
 from typing import Optional, Dict, Callable, Any
 import numpy as np
 from ._ark_core import Model, Tensor 
-
+from .executor import Executor
 class Module:
     # Base class for all neural network modules.
     _modules: Dict[str, Optional['Module']]
@@ -31,7 +31,9 @@ class Module:
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
     # Must be called after the executor is launched.
-    def load_state_dict(self, executor, state_dict, prefix=''):
+    def load_state_dict(self, state_dict, prefix='', executor=None):
+        if executor is None:
+            executor = Executor.get_executor()
         for name, module in self._modules.items():
             if module is not None:
                 module.load_state_dict(self.executor, state_dict, prefix=prefix + name + '.')
@@ -40,7 +42,9 @@ class Module:
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
     # Must be called after the executor is launched.
-    def state_dict(self, executor):
+    def state_dict(self, executor = None):
+        if executor is None:
+            executor = Executor.get_executor()
         state_dict = {}
         for name, module in self._modules.items():
             if module is not None:

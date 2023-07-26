@@ -102,14 +102,14 @@ def test_TestModel(state_dict_file):
     )
 
     param = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-    ark_model.load_state_dict(exe, param)
+    ark_model.load_state_dict(param)
     exe.run(1)
     exe.stop()
 
     output_tensor_host = np.zeros(
         (batch_size, seq_len, d_model), dtype=np.float16
     )
-    ark.save(ark_model.state_dict(exe), state_dict_file)
+    ark.save(ark_model.state_dict(), state_dict_file)
     exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
