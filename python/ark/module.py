@@ -31,6 +31,8 @@ class Module:
     _modules: Dict[str, Optional['Module']]
     # The parameters of the module.
     _parameters: Dict[str, Optional['Tensor']]
+    # The gradient computed at backward stage. A map from parameter to gradient.
+    _grads: Dict[Optional['Tensor'], Optional['Tensor']]
     def __init__(self, model):
         self._modules = dict()
         self._parameters = dict()
@@ -61,7 +63,6 @@ class Module:
             if module is not None:
                 module.load_state_dict(self.executor, state_dict, prefix=prefix + name + '.')
         for name, param in self._parameters.items():
-            print("Loading parameter: " + prefix + name)
             executor.tensor_memcpy_host_to_device(param, state_dict[prefix + name])
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
