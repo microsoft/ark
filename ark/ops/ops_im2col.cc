@@ -9,12 +9,81 @@ using namespace std;
 
 namespace ark {
 
-Tensor *Model::im2col(Tensor *input, DimType kernel_height,
-                      DimType kernel_width, DimType stride_height,
-                      DimType stride_width, DimType pad_height,
-                      DimType pad_width, DimType dilation_height,
-                      DimType dilation_width, Tensor *output,
-                      const string &name)
+extern const OpConfigMap Im2colConfigMap;
+
+Im2colOp::Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                   int kernel_height, int kernel_width, int stride_height,
+                   int stride_width, int pad_height, int pad_width,
+                   int dilation_height, int dilation_width, const string &name)
+    : Op{OP_IM2COL,
+         prec_type,
+         {input},
+         {output},
+         {{kernel_height, kernel_width, stride_height, stride_width, pad_height,
+           pad_width, dilation_height, dilation_width}},
+         name,
+         &Im2colConfigMap,
+         -1,
+         true}
+{
+}
+
+std::string Im2colOp::function_name(const OpConfig &cfg) const
+{
+    Tensor *input = this->in_deps[0];
+    Tensor *output = this->out_deps[0];
+
+    int ndims = output->shape.ndims();
+    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
+    if (ndims > 1) {
+        CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
+    } else {
+        CHECK(tile_out.x == 1);
+    }
+
+    int kernel_height;
+    int kernel_width;
+    int stride_height;
+    int stride_width;
+    int pad_height;
+    int pad_width;
+    int dilation_height;
+    int dilation_width;
+    this->args.get(&kernel_height, 0);
+    this->args.get(&kernel_width, 1);
+    this->args.get(&stride_height, 2);
+    this->args.get(&stride_width, 3);
+    this->args.get(&pad_height, 4);
+    this->args.get(&pad_width, 5);
+    this->args.get(&dilation_height, 6);
+    this->args.get(&dilation_width, 7);
+
+    Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
+    return Op::function_name("ark::im2col",
+                             {{
+                                 input->ldims.dims4(),  // InDims
+                                 input->shape.dims4(),  // InShape
+                                 output->ldims.dims4(), // OutDims
+                                 output->shape.dims4(), // OutShape
+                                 unit_out_dims,         // UnitOutDims
+                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.smem_bytes,        // SmemBytes
+                                 kernel_height,         // KernelHeight
+                                 kernel_width,          // KernelWidth
+                                 stride_height,         // StrideHeight
+                                 stride_width,          // StrideWidth
+                                 pad_height,            // PadHeight
+                                 pad_width,             // PadWidth
+                                 dilation_height,       // DilationHeight
+                                 dilation_width,        // DilationWidth
+                             }});
+}
+
+Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
+                      int stride_height, int stride_width, int pad_height,
+                      int pad_width, int dilation_height, int dilation_width,
+                      Tensor *output, const string &name)
 {
     assert(input != nullptr);
     DimType n, c, h, w;
@@ -62,12 +131,30 @@ Tensor *Model::im2col(Tensor *input, DimType kernel_height,
     } else {
         assert(output->shape == out_shape);
     }
-    this->impl->add_op(OP_IM2COL, pt, {input}, {output},
-                       {kernel_height, kernel_width, stride_height,
-                        stride_width, pad_height, pad_width, dilation_height,
-                        dilation_width},
-                       name);
+    Im2colOp op{pt,           input,           output,         kernel_height,
+                kernel_width, stride_height,   stride_width,   pad_height,
+                pad_width,    dilation_height, dilation_width, name};
+    this->impl->add_op(op);
     return output;
 }
+
+const OpConfigMap Im2colConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+     }},
+};
 
 } // namespace ark

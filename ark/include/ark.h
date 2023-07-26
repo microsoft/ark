@@ -58,15 +58,12 @@ struct Dims
     bool is_no_dim() const;
     // Return true if the dimensions are invalid.
     bool is_invalid() const;
+    // Erase the dimension at the given index and return the erased dimension.
+    DimType erase(int idx);
 
-    DimType &operator[](DimType idx)
-    {
-        return data[idx];
-    }
-    const DimType &operator[](DimType idx) const
-    {
-        return data[idx];
-    }
+    DimType &operator[](int idx);
+
+    const DimType &operator[](int idx) const;
 
     constexpr Dims &operator=(const Dims &) = default;
 
@@ -147,7 +144,7 @@ struct Tensor
     // Offset of the tensor in the underlying data array
     Dims offs;
     // Unit dimensions of the underlying data array. ldims[x] should be always
-    // divided by udims[x].
+    // divided by pads[x].
     Dims pads;
     // Whether this tensor is accessed by remote devices
     bool exported;
@@ -178,8 +175,9 @@ class Model
                    bool exported = false, bool imported = false,
                    const std::string &name = "tensor");
 
-    Tensor *reshape(Tensor *input, const Dims &shape, bool allowzero,
-                    Tensor *output, const std::string &name);
+    Tensor *reshape(Tensor *input, const Dims &shape, bool allowzero = false,
+                    Tensor *output = nullptr,
+                    const std::string &name = "reshape");
     // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
     // inferred from the `input`. If one dimension of `shape` is 0, by default
     // (`allowzero` is false), that dimension is unchanged from the
@@ -236,10 +234,9 @@ class Model
     // Implements the 'im2col' method for 2D convolution layers, which takes an
     // `input` tensor and reshapes it to a 2D matrix by extracting image patches
     // from the input tensor based on the provided parameters.
-    Tensor *im2col(Tensor *input, DimType kernel_height, DimType kernel_width,
-                   DimType stride_height, DimType stride_width,
-                   DimType pad_height, DimType pad_width,
-                   DimType dilation_height, DimType dilation_width,
+    Tensor *im2col(Tensor *input, int kernel_height, int kernel_width,
+                   int stride_height, int stride_width, int pad_height,
+                   int pad_width, int dilation_height, int dilation_width,
                    Tensor *output = nullptr,
                    const std::string &name = "im2col");
     // Implements a 2D convolution layer using the 'im2col' method.
@@ -258,6 +255,9 @@ class Model
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
+    // ReLU activation
+    Tensor *relu(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "relu");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.

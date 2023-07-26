@@ -22,6 +22,8 @@ class BaseCodeGenerator
     virtual std::vector<std::string> codegen_codes_body(
         std::vector<Sched> &scheds) = 0;
 
+    std::ostream &codegen_sync_gpu(std::ostream &os);
+
   protected:
     const std::map<TensorBuf *, GpuBuf *> &buf_trans;
     int sm_num;
@@ -93,16 +95,18 @@ class DefaultCodeGenerator : BaseCodeGenerator
 
   private:
     std::ostream &codegen_tensor(std::ostream &os, const Tensor &tensor);
+    std::ostream &codegen_arg(std::ostream &os, const OpArg &arg);
+    std::ostream &codegen_arg_def(std::ostream &os, const OpArg &arg,
+                                  const std::string &name);
     std::ostream &codegen_sched_op(std::ostream &os, const SchedOp &sop,
                                    const std::pair<int, int> &fdims);
     std::ostream &codegen_opseq(std::ostream &os, const std::string &name,
                                 const SchedOpSeq &opseq,
                                 std::map<std::string, int> &uop_map);
-    // std::ostream &codegen_loop_body(
-    //     std::ostream &os, const std::vector<SchedTileDepth *> &tile_depths);
+    std::ostream &codegen_uop_def(std::ostream &os, const SchedOp &sop,
+                                  int uop_id);
     std::ostream &codegen_depth(std::ostream &os, const std::string &name,
                                 Brancher *brc, std::set<SchedOpSeq *> &opseqs,
-                                std::map<std::string, int> &sropseq_map,
                                 std::map<std::string, int> &uop_map);
 };
 

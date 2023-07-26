@@ -48,11 +48,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
             for (ark::DimType k = 0; k < h; ++k) {
                 for (ark::DimType l = 0; l < w; ++l) {
                     ark::Dims axis{i, j, k, l};
-                    ark::Dims new_axis;
-                    new_axis[0] = axis[pn];
-                    new_axis[1] = axis[pc];
-                    new_axis[2] = axis[ph];
-                    new_axis[3] = axis[pw];
+                    ark::Dims new_axis{axis[pn], axis[pc], axis[ph], axis[pw]};
                     ark::DimType in_idx = i * c * h * w + j * h * w + k * w + l;
                     ark::DimType res_idx = new_axis[0] * oc * oh * ow +
                                            new_axis[1] * oh * ow +

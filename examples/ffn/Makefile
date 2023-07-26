@@ -5,7 +5,7 @@ ARK_ROOT ?= /usr/local/ark
 CUDIR    ?= /usr/local/cuda
 
 CXX      := g++
-CXXFLAGS := -std=c++14 -Wall -Wextra
+CXXFLAGS := -std=c++17 -Wall -Wextra
 INCLUDE  := -I$(ARK_ROOT)/include -I $(CUDIR)/include -I$(ARK_ROOT)/include/kernels
 LDFLAGS  := -L$(CUDIR)/lib64/stubs -Wl,-rpath,$(CUDIR)/lib64
 LDLIBS   := -lcuda -lnvidia-ml -lnvrtc -lpthread -lrt -libverbs -lnuma

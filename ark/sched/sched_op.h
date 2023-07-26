@@ -6,7 +6,8 @@
 
 #include "gpu/gpu_mgr.h"
 #include "include/ark.h"
-#include "ops/ops_config.h"
+#include "json.h"
+#include "ops/ops_common.h"
 
 namespace ark {
 
@@ -36,22 +37,8 @@ class SchedOp
     {
         return cfg;
     }
-    const std::string func_string() const;
-    const std::string func_string_matmul() const;
-    const std::string func_string_send() const;
-    const std::string func_string_recv() const;
-    const std::string func_string_send_done() const;
-    const std::string func_string_send_mm() const;
-    const std::string func_string_recv_mm() const;
-    const std::string func_string_reduce(const std::string &type) const;
-    const std::string func_string_layernorm() const;
-    const std::string func_string_softmax() const;
-    const std::string func_string_scale() const;
-    const std::string func_string_gelu() const;
-    const std::string func_string_add() const;
-    const std::string func_string_mul() const;
-    const std::string func_string_im2col() const;
-    const std::string func_string_transpose() const;
+    const std::string function_name() const;
+    bool is_virtual() const;
 
   private:
     const Op *op;

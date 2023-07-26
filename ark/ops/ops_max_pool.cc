@@ -9,6 +9,13 @@ using namespace std;
 
 namespace ark {
 
+MaxPoolOp::MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     DimType kernel_size, DimType stride, const string &name)
+    : Op{OP_MAX_POOL, prec_type, {input}, {output}, {{kernel_size, stride}},
+         name,        nullptr,   -1}
+{
+}
+
 Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
                         Tensor *output, const string &name)
 {
@@ -30,7 +37,8 @@ Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
     if (output == nullptr) {
         output = this->tensor(os, input->type);
     }
-    this->impl->add_op(OP_MAX_POOL, pt, {input}, {output}, {}, name);
+    MaxPoolOp op{pt, input, output, kernel_size, stride, name};
+    this->impl->add_op(op);
     return output;
 }
 

@@ -10,20 +10,20 @@
 namespace ark {
 
 #if defined(ARK_THREADS_PER_BLOCK)
-template <typename T, int ThreadsNum> struct SharedMemory
+template <typename T, int NumThreads> struct SharedMemory
 {
-    static const int SmemOffset = ThreadsNum * ark::Arch::MaxSmemBytesPerBlock /
+    static const int SmemOffset = NumThreads * ark::Arch::MaxSmemBytesPerBlock /
                                   (ARK_THREADS_PER_BLOCK * sizeof(int));
     DEVICE operator T *()
     {
         return (
-            T *)&_ARK_SMEM[(threadIdx.x >> math::log2_up<ThreadsNum>::value) *
+            T *)&_ARK_SMEM[(threadIdx.x >> math::log2_up<NumThreads>::value) *
                            SmemOffset];
     }
     DEVICE operator const T *() const
     {
         return (
-            T *)&_ARK_SMEM[(threadIdx.x >> math::log2_up<ThreadsNum>::value) *
+            T *)&_ARK_SMEM[(threadIdx.x >> math::log2_up<NumThreads>::value) *
                            SmemOffset];
     }
 };

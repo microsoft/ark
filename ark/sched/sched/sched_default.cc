@@ -121,17 +121,20 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     Tensor *input_a = matmul_op.in_deps[0];
     Tensor *input_b = matmul_op.in_deps[1];
     Tensor *output = matmul_op.out_deps[0];
-    bool trans_a = *(bool *)matmul_op.args[0].val;
-    bool trans_b = *(bool *)matmul_op.args[1].val;
-    bool is_relu = *(bool *)matmul_op.args[2].val;
+    bool is_column_a;
+    bool is_column_b;
+    bool is_relu;
+    matmul_op.args.get(&is_column_a, 4);
+    matmul_op.args.get(&is_column_b, 5);
+    matmul_op.args.get(&is_relu, 6);
     std::string matmul_name = matmul_op.name;
 
     // Remove the original matmul op from the model.
     model_impl->delete_op(&matmul_op);
 
     // Create a new matmul op with the optimized split_k.
-    model.matmul(input_a, input_b, output, split_k, trans_a, trans_b, is_relu,
-                 matmul_name);
+    model.matmul(input_a, input_b, output, split_k, is_column_a, is_column_b,
+                 is_relu, matmul_name);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized
@@ -177,7 +180,7 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.get_op() == nullptr) {
                     continue;
                 }
-                if (sop.get_cfg()->num_warps == 0) {
+                if (sop.is_virtual()) {
                     continue;
                 }
                 for (unsigned int i = 0; i < sop.get_op()->in_deps.size();
@@ -197,7 +200,7 @@ void DefaultScheduler::configure_gpu_buf(
         auto &depth_nodes = this->op_graph->get_depth(depth);
         for (auto &ogn : depth_nodes) {
             for (auto &sop : ogn->opseq.get_sched_ops()) {
-                if (sop.get_cfg()->num_warps == 0) {
+                if (sop.is_virtual()) {
                     continue;
                 }
                 for (auto &tns : sop.get_op()->in_deps) {
@@ -216,10 +219,14 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.get_op()->type == OP_SEND) {
                     //
                     Tensor *in = sop.get_op()->in_deps[0];
-                    int sid = *(int *)sop.get_op()->args[0].val;
-                    int rank = *(int *)sop.get_op()->args[1].val;
-                    int dst_rank = *(int *)sop.get_op()->args[2].val;
-                    size_t bytes = *(size_t *)sop.get_op()->args[3].val;
+                    int sid;
+                    int rank;
+                    int dst_rank;
+                    size_t bytes;
+                    sop.get_op()->args.get(&sid, 0);
+                    sop.get_op()->args.get(&rank, 1);
+                    sop.get_op()->args.get(&dst_rank, 2);
+                    sop.get_op()->args.get(&bytes, 3);
                     size_t off = in->offset() * in->type_bytes();
                     LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
                         " dst_rank: ", dst_rank, " bytes: ", bytes,
@@ -237,8 +244,9 @@ void DefaultScheduler::configure_gpu_buf(
                 } else if (sop.get_op()->type == OP_RECV) {
                     //
                     Tensor *in = sop.get_op()->in_deps[0];
-                    int eid = *(int *)sop.get_op()->args[0].val;
-                    tns_eids[in->buf].emplace_back(in, eid);
+                    int sid;
+                    sop.get_op()->args.get(&sid, 0);
+                    tns_eids[in->buf].emplace_back(in, sid);
                     this->send_recv_ops.emplace_back(sop.get_op());
                 }
             }
@@ -270,7 +278,6 @@ void DefaultScheduler::configure_gpu_buf(
             // TODO: more verficiations.
             auto &sh = tns->shape;
             auto &ld = tns->ldims;
-            stringstream ss;
             LOG(DEBUG, "Tensor buf ", tns->buf, " pads ", tns->pads,
                 " padding ", sh, " -> ", ld, " exported ", tns->exported);
         }
@@ -510,12 +517,6 @@ void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
                                     (i + 1) * wnum * 32, num, tidx + i);
             }
             DimType cnt = (sm_e - sm_b) * num;
-            // const SchedOp& so = opseq->get_sched_ops().back();
-            // assert(&so.cfg != &VIRT_SCHED_OP_CONFIG);
-            // const OpTile& tile = so.cfg.out_deps_tiles[0];
-            // LOG(INFO, "    div ", div, " rem ", rem,
-            //      ": sm ", sm_b, "-", sm_e - 1, " cnt ", cnt,
-            //      " <", tile.x, ",", tile.y, ">");
             tidx += cnt;
             sidx = sm_e - 1;
             warps_remain -= cnt * wnum;
