@@ -34,6 +34,7 @@
 #endif // defined(CUTLASS_ARCH_WMMA_ENABLED)
 
 #include "smem.h"
+#include "static_math.h"
 #include "vec.h"
 
 namespace cutlass {
@@ -489,7 +490,7 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,13 +513,13 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
                    cutlass::arch::Sm80, EpilogueOutputOp, LeadingDimC, Shape,
-                   ThreadsNum>
+                   NumThreads>
 {
-    static const int WarpsNum = ThreadsNum / 32;
+    static const int WarpsNum = NumThreads / 32;
     static const int NumM = Shape::kM > Shape::kN ? WarpsNum / 2 : 2;
     static const int NumN = WarpsNum / NumM;
     using ThreadblockShape = Shape;
@@ -585,11 +586,11 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
                    cutlass::arch::Sm75, EpilogueOutputOp, LeadingDimC, Shape,
-                   ThreadsNum>
+                   NumThreads>
 {
     using ThreadblockShape = cutlass::gemm::GemmShape<128, 256, 32>;
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 32>;
@@ -639,13 +640,13 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
                    cutlass::arch::Sm70, EpilogueOutputOp, LeadingDimC, Shape,
-                   ThreadsNum>
+                   NumThreads>
 {
-    static const int WarpsNum = ThreadsNum / 32;
+    static const int WarpsNum = NumThreads / 32;
     static const int NumM = Shape::kM > Shape::kN ? WarpsNum / 2 : 2;
     static const int NumN = WarpsNum / NumM;
     using ThreadblockShape = Shape;
@@ -707,10 +708,10 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC,
                    cutlass::layout::RowMajor, cutlass::arch::OpClassSimt,
-                   ArchTag, EpilogueOutputOp, LeadingDimC, Shape, ThreadsNum>
+                   ArchTag, EpilogueOutputOp, LeadingDimC, Shape, NumThreads>
 {
     using ThreadblockShape = cutlass::gemm::GemmShape<128, 128, 8>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 8>;
@@ -763,10 +764,10 @@ template <
     /// Shape of the unit multiplication
     typename Shape,
     ///
-    int ThreadsNum>
+    int NumThreads>
 struct DefaultGemm<ElementA, LayoutA, ElementB, LayoutB, ElementC, LayoutC,
                    cutlass::arch::OpClassWmmaTensorOp, ArchTag,
-                   EpilogueOutputOp, LeadingDimC, Shape, ThreadsNum>
+                   EpilogueOutputOp, LeadingDimC, Shape, NumThreads>
 {
     using ThreadblockShape = cutlass::gemm::GemmShape<64, 64, 64>; // ??
     using WarpShape = cutlass::gemm::GemmShape<32, 32, 64>;        // ??
@@ -812,7 +813,7 @@ template <
     // Shape of the unit multiplication
     typename Shape,
     //
-    int ThreadsNum,
+    int NumThreads,
     //
     typename ProblemSize,
     //
@@ -850,7 +851,7 @@ struct GemmKernelBase
     using Gemm = DefaultGemm<
         ElementA, LayoutA, ElementB, LayoutB, ElementC, LayoutC, OperatorClass,
         ArchTag, GemmEpilogueOutputOp, LeadingDims::D1,
-        cutlass::gemm::GemmShape<Shape::X, Shape::Y, Shape::Z>, ThreadsNum>;
+        cutlass::gemm::GemmShape<Shape::X, Shape::Y, Shape::Z>, NumThreads>;
     // Define the threadblock-scoped matrix multiply-accumulate
     using Mma = typename Gemm::Mma;
     // Define the epilogue
@@ -959,66 +960,93 @@ struct GemmKernelBase
 
 // Half-precision GEMM. Row-major.
 // TODO: this kernel returns the error code 716 'misaligned address'
-// when TA is false and the kernel is compiled with "-G" option
+// when TransposeA is false and the kernel is compiled with "-G" option
 // (which turns off all optimizations on device code).
-template <int M, int N, int K, bool TA, bool TB, int BcastType, bool IsRelu,
-          int ThreadsNum, int SmemBytes, int TDimM, int TDimN, int TDimK>
+template <typename OutDims, typename NCA, typename NCB, typename Shape,
+          typename ProblemSize, typename LeadingDims, bool IsColumnA,
+          bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>
 DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
-                 ark::half beta, int tx, int ty, int tz)
+                 ark::half beta, int uop_idx)
 {
-    // BcastType = 0: both A and B are batched with the same size.
-    // BcastType = 1: only A is batched.
-    // BcastType = 2: only B is batched.
-    static_assert(BcastType == 0 || BcastType == 1 || BcastType == 2,
-                  "invalid broadcast type.");
-    static_assert(M % TDimM == 0, "");
-    static_assert(N % TDimN == 0, "");
-    static_assert(K % TDimK == 0, "");
+    static_assert(NCA::D2 == 1 && NCA::D3 == 1,
+                  "NCA should be two dimensional.");
+    static_assert(NCB::D2 == 1 && NCB::D3 == 1,
+                  "NCB should be two dimensional.");
+    static_assert(Shape::D3 == 1, "Shape should be three dimensional.");
+    static_assert(ProblemSize::D3 == 1,
+                  "ProblemSize should be three dimensional.");
+
     using LayoutA = typename cutlass::platform::conditional<
-        TA, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
+        IsColumnA, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
     using LayoutB = typename cutlass::platform::conditional<
-        TB, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::type;
-    constexpr int LdA = TA ? M : K;
-    constexpr int LdB = TB ? K : N;
-    using GemmKernel = GemmKernelBase<
-        Vec<TDimM, TDimN, TDimK>, ThreadsNum, Vec<M, N, K>, Vec<LdA, N, N, LdB>,
-        cutlass::half_t, LayoutA, cutlass::half_t, LayoutB, cutlass::half_t,
-        cutlass::layout::RowMajor, cutlass::arch::OpClassTensorOp,
+        IsColumnB, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
+    using GemmKernel =
+        GemmKernelBase<Shape, NumThreads, ProblemSize, LeadingDims,
+                       cutlass::half_t, LayoutA, cutlass::half_t, LayoutB,
+                       cutlass::half_t, cutlass::layout::RowMajor,
+                       cutlass::arch::OpClassTensorOp,
 #if (ARK_TARGET_CUDA_ARCH == 60)
-        cutlass::arch::Sm60,
+                       cutlass::arch::Sm60,
 #elif (ARK_TARGET_CUDA_ARCH == 70)
-        cutlass::arch::Sm70,
+                       cutlass::arch::Sm70,
 #elif (ARK_TARGET_CUDA_ARCH == 75)
-        cutlass::arch::Sm75,
+                       cutlass::arch::Sm75,
 #elif (ARK_TARGET_CUDA_ARCH == 80)
-        cutlass::arch::Sm80,
+                       cutlass::arch::Sm80,
 #else
-        cutlass::arch::Sm60,
+                       cutlass::arch::Sm60,
 #endif
-        IsRelu>;
-    static_assert(GemmKernel::ThreadMask == ThreadsNum - 1,
+                       IsRelu>;
+    static_assert(GemmKernel::ThreadMask == NumThreads - 1,
                   "traits mismatch with the actual implementation.");
     static_assert(sizeof(typename GemmKernel::SharedStorage) <= SmemBytes,
                   "traits mismatch with the actual implementation.");
-    using Smem = SharedMemory<typename GemmKernel::SharedStorage, ThreadsNum>;
 
-    constexpr int SizeA = K * M;
-    constexpr int SizeB = K * N;
-    constexpr int SizeC = N * M;
+    constexpr int SizeA = math::mul<ProblemSize::D0, ProblemSize::D2>::value;
+    constexpr int SizeB = math::mul<ProblemSize::D1, ProblemSize::D2>::value;
+    constexpr int SizeC = math::mul<ProblemSize::D0, ProblemSize::D1>::value;
+
+    // N dimension of C is max(N dimension of A, N dimension of B)
+    constexpr int NC = (NCA::D0 > NCB::D0) ? NCA::D0 : NCB::D0;
+    // C dimension of C is max(C dimension of A, C dimension of B)
+    constexpr int CC = (NCA::D1 > NCB::D1) ? NCA::D1 : NCB::D1;
+
+    using OutShape = Vec<NC, CC, ProblemSize::D0, ProblemSize::D1>;
+    using UnitOutDims = Vec<1, 1, Shape::D0, Shape::D1>;
+    using UnitOp =
+        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+
+    int un = UnitOp::uop_idx_n(uop_idx);
+    int uc = UnitOp::uop_idx_c(uop_idx);
+    int uh = UnitOp::uop_idx_h(uop_idx);
+    int uw = UnitOp::uop_idx_w(uop_idx);
+
+    // Broadcasting
     cutlass::half_t *pA, *pB;
-    cutlass::half_t *pC = &C[tz * SizeC];
-    if (BcastType == 0) {
-        pA = &A[tz * SizeA];
-        pB = &B[tz * SizeB];
-    } else if (BcastType == 1) {
-        pA = &A[tz * SizeA];
-        pB = B;
-    } else if (BcastType == 2) {
+    cutlass::half_t *pC = &C[un * math::mul<CC, SizeC>::value + uc * SizeC];
+    if (NCA::D0 == 1 && NCA::D1 == 1) {
         pA = A;
-        pB = &B[tz * SizeB];
+    } else if (NCA::D0 == 1) {
+        pA = &A[uc * SizeA];
+    } else if (NCA::D1 == 1) {
+        pA = &A[un * SizeA];
+    } else {
+        pA = &A[un * math::mul<CC, SizeA>::value + uc * SizeA];
     }
-    typename GemmKernel::SharedStorage *ps = Smem();
-    GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, tx, ty);
+    if (NCB::D0 == 1 && NCB::D1 == 1) {
+        pB = B;
+    } else if (NCB::D0 == 1) {
+        pB = &B[uc * SizeB];
+    } else if (NCB::D1 == 1) {
+        pB = &B[un * SizeB];
+    } else {
+        pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
+    }
+    typename GemmKernel::SharedStorage *ps =
+        UnitOp::template shared_memory<GemmKernel::SharedStorage>();
+    GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, uw, uh);
 }
 
 } // namespace ark

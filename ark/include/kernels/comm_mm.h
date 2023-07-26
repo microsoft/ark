@@ -4,8 +4,9 @@
 #ifndef ARK_COMM_MM_H_
 #define ARK_COMM_MM_H_
 
+#include "half.h"
 #include "sync.h"
-#include "transform.h"
+#include "unit_op.h"
 
 namespace ark {
 namespace comm {
@@ -77,7 +78,8 @@ DEVICE void sendLL(union DataPacketLL *recvBuff, ark::half *data_src,
                    volatile int *send_ready_flag, int tile_idx, int t0, int t1,
                    int t2)
 {
-    using BaseOp = BaseOp<LDM, TN, 0, TDM, TDN, 0>;
+    using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
+                          Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
 
     // elementwise copy, a thread copies 4 float16 data (64 bits)
     // in a loop, so the ElePerLoop is 4
@@ -89,8 +91,8 @@ DEVICE void sendLL(union DataPacketLL *recvBuff, ark::half *data_src,
     constexpr int IterMNum = math::div_up<TDM, MNumPerLoop>::value;
     constexpr int IterNNum = TDN / NNumPerLoop;
 
-    int midx = BaseOp::midx(t0, ElePerLoop * BaseOp::thread_id());
-    int nidx = BaseOp::nidx(t1, ElePerLoop * BaseOp::thread_id());
+    int midx = TDM * t0 + math::mod<TDM>(ElePerLoop * UnitOp::thread_id());
+    int nidx = TDN * t1 + math::div<TDM>(ElePerLoop * UnitOp::thread_id());
     pre_send_mm_op<TN>(send_ready_flag, tile_idx);
 #pragma unroll
     for (int i = 0; i < IterNNum; ++i) {
@@ -112,7 +114,8 @@ DEVICE void recvLL(union DataPacketLL *recvBuff, ark::half *data_dst,
                    volatile int *send_ready_flag, int tile_idx, int t0, int t1,
                    int t2)
 {
-    using BaseOp = BaseOp<LDM, TN, 0, TDM, TDN, 0>;
+    using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
+                          Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
 
     // elementwise copy, a thread copies 4 float16 data (64 bits)
     // in a loop, so the ElePerLoop is 4
@@ -124,8 +127,8 @@ DEVICE void recvLL(union DataPacketLL *recvBuff, ark::half *data_dst,
     constexpr int IterMNum = math::div_up<TDM, MNumPerLoop>::value;
     constexpr int IterNNum = TDN / NNumPerLoop;
 
-    int midx = BaseOp::midx(t0, ElePerLoop * BaseOp::thread_id());
-    int nidx = BaseOp::nidx(t1, ElePerLoop * BaseOp::thread_id());
+    int midx = TDM * t0 + math::mod<TDM>(ElePerLoop * UnitOp::thread_id());
+    int nidx = TDN * t1 + math::div<TDM>(ElePerLoop * UnitOp::thread_id());
 #pragma unroll
     for (int i = 0; i < IterNNum; ++i) {
 #pragma unroll

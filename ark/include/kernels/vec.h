@@ -48,6 +48,15 @@ struct Vec
     static const DimType HW = math::mul<H, W>::value;
 };
 
+template <typename Vec1, typename Vec2> struct VecIsEq
+{
+    enum
+    {
+        value = (Vec1::D0 == Vec2::D0 && Vec1::D1 == Vec2::D1 &&
+                 Vec1::D2 == Vec2::D2 && Vec1::D3 == Vec2::D3)
+    };
+};
+
 } // namespace ark
 
 #endif // ARK_KERNELS_VEC_H_

@@ -9,6 +9,12 @@ using namespace std;
 
 namespace ark {
 
+ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                     const string &name)
+    : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, nullptr, -1}
+{
+}
+
 // Reshape `input` to `shape`. This interface does not support -1 as a dimension
 // of `shape`, because Dims does not allow -1 as a valid dimension.
 static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
@@ -75,7 +81,8 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
                        Tensor *output, const string &name)
 {
     output = _reshape(this, input, shape, allowzero, output, name);
-    this->impl->add_op(OP_RESHAPE, OP_PREC_NONE, {input}, {output}, {}, name);
+    ReshapeOp op{OP_PREC_NONE, input, output, name};
+    this->impl->add_op(op);
     return output;
 }
 
@@ -138,7 +145,8 @@ Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
     }
     output =
         _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
-    this->impl->add_op(OP_RESHAPE, OP_PREC_NONE, {input}, {output}, {}, name);
+    ReshapeOp op{OP_PREC_NONE, input, output, name};
+    this->impl->add_op(op);
     return output;
 }
 
