@@ -14,26 +14,22 @@ seq_len = 64
 
 import ark
 
-for name in dir(ark.Model):
-    if not name.startswith("__") and callable(getattr(ark.Model, name)):
+for name in dir(ark):
+    if not name.startswith("__") and callable(getattr(ark, name)):
         print(name)
 
 
 class TestModelARK(ark.Module):
     def __init__(self, model):
         super(TestModelARK, self).__init__(model)
-        self.weight_1 = model.tensor(
-            ark.Dims(d_model, d_ff), ark.TensorType.FP16
-        )
-        self.weight_2 = model.tensor(
-            ark.Dims(d_ff, d_model), ark.TensorType.FP16
-        )
+        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
+        self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
 
     def forward(self, inputs):
-        middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.model.matmul(middle_result, self.weight_2)
-        output = self.model.add(middle_result1, inputs)
-        output_layernorm = self.model.layernorm(output)
+        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
+        middle_result1 = ark.matmul(middle_result, self.weight_2)
+        output = ark.add(middle_result1, inputs)
+        output_layernorm = ark.layernorm(output)
         return output_layernorm
 
 
@@ -64,13 +60,13 @@ def test_TestModel(state_dict_file):
     # Create a Model instance
     model = ark.Model()
 
-    input_tensor = model.tensor(
+    input_tensor = ark.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
     print("input_tensor type: ", type(input_tensor))
     print("input_tensor: ", input_tensor.shape())
     ark_model = TestModelARK(model)
-    output_tensor = ark_model.forward(input_tensor)
+    output_tensor = ark_model(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_TestModel")
 

@@ -15,6 +15,29 @@ from .trainer import optimizer, trainer
 from .model import Model
 from .tensor import Tensor
 
+
+# Decorator to convert the model function to a global function
+def _convert_tensor_type_decorator(func):
+    def wrapper(*args, **kwargs):
+        print("Before function")
+        # convert all Tensor in input args and kwargs to _Tensor
+        args = [arg._tensor if isinstance(arg, Tensor) else arg for arg in args]
+        kwargs = {k: v._tensor if isinstance(v, Tensor) else v for k, v in kwargs.items()}
+
+        result = func(Model.global_model,*args, **kwargs)
+        
+        if isinstance(result, _Tensor):
+            result = Tensor(result)
+        return result
+    return wrapper
+
+# Convert all functions in Model to global functions
+for name in dir(_Model):
+    if not name.startswith("__") and callable(getattr(_Model, name)):
+        func = getattr(_Model, name)
+        print("Converting function: ", name, func)
+        globals()[name] = _convert_tensor_type_decorator(func)
+
 __all__ = [
     "init",
     "srand",

@@ -9,8 +9,6 @@ import numpy as np
 class Tensor():
     def __init__(self, _tensor : _Tensor):
         self._tensor = _tensor
-    def __init__(self, dims, tensor_type):
-        pass
 
     def shape(self):
         pass
