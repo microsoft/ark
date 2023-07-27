@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+title: "ARK: A GPU-driven system framework for scalable AI applications"
+version: 0.1.0
+message: >-
+  If you use this project in your research, please cite it as below.
+
+repository-code: 'https://github.com/microsoft/ark'
+abstract: >-
+  ARK is a deep learning framework especially designed for highly optimized
+  performance over distributed GPUs. Specifically, ARK adopts a GPU-driven
+  execution model, where the GPU autonomously schedule and execute both
+  computation and communication without any CPU intervention.
+  ARK provides a set of APIs for users to express their distributed deep
+  learning applications. ARK then automatically schedules a GPU-driven
+  execution plan for the application, which generates a GPU kernel code
+  called loop kernel. The loop kernel is a GPU kernel that contains a loop
+  that iteratively executes the entire application, including both
+  computation and communication. ARK then executes the loop kernel on the
+  distributed GPUs.
+license: MIT
+license-url: https://github.com/microsoft/ark/blob/main/LICENSE
+
+preferred-citation:
+  type: conference-paper
+  title: "ARK: GPU-driven Code Execution for Distributed Deep Learning"
+  authors:
+  - given-names: Changho
+    family-names: Hwang
+    affiliation: Microsoft Research, KAIST
+  - given-names: KyoungSoo
+    family-names: Park
+    affiliation: KAIST
+  - given-names: Ran
+    family-names: Shu
+    affiliation: Microsoft Research
+  - given-names: Xinyuan
+    family-names: Qu
+    affiliation: Microsoft Research
+  - given-names: Peng
+    family-names: Cheng
+    affiliation: Microsoft Research
+  - given-names: Yongqiang
+    family-names: Xiong
+    affiliation: Microsoft Research
+  booktitle: 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)
+  publisher: USENIX Association
+  address: Boston, MA
+  month: April
+  year: 2023
+  url: https://www.usenix.org/conference/nsdi23/presentation/hwang
