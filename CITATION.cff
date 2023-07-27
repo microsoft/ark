@@ -22,29 +22,29 @@ license-url: https://github.com/microsoft/ark/blob/main/LICENSE
 
 preferred-citation:
   type: conference-paper
-    title: "ARK: GPU-driven Code Execution for Distributed Deep Learning"
-    authors:
-      - given-names: Changho
-        family-names: Hwang
-        affiliation: Microsoft Research, KAIST
-      - given-names: KyoungSoo
-        family-names: Park
-        affiliation: KAIST
-      - given-names: Ran
-        family-names: Shu
-        affiliation: Microsoft Research
-      - given-names: Xinyuan
-        family-names: Qu
-        affiliation: Microsoft Research
-      - given-names: Peng
-        family-names: Cheng
-        affiliation: Microsoft Research
-      - given-names: Yongqiang
-        family-names: Xiong
-        affiliation: Microsoft Research
-    booktitle: 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)
-    publisher: USENIX Association
-    address: Boston, MA
-    month: April
-    year: 2023
-    url: https://www.usenix.org/conference/nsdi23/presentation/hwang
+  title: "ARK: GPU-driven Code Execution for Distributed Deep Learning"
+  authors:
+  - given-names: Changho
+    family-names: Hwang
+    affiliation: Microsoft Research, KAIST
+  - given-names: KyoungSoo
+    family-names: Park
+    affiliation: KAIST
+  - given-names: Ran
+    family-names: Shu
+    affiliation: Microsoft Research
+  - given-names: Xinyuan
+    family-names: Qu
+    affiliation: Microsoft Research
+  - given-names: Peng
+    family-names: Cheng
+    affiliation: Microsoft Research
+  - given-names: Yongqiang
+    family-names: Xiong
+    affiliation: Microsoft Research
+  booktitle: 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)
+  publisher: USENIX Association
+  address: Boston, MA
+  month: April
+  year: 2023
+  url: https://www.usenix.org/conference/nsdi23/presentation/hwang
