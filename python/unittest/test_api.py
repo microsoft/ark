@@ -14,6 +14,10 @@ seq_len = 64
 
 import ark
 
+for name in dir(ark.Model):
+    if not name.startswith("__") and callable(getattr(ark.Model, name)):
+        print(name)
+
 
 class TestModelARK(ark.Module):
     def __init__(self, model):
