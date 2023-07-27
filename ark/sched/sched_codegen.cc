@@ -74,12 +74,12 @@ std::ostream &SimpleCodeGenerator::codegen_opseq(std::ostream &os,
             int gid;
             sop.get_op()->args.get(&gid, 1);
             // using the recvbuf to find the tensor offset
-            size_t off = this->get_tensor_offset(sop.get_op()->in_deps[1]);
+            size_t off = this->get_tensor_offset(sop.get_op()->inputs[1]);
             os << "(ark::comm::DataPacketLL *)&" << ARK_BUF_NAME << gid << "["
                << off << "]" << COM;
-            this->codegen_tensor(os, sop.get_op()->in_deps[0]) << COM;
+            this->codegen_tensor(os, sop.get_op()->inputs[0]) << COM;
             os << "(int *)&" << ARK_BUF_NAME << "["
-               << this->get_tensor_offset(sop.get_op()->in_deps[2]) << "]"
+               << this->get_tensor_offset(sop.get_op()->inputs[2]) << "]"
                << COM;
             os << "tile_idx" << COM;
         } else if (sop.get_op()->type == OP_RECV_MM) {
@@ -88,19 +88,19 @@ std::ostream &SimpleCodeGenerator::codegen_opseq(std::ostream &os,
             int gid;
             sop.get_op()->args.get(&gid, 1);
 
-            Tensor *recvbuf = sop.get_op()->in_deps[1];
+            Tensor *recvbuf = sop.get_op()->inputs[1];
             os << "(ark::comm::DataPacketLL *)&" << ARK_BUF_NAME << "["
                << this->get_tensor_offset(recvbuf) << "]" << COM;
-            this->codegen_tensor(os, sop.get_op()->in_deps[0]) << COM;
+            this->codegen_tensor(os, sop.get_op()->inputs[0]) << COM;
             os << "(int *)&" << ARK_BUF_NAME << gid << "["
-               << this->get_tensor_offset(sop.get_op()->in_deps[2]) << "]"
+               << this->get_tensor_offset(sop.get_op()->inputs[2]) << "]"
                << COM;
             os << "tile_idx" << COM;
         } else {
-            for (Tensor *tns : sop.get_op()->out_deps) {
+            for (Tensor *tns : sop.get_op()->outputs) {
                 this->codegen_tensor(os, tns) << COM;
             }
-            for (Tensor *tns : sop.get_op()->in_deps) {
+            for (Tensor *tns : sop.get_op()->inputs) {
                 this->codegen_tensor(os, tns) << COM;
             }
         }

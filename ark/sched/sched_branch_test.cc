@@ -253,7 +253,7 @@ ark::unittest::State test_sched_branch_clear()
         std::vector<ark::Branch> branches = sb.get_branches();
 
         UNITTEST_EQ(branches.size(), 1UL);
-        
+
         branches.clear();
 
         UNITTEST_EQ(branches.size(), 0UL);

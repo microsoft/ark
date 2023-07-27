@@ -30,12 +30,12 @@ MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
 
 std::string MatmulOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *mat_a = this->in_deps[0];
-    Tensor *mat_b = this->in_deps[1];
-    Tensor *mat_y = this->out_deps[0];
+    Tensor *mat_a = this->inputs[0];
+    Tensor *mat_b = this->inputs[1];
+    Tensor *mat_y = this->outputs[0];
 
     int ndims_y = mat_y->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(mat_y->ldims[ndims_y - 1] % tile_out.y == 0);
     if (ndims_y > 1) {
         CHECK(mat_y->ldims[ndims_y - 2] % tile_out.x == 0);
@@ -73,8 +73,8 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
 
     // TODO: verify `leading_dims`
 
-    const OpTile &tile_in0 = cfg.in_deps_tiles[0];
-    const OpTile &tile_in1 = cfg.in_deps_tiles[1];
+    const OpTile &tile_in0 = cfg.input_tiles[0];
+    const OpTile &tile_in1 = cfg.input_tiles[1];
     CHECK(tile_in0.y == tile_in1.x);
     Dims shape{tile_out.x, tile_out.y, tile_in0.y};
 

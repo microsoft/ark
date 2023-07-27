@@ -13,8 +13,8 @@ namespace ark {
 const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
 {
     assert(op != nullptr);
-    assert(op->out_deps.size() > 0);
-    Tensor *output = op->out_deps[0];
+    assert(op->outputs.size() > 0);
+    Tensor *output = op->outputs[0];
     if (output == nullptr || op->cfg_map == nullptr) {
         return nullptr;
     }
@@ -41,8 +41,8 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     unsigned int min_wps =
         gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     for (auto &cfg : search->second) {
-        assert(cfg.out_deps_tiles.size() > 0);
-        const OpTile &ot = cfg.out_deps_tiles[0];
+        assert(cfg.output_tiles.size() > 0);
+        const OpTile &ot = cfg.output_tiles[0];
         DimType num_tiles;
         DimType dim_0;
         DimType dim_1;
@@ -78,11 +78,11 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     if (gran_lev == (int)search->second.size()) {
         stringstream configs_str;
         if (search->second.size() > 0) {
-            const OpTile &ot = search->second[0].out_deps_tiles[0];
+            const OpTile &ot = search->second[0].output_tiles[0];
             configs_str << "{ " << ot.x << ", " << ot.y << " }";
         }
         for (int i = 1; i < (int)search->second.size(); ++i) {
-            const OpTile &ot = search->second[i].out_deps_tiles[0];
+            const OpTile &ot = search->second[i].output_tiles[0];
             configs_str << ", { " << ot.x << ", " << ot.y << " }";
         }
         configs_str << ".";
@@ -91,17 +91,17 @@ const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
     }
     const OpConfig *cfg = &search->second[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);
-    // TODO: remove this hack way to set the out_deps_tiles[0].y. Probable
+    // TODO: remove this hack way to set the output_tiles[0].y. Probable
     // solution: Split the layernorm and softmax into two ops, one for
     // calulating the reduction of the mean and variance, the other for the
     // normalization the input.
     if (op->type == OP_LAYERNORM || op->type == OP_SOFTMAX) {
-        // The out_deps_tiles[0].y of the original config is 1, we need to make
-        // out_deps_tiles[0].y equal to the output last dimension size, which is
+        // The output_tiles[0].y of the original config is 1, we need to make
+        // output_tiles[0].y equal to the output last dimension size, which is
         // also the dimension that the layer norm or softmax is performed.
-        cfg_new->out_deps_tiles[0].y = output->shape[ndims - 1];
-        LOG(DEBUG, "op cfg: ", cfg_new->out_deps_tiles[0].x, COM,
-            cfg_new->out_deps_tiles[0].y);
+        cfg_new->output_tiles[0].y = output->shape[ndims - 1];
+        LOG(DEBUG, "op cfg: ", cfg_new->output_tiles[0].x, COM,
+            cfg_new->output_tiles[0].y);
     }
     return cfg_new;
 }
@@ -117,20 +117,20 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
         return;
     }
     LOG(DEBUG, "op: ", op_->name, ", cfg: num_warps ", cfg_->num_warps,
-        " smem_bytes ", cfg_->smem_bytes, " #in_deps ",
-        cfg_->in_deps_tiles.size(), " #out_deps ", cfg_->out_deps_tiles.size(),
-        " sync_pre ", cfg_->sync_pre, " sync_post ", cfg_->sync_post);
+        " smem_bytes ", cfg_->smem_bytes, " #inputs ", cfg_->input_tiles.size(),
+        " #outputs ", cfg_->output_tiles.size(), " sync_pre ", cfg_->sync_pre,
+        " sync_post ", cfg_->sync_post);
     // pad the tensor of the SchedOp
-    for (unsigned int i = 0; i < this->op->in_deps.size(); ++i) {
-        if (i >= this->cfg->in_deps_tiles.size()) {
+    for (unsigned int i = 0; i < this->op->inputs.size(); ++i) {
+        if (i >= this->cfg->input_tiles.size()) {
             LOG(DEBUG, "input tensor can not be all padded");
             break;
         }
         // Update pads based on the tile shape. The tiling is applied to the
         // last two dimensions of the tensor. If the tensor is 1D, the first
         // dimension of the tile shape should be 1.
-        auto &tile = this->cfg->in_deps_tiles[i];
-        int ndims = this->op->in_deps[i]->ndims();
+        auto &tile = this->cfg->input_tiles[i];
+        int ndims = this->op->inputs[i]->ndims();
         vector<DimType> pads;
         if (ndims == 1) {
             if (tile.x != 1) {
@@ -145,11 +145,11 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
             pads.emplace_back(tile.x);
             pads.emplace_back(tile.y);
         }
-        this->op->in_deps[i]->update_pads(pads);
+        this->op->inputs[i]->update_pads(pads);
     }
-    for (unsigned int i = 0; i < this->op->out_deps.size(); ++i) {
-        auto &tile = this->cfg->out_deps_tiles[i];
-        int ndims = this->op->out_deps[i]->ndims();
+    for (unsigned int i = 0; i < this->op->outputs.size(); ++i) {
+        auto &tile = this->cfg->output_tiles[i];
+        int ndims = this->op->outputs[i]->ndims();
         vector<DimType> pads;
         if (ndims == 1) {
             if (tile.x != 1) {
@@ -164,12 +164,12 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
             pads.emplace_back(tile.x);
             pads.emplace_back(tile.y);
         }
-        this->op->out_deps[i]->update_pads(pads);
+        this->op->outputs[i]->update_pads(pads);
     }
     // claculate the tile size for the SchedOp
-    if ((this->op->out_deps.size() == 1) && (this->cfg != nullptr)) {
-        const OpTile &tile = this->cfg->out_deps_tiles[0];
-        const Dims &s = this->op->out_deps[0]->shape;
+    if ((this->op->outputs.size() == 1) && (this->cfg != nullptr)) {
+        const OpTile &tile = this->cfg->output_tiles[0];
+        const Dims &s = this->op->outputs[0]->shape;
         int ndims = s.ndims();
         vector<DimType> vec;
         if (ndims == 1) {

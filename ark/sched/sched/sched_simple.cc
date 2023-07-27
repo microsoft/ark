@@ -38,7 +38,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
     // get the input tensors of the model, and add them to the
     // finished_tensors vector
     for (auto &tns : model.impl->get_tensors()) {
-        if (model.impl->get_gen_op(tns) == nullptr) {
+        if (model.impl->get_producer(tns) == nullptr) {
             finished_tensors.push_back(tns);
         }
     }
@@ -51,7 +51,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         for (size_t i = 0; i < all_ops.size(); i++) {
             bool input_ready = true;
             // check if all the input tensors of the op are ready
-            for (Tensor *&tns : all_ops[i]->in_deps) {
+            for (Tensor *&tns : all_ops[i]->inputs) {
                 if (std::find(finished_tensors.begin(), finished_tensors.end(),
                               tns) == finished_tensors.end()) {
                     input_ready = false;
@@ -63,7 +63,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
                 all_ops.erase(all_ops.begin() + i);
                 // add the output tensors of the op to the
                 // finished_tensors
-                for (Tensor *tns : op->out_deps) {
+                for (Tensor *tns : op->outputs) {
                     finished_tensors.push_back(tns);
                 }
                 break;
@@ -256,7 +256,7 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             sop.get_op()->args.get(&dst_gid, 1);
             // import the recvbuf, the recvbuf should be allocated on the
             // receiver GPU
-            Tensor *recvbuf = sop.get_op()->in_deps[1];
+            Tensor *recvbuf = sop.get_op()->inputs[1];
             this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
                                          recvbuf->buf, sid, 0);
 
@@ -264,7 +264,7 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             // exported to the recv GPU, since the sid of the send_ready_flag
             // should not be the same as the recvBuf, so I use the sid+128 as
             // the sid of the send_ready_flag
-            Tensor *send_ready_flag = sop.get_op()->in_deps[2];
+            Tensor *send_ready_flag = sop.get_op()->inputs[2];
             export_tns_sids[send_ready_flag->buf].emplace_back(
                 send_ready_flag, sid + send_ready_flag_sid_offset);
         } else if (sop.get_op()->type == OP_RECV_MM) {
@@ -275,19 +275,19 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             // configure the recvbuf, the recvbuf needed to be export the to the
             // sender GPU, the sid is the same as the sid of the send_mm op and
             // the recv_mm op
-            Tensor *recvbuf = sop.get_op()->in_deps[1];
+            Tensor *recvbuf = sop.get_op()->inputs[1];
             export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
 
             // import the send_ready_flag, the send_ready_flag tensor should be
             // allocated on the sender GPU
-            Tensor *send_ready_flag = sop.get_op()->in_deps[2];
+            Tensor *send_ready_flag = sop.get_op()->inputs[2];
             this->buf_infos.emplace_back(
                 src_gid, send_ready_flag->shape_bytes(), send_ready_flag->buf,
                 sid + send_ready_flag_sid_offset, 0);
         }
 
         if (sop.get_op()->type == OP_SEND) {
-            Tensor *in = sop.get_op()->in_deps[0];
+            Tensor *in = sop.get_op()->inputs[0];
             int sid;
             int rank;
             int dst_rank;
@@ -307,19 +307,19 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             export_tns_sids[in->buf].emplace_back(in, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         } else if (sop.get_op()->type == OP_RECV) {
-            Tensor *in = sop.get_op()->in_deps[0];
+            Tensor *in = sop.get_op()->inputs[0];
             int sid;
             sop.get_op()->args.get(&sid, 0);
             export_tns_sids[in->buf].emplace_back(in, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         }
-        for (auto &tns : sop.get_op()->in_deps) {
+        for (auto &tns : sop.get_op()->inputs) {
             // if the tensor is not imported, it should be allocated on this GPU
             if (tns->imported == false)
                 bufs[tns->buf].emplace_back(tns);
         }
         // TODO: print warning if the tensor is not used by any real computation
-        for (auto &tns : sop.get_op()->out_deps) {
+        for (auto &tns : sop.get_op()->outputs) {
             if (tns->imported == false)
                 bufs[tns->buf].emplace_back(tns);
         }
@@ -350,14 +350,14 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
     // the tensor that needed to be allocated
     vector<TensorBuf *> to_alloc;
     for (auto &sop : this->sched_ops) {
-        for (auto &tns : sop.get_op()->in_deps) {
+        for (auto &tns : sop.get_op()->inputs) {
             size_t buf_num = bufs.erase(tns->buf);
             if (buf_num > 0) {
                 assert(buf_num == 1);
                 to_alloc.emplace_back(tns->buf);
             }
         }
-        for (auto &tns : sop.get_op()->out_deps) {
+        for (auto &tns : sop.get_op()->outputs) {
             size_t buf_num = bufs.erase(tns->buf);
             if (buf_num > 0) {
                 assert(buf_num == 1);

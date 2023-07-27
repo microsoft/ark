@@ -22,9 +22,9 @@ class OpGraphNode
     {
     }
     // Inward dependencies.
-    std::set<OpGraphNode *> in_deps;
+    std::set<OpGraphNode *> inputs;
     // Outward dependencies.
-    std::set<OpGraphNode *> out_deps;
+    std::set<OpGraphNode *> outputs;
     // Scheduled depth.
     int depth = -1;
     //
@@ -83,14 +83,14 @@ class OpGraph
 //     j = nlohmann::json{
 //         {"opseq", ogn.opseq},
 //         {"depth", ogn.depth},
-//         {"in_deps", std::vector<int>{}},
-//         {"out_deps", std::vector<int>{}},
+//         {"inputs", std::vector<int>{}},
+//         {"outputs", std::vector<int>{}},
 //     };
-//     for (OpGraphNode *in_dep : ogn.in_deps) {
-//         j.at("in_deps").emplace_back(in_dep->opseq.get_id());
+//     for (OpGraphNode *in_dep : ogn.inputs) {
+//         j.at("inputs").emplace_back(in_dep->opseq.get_id());
 //     }
-//     for (OpGraphNode *out_dep : ogn.out_deps) {
-//         j.at("out_deps").emplace_back(out_dep->opseq.get_id());
+//     for (OpGraphNode *out_dep : ogn.outputs) {
+//         j.at("outputs").emplace_back(out_dep->opseq.get_id());
 //     }
 // }
 // void from_json(const nlohmann::json &j, OpGraphNode &ogn)

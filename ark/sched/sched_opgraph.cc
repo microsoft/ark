@@ -37,12 +37,12 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
     {
         set<Tensor *> final_outputs;
         for (auto &tns : model.impl->get_tensors()) {
-            if (model.impl->is_no_ref(tns)) {
+            if (model.impl->is_no_user(tns)) {
                 final_outputs.emplace(tns);
             }
         }
         for (Tensor *out : final_outputs) {
-            const Op *op = model.impl->get_gen_op(out);
+            const Op *op = model.impl->get_producer(out);
             if (op != nullptr) {
                 const OpConfig *cfg = sched_op_config(op, gpu_info);
                 OpGraphNode *ogn =
@@ -74,20 +74,20 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                 // this Op requires a global sync after execution or `opseq`
                 // requires a global sync before execution.
                 set<const Op *> dep_ops;
-                for (Tensor *tns : opseq.get_last_op()->in_deps) {
-                    const Op *op = model.impl->get_gen_op(tns);
+                for (Tensor *tns : opseq.get_last_op()->inputs) {
+                    const Op *op = model.impl->get_producer(tns);
                     if (op == nullptr) {
                         // No Op generates this tensor.
                         continue;
                     }
                     // Ignore if any output of `op` is referred by an unseen Op.
                     bool is_only = true;
-                    for (auto &out_tns : op->out_deps) {
-                        if (model.impl->is_no_ref(out_tns)) {
+                    for (auto &out_tns : op->outputs) {
+                        if (model.impl->is_no_user(out_tns)) {
                             // `out_tns` is used nowhere. (pass)
                             continue;
                         }
-                        for (auto &ref_op : model.impl->get_ref_ops(out_tns)) {
+                        for (auto &ref_op : model.impl->get_users(out_tns)) {
                             auto search = seen.find(ref_op);
                             if (search == seen.end()) {
                                 // `out_tns` is used by an unseen Op. (fail)
@@ -123,19 +123,19 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                     if (can_merge) {
                         // Get all Ops which depends on results of `op`.
                         set<const Op *> out_dep_ops;
-                        for (auto &out_tns : op->out_deps) {
-                            if (model.impl->is_no_ref(out_tns)) {
+                        for (auto &out_tns : op->outputs) {
+                            if (model.impl->is_no_user(out_tns)) {
                                 continue;
                             }
                             for (auto &ref_op :
-                                 model.impl->get_ref_ops(out_tns)) {
+                                 model.impl->get_users(out_tns)) {
                                 out_dep_ops.emplace(ref_op);
                             }
                         }
                         // If both `op` and `opseq` are not virtual,
                         // the batch size should be the same.
                         if ((cfg == nullptr) || (opseq.is_virtual()) ||
-                            (opseq.get_tdim_z() == op->out_deps[0]->shape[0])) {
+                            (opseq.get_tdim_z() == op->outputs[0]->shape[0])) {
                             // Check if all Ops in `out_dep_ops` are in `opseq`.
                             // If so, we can merge `op` into `opseq`.
                             for (auto &sop : opseq.get_sched_ops()) {
@@ -174,16 +174,16 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                         OpGraphNode *ogn =
                             this->get_or_create_node(opseq_id++, op, cfg);
                         // stringstream ssod;
-                        // for (auto &od : (*it)->out_deps) {
+                        // for (auto &od : (*it)->outputs) {
                         //     ssod << od << ",";
                         // }
                         // LOG(INFO, "OGN: ", ogn, " --> ", ssod.str());
                         depth_prev->emplace_back(ogn);
                         //
-                        ogn->out_deps.insert((*it)->out_deps.begin(),
-                                             (*it)->out_deps.end());
-                        for (auto &od : (*it)->out_deps) {
-                            od->in_deps.insert(ogn);
+                        ogn->outputs.insert((*it)->outputs.begin(),
+                                            (*it)->outputs.end());
+                        for (auto &od : (*it)->outputs) {
+                            od->inputs.insert(ogn);
                         }
                     }
                     break;
@@ -197,18 +197,18 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                             this->get_or_create_node(opseq_id++, op, cfg);
                         depth->emplace_back(ogn);
                         //
-                        (*it)->in_deps.emplace(ogn);
+                        (*it)->inputs.emplace(ogn);
 
-                        for (Tensor *tns : op->out_deps) {
+                        for (Tensor *tns : op->outputs) {
                             for (const Op *out_dep :
-                                 model.impl->get_ref_ops(tns)) {
+                                 model.impl->get_users(tns)) {
                                 OpGraphNode *out_dep_node =
                                     this->get_node(out_dep);
                                 assert(out_dep_node != nullptr);
                                 // LOG(INFO, "OGN: ", ogn, " --> ",
                                 // out_dep_node);
-                                out_dep_node->in_deps.insert(ogn);
-                                ogn->out_deps.insert(out_dep_node);
+                                out_dep_node->inputs.insert(ogn);
+                                ogn->outputs.insert(out_dep_node);
                             }
                         }
                     } else {
@@ -216,8 +216,8 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                         assert(ogn != nullptr);
                         // LOG(INFO, "OGN: ", ogn, " --> ", *it);
                         //
-                        ogn->out_deps.emplace(*it);
-                        (*it)->in_deps.emplace(ogn);
+                        ogn->outputs.emplace(*it);
+                        (*it)->inputs.emplace(ogn);
                     }
                 }
                 break;
@@ -236,17 +236,17 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (auto it = depth.begin(); it != depth.end();) {
             if ((*it)->opseq.is_virtual()) {
                 // LOG(INFO, "Remove OGN: ", *it);
-                for (OpGraphNode *out_dep : (*it)->out_deps) {
-                    for (OpGraphNode *in_dep : (*it)->in_deps) {
-                        in_dep->out_deps.emplace(out_dep);
-                        out_dep->in_deps.emplace(in_dep);
+                for (OpGraphNode *out_dep : (*it)->outputs) {
+                    for (OpGraphNode *in_dep : (*it)->inputs) {
+                        in_dep->outputs.emplace(out_dep);
+                        out_dep->inputs.emplace(in_dep);
                     }
                 }
-                for (OpGraphNode *out_dep : (*it)->out_deps) {
-                    out_dep->in_deps.erase(*it);
+                for (OpGraphNode *out_dep : (*it)->outputs) {
+                    out_dep->inputs.erase(*it);
                 }
-                for (OpGraphNode *in_dep : (*it)->in_deps) {
-                    in_dep->out_deps.erase(*it);
+                for (OpGraphNode *in_dep : (*it)->inputs) {
+                    in_dep->outputs.erase(*it);
                 }
                 it = depth.erase(it);
             } else {
@@ -261,11 +261,11 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (OpGraphNode *ogn : depth) {
             ogn->depth = depth_num;
             // stringstream info;
-            // for (OpGraphNode *x : ogn->in_deps) {
+            // for (OpGraphNode *x : ogn->inputs) {
             //     info << x << ",";
             // }
             // info << " --> " << ogn << " --> ";
-            // for (OpGraphNode *x : ogn->out_deps) {
+            // for (OpGraphNode *x : ogn->outputs) {
             //     info << x << ",  ";
             // }
             // for (const SchedOp& sop : ogn->opseq.get_sched_ops()) {
@@ -284,7 +284,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
             for (auto oi = logn.begin(); oi != logn.end();) {
                 OpGraphNode *ogn = *oi;
                 bool can_migrate = true;
-                for (OpGraphNode *in_dep : ogn->in_deps) {
+                for (OpGraphNode *in_dep : ogn->inputs) {
                     if (in_dep->depth >= depth_to_migrate) {
                         can_migrate = false;
                         break;
@@ -293,7 +293,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                 if (can_migrate) {
                     // LOG(INFO, "migrate ", ogn, " to depth ",
                     // depth_to_migrate); for (OpGraphNode *in_dep :
-                    // ogn->in_deps) {
+                    // ogn->inputs) {
                     //     LOG(INFO, "  in_dep: ", in_dep, ", depth ",
                     //     in_dep->depth);
                     // }
@@ -322,11 +322,11 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (OpGraphNode *ogn : depth) {
             ogn->depth = depth_num;
             // stringstream info;
-            // for (OpGraphNode *x : ogn->in_deps) {
+            // for (OpGraphNode *x : ogn->inputs) {
             //     info << x << ",";
             // }
             // info << " --> " << ogn << " --> ";
-            // for (OpGraphNode *x : ogn->out_deps) {
+            // for (OpGraphNode *x : ogn->outputs) {
             //     info << x << ",  ";
             // }
             // for (const SchedOp& sop : ogn->opseq.get_sched_ops()) {
@@ -349,7 +349,7 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (OpGraphNode *ogn : *it) {
             //
             bool resolved = true;
-            for (OpGraphNode *in_dep : ogn->in_deps) {
+            for (OpGraphNode *in_dep : ogn->inputs) {
                 if (seen2.find(in_dep) == seen2.end()) {
                     resolved = false;
                     break;
@@ -422,11 +422,11 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
         for (OpGraphNode *ogn : depth) {
             ogn->depth = depth_num;
             // stringstream info;
-            // for (OpGraphNode *x : ogn->in_deps) {
+            // for (OpGraphNode *x : ogn->inputs) {
             //     info << x << ",";
             // }
             // info << " --> " << ogn << " --> ";
-            // for (OpGraphNode *x : ogn->out_deps) {
+            // for (OpGraphNode *x : ogn->outputs) {
             //     info << x << ",  ";
             // }
             // for (const SchedOp &sop : ogn->opseq.get_sched_ops()) {

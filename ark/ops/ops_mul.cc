@@ -21,12 +21,12 @@ MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
 
 std::string MulOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *input = this->in_deps[0];
-    Tensor *other = this->in_deps[1];
-    Tensor *output = this->out_deps[0];
+    Tensor *input = this->inputs[0];
+    Tensor *other = this->inputs[1];
+    Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);

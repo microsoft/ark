@@ -151,8 +151,8 @@ struct OpConfig
 {
     int num_warps = 0;
     int smem_bytes = 0;
-    std::vector<OpTile> in_deps_tiles;
-    std::vector<OpTile> out_deps_tiles;
+    std::vector<OpTile> input_tiles;
+    std::vector<OpTile> output_tiles;
     bool sync_pre = false;
     bool sync_post = false;
 };
@@ -177,8 +177,8 @@ class Op
   public:
     Op() = default;
     Op(const OpType &type, const OpPrecType &prec_type,
-       const std::vector<Tensor *> &in_deps,
-       const std::vector<Tensor *> &out_deps, const OpArgs &args,
+       const std::vector<Tensor *> &inputs,
+       const std::vector<Tensor *> &outputs, const OpArgs &args,
        const std::string &name, const OpConfigMap *cfg_map = nullptr,
        int gran_lev = -1, bool force_inline = false);
     Op(const Op &) = default;
@@ -192,9 +192,9 @@ class Op
     // Precision type of the operator.
     OpPrecType prec_type;
     // The input tensors of the operator.
-    std::vector<Tensor *> in_deps;
+    std::vector<Tensor *> inputs;
     // The output tensors of the operator.
-    std::vector<Tensor *> out_deps;
+    std::vector<Tensor *> outputs;
     // Additional arguments of the operator.
     OpArgs args;
     //
@@ -279,8 +279,8 @@ class ReduceOp : public Op
 {
   public:
     ReduceOp(const OpType &type, const OpPrecType &prec_type,
-             const std::vector<Tensor *> &in_deps,
-             const std::vector<Tensor *> &out_deps, const OpArgs &args,
+             const std::vector<Tensor *> &inputs,
+             const std::vector<Tensor *> &outputs, const OpArgs &args,
              const std::string &name, const OpConfigMap *cfg_map, int gran_lev);
 
   protected:

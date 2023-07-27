@@ -26,7 +26,7 @@ SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
 
 std::string SendOp::function_name(const OpConfig &) const
 {
-    Tensor *input = this->in_deps[0];
+    Tensor *input = this->inputs[0];
     CHECK(input->is_sequential());
 
     int sid;
@@ -103,7 +103,7 @@ RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
 
 std::string RecvOp::function_name(const OpConfig &) const
 {
-    Tensor *input = this->in_deps[0];
+    Tensor *input = this->inputs[0];
     CHECK(input->is_sequential());
 
     int sid;

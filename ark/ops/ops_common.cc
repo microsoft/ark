@@ -386,19 +386,19 @@ bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2)
 }
 
 Op::Op(const OpType &type_, const OpPrecType &prec_type_,
-       const vector<Tensor *> &in_deps_, const vector<Tensor *> &out_deps_,
+       const vector<Tensor *> &inputs_, const vector<Tensor *> &outputs_,
        const OpArgs &args_, const string &name_, const OpConfigMap *cfg_map_,
        int gran_lev_, bool force_inline_)
-    : type{type_}, prec_type{prec_type_}, in_deps{in_deps_},
-      out_deps{out_deps_}, args{args_}, name{name_}, cfg_map{cfg_map_},
-      gran_lev{gran_lev_}, force_inline{force_inline_}
+    : type{type_}, prec_type{prec_type_}, inputs{inputs_}, outputs{outputs_},
+      args{args_}, name{name_}, cfg_map{cfg_map_}, gran_lev{gran_lev_},
+      force_inline{force_inline_}
 {
-    for (auto &tns : in_deps_) {
+    for (auto &tns : inputs_) {
         if (tns == nullptr) {
             LOG(ERROR, "input tensor is null");
         }
     }
-    for (auto &tns : out_deps_) {
+    for (auto &tns : outputs_) {
         if (tns == nullptr) {
             LOG(ERROR, "output tensor is null");
         }
@@ -476,8 +476,8 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const
     //     return static_cast<const RecvMMOp *>(this)->function_call_args(cfg);
     default:
         OpArgs opargs;
-        std::vector<Tensor *> deps = this->out_deps;
-        deps.insert(deps.end(), this->in_deps.begin(), this->in_deps.end());
+        std::vector<Tensor *> deps = this->outputs;
+        deps.insert(deps.end(), this->inputs.begin(), this->inputs.end());
         for (Tensor *tns : deps) {
             opargs.put(tns);
         }

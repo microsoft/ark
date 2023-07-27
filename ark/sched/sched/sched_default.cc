@@ -21,12 +21,12 @@ namespace ark {
 /// @return number of tiles
 static int calc_num_tiles(const Op &op, const OpTile &tile)
 {
-    if (op.out_deps.size() == 0) {
+    if (op.outputs.size() == 0) {
         // This op has no output.
         return 0;
     }
-    assert(op.out_deps[0] != nullptr);
-    auto &s = op.out_deps[0]->shape;
+    assert(op.outputs[0] != nullptr);
+    auto &s = op.outputs[0]->shape;
     int ndims = s.ndims();
     if (ndims == 0) {
         // The output has no element.
@@ -75,8 +75,8 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                gpu_info.num_sm, num_sm);
     }
     const OpConfig *cfg = sched_op_config(&matmul_op, gpu_info);
-    assert(cfg->out_deps_tiles.size() == 1);
-    int num_tiles = calc_num_tiles(matmul_op, cfg->out_deps_tiles[0]);
+    assert(cfg->output_tiles.size() == 1);
+    int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
         LOGERR("This matmul has no output tiles.");
     }
@@ -94,8 +94,8 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
         // SMs. We use a heuristic to determine the number of parts.
 
         // Calculate the maximum possible split_k according to the tile shape.
-        const Dims &fst_input_shape = matmul_op.in_deps[0]->shape;
-        const OpTile &fst_input_tile = cfg->in_deps_tiles[0];
+        const Dims &fst_input_shape = matmul_op.inputs[0]->shape;
+        const OpTile &fst_input_tile = cfg->input_tiles[0];
         DimType inner_dim = fst_input_shape[fst_input_shape.ndims() - 1];
         DimType inner_dim_tile_len = fst_input_tile.y;
         size_t max_split_k = math::div_up(inner_dim, inner_dim_tile_len);
@@ -118,9 +118,9 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     }
     LOG(DEBUG, "Optimize matmul %s with split_k=%d.", matmul_op.name, split_k);
 
-    Tensor *input_a = matmul_op.in_deps[0];
-    Tensor *input_b = matmul_op.in_deps[1];
-    Tensor *output = matmul_op.out_deps[0];
+    Tensor *input_a = matmul_op.inputs[0];
+    Tensor *input_b = matmul_op.inputs[1];
+    Tensor *output = matmul_op.outputs[0];
     bool is_column_a;
     bool is_column_b;
     bool is_relu;
@@ -183,15 +183,14 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.is_virtual()) {
                     continue;
                 }
-                for (unsigned int i = 0; i < sop.get_op()->in_deps.size();
-                     ++i) {
-                    auto &tile = sop.get_cfg()->in_deps_tiles[i];
-                    sop.get_op()->in_deps[i]->update_pads({tile.x, tile.y});
+                for (unsigned int i = 0; i < sop.get_op()->inputs.size(); ++i) {
+                    auto &tile = sop.get_cfg()->input_tiles[i];
+                    sop.get_op()->inputs[i]->update_pads({tile.x, tile.y});
                 }
-                for (unsigned int i = 0; i < sop.get_op()->out_deps.size();
+                for (unsigned int i = 0; i < sop.get_op()->outputs.size();
                      ++i) {
-                    auto &tile = sop.get_cfg()->out_deps_tiles[i];
-                    sop.get_op()->out_deps[i]->update_pads({tile.x, tile.y});
+                    auto &tile = sop.get_cfg()->output_tiles[i];
+                    sop.get_op()->outputs[i]->update_pads({tile.x, tile.y});
                 }
             }
         }
@@ -203,13 +202,13 @@ void DefaultScheduler::configure_gpu_buf(
                 if (sop.is_virtual()) {
                     continue;
                 }
-                for (auto &tns : sop.get_op()->in_deps) {
+                for (auto &tns : sop.get_op()->inputs) {
                     bufs[tns->buf].emplace_back(tns);
                     if (!tns->buf->immutable) {
                         buf_usage[tns->buf].emplace(tns);
                     }
                 }
-                for (auto &tns : sop.get_op()->out_deps) {
+                for (auto &tns : sop.get_op()->outputs) {
                     bufs[tns->buf].emplace_back(tns);
                     if (!tns->buf->immutable) {
                         buf_usage[tns->buf].emplace(tns);
@@ -218,7 +217,7 @@ void DefaultScheduler::configure_gpu_buf(
                 //
                 if (sop.get_op()->type == OP_SEND) {
                     //
-                    Tensor *in = sop.get_op()->in_deps[0];
+                    Tensor *in = sop.get_op()->inputs[0];
                     int sid;
                     int rank;
                     int dst_rank;
@@ -243,7 +242,7 @@ void DefaultScheduler::configure_gpu_buf(
                     this->send_recv_ops.emplace_back(sop.get_op());
                 } else if (sop.get_op()->type == OP_RECV) {
                     //
-                    Tensor *in = sop.get_op()->in_deps[0];
+                    Tensor *in = sop.get_op()->inputs[0];
                     int sid;
                     sop.get_op()->args.get(&sid, 0);
                     tns_eids[in->buf].emplace_back(in, sid);
@@ -314,7 +313,7 @@ void DefaultScheduler::configure_gpu_buf(
         set<TensorBuf *> to_free;
         for (auto &ogn : depth) {
             for (auto &sop : ogn->opseq.get_sched_ops()) {
-                for (auto &tns : sop.get_op()->in_deps) {
+                for (auto &tns : sop.get_op()->inputs) {
                     size_t num = bufs.erase(tns->buf);
                     if (num > 0) {
                         assert(num == 1);
@@ -327,7 +326,7 @@ void DefaultScheduler::configure_gpu_buf(
                         }
                     }
                 }
-                for (auto &tns : sop.get_op()->out_deps) {
+                for (auto &tns : sop.get_op()->outputs) {
                     size_t num = bufs.erase(tns->buf);
                     if (num > 0) {
                         assert(num == 1);

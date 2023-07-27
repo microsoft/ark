@@ -28,12 +28,12 @@ SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
 
 std::string SendMMOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *input = this->in_deps[0];
+    Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
-    Tensor *output = this->out_deps[0];
+    Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
@@ -45,7 +45,7 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const
     DimType m = shp_in[ndims - 1];
     DimType n = shp_in[ndims - 2];
     Dims pad_in = input->pads;
-    const OpTile &tile_in = cfg.in_deps_tiles[0];
+    const OpTile &tile_in = cfg.input_tiles[0];
     // Verify paddings
     CHECK((shp_in[ndims - 2] % tile_in.x == 0) ||
           (pad_in[ndims - 2] >= tile_in.x));
@@ -80,12 +80,12 @@ RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
 
 std::string RecvMMOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *input = this->in_deps[0];
+    Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
-    Tensor *output = this->out_deps[0];
+    Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
@@ -97,7 +97,7 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const
     DimType m = shp_in[ndims - 1];
     DimType n = shp_in[ndims - 2];
     Dims pad_in = input->pads;
-    const OpTile &tile_in = cfg.in_deps_tiles[0];
+    const OpTile &tile_in = cfg.input_tiles[0];
     // Verify paddings
     CHECK((shp_in[ndims - 2] % tile_in.x == 0) ||
           (pad_in[ndims - 2] >= tile_in.x));

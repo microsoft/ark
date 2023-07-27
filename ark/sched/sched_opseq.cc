@@ -80,9 +80,9 @@ bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
         wn = 0;
         sb = 0;
     }
-    if ((op->out_deps.size() > 0) && (wn > 0)) {
-        const Dims &s = op->out_deps[0]->shape;
-        const OpTile &tile = cfg->out_deps_tiles[0];
+    if ((op->outputs.size() > 0) && (wn > 0)) {
+        const Dims &s = op->outputs[0]->shape;
+        const OpTile &tile = cfg->output_tiles[0];
         // TODO: temporal.
         int ndims = s.ndims();
         assert(ndims != 0);
