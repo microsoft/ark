@@ -32,16 +32,21 @@ from .serialize import (
 from .trainer import optimizer, trainer
 from .model import Model
 
+
+# Decorator to convert the model function to a global function
+def model_function_decorator(func):
+    def wrapper(*args, **kwargs):
+        result = func(Model.global_model, *args, **kwargs)
+        return result
+
+    return wrapper
+
+
 # Convert all functions in Model to global functions
 for name in dir(_Model):
     if not name.startswith("__") and callable(getattr(_Model, name)):
         func = getattr(_Model, name)
-
-        def wrapper(*args, **kwargs):
-            result = func(Model.global_model, *args, **kwargs)
-            return result
-
-        globals()[name] = wrapper
+        globals()[name] = model_function_decorator(func)
 
 __all__ = [
     "init",

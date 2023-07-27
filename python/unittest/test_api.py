@@ -65,7 +65,7 @@ def test_TestModel(state_dict_file):
     )
     print("input_tensor type: ", type(input_tensor))
     print("input_tensor: ", input_tensor.shape())
-    ark_model = TestModelARK(model)
+    ark_model = TestModelARK()
     output_tensor = ark_model(input_tensor)
     # Test the mul method
     exe = ark.Executor(0, 0, 1, model, "test_TestModel")
