@@ -30,7 +30,7 @@ from .serialize import (
     convert_state_dict_to_numpy,
 )
 from .trainer import optimizer, trainer
-from .model import Model
+from .model import Model, tensor, reshape, identity
 
 
 # Decorator to convert the model function to a global function
