@@ -16,10 +16,10 @@ struct Branch
     int sm_id_end;
     int warp_id_begin;
     int warp_id_end;
-    int tile_id_begin;
-    int tile_id_last;
-    int tile_id_diff;
-    int num_warps_per_tile;
+    int uop_id_begin;
+    int uop_id_last;
+    int uop_id_diff;
+    int num_warps_per_uop;
 };
 
 class SchedBranch
@@ -28,8 +28,9 @@ class SchedBranch
     SchedBranch();
     ~SchedBranch();
 
-    void add(int opseq_id, int tile_id, int sm_id, int warp_id_begin,
+    void add(int opseq_id, int uop_id, int sm_id, int warp_id_begin,
              int warp_id_end);
+    void clear();
     std::vector<Branch> get_branches();
 
   private:

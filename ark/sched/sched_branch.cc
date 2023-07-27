@@ -12,26 +12,27 @@ namespace ark {
 class SchedBranch::Impl
 {
   private:
-    struct Tile
+    struct UnitOp
     {
         int opseq_id;
-        int tile_id;
+        int uop_id;
         int sm_id;
         int warp_id_begin;
         int warp_id_end;
     };
 
-    static bool cmp_tile(const Tile &a, const Tile &b);
+    static bool cmp_uop(const UnitOp &a, const UnitOp &b);
 
-    std::vector<Tile> tiles;
+    std::vector<UnitOp> uops;
 
   public:
     Impl();
     ~Impl();
 
   protected:
-    void add_tile(int opseq_id, int tile_id, int sm_id, int warp_id_begin,
-                  int warp_id_end);
+    void add(int opseq_id, int uop_id, int sm_id, int warp_id_begin,
+             int warp_id_end);
+    void clear();
     std::vector<Branch> get_branches();
 
     friend class SchedBranch;
@@ -45,14 +46,19 @@ SchedBranch::Impl::~Impl()
 {
 }
 
-void SchedBranch::Impl::add_tile(int opseq_id, int tile_id, int sm_id,
-                                 int warp_id_begin, int warp_id_end)
+void SchedBranch::Impl::add(int opseq_id, int uop_id, int sm_id,
+                            int warp_id_begin, int warp_id_end)
 {
-    Tile tile{opseq_id, tile_id, sm_id, warp_id_begin, warp_id_end};
-    tiles.emplace_back(tile);
+    UnitOp uop{opseq_id, uop_id, sm_id, warp_id_begin, warp_id_end};
+    uops.emplace_back(uop);
 }
 
-bool SchedBranch::Impl::cmp_tile(const Tile &a, const Tile &b)
+void SchedBranch::Impl::clear()
+{
+    uops.clear();
+}
+
+bool SchedBranch::Impl::cmp_uop(const UnitOp &a, const UnitOp &b)
 {
     if (a.opseq_id != b.opseq_id) {
         return a.opseq_id < b.opseq_id;
@@ -63,7 +69,7 @@ bool SchedBranch::Impl::cmp_tile(const Tile &a, const Tile &b)
     } else if (a.warp_id_end != b.warp_id_end) {
         return a.warp_id_end < b.warp_id_end;
     } else {
-        return a.tile_id < b.tile_id;
+        return a.uop_id < b.uop_id;
     }
 }
 
@@ -71,122 +77,120 @@ std::vector<Branch> SchedBranch::Impl::get_branches()
 {
     std::vector<Branch> branches;
 
-    std::sort(tiles.begin(), tiles.end(), cmp_tile);
+    std::sort(uops.begin(), uops.end(), cmp_uop);
 
-    std::unordered_set<size_t> merged_tile_indices;
+    std::unordered_set<size_t> merged_uop_indices;
 
-    for (size_t i = 0; i < tiles.size(); ++i) {
-        if (merged_tile_indices.find(i) != merged_tile_indices.end()) {
+    for (size_t i = 0; i < uops.size(); ++i) {
+        if (merged_uop_indices.find(i) != merged_uop_indices.end()) {
             continue;
         }
-        Tile current_tile = tiles[i];
+        UnitOp current_uop = uops[i];
         Branch new_branch;
-        new_branch.opseq_id = current_tile.opseq_id;
-        new_branch.sm_id_begin = current_tile.sm_id;
-        new_branch.sm_id_end = current_tile.sm_id + 1;
-        new_branch.warp_id_begin = current_tile.warp_id_begin;
-        new_branch.warp_id_end = current_tile.warp_id_end;
-        new_branch.tile_id_begin = current_tile.tile_id;
-        new_branch.tile_id_last = current_tile.tile_id;
-        new_branch.tile_id_diff = 0;
-        new_branch.num_warps_per_tile =
-            current_tile.warp_id_end - current_tile.warp_id_begin;
+        new_branch.opseq_id = current_uop.opseq_id;
+        new_branch.sm_id_begin = current_uop.sm_id;
+        new_branch.sm_id_end = current_uop.sm_id + 1;
+        new_branch.warp_id_begin = current_uop.warp_id_begin;
+        new_branch.warp_id_end = current_uop.warp_id_end;
+        new_branch.uop_id_begin = current_uop.uop_id;
+        new_branch.uop_id_last = current_uop.uop_id;
+        new_branch.uop_id_diff = 0;
+        new_branch.num_warps_per_uop =
+            current_uop.warp_id_end - current_uop.warp_id_begin;
 
-        merged_tile_indices.emplace(i);
+        merged_uop_indices.emplace(i);
 
         int current_warp_id_end = new_branch.warp_id_end;
 
-        for (size_t j = i + 1; j < tiles.size(); j++) {
-            if (merged_tile_indices.find(j) != merged_tile_indices.end()) {
+        for (size_t j = i + 1; j < uops.size(); j++) {
+            if (merged_uop_indices.find(j) != merged_uop_indices.end()) {
                 continue;
             }
-            Tile next_tile = tiles[j];
-            if (next_tile.opseq_id != current_tile.opseq_id) {
-                // Scheduling another opseq. There is no more tile to merge.
+            UnitOp next_uop = uops[j];
+            if (next_uop.opseq_id != current_uop.opseq_id) {
+                // Scheduling another opseq. There is no more uop to merge.
                 // Break.
                 break;
             } else {
                 // Scheduling the same opseq.
-                if (next_tile.warp_id_end - next_tile.warp_id_begin !=
-                    new_branch.num_warps_per_tile) {
+                if (next_uop.warp_id_end - next_uop.warp_id_begin !=
+                    new_branch.num_warps_per_uop) {
                     // The same opseq should have the same number of warps per
-                    // tile.
-                    LOGERR("invalid num_warps_per_tile: ",
-                           next_tile.warp_id_end - next_tile.warp_id_begin,
-                           ", expected: ", new_branch.num_warps_per_tile);
+                    // uop.
+                    LOGERR("invalid num_warps_per_uop: ",
+                           next_uop.warp_id_end - next_uop.warp_id_begin,
+                           ", expected: ", new_branch.num_warps_per_uop);
                 }
-                if (next_tile.sm_id == new_branch.sm_id_end - 1) {
+                if (next_uop.sm_id == new_branch.sm_id_end - 1) {
                     // Scheduling the same opseq on the same SM as the previous
-                    // tile.
-                    if (next_tile.warp_id_begin >= new_branch.warp_id_begin &&
-                        next_tile.warp_id_begin < current_warp_id_end) {
-                        // Scheduling another tile from the same opseq on the
+                    // uop.
+                    if (next_uop.warp_id_begin >= new_branch.warp_id_begin &&
+                        next_uop.warp_id_begin < current_warp_id_end) {
+                        // Scheduling another uop from the same opseq on the
                         // same SM and warp. This should be handled in another
                         // branch. Skip here.
                         continue;
-                    } else if (next_tile.warp_id_begin == current_warp_id_end) {
+                    } else if (next_uop.warp_id_begin == current_warp_id_end) {
                         // Contiguous warps. Try merge.
-                        if (new_branch.tile_id_diff == 0) {
+                        if (new_branch.uop_id_diff == 0) {
                             // Diff is undetermined yet. Set it and merge.
-                            new_branch.tile_id_diff =
-                                next_tile.tile_id - new_branch.tile_id_last;
-                            current_warp_id_end = next_tile.warp_id_end;
-                            new_branch.tile_id_last = next_tile.tile_id;
+                            new_branch.uop_id_diff =
+                                next_uop.uop_id - new_branch.uop_id_last;
+                            current_warp_id_end = next_uop.warp_id_end;
+                            new_branch.uop_id_last = next_uop.uop_id;
                             if (new_branch.warp_id_end < current_warp_id_end) {
                                 new_branch.warp_id_end = current_warp_id_end;
                             }
-                        } else if (new_branch.tile_id_diff ==
-                                   next_tile.tile_id -
-                                       new_branch.tile_id_last) {
-                            // Diff is the same as the previous tile. Merge.
-                            current_warp_id_end = next_tile.warp_id_end;
-                            new_branch.tile_id_last = next_tile.tile_id;
+                        } else if (new_branch.uop_id_diff ==
+                                   next_uop.uop_id - new_branch.uop_id_last) {
+                            // Diff is the same as the previous uop. Merge.
+                            current_warp_id_end = next_uop.warp_id_end;
+                            new_branch.uop_id_last = next_uop.uop_id;
                             if (new_branch.warp_id_end < current_warp_id_end) {
                                 new_branch.warp_id_end = current_warp_id_end;
                             }
                         } else {
-                            // Diff is different from the previous tile. Break.
+                            // Diff is different from the previous uop. Break.
                             break;
                         }
-                        merged_tile_indices.emplace(j);
+                        merged_uop_indices.emplace(j);
                         continue;
                     } else {
                         // Non-contiguous warps. Break.
                         break;
                     }
-                } else if (next_tile.sm_id == new_branch.sm_id_end) {
+                } else if (next_uop.sm_id == new_branch.sm_id_end) {
                     // Scheduling the same opseq on the next SM.
-                    if (next_tile.warp_id_begin != new_branch.warp_id_begin) {
+                    if (next_uop.warp_id_begin != new_branch.warp_id_begin) {
                         // Using different warp IDs from the next SM. Break.
                         break;
                     } else {
                         // Contiguous SMs and using the same warp IDs. Try
                         // merge.
-                        if (new_branch.tile_id_diff == 0) {
+                        if (new_branch.uop_id_diff == 0) {
                             // Diff is undetermined yet. Set it and merge.
-                            new_branch.tile_id_diff =
-                                next_tile.tile_id - new_branch.tile_id_last;
-                            current_warp_id_end = next_tile.warp_id_end;
-                            new_branch.tile_id_last = next_tile.tile_id;
-                            new_branch.sm_id_end = next_tile.sm_id + 1;
+                            new_branch.uop_id_diff =
+                                next_uop.uop_id - new_branch.uop_id_last;
+                            current_warp_id_end = next_uop.warp_id_end;
+                            new_branch.uop_id_last = next_uop.uop_id;
+                            new_branch.sm_id_end = next_uop.sm_id + 1;
                             if (new_branch.warp_id_end < current_warp_id_end) {
                                 new_branch.warp_id_end = current_warp_id_end;
                             }
-                        } else if (new_branch.tile_id_diff ==
-                                   next_tile.tile_id -
-                                       new_branch.tile_id_last) {
-                            // Diff is the same as the previous tile. Merge.
-                            current_warp_id_end = next_tile.warp_id_end;
-                            new_branch.tile_id_last = next_tile.tile_id;
-                            new_branch.sm_id_end = next_tile.sm_id + 1;
+                        } else if (new_branch.uop_id_diff ==
+                                   next_uop.uop_id - new_branch.uop_id_last) {
+                            // Diff is the same as the previous uop. Merge.
+                            current_warp_id_end = next_uop.warp_id_end;
+                            new_branch.uop_id_last = next_uop.uop_id;
+                            new_branch.sm_id_end = next_uop.sm_id + 1;
                             if (new_branch.warp_id_end < current_warp_id_end) {
                                 new_branch.warp_id_end = current_warp_id_end;
                             }
                         } else {
-                            // Diff is different from the previous tile. Break.
+                            // Diff is different from the previous uop. Break.
                             break;
                         }
-                        merged_tile_indices.emplace(j);
+                        merged_uop_indices.emplace(j);
                         continue;
                     }
                 } else {
@@ -210,10 +214,15 @@ SchedBranch::~SchedBranch()
 {
 }
 
-void SchedBranch::add(int opseq_id, int tile_id, int sm_id, int warp_id_begin,
+void SchedBranch::add(int opseq_id, int uop_id, int sm_id, int warp_id_begin,
                       int warp_id_end)
 {
-    this->impl->add_tile(opseq_id, tile_id, sm_id, warp_id_begin, warp_id_end);
+    this->impl->add(opseq_id, uop_id, sm_id, warp_id_begin, warp_id_end);
+}
+
+void SchedBranch::clear()
+{
+    this->impl->clear();
 }
 
 std::vector<Branch> SchedBranch::get_branches()
