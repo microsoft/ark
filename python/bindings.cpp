@@ -95,7 +95,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def_readwrite("id", &ark::TensorBuf::id)
         .def_readwrite("immutable", &ark::TensorBuf::immutable);
 
-    py::class_<ark::Tensor>(m, "Tensor")
+    py::class_<ark::Tensor>(m, "_Tensor")
         .def(py::init<const ark::Dims &, ark::TensorType, ark::TensorBuf *,
                       const ark::Dims &, const ark::Dims &, const ark::Dims &,
                       bool, bool, int, const std::string &>(),
@@ -124,7 +124,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def("tensor_type", &ark::Tensor::tensor_type,
              "The type of the tensor.");
 
-    py::class_<ark::Model>(m, "Model")
+    py::class_<ark::Model>(m, "_Model")
         .def(py::init<int>(), py::arg("rank") = 0)
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",

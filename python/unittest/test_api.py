@@ -63,7 +63,8 @@ def test_TestModel(state_dict_file):
     input_tensor = model.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
-
+    print("input_tensor type: ", type(input_tensor))
+    print("input_tensor: ", input_tensor.shape())
     ark_model = TestModelARK(model)
     output_tensor = ark_model.forward(input_tensor)
     # Test the mul method
@@ -92,8 +93,8 @@ def test_TestModel(state_dict_file):
     ark_model.load_state_dict(state_dict)
     exe.run(1)
     exe.stop()
-
-    ark.save(ark_model.state_dict(), state_dict_file)
+    print(ark_model.state_dict())
+    # ark.save(ark_model.state_dict(), state_dict_file)
 
     output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
 
@@ -128,9 +129,9 @@ def test_TestModel(state_dict_file):
 
 
 if __name__ == "__main__":
-    state_dict_file = "/home/v-lifanwu/module_test.pt"
-    print("state_dict_file: ", state_dict_file)
-    if state_dict_file == None:
-        print("Usage: python module_test.py state_dict_file")
-        exit(-1)
-    test_TestModel(state_dict_file)
+    # state_dict_file =
+    # print("state_dict_file: ", state_dict_file)
+    # if state_dict_file == None:
+    #     print("Usage: python module_test.py state_dict_file")
+    #     exit(-1)
+    test_TestModel(None)

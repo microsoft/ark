@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Executor, TensorType
+from ._ark_core import _Executor, TensorType, _Tensor
 import numpy as np
 
 

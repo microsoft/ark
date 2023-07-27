@@ -1,8 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from .ark_core import Model, Tensor, TensorType, Dims
+from ._ark_core import TensorType, Dims
 from .executor import Executor
+from .model import Model
+from .tensor import Tensor
 
 class optimizer:
     def __init__(self, module, lr):

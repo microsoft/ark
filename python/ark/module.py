@@ -3,7 +3,8 @@
 
 from typing import Optional, Dict, Callable, Any
 import numpy as np
-from ._ark_core import Tensor
+from ._ark_core import _Tensor, _Model
+from .tensor import Tensor
 from .executor import Executor
 class Module:
     """
@@ -49,7 +50,7 @@ class Module:
     def __setattr__(self, __name: str, __value: Any) -> None:
         if isinstance(__value, Module):
             self.register_module(__name, __value)
-        elif isinstance(__value, Tensor):
+        elif isinstance(__value, Tensor) or isinstance(__value, _Tensor):
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
