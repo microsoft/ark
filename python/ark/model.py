@@ -1,8 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Model
-from .tensor import Tensor
+from ._ark_core import _Model, Tensor
 
 
 class Model(_Model):

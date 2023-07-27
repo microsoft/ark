@@ -1,10 +1,9 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import TensorType, Dims
+from ._ark_core import TensorType, Dims, Tensor
 from .executor import Executor
 from .model import Model
-from .tensor import Tensor
 
 
 class optimizer:
