@@ -6,6 +6,7 @@ from .executor import Executor
 from .model import Model
 from .tensor import Tensor
 
+
 class optimizer:
     def __init__(self, module, lr):
         self.module = module
@@ -21,12 +22,16 @@ class optimizer:
         for module in module._sub_modules:
             self.step(module)
 
+
 class loss_fn:
     def forward(self, outputs, labels):
         return self.model.cross_entropy(outputs, labels)
 
+
 class trainer:
-    def __init__(self, module, loss_fn, optimizer: optimizer, executor: Executor):
+    def __init__(
+        self, module, loss_fn, optimizer: optimizer, executor: Executor
+    ):
         self.model = module.model
         self.module = module
         self.loss_fn = loss_fn
@@ -45,4 +50,3 @@ class trainer:
         self.executor.run(iter)
         elapsed_msec = self.executor.stop()
         print("Training time: ", elapsed_msec, "ms")
-

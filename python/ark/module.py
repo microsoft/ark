@@ -3,9 +3,10 @@
 
 from typing import Optional, Dict, Callable, Any
 import numpy as np
-from ._ark_core import _Model
-from .tensor import Tensor
+from ._ark_core import _Model, Tensor
 from .executor import Executor
+
+
 class Module:
     """
     Base class for all neural network modules.
@@ -19,7 +20,7 @@ class Module:
             self.weight_2 = model.tensor(
                 ark.Dims(128, 64), ark.TensorType.FP16
             )
-    
+
         def forward(self, inputs):
             middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
             middle_result1 = self.model.matmul(middle_result, self.weight_2)
@@ -29,22 +30,23 @@ class Module:
     """
 
     # The submodules of the module.
-    _sub_modules: Dict[str, Optional['Module']]
+    _sub_modules: Dict[str, Optional["Module"]]
     # The parameters of the module.
-    _parameters: Dict[str, Optional['Tensor']]
+    _parameters: Dict[str, Optional["Tensor"]]
     # The gradient computed at backward stage. A map from parameter to gradient.
-    _grads: Dict[Optional['Tensor'], Optional['Tensor']]
+    _grads: Dict[Optional["Tensor"], Optional["Tensor"]]
+
     def __init__(self, model):
         self._sub_modules = dict()
         self._parameters = dict()
         self.model = model
 
     # Adds a child module to the current module.
-    def register_module(self, name: str, module: Optional['Module']) -> None:
+    def register_module(self, name: str, module: Optional["Module"]) -> None:
         self._sub_modules[name] = module
 
     # Adds a parameter to the module.
-    def register_parameter(self, name: str, param: Optional['Tensor']) -> None:
+    def register_parameter(self, name: str, param: Optional["Tensor"]) -> None:
         self._parameters[name] = param
 
     def __setattr__(self, __name: str, __value: Any) -> None:
@@ -56,19 +58,23 @@ class Module:
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
     # Must be called after the executor is launched.
-    def load_state_dict(self, state_dict, prefix='', executor=None):
+    def load_state_dict(self, state_dict, prefix="", executor=None):
         print("Loading model from state_dict", self._parameters)
         if executor is None:
             executor = Executor.get_executor()
         for name, module in self._sub_modules.items():
             if module is not None:
-                module.load_state_dict(self.executor, state_dict, prefix=prefix + name + '.')
+                module.load_state_dict(
+                    self.executor, state_dict, prefix=prefix + name + "."
+                )
         for name, param in self._parameters.items():
-            executor.tensor_memcpy_host_to_device(param, state_dict[prefix + name])
+            executor.tensor_memcpy_host_to_device(
+                param, state_dict[prefix + name]
+            )
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
     # Must be called after the executor is launched.
-    def state_dict(self, executor = None):
+    def state_dict(self, executor=None):
         if executor is None:
             executor = Executor.get_executor()
         state_dict = {}
@@ -90,4 +96,3 @@ class Module:
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.forward(*args, **kwds)
-
