@@ -3,7 +3,8 @@
 
 #include <cassert>
 
-#include "ipc/ipc_lock.h"
+#include "ipc_lock.h"
+#include "logging.h"
 
 namespace ark {
 
@@ -70,7 +71,9 @@ IpcLockGuard::IpcLockGuard(IpcLock *lock_) : lock{lock_}
     assert(lock_ != nullptr);
     assert(lock->is_init == true);
     int r = ipc_lock_acquire(lock_);
-    assert(r == 0);
+    if (r != 0) {
+        LOG(ERROR, "ipc_lock_acquire failed (errno ", r, ")");
+    }
 }
 
 // Desctructor.

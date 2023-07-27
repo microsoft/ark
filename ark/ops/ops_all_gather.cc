@@ -12,7 +12,7 @@ namespace ark {
 
 std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
                                         std::vector<Tensor *> output,
-                                        const string &name)
+                                        const string &)
 {
     assert(input != nullptr);
     LOG(DEBUG, "all_gather ", input->shape, " ", gpu_id, " ", gpu_num);

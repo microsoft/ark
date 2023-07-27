@@ -148,8 +148,6 @@ OpArg::~OpArg()
         delete static_cast<Dims *>(this->val);
     } else if (this->type == OP_ARG_TENSOR) {
         // Do nothing
-    } else {
-        LOGERR("invalid argument type ", this->type);
     }
 }
 void OpArg::get(int *arg) const
@@ -392,14 +390,18 @@ Op::Op(const OpType &type_, const OpPrecType &prec_type_,
        const OpArgs &args_, const string &name_, const OpConfigMap *cfg_map_,
        int gran_lev_, bool force_inline_)
     : type{type_}, prec_type{prec_type_}, in_deps{in_deps_},
-      out_deps{out_deps_}, args{args_}, name{name_}, gran_lev{gran_lev_},
-      cfg_map{cfg_map_}, force_inline{force_inline_}
+      out_deps{out_deps_}, args{args_}, name{name_}, cfg_map{cfg_map_},
+      gran_lev{gran_lev_}, force_inline{force_inline_}
 {
     for (auto &tns : in_deps_) {
-        assert(tns != nullptr);
+        if (tns == nullptr) {
+            LOG(ERROR, "input tensor is null");
+        }
     }
     for (auto &tns : out_deps_) {
-        assert(tns != nullptr);
+        if (tns == nullptr) {
+            LOG(ERROR, "output tensor is null");
+        }
     }
 }
 

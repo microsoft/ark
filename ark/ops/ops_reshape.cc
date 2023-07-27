@@ -18,7 +18,7 @@ ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
 // Reshape `input` to `shape`. This interface does not support -1 as a dimension
 // of `shape`, because Dims does not allow -1 as a valid dimension.
 static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
-                        bool allowzero, Tensor *output, const string &name)
+                        bool allowzero, Tensor *output, const string &)
 {
     if (input == nullptr) {
         LOGERR("input is null");

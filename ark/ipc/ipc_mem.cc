@@ -47,13 +47,17 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
         if (fd != -1) {
             // Succeed.
             int r = ftruncate(fd, sizeof(IpcLock));
-            assert(r == 0);
+            if (r != 0) {
+                LOG(ERROR, "ftruncate failed (errno ", r, ")");
+            }
             create_ = true;
         } else if (create_) {
             fd = ipc_shm_open(lock_name);
             assert(fd != -1);
             int r = ftruncate(fd, sizeof(IpcLock));
-            assert(r == 0);
+            if (r != 0) {
+                LOG(ERROR, "ftruncate failed (errno ", r, ")");
+            }
         }
     }
     if (!create_) {
@@ -63,7 +67,9 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
         struct stat s;
         for (;;) {
             int r = fstat(fd, &s);
-            assert(r == 0);
+            if (r != 0) {
+                LOG(ERROR, "fstat failed (errno ", r, ")");
+            }
             if (s.st_size > 0) {
                 assert(s.st_size == sizeof(IpcLock));
                 break;
@@ -80,10 +86,14 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
     if (create_) {
         // Initialize and acquire the lock.
         int r = ipc_lock_init(this->lock);
-        assert(r == 0);
+        if (r != 0) {
+            LOG(ERROR, "ipc_lock_init failed (errno ", r, ")");
+        }
         // Release the lock immediately.
         r = ipc_lock_release(this->lock);
-        assert(r == 0);
+        if (r != 0) {
+            LOG(ERROR, "ipc_lock_release failed (errno ", r, ")");
+        }
     } else {
         // Wait until the lock is initialized.
         // This must finish shortly, so we just wait polling.
@@ -157,7 +167,9 @@ void *IpcMem::alloc(size_t bytes)
         assert(bytes > 0);
         // Truncate the file size.
         int r = ftruncate(fd, bytes);
-        assert(r == 0);
+        if (r != 0) {
+            LOG(ERROR, "ftruncate failed (errno ", r, ")");
+        }
     } else {
         // Wait until the file size becomes equal to or larger than `bytes`.
         // We assume that in most cases the file size is already as large as
@@ -167,7 +179,9 @@ void *IpcMem::alloc(size_t bytes)
         struct stat s;
         for (;;) {
             int r = fstat(fd, &s);
-            assert(r == 0);
+            if (r != 0) {
+                LOG(ERROR, "fstat failed (errno ", r, ")");
+            }
             if ((bytes == 0) && (s.st_size > 0)) {
                 bytes = s.st_size;
                 break;

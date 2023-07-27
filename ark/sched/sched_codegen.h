@@ -98,8 +98,6 @@ class DefaultCodeGenerator : BaseCodeGenerator
     std::ostream &codegen_arg(std::ostream &os, const OpArg &arg);
     std::ostream &codegen_arg_def(std::ostream &os, const OpArg &arg,
                                   const std::string &name);
-    std::ostream &codegen_sched_op(std::ostream &os, const SchedOp &sop,
-                                   const std::pair<int, int> &fdims);
     std::ostream &codegen_opseq(std::ostream &os, const std::string &name,
                                 const SchedOpSeq &opseq,
                                 std::map<std::string, int> &uop_map);

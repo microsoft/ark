@@ -216,11 +216,15 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
             }
 
             ret = qp->rtr(&gi_remote.qpi);
-            assert(ret == 0);
+            if (ret != 0) {
+                LOG(ERROR, "NetIbQp::rtr failed");
+            }
             LOG(DEBUG, "RANK ", this->rank, " QP ", qp->get_info().qpn,
                 " <--> RANK ", remote_rank, " QP ", gi_remote.qpi.qpn);
             ret = qp->rts();
-            assert(ret == 0);
+            if (ret != 0) {
+                LOG(ERROR, "NetIbQp::rts failed");
+            }
 
             auto &mri_vec = this->mris[remote_rank];
             mri_vec.resize(MAX_NUM_SID);

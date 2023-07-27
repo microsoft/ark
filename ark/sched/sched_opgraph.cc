@@ -152,7 +152,9 @@ OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
                                 if (opseq.append(
                                         op, sched_op_config(op, gpu_info))) {
                                     auto p = seen.emplace(op);
-                                    assert(p.second);
+                                    if (!p.second) {
+                                        LOG(ERROR, "unexpected error");
+                                    }
                                     this->op_to_node_map[op] = *it;
                                     // LOG(DEBUG, "retrieve: merge");
                                     continue;

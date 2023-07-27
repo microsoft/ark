@@ -43,10 +43,6 @@ class SchedOpSeq
     {
         return seq.back().get_op();
     }
-    const std::vector<std::pair<int, int>> &get_fdims() const
-    {
-        return seq_fdims;
-    }
     int get_num_warps() const
     {
         return num_warps;
@@ -86,7 +82,6 @@ class SchedOpSeq
   private:
     const int id;
     std::vector<SchedOp> seq;
-    std::vector<std::pair<int, int>> seq_fdims;
     int num_warps = 0;
     int smem_bytes = 0;
     std::array<int, 3> tdims = {{0, 0, 0}};
