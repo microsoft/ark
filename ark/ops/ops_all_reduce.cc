@@ -11,7 +11,7 @@ using namespace std;
 namespace ark {
 
 Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
-                          Tensor *output, const string &name)
+                          Tensor *output, const string &)
 {
     assert(input != nullptr);
     if (output != nullptr) {

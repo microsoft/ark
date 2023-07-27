@@ -528,6 +528,7 @@ void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
             } else {
                 // Should not reach here.
                 num = 0;
+                sm_e = 0;
                 assert(false);
             }
             for (DimType i = 0; i < num; ++i) {

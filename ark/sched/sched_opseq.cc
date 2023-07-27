@@ -105,8 +105,8 @@ bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
         this->tdims[2] = dx;
     } else {
         // Merge condition
-        if (wn != this->num_warps || this->tdims[0] != dz || this->tdims[1] != dy ||
-            this->tdims[2] != dx) {
+        if (wn != this->num_warps || this->tdims[0] != dz ||
+            this->tdims[1] != dy || this->tdims[2] != dx) {
             return false;
         }
         this->smem_bytes = max(this->smem_bytes, sb);

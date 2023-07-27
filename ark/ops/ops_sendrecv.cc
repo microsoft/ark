@@ -47,7 +47,7 @@ std::string SendOp::function_name(const OpConfig &) const
                                                 }});
 }
 
-OpArgs SendOp::function_call_args(const OpConfig &cfg) const
+OpArgs SendOp::function_call_args(const OpConfig &) const
 {
     return {};
 }
@@ -82,7 +82,7 @@ std::string SendDoneOp::function_name(const OpConfig &) const
                                                      }});
 }
 
-OpArgs SendDoneOp::function_call_args(const OpConfig &cfg) const
+OpArgs SendDoneOp::function_call_args(const OpConfig &) const
 {
     return {};
 }
@@ -120,7 +120,7 @@ std::string RecvOp::function_name(const OpConfig &) const
                                                 }});
 }
 
-OpArgs RecvOp::function_call_args(const OpConfig &cfg) const
+OpArgs RecvOp::function_call_args(const OpConfig &) const
 {
     return {};
 }
