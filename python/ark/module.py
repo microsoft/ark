@@ -11,22 +11,18 @@ class Module:
     """
     Base class for all neural network modules.
     Usage:
-    class TestModel(ark.Module):
-        def __init__(self, model):
-            super(TestModel, self).__init__(model)
-            self.weight_1 = model.tensor(
-                ark.Dims(64, 128), ark.TensorType.FP16
-            )
-            self.weight_2 = model.tensor(
-                ark.Dims(128, 64), ark.TensorType.FP16
-            )
+    class TestModelARK(ark.Module):
+    def __init__(self):
+        super(TestModelARK, self).__init__()
+        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
+        self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
 
-        def forward(self, inputs):
-            middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
-            middle_result1 = self.model.matmul(middle_result, self.weight_2)
-            output = self.model.add(middle_result1, inputs)
-            output_layernorm = self.model.layernorm(output)
-            return output_layernorm
+    def forward(self, inputs):
+        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
+        middle_result1 = ark.matmul(middle_result, self.weight_2)
+        output = ark.add(middle_result1, inputs)
+        output_layernorm = ark.layernorm(output)
+        return output_layernorm
     """
 
     # The submodules of the module.
@@ -36,10 +32,9 @@ class Module:
     # The gradient computed at backward stage. A map from parameter to gradient.
     _grads: Dict[Optional["Tensor"], Optional["Tensor"]]
 
-    def __init__(self, model):
+    def __init__(self):
         self._sub_modules = dict()
         self._parameters = dict()
-        self.model = model
 
     # Adds a child module to the current module.
     def register_module(self, name: str, module: Optional["Module"]) -> None:

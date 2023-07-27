@@ -20,8 +20,8 @@ for name in dir(ark):
 
 
 class TestModelARK(ark.Module):
-    def __init__(self, model):
-        super(TestModelARK, self).__init__(model)
+    def __init__(self):
+        super(TestModelARK, self).__init__()
         self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
         self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
 
