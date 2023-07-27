@@ -7,27 +7,21 @@ ark_root = os.environ.get("ARK_ROOT", None)
 if ark_root is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
-from ._ark_core import init, srand, rand, Dims, TensorBuf, TensorType, _Tensor, _Model
+from ._ark_core import init, srand, rand, Dims, TensorBuf, TensorType, Tensor, _Model
 from .module import Module
 from .executor import Executor, tensor_memcpy_device_to_host, tensor_memcpy_host_to_device
 from .serialize import save, load, convert_state_dict_to_pytorch, convert_state_dict_to_numpy
 from .trainer import optimizer, trainer
 from .model import Model
-from .tensor import Tensor
 
 
 # Decorator to convert the model function to a global function
 def _convert_tensor_type_decorator(func):
     def wrapper(*args, **kwargs):
         print("Before function")
-        # convert all Tensor in input args and kwargs to _Tensor
-        args = [arg._tensor if isinstance(arg, Tensor) else arg for arg in args]
-        kwargs = {k: v._tensor if isinstance(v, Tensor) else v for k, v in kwargs.items()}
 
         result = func(Model.global_model,*args, **kwargs)
-        
-        if isinstance(result, _Tensor):
-            result = Tensor(result)
+
         return result
     return wrapper
 
