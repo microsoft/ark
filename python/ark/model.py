@@ -17,7 +17,8 @@ def tensor(
     name: str = "tensor",
 ) -> Tensor:
     """
-    Construct a tensor with given shape and data type."""
+    Construct a tensor with given shape and data type.
+    """
     return Model.global_model.tensor(
         shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
     )
@@ -55,6 +56,94 @@ def identity(
     return Model.global_model.identity(input, deps, output, name)
 
 
+def sharding(
+    input: Tensor,
+    axis: int,
+    dim_per_shard: int,
+    name: str = "sharding",
+) -> Tensor:
+    """
+    Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
+    """
+    return Model.global_model.sharding(input, axis, dim_per_shard, name)
+
+
+def reduce_sum(
+    input: Tensor,
+    axis: int,
+    output: Tensor = None,
+    name: str = "reduce_sum",
+) -> Tensor:
+    """
+    Performs reduction along the `axis` of the `input` tensor and
+    stores the result in `output`.
+    """
+    return Model.global_model.reduce_sum(input, axis, output, name)
+
+
+def reduce_mean(
+    input: Tensor,
+    axis: int,
+    output: Tensor = None,
+    name: str = "reduce_mean",
+) -> Tensor:
+    """
+    Performs reduction along the `axis` of the `input` tensor and
+    stores the result in `output`.
+    """
+    return Model.global_model.reduce_mean(input, axis, output, name)
+
+
+def reduce_max(
+    input: Tensor,
+    axis: int,
+    output: Tensor = None,
+    name: str = "reduce_max",
+) -> Tensor:
+    """
+    Performs reduction along the `axis` of the `input` tensor and
+    stores the result in `output`.
+    """
+    return Model.global_model.reduce_max(input, axis, output, name)
+
+
+def layernorm(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "layernorm",
+) -> Tensor:
+    """
+    Applies layer normalization to the `input` tensor and returns
+    the normalized tensor as `output`.
+    """
+    return Model.global_model.layernorm(input, output, name)
+
+
+def softmax(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "softmax",
+) -> Tensor:
+    """
+    Applies softmax  to the `input` tensor on the last dimension.
+    """
+    return Model.global_model.softmax(input, output, name)
+
+
+def transpose(
+    input: Tensor,
+    perm: list,
+    output: Tensor = None,
+    name: str = "transpose",
+) -> Tensor:
+    """
+    Transposes the `input` tensor according to the given `perm` permutation.
+    For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
+    dimensions of the input tensor. Currently, only 4D tensors are supported.
+    """
+    return Model.global_model.transpose(input, perm, output, name)
+
+
 def matmul(
     input: Tensor,
     other: Tensor,
@@ -66,6 +155,13 @@ def matmul(
     name: str = "matmul",
     gran_lev: int = -1,
 ) -> Tensor:
+    """
+    Performs matrix multiplication between the `input` tensor and
+    `other` tensor, storing the result in `output`. Optional
+    parameters allow controlling the behavior of the multiplication,
+    such as transposing the input tensors and applying a ReLU
+    activation.
+    """
     return Model.global_model.matmul(
         input,
         other,
@@ -76,6 +172,205 @@ def matmul(
         is_relu,
         name,
         gran_lev,
+    )
+
+
+def im2col(
+    input: Tensor,
+    kernel_height: int,
+    kernel_width: int,
+    stride_height: int,
+    stride_width: int,
+    pad_height: int,
+    pad_width: int,
+    dilation_height: int,
+    dilation_width: int,
+    output: Tensor = None,
+    name: str = "im2col",
+) -> Tensor:
+    """
+    Implements the 'im2col' method for 2D convolution layers, which
+    takes an `input` tensor and reshapes it to a 2D matrix by
+    extracting image patches from the input tensor based on the
+    provided parameters.
+    """
+    return Model.global_model.im2col(
+        input,
+        kernel_height,
+        kernel_width,
+        stride_height,
+        stride_width,
+        pad_height,
+        pad_width,
+        dilation_height,
+        dilation_width,
+        output,
+        name,
+    )
+
+
+def conv2d(
+    input: Tensor,
+    in_channels: int,
+    out_channels: int,
+    kernel_size: list,
+    stride: list,
+    padding: list,
+    bias: bool = False,
+    output: Tensor = None,
+    name: str = "conv2d",
+) -> Tensor:
+    """
+    Implements a 2D convolution layer using the 'im2col' method.
+    """
+    return Model.global_model.conv2d(
+        input,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        bias,
+        output,
+        name,
+    )
+
+
+def max_pool(
+    input: Tensor,
+    kernel_size: int,
+    stride: int,
+    output: Tensor = None,
+    name: str = "max_pool",
+) -> Tensor:
+    """
+    Applies max-pooling on the `input` tensor using `kernel_size`
+    and `stride`, reducing its spatial size. The output shape is
+    calculated based on the input tensor's shape and the stride
+    value as follows: {is[0], (is[1] + stride - 1) / stride, (is[2]
+    + stride - 1) / stride, is[3]}, where 'is' represents the input
+    tensor's shape.
+    """
+    return Model.global_model.max_pool(
+        input,
+        kernel_size,
+        stride,
+        output,
+        name,
+    )
+
+
+def scale(
+    input: Tensor,
+    val: float,
+    output: Tensor = None,
+    name: str = "scale",
+) -> Tensor:
+    """
+    Multiplies the `input` tensor by a scalar `val`, element-wise.
+    """
+    return Model.global_model.scale(
+        input,
+        val,
+        output,
+        name,
+    )
+
+
+def relu(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "relu",
+) -> Tensor:
+    """
+    Applies the ReLU activation function to the `input` tensor,
+    element-wise.
+    """
+    return Model.global_model.relu(input, output, name)
+
+
+def gelu(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "gelu",
+) -> Tensor:
+    """
+    Applies the Gaussian Error Linear Unit (GELU) activation
+    function to the `input` tensor, element-wise. GELU is a smooth
+    approximation of the rectifier function and is widely used in
+    deep learning models.
+    """
+    return Model.global_model.gelu(input, output, name)
+
+
+def add(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "add",
+) -> Tensor:
+    """
+    Performs an element-wise addition operator between the `input`
+    tensor and the `other` tensor.
+    """
+    return Model.global_model.add(input, other, output, name)
+
+
+def mul(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "mul",
+) -> Tensor:
+    """
+    Performs an element-wise multiplication operator between the
+    `input` tensor and the `other` tensor.
+    """
+    return Model.global_model.mul(input, other, output, name)
+
+
+def send(
+    input: Tensor,
+    id: int,
+    dst_rank: int,
+    bytes: int = 0,
+    output: Tensor = None,
+    name: str = "send",
+) -> Tensor:
+    """
+    Sends a tensor to a destination GPU (`dst_rank`). Multiple
+    tensors can be sent to the same GPU, so an identifier `id` is
+    required to distinguish the tensor. Each 'send' operator must
+    have a corresponding 'recv' operator that have the same id in
+    another GPU's model.
+    """
+    return Model.global_model.send(
+        input,
+        id,
+        dst_rank,
+        bytes,
+        output,
+        name,
+    )
+
+
+def send_done(
+    input: Tensor,
+    id: int,
+    dst_rank: int,
+    output: Tensor = None,
+    name: str = "send_done",
+) -> Tensor:
+    """
+    Blocks the execution until the corresponding 'send' operator
+    with the specified `id` is completed.
+    """
+    return Model.global_model.send_done(
+        input,
+        id,
+        dst_rank,
+        output,
+        name,
     )
 
 
