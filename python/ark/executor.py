@@ -7,7 +7,7 @@ import numpy as np
 
 class Executor(_Executor):
     # static list of executors
-    executors = []
+    global_executor = None
 
     def __init__(
         self, gpu_id, rank, world_size, model, name, num_warps_per_sm=16
@@ -15,7 +15,7 @@ class Executor(_Executor):
         super().__init__(
             gpu_id, rank, world_size, model, name, num_warps_per_sm=16
         )
-        self.executors.append(self)
+        self.global_executor = self
 
     def tensor_memcpy_host_to_device(self, dst, src):
         # check if src is contiguous is memory
@@ -30,21 +30,19 @@ class Executor(_Executor):
         super().tensor_memcpy_device_to_host(dst, src)
 
     @staticmethod
-    def get_executor(executor_id=0):
+    def get_executor():
         # get the global executor
-        if executor_id >= len(Executor.executors):
-            raise RuntimeError(
-                "Executor of id " + str(executor_id) + " is not initialized"
-            )
-        return Executor.executors[executor_id]
+        if Executor.global_executor is None:
+            raise RuntimeError("Executor is not initialized")
+        return Executor.global_executor
 
 
-def tensor_memcpy_host_to_device(dst, src, executor_id=0):
-    Executor.get_executor(executor_id).tensor_memcpy_host_to_device(dst, src)
+def tensor_memcpy_host_to_device(dst, src):
+    Executor.get_executor().tensor_memcpy_host_to_device(dst, src)
     return dst
 
 
-def tensor_memcpy_device_to_host(dst, src, executor_id=0):
+def tensor_memcpy_device_to_host(dst, src):
     if dst is None:
         np_shape = []
         ark_dims = src.shape()
@@ -56,5 +54,5 @@ def tensor_memcpy_device_to_host(dst, src, executor_id=0):
         elif src.tensor_type() == TensorType.FP16:
             np_type = np.float16
         dst = np.empty(np_shape, dtype=np_type)
-    Executor.get_executor(executor_id).tensor_memcpy_device_to_host(dst, src)
+    Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
     return dst
