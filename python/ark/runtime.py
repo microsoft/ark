@@ -4,6 +4,7 @@
 import os
 from .model import Model
 from .executor import Executor
+from ._ark_core import _init
 
 
 class config:
@@ -12,6 +13,13 @@ class config:
     def __init__(self, rank=0, world_size=1):
         self.rank = rank
         self.world_size = world_size
+
+
+def init():
+    global_config = None
+    Model.global_model = None
+    Executor.global_executor = None
+    _init()
 
 
 def init_model(rank: int = 0, world_size: int = 1):
@@ -36,3 +44,9 @@ def launch():
 def run(iter=1):
     Executor.get_executor().run(iter)
     Executor.get_executor().stop()
+
+
+def destroy():
+    Executor.global_executor = None
+    Model.global_model = None
+    config.global_config = None

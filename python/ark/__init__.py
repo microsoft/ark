@@ -8,7 +8,6 @@ if ark_root is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
 from ._ark_core import (
-    init,
     srand,
     rand,
     Dims,
@@ -17,7 +16,7 @@ from ._ark_core import (
     Tensor,
 )
 
-from .runtime import init_model, launch, run
+from .runtime import init, init_model, launch, run, destroy
 
 from .module import Module
 from .executor import (
@@ -74,6 +73,7 @@ __all__ = [
     "init_model",
     "launch",
     "run",
+    "destroy",
     "Module",
     "Executor",
     "tensor_memcpy_device_to_host",
