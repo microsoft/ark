@@ -53,8 +53,8 @@ class Module:
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
     # Must be called after the executor is launched.
-    def load_state_dict(self, state_dict, prefix="", executor=None):
-        print("Loading model from state_dict", self._parameters)
+    def load_state_dict(self, state_dict, prefix="", executor: Executor = None):
+        print("Loading model from state_dict")
         if executor is None:
             executor = Executor.get_executor()
         for name, module in self._sub_modules.items():
@@ -69,7 +69,7 @@ class Module:
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
     # Must be called after the executor is launched.
-    def state_dict(self, executor=None):
+    def state_dict(self, executor: Executor = None):
         if executor is None:
             executor = Executor.get_executor()
         state_dict = {}

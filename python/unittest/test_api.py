@@ -5,9 +5,10 @@ import torch
 import numpy as np
 import torch.nn as nn
 import ark
+import unittest
 
-d_model = 512  # Dimension of word embeddings
-d_ff = 2048  # Dimension of the hidden layer in the feed-forward network
+d_model = 512
+d_ff = 2048
 
 batch_size = 1
 seq_len = 64
@@ -50,7 +51,7 @@ class TestModel(nn.Module):
         return output
 
 
-def test_TestModel(state_dict_file):
+def test_TestModel():
     ark.init_model()
 
     input_tensor = ark.tensor(
@@ -74,16 +75,10 @@ def test_TestModel(state_dict_file):
     weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
         np.float16
     )
-    # if os.path.exists(state_dict_file):
-    #     print("load state dict from file", state_dict_file)
-    #     # state_dict = ark.load(state_dict_file)
-    # else:
     state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-    print("state_dict: ", state_dict)
+
     ark_model.load_state_dict(state_dict)
     ark.run()
-    print(ark_model.state_dict())
-    # ark.save(ark_model.state_dict(), state_dict_file)
 
     output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
 
@@ -100,9 +95,12 @@ def test_TestModel(state_dict_file):
     # test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
     avg_error = np.mean(np.abs(output_tensor_host - gt))
-    print(input_tensor_host)
-    print(output_tensor_host)
-    print(gt)
+    ark_state_dict = ark_model.state_dict()
+    for k, v in state_dict.items():
+        np.testing.assert_allclose(v, ark_state_dict[k])
+    # print(input_tensor_host)
+    # print(output_tensor_host)
+    # print(gt)
     print("ARK module test")
     print(
         "batch_size:",
@@ -118,9 +116,4 @@ def test_TestModel(state_dict_file):
 
 
 if __name__ == "__main__":
-    # state_dict_file =
-    # print("state_dict_file: ", state_dict_file)
-    # if state_dict_file == None:
-    #     print("Usage: python module_test.py state_dict_file")
-    #     exit(-1)
-    test_TestModel(None)
+    test_TestModel()

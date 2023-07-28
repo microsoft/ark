@@ -8,7 +8,7 @@ from .module import Module
 
 
 class Optimizer:
-    def __init__(self, module, lr):
+    def __init__(self, module: Module, lr: float):
         self.module = module
         self.model = module.model
         self.lr = lr
@@ -24,7 +24,7 @@ class Optimizer:
 
 
 class loss_fn:
-    def forward(self, outputs, labels):
+    def forward(self, outputs: Tensor, labels: Tensor):
         return self.model.cross_entropy(outputs, labels)
 
 

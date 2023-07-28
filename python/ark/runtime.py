@@ -9,18 +9,18 @@ from .executor import Executor
 class config:
     global_config = None
 
-    def __init__(self, rank=-1, world_size=1):
-        rank = rank
-        world_size = world_size
+    def __init__(self, rank=0, world_size=1):
+        self.rank = rank
+        self.world_size = world_size
 
 
-def init_model(rank=0, world_size=1):
+def init_model(rank: int = 0, world_size: int = 1):
     """
     Initialize the ARK runtime and create a global model that will record
     all the operations.
     """
     config.global_config = config(rank, world_size)
-    Model.global_model = Model(config.rank)
+    Model.global_model = Model(rank)
 
 
 def launch():

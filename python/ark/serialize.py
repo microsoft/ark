@@ -22,7 +22,7 @@ def load(state_dict_file_path: str):
         return state_dict
 
 
-def convert_state_dict(state_dict, type="numpy"):
+def convert_state_dict(state_dict: dict, type="numpy"):
     new_state_dict = {}
     for key in state_dict:
         if type == "torch":
@@ -36,7 +36,7 @@ def convert_state_dict(state_dict, type="numpy"):
     return new_state_dict
 
 
-def convert_state_dict_to_numpy(state_dict):
+def convert_state_dict_to_numpy(state_dict: dict):
     new_state_dict = {}
     for key in state_dict:
         new_state_dict[key] = state_dict[key].numpy()

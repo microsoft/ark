@@ -3,6 +3,7 @@
 
 from ._ark_core import _Executor, TensorType
 import numpy as np
+from .model import Model
 
 
 class Executor(_Executor):
@@ -10,12 +11,21 @@ class Executor(_Executor):
     global_executor = None
 
     def __init__(
-        self, gpu_id, rank, world_size, model, name, num_warps_per_sm=16
+        self,
+        gpu_id: int,
+        rank: int,
+        world_size: int,
+        model: Model,
+        name: str,
+        num_warps_per_sm: int = 16,
     ):
         super().__init__(
             gpu_id, rank, world_size, model, name, num_warps_per_sm=16
         )
-        self.global_executor = self
+        if Executor.global_executor is None:
+            Executor.global_executor = self
+        else:
+            raise RuntimeError("Executor is already initialized")
 
     def tensor_memcpy_host_to_device(self, dst, src):
         # check if src is contiguous is memory
