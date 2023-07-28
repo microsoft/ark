@@ -52,6 +52,9 @@ class OpGraph
   public:
     OpGraph(const Model &model, const GpuInfo &gpu_info);
 
+    void recursive_create_opgraph(std::list<MergedOps *> &merged_ops,
+                                  const GpuInfo &gpu_info, int depth);
+
     size_t get_num_depth() const
     {
         return this->depth_nodes.size();

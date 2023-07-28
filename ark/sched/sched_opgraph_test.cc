@@ -320,9 +320,23 @@ ark::unittest::State test_sched_opgraph_merge()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_opgraph_merge_noop()
+{
+    ark::Model model;
+    model.tensor({1}, ark::FP32);
+    model.tensor({1}, ark::FP32);
+    model.tensor({1}, ark::FP32);
+    UNITTEST_TRUE(model.verify());
+
+    auto mops = ark::OpGraph::merge_ops(model);
+    UNITTEST_EQ(mops.size(), 0UL);
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
     UNITTEST(test_sched_opgraph_merge);
+    UNITTEST(test_sched_opgraph_merge_noop);
     return 0;
 }
