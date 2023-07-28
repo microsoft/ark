@@ -34,10 +34,3 @@ def convert_state_dict(state_dict: dict, type="numpy"):
                 "Invalid type: " + type + " valid types are torch and numpy"
             )
     return new_state_dict
-
-
-def convert_state_dict_to_numpy(state_dict: dict):
-    new_state_dict = {}
-    for key in state_dict:
-        new_state_dict[key] = state_dict[key].numpy()
-    return new_state_dict

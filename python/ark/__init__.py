@@ -28,7 +28,6 @@ from .serialize import (
     save,
     load,
     convert_state_dict,
-    convert_state_dict_to_numpy,
 )
 from .trainer import Optimizer, Trainer
 from .model import (
@@ -81,7 +80,6 @@ __all__ = [
     "save",
     "load",
     "convert_state_dict",
-    "convert_state_dict_to_numpy",
     "Optimizer",
     "Trainer",
     "Model",
