@@ -26,7 +26,9 @@ def init_model(rank: int = 0, world_size: int = 1):
 def launch():
     rank = config.global_config.rank
     world_size = config.global_config.world_size
-    Executor(rank, rank, world_size, Model.global_model, "Executor")
+    Executor.global_executor = Executor(
+        rank, rank, world_size, Model.global_model, "Executor"
+    )
     Executor.get_executor().compile()
     Executor.get_executor().launch()
 

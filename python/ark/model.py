@@ -487,4 +487,3 @@ class Model(_Model):
 
     def __init__(self, rank: int = 0):
         super().__init__(rank)
-        Model.global_model = self

@@ -22,10 +22,6 @@ class Executor(_Executor):
         super().__init__(
             gpu_id, rank, world_size, model, name, num_warps_per_sm=16
         )
-        if Executor.global_executor is None:
-            Executor.global_executor = self
-        else:
-            raise RuntimeError("Executor is already initialized")
 
     def tensor_memcpy_host_to_device(self, dst, src):
         # check if src is contiguous is memory
