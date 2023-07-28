@@ -26,33 +26,22 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
     }
 
     int base = this->impl->next_eid;
-    // all to all allreduce
-    vector<Tensor *> recv_dep_tensors;
-    for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
-        if (gpu_dst == gpu_id)
-            continue;
+    Tensor *cumulate = input;
+    for (int i = 1; i < gpu_num; i++) {
+        int gpu_dst = (gpu_id + i) % gpu_num;
+        int gpu_src = (gpu_id + gpu_num - i) % gpu_num;
         Tensor *send_tensor =
             this->send(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
         Tensor *send_done_tensor =
-            this->send_done(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
-        recv_dep_tensors.push_back(send_tensor);
-        recv_dep_tensors.push_back(send_done_tensor);
-    }
-    Tensor *add_tensor = input;
-    for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
+            this->send_done(this->identity(input, {send_tensor}),
+                            base + gpu_id * gpu_num + gpu_dst, gpu_dst);
         Tensor *recv_buf = this->tensor(input->shape, input->type);
-        if (gpu_src == gpu_id)
-            continue;
-        if (add_tensor != nullptr) {
-            recv_dep_tensors.push_back(add_tensor);
-        }
-        Tensor *recv = this->recv(this->identity(recv_buf, recv_dep_tensors),
-                                  base + gpu_src * gpu_num + gpu_id, gpu_src);
-        add_tensor = this->add(add_tensor, this->identity(recv_buf, {recv}));
+        Tensor *recv = this->recv(this->identity(recv_buf, {send_done_tensor}),
+                                  base + gpu_src * gpu_num + gpu_id, gpu_dst);
+        cumulate = this->add(cumulate, this->identity(recv_buf, {recv}));
     }
-
     this->impl->next_eid += gpu_num * gpu_num;
-    return add_tensor;
+    return cumulate;
 }
 
 } // namespace ark
