@@ -30,23 +30,36 @@ from .serialize import (
     convert_state_dict_to_numpy,
 )
 from .trainer import optimizer, trainer
-from .model import Model, tensor, reshape, identity
+from .model import (
+    Model,
+    tensor,
+    reshape,
+    identity,
+    sharding,
+    reduce_sum,
+    reduce_mean,
+    reduce_max,
+    layernorm,
+    softmax,
+    transpose,
+    matmul,
+    im2col,
+    conv2d,
+    max_pool,
+    scale,
+    relu,
+    gelu,
+    add,
+    mul,
+    send,
+    send_done,
+    recv,
+    send_mm,
+    recv_mm,
+    all_gather,
+    all_reduce,
+)
 
-
-# Decorator to convert the model function to a global function
-def model_function_decorator(func):
-    def wrapper(*args, **kwargs):
-        result = func(Model.global_model, *args, **kwargs)
-        return result
-
-    return wrapper
-
-
-# Convert all functions in Model to global functions
-for name in dir(_Model):
-    if not name.startswith("__") and callable(getattr(_Model, name)):
-        func = getattr(_Model, name)
-        globals()[name] = model_function_decorator(func)
 
 __all__ = [
     "init",

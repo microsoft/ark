@@ -374,6 +374,113 @@ def send_done(
     )
 
 
+def recv(
+    input: Tensor,
+    id: int,
+    src_rank: int,
+    bytes: int = 0,
+    output: Tensor = None,
+    name: str = "recv",
+) -> Tensor:
+    """
+    Receives a tensor from a source GPU (`src_rank`), identified by
+    the `id` parameter. Blocks the execution until the corresponding
+    'recv' operator is completed.
+    """
+    return Model.global_model.recv(
+        input,
+        id,
+        src_rank,
+        bytes,
+        output,
+        name,
+    )
+
+
+def send_mm(
+    input: Tensor,
+    id: int,
+    gpu_dst: int,
+    bytes: int = 0,
+    output: Tensor = None,
+    name: str = "send_mm",
+) -> Tensor:
+    """
+    Similar to the 'send_done' function, but implemented using CUDA
+    in-stream RDMA copy and Low Latency (LL) protocol.
+    """
+    return Model.global_model.send_mm(
+        input,
+        id,
+        gpu_dst,
+        bytes,
+        output,
+        name,
+    )
+
+
+def recv_mm(
+    input: Tensor,
+    id: int,
+    gpu_src: int,
+    bytes: int = 0,
+    output: Tensor = None,
+    name: str = "recv_mm",
+) -> Tensor:
+    """
+    Similar to the 'recv' function, but implemented using CUDA
+    in-stream RDMA copy and Low Latency (LL) protocol.
+    """
+    return Model.global_model.recv_mm(
+        input,
+        id,
+        gpu_src,
+        bytes,
+        output,
+        name,
+    )
+
+
+def all_gather(
+    input: Tensor,
+    gpu_id: int,
+    gpu_num: int,
+    output: Tensor = None,
+    name: str = "all_gather",
+) -> Tensor:
+    """
+    Performs an all-gather operator across all GPUs.
+    """
+    return Model.global_model.all_gather(
+        input,
+        gpu_id,
+        gpu_num,
+        output,
+        name,
+    )
+
+
+def all_reduce(
+    input: Tensor,
+    gpu_id: int,
+    gpu_num: int,
+    output: Tensor = None,
+    name: str = "all_reduce",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across all GPUs, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `gpu_id`, and the total number of GPUs `gpu_num`.
+    """
+    return Model.global_model.all_reduce(
+        input,
+        gpu_id,
+        gpu_num,
+        output,
+        name,
+    )
+
+
 class Model(_Model):
     # a global model object
     global_model = None
