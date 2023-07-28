@@ -147,7 +147,7 @@ def transpose(
 def matmul(
     input: Tensor,
     other: Tensor,
-    output: Tensor,
+    output: Tensor = None,
     splitk: int = 1,
     tran_input: bool = False,
     tran_other: bool = False,
