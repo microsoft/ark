@@ -78,8 +78,7 @@ Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
         output = this->identity(output);
     }
     MulOp op{pt, input, other, output, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 } // namespace ark

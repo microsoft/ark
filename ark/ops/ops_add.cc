@@ -78,8 +78,7 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
         output = this->identity(output);
     }
     AddOp op{pt, input, other, output, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap ArithmeticConfigMap = {

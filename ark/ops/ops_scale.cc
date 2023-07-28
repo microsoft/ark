@@ -81,8 +81,7 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
         LOGERR("invalid output shape: ", output->shape);
     }
     ScaleOp op{pt, input, output, val, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap ScaleConfigMap = {

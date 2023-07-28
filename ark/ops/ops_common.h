@@ -168,42 +168,75 @@ bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
 bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
-// Map from OpConfigKey to a list of OpConfigs.
+/// Map from OpConfigKey to a list of OpConfigs.
 using OpConfigMap = std::map<OpConfigKey, std::vector<OpConfig>>;
 
-// The operator of a model.
+/// Operator.
 class Op
 {
   public:
+    /// Construct an operator.
     Op() = default;
+
+    /// Construct an operator.
+    /// @param type the type of the @ref Op.
+    /// @param prec_type the precision type of the @ref Op.
+    /// @param inputs the input tensors of the @ref Op, including execution
+    /// dependencies.
+    /// @param output_refs the output reference tensors of the @ref Op. Output
+    /// tensors are created based on these references.
+    /// @param args the arguments of the @ref Op.
+    /// @param name the name of the @ref Op.
+    /// @param cfg_map the configuration map of the @ref Op
+    /// @param gran_lev the granularity level of the @ref Op. Larger values
+    /// should indicate finer-grained Ops. If it is -1, the granularity level
+    /// will be automatically determined by the scheduler.
+    /// @param force_inline whether to force inline the kernel of @ref Op.
     Op(const OpType &type, const OpPrecType &prec_type,
        const std::vector<Tensor *> &inputs,
-       const std::vector<Tensor *> &outputs, const OpArgs &args,
+       const std::vector<Tensor *> &output_refs, const OpArgs &args,
        const std::string &name, const OpConfigMap *cfg_map = nullptr,
        int gran_lev = -1, bool force_inline = false);
+
+    /// Construct an operator.
     Op(const Op &) = default;
+
+    /// Destruct the operator.
     ~Op(){};
 
+    /// Return the kernel function name of the operator. Includes the template
+    /// arguments of the kernel, if any.
+    /// @param cfg the configuration of the operator.
+    /// @return the kernel function name of the operator.
     std::string function_name(const OpConfig &) const;
+
+    /// Return the kernel function's runtime arguments of the operator.
+    /// @param cfg the configuration of the operator.
+    /// @return the runtime arguments of the kernel function.
     OpArgs function_call_args(const OpConfig &) const;
 
-    //
+    /// Returns true if the operator is virtual (i.e., performs no computation).
+    bool is_virtual() const;
+
+    /// Type of the operator.
     OpType type;
-    // Precision type of the operator.
+    /// Precision type of the operator.
     OpPrecType prec_type;
-    // The input tensors of the operator.
+    /// The input tensors of the operator.
     std::vector<Tensor *> inputs;
-    // The output tensors of the operator.
+    /// The output tensors of the operator.
     std::vector<Tensor *> outputs;
-    // Additional arguments of the operator.
+    /// The reference tensors of the output tensors.
+    std::vector<Tensor *> output_refs;
+    /// Additional arguments of the operator.
     OpArgs args;
-    //
+    /// Name of the operator.
     std::string name;
-    //
+    /// Map from OpConfigKey to a list of OpConfigs.
     const OpConfigMap *cfg_map;
-    //
+    /// Granularity level of the operator.
     int gran_lev;
-    //
+    /// Force inlining of the operator kernel.
     bool force_inline;
 
     friend bool operator<(const Op &op1, const Op &op2);
@@ -215,6 +248,8 @@ class Op
 };
 
 std::ostream &operator<<(std::ostream &os, const OpType &s);
+
+/// List all operator classes below.
 
 class AddOp : public Op
 {

@@ -162,14 +162,15 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
         LOGERR("output tensor cannot be the same as input tensor for "
                "reduce_sum op");
     }
+    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
         ReduceWSumOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     } else {
         ReduceESumOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     }
-    return output;
+    return ret;
 }
 
 Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
@@ -196,14 +197,15 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
         LOGERR("output tensor cannot be the same as input tensor for "
                "reduce_mean op");
     }
+    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
         ReduceWMeanOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     } else {
         ReduceEMeanOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     }
-    return output;
+    return ret;
 }
 
 Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
@@ -230,14 +232,15 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
         LOGERR("output tensor cannot be the same as input tensor for "
                "reduce_max op");
     }
+    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
         ReduceWMaxOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     } else {
         ReduceEMaxOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     }
-    return output;
+    return ret;
 }
 
 const OpConfigMap ReduceEConfigMap = {

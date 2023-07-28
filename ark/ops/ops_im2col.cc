@@ -134,8 +134,7 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
     Im2colOp op{pt,           input,           output,         kernel_height,
                 kernel_width, stride_height,   stride_width,   pad_height,
                 pad_width,    dilation_height, dilation_width, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap Im2colConfigMap = {

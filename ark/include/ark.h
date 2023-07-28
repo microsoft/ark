@@ -319,6 +319,10 @@ class Model
                                      std::vector<Tensor *> output,
                                      const std::string &name);
 
+    /// Verify if this model is valid.
+    /// @return true if the model is valid, false otherwise.
+    bool verify() const;
+
   protected:
     class Impl;
     friend class OpGraph;

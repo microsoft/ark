@@ -36,6 +36,16 @@ class OpGraphNode
 void to_json(nlohmann::json &j, const OpGraphNode &ogn);
 void from_json(const nlohmann::json &j, OpGraphNode &ogn);
 
+struct MergedOps
+{
+    std::vector<Op *> ops;
+    std::set<MergedOps *> users;
+    std::set<MergedOps *> producers;
+
+    /// Remove this @ref MergedOps from the graph.
+    void remove_self();
+};
+
 //
 class OpGraph
 {
@@ -50,6 +60,16 @@ class OpGraph
     {
         return this->depth_nodes[depth];
     }
+
+    static std::list<std::unique_ptr<MergedOps>> merge_ops(const Model &model);
+    static void recursive_rm_virt(
+        std::list<std::unique_ptr<MergedOps>> &merged_ops,
+        std::set<MergedOps *> &seen_merged_ops,
+        const std::list<MergedOps *> &boundary_merged_ops);
+    static void recursive_merge(
+        std::list<std::unique_ptr<MergedOps>> &merged_ops,
+        std::set<MergedOps *> &seen_merged_ops,
+        const std::list<MergedOps *> &boundary_merged_ops);
 
   private:
     OpGraphNode *get_or_create_node(int id, const Op *op, const OpConfig *cfg)
@@ -77,25 +97,6 @@ class OpGraph
     std::map<const ark::Op *, OpGraphNode *> op_to_node_map;
     std::vector<std::vector<OpGraphNode *>> depth_nodes;
 };
-
-// void to_json(nlohmann::json &j, const OpGraphNode &ogn)
-// {
-//     j = nlohmann::json{
-//         {"opseq", ogn.opseq},
-//         {"depth", ogn.depth},
-//         {"inputs", std::vector<int>{}},
-//         {"outputs", std::vector<int>{}},
-//     };
-//     for (OpGraphNode *in_dep : ogn.inputs) {
-//         j.at("inputs").emplace_back(in_dep->opseq.get_id());
-//     }
-//     for (OpGraphNode *out_dep : ogn.outputs) {
-//         j.at("outputs").emplace_back(out_dep->opseq.get_id());
-//     }
-// }
-// void from_json(const nlohmann::json &j, OpGraphNode &ogn)
-// {
-// }
 
 } // namespace ark
 

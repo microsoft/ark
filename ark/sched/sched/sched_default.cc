@@ -592,7 +592,6 @@ vector<string> DefaultScheduler::schedule()
     size_t num_depth = this->op_graph->get_num_depth();
     for (size_t depth = 0; depth < num_depth; ++depth) {
         auto &depth_nodes = this->op_graph->get_depth(depth);
-        vector<Sched> ds;
         vector<SchedOpSeq *> calc_opseqs;
         vector<SchedOpSeq *> send_opseqs;
         vector<SchedOpSeq *> send_done_opseqs;

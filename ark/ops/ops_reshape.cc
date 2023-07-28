@@ -11,7 +11,7 @@ namespace ark {
 
 ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const string &name)
-    : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, nullptr, -1}
+    : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, nullptr, -1, true}
 {
 }
 
@@ -82,8 +82,7 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
 {
     output = _reshape(this, input, shape, allowzero, output, name);
     ReshapeOp op{OP_PREC_NONE, input, output, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
@@ -146,8 +145,7 @@ Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
     output =
         _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
     ReshapeOp op{OP_PREC_NONE, input, output, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 } // namespace ark

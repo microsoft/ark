@@ -64,8 +64,7 @@ Tensor *Model::relu(Tensor *input, Tensor *output, const string &name)
         LOGERR("invalid output shape: ", output->shape);
     }
     ReluOp op{pt, input, output, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap ActivationConfigMap = {

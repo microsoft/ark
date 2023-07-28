@@ -40,8 +40,7 @@ Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
         dep_vec.emplace_back(dep);
     }
     TensorOp op{dep_vec, ret, name};
-    this->impl->add_op(op);
-    return ret;
+    return this->impl->add_op(op)[0];
 }
 
 } // namespace ark

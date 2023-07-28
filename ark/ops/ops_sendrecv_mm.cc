@@ -153,9 +153,7 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
     send_ready_flag->exported = true;
     SendMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
                 gpu_dst,      bytes, name};
-    this->impl->add_op(op);
-
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 //
@@ -196,8 +194,7 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     send_ready_flag->imported = true;
     RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
                 gpu_src,      bytes, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap SendRecvMMConfigMap = {

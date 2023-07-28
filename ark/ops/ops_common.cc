@@ -386,21 +386,21 @@ bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2)
 }
 
 Op::Op(const OpType &type_, const OpPrecType &prec_type_,
-       const vector<Tensor *> &inputs_, const vector<Tensor *> &outputs_,
+       const vector<Tensor *> &inputs_, const vector<Tensor *> &output_refs_,
        const OpArgs &args_, const string &name_, const OpConfigMap *cfg_map_,
        int gran_lev_, bool force_inline_)
-    : type{type_}, prec_type{prec_type_}, inputs{inputs_}, outputs{outputs_},
-      args{args_}, name{name_}, cfg_map{cfg_map_}, gran_lev{gran_lev_},
-      force_inline{force_inline_}
+    : type{type_}, prec_type{prec_type_}, inputs{inputs_},
+      output_refs{output_refs_}, args{args_}, name{name_}, cfg_map{cfg_map_},
+      gran_lev{gran_lev_}, force_inline{force_inline_}
 {
     for (auto &tns : inputs_) {
         if (tns == nullptr) {
             LOG(ERROR, "input tensor is null");
         }
     }
-    for (auto &tns : outputs_) {
+    for (auto &tns : output_refs_) {
         if (tns == nullptr) {
-            LOG(ERROR, "output tensor is null");
+            LOG(ERROR, "output reference tensor is null");
         }
     }
 }
@@ -528,6 +528,11 @@ std::string Op::function_name(const std::string &kernel_name,
     }
     ss << ">";
     return ss.str();
+}
+
+bool Op::is_virtual() const
+{
+    return this->cfg_map == nullptr;
 }
 
 bool operator<(const Op &op1, const Op &op2)

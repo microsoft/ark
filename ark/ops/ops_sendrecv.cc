@@ -143,8 +143,7 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     }
     SendOp op{OP_PREC_NONE,     input,    output, id,
               this->impl->rank, dst_rank, bytes,  name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 //
@@ -157,8 +156,7 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
     }
     SendDoneOp op{OP_PREC_NONE,     input,    output, id,
                   this->impl->rank, dst_rank, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 //
@@ -180,8 +178,7 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     }
     RecvOp op{OP_PREC_NONE,     input,    output, id,
               this->impl->rank, src_rank, bytes,  name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap CommConfigMap = {

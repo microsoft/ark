@@ -98,8 +98,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
         assert(output->shape == out_shape);
     }
     TransposeOp op{pt, input, output, tp_type, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap TransposeConfigMap = {

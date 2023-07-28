@@ -230,8 +230,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         MatmulOp op{pt,      mat_a,        mat_b,        mat_y,   nca,
                     ncb,     problem_size, leading_dims, trans_a, trans_b,
                     is_relu, name,         gran_lev};
-        this->impl->add_op(op);
-        return mat_y;
+        return this->impl->add_op(op)[0];
     } else if (split_k > k) {
         LOGERR("Split-K given larger than the K dimension size.");
     }
