@@ -14,10 +14,6 @@ seq_len = 64
 
 import ark
 
-for name in dir(ark):
-    if not name.startswith("__") and callable(getattr(ark, name)):
-        print(name)
-
 
 class TestModelARK(ark.Module):
     def __init__(self):
@@ -57,25 +53,19 @@ class TestModel(nn.Module):
 def test_TestModel(state_dict_file):
     ark.init()
 
-    # Create a Model instance
-    model = ark.Model()
-
     input_tensor = ark.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
-    print("input_tensor type: ", type(input_tensor))
-    print("input_tensor: ", input_tensor.shape())
     ark_model = TestModelARK()
     output_tensor = ark_model(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "test_TestModel")
 
-    exe.compile()
+    ark.launch()
+
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
     ).astype(np.float16)
 
-    exe.launch()
     ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
@@ -91,8 +81,7 @@ def test_TestModel(state_dict_file):
     state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
     print("state_dict: ", state_dict)
     ark_model.load_state_dict(state_dict)
-    exe.run(1)
-    exe.stop()
+    ark.run()
     print(ark_model.state_dict())
     # ark.save(ark_model.state_dict(), state_dict_file)
 
