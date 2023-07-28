@@ -13,6 +13,7 @@
 
 namespace ark {
 
+///
 class OpGraphNode
 {
   public:
@@ -36,6 +37,7 @@ class OpGraphNode
 void to_json(nlohmann::json &j, const OpGraphNode &ogn);
 void from_json(const nlohmann::json &j, OpGraphNode &ogn);
 
+/// 
 struct MergedOps
 {
     std::vector<Op *> ops;
@@ -46,7 +48,7 @@ struct MergedOps
     void remove_self();
 };
 
-//
+/// 
 class OpGraph
 {
   public:
@@ -75,29 +77,7 @@ class OpGraph
         const std::list<MergedOps *> &boundary_merged_ops);
 
   private:
-    OpGraphNode *get_or_create_node(int id, const Op *op, const OpConfig *cfg)
-    {
-        auto search = this->op_to_node_map.find(op);
-        if (search != this->op_to_node_map.end()) {
-            return search->second;
-        }
-        OpGraphNode *ogn = new OpGraphNode{id, op, cfg, ""};
-        this->nodes_storage.emplace_back(ogn);
-        this->op_to_node_map[op] = ogn;
-        return ogn;
-    }
-
-    OpGraphNode *get_node(const Op *op) const
-    {
-        auto search = this->op_to_node_map.find(op);
-        if (search != this->op_to_node_map.end()) {
-            return search->second;
-        }
-        return nullptr;
-    }
-
     std::list<std::unique_ptr<OpGraphNode>> nodes_storage;
-    std::map<const ark::Op *, OpGraphNode *> op_to_node_map;
     std::vector<std::vector<OpGraphNode *>> depth_nodes;
 };
 
