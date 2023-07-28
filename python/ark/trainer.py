@@ -4,9 +4,10 @@
 from ._ark_core import TensorType, Dims, Tensor
 from .executor import Executor
 from .model import Model
+from .module import Module
 
 
-class optimizer:
+class Optimizer:
     def __init__(self, module, lr):
         self.module = module
         self.model = module.model
@@ -27,11 +28,14 @@ class loss_fn:
         return self.model.cross_entropy(outputs, labels)
 
 
-class trainer:
+class Trainer:
     def __init__(
-        self, module, loss_fn, optimizer: optimizer, executor: Executor
+        self,
+        module: Module,
+        loss_fn: loss_fn,
+        optimizer: Optimizer,
+        executor: Executor,
     ):
-        self.model = module.model
         self.module = module
         self.loss_fn = loss_fn
         self.optimizer = optimizer

@@ -28,10 +28,10 @@ from .executor import (
 from .serialize import (
     save,
     load,
-    convert_state_dict_to_pytorch,
+    convert_state_dict,
     convert_state_dict_to_numpy,
 )
-from .trainer import optimizer, trainer
+from .trainer import Optimizer, Trainer
 from .model import (
     Model,
     tensor,
@@ -80,10 +80,10 @@ __all__ = [
     "tensor_memcpy_host_to_device",
     "save",
     "load",
-    "convert_state_dict_to_pytorch",
+    "convert_state_dict",
     "convert_state_dict_to_numpy",
-    "optimizer",
-    "trainer",
+    "Optimizer",
+    "Trainer",
     "Model",
     "tensor",
     "reshape",

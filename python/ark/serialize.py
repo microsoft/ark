@@ -6,7 +6,7 @@ import pickle
 
 
 # Save the state_dict of a module to a file
-def save(state_dict, state_dict_file_path):
+def save(state_dict, state_dict_file_path: str):
     if not isinstance(state_dict, dict):
         print("Warning: Invalid state_dict saved to", state_dict_file_path)
     with open(state_dict_file_path, "wb") as f:
@@ -14,7 +14,7 @@ def save(state_dict, state_dict_file_path):
 
 
 # load the state_dict of a module from a file
-def load(state_dict_file_path):
+def load(state_dict_file_path: str):
     with open(state_dict_file_path, "rb") as f:
         state_dict = pickle.load(f)
         if not isinstance(state_dict, dict):
@@ -22,10 +22,17 @@ def load(state_dict_file_path):
         return state_dict
 
 
-def convert_state_dict_to_pytorch(state_dict):
+def convert_state_dict(state_dict, type="numpy"):
     new_state_dict = {}
     for key in state_dict:
-        new_state_dict[key] = torch.from_numpy(state_dict[key])
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+        else:
+            raise RuntimeError(
+                "Invalid type: " + type + " valid types are torch and numpy"
+            )
     return new_state_dict
 
 

@@ -93,7 +93,7 @@ def test_TestModel(state_dict_file):
 
     torch_model = TestModel()
 
-    torch_model.load_state_dict(ark.convert_state_dict_to_pytorch(state_dict))
+    torch_model.load_state_dict(ark.convert_state_dict(state_dict, "torch"))
 
     gt = torch_model(torch_input).detach().numpy().astype(np.float16)
 
