@@ -32,11 +32,9 @@ if __name__ == "__main__":
     # Run the ARK program
     ark.run()
 
-    # Copy the output tensor from device memory to host memory, if dst is 
+    # Copy the output tensor from device memory to host memory, if dst is
     # None, a new numpy array of the same shape as the src tensor will be returned
-    output_tensor_host = ark.tensor_memcpy_device_to_host(
-        None, output_tensor
-    )
+    output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
     # Check if the output tensor is equal to the sum of the input and other tensor
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
