@@ -4,7 +4,7 @@ This tutorial will guide you through implementing parallel training across multi
 
 ## Prerequisites
 
-Before you begin, make sure you have completed the [installation](./install.md) process. Next, you can run the tutorial example at [tutorial.py](../examples/tutorial/tutorial.py) to learn how to use ARK to communicate between different GPUs.
+Before you begin, make sure you have completed the [installation](./install.md) process. Next, you can run the tutorial example at [multi_gpu_tutorial.py](../examples/tutorial/multi_gpu_tutorial.py) to learn how to use ARK to communicate between different GPUs.
 
 ## Ping-Pong Transfer Example
 
@@ -44,31 +44,36 @@ for process in processes:
     process.join()
 ```
 
-The following is the main function for the two processes. We first create a model instance on each GPU.
+The following is the main function for the two processes. We first use `ark.init_model(rank, world_size)` to initialize the model. The `rank` parameter is the rank of the process, and the `world_size` parameter is the number of processes. In ARK, one process corresponds to one GPU. 
+
+
+
+```python
+def sendrecv_test_ping_pong_function(rank, np_inputs):
+    print("rank:", rank)
+    # Initialize the ARK model
+    ark.init_model(rank, world_size)
+```
+
 
 The first Model on process 0 will send send_tensor from GPU 0 to GPU 1. Since multiple tensors can be sent to the same GPU, an identifier `id` is required to distinguish the tensor. Here, we set the first `id` to 0. Then, the first process will receive recv_tensor from GPU 1. The received `id` will be 1.
 
 For more information about the `send` and `recv` operator, please refer to the [API documentation](../docs/api.md).
 
 ```python
-def sendrecv_test_ping_pong_function(rank, np_inputs):
-    print("rank:", rank)
-    # Create a Model instance
-    model = ark.Model(rank)
-
     # Define the behavior for rank 0
     if rank == 0:
-        send_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-        recv_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+        send_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 
         # send the tensor to rank 1
         send_id, dst_rank = 0, 1
-        model.send(send_tensor, send_id, dst_rank, tensor_size)
-        model.send_done(send_tensor, send_id, dst_rank)
+        ark.send(send_tensor, send_id, dst_rank, tensor_size)
+        ark.send_done(send_tensor, send_id, dst_rank)
 
         # recv the tensor from rank 1
         recv_id, recv_rank = 1, 1
-        model.recv(recv_tensor, recv_id, recv_rank)
+        ark.recv(recv_tensor, recv_id, recv_rank)
 ```
 
 The following is the model definition for GPU1. Here, GPU1 receives the tensor from GPU0 and sends it back to GPU0.
@@ -77,19 +82,19 @@ The following is the model definition for GPU1. Here, GPU1 receives the tensor f
     # Define the behavior for rank 1
     if rank == 1:
         # recv the tensor from rank 0
-        recv_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
         recv_id, recv_rank = 0, 0
-        recv_dep = model.recv(recv_tensor, recv_id, recv_rank)
+        recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
 
-        # The send must be executed after the recv, in the current scheduler, 
-        # in one depth their will be send operation, compute operation and 
+        # The send must be executed after the recv, in the current scheduler,
+        # in one depth their will be send operation, compute operation and
         # recv operation
-        send_tensor = model.identity(recv_tensor, [recv_dep])
+        send_tensor = ark.identity(recv_tensor, [recv_dep])
 
         # Send the received tensor back to rank 0 after an identity operation
         send_id, dst_rank = 1, 0
-        model.send(send_tensor, send_id, dst_rank, tensor_size)
-        model.send_done(send_tensor, send_id, dst_rank)
+        ark.send(send_tensor, send_id, dst_rank, tensor_size)
+        ark.send_done(send_tensor, send_id, dst_rank)
 ```
 
 Note that there is a line that describes the dependency between the send and recv operation:
@@ -100,30 +105,28 @@ send_tensor = model.identity(recv_tensor, [recv_dep])
 
 This is because the send operation must be executed after the recv operation. In the current scheduler, if this dependency is not specified, the send operation may be executed before the recv operation, causing an error. We will improve the scheduler in the future to automatically handle this situation.
     
-Finally, we can create the executor and run the model. We need to specify the rank and world_size of the executor. The rank of the executor is the rank of the process, and the world_size is the number of processes, which is 2 here.
-After we lauch the executor, we need to copy the send tensor to GPU0 to initialize the send tensor. Then we can run the model for one step and stop the executor.
+Finally, we can use `ark.launch()` to compile the kernel code and create contexts for each GPU. The connection between the two GPUs will be established automatically.
+
+After we lauch the ARK model, we need to copy the send tensor to GPU0 to initialize the send tensor. Then we can run the ARK program.
 
 ```python
-    # Create an executor for the model
-    exe = ark.Executor(rank, rank, world_size, model, "test_python_bindings")
-    exe.compile()
+   # Launch the ARK runtime
+    ark.launch()
 
-    # Launch the execution and perform data transfers
-    exe.launch()
     # Copy send data to GPU0
     if rank == 0:
-        exe.tensor_memcpy_host_to_device(send_tensor, np_inputs)
+        ark.tensor_memcpy_host_to_device(send_tensor, np_inputs)
 
-    exe.run(1)
-    exe.stop()
+    # Run the ARK program
+    ark.run()
 ```
 
-Finally, we can copy the recv_tensor to the host to check the result. In theory, the recv_tensor on both GPUs should be the same as the original send tensor.
+Finally, we can copy the recv_tensor to the host to check the result. The recv_tensor on both GPUs should be the same as the original send tensor.
 
 ```python
     # Copy data back to host and calculate errors
     host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, recv_tensor)
+    ark.tensor_memcpy_device_to_host(host_output, recv_tensor)
 
     # Print output and error information
     print("host_output:", host_output)
