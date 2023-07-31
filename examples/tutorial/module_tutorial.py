@@ -15,56 +15,6 @@ seq_len = 64
 
 import ark
 
-from ark import Executor, Model, Module, Tensor
-
-
-class Optimizer:
-    def __init__(self, module: Module, lr: float):
-        self.module = module
-        self.model = module.model
-        self.lr = lr
-
-    def step(self, module=None):
-        for param in module.parameters:
-            grads = module.grads[param]
-            grads_scale = self.model.scale(grads, -1.0 * self.lr)
-            param_identity = self.model.identity(param)
-            self.model.add(param, grads_scale, param_identity)
-        for module in module._sub_modules:
-            self.step(module)
-
-
-class loss_fn:
-    def forward(self, outputs: Tensor, labels: Tensor):
-        return self.model.cross_entropy(outputs, labels)
-
-
-class Trainer:
-    def __init__(
-        self,
-        module: Module,
-        loss_fn: loss_fn,
-        optimizer: Optimizer,
-        executor: Executor,
-    ):
-        self.module = module
-        self.loss_fn = loss_fn
-        self.optimizer = optimizer
-        self.executor = executor
-
-    def trainer_init(self, inputs, labels):
-        outputs = self.module(inputs)
-        loss = self.loss_fn(outputs, labels)
-        loss.backward()
-        self.optimizer.step()
-        return loss
-
-    def train(self, iter):
-        self.executor.launch()
-        self.executor.run(iter)
-        elapsed_msec = self.executor.stop()
-        print("Training time: ", elapsed_msec, "ms")
-
 
 class TestModelARK(ark.Module):
     def __init__(self):
@@ -80,6 +30,27 @@ class TestModelARK(ark.Module):
         return output_layernorm
 
 
+class TestModel(nn.Module):
+    def __init__(self):
+        super(TestModel, self).__init__()
+        self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
+        self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
+
+    # inputs: [batch_size, seq_len, d_model]
+    def forward(self, inputs):
+        output = torch.matmul(
+            inputs, self.weight_1
+        )  # [batch_size, seq_len, d_ff]
+        output = nn.ReLU()(output)
+        output = torch.matmul(
+            output, self.weight_2
+        )  # [batch_size, seq_len, d_model]
+        output = nn.LayerNorm(d_model)(
+            output + inputs
+        )  # [batch_size, seq_len, d_model]
+        return output
+
+
 def test_TestModel():
     ark.init_model()
 
@@ -88,6 +59,7 @@ def test_TestModel():
     )
     ark_model = TestModelARK()
     output_tensor = ark_model(input_tensor)
+    # Test the mul method
 
     ark.launch()
 
@@ -114,6 +86,21 @@ def test_TestModel():
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
+    torch_model = TestModel()
+
+    torch_model.load_state_dict(ark.convert_state_dict(state_dict, "torch"))
+
+    gt = torch_model(torch_input).detach().numpy().astype(np.float16)
+
+    # test if the result is correct
+    max_error = np.max(np.abs(output_tensor_host - gt))
+    avg_error = np.mean(np.abs(output_tensor_host - gt))
+    ark_state_dict = ark_model.state_dict()
+    for k, v in state_dict.items():
+        np.testing.assert_allclose(v, ark_state_dict[k])
+    # print(input_tensor_host)
+    # print(output_tensor_host)
+    # print(gt)
     ark.destroy()
     print("ARK module test")
     print(
@@ -126,6 +113,7 @@ def test_TestModel():
         "d_ff:",
         d_ff,
     )
+    print("max error: ", max_error, "avg error: ", avg_error)
 
 
 class TestAPI(unittest.TestCase):
