@@ -39,6 +39,3 @@ if __name__ == "__main__":
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
     )
-
-    # Destroy the ARK runtime
-    ark.destroy()

@@ -5,7 +5,7 @@ Welcome to this tutorial on using ARK to run a simple deep neural network (DNN) 
 After completing the [installation](./install.md), you can run the tutorial example at [tutorial.py](../examples/tutorial/quickstart_tutorial.py) to see how ARK works.
 
 ```bash
-python examples/tutorial/tutorial.py
+python examples/tutorial/quickstart_tutorial.py
 ```
 
 There are environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
@@ -33,7 +33,7 @@ other_tensor = ark.tensor([M, N])
 output_tensor = ark.add(input_tensor, input_tensor)
 ```
 
-Next, we need to launch the ARK runtime and initialize the input and output tensors. You can copy a numpy array into a tensor on GPU using `ark.tensor_memcpy_host_to_device()`. Please note that ark.launch() will freeze the model and create the GPU context for the ARK application. So you must call `ark.launch()` before copying the tensor between host and device. And changing the model after launching the ARK runtime is not allowed.
+Next, we need to launch the ARK runtime and initialize the input and output tensors. You can copy a numpy array into a tensor on GPU using `ark.tensor_memcpy_host_to_device()`. Therefore, you must call ark.launch() before copying the tensor between host and device. Changing the model after launching the ARK runtime is not allowed.
 
 
 ```python
@@ -47,7 +47,7 @@ other_tensor_host = np.random.rand(M, N).astype(np.float32)
 ark.tensor_memcpy_host_to_device(other_tensor, other_tensor_host)
 ```
 
-Next, you can run the ARK runtime using `ark.run()`. This will launch the CUDA kernel and wait for the kernel to finish. 
+Next, you can run the ARK runtime using ark.run(). This will launch the CUDA kernel and wait for the kernel to finish.
 
 ```python
 # Run the ARK program
