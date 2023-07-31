@@ -156,6 +156,7 @@ class TestMatmul(unittest.TestCase):
         print("test_matmul_split")
         for split_k in range(2, 4):
             test_matmul_small_sizes(split_k, False, -1)
+        # TODO: enable this after fixing the bug in the large tensor matmul
         # for split_k in range(3, 8):
         #     for gran_lev in range(-1, 4):
         #         test_matmul_internal(

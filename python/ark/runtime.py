@@ -45,6 +45,9 @@ def launch():
 
 
 def run(iter=1):
+    """
+    Run the ARK program for iter iterations and wait for the kernel to finish.
+    """
     Executor.get_executor().run(iter)
     Executor.get_executor().stop()
 
