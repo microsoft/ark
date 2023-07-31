@@ -16,25 +16,46 @@ seq_len = 64
 import ark
 
 
-class TestModelARK(ark.Module):
+class SubModuleARK(ark.Module):
     def __init__(self):
-        super(TestModelARK, self).__init__()
-        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
+        super(SubModuleARK, self).__init__()
         self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
 
     def forward(self, inputs):
+        middle_result1 = ark.matmul(inputs, self.weight_2)
+        return middle_result1
+
+
+class TestModelARK(ark.Module):
+    def __init__(self):
+        super(TestModelARK, self).__init__()
+        # define the parameters of the module
+        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
+        self.submodule = SubModuleARK()
+
+    def forward(self, inputs):
         middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = ark.matmul(middle_result, self.weight_2)
+        middle_result1 = self.submodule(middle_result)
         output = ark.add(middle_result1, inputs)
         output_layernorm = ark.layernorm(output)
         return output_layernorm
 
 
-class TestModel(nn.Module):
+class SubModulePytorch(nn.Module):
     def __init__(self):
-        super(TestModel, self).__init__()
-        self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
+        super(SubModulePytorch, self).__init__()
         self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
+
+    def forward(self, inputs):
+        middle_result1 = torch.matmul(inputs, self.weight_2)
+        return middle_result1
+
+
+class TestModelPytorch(nn.Module):
+    def __init__(self):
+        super(TestModelPytorch, self).__init__()
+        self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
+        self.submodule = SubModulePytorch()
 
     # inputs: [batch_size, seq_len, d_model]
     def forward(self, inputs):
@@ -42,9 +63,7 @@ class TestModel(nn.Module):
             inputs, self.weight_1
         )  # [batch_size, seq_len, d_ff]
         output = nn.ReLU()(output)
-        output = torch.matmul(
-            output, self.weight_2
-        )  # [batch_size, seq_len, d_model]
+        output = self.submodule(output)
         output = nn.LayerNorm(d_model)(
             output + inputs
         )  # [batch_size, seq_len, d_model]
@@ -75,7 +94,10 @@ def test_TestModel():
     weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
         np.float16
     )
-    state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
+    state_dict = {
+        "weight_1": weight_1_host,
+        "submodule.weight_2": weight_2_host,
+    }
 
     ark_model.load_state_dict(state_dict)
     ark.run()
@@ -86,7 +108,7 @@ def test_TestModel():
 
     torch_input = torch.from_numpy(input_tensor_host_float32)
 
-    torch_model = TestModel()
+    torch_model = TestModelPytorch()
 
     torch_model.load_state_dict(ark.convert_state_dict(state_dict, "torch"))
 

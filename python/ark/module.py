@@ -60,7 +60,7 @@ class Module:
         for name, module in self._sub_modules.items():
             if module is not None:
                 module.load_state_dict(
-                    self.executor, state_dict, prefix=prefix + name + "."
+                    state_dict, prefix=prefix + name + ".", executor=executor
                 )
         for name, param in self._parameters.items():
             executor.tensor_memcpy_host_to_device(
@@ -69,13 +69,17 @@ class Module:
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
     # Must be called after the executor is launched.
-    def state_dict(self, executor: Executor = None):
+    def state_dict(self, prefix="", executor: Executor = None):
         if executor is None:
             executor = Executor.get_executor()
         state_dict = {}
         for name, module in self._sub_modules.items():
             if module is not None:
-                state_dict.update(module.state_dict())
+                state_dict.update(
+                    module.state_dict(
+                        prefix=prefix + name + ".", executor=executor
+                    )
+                )
         for name, param in self._parameters.items():
             ark_shape = param.shape()
             np_shape = []
@@ -83,7 +87,7 @@ class Module:
                 np_shape.append(ark_shape[i])
             param_np = np.zeros(np_shape, dtype=np.float16)
             executor.tensor_memcpy_device_to_host(param_np, param)
-            state_dict[name] = param_np
+            state_dict[prefix + name] = param_np
         return state_dict
 
     forward: Callable[..., Any] = NotImplemented
