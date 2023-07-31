@@ -29,7 +29,7 @@ from .serialize import (
     load,
     convert_state_dict,
 )
-from .trainer import Optimizer, Trainer
+
 from .model import (
     Model,
     tensor,

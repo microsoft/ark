@@ -16,21 +16,21 @@ Before diving in, let's import the required modules and initialize ARK:
 import ark
 import numpy as np
 
-# Initialize the ARK runtime.
-ark.init()
+# Initialize the ARK model
+ark.init_model()
+
+M, N = 1024, 1024
 ```
 First, we need to create the operational graph for our DNN model. In this example, we define a simple model with two input tensors. The output tensor is the sum of these input tensors.
 
 ```python
-# Create a Model instance
-model = ark.Model()
+# Create an input tensor
+input_tensor = ark.tensor(ark.Dims(M, N), ark.TensorType.FP16)
+# Create another tensor
+other_tensor = ark.tensor(ark.Dims(M, N), ark.TensorType.FP16)
 
-# Create two tensors
-input = model.tensor(ark.Dims(32,), ark.TensorType.FP16)
-other = model.tensor(ark.Dims(32,), ark.TensorType.FP16)
-
-# Add input and other to get output tensor
-output = model.add(input, other)
+# Add the two tensors
+output_tensor = ark.add(input_tensor, input_tensor)
 ```
 
 Next, we need to create an executor for the model. Once it is created, the executor automatically runs a scheduler that schedules the model's GPU tasks. After the scheduling, a code generator will generate a CUDA kernel that runs the model.

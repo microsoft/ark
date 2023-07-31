@@ -13,9 +13,9 @@ if __name__ == "__main__":
 
     M, N = 1024, 1024
     # Create an input tensor
-    input_tensor = ark.tensor(ark.Dims(M, N), ark.TensorType.FP16)
+    input_tensor = ark.tensor(ark.Dims(M, N))
     # Create another tensor
-    other_tensor = ark.tensor(ark.Dims(M, N), ark.TensorType.FP16)
+    other_tensor = ark.tensor(ark.Dims(M, N))
 
     # Add the two tensors
     output_tensor = ark.add(input_tensor, input_tensor)
@@ -24,9 +24,9 @@ if __name__ == "__main__":
     ark.launch()
 
     # Initialize the input and other tensor with random values
-    input_tensor_host = np.random.rand(M, N).astype(np.float16)
+    input_tensor_host = np.random.rand(M, N)
     ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
-    other_tensor_host = np.random.rand(M, N).astype(np.float16)
+    other_tensor_host = np.random.rand(M, N)
     ark.tensor_memcpy_host_to_device(other_tensor, other_tensor_host)
 
     # Run the ARK program

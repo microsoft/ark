@@ -5,8 +5,8 @@ from ._ark_core import _Model, Tensor, TensorBuf, TensorType, Dims
 
 
 def tensor(
-    shape: list,
-    dtype: TensorType,
+    shape,
+    dtype: TensorType = TensorType.FP32,
     buf: TensorBuf = None,
     ldims: Dims = Dims(),
     offs: Dims = Dims(),
@@ -19,6 +19,11 @@ def tensor(
     """
     Construct a tensor with given shape and data type.
     """
+    # if shape is a list of integers, convert it to a Dims object
+    if isinstance(shape, list):
+        # only support tensors with up to 4 dimensions
+        assert len(shape) <= 4
+        shape = Dims(*shape)
     return Model.global_model.tensor(
         shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
     )

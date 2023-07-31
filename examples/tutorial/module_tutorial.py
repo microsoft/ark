@@ -116,10 +116,5 @@ def test_TestModel():
     print("max error: ", max_error, "avg error: ", avg_error)
 
 
-class TestAPI(unittest.TestCase):
-    def test_api(self):
-        test_TestModel()
-
-
 if __name__ == "__main__":
-    unittest.main()
+    test_TestModel()
