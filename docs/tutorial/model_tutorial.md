@@ -1,14 +1,15 @@
-# A Quick Guide to Using ARK with Python for DNN Applications
+# Using the Model and Executor APIs in ARK
+ARK provides two levels of APIs for running deep neural network (DNN) applications: the ARK runtime API and the Model and Executor APIs. ARK runtime is built on top of the Model and Executor APIs.
 
-Welcome to this tutorial on using ARK to run a simple deep neural network (DNN) application in Python. We will walk you through a basic Python example to illustrate the process.
+While the ARK runtime API provides a simple interface for running DNN models, the Model and Executor APIs offer more advanced features for customizing and optimizing DNN applications. For historical reasons, the Model and Executor APIs are used in previous versions of ARK Applications.
 
-After completing the [installation](./install.md), you can run the tutorial example at [tutorial.py](../examples/tutorial/tutorial.py) to see how ARK works.
+If you're interested in using the Model and Executor APIs, this guide will take a step further from the [quickstart guide](./quickstart.md) to show a low-level example of using the Model and Executor APIs to run a simple DNN application in Python.
+
+After completing the [installation](./install.md), you can run the tutorial example at [model_tutorial.py](../examples/tutorial/model_tutorial.py).
 
 ```bash
 python examples/tutorial/tutorial.py
 ```
-
-There are environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
 
 Before diving in, let's import the required modules and initialize ARK:
 
@@ -114,5 +115,3 @@ mean_error = np.mean(np.abs(output_np - (input_np + other_np)))
 
 print("max error: ", max_error, "mean error: ", mean_error)
 ```
-
-Congratulations! You have successfully learned how to run a DNN model over ARK. Happy coding!

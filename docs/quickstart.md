@@ -69,3 +69,5 @@ np.testing.assert_allclose(
 ```
 
 Congratulations! You have successfully learned how to run a DNN model over ARK. Happy coding!
+
+For more tutorials, please refer to [Tutorials](./tutorial/).
