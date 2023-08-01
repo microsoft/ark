@@ -15,11 +15,9 @@ seq_len = 64
 
 import ark
 
-from ark import Executor, Model, Module, Tensor
-
 
 class Optimizer:
-    def __init__(self, module: Module, lr: float):
+    def __init__(self, module: ark.Module, lr: float):
         self.module = module
         self.model = module.model
         self.lr = lr
@@ -34,36 +32,21 @@ class Optimizer:
             self.step(module)
 
 
-class loss_fn:
-    def forward(self, outputs: Tensor, labels: Tensor):
-        return self.model.cross_entropy(outputs, labels)
+class loss_fn(ark.Module):
+    def __init__(self):
+        pass
+        # self.loss = ark.tensor(ark.Dims(1), ark.TensorType.FP16)
 
+    def forward(self, outputs: ark.Tensor, labels: ark.Tensor):
+        neg_ground_truth = self.model.scale(labels, -1.0)
+        diff = self.model.add(outputs, neg_ground_truth)
+        diff1 = self.model.scale(diff, 1.0)
+        mse = self.model.mul(diff, diff1)
+        return mse
 
-class Trainer:
-    def __init__(
-        self,
-        module: Module,
-        loss_fn: loss_fn,
-        optimizer: Optimizer,
-        executor: Executor,
-    ):
-        self.module = module
-        self.loss_fn = loss_fn
-        self.optimizer = optimizer
-        self.executor = executor
-
-    def trainer_init(self, inputs, labels):
-        outputs = self.module(inputs)
-        loss = self.loss_fn(outputs, labels)
+    def backward(self, loss):
+        grad_diff = self.model.scale(loss, 2.0)
         loss.backward()
-        self.optimizer.step()
-        return loss
-
-    def train(self, iter):
-        self.executor.launch()
-        self.executor.run(iter)
-        elapsed_msec = self.executor.stop()
-        print("Training time: ", elapsed_msec, "ms")
 
 
 class TestModelARK(ark.Module):
@@ -79,6 +62,37 @@ class TestModelARK(ark.Module):
         output_layernorm = ark.layernorm(output)
         return output_layernorm
 
+    def backward(self, loss):
+        loss.backward()
+
+
+class Trainer:
+    def __init__(
+        self,
+        module: ark.Module,
+        loss_fn: loss_fn,
+        optimizer: Optimizer,
+    ):
+        self.module = module
+        self.loss_fn = loss_fn
+        self.optimizer = optimizer
+
+    def trainer_init(self, inputs, labels):
+        outputs = self.module(inputs)
+        loss = self.loss_fn(outputs, labels)
+        loss.backward()
+        self.optimizer.step()
+        return loss
+
+    def train(self, iter):
+        self.executor.launch()
+        self.executor.run(iter)
+        elapsed_msec = self.executor.stop()
+        print("Training time: ", elapsed_msec, "ms")
+
+    def get_loss(self):
+        loss = ark.tensor_mempcy_device_to_host(None, self.loss_fn.loss)
+
 
 def test_TestModel():
     ark.init_model()
@@ -88,7 +102,7 @@ def test_TestModel():
     )
     ark_model = TestModelARK()
     output_tensor = ark_model(input_tensor)
-
+    trainer = Trainer(ark_model, loss_fn(), Optimizer(ark_model, 0.001))
     ark.launch()
 
     input_tensor_host = (

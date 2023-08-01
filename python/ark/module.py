@@ -81,11 +81,7 @@ class Module:
                     )
                 )
         for name, param in self._parameters.items():
-            ark_shape = param.shape()
-            np_shape = []
-            for i in range(param.ndims()):
-                np_shape.append(ark_shape[i])
-            param_np = np.zeros(np_shape, dtype=np.float16)
+            param_np = np.zeros(param.shape, dtype=np.float16)
             executor.tensor_memcpy_device_to_host(param_np, param)
             state_dict[prefix + name] = param_np
         return state_dict

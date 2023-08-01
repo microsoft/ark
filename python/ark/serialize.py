@@ -23,6 +23,9 @@ def load(state_dict_file_path: str):
 
 
 def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
     new_state_dict = {}
     for key in state_dict:
         if type == "torch":

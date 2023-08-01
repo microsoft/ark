@@ -53,15 +53,13 @@ def tensor_memcpy_host_to_device(dst, src):
 
 def tensor_memcpy_device_to_host(dst, src):
     if dst is None:
-        np_shape = []
-        ark_dims = src.shape()
-        for i in range(src.ndims()):
-            np_shape.append(ark_dims[i])
         np_type = None
         if src.tensor_type() == TensorType.FP32:
             np_type = np.float32
         elif src.tensor_type() == TensorType.FP16:
             np_type = np.float16
-        dst = np.empty(np_shape, dtype=np_type)
+        else:
+            raise RuntimeError("Unsupported tensor type")
+        dst = np.empty(src.shape, dtype=np_type)
     Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
     return dst

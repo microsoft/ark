@@ -103,14 +103,20 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("ldims"), py::arg("offs"), py::arg("pads"),
              py::arg("exported"), py::arg("imported"), py::arg("id"),
              py::arg("name"))
+        .def_property_readonly("shape",
+                               [](const ark::Tensor &t) {
+                                   py::list shape_list;
+                                   for (int i = 0; i < t.ndims(); ++i) {
+                                       shape_list.append((int)t.shape[i]);
+                                   }
+                                   return shape_list;
+                               })
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("size", &ark::Tensor::size,
              "Number of elements in the tensor excluding padding.")
         .def("ndims", &ark::Tensor::ndims,
              "Number of dimensions in the tensor.")
-        .def("shape", &ark::Tensor::padded_shape,
-             "Shape of the tensor including padding.")
         .def("padded_shape", &ark::Tensor::padded_shape,
              "Shape of the tensor including padding.")
         .def("type_bytes", &ark::Tensor::type_bytes,
