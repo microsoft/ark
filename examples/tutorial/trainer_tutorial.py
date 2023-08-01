@@ -67,40 +67,30 @@ class loss_fn(ark.Module):
         return grad_diff
 
 
-class fully_connected_layer(ark.Module):
+class matmul_layer(ark.Module):
     def __init__(self, input_size, output_size):
-        super(fully_connected_layer, self).__init__()
-        self.weight = ark.tensor([input_size, output_size], ark.TensorType.FP16)
-        self.bias = ark.tensor([1, output_size], ark.TensorType.FP16)
+        super(matmul_layer, self).__init__()
         self.other_parameter = {}
+        self.weight = ark.tensor([input_size, output_size], ark.TensorType.FP16)
 
     def forward(self, inputs):
         self.other_parameter["inputs"] = inputs
         output = ark.matmul(inputs, self.weight)
-        output = ark.add(output, self.bias)
-        print("output: ", output.shape)
         return output
 
     def backward(self, grads_output):
-        grad_bias = grads_output
         inputs = self.other_parameter["inputs"]
-        print("inputs: ", inputs.shape, "grads_output: ", grads_output.shape)
         grad_weight = ark.matmul(inputs, grads_output, transpose_a=True)
         grad_input = ark.matmul(grads_output, self.weight, transpose_b=True)
-        print("grad_weight: ", grad_weight.shape)
-        print("self.weight: ", self.weight.shape)
-        grad_weight = ark.reshape(grad_weight, self.weight.shape)
-        grad_bias = ark.reshape(grad_bias, self.bias.shape)
         self.grads["weight"] = grad_weight
-        self.grads["bias"] = grad_bias
         return grad_input
 
 
 class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
-        self.module1 = fully_connected_layer(d_model, d_ff)
-        self.module2 = fully_connected_layer(d_ff, d_model)
+        self.module1 = matmul_layer(d_model, d_ff)
+        self.module2 = matmul_layer(d_ff, d_model)
 
     def forward(self, inputs):
         output = self.module1(inputs)
@@ -150,9 +140,7 @@ class Trainer:
 def test_TestModel():
     ark.init_model()
 
-    input_tensor = ark.tensor(
-        [batch_size, d_model], ark.TensorType.FP16
-    )
+    input_tensor = ark.tensor([batch_size, d_model], ark.TensorType.FP16)
     ark_model = TestModelARK()
     trainer = Trainer(ark_model, loss_fn(), Optimizer(ark_model, 0.001))
     ark.launch()
