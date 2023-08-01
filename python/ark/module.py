@@ -5,6 +5,7 @@ from typing import Optional, Dict, Callable, Any
 import numpy as np
 from ._ark_core import _Model, Tensor
 from .executor import Executor
+import logging
 
 
 class Module:
@@ -13,11 +14,11 @@ class Module:
     """
 
     # The submodules of the module.
-    sub_modules: Dict[str, Optional["Module"]]
+    sub_modules: Dict[str, "Module"]
     # The parameters of the module.
-    parameters: Dict[str, Optional["Tensor"]]
+    parameters: Dict[str, Tensor]
     # The gradient computed at backward stage. A map from parameter to gradient.
-    grads: Dict[Optional["Tensor"], Optional["Tensor"]]
+    grads: Dict[Tensor, Tensor]
 
     def __init__(self):
         self.sub_modules = dict()
@@ -25,11 +26,15 @@ class Module:
         self.grads = dict()
 
     # Adds a child module to the current module.
-    def register_module(self, name: str, module: Optional["Module"]) -> None:
+    def register_module(self, name: str, module: "Module") -> None:
+        if not isinstance(module, Module):
+            logging.error("module must be a Module")
         self.sub_modules[name] = module
 
     # Adds a parameter to the module.
-    def register_parameter(self, name: str, param: Optional["Tensor"]) -> None:
+    def register_parameter(self, name: str, param: Tensor) -> None:
+        if not isinstance(param, Tensor):
+            logging.error("param must be a Tensor")
         self.parameters[name] = param
 
     def __setattr__(self, __name: str, __value: Any) -> None:

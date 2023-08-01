@@ -21,14 +21,18 @@ class Optimizer:
         self.module = module
         self.lr = lr
 
-    def step(self):
-        for param in self.module.parameters:
+    def step(self, module: ark.Module = None):
+        if module == None:
+            module = self.module
+        print("step module: ", module)
+        for param in module.parameters:
+            print("param: ", param, "grads: ", module.grads)
             grads = module.grads[param]
             grads_scale = ark.scale(grads, -1.0 * self.lr)
             param_identity = ark.identity(param)
             ark.add(param, grads_scale, param_identity)
-        for module in module._sub_modules:
-            self.step(module)
+        for sub_module_name in module.sub_modules:
+            self.step(module.sub_modules[sub_module_name])
 
 
 class loss_fn(ark.Module):
@@ -65,8 +69,8 @@ class fully_connected_layer(ark.Module):
         grad_bias = ark.scale(loss, 1.0)
         grad_weight = ark.matmul(loss, self.weight, transpose_a=True)
         grad_input = ark.matmul(loss, self.weight, transpose_b=True)
-        self.grads[self.weight] = grad_weight
-        self.grads[self.bias] = grad_bias
+        self.grads['weight'] = grad_weight
+        self.grads['bias'] = grad_bias
         return grad_input
 
 
