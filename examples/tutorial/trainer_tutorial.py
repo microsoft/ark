@@ -21,8 +21,8 @@ class Optimizer:
         self.module = module
         self.lr = lr
 
-    def step(self, module=None):
-        for param in module.parameters:
+    def step(self):
+        for param in self.module.parameters:
             grads = module.grads[param]
             grads_scale = ark.scale(grads, -1.0 * self.lr)
             param_identity = ark.identity(param)
@@ -109,11 +109,9 @@ class Trainer:
         self.optimizer.step()
 
     def trainer_init(self, inputs, labels):
-        outputs = self.module(inputs)
-        loss = self.loss_fn(outputs, labels)
-        loss.backward()
-        self.optimizer.step()
-        return loss
+        # Initialize the input and label tensors
+        
+        return
 
     def train(self, iter):
         for i in range(iter):
