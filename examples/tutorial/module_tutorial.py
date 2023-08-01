@@ -17,7 +17,7 @@ class SubModuleARK(ark.Module):
     def __init__(self):
         super(SubModuleARK, self).__init__()
         # Define the parameters of the submodule
-        self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
+        self.weight_2 = ark.tensor([d_ff, d_model], ark.TensorType.FP16)
 
     def forward(self, inputs):
         # Perform the forward pass of the submodule
@@ -29,21 +29,16 @@ class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
         # Define the parameters of the module
-        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
+        self.weight_1 = ark.tensor([d_model, d_ff], ark.TensorType.FP16)
         # Create a submodule of the module
         self.submodule = SubModuleARK()
 
     def forward(self, inputs):
         # Perform the forward pass of the model
-        # inputs: [batch_size, seq_len, d_model]
         middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        # [batch_size, seq_len, d_ff]
         middle_result1 = self.submodule(middle_result)
-        # [batch_size, seq_len, d_model]
         output = ark.add(middle_result1, inputs)
-        # [batch_size, seq_len, d_model]
         output_layernorm = ark.layernorm(output)
-        # [batch_size, seq_len, d_model]
         return output_layernorm
 
 
@@ -67,15 +62,11 @@ class TestModelPytorch(nn.Module):
         self.submodule = SubModulePytorch()
 
     def forward(self, inputs):
-        # inputs: [batch_size, seq_len, d_model]
+        # Perform the forward pass of the model
         output = torch.matmul(inputs, self.weight_1)
-        # [batch_size, seq_len, d_ff]
         output = nn.ReLU()(output)
-        # [batch_size, seq_len, d_ff]
         output = self.submodule(output)
-        # [batch_size, seq_len, d_model]
         output = nn.LayerNorm(d_model)(output + inputs)
-        # [batch_size, seq_len, d_model]
         return output
 
 
