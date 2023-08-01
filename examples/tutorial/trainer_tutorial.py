@@ -19,15 +19,14 @@ import ark
 class Optimizer:
     def __init__(self, module: ark.Module, lr: float):
         self.module = module
-        self.model = module.model
         self.lr = lr
 
     def step(self, module=None):
         for param in module.parameters:
             grads = module.grads[param]
-            grads_scale = self.model.scale(grads, -1.0 * self.lr)
-            param_identity = self.model.identity(param)
-            self.model.add(param, grads_scale, param_identity)
+            grads_scale = ark.scale(grads, -1.0 * self.lr)
+            param_identity = ark.identity(param)
+            ark.add(param, grads_scale, param_identity)
         for module in module._sub_modules:
             self.step(module)
 
@@ -38,14 +37,14 @@ class loss_fn(ark.Module):
         # self.loss = ark.tensor(ark.Dims(1), ark.TensorType.FP16)
 
     def forward(self, outputs: ark.Tensor, labels: ark.Tensor):
-        neg_ground_truth = self.model.scale(labels, -1.0)
-        diff = self.model.add(outputs, neg_ground_truth)
-        diff1 = self.model.scale(diff, 1.0)
-        mse = self.model.mul(diff, diff1)
+        neg_ground_truth = ark.scale(labels, -1.0)
+        diff = ark.add(outputs, neg_ground_truth)
+        diff1 = ark.scale(diff, 1.0)
+        mse = ark.mul(diff, diff1)
         return mse
 
     def backward(self, loss):
-        grad_diff = self.model.scale(loss, 2.0)
+        grad_diff = ark.scale(loss, 2.0)
         return grad_diff
 
 
@@ -98,10 +97,14 @@ class Trainer:
         self.module = module
         self.loss_fn = loss_fn
         self.optimizer = optimizer
-        input = ark.tensor([batch_size, seq_len, d_model], ark.TensorType.FP16)
-        label = ark.tensor([batch_size, seq_len, d_model], ark.TensorType.FP16)
-        output = self.module(input)
-        loss = self.loss_fn(output, label)
+        self.input = ark.tensor(
+            [batch_size, seq_len, d_model], ark.TensorType.FP16
+        )
+        self.label = ark.tensor(
+            [batch_size, seq_len, d_model], ark.TensorType.FP16
+        )
+        output = self.module(self.input)
+        loss = self.loss_fn(output, self.label)
         self.loss_fn.backward(loss)
         self.optimizer.step()
 
@@ -129,7 +132,6 @@ def test_TestModel():
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
     )
     ark_model = TestModelARK()
-    output_tensor = ark_model(input_tensor)
     trainer = Trainer(ark_model, loss_fn(), Optimizer(ark_model, 0.001))
     ark.launch()
 
@@ -140,4 +142,4 @@ def test_TestModel():
 
 
 if __name__ == "__main__":
-    unittest.main()
+    test_TestModel()
