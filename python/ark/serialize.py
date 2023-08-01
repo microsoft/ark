@@ -3,6 +3,7 @@
 
 import torch
 import pickle
+import logging
 
 
 # Save the state_dict of a module to a file
@@ -33,7 +34,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
         elif type == "numpy":
             new_state_dict[key] = state_dict[key].numpy()
         else:
-            raise RuntimeError(
+            logging.error(
                 "Invalid type: " + type + " valid types are torch and numpy"
             )
     return new_state_dict

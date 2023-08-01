@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Executor, TensorType
+from ._ark_core import _Executor, TensorType, Tensor
 import numpy as np
 from .model import Model
 import logging
@@ -46,16 +46,22 @@ class Executor(_Executor):
     def get_executor():
         # get the global executor
         if Executor.global_executor is None:
-            raise RuntimeError("Executor is not initialized")
+            logging.error("Executor is not initialized")
         return Executor.global_executor
 
 
-def tensor_memcpy_host_to_device(dst, src):
+def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
+    """
+    Copy a tensor from host to device. Used for initializing the tensor on device.
+    """
     Executor.get_executor().tensor_memcpy_host_to_device(dst, src)
     return dst
 
 
-def tensor_memcpy_device_to_host(dst, src):
+def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
+    """
+    Copy a tensor from device to host. If dst is None, a new numpy array will be created.
+    """
     if dst is None:
         np_type = None
         if src.tensor_type() == TensorType.FP32:
@@ -63,7 +69,7 @@ def tensor_memcpy_device_to_host(dst, src):
         elif src.tensor_type() == TensorType.FP16:
             np_type = np.float16
         else:
-            raise RuntimeError("Unsupported tensor type")
+            logging.error("Unsupported tensor type")
         dst = np.empty(src.shape, dtype=np_type)
     Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
     return dst
