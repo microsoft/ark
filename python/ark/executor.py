@@ -23,7 +23,8 @@ class Executor(_Executor):
             gpu_id, rank, world_size, model, name, num_warps_per_sm=16
         )
 
-    def tensor_memcpy_host_to_device(self, dst, src):
+    def tensor_memcpy_host_to_device(self, dst, src: np.ndarray):
+        assert isinstance(src, np.ndarray), "src should be a numpy array"
         # check if src is contiguous is memory
         if not src.flags["C_CONTIGUOUS"]:
             print(
@@ -32,7 +33,9 @@ class Executor(_Executor):
             src = np.ascontiguousarray(src)
         super().tensor_memcpy_host_to_device(dst, src)
 
-    def tensor_memcpy_device_to_host(self, dst, src):
+    def tensor_memcpy_device_to_host(self, dst: np.ndarray, src):
+        assert isinstance(dst, np.ndarray), "dst should be a numpy array"
+        assert dst.flags["C_CONTIGUOUS"], "dst is not contiguous in memory"
         super().tensor_memcpy_device_to_host(dst, src)
 
     @staticmethod
