@@ -23,25 +23,16 @@ class Optimizer:
     def step(self, module: ark.Module = None):
         if module == None:
             module = self.module
-        print("step module: ", module)
         for param_name in module.parameters:
-            print("param_name: ", param_name, "grads: ", module.grads)
             param = module.parameters[param_name]
             grads = module.grads[param_name]
-            print("grads shape: ", grads.shape)
-            print("param shape: ", param.shape)
+
             grads = ark.reshape(grads, param.shape)
             grads_scale = ark.scale(grads, -1.0 * self.lr)
             param_identity = ark.identity(param)
-            print(
-                param.shape,
-                grads.shape,
-                grads_scale.shape,
-                param_identity.shape,
-            )
+
             ark.add(param, grads_scale, param_identity)
         for sub_module_name in module.sub_modules:
-            print("sub_module_name: ", sub_module_name)
             self.step(module.sub_modules[sub_module_name])
 
 
@@ -80,7 +71,6 @@ class matmul_layer(ark.Module):
 
     def backward(self, grads_output):
         inputs = self.other_parameter["inputs"]
-        print("inputs: ", inputs.shape)
         grad_weight = ark.matmul(inputs, grads_output, transpose_a=True)
         grad_input = ark.matmul(grads_output, self.weight, transpose_b=True)
         self.grads["weight"] = grad_weight
@@ -99,9 +89,7 @@ class TestModelARK(ark.Module):
         return output
 
     def backward(self, grads):
-        print("grads: ", grads.shape)
         grad_module2 = self.module2.backward(grads)
-        print("grad_module2: ", grad_module2.shape)
         grad_module1 = self.module1.backward(grad_module2)
         return grad_module1
 
@@ -121,35 +109,43 @@ class Trainer:
         output = self.module(self.input)
         loss = self.loss_fn(output, self.label)
         grad_loss = self.loss_fn.backward(loss)
-        print("grad_loss: ", grad_loss.shape)
         self.module.backward(grad_loss)
         self.optimizer.step()
 
     def trainer_init(self, inputs, labels):
         # Initialize the input and label tensors
-
-        return
+        ark.tensor_memcpy_host_to_device(self.input, inputs)
+        ark.tensor_memcpy_host_to_device(self.label, labels)
+        # Randomly initialize the weights
+        state_dict = {
+            "module1.weight": np.random.rand(d_model, d_ff).astype(np.float16),
+            "module2.weight": np.random.rand(d_ff, d_model).astype(np.float16),
+        }
+        self.module.load_state_dict(state_dict)
 
     def train(self, iter):
         for i in range(iter):
             ark.run()
             loss = self.get_loss()
-            print("loss:", loss)
+            print("loss: ", loss)
 
     def get_loss(self):
         loss_tensor = self.loss_fn.other_parameter["loss"]
         loss = ark.tensor_memcpy_device_to_host(None, loss_tensor)
         loss = np.sum(loss)
+        return loss
 
 
 def test_TestModel():
     ark.init_model()
 
-    input_tensor = ark.tensor([batch_size, d_model], ark.TensorType.FP16)
     ark_model = TestModelARK()
     trainer = Trainer(ark_model, loss_fn(), Optimizer(ark_model, 0.001))
     ark.launch()
-
+    # Initialize the input and label tensors with all 1
+    input_tensor_host = np.ones([batch_size, d_model], dtype=np.float16)
+    label_tensor_host = np.ones([batch_size, d_model], dtype=np.float16)
+    trainer.trainer_init(input_tensor_host, label_tensor_host)
     trainer.train(1)
 
     ark.destroy()
