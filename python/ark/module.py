@@ -10,19 +10,6 @@ from .executor import Executor
 class Module:
     """
     Base class for all neural network modules.
-    Usage:
-    class TestModelARK(ark.Module):
-    def __init__(self):
-        super(TestModelARK, self).__init__()
-        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
-        self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
-
-    def forward(self, inputs):
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = ark.matmul(middle_result, self.weight_2)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
     """
 
     # The submodules of the module.
