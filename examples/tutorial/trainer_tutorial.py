@@ -63,8 +63,7 @@ class loss_fn(ark.Module):
 
     def backward(self, loss):
         diff = self.other_parameter["diff"]
-        grad_diff = ark.reshape(diff, diff.shape[1:])
-        return grad_diff
+        return diff
 
 
 class matmul_layer(ark.Module):
@@ -80,6 +79,7 @@ class matmul_layer(ark.Module):
 
     def backward(self, grads_output):
         inputs = self.other_parameter["inputs"]
+        print("inputs: ", inputs.shape)
         grad_weight = ark.matmul(inputs, grads_output, transpose_a=True)
         grad_input = ark.matmul(grads_output, self.weight, transpose_b=True)
         self.grads["weight"] = grad_weight
@@ -98,7 +98,9 @@ class TestModelARK(ark.Module):
         return output
 
     def backward(self, grads):
+        print("grads: ", grads.shape)
         grad_module2 = self.module2.backward(grads)
+        print("grad_module2: ", grad_module2.shape)
         grad_module1 = self.module1.backward(grad_module2)
         return grad_module1
 
@@ -134,7 +136,7 @@ class Trainer:
             print("loss:", loss)
 
     def get_loss(self):
-        loss = ark.tensor_mempcy_device_to_host(None, self.loss_fn.loss)
+        loss = ark.tensor_memcpy_device_to_host(None, self.loss_fn.loss)
 
 
 def test_TestModel():
