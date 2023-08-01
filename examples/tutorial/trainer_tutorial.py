@@ -49,6 +49,28 @@ class loss_fn(ark.Module):
         loss.backward()
 
 
+class fully_connected_layer(ark.Module):
+    def __init__(self, input_size, output_size):
+        super(fully_connected_layer, self).__init__()
+        self.weight = ark.tensor(
+            ark.Dims(input_size, output_size), ark.TensorType.FP16
+        )
+        self.bias = ark.tensor(ark.Dims(output_size), ark.TensorType.FP16)
+
+    def forward(self, inputs):
+        output = ark.matmul(inputs, self.weight)
+        output = ark.add(output, self.bias)
+        return output
+
+    def backward(self, loss):
+        grad_bias = ark.scale(loss, 1.0)
+        grad_weight = ark.matmul(loss, self.weight, transpose_a=True)
+        grad_input = ark.matmul(loss, self.weight, transpose_b=True)
+        self.grads[self.weight] = grad_weight
+        self.grads[self.bias] = grad_bias
+        return grad_input
+
+
 class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()

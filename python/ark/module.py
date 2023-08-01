@@ -13,23 +13,24 @@ class Module:
     """
 
     # The submodules of the module.
-    _sub_modules: Dict[str, Optional["Module"]]
+    sub_modules: Dict[str, Optional["Module"]]
     # The parameters of the module.
-    _parameters: Dict[str, Optional["Tensor"]]
+    parameters: Dict[str, Optional["Tensor"]]
     # The gradient computed at backward stage. A map from parameter to gradient.
-    _grads: Dict[Optional["Tensor"], Optional["Tensor"]]
+    grads: Dict[Optional["Tensor"], Optional["Tensor"]]
 
     def __init__(self):
-        self._sub_modules = dict()
-        self._parameters = dict()
+        self.sub_modules = dict()
+        self.parameters = dict()
+        self.grads = dict()
 
     # Adds a child module to the current module.
     def register_module(self, name: str, module: Optional["Module"]) -> None:
-        self._sub_modules[name] = module
+        self.sub_modules[name] = module
 
     # Adds a parameter to the module.
     def register_parameter(self, name: str, param: Optional["Tensor"]) -> None:
-        self._parameters[name] = param
+        self.parameters[name] = param
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         if isinstance(__value, Module):
@@ -44,12 +45,12 @@ class Module:
         print("Loading model from state_dict")
         if executor is None:
             executor = Executor.get_executor()
-        for name, module in self._sub_modules.items():
+        for name, module in self.sub_modules.items():
             if module is not None:
                 module.load_state_dict(
                     state_dict, prefix=prefix + name + ".", executor=executor
                 )
-        for name, param in self._parameters.items():
+        for name, param in self.parameters.items():
             executor.tensor_memcpy_host_to_device(
                 param, state_dict[prefix + name]
             )
@@ -60,14 +61,14 @@ class Module:
         if executor is None:
             executor = Executor.get_executor()
         state_dict = {}
-        for name, module in self._sub_modules.items():
+        for name, module in self.sub_modules.items():
             if module is not None:
                 state_dict.update(
                     module.state_dict(
                         prefix=prefix + name + ".", executor=executor
                     )
                 )
-        for name, param in self._parameters.items():
+        for name, param in self.parameters.items():
             param_np = np.zeros(param.shape, dtype=np.float16)
             executor.tensor_memcpy_device_to_host(param_np, param)
             state_dict[prefix + name] = param_np
