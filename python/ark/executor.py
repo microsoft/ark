@@ -4,6 +4,7 @@
 from ._ark_core import _Executor, TensorType
 import numpy as np
 from .model import Model
+import logging
 
 
 class Executor(_Executor):
@@ -24,18 +25,21 @@ class Executor(_Executor):
         )
 
     def tensor_memcpy_host_to_device(self, dst, src: np.ndarray):
-        assert isinstance(src, np.ndarray), "src should be a numpy array"
+        if not isinstance(src, np.ndarray):
+            logging.error("src is not a numpy array")
         # check if src is contiguous is memory
         if not src.flags["C_CONTIGUOUS"]:
-            print(
+            logging.debug(
                 "Warning: src is not contiguous in memory, copy to a contiguous array"
             )
             src = np.ascontiguousarray(src)
         super().tensor_memcpy_host_to_device(dst, src)
 
     def tensor_memcpy_device_to_host(self, dst: np.ndarray, src):
-        assert isinstance(dst, np.ndarray), "dst should be a numpy array"
-        assert dst.flags["C_CONTIGUOUS"], "dst is not contiguous in memory"
+        if not isinstance(dst, np.ndarray):
+            logging.error("dst is not a numpy array")
+        if not dst.flags["C_CONTIGUOUS"]:
+            logging.error("dst is not contiguous in memory")
         super().tensor_memcpy_device_to_host(dst, src)
 
     @staticmethod

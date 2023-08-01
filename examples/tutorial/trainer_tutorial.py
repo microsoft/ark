@@ -110,7 +110,7 @@ class Trainer:
 
     def trainer_init(self, inputs, labels):
         # Initialize the input and label tensors
-        
+
         return
 
     def train(self, iter):

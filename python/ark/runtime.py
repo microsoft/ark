@@ -5,6 +5,7 @@ import os
 from .model import Model
 from .executor import Executor
 from ._ark_core import _init
+import logging
 
 # Use a global variable to track the state of the ARK runtime
 ArkRuntimeState = ("start", "init_model", "launch", "run", "destroy")
@@ -36,9 +37,8 @@ def init_model(rank: int = 0, world_size: int = 1):
     """
     if ARKConfig.global_config is None:
         ARKConfig.global_config = ARKConfig(rank, world_size)
-    assert (
-        ARKConfig.global_config.ark_runtime_state == "start"
-    ), "ARK runtime is already initialized"
+    if ARKConfig.global_config.ark_runtime_state != "start":
+        logging.error("ARK runtime is already initialized")
     if Model.global_model is None:
         Model.global_model = Model(rank)
     ARKConfig.global_config.ark_runtime_state = "init_model"
@@ -50,9 +50,8 @@ def launch():
     the CUDA kernels. The GPU context and the connection between GPUs will be
     initialized. The executor will compile the cuda kernels and launch the ARK runtime.
     """
-    assert (
-        ARKConfig.global_config.ark_runtime_state == "init_model"
-    ), "ARK runtime is not initialized"
+    if ARKConfig.global_config.ark_runtime_state != "init_model":
+        logging.error("ARK runtime is not initialized or already launched")
     ARKConfig.global_config.ark_runtime_state = "launch"
     rank = ARKConfig.global_config.rank
     world_size = ARKConfig.global_config.world_size
@@ -67,9 +66,8 @@ def run(iter=1):
     """
     Run the ARK program for iter iterations and wait for the kernel to finish.
     """
-    assert (
-        ARKConfig.global_config.ark_runtime_state == "launch"
-    ), "ARK runtime is not launched"
+    if ARKConfig.global_config.ark_runtime_state != "launch":
+        logging.error("ARK runtime is not launched")
     ARKConfig.global_config.ark_runtime_state = "run"
     Executor.get_executor().run(iter)
     Executor.get_executor().stop()

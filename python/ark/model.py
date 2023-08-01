@@ -2,6 +2,7 @@
 # Licensed under the MIT license.
 
 from ._ark_core import _Model, Tensor, TensorBuf, TensorType, Dims
+import logging
 
 
 def tensor(
@@ -25,7 +26,8 @@ def tensor(
     # if shape is a list of integers, convert it to a Dims object
     if isinstance(shape, list):
         # only support tensors with up to 4 dimensions
-        assert len(shape) <= 4
+        if len(shape) > 4:
+            logging.error("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
     return Model.global_model.tensor(
         shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
@@ -54,7 +56,8 @@ def reshape(
     """
     if isinstance(shape, list):
         # only support tensors with up to 4 dimensions
-        assert len(shape) <= 4
+        if len(shape) > 4:
+            logging.error("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
     return Model.global_model.reshape(input, shape, allowzero, output, name)
 
