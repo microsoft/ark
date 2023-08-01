@@ -46,7 +46,7 @@ class loss_fn(ark.Module):
 
     def backward(self, loss):
         grad_diff = self.model.scale(loss, 2.0)
-        loss.backward()
+        return grad_diff
 
 
 class fully_connected_layer(ark.Module):
@@ -74,18 +74,18 @@ class fully_connected_layer(ark.Module):
 class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
-        self.weight_1 = ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
-        self.weight_2 = ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
+        self.module1 = fully_connected_layer(d_model, d_ff)
+        self.module2 = fully_connected_layer(d_ff, d_model)
 
     def forward(self, inputs):
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = ark.matmul(middle_result, self.weight_2)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = self.module1(inputs)
+        output = self.module2(output)
+        return output
 
-    def backward(self, loss):
-        loss.backward()
+    def backward(self, grads):
+        grad_module2 = self.module2.backward(grads)
+        grad_module1 = self.module1.backward(grad_module2)
+        return grad_module1
 
 
 class Trainer:
@@ -98,6 +98,12 @@ class Trainer:
         self.module = module
         self.loss_fn = loss_fn
         self.optimizer = optimizer
+        input = ark.tensor([batch_size, seq_len, d_model], ark.TensorType.FP16)
+        label = ark.tensor([batch_size, seq_len, d_model], ark.TensorType.FP16)
+        output = self.module(input)
+        loss = self.loss_fn(output, label)
+        self.loss_fn.backward(loss)
+        self.optimizer.step()
 
     def trainer_init(self, inputs, labels):
         outputs = self.module(inputs)
@@ -107,10 +113,10 @@ class Trainer:
         return loss
 
     def train(self, iter):
-        self.executor.launch()
-        self.executor.run(iter)
-        elapsed_msec = self.executor.stop()
-        print("Training time: ", elapsed_msec, "ms")
+        for i in range(iter):
+            ark.run()
+            loss = self.get_loss()
+            print("loss:", loss)
 
     def get_loss(self):
         loss = ark.tensor_mempcy_device_to_host(None, self.loss_fn.loss)
@@ -127,46 +133,10 @@ def test_TestModel():
     trainer = Trainer(ark_model, loss_fn(), Optimizer(ark_model, 0.001))
     ark.launch()
 
-    input_tensor_host = (
-        (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
-    ).astype(np.float16)
-
-    ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
-
-    weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
-        np.float16
-    )
-    weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
-        np.float16
-    )
-    state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
-
-    ark_model.load_state_dict(state_dict)
-    ark.run()
-
-    output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
-
-    input_tensor_host_float32 = input_tensor_host.astype(np.float32)
-
-    torch_input = torch.from_numpy(input_tensor_host_float32)
+    trainer.train(10)
 
     ark.destroy()
     print("ARK module test")
-    print(
-        "batch_size:",
-        batch_size,
-        "seq_len:",
-        seq_len,
-        "d_model:",
-        d_model,
-        "d_ff:",
-        d_ff,
-    )
-
-
-class TestAPI(unittest.TestCase):
-    def test_api(self):
-        test_TestModel()
 
 
 if __name__ == "__main__":
