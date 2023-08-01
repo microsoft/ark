@@ -8,6 +8,16 @@ using namespace std;
 
 namespace ark {
 
+BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
+                             int world_size_, int num_warps_per_sm_)
+    : model{&model}, gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_}, world_size{
+                                                                    world_size_}
+{
+    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
+    this->num_warps_per_sm = std::max(num_warps_per_sm_, min_wps);
+}
+
 // create context on gpu for the model
 GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
 {
@@ -51,6 +61,21 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
     ctx->freeze();
     this->ctx = ctx;
     return ctx;
+}
+
+GpuBuf *BaseScheduler::get_gpu_buf(Tensor *tns) const
+{
+    if (tns == nullptr) {
+        return nullptr;
+    }
+    if (tns->buf == nullptr) {
+        return nullptr;
+    }
+    auto search = this->buf_trans.find(tns->buf);
+    if (search == this->buf_trans.end()) {
+        return nullptr;
+    }
+    return search->second;
 }
 
 } // namespace ark

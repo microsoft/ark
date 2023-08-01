@@ -284,13 +284,15 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     CHECK(mat_a_shards.size() == (size_t)split_k);
     CHECK(mat_b_shards.size() == (size_t)split_k);
 
+    std::vector<Tensor *> shard_outputs;
     for (DimType i = 0; i < split_k; ++i) {
-        this->matmul(mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1,
-                     trans_a, trans_b, false,
-                     name + "/matmul_shard_" + to_string(i), gran_lev);
+        Tensor *shard_output = this->matmul(
+            mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1, trans_a,
+            trans_b, false, name + "/matmul_shard_" + to_string(i), gran_lev);
+        shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
-    Tensor *ref = this->identity(output_buffer, mat_y_shards, nullptr,
+    Tensor *ref = this->identity(output_buffer, shard_outputs, nullptr,
                                  name + "/identity");
     Tensor *reduced = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
     if (is_relu) {

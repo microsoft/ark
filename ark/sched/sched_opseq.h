@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <map>
+#include <sstream>
 #include <string>
 #include <tuple>
 
@@ -30,6 +31,16 @@ class SchedOpSeq
     bool is_send() const;
     bool is_send_done() const;
     bool is_recv() const;
+    bool is_comm() const;
+
+    const std::string get_name() const
+    {
+        std::stringstream ss;
+        for (auto &sop : seq) {
+            ss << sop.get_op()->name << ";";
+        }
+        return ss.str();
+    }
 
     const int &get_id() const
     {
@@ -112,4 +123,5 @@ struct Sched
 };
 
 } // namespace ark
+
 #endif // ARK_SCHED_OPSEQ_H_

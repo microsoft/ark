@@ -6,7 +6,7 @@
 #include "sched_opgraph.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_sched_opgraph_merge()
+ark::unittest::State test_sched_opgraph()
 {
     ark::Model model;
 
@@ -25,21 +25,21 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t2 = model.add(t0, t1);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //   (AddOp,)
     //
 
-    auto mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 1UL);
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
 
-    auto mop = mops.front().get();
-    UNITTEST_EQ(mop->ops.size(), 1UL);
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    UNITTEST_EQ(mop->ops[0]->inputs[0], t0);
-    UNITTEST_EQ(mop->ops[0]->inputs[1], t1);
-    UNITTEST_EQ(mop->users.size(), 0UL);
-    UNITTEST_EQ(mop->producers.size(), 0UL);
+    auto node = graph.get_nodes().front().get();
+    UNITTEST_EQ(node->ops.size(), 1UL);
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    UNITTEST_EQ(node->ops[0]->inputs[0], t0);
+    UNITTEST_EQ(node->ops[0]->inputs[1], t1);
+    UNITTEST_EQ(node->users.size(), 0UL);
+    UNITTEST_EQ(node->producers.size(), 0UL);
 
     // Test a chain of Ops that share an input tensor.
     // Model graph:
@@ -56,24 +56,24 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t3 = model.add(t2, t1);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //   (AddOp,AddOp,)
     //
 
-    mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 1UL);
+    graph = ark::OpGraph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
 
-    mop = mops.front().get();
+    node = graph.get_nodes().front().get();
 
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    UNITTEST_EQ(mop->ops[0]->inputs[0], t0);
-    UNITTEST_EQ(mop->ops[0]->inputs[1], t1);
-    UNITTEST_EQ(mop->ops[1]->outputs[0], t3);
-    UNITTEST_EQ(mop->ops[1]->inputs[0], t2);
-    UNITTEST_EQ(mop->ops[1]->inputs[1], t1);
-    UNITTEST_EQ(mop->users.size(), 0UL);
-    UNITTEST_EQ(mop->producers.size(), 0UL);
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    UNITTEST_EQ(node->ops[0]->inputs[0], t0);
+    UNITTEST_EQ(node->ops[0]->inputs[1], t1);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[1]->inputs[0], t2);
+    UNITTEST_EQ(node->ops[1]->inputs[1], t1);
+    UNITTEST_EQ(node->users.size(), 0UL);
+    UNITTEST_EQ(node->producers.size(), 0UL);
 
     // Test a chain of Ops without shared input tensors.
     // Model graph (omit leftmost part):
@@ -88,26 +88,26 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t4 = model.relu(t3);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //   (AddOp,AddOp,ReluOp,)
     //
 
-    mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 1UL);
+    graph = ark::OpGraph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
 
-    mop = mops.front().get();
+    node = graph.get_nodes().front().get();
 
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    UNITTEST_EQ(mop->ops[0]->inputs[0], t0);
-    UNITTEST_EQ(mop->ops[0]->inputs[1], t1);
-    UNITTEST_EQ(mop->ops[1]->outputs[0], t3);
-    UNITTEST_EQ(mop->ops[1]->inputs[0], t2);
-    UNITTEST_EQ(mop->ops[1]->inputs[1], t1);
-    UNITTEST_EQ(mop->ops[2]->outputs[0], t4);
-    UNITTEST_EQ(mop->ops[2]->inputs[0], t3);
-    UNITTEST_EQ(mop->users.size(), 0UL);
-    UNITTEST_EQ(mop->producers.size(), 0UL);
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    UNITTEST_EQ(node->ops[0]->inputs[0], t0);
+    UNITTEST_EQ(node->ops[0]->inputs[1], t1);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[1]->inputs[0], t2);
+    UNITTEST_EQ(node->ops[1]->inputs[1], t1);
+    UNITTEST_EQ(node->ops[2]->outputs[0], t4);
+    UNITTEST_EQ(node->ops[2]->inputs[0], t3);
+    UNITTEST_EQ(node->users.size(), 0UL);
+    UNITTEST_EQ(node->producers.size(), 0UL);
 
     // Test a chain of Ops that use the output from the same previous Op.
     // Model graph (omit leftmost part):
@@ -126,24 +126,24 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t5 = model.add(t2, t4);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //              +----------------------+
     //              |                      |
     //   (AddOp,) --+--> (AddOp,ReluOp,) --+--> (AddOp,)
     //
 
-    mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 3UL);
+    graph = ark::OpGraph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
 
-    auto mops_iter = mops.begin();
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t3);
-    UNITTEST_EQ(mop->ops[1]->outputs[0], t4);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t5);
+    auto nodes_iter = graph.get_nodes().begin();
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t4);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t5);
 
     // Test an Op that uses outputs from multiple previous Ops.
     // Model graph (omit leftmost part):
@@ -171,7 +171,7 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t9 = model.add(t5, t8);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //              +----------------------+
     //              |                      |
@@ -180,21 +180,21 @@ ark::unittest::State test_sched_opgraph_merge()
     //                                          (AddOp,) --+--> (AddOp,)
     //
 
-    mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 5UL);
+    graph = ark::OpGraph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 5UL);
 
-    mops_iter = mops.begin();
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t3);
-    UNITTEST_EQ(mop->ops[1]->outputs[0], t4);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t5);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t8);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t9);
+    nodes_iter = graph.get_nodes().begin();
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t4);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t5);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t8);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t9);
 
     // Test an Op that uses a single input tensor for multiple inputs.
     // Model graph (omit leftmost part):
@@ -227,7 +227,7 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t11 = model.add(t10, t10);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //              +----------------------+
     //              |                      |
@@ -238,23 +238,23 @@ ark::unittest::State test_sched_opgraph_merge()
     //                                                          (AddOp,)
     //
 
-    mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 6UL);
+    graph = ark::OpGraph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 6UL);
 
-    mops_iter = mops.begin();
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t3);
-    UNITTEST_EQ(mop->ops[1]->outputs[0], t4);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t5);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t8);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t9);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t11);
+    nodes_iter = graph.get_nodes().begin();
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t4);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t5);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t8);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t9);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t11);
 
     // Test using previous Ops' outputs from multiple different Ops.
     // Model graph (omit leftmost part):
@@ -286,7 +286,7 @@ ark::unittest::State test_sched_opgraph_merge()
     ark::Tensor *t12 = model.add(t5, t8);
     UNITTEST_TRUE(model.verify());
 
-    // MergedOp graph (parentheses indicate a MergedOp):
+    // OpNode graph (parentheses indicate a OpNode):
     //
     //              +----------------------+
     //              |                      |
@@ -297,30 +297,30 @@ ark::unittest::State test_sched_opgraph_merge()
     //                                                          (AddOp,)
     //
 
-    mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 7UL);
+    graph = ark::OpGraph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 7UL);
 
-    mops_iter = mops.begin();
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t2);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t3);
-    UNITTEST_EQ(mop->ops[1]->outputs[0], t4);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t5);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t8);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t9);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t11);
-    mop = (mops_iter++)->get();
-    UNITTEST_EQ(mop->ops[0]->outputs[0], t12);
+    nodes_iter = graph.get_nodes().begin();
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t2);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t4);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t5);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t8);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t9);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t11);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t12);
 
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_merge_noop()
+ark::unittest::State test_sched_opgraph_noop()
 {
     ark::Model model;
     model.tensor({1}, ark::FP32);
@@ -328,15 +328,154 @@ ark::unittest::State test_sched_opgraph_merge_noop()
     model.tensor({1}, ark::FP32);
     UNITTEST_TRUE(model.verify());
 
-    auto mops = ark::OpGraph::merge_ops(model);
-    UNITTEST_EQ(mops.size(), 0UL);
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 0UL);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_sched_opgraph_identity()
+{
+    // OpNode graph (parentheses indicate a OpNode):
+    //
+    //   (Relu,) --+
+    //             |
+    //   (Relu,) --+--> (Relu,)
+    //
+
+    ark::Model model;
+    ark::Tensor *t0 = model.tensor({1}, ark::FP32);
+    ark::Tensor *t1 = model.tensor({1}, ark::FP32);
+    ark::Tensor *t2 = model.tensor({1}, ark::FP32);
+
+    ark::Tensor *r0 = model.relu(t0);
+    ark::Tensor *r1 = model.relu(t1);
+    ark::Tensor *t3 = model.identity(t2, {r0, r1});
+
+    ark::Tensor *t4 = model.relu(t3);
+    UNITTEST_TRUE(model.verify());
+
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
+
+    auto nodes_iter = graph.get_nodes().begin();
+    auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], r0);
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], r1);
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t4);
+    UNITTEST_EQ(node->producers.size(), 2UL);
+    UNITTEST_EQ(node->users.size(), 0UL);
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_sched_opgraph_sharding()
+{
+    // OpNode graph (parentheses indicate a OpNode):
+    //
+    //   (Relu,) --+
+    //             |
+    //   (Relu,) --+
+    //             |
+    //   (Relu,) --+--> (Relu,)
+    //
+
+    ark::Model model;
+    ark::Tensor *t0 = model.tensor({3}, ark::FP32);
+
+    std::vector<ark::Tensor *> vec = model.sharding(t0, 0, 1);
+    UNITTEST_EQ(vec.size(), 3UL);
+
+    ark::Tensor *t1 = vec[0];
+    ark::Tensor *t2 = vec[1];
+    ark::Tensor *t3 = vec[2];
+
+    ark::Tensor *r0 = model.relu(t1);
+    ark::Tensor *r1 = model.relu(t2);
+    ark::Tensor *r2 = model.relu(t3);
+
+    ark::Tensor *t4 = model.identity(t0, {r0, r1, r2});
+
+    ark::Tensor *t5 = model.relu(t4);
+    UNITTEST_TRUE(model.verify());
+
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 4UL);
+
+    auto nodes_iter = graph.get_nodes().begin();
+    auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], r0);
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], r1);
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], r2);
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], t5);
+    UNITTEST_EQ(node->producers.size(), 3UL);
+    UNITTEST_EQ(node->users.size(), 0UL);
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_sched_opgraph_split_matmul()
+{
+    // OpNode graph (parentheses indicate a OpNode):
+    //
+    //   (Matmul,) --+
+    //               |
+    //   (Matmul,) --+--> (Reduce,)
+    //
+
+    ark::Model model;
+    ark::Tensor *t0 = model.tensor({64, 128}, ark::FP16);
+    ark::Tensor *t1 = model.tensor({128, 64}, ark::FP16);
+    ark::Tensor *m0 =
+        model.matmul(t0, t1, nullptr, 2, false, false, false, "matmul", 3);
+    UNITTEST_TRUE(model.verify());
+
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
+
+    auto nodes_iter = graph.get_nodes().begin();
+    auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->producers.size(), 0UL);
+    UNITTEST_EQ(node->users.size(), 1UL);
+
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->outputs[0], m0);
+    UNITTEST_EQ(node->producers.size(), 2UL);
+    UNITTEST_EQ(node->users.size(), 0UL);
+
     return ark::unittest::SUCCESS;
 }
 
 int main()
 {
     ark::init();
-    UNITTEST(test_sched_opgraph_merge);
-    UNITTEST(test_sched_opgraph_merge_noop);
+    UNITTEST(test_sched_opgraph);
+    UNITTEST(test_sched_opgraph_noop);
+    UNITTEST(test_sched_opgraph_identity);
+    UNITTEST(test_sched_opgraph_sharding);
+    UNITTEST(test_sched_opgraph_split_matmul);
     return 0;
 }

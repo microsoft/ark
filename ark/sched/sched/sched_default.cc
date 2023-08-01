@@ -9,9 +9,7 @@
 
 using namespace std;
 
-#define MATMUL_GRAPH_OPT 1
 #define ALLOC_UNUSED_TENSORS 1
-#define PRESERVE_WARP_FOR_COMM 1
 
 namespace ark {
 
@@ -164,101 +162,256 @@ void DefaultScheduler::heuristic_optimize_model(Model &model,
     }
 }
 
+DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
+                                   int world_size_, int num_warps_per_sm_)
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
+{
+    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+
+    // Number of SMs to use for computation. The last SM is preserved for
+    // communication only.
+    int num_sm_calc = gpu_info.num_sm - 1;
+
+    heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
+
+    this->op_graph = make_unique<OpGraph>(model);
+    this->codegen = make_unique<DefaultCodeGenerator>(
+        buf_trans, gpu_info, num_warps_per_sm_, world_size_);
+}
+
+void DefaultScheduler::schedule()
+{
+    LOG(DEBUG, "DefaultScheduler start scheduling");
+
+    auto &nodes = this->op_graph->get_nodes();
+
+    std::list<OpNode *> root_nodes;
+    for (auto &node : nodes) {
+        if (node->producers.empty()) {
+            root_nodes.emplace_back(node.get());
+        }
+    }
+
+    std::set<OpNode *> seen_nodes;
+    recursive_schedule(root_nodes, seen_nodes);
+
+    this->configure_gpu_buf(this->model->impl->get_tensors());
+
+    if (this->comp_stream.size() != this->comm_stream.size()) {
+        LOG(ERROR, "unexpected error");
+    }
+}
+
+///
+void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
+                                          std::set<OpNode *> &seen_nodes)
+{
+    if (nodes.empty()) {
+        return;
+    }
+    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+
+    std::list<OpNode *> next_nodes;
+    std::vector<SchedItem> comp_items;
+    std::vector<SchedItem> comm_items;
+    bool sync_comm = false;
+    bool sync_comp = false;
+    for (auto &node : nodes) {
+        if (node->ops.size() == 0) {
+            LOG(ERROR, "unexpected error: empty OpNode");
+        }
+        Op *op = node->ops[0];
+        const OpConfig *cfg = sched_op_config(op, gpu_info);
+        int opseq_id = (int)this->opseqs.size();
+        this->opseqs.emplace_back(make_unique<SchedOpSeq>(opseq_id, op, cfg));
+        SchedOpSeq *opseq = this->opseqs.back().get();
+
+        bool broke_node = false;
+        for (size_t i = 1; i < node->ops.size(); i++) {
+            // If there are multiple Ops, check if the Op configs allow merging.
+            Op *next_op = node->ops[i];
+            const OpConfig *next_cfg = sched_op_config(next_op, gpu_info);
+            bool need_sync_between_ops = cfg->sync_post || next_cfg->sync_pre;
+            bool comm_and_comp = (op->is_comm() && !next_op->is_comm()) ||
+                                 (!op->is_comm() && next_op->is_comm());
+            if (!need_sync_between_ops && !comm_and_comp) {
+                if (opseq->append(next_op, next_cfg)) {
+                    // Merge succeeded.
+                    continue;
+                }
+            }
+            // Cannot merge. Add remaining part of the OpNode to next_nodes.
+            OpNode *next_node = this->op_graph->break_node(node, i);
+            next_nodes.emplace_back(next_node);
+            broke_node = true;
+            break;
+        }
+
+        // Check if we need to sync between comp and comm.
+        if (!sync_comm && opseq->is_comm()) {
+            // Check if any producer is a computation Op.
+            for (auto &producer : node->producers) {
+                // As we do not merge computation Ops with communication Ops,
+                // we only need to check the first Op.
+                if (!producer->ops[0]->is_comm()) {
+                    sync_comm = true;
+                    break;
+                }
+            }
+        } else if (!sync_comp && !opseq->is_comm()) {
+            // Check if any producer is a communication Op.
+            for (auto &producer : node->producers) {
+                // As we do not merge computation Ops with communication Ops,
+                // we only need to check the first Op.
+                if (producer->ops[0]->is_comm()) {
+                    sync_comp = true;
+                    break;
+                }
+            }
+        }
+
+        auto p = seen_nodes.emplace(node);
+        if (!p.second) {
+            LOG(ERROR, "unexpected error: already seen node ", node->get_name(),
+                " (", node->ops.size(), " ops)");
+        }
+
+        // Create a scheduling item.
+        SchedItem item;
+        item.opseq_id = opseq_id;
+        item.num_uops = opseq->get_tdims_size();
+        item.num_warps_per_uop = opseq->get_num_warps();
+        item.smem_bytes_per_uop = opseq->get_smem_bytes();
+        if (op->is_comm()) {
+            comm_items.emplace_back(item);
+        } else {
+            comp_items.emplace_back(item);
+        }
+
+        if (!broke_node) {
+            // If OpNode is completely merged, add its users to
+            // next_nodes.
+            for (auto &user_node : node->users) {
+                // If any producer is unseen, skip the user.
+                bool skip = false;
+                for (auto &producer : user_node->producers) {
+                    if (seen_nodes.find(producer) == seen_nodes.end()) {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (!skip) {
+                    next_nodes.emplace_back(user_node);
+                }
+            }
+        }
+    }
+
+    if (this->comp_stream.empty() || sync_comp || sync_comm) {
+        // Create a new stream.
+        this->comp_stream.emplace_back(make_unique<SchedStream>(
+            0, gpu_info.num_sm - 1, this->num_warps_per_sm,
+            gpu_info.smem_block_total));
+    }
+    if (this->comm_stream.empty() || sync_comp || sync_comm) {
+        // Create a new stream.
+        this->comm_stream.emplace_back(make_unique<SchedStream>(
+            gpu_info.num_sm - 1, gpu_info.num_sm, this->num_warps_per_sm,
+            gpu_info.smem_block_total));
+    }
+
+    // Schedule the Ops.
+    this->comp_stream.back()->add_items(comp_items);
+    if (comp_items.size() > 0) {
+        this->comp_stream.back()->sync();
+    }
+    this->comm_stream.back()->add_items(comm_items);
+    if (comm_items.size() > 0) {
+        this->comm_stream.back()->sync();
+    }
+
+    LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
+    for (auto &item : comp_items) {
+        LOG(DEBUG, "  comp: ", this->opseqs[item.opseq_id]->get_name());
+    }
+    for (auto &item : comm_items) {
+        LOG(DEBUG, "  comm: ", this->opseqs[item.opseq_id]->get_name());
+    }
+
+    recursive_schedule(next_nodes, seen_nodes);
+}
+
 void DefaultScheduler::configure_gpu_buf(
     const std::list<Tensor *> &model_tensors)
 {
     //
     map<TensorBuf *, vector<Tensor *>> bufs;
-    map<TensorBuf *, set<Tensor *>> buf_usage;
     map<TensorBuf *, vector<pair<Tensor *, int>>> tns_eids;
-    // TODO:
-    size_t num_depth = this->op_graph->get_num_depth();
-    for (size_t depth = 0; depth < num_depth; ++depth) {
-        auto &depth_nodes = this->op_graph->get_depth(depth);
-        for (auto &ogn : depth_nodes) {
-            for (auto &sop : ogn->opseq.get_sched_ops()) {
-                if (sop.get_op() == nullptr) {
-                    continue;
-                }
-                if (sop.is_virtual()) {
-                    continue;
-                }
-                for (unsigned int i = 0; i < sop.get_op()->inputs.size(); ++i) {
-                    auto &tile = sop.get_cfg()->input_tiles[i];
-                    sop.get_op()->inputs[i]->update_pads({tile.x, tile.y});
-                }
-                for (unsigned int i = 0; i < sop.get_op()->outputs.size();
-                     ++i) {
-                    auto &tile = sop.get_cfg()->output_tiles[i];
-                    sop.get_op()->outputs[i]->update_pads({tile.x, tile.y});
-                }
+
+    for (auto &opseq : this->opseqs) {
+        for (auto &sop : opseq->get_sched_ops()) {
+            for (unsigned int i = 0; i < sop.get_op()->inputs.size(); ++i) {
+                auto &tile = sop.get_cfg()->input_tiles[i];
+                sop.get_op()->inputs[i]->update_pads({tile.x, tile.y});
+            }
+            for (unsigned int i = 0; i < sop.get_op()->outputs.size(); ++i) {
+                auto &tile = sop.get_cfg()->output_tiles[i];
+                sop.get_op()->outputs[i]->update_pads({tile.x, tile.y});
             }
         }
     }
-    for (size_t depth = 0; depth < num_depth; ++depth) {
-        auto &depth_nodes = this->op_graph->get_depth(depth);
-        for (auto &ogn : depth_nodes) {
-            for (auto &sop : ogn->opseq.get_sched_ops()) {
-                if (sop.is_virtual()) {
-                    continue;
-                }
-                for (auto &tns : sop.get_op()->inputs) {
-                    bufs[tns->buf].emplace_back(tns);
-                    if (!tns->buf->immutable) {
-                        buf_usage[tns->buf].emplace(tns);
-                    }
-                }
-                for (auto &tns : sop.get_op()->outputs) {
-                    bufs[tns->buf].emplace_back(tns);
-                    if (!tns->buf->immutable) {
-                        buf_usage[tns->buf].emplace(tns);
-                    }
-                }
+
+    for (auto &opseq : this->opseqs) {
+        for (auto &sop : opseq->get_sched_ops()) {
+            for (auto &tns : sop.get_op()->inputs) {
+                bufs[tns->buf].emplace_back(tns);
+            }
+            for (auto &tns : sop.get_op()->outputs) {
+                bufs[tns->buf].emplace_back(tns);
+            }
+            //
+            if (sop.get_op()->type == OP_SEND) {
                 //
-                if (sop.get_op()->type == OP_SEND) {
-                    //
-                    Tensor *in = sop.get_op()->inputs[0];
-                    int sid;
-                    int rank;
-                    int dst_rank;
-                    size_t bytes;
-                    sop.get_op()->args.get(&sid, 0);
-                    sop.get_op()->args.get(&rank, 1);
-                    sop.get_op()->args.get(&dst_rank, 2);
-                    sop.get_op()->args.get(&bytes, 3);
-                    size_t off = in->offset() * in->type_bytes();
-                    LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
-                        " dst_rank: ", dst_rank, " bytes: ", bytes,
-                        " off: ", off);
-                    // TODO: generalize converting rank to GPU ID.
-                    int nrph = get_env().num_ranks_per_host;
-                    int dst_gpu_id = dst_rank % nrph;
-                    if ((dst_rank / nrph) == (this->rank / nrph)) {
-                        // Same node.
-                        this->buf_infos.emplace_back(dst_gpu_id, bytes, nullptr,
-                                                     sid, off);
-                    }
-                    tns_eids[in->buf].emplace_back(in, sid);
-                    this->send_recv_ops.emplace_back(sop.get_op());
-                } else if (sop.get_op()->type == OP_RECV) {
-                    //
-                    Tensor *in = sop.get_op()->inputs[0];
-                    int sid;
-                    sop.get_op()->args.get(&sid, 0);
-                    tns_eids[in->buf].emplace_back(in, sid);
-                    this->send_recv_ops.emplace_back(sop.get_op());
+                Tensor *in = sop.get_op()->inputs[0];
+                int sid;
+                int rank;
+                int dst_rank;
+                size_t bytes;
+                sop.get_op()->args.get(&sid, 0);
+                sop.get_op()->args.get(&rank, 1);
+                sop.get_op()->args.get(&dst_rank, 2);
+                sop.get_op()->args.get(&bytes, 3);
+                size_t off = in->offset() * in->type_bytes();
+                LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
+                    " dst_rank: ", dst_rank, " bytes: ", bytes, " off: ", off);
+                // TODO: generalize converting rank to GPU ID.
+                int nrph = get_env().num_ranks_per_host;
+                int dst_gpu_id = dst_rank % nrph;
+                if ((dst_rank / nrph) == (this->rank / nrph)) {
+                    // Same node.
+                    this->buf_infos.emplace_back(dst_gpu_id, bytes, nullptr,
+                                                 sid, off);
                 }
+                tns_eids[in->buf].emplace_back(in, sid);
+                this->send_recv_ops.emplace_back(sop.get_op());
+            } else if (sop.get_op()->type == OP_RECV) {
+                //
+                Tensor *in = sop.get_op()->inputs[0];
+                int sid;
+                sop.get_op()->args.get(&sid, 0);
+                tns_eids[in->buf].emplace_back(in, sid);
+                this->send_recv_ops.emplace_back(sop.get_op());
             }
         }
     }
-#if (ALLOC_UNUSED_TENSORS)
+
     for (auto &tns : model_tensors) {
         auto search = bufs.find(tns->buf);
         if (search == bufs.end()) {
             bufs[tns->buf].emplace_back(tns);
         }
     }
-#endif // (ALLOC_UNUSED_TENSORS)
+
     struct GpuBufInfo
     {
         size_t bytes;
@@ -285,7 +438,7 @@ void DefaultScheduler::configure_gpu_buf(
         GpuBufInfo &info = binfs[buf];
         info.bytes = max_bytes;
     }
-#if (ALLOC_UNUSED_TENSORS)
+
     // Allocate all GPU buffers.
     for (auto &el : binfs) {
         TensorBuf *buf = el.first;
@@ -306,317 +459,57 @@ void DefaultScheduler::configure_gpu_buf(
                                          sid, off);
         }
     }
-#else
-    //
-    for (auto &depth : this->op_graph->depth_nodes) {
-        vector<TensorBuf *> to_alloc;
-        set<TensorBuf *> to_free;
-        for (auto &ogn : depth) {
-            for (auto &sop : ogn->opseq.get_sched_ops()) {
-                for (auto &tns : sop.get_op()->inputs) {
-                    size_t num = bufs.erase(tns->buf);
-                    if (num > 0) {
-                        assert(num == 1);
-                        to_alloc.emplace_back(tns->buf);
-                    }
-                    if (!tns->buf->immutable) {
-                        buf_usage[tns->buf].erase(tns);
-                        if (buf_usage[tns->buf].size() == 0) {
-                            to_free.emplace(tns->buf);
-                        }
-                    }
-                }
-                for (auto &tns : sop.get_op()->outputs) {
-                    size_t num = bufs.erase(tns->buf);
-                    if (num > 0) {
-                        assert(num == 1);
-                        to_alloc.emplace_back(tns->buf);
-                    }
-                    if (!tns->buf->immutable) {
-                        buf_usage[tns->buf].erase(tns);
-                        if (buf_usage[tns->buf].size() == 0) {
-                            to_free.emplace(tns->buf);
-                        }
-                    }
-                }
-            }
-        }
-        // Allocate GPU buffers.
-        for (auto &buf : to_alloc) {
-            GpuBufInfo &info = binfs[buf];
-            int sid = -1;
-            size_t off = 0;
-            auto search = tns_eids.find(buf);
-            if (search != tns_eids.end()) {
-                for (auto &p : search->second) {
-                    Tensor *t = p.first;
-                    sid = p.second;
-                    off = t->offset() * t->type_bytes();
-                    this->buf_infos.emplace_back(this->gpu_mgr->gpu_id,
-                                                 info.bytes, buf, sid, off);
-                }
-            } else {
-                this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, info.bytes,
-                                             buf, sid, off);
-            }
-        }
-        // Free if it is no more used.
-        // TODO: this incurs CUDA_ERROR_ILLEGAL_ADDRESS in computing kernels.
-        // Enable this again when the issue is fixed.
-        // for (auto& buf : to_free) {
-        //     this->launcher->free_buffer(this->launcher->get_buf_trans()[buf]);
-        // }
-    }
-#endif
 }
 
-DefaultScheduler::DefaultScheduler(const int gpu_id, int rank_, int world_size_,
-                                   Model &model, int wps_)
-    : BaseScheduler(gpu_id, rank_, world_size_, wps_)
+vector<string> DefaultScheduler::gen_code()
 {
+    std::stringstream code;
+
+    this->codegen->sync_stream_state(code, 0);
+    this->codegen->sync_stream_state(code, 1);
+
+    std::map<std::string, int> uop_map;
+    for (auto &opseq : this->opseqs) {
+        for (auto &sop : opseq->get_sched_ops()) {
+            int uop_id = (int)uop_map.size();
+            std::string sop_func_str = sop.function_name();
+            // Insert only if it does not exist
+            auto p = uop_map.emplace(sop_func_str, uop_id);
+            // TODO: check if runtime args are the same
+            if (p.second) {
+                // If this is a new function, define it.
+                this->codegen->codegen_uop_def(code, sop, uop_id);
+            }
+        }
+    }
+    for (auto &opseq : this->opseqs) {
+        this->codegen->codegen_opseq(
+            code, "op" + std::to_string(opseq->get_id()), *opseq, uop_map);
+    }
+
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    this->codegen = make_unique<DefaultCodeGenerator>(buf_trans, gpu_info, wps_,
-                                                      world_size_);
-    int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
-    this->wps = max(wps_, min_wps);
+    int num_sm_comp = gpu_info.num_sm - 1;
+    int num_sm_comm = 1;
 
-#ifdef PRESERVE_WARP_FOR_COMM
-    // Number of SMs to use for computation. The last SM is preserved for
-    // communication only.
-    int num_sm_calc = gpu_info.num_sm - 1;
-#else
-    int num_sm_calc = gpu_info.num_sm;
-#endif
-    heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
-
-    this->op_graph = new OpGraph(model, gpu_info);
-    this->configure_gpu_buf(model.impl->get_tensors());
-}
-
-GpuBuf *DefaultScheduler::get_gpu_buf(Tensor *tns) const
-{
-    if (tns == nullptr) {
-        return nullptr;
-    }
-    if (tns->buf == nullptr) {
-        return nullptr;
-    }
-    auto search = this->buf_trans.find(tns->buf);
-    if (search == this->buf_trans.end()) {
-        return nullptr;
-    }
-    return search->second;
-}
-
-unsigned int DefaultScheduler::get_num_depths() const
-{
-    return (int)this->op_graph->get_num_depth();
-}
-
-void DefaultScheduler::schedule_depth(vector<SchedOpSeq *> &depth,
-                                      vector<Sched> &scheds)
-{
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-#ifdef PRESERVE_WARP_FOR_COMM
-    // Number of SMs to use for computation. The last SM is preserved for
-    // communication only.
-    int num_sm_calc = gpu_info.num_sm - 1;
-#else
-    int num_sm_calc = gpu_info.num_sm;
-#endif
-    struct
-    {
-        bool operator()(const SchedOpSeq *s0, const SchedOpSeq *s1) const
-        {
-            if (s0->get_num_warps() == s1->get_num_warps()) {
-                return s0->get_tdims_size() > s1->get_tdims_size();
+    code << "__device__ void ark_loop_body(int _iter) {\n";
+    for (size_t i = 0; i < this->comp_stream.size(); ++i) {
+        for (auto &branches : this->comp_stream[i]->get_branches()) {
+            for (auto &branch : branches) {
+                this->codegen->codegen_branch(code, branch);
             }
-            return s0->get_num_warps() > s1->get_num_warps();
+            this->codegen->sync_stream(code, 0, 0, num_sm_comp);
         }
-    } dec_num_warps;
-    sort(depth.begin(), depth.end(), dec_num_warps);
-    DimType warps_to_schedule = 0;
-    for (auto &opseq : depth) {
-        warps_to_schedule +=
-            (DimType)opseq->get_tdims_size() * (DimType)opseq->get_num_warps();
-    }
-    LOG(DEBUG, warps_to_schedule, " warps in depth");
-    DimType sidx = 0;
-    DimType widx = 0;
-    for (auto &opseq : depth) {
-        DimType num_uop = opseq->get_tdims_size();
-        DimType warps_per_uop = opseq->get_num_warps();
-        DimType smem_per_uop = opseq->get_smem_bytes();
-        DimType uop_idx = 0;
-        LOG(DEBUG, "  op", opseq->get_id(), ": num_uop ", num_uop,
-            " warps_per_uop ", warps_per_uop, " warps_to_schedule ",
-            warps_to_schedule);
-        while ((uop_idx < num_uop) && (warps_to_schedule > 0)) {
-            DimType snum = num_sm_calc - sidx;
-            DimType warps_per_sm = warps_to_schedule / snum;
-            DimType warps_remainder = warps_to_schedule % snum;
-            if (warps_per_sm > this->wps) {
-                warps_per_sm = this->wps;
+        for (auto &branches : this->comm_stream[i]->get_branches()) {
+            for (auto &branch : branches) {
+                this->codegen->codegen_branch(code, branch);
             }
-            if (warps_per_sm + warps_per_uop > this->wps) {
-                // No spare resources to schedule remainders.
-                warps_remainder = 0;
-            }
-            DimType num_uop_per_sm = math::div_up(warps_per_sm, warps_per_uop);
-            DimType needed_smem = num_uop_per_sm * smem_per_uop;
-            if (needed_smem > gpu_info.smem_block_total) {
-                // The shared memory needed by this opseq is too large to fit in
-                // a SM. We need to reduce the number of warps per SM.
-                warps_per_sm =
-                    gpu_info.smem_block_total / smem_per_uop * warps_per_uop;
-                num_uop_per_sm = warps_per_sm / warps_per_uop;
-            }
-            if (needed_smem + smem_per_uop > gpu_info.smem_block_total) {
-                // No spare resources to schedule remainders.
-                warps_remainder = 0;
-            }
-            if (widx > 0) {
-                DimType cnt = 0;
-                while (uop_idx < num_uop) {
-                    // An SM is not occupied enough by the previous opseq.
-                    DimType wend =
-                        warps_remainder ? warps_per_sm + 1 : warps_per_sm;
-                    if ((widx >= warps_per_sm) ||
-                        (widx + warps_per_uop > wend)) {
-                        widx = 0;
-                        sidx = (sidx + 1) % num_sm_calc;
-                        break;
-                    }
-                    DimType th_b = widx * 32;
-                    DimType th_e = (widx + warps_per_uop) * 32;
-                    LOG(DEBUG, "      sched ", sidx, " ", sidx + 1, " ", th_b,
-                        " ", th_e);
-                    scheds.emplace_back(opseq, sidx, sidx + 1, th_b, th_e, 0,
-                                        uop_idx++);
-                    widx += warps_per_uop;
-                    warps_to_schedule -= warps_per_uop;
-                    ++cnt;
-                }
-                if (cnt > 0) {
-                    LOG(DEBUG, "    warps_per_sm ", warps_per_sm,
-                        " warps_remainder ", warps_remainder, ": sm ", sidx,
-                        " cnt ", cnt);
-                }
-                continue;
-            }
-            assert(widx == 0);
-            DimType num;
-            DimType sm_b;
-            DimType sm_e;
-            if (warps_remainder > 0) {
-                num = math::div_up(warps_per_sm + 1, warps_per_uop);
-                if (num_uop - uop_idx < num) {
-                    num = num_uop - uop_idx;
-                }
-                sm_b = sidx;
-                sm_e = sidx + min(warps_remainder, (num_uop - uop_idx) / num);
-                assert(sm_e < num_sm_calc);
-            } else if (warps_per_sm > 0) {
-                num = math::div_up(warps_per_sm, warps_per_uop);
-                if (num_uop - uop_idx < num) {
-                    num = num_uop - uop_idx;
-                };
-                sm_b = sidx;
-                sm_e =
-                    min((DimType)num_sm_calc, sidx + (num_uop - uop_idx) / num);
-            } else {
-                // Should not reach here.
-                num = 0;
-                sm_e = 0;
-                assert(false);
-            }
-            for (DimType i = 0; i < num; ++i) {
-                LOG(DEBUG, "      sched sm [", sm_b, ", ", sm_e, ") thread [",
-                    i * warps_per_uop * 32, ", ", (i + 1) * warps_per_uop * 32,
-                    ") smem ", smem_per_uop, " bytes");
-                scheds.emplace_back(opseq, sm_b, sm_e, i * warps_per_uop * 32,
-                                    (i + 1) * warps_per_uop * 32, num,
-                                    uop_idx + i);
-            }
-            DimType cnt = (sm_e - sm_b) * num;
-            uop_idx += cnt;
-            sidx = sm_e - 1;
-            warps_to_schedule -= cnt * warps_per_uop;
-            widx = num * warps_per_uop;
-            if (widx >= this->wps) {
-                widx = 0;
-                sidx = (sidx + 1) % num_sm_calc;
-            }
+            this->codegen->sync_stream(code, 1, num_sm_comp, num_sm_comp + num_sm_comm);
         }
-        assert(uop_idx == num_uop);
+        code << "  ";
+        this->codegen->codegen_sync_gpu(code);
     }
-}
-
-void DefaultScheduler::schedule_depth_comm(vector<SchedOpSeq *> &depth,
-                                           vector<Sched> &scheds)
-{
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    vector<Sched> tmp_scheds;
-    int sm_b = gpu_info.num_sm - 1;
-    int sm_e = gpu_info.num_sm;
-    DimType widx = 0;
-    for (auto &opseq : depth) {
-        DimType tnum = opseq->get_tdims_size();
-        DimType wnum = opseq->get_num_warps();
-        LOG(DEBUG, "  op", opseq->get_id(), ": tnum ", tnum, " wnum ", wnum);
-
-        DimType th_b = widx * 32;
-        DimType th_e = (widx + wnum) * 32;
-        LOG(DEBUG, "sched ", sm_b, " ", sm_e, " ", th_b, " ", th_e);
-        tmp_scheds.emplace_back(opseq, sm_b, sm_e, th_b, th_e, 0, 0);
-        widx += wnum;
-        if (widx >= this->wps) {
-            widx = 0;
-        }
-    }
-    // Sort the scheds by th_b.
-    sort(tmp_scheds.begin(), tmp_scheds.end(),
-         [](const Sched &a, const Sched &b) { return a.th_b < b.th_b; });
-    // Emplace the tmp_scheds to the scheds.
-    for (auto &sched : tmp_scheds) {
-        scheds.emplace_back(sched);
-    }
-}
-
-vector<string> DefaultScheduler::schedule()
-{
-    LOG(DEBUG, "DefaultScheduler start scheduling");
-
-    vector<Sched> scheds;
-    vector<GpuLoopKernel *> glks;
-    size_t num_depth = this->op_graph->get_num_depth();
-    for (size_t depth = 0; depth < num_depth; ++depth) {
-        auto &depth_nodes = this->op_graph->get_depth(depth);
-        vector<SchedOpSeq *> calc_opseqs;
-        vector<SchedOpSeq *> send_opseqs;
-        vector<SchedOpSeq *> send_done_opseqs;
-        vector<SchedOpSeq *> recv_opseqs;
-        for (auto &ogn : depth_nodes) {
-            if (ogn->opseq.is_send()) {
-                send_opseqs.emplace_back(&(ogn->opseq));
-            } else if (ogn->opseq.is_recv()) {
-                recv_opseqs.emplace_back(&(ogn->opseq));
-            } else if (ogn->opseq.is_send_done()) {
-                send_done_opseqs.emplace_back(&(ogn->opseq));
-            } else {
-                calc_opseqs.emplace_back(&(ogn->opseq));
-            }
-        }
-        LOG(DEBUG, "schedule depth");
-        this->schedule_depth_comm(send_opseqs, scheds);
-        this->schedule_depth(calc_opseqs, scheds);
-        this->schedule_depth_comm(send_done_opseqs, scheds);
-        this->schedule_depth_comm(recv_opseqs, scheds);
-        // TODO: profile one depth
-        // Global sync.
-        scheds.emplace_back(nullptr, 0, 0, 0, 0, 0, 0);
-    }
-    return this->codegen->codegen_codes_body(scheds);
+    code << "}\n";
+    return {code.str()};
 }
 
 } // namespace ark

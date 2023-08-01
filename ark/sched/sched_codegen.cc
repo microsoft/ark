@@ -26,6 +26,145 @@ std::ostream &BaseCodeGenerator::codegen_sync_gpu(std::ostream &os)
     return os;
 }
 
+std::ostream &BaseCodeGenerator::sync_stream(std::ostream &os, int stream_id, int sm_id_begin, int sm_id_end)
+{
+    if (sm_id_begin >= sm_id_end) {
+        LOG(ERROR, "invalid SM range");
+    }
+    if (sm_id_begin == 0) {
+        os << "if (blockIdx.x < " << sm_id_end << ") {";
+    } else if (sm_id_begin + 1 == sm_id_end) {
+        os << "if (blockIdx.x == " << sm_id_begin << ") {";
+    } else {
+        os << "if (blockIdx.x >= " << sm_id_begin << " && blockIdx.x < " << sm_id_end << ") {";
+    }
+    os << " ark::sync_gpu<" << sm_id_end - sm_id_begin << ">(" ARK_LSS_NAME "_" << stream_id << "); }\n";
+    return os;
+}
+
+std::ostream &BaseCodeGenerator::sync_stream_state(std::ostream &os, int stream_id)
+{
+    os << "__device__ ark::sync::State " ARK_LSS_NAME "_" << stream_id << ";\n";
+}
+
+std::ostream &BaseCodeGenerator::codegen_branch(std::ostream &os,
+                                                const Branch &br,
+                                                int prev_sm_id_end)
+{
+    if (br.warp_branches.empty()) {
+        return os;
+    }
+    if (prev_sm_id_end < 0) {
+        prev_sm_id_end = this->sm_num;
+    }
+    if (br.sm_id_begin == 0) {
+        if (br.sm_id_end == this->sm_num) {
+            os << "\n  { // for all SMs";
+        } else {
+            os << "\n  if (blockIdx.x < " << br.sm_id_end << ") {";
+        }
+    } else if (br.sm_id_begin == prev_sm_id_end) {
+        if (br.sm_id_end == this->sm_num) {
+            os << " else {";
+        } else {
+            os << " else if (blockIdx.x < " << br.sm_id_end << ") {";
+        }
+    } else if (br.sm_id_begin < prev_sm_id_end) {
+        if (br.sm_id_begin == br.sm_id_end) {
+            os << "\n  if (blockIdx.x == " << br.sm_id_begin << ") {";
+        } else {
+            os << "\n  if (blockIdx.x >= " << br.sm_id_begin
+               << " && blockIdx.x < " << br.sm_id_end << ") {";
+        }
+    } else {
+        if (br.sm_id_begin == br.sm_id_end) {
+            os << " else if (blockIdx.x == " << br.sm_id_begin << ") {";
+        } else {
+            os << " else if (blockIdx.x >= " << br.sm_id_begin
+               << " && blockIdx.x < " << br.sm_id_end << ") {";
+        }
+    }
+
+    int tpw = this->gpu_info.threads_per_warp;
+
+    for (auto &warp_branch : br.warp_branches) {
+        int thread_begin = warp_branch.warp_id_begin * tpw;
+        int thread_end = warp_branch.warp_id_end * tpw;
+        if (warp_branch.warp_id_begin == 0) {
+            if (warp_branch.warp_id_end == this->num_warps_per_sm) {
+                os << "\n    { // for all threads\n";
+            } else {
+                os << "\n    if (threadIdx.x < " << thread_end << ") {\n";
+            }
+        } else {
+            os << "\n    if (threadIdx.x >= " << thread_begin
+               << " && threadIdx.x < " << thread_end << ") {\n";
+        }
+
+        for (auto &branch_op : warp_branch.branch_ops) {
+            os << "      " << OP_PREFIX << branch_op.opseq_id << '(';
+            // num_uops = (warp_id_end - warp_id_begin) / num_warps_per_uop;
+            // warp_idx = warp_id - warp_id_begin;
+            // sm_idx = sm_id - sm_id_begin;
+            // uop = uop_id_diff * (warp_idx / num_warps_per_uop +
+            //                      num_uops * sm_idx) + uop_id_begin;
+            int num_warps = warp_branch.warp_id_end - warp_branch.warp_id_begin;
+            int num_uops = num_warps / branch_op.num_warps_per_uop;
+            int num_threads_per_uop = branch_op.num_warps_per_uop * tpw;
+            if (branch_op.uop_id_diff != 0) {
+                std::stringstream thread_indexing;
+                std::stringstream sm_indexing;
+                if (thread_end - thread_begin > num_threads_per_uop) {
+                    if (thread_begin > 0) {
+                        thread_indexing << "((threadIdx.x - " << thread_begin
+                                        << ")";
+                    } else {
+                        thread_indexing << "(threadIdx.x";
+                    }
+                    if (math::is_pow2(num_threads_per_uop)) {
+                        thread_indexing << " >> "
+                                        << math::ilog2(num_threads_per_uop)
+                                        << ")";
+                    } else {
+                        thread_indexing << " / " << num_threads_per_uop << ")";
+                    }
+                }
+                if (br.sm_id_end - br.sm_id_begin > 1) {
+                    if (br.sm_id_begin > 0) {
+                        sm_indexing << "((blockIdx.x - " << br.sm_id_begin
+                                    << ")";
+                    } else {
+                        sm_indexing << "(blockIdx.x";
+                    }
+                    if (num_uops > 1) {
+                        sm_indexing << " * " << num_uops;
+                    }
+                    sm_indexing << ")";
+                }
+                std::string indexing;
+                if (thread_indexing.str().empty()) {
+                    indexing = sm_indexing.str();
+                } else if (sm_indexing.str().empty()) {
+                    indexing = thread_indexing.str();
+                } else {
+                    indexing = "(" + sm_indexing.str() + " + " +
+                               thread_indexing.str() + ")";
+                }
+                if (!indexing.empty()) {
+                    if (branch_op.uop_id_diff != 1) {
+                        os << branch_op.uop_id_diff << " * ";
+                    }
+                    os << indexing << " + ";
+                }
+            }
+            os << branch_op.uop_id_begin << ");\n";
+        }
+        os << "    }\n";
+    }
+    os << "  }\n";
+    return os;
+}
+
 size_t SimpleCodeGenerator::get_tensor_offset(const Tensor *tensor)
 {
     size_t off = this->buf_trans.find(tensor->buf)->second->get_offset();
@@ -554,7 +693,7 @@ ostream &DefaultCodeGenerator::codegen_depth(ostream &os, const string &name,
 vector<string> DefaultCodeGenerator::codegen_codes_body(vector<Sched> &scheds)
 {
     const int sm_num = this->sm_num;
-    const int th_num = this->wps * 32;
+    const int th_num = this->num_warps_per_sm * 32;
     stringstream body;
     body << "__device__ void ark_loop_body(int _iter) {\n";
     stringstream depths;

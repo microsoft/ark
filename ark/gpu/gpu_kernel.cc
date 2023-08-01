@@ -176,7 +176,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                              const vector<string> &codes_body,
                              unsigned int num_sm, unsigned int num_warp,
                              unsigned int smem_bytes, const string &cubin_,
-                             GpuMgrCtx *ctx_, unsigned int num_depths_)
+                             GpuMgrCtx *ctx_)
     : GpuKernel{name_,
                 {},
                 {num_sm, 1, 1},
@@ -186,8 +186,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                 {},
                 {{0, sizeof(GpuPtr)}, {0, sizeof(GpuPtr)}},
                 cubin_},
-      ctx{ctx_}, num_depths{num_depths_}, timer_begin{ctx_->create_event(
-                                              false, nullptr)},
+      ctx{ctx_}, timer_begin{ctx_->create_event(false, nullptr)},
       timer_end{ctx_->create_event(false, nullptr)}
 {
     ctx_->set_current();

@@ -12,6 +12,7 @@
 using namespace std;
 using namespace ark;
 #define ITER 1000
+
 ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 {
     ark::DimType mat_size = mat_length * mat_length * sizeof(ark::half_t);
@@ -28,15 +29,15 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         // m.scale(copy_data, 1.0f);
         GpuMgr *mgr = get_gpu_mgr(0);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::SimpleScheduler sched{0, 0, 2, m, 8};
+        ark::SimpleScheduler sched{m, 0, 0, 2, 8};
         GpuMgrCtx *ctx = sched.create_context("test_sendrecv_mm_copy");
 
         ark::GpuBuf *input_data = sched.get_gpu_buf(copy_data);
         ark::gpu_memcpy(input_data, send_data0, mat_size);
 
         CULOG(cuCtxSynchronize());
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_sendrecv_mm_copy",
                           codes,
@@ -44,9 +45,8 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
-        // cout << glk.get_codes()[0] << endl;
+                          ctx};
+
         glk.compile(ginfo);
         glk.load();
         GpuStream stream = ctx->create_stream();
@@ -71,11 +71,11 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         m.recv_mm(recvbuf, 0, 0, 0);
         GpuMgr *mgr = get_gpu_mgr(1);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::SimpleScheduler sched{1, 1, 2, m, 8};
+        ark::SimpleScheduler sched{m, 1, 1, 2, 8};
         GpuMgrCtx *ctx = sched.create_context("test_sendrecv_mm_copy");
 
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_sendrecv_mm_copy",
                           codes,
@@ -83,8 +83,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         // cout << glk.get_codes()[0] << endl;
         glk.compile(ginfo);
         glk.load();
@@ -139,15 +138,15 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
         m.recv_mm(recvbuf, 1, 1, 0);
         GpuMgr *mgr = get_gpu_mgr(0);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::SimpleScheduler sched{0, 0, 2, m, 8};
+        ark::SimpleScheduler sched{m, 0, 0, 2, 8};
         GpuMgrCtx *ctx = sched.create_context("test_sendrecv_mm_copy");
 
         ark::GpuBuf *input_data = sched.get_gpu_buf(copy_data);
         ark::gpu_memcpy(input_data, send_data0, mat_size);
 
         CULOG(cuCtxSynchronize());
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_sendrecv_mm_copy",
                           codes,
@@ -155,8 +154,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         // cout << glk.get_codes()[0] << endl;
         glk.compile(ginfo);
         glk.load();
@@ -194,14 +192,14 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
         m.recv_mm(recvbuf, 0, 0, 0);
         GpuMgr *mgr = get_gpu_mgr(1);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::SimpleScheduler sched{1, 1, 2, m, 8};
+        ark::SimpleScheduler sched{m, 1, 1, 2, 8};
         GpuMgrCtx *ctx = sched.create_context("test_sendrecv_mm_copy");
 
         ark::GpuBuf *input_data = sched.get_gpu_buf(copy_data);
         ark::gpu_memcpy(input_data, send_data1, mat_size);
 
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_sendrecv_mm_copy",
                           codes,
@@ -209,8 +207,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         // cout << glk.get_codes()[0] << endl;
         glk.compile(ginfo);
         glk.load();
@@ -266,15 +263,15 @@ ark::unittest::State test_sendrecv_mm_4gpus()
             m.recv_mm(recvbuf, gpu_id, (gpu_id - 1 + gpu_num) % gpu_num);
             GpuMgr *mgr = get_gpu_mgr(gpu_id);
             const GpuInfo &ginfo = mgr->get_gpu_info();
-            ark::SimpleScheduler sched{gpu_id, gpu_id, gpu_num, m, 8};
+            ark::SimpleScheduler sched{m, gpu_id, gpu_id, gpu_num, 8};
             GpuMgrCtx *ctx = sched.create_context("test_sendrecv_mm_copy");
 
             ark::GpuBuf *input_data = sched.get_gpu_buf(copy_data);
             ark::gpu_memcpy(input_data, send_data[gpu_id], mat_size);
 
             CULOG(cuCtxSynchronize());
-            auto codes = sched.schedule();
-            unsigned int num_depths = sched.get_num_depths();
+            sched.schedule();
+            auto codes = sched.gen_code();
 
             GpuLoopKernel glk{"test_sendrecv_mm_copy",
                               codes,
@@ -282,8 +279,7 @@ ark::unittest::State test_sendrecv_mm_4gpus()
                               8,
                               (unsigned int)ginfo.smem_block_total,
                               "",
-                              ctx,
-                              num_depths};
+                              ctx};
             // cout << glk.get_codes()[0] << endl;
             glk.compile(ginfo);
             glk.load();

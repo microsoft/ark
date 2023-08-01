@@ -535,6 +535,12 @@ bool Op::is_virtual() const
     return this->cfg_map == nullptr;
 }
 
+bool Op::is_comm() const
+{
+    return this->type == OP_SEND || this->type == OP_SEND_DONE ||
+           this->type == OP_RECV;
+}
+
 bool operator<(const Op &op1, const Op &op2)
 {
     if (op1.type < op2.type) {

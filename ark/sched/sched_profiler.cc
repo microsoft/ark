@@ -108,7 +108,7 @@ static string prof_name(const SchedTileSet &ts)
 }
 
 // convert SchedTileDepth to Sched
-vector<Sched> gen_sched(SchedTileDepth *tile_depths, int wps)
+vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm)
 {
     vector<Sched> scheds;
     int sm_b = 0;
@@ -128,7 +128,7 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, int wps)
                 // DimType tnum = opseq->get_tdims_size();
                 DimType wnum = opseq->get_num_warps();
                 th_e = th_b + wnum * 32;
-                if (th_e > wps * 32) {
+                if (th_e > num_warps_per_sm * 32) {
                     th_b = 0;
                     th_e = wnum * 32;
                 }
@@ -162,10 +162,11 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, int wps)
 void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
                             GpuMgrCtx *ctx)
 {
+#if 0
     using ProfCallback = function<void(float, int)>;
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     // Get or create entry of profile results.
-    auto &res = this->wps_prof_results[this->wps];
+    auto &res = this->wps_prof_results[this->num_warps_per_sm];
     //
     map<ProfInfo, unsigned int> info2id;
     vector<vector<tuple<SchedTileDepth *, ProfCallback>>> to_prof;
@@ -182,7 +183,7 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
             // Skip if this already has profiled results.
             if (perf.s.is_set())
                 continue;
-            assert(opseq.get_num_warps() <= this->wps);
+            assert(opseq.get_num_warps() <= this->num_warps_per_sm);
             //
             {
                 auto p =
@@ -196,7 +197,7 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
                 to_prof[p.first->second].emplace_back(
                     sd, [&](float e, int r) { perf.s.set(e, r); });
             }
-            if (this->wps < opseq.get_num_warps() * 2 ||
+            if (this->num_warps_per_sm < opseq.get_num_warps() * 2 ||
                 gpu_info.smem_block_total < opseq.get_smem_bytes() * 2)
                 // Cannot run two tiles concurrently in a SM.
                 continue;
@@ -250,14 +251,14 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
             if (opseq0.is_send() || opseq0.is_recv() || opseq0.is_send_done() ||
                 opseq0.is_virtual())
                 continue;
-            if (opseq0.get_num_warps() >= this->wps)
+            if (opseq0.get_num_warps() >= this->num_warps_per_sm)
                 continue;
             SchedOpSeqPerf &perf0 = res[&opseq0];
             for (auto it1 = next(it0); it1 != depth_nodes.end(); ++it1) {
                 const SchedOpSeq &opseq1 = (*it1)->opseq;
                 if (perf0.mixed[&opseq1].is_set())
                     continue;
-                if (opseq0.get_num_warps() + opseq1.get_num_warps() > this->wps)
+                if (opseq0.get_num_warps() + opseq1.get_num_warps() > this->num_warps_per_sm)
                     continue;
                 //
                 auto p = info2id.emplace(
@@ -292,7 +293,7 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
         try {
             ifstream cache_file_stream(this->wps_prof_cache_path);
             cache_file_stream >> cache_json;
-            wps_cache_json = cache_json.at(to_string(this->wps));
+            wps_cache_json = cache_json.at(to_string(this->num_warps_per_sm));
         } catch (...) {
             wps_cache_json = {};
         }
@@ -313,14 +314,14 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
             return;
         }
         assert(tile_depth != nullptr);
-        assert(tile_depth->get_num_warps() <= this->wps);
+        assert(tile_depth->get_num_warps() <= this->num_warps_per_sm);
         // `gpu_loop_kernel()` is supposed to be thread-safe
         // as long as `glk` is excessed by only a single thread.
-        auto scheds = gen_sched(tile_depth, this->wps);
+        auto scheds = gen_sched(tile_depth, this->num_warps_per_sm);
         auto codes = codegen.codegen_codes_body(scheds);
 
         GpuLoopKernel *glk =
-            new GpuLoopKernel(name, codes, gpu_info.num_sm, this->wps,
+            new GpuLoopKernel(name, codes, gpu_info.num_sm, this->num_warps_per_sm,
                               gpu_info.smem_block_total, "", ctx, 1);
         glk->compile(gpu_info);
         float e = this->profile_routine(glk, ctx);
@@ -337,8 +338,9 @@ void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
     }
     // write the profiling results as json to the cache file
     ofstream cache_file_stream(this->wps_prof_cache_path);
-    cache_json[to_string(this->wps)] = wps_cache_json;
+    cache_json[to_string(this->num_warps_per_sm)] = wps_cache_json;
     cache_file_stream << cache_json;
+#endif
 }
 
 } // namespace ark

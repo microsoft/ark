@@ -127,7 +127,7 @@ int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
     int num_sm_calc = gpu_info.num_sm;
 #endif
     KahyparGraph<SchedTile> kg;
-    auto search = this->profiler.wps_prof_results.find(this->wps);
+    auto search = this->profiler.wps_prof_results.find(this->num_warps_per_sm);
     if (search == this->profiler.wps_prof_results.end()) {
         LOGERR("Unexpected error.");
     }
@@ -214,12 +214,12 @@ int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
             if (part.size() > 0)
                 sm.emplace_back();
             for (auto &p : part) {
-                if (sm.back().get_num_warps() >= this->wps)
+                if (sm.back().get_num_warps() >= this->num_warps_per_sm)
                     sm.emplace_back();
                 sm.back().tiles.emplace_back(move(*p.first));
                 if (p.second == nullptr)
                     continue;
-                if (sm.back().get_num_warps() >= this->wps)
+                if (sm.back().get_num_warps() >= this->num_warps_per_sm)
                     sm.emplace_back();
                 sm.back().tiles.emplace_back(move(*p.second));
             }
@@ -233,7 +233,7 @@ int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
         //          return a[0].tiles[0] < b[0].tiles[0];
         //      });
         // LOG(DEBUG, "Generating tiles");
-        auto scheds_ = gen_sched(tile_depth, this->wps);
+        auto scheds_ = gen_sched(tile_depth, this->num_warps_per_sm);
         LOG(DEBUG, "Generated ", scheds_.size(), " scheds");
         for (auto sched : scheds_) {
             scheds.push_back(sched);

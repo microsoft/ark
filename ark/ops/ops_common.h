@@ -17,7 +17,7 @@ namespace ark {
 /// @param dims2 The second shape.
 Dims broadcast(const Dims &dims1, const Dims &dims2);
 
-// Type of operator argument.
+/// Type of operator argument.
 typedef enum
 {
     OP_ARG_INT,
@@ -29,7 +29,7 @@ typedef enum
     OP_ARG_TENSOR,
 } OpArgType;
 
-// Stores an arbitrary type of argument given to an operator.
+/// Stores an arbitrary type of argument given to an operator.
 struct OpArg
 {
     OpArg(int arg);
@@ -50,7 +50,6 @@ struct OpArg
     void get(Dims *arg) const;
     void get(Tensor **arg) const;
 
-    //
     OpArgType type;
     void *val;
 
@@ -60,6 +59,7 @@ struct OpArg
 
 class Op;
 
+/// Stores a list of @ref OpArg.
 class OpArgs
 {
   public:
@@ -90,7 +90,7 @@ class OpArgs
     friend bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2);
 };
 
-// Type of operator.
+/// Type of @ref Op.
 typedef enum
 {
     OP_UNKNOWN = 0,
@@ -122,7 +122,7 @@ typedef enum
     OP_RECV_MM,
 } OpType;
 
-// Type of precision of operator.
+/// Type of precision of @ref Op.
 typedef enum
 {
     OP_PREC_NONE,
@@ -130,7 +130,7 @@ typedef enum
     OP_PREC_FP32,
 } OpPrecType;
 
-// Type of hardware architecture support.
+/// Type of hardware architecture support.
 typedef enum
 {
     OP_ARCH_CUDA_70,
@@ -139,14 +139,14 @@ typedef enum
 
 struct Tensor;
 
-// 2-dimensional op tile
+/// 2-dimensional op tile
 struct OpTile
 {
     DimType x;
     DimType y;
 };
 
-// Configurations for execution of an operation.
+/// Configurations for execution of a @ref Op.
 struct OpConfig
 {
     int num_warps = 0;
@@ -157,7 +157,7 @@ struct OpConfig
     bool sync_post = false;
 };
 
-// Key to find a list of OpConfigs from OpConfigMap.
+/// Key to find a list of OpConfigs from OpConfigMap.
 struct OpConfigKey
 {
     OpArchType arch_type;
@@ -217,6 +217,9 @@ class Op
 
     /// Returns true if the operator is virtual (i.e., performs no computation).
     bool is_virtual() const;
+
+    /// Returns true if the operator is a communication operator.
+    bool is_comm() const;
 
     /// Type of the operator.
     OpType type;

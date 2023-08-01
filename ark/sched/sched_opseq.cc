@@ -65,6 +65,11 @@ bool SchedOpSeq::is_recv() const
     return true;
 }
 
+bool SchedOpSeq::is_comm() const
+{
+    return this->is_send() || this->is_send_done() || this->is_recv();
+}
+
 bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
 {
     assert(op != nullptr);

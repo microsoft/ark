@@ -12,8 +12,9 @@ namespace ark {
 
 const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info)
 {
-    assert(op != nullptr);
-    assert(op->outputs.size() > 0);
+    if (op == nullptr || op->outputs.size() == 0) {
+        LOG(ERROR, "unexpected error");
+    }
     Tensor *output = op->outputs[0];
     if (output == nullptr || op->cfg_map == nullptr) {
         return nullptr;

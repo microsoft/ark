@@ -11,38 +11,37 @@ using namespace std;
 
 namespace ark {
 
-SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
-                                 const Model &model, int wps_)
-    : BaseScheduler(gpu_id, rank_, world_size_, wps_)
+SimpleScheduler::SimpleScheduler(Model &model, int gpu_id, int rank_,
+                                 int world_size_, int num_warps_per_sm_)
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
 {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    this->codegen = make_unique<SimpleCodeGenerator>(this->buf_trans, gpu_info,
-                                                     wps_, this->world_size);
-    int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
-    this->wps = max(wps_, min_wps);
-    this->create_sched_opseq(model, gpu_info);
-    this->configure_gpu_buf(model.impl->get_tensors());
+    this->codegen = make_unique<SimpleCodeGenerator>(
+        this->buf_trans, gpu_info, num_warps_per_sm_, this->world_size);
 }
 
-void SimpleScheduler::create_sched_opseq(const Model &model,
-                                         const GpuInfo &gpu_info)
+//
+void SimpleScheduler::schedule()
 {
+    LOG(DEBUG, "SimpleScheduler start scheduling");
+    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+
     int op_idx = 0;
     int opseq_idx = 0;
     std::vector<Op *> all_ops;
-    for (auto &op : model.impl->get_ops()) {
+    for (auto &op : model->impl->get_ops()) {
         all_ops.push_back(op);
     }
     std::vector<Tensor *> finished_tensors;
 
     // get the input tensors of the model, and add them to the
     // finished_tensors vector
-    for (auto &tns : model.impl->get_tensors()) {
-        if (model.impl->get_producer(tns) == nullptr) {
+    for (auto &tns : model->impl->get_tensors()) {
+        if (model->impl->get_producer(tns) == nullptr) {
             finished_tensors.push_back(tns);
         }
     }
-    this->sched_opseqs.emplace_back(opseq_idx);
+    this->opseqs.emplace_back(std::make_unique<SchedOpSeq>(opseq_idx));
     opseq_idx++;
 
     while (!all_ops.empty()) {
@@ -93,38 +92,18 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         }
         // We create an opseq for each op for simplicity, we don't merge ops
         // into opseqs in SimpleScheduler
-        this->sched_opseqs.emplace_back(op_idx);
-        SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
+        this->opseqs.emplace_back(std::make_unique<SchedOpSeq>(op_idx));
+        SchedOpSeq *opseq = this->opseqs.back().get();
 
-        LOG(DEBUG, "get_sched_ops: ", sched_op_seq.get_sched_ops().size());
-        sched_op_seq.append(op, cfg);
+        LOG(DEBUG, "get_sched_ops: ", opseq->get_sched_ops().size());
+        opseq->append(op, cfg);
         op_idx++;
     }
     if (!all_ops.empty()) {
         LOGERR("Cannot schedule all ops");
     }
-}
 
-//
-vector<string> SimpleScheduler::schedule()
-{
-    LOG(DEBUG, "SimpleScheduler start scheduling");
-    int num_sm = this->gpu_mgr->get_gpu_info().num_sm;
-    vector<Sched> scheds;
-    for (auto &seq : this->sched_opseqs) {
-        this->schedule_sched_opseq(seq, this->wps, num_sm, scheds);
-    }
-    return this->codegen->codegen_codes_body(scheds);
-}
-
-//
-GpuBuf *SimpleScheduler::get_gpu_buf(Tensor *tns) const
-{
-    auto search = this->buf_trans.find(tns->buf);
-    if (search == buf_trans.end()) {
-        return nullptr;
-    }
-    return search->second;
+    this->configure_gpu_buf(model->impl->get_tensors());
 }
 
 void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
@@ -228,6 +207,18 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
         LOGERR("only ", sched_tile_idx, " tiles are scheduled, but ",
                seq_tile_num, " tiles are needed to be scheduled");
     }
+}
+
+vector<string> SimpleScheduler::gen_code()
+{
+    LOG(DEBUG, "SimpleScheduler start scheduling");
+    int num_sm = this->gpu_mgr->get_gpu_info().num_sm;
+    vector<Sched> scheds;
+    for (auto &seq : this->opseqs) {
+        this->schedule_sched_opseq(*seq, this->num_warps_per_sm, num_sm,
+                                   scheds);
+    }
+    return this->codegen->codegen_codes_body(scheds);
 }
 
 void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
