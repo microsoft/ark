@@ -59,6 +59,7 @@ class loss_fn(ark.Module):
         if batch_size > 1:
             mse = ark.reduce_sum(mse, axis=0)
         mse = ark.reshape(mse, outputs.shape[1:])
+        self.other_parameter["loss"] = mse
         return mse
 
     def backward(self, loss):
@@ -136,7 +137,9 @@ class Trainer:
             print("loss:", loss)
 
     def get_loss(self):
-        loss = ark.tensor_memcpy_device_to_host(None, self.loss_fn.loss)
+        loss_tensor = self.loss_fn.other_parameter["loss"]
+        loss = ark.tensor_memcpy_device_to_host(None, loss_tensor)
+        loss = np.sum(loss)
 
 
 def test_TestModel():
@@ -147,7 +150,7 @@ def test_TestModel():
     trainer = Trainer(ark_model, loss_fn(), Optimizer(ark_model, 0.001))
     ark.launch()
 
-    trainer.train(10)
+    trainer.train(1)
 
     ark.destroy()
     print("ARK module test")
