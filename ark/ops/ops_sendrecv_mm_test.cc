@@ -135,70 +135,51 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
 
 ark::unittest::State test_sendrecv_mm_4gpus()
 {
-    // int iter = ITER;
-    // // the four gpus send recv data in a ring, gpu0->gpu1->gpu2->gpu3->gpu0
-    // const int gpu_num = 4;
-    // const int mat_length = 64;
-    // const int mat_size = mat_length * mat_length * sizeof(ark::half_t);
-    // char *send_data[gpu_num];
-    // for (int i = 0; i < gpu_num; i++) {
-    //     send_data[i] = new char[mat_size];
-    //     for (int j = 0; j < mat_size; j++)
-    //         send_data[i][j] = std::rand() % 256;
-    // }
-    // for (int gpu_id = 0; gpu_id < gpu_num; gpu_id++) {
-    //     ark::unittest::spawn_process([=]() {
-    //         Model m;
-    //         Tensor *copy_data = m.tensor({mat_length, mat_length}, FP16);
-    //         m.send_mm(copy_data, (gpu_id + 1) % gpu_num,
-    //                   (gpu_id + 1) % gpu_num);
-    //         Tensor *recvbuf = m.tensor({mat_length, mat_length}, FP16);
-    //         m.recv_mm(recvbuf, gpu_id, (gpu_id - 1 + gpu_num) % gpu_num);
-    //         GpuMgr *mgr = get_gpu_mgr(gpu_id);
-    //         const GpuInfo &ginfo = mgr->get_gpu_info();
-    //         ark::SimpleScheduler sched{m, gpu_id, gpu_id, gpu_num, 8};
-    //         GpuMgrCtx *ctx = sched.create_context("test_sendrecv_mm_copy");
+    // the four gpus send recv data in a ring, gpu0->gpu1->gpu2->gpu3->gpu0
+    const int gpu_num = 4;
+    ark::DimType mat_length = 64;
+    ark::DimType mat_size = mat_length * mat_length;
 
-    //         ark::GpuBuf *input_data = sched.get_gpu_buf(copy_data);
-    //         ark::gpu_memcpy(input_data, send_data[gpu_id], mat_size);
+    std::unique_ptr<ark::half_t []> send_data[gpu_num];
+    for (int i = 0; i < gpu_num; ++i) {
+        send_data[i] = ark::utils::rand_halfs(mat_size, 5.0f);
+    }
 
-    //         CULOG(cuCtxSynchronize());
-    //         sched.schedule();
-    //         auto codes = sched.gen_code();
+    for (int gpu_id = 0; gpu_id < gpu_num; gpu_id++) {
+        ark::unittest::spawn_process([&]() {
+            ark::Model m;
+            ark::Tensor *data = m.tensor({mat_length, mat_length}, ark::FP16);
+            m.send_mm(data, (gpu_id + 1) % gpu_num, (gpu_id + 1) % gpu_num);
 
-    //         GpuLoopKernel glk{"test_sendrecv_mm_copy",
-    //                           codes,
-    //                           (unsigned int)ginfo.num_sm,
-    //                           8,
-    //                           (unsigned int)ginfo.smem_block_total,
-    //                           "",
-    //                           ctx};
-    //         // cout << glk.get_codes()[0] << endl;
-    //         glk.compile(ginfo);
-    //         glk.load();
-    //         GpuStream stream = ctx->create_stream();
-    //         GpuState ret = glk.launch(stream, false);
-    //         UNITTEST_EQ(ret, 0);
-    //         glk.run(iter);
-    //         glk.stop();
+            ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
+            m.recv_mm(recvbuf, gpu_id, (gpu_id - 1 + gpu_num) % gpu_num);
 
-    //         ark::GpuBuf *output_data;
-    //         output_data = sched.get_gpu_buf(recvbuf);
-    //         char *output = new char[mat_size];
-    //         ark::gpu_memcpy(output, output_data, mat_size);
-    //         for (int i = 0; i < mat_size; i++) {
-    //             if (output[i] !=
-    //                 send_data[(gpu_id - 1 + gpu_num) % gpu_num][i]) {
-    //                 LOG(INFO, "error at", i, output[i],
-    //                     send_data[(gpu_id - 1 + gpu_num) % gpu_num][i]);
-    //                 return ark::unittest::FAILURE;
-    //             }
-    //         }
-    //         return ark::unittest::SUCCESS;
-    //     });
-    // }
+            ark::Executor exe{gpu_id, gpu_id, gpu_num, m, "test_sendrecv_mm_copy"};
+            exe.compile();
+            exe.tensor_memcpy(data, send_data[gpu_id].get(),
+                              mat_size * sizeof(ark::half_t));
+            exe.launch();
+            exe.run(1);
+            exe.stop();
 
-    // ark::unittest::wait_all_processes();
+            auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
+            exe.tensor_memcpy(recv_data.get(), recvbuf,
+                              mat_size * sizeof(ark::half_t));
+
+            auto &gt = send_data[(gpu_id - 1 + gpu_num) % gpu_num];
+            for (int i = 0; i < mat_size; i++) {
+                if (recv_data[i] != gt[i]) {
+                    LOG(ark::INFO, "error at ", i,
+                        ": recv_data=", float(recv_data[i]),
+                        "send_data=", float(gt[i]));
+                    return ark::unittest::FAILURE;
+                }
+            }
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
     return ark::unittest::SUCCESS;
 }
 
