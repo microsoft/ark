@@ -33,7 +33,7 @@ other_tensor = ark.tensor([M, N])
 output_tensor = ark.add(input_tensor, input_tensor)
 ```
 
-Next, we need to launch the ARK runtime and initialize the input and output tensors. You can copy a numpy array into a tensor on GPU using `ark.tensor_memcpy_host_to_device()`. Therefore, you must call ark.launch() before copying the tensor between host and device. Changing the model after launching the ARK runtime is not allowed.
+Next, we need to launch the ARK runtime and initialize the input and output tensors. You can copy a numpy array into a tensor on GPU using `ark.tensor_memcpy_host_to_device()`. By calling `ark.launch()`, the ARK runtime will be launched, which will freeze and schedule the model. Then, it will generate and compile the CUDA kernel for the model, and allocate GPU memory during the launch. Therefore, it is necessary to call `ark.launch()` before copying the tensor between the host and device. It is not allowed to modify the model after launching the ARK runtime.
 
 
 ```python
