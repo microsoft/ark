@@ -31,7 +31,7 @@ def tensor(
         if len(shape) > 4:
             logging.error("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
-    _tensor = Model.global_model.tensor(
+    _tensor = Model.get_global_model().tensor(
         shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
     )
     return Tensor(_tensor)
@@ -65,7 +65,9 @@ def reshape(
     if output is not None:
         output = output._tensor
     input = input._tensor
-    _tensor = Model.global_model.reshape(input, shape, allowzero, output, name)
+    _tensor = Model.get_global_model().reshape(
+        input, shape, allowzero, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -87,7 +89,7 @@ def identity(
         dep_tensor.append(dep._tensor)
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.identity(
+    _tensor = Model.get_global_model().identity(
         input._tensor, dep_tensor, output, name
     )
     return Tensor(_tensor)
@@ -108,7 +110,7 @@ def sharding(
     # The first tensor's buffer is the same as the first 64 columns of tensor
     # The second tensor's buffer is the same as the last 64 columns of tensor
     """
-    _tensor_list = Model.global_model.sharding(
+    _tensor_list = Model.get_global_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
     tensor_list = []
@@ -133,7 +135,9 @@ def reduce_sum(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.reduce_sum(input._tensor, axis, output, name)
+    _tensor = Model.get_global_model().reduce_sum(
+        input._tensor, axis, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -151,7 +155,9 @@ def reduce_mean(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.reduce_mean(input._tensor, axis, output, name)
+    _tensor = Model.get_global_model().reduce_mean(
+        input._tensor, axis, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -169,7 +175,9 @@ def reduce_max(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.reduce_max(input._tensor, axis, output, name)
+    _tensor = Model.get_global_model().reduce_max(
+        input._tensor, axis, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -186,7 +194,7 @@ def layernorm(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.layernorm(input._tensor, output, name)
+    _tensor = Model.get_global_model().layernorm(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -202,7 +210,7 @@ def softmax(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.softmax(input._tensor, output, name)
+    _tensor = Model.get_global_model().softmax(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -223,7 +231,9 @@ def transpose(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.transpose(input._tensor, perm, output, name)
+    _tensor = Model.get_global_model().transpose(
+        input._tensor, perm, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -249,7 +259,7 @@ def matmul(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.matmul(
+    _tensor = Model.get_global_model().matmul(
         input._tensor,
         other._tensor,
         output,
@@ -284,7 +294,7 @@ def im2col(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.im2col(
+    _tensor = Model.get_global_model().im2col(
         input._tensor,
         kernel_height,
         kernel_width,
@@ -316,7 +326,7 @@ def conv2d(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.conv2d(
+    _tensor = Model.get_global_model().conv2d(
         input._tensor,
         in_channels,
         out_channels,
@@ -347,7 +357,7 @@ def max_pool(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.max_pool(
+    _tensor = Model.get_global_model().max_pool(
         input._tensor,
         kernel_size,
         stride,
@@ -370,7 +380,7 @@ def scale(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.scale(
+    _tensor = Model.get_global_model().scale(
         input._tensor,
         val,
         output,
@@ -392,7 +402,7 @@ def relu(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.relu(input._tensor, output, name)
+    _tensor = Model.get_global_model().relu(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -411,7 +421,7 @@ def gelu(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.gelu(input._tensor, output, name)
+    _tensor = Model.get_global_model().gelu(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -429,7 +439,9 @@ def add(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.add(input._tensor, other._tensor, output, name)
+    _tensor = Model.get_global_model().add(
+        input._tensor, other._tensor, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -447,7 +459,9 @@ def mul(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.mul(input._tensor, other._tensor, output, name)
+    _tensor = Model.get_global_model().mul(
+        input._tensor, other._tensor, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -474,7 +488,7 @@ def send(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.send(
+    _tensor = Model.get_global_model().send(
         input._tensor,
         id,
         dst_rank,
@@ -498,7 +512,7 @@ def send_done(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.send_done(
+    _tensor = Model.get_global_model().send_done(
         input._tensor,
         id,
         dst_rank,
@@ -523,7 +537,7 @@ def recv(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.recv(
+    _tensor = Model.get_global_model().recv(
         input._tensor,
         id,
         src_rank,
@@ -554,7 +568,7 @@ def send_mm(
     if output is not None:
         output = output._tensor
 
-    _tensor = Model.global_model.send_mm(
+    _tensor = Model.get_global_model().send_mm(
         input._tensor,
         id,
         gpu_dst,
@@ -579,7 +593,7 @@ def recv_mm(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.recv_mm(
+    _tensor = Model.get_global_model().recv_mm(
         input._tensor,
         id,
         gpu_src,
@@ -622,7 +636,7 @@ def all_gather(
     for output_shard in output:
         if output_shard is not None:
             output_shard = output_shard._tensor
-    tensor_shards = Model.global_model.all_gather(
+    tensor_shards = Model.get_global_model().all_gather(
         input._tensor,
         gpu_id,
         gpu_num,
@@ -650,7 +664,7 @@ def all_reduce(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.global_model.all_reduce(
+    _tensor = Model.get_global_model().all_reduce(
         input._tensor,
         gpu_id,
         gpu_num,
@@ -663,3 +677,9 @@ def all_reduce(
 class Model(_Model):
     # a global model object
     global_model = None
+
+    @staticmethod
+    def get_global_model():
+        if Model.global_model is None:
+            logging.error("Model is not initialized")
+        return Model.global_model

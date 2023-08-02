@@ -41,7 +41,7 @@ def init_model(rank: int = 0, world_size: int = 1):
         ARKConfig.global_config = ARKConfig(rank, world_size)
     if ARKConfig.global_config.ark_runtime_state != "start":
         logging.error("ARK runtime is already initialized")
-    if Model.global_model is None:
+    if Model.get_global_model() is None:
         Model.global_model = Model(rank)
     ARKConfig.global_config.ark_runtime_state = "init_model"
 
@@ -58,7 +58,7 @@ def launch():
     rank = ARKConfig.global_config.rank
     world_size = ARKConfig.global_config.world_size
     Executor.global_executor = Executor(
-        rank, rank, world_size, Model.global_model, "Executor"
+        rank, rank, world_size, Model.get_global_model(), "Executor"
     )
     Executor.get_executor().compile()
     Executor.get_executor().launch()
