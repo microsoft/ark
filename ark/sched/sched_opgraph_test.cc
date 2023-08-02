@@ -469,6 +469,63 @@ ark::unittest::State test_sched_opgraph_split_matmul()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_opgraph_cumulate()
+{
+    // OpNode graph (parentheses indicate a OpNode):
+    //
+    //       (Relu,) --+   (Relu,) --+
+    //                 |             |
+    //   (Relu,Add,) --+--> (Add,) --+--> (Add,)
+    //
+
+    ark::Model model;
+    ark::Tensor *cumulate = model.tensor({1}, ark::FP32);
+
+    for (int i = 0; i < 3; ++i) {
+        ark::Tensor *t = model.tensor({1}, ark::FP32);
+        ark::Tensor *r = model.relu(t);
+        cumulate = model.add(cumulate, r);
+    }
+
+    UNITTEST_TRUE(model.verify());
+
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 5UL);
+
+    auto last_node = graph.get_nodes().back().get();
+    UNITTEST_EQ(last_node->ops[0]->outputs[0], cumulate);
+    UNITTEST_EQ(last_node->producers.size(), 2UL);
+    UNITTEST_EQ(last_node->users.size(), 0UL);
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_sched_opgraph_all_reduce()
+{
+    // OpNode graph (parentheses indicate a OpNode):
+    //
+    //       (S,SD,R,) --+ (S,SD,R,) --+
+    //                   |             |
+    //   (S,SD,R,Add,) --+--> (Add,) --+--> (Add,)
+    //
+
+    ark::Model model;
+    ark::Tensor *input = model.tensor({1}, ark::FP32);
+    ark::Tensor *output = model.all_reduce(input, 0, 4);
+
+    UNITTEST_TRUE(model.verify());
+
+    ark::OpGraph graph(model);
+    UNITTEST_EQ(graph.get_nodes().size(), 5UL);
+
+    auto last_node = graph.get_nodes().back().get();
+    UNITTEST_EQ(last_node->ops[0]->outputs[0], output);
+    UNITTEST_EQ(last_node->producers.size(), 2UL);
+    UNITTEST_EQ(last_node->users.size(), 0UL);
+
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -477,5 +534,7 @@ int main()
     UNITTEST(test_sched_opgraph_identity);
     UNITTEST(test_sched_opgraph_sharding);
     UNITTEST(test_sched_opgraph_split_matmul);
+    UNITTEST(test_sched_opgraph_cumulate);
+    UNITTEST(test_sched_opgraph_all_reduce);
     return 0;
 }
