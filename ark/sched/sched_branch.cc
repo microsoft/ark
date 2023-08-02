@@ -4,8 +4,18 @@
 #include "sched_branch.h"
 #include "logging.h"
 #include <algorithm>
+#include <map>
+#include <set>
 #include <unordered_set>
 #include <vector>
+
+#define DEBUG_BRANCH 0
+#define BRANCH_DEBUG(...)                                                      \
+    do {                                                                       \
+        if (DEBUG_BRANCH) {                                                    \
+            LOG(DEBUG, __VA_ARGS__);                                           \
+        }                                                                      \
+    } while (0);
 
 namespace ark {
 
@@ -44,6 +54,13 @@ struct OpBranchInfo
     int uop_id_diff;
     /// The number of warps per uop.
     int num_warps_per_uop;
+
+    int get_num_uops() const
+    {
+        int uops_per_sm = (warp_id_end - warp_id_begin) / num_warps_per_uop;
+        int num_sms = sm_id_end - sm_id_begin;
+        return uops_per_sm * num_sms;
+    }
 };
 
 class SchedBranch::Impl
@@ -62,6 +79,7 @@ class SchedBranch::Impl
     std::vector<OpBranchInfo> get_op_branch_info();
 
     std::vector<UnitOp> uops;
+    std::map<int, std::set<int>> opseq_to_uop_ids;
 
   public:
     Impl();
@@ -100,13 +118,18 @@ void SchedBranch::Impl::add(int opseq_id, int uop_id, int sm_id,
         LOG(ERROR, "warp_id_end ", warp_id_end, " <= warp_id_begin ",
             warp_id_begin);
     }
+    auto p = this->opseq_to_uop_ids[opseq_id].insert(uop_id);
+    if (!p.second) {
+        LOG(ERROR, "opseq_id ", opseq_id, " uop_id ", uop_id,
+            " already exists");
+    }
     UnitOp uop{opseq_id, uop_id, sm_id, warp_id_begin, warp_id_end};
-    uops.emplace_back(uop);
+    this->uops.emplace_back(uop);
 }
 
 void SchedBranch::Impl::clear()
 {
-    uops.clear();
+    this->uops.clear();
 }
 
 bool SchedBranch::Impl::cmp_uop(const UnitOp &a, const UnitOp &b)
@@ -128,15 +151,17 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
 {
     std::vector<OpBranchInfo> infos;
 
-    std::sort(uops.begin(), uops.end(), cmp_uop);
+    std::sort(this->uops.begin(), this->uops.end(), cmp_uop);
 
     std::unordered_set<size_t> merged_uop_indices;
 
-    for (size_t i = 0; i < uops.size(); ++i) {
+    for (size_t i = 0; i < this->uops.size(); ++i) {
         if (merged_uop_indices.find(i) != merged_uop_indices.end()) {
             continue;
         }
-        UnitOp current_uop = uops[i];
+        size_t num_merged_uops = merged_uop_indices.size();
+
+        UnitOp current_uop = this->uops[i];
         OpBranchInfo info;
         info.opseq_id = current_uop.opseq_id;
         info.sm_id_begin = current_uop.sm_id;
@@ -150,14 +175,18 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
             current_uop.warp_id_end - current_uop.warp_id_begin;
 
         merged_uop_indices.emplace(i);
+        BRANCH_DEBUG("merged uop id ", current_uop.uop_id, " sm_id ",
+                     current_uop.sm_id, " warp_id_begin ",
+                     current_uop.warp_id_begin, " warp_id_end ",
+                     current_uop.warp_id_end);
 
         int current_warp_id_end = info.warp_id_end;
 
-        for (size_t j = i + 1; j < uops.size(); j++) {
+        for (size_t j = i + 1; j < this->uops.size(); j++) {
             if (merged_uop_indices.find(j) != merged_uop_indices.end()) {
                 continue;
             }
-            UnitOp next_uop = uops[j];
+            UnitOp next_uop = this->uops[j];
             if (next_uop.opseq_id != current_uop.opseq_id) {
                 // Scheduling another opseq. There is no more uop to merge.
                 // Break.
@@ -183,7 +212,19 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
                     continue;
                 } else if (next_uop.warp_id_begin == current_warp_id_end) {
                     // Contiguous warps. Try merge.
-                    if (info.uop_id_diff == 0) {
+                    if (info.uop_id_diff != 0 &&
+                        info.uop_id_diff !=
+                            next_uop.uop_id - info.uop_id_last) {
+                        // Diff is different from the previous uop. Break.
+                        break;
+                    } else if (info.sm_id_end - info.sm_id_begin > 1 &&
+                               (next_uop.warp_id_end > info.warp_id_end ||
+                                next_uop.warp_id_begin < info.warp_id_begin)) {
+                        // This branch is scheduling multiple SMs and next_uop
+                        // uses warp IDs that are not used by previous SMs.
+                        // Break.
+                        break;
+                    } else if (info.uop_id_diff == 0) {
                         // Diff is undetermined yet. Set it and merge.
                         info.uop_id_diff = next_uop.uop_id - info.uop_id_last;
                         current_warp_id_end = next_uop.warp_id_end;
@@ -191,19 +232,19 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
                         if (info.warp_id_end < current_warp_id_end) {
                             info.warp_id_end = current_warp_id_end;
                         }
-                    } else if (info.uop_id_diff ==
-                               next_uop.uop_id - info.uop_id_last) {
+                    } else {
                         // Diff is the same as the previous uop. Merge.
                         current_warp_id_end = next_uop.warp_id_end;
                         info.uop_id_last = next_uop.uop_id;
                         if (info.warp_id_end < current_warp_id_end) {
                             info.warp_id_end = current_warp_id_end;
                         }
-                    } else {
-                        // Diff is different from the previous uop. Break.
-                        break;
                     }
                     merged_uop_indices.emplace(j);
+                    BRANCH_DEBUG("merged uop id ", next_uop.uop_id, " sm_id ",
+                                 next_uop.sm_id, " warp_id_begin ",
+                                 next_uop.warp_id_begin, " warp_id_end ",
+                                 next_uop.warp_id_end);
                     continue;
                 } else {
                     // Non-contiguous warps. Break.
@@ -240,6 +281,10 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
                         break;
                     }
                     merged_uop_indices.emplace(j);
+                    BRANCH_DEBUG("merged uop id ", next_uop.uop_id, " sm_id ",
+                                 next_uop.sm_id, " warp_id_begin ",
+                                 next_uop.warp_id_begin, " warp_id_end ",
+                                 next_uop.warp_id_end);
                     continue;
                 }
             } else {
@@ -247,8 +292,81 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
                 break;
             }
         }
-        infos.emplace_back(info);
+
+        if (current_warp_id_end < info.warp_id_end) {
+            // The last scheduled SM uses less warps than the previous
+            // scheduled SMs. Break the info into two.
+
+            int num_uops_in_last_sm =
+                (current_warp_id_end - info.warp_id_begin) /
+                info.num_warps_per_uop;
+            int first_uop_id_in_last_sm =
+                info.uop_id_last - (num_uops_in_last_sm - 1) * info.uop_id_diff;
+
+            OpBranchInfo new_info;
+            new_info.opseq_id = info.opseq_id;
+            new_info.sm_id_begin = info.sm_id_end - 1;
+            new_info.sm_id_end = info.sm_id_end;
+            new_info.warp_id_begin = info.warp_id_begin;
+            new_info.warp_id_end = current_warp_id_end;
+            new_info.uop_id_begin = first_uop_id_in_last_sm;
+            new_info.uop_id_last = info.uop_id_last;
+            new_info.uop_id_diff = info.uop_id_diff;
+            new_info.num_warps_per_uop = info.num_warps_per_uop;
+
+            info.sm_id_end -= 1;
+            info.uop_id_last = first_uop_id_in_last_sm - info.uop_id_diff;
+
+            if (merged_uop_indices.size() - num_merged_uops !=
+                (size_t)(info.get_num_uops() + new_info.get_num_uops())) {
+                LOG(ERROR,
+                    "unexpected error: numbers of newly merged uops mismatch (",
+                    merged_uop_indices.size() - num_merged_uops, " vs ",
+                    info.get_num_uops() + new_info.get_num_uops(), ")");
+            }
+
+            infos.emplace_back(info);
+            infos.emplace_back(new_info);
+        } else if (current_warp_id_end != info.warp_id_end) {
+            LOG(ERROR, "unexpected error");
+        } else {
+            if (merged_uop_indices.size() - num_merged_uops !=
+                (size_t)info.get_num_uops()) {
+                LOG(ERROR,
+                    "unexpected error: numbers of newly merged uops mismatch (",
+                    merged_uop_indices.size() - num_merged_uops, " vs ",
+                    info.get_num_uops(), ")");
+            }
+            infos.emplace_back(info);
+        }
     }
+
+    // Verify if there is a missing uop.
+    for (auto &p : this->opseq_to_uop_ids) {
+        int expected_id = 0;
+        for (int uop_id : p.second) {
+            if (uop_id != expected_id) {
+                LOG(ERROR, "missing uop ", expected_id, " in opseq ", p.first);
+            }
+            expected_id += 1;
+        }
+    }
+
+    // Verify if the number of uops matches.
+    int num_uops = 0;
+    for (const OpBranchInfo &info : infos) {
+        num_uops += info.get_num_uops();
+    }
+    size_t compare_num_uops = 0;
+    for (auto &p : this->opseq_to_uop_ids) {
+        compare_num_uops += p.second.size();
+    }
+    if ((size_t)num_uops != compare_num_uops) {
+        LOG(ERROR, "invalid number of uops: ", num_uops,
+            ", expected: ", compare_num_uops,
+            " merged_uop_indices.size(): ", merged_uop_indices.size());
+    }
+
     return infos;
 }
 
