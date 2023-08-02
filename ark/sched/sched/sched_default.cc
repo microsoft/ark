@@ -397,8 +397,6 @@ void DefaultScheduler::configure_gpu_buf(
                 op->args.get(&dst_rank, 2);
                 op->args.get(&bytes, 3);
                 size_t off = in->offset() * in->type_bytes();
-                LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
-                    " dst_rank: ", dst_rank, " bytes: ", bytes, " off: ", off);
                 // TODO: generalize converting rank to GPU ID.
                 int nrph = get_env().num_ranks_per_host;
                 int dst_gpu_id = dst_rank % nrph;
@@ -545,21 +543,33 @@ std::vector<std::string> DefaultScheduler::gen_code()
 
     code << "__device__ void ark_loop_body(int _iter) {\n";
     for (size_t i = 0; i < this->comp_stream.size(); ++i) {
-        for (auto &branches : this->comp_stream[i]->get_branches()) {
+        auto comp_branches = this->comp_stream[i]->get_branches();
+        for (size_t j = 0; j < comp_branches.size(); ++j) {
+            auto &branches = comp_branches[j];
             for (auto &branch : branches) {
                 this->codegen->branch(code, branch);
             }
-            this->codegen->sync_stream(code, 0, 0, num_sm_comp);
+            if (!branches.empty() && j != comp_branches.size() - 1) {
+                code << "  ";
+                this->codegen->sync_stream(code, 0, 0, num_sm_comp);
+            }
         }
-        for (auto &branches : this->comm_stream[i]->get_branches()) {
+        auto comm_branches = this->comm_stream[i]->get_branches();
+        for (size_t j = 0; j < comm_branches.size(); ++j) {
+            auto &branches = comm_branches[j];
             for (auto &branch : branches) {
                 this->codegen->branch(code, branch);
             }
-            this->codegen->sync_stream(code, 1, num_sm_comp,
-                                       num_sm_comp + num_sm_comm);
+            if (!branches.empty() && j != comp_branches.size() - 1) {
+                code << "  ";
+                this->codegen->sync_stream(code, 1, num_sm_comp,
+                                           num_sm_comp + num_sm_comm);
+            }
         }
-        code << "  ";
-        this->codegen->sync_gpu(code);
+        if (i != this->comp_stream.size() - 1) {
+            code << "  ";
+            this->codegen->sync_gpu(code);
+        }
     }
     code << "}\n";
     return {code.str()};
