@@ -48,9 +48,6 @@ class SchedOp
     Dims tnums;
 };
 
-void to_json(nlohmann::json &j, const SchedOp &sop);
-void from_json(const nlohmann::json &j, SchedOp &sop);
-
 } // namespace ark
 
 #endif // ARK_SCHED_OP_H_

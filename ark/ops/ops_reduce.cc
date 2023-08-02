@@ -10,12 +10,11 @@ using namespace std;
 namespace ark {
 
 ReduceOp::ReduceOp(const OpType &type, const OpPrecType &prec_type,
-                   const std::vector<Tensor *> &in_deps,
-                   const std::vector<Tensor *> &out_deps, const OpArgs &args,
+                   const std::vector<Tensor *> &inputs,
+                   const std::vector<Tensor *> &outputs, const OpArgs &args,
                    const std::string &name, const OpConfigMap *cfg_map,
                    int gran_lev)
-    : Op{type, prec_type, in_deps,  out_deps, args,
-         name, cfg_map,   gran_lev, true}
+    : Op{type, prec_type, inputs, outputs, args, name, cfg_map, gran_lev, true}
 {
 }
 
@@ -26,11 +25,11 @@ ReduceOp::ReduceOp(const OpType &type, const OpPrecType &prec_type,
 std::string ReduceOp::function_name(const OpConfig &cfg,
                                     const std::string &type) const
 {
-    Tensor *input = this->in_deps[0];
-    Tensor *output = this->out_deps[0];
+    Tensor *input = this->inputs[0];
+    Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
@@ -163,14 +162,15 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
         LOGERR("output tensor cannot be the same as input tensor for "
                "reduce_sum op");
     }
+    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
         ReduceWSumOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     } else {
         ReduceESumOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     }
-    return output;
+    return ret;
 }
 
 Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
@@ -197,14 +197,15 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
         LOGERR("output tensor cannot be the same as input tensor for "
                "reduce_mean op");
     }
+    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
         ReduceWMeanOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     } else {
         ReduceEMeanOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     }
-    return output;
+    return ret;
 }
 
 Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
@@ -231,14 +232,15 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
         LOGERR("output tensor cannot be the same as input tensor for "
                "reduce_max op");
     }
+    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
         ReduceWMaxOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     } else {
         ReduceEMaxOp op{pt, input, output, axis, name};
-        this->impl->add_op(op);
+        ret = this->impl->add_op(op)[0];
     }
-    return output;
+    return ret;
 }
 
 const OpConfigMap ReduceEConfigMap = {

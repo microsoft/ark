@@ -3,112 +3,60 @@
 
 #ifndef ARK_SCHED_CODEGEN_H_
 #define ARK_SCHED_CODEGEN_H_
+
 #include "gpu/gpu_kernel.h"
 #include "sched/sched_op.h"
 #include "sched/sched_opseq.h"
+#include "sched_branch.h"
 #include <map>
 
 namespace ark {
 
-class BaseCodeGenerator
+class CodeGenerator
 {
   public:
-    BaseCodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                      const GpuInfo &gpu_info, int wps, int world_size)
-        : buf_trans{buf_trans}, sm_num{gpu_info.num_sm}, wps{wps},
-          world_size{world_size}
-    {
-    }
-    virtual std::vector<std::string> codegen_codes_body(
-        std::vector<Sched> &scheds) = 0;
+    CodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
+                  const GpuInfo &gpu_info_, int num_warps_per_sm_);
 
-    std::ostream &codegen_sync_gpu(std::ostream &os);
+    std::ostream &def_remote_buf(std::ostream &os, int remote_rank) const;
+
+    std::ostream &sync_gpu(std::ostream &os) const;
+
+    std::ostream &def_sync_stream(std::ostream &os, int stream_id) const;
+    std::ostream &sync_stream(std::ostream &os, int stream_id, int sm_id_begin,
+                              int sm_id_end) const;
+
+    std::ostream &tensor(std::ostream &os, const Tensor *tensor) const;
+
+    std::ostream &def_oparg(std::ostream &os, const OpArg &arg,
+                            const std::string &name) const;
+    std::ostream &oparg(std::ostream &os, const OpArg &arg) const;
+
+    std::ostream &branch(std::ostream &os, const Branch &branch,
+                         int prev_sm_id_end = -1) const;
+
+    std::ostream &def_uop(std::ostream &os, const SchedOp &sop,
+                          int uop_id) const;
+
+    std::ostream &uop(std::ostream &os, int uop_id) const;
+
+    std::ostream &opseq(std::ostream &os, const std::string &name,
+                        const SchedOpSeq &opseq,
+                        std::map<std::string, int> &uop_map) const;
+
+    std::ostream &sched(std::ostream &os, Sched &sched) const;
 
   protected:
+    size_t get_tensor_offset(const Tensor *tensor) const;
+
     const std::map<TensorBuf *, GpuBuf *> &buf_trans;
+    const GpuInfo &gpu_info;
     int sm_num;
-    int wps;
+    int num_warps_per_sm;
     int world_size;
-};
-
-class SimpleCodeGenerator : BaseCodeGenerator
-{
-  public:
-    SimpleCodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                        const GpuInfo &gpu_info, int wps, int world_size)
-        : BaseCodeGenerator(buf_trans, gpu_info, wps, world_size)
-    {
-    }
-    std::vector<std::string> codegen_codes_body(std::vector<Sched> &scheds);
-
-  private:
-    size_t get_tensor_offset(const Tensor *tensor);
-    std::ostream &codegen_tensor(std::ostream &os, const Tensor *tensor);
-    std::ostream &codegen_opseq(std::ostream &os, SchedOpSeq *sopseq);
-    std::ostream &codegen_sched(std::ostream &os, Sched &sched);
-};
-
-struct ThBranch
-{
-    int th_b;
-    int th_e;
-    std::vector<std::tuple<SchedOpSeq *, int, int>> ops;
-};
-
-struct SmBranch
-{
-    int sm_b;
-    int sm_e;
-    std::list<ThBranch> tbs;
-};
-
-class Brancher
-{
-  public:
-    Brancher(int sm_num_, int th_num_) : sm_num{sm_num_}, th_num{th_num_}
-    {
-    }
-    void add(const Sched &sc);
-
-    std::ostream &codegen(std::ostream &os);
-
-    bool is_empty() const
-    {
-        return sbs.size() == 0;
-    }
-
-  private:
-    const int sm_num;
-    const int th_num;
-    std::list<SmBranch> sbs;
-};
-
-class DefaultCodeGenerator : BaseCodeGenerator
-{
-  public:
-    DefaultCodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                         const GpuInfo &gpu_info, int wps, int world_size)
-        : BaseCodeGenerator(buf_trans, gpu_info, wps, world_size)
-    {
-    }
-    std::vector<std::string> codegen_codes_body(std::vector<Sched> &scheds);
-
-  private:
-    std::ostream &codegen_tensor(std::ostream &os, const Tensor &tensor);
-    std::ostream &codegen_arg(std::ostream &os, const OpArg &arg);
-    std::ostream &codegen_arg_def(std::ostream &os, const OpArg &arg,
-                                  const std::string &name);
-    std::ostream &codegen_sched_op(std::ostream &os, const SchedOp &sop,
-                                   const std::pair<int, int> &fdims);
-    std::ostream &codegen_opseq(std::ostream &os, const std::string &name,
-                                const SchedOpSeq &opseq,
-                                std::map<std::string, int> &uop_map);
-    std::ostream &codegen_uop_def(std::ostream &os, const SchedOp &sop,
-                                  int uop_id);
-    std::ostream &codegen_depth(std::ostream &os, const std::string &name,
-                                Brancher *brc, std::set<SchedOpSeq *> &opseqs,
-                                std::map<std::string, int> &uop_map);
+    int num_indent;
 };
 
 } // namespace ark
+
 #endif // ARK_SCHED_CODEGEN_H_
