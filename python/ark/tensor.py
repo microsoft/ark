@@ -8,3 +8,4 @@ class Tensor:
     def __init__(self, _tensor: _Tensor):
         self._tensor = _tensor
         self.shape = _tensor.shape
+        self.is_parameter = False

@@ -1,5 +1,5 @@
 # Module Tutorial
-This tutorial provides an overview of how to use the module and its features. The module is similar to the pytorch module API and provides a set of functionalities such as model save and load based on the module.
+This tutorial provides an overview of how to use the module and its features. The module is similar to the pytorch module API and provides a set of functionalities such as model save and load.
 
 ## Usage
 To use the module, you need to create a class that inherits from the `ark.Module` class. You can then define the `forward` and `backward` functions of the class. The parameters and submodules of the module is defined in the `__init__` function.
