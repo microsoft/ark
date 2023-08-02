@@ -1,11 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import torch
 import numpy as np
-import torch.nn as nn
 import ark
-
 
 def quickstart_tutorial():
     # Initialize the ARK model
