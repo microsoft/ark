@@ -63,6 +63,7 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
     """
     Copy a tensor from device to host. If dst is None, a new numpy array will be created.
     """
+    src = src._tensor
     if dst is None:
         np_type = None
         if src.tensor_type() == TensorType.FP32:
@@ -72,5 +73,5 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
         else:
             logging.error("Unsupported tensor type")
         dst = np.empty(src.shape, dtype=np_type)
-    Executor.get_executor().tensor_memcpy_device_to_host(dst, src._tensor)
+    Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
     return dst
