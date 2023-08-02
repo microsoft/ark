@@ -7,3 +7,4 @@ from ._ark_core import _Tensor
 class Tensor:
     def __init__(self, _tensor: _Tensor):
         self._tensor = _tensor
+        self.shape = _tensor.shape
