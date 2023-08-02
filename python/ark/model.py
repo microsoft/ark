@@ -371,7 +371,7 @@ def scale(
     if output is not None:
         output = output._tensor
     _tensor = Model.global_model.scale(
-        input,
+        input._tensor,
         val,
         output,
         name,

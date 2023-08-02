@@ -1,7 +1,7 @@
 # Using the Model and Executor APIs in ARK
 ARK provides two levels of APIs for running deep neural network (DNN) applications: the ARK runtime API and the Model and Executor APIs. ARK runtime is built on top of the Model and Executor APIs.
 
-While the ARK runtime API provides a simple interface for running DNN models, the Model and Executor APIs offer more advanced features for customizing and optimizing DNN applications. For historical reasons, the Model and Executor APIs are used in previous versions of ARK Applications.
+While the ARK runtime API provides a simple interface for building DNN models, the Model and Executor APIs offer more advanced features for customizing and optimizing DNN applications. For historical reasons, the Model and Executor APIs are used in previous versions of ARK Applications.
 
 If you're interested in using the Model and Executor APIs, this guide will take a step further from the [quickstart guide](./quickstart.md) to show a low-level example of using the Model and Executor APIs to run a simple DNN application in Python.
 
