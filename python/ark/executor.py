@@ -1,7 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Executor, TensorType, Tensor
+from ._ark_core import _Executor, TensorType, _Tensor
+from .tensor import Tensor
 import numpy as np
 from .model import Model
 import logging
@@ -24,7 +25,7 @@ class Executor(_Executor):
             gpu_id, rank, world_size, model, name, num_warps_per_sm=16
         )
 
-    def tensor_memcpy_host_to_device(self, dst, src: np.ndarray):
+    def tensor_memcpy_host_to_device(self, dst: _Tensor, src: np.ndarray):
         if not isinstance(src, np.ndarray):
             logging.error("src is not a numpy array")
         # check if src is contiguous is memory
@@ -35,7 +36,7 @@ class Executor(_Executor):
             src = np.ascontiguousarray(src)
         super().tensor_memcpy_host_to_device(dst, src)
 
-    def tensor_memcpy_device_to_host(self, dst: np.ndarray, src):
+    def tensor_memcpy_device_to_host(self, dst: np.ndarray, src: _Tensor):
         if not isinstance(dst, np.ndarray):
             logging.error("dst is not a numpy array")
         if not dst.flags["C_CONTIGUOUS"]:
@@ -54,7 +55,7 @@ def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
     """
     Copy a tensor from host to device. Used for initializing the tensor on device.
     """
-    Executor.get_executor().tensor_memcpy_host_to_device(dst, src)
+    Executor.get_executor().tensor_memcpy_host_to_device(dst._tensor, src)
     return dst
 
 
@@ -71,5 +72,5 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
         else:
             logging.error("Unsupported tensor type")
         dst = np.empty(src.shape, dtype=np_type)
-    Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
+    Executor.get_executor().tensor_memcpy_device_to_host(dst, src._tensor)
     return dst

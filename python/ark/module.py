@@ -3,7 +3,8 @@
 
 from typing import Optional, Dict, Callable, Any
 import numpy as np
-from ._ark_core import _Model, Tensor
+from ._ark_core import _Model, _Tensor
+from .tensor import Tensor
 from .executor import Executor
 import logging
 

@@ -13,10 +13,11 @@ from ._ark_core import (
     Dims,
     TensorBuf,
     TensorType,
-    Tensor,
 )
 
 from .runtime import init, init_model, launch, run, destroy
+
+from .tensor import Tensor
 
 from .module import Module
 from .executor import (
