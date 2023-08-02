@@ -18,7 +18,7 @@ class ARKConfig:
     def __init__(self, rank=0, world_size=1):
         self.rank = rank
         self.world_size = world_size
-        self.ark_runtime_state = ArkRuntimeState[0]
+        self.ark_runtime_state = "start"
 
 
 def init():
@@ -36,12 +36,10 @@ def init_model(rank: int = 0, world_size: int = 1):
     Initialize the ARK runtime and create a global model that will record
     all the operations.
     """
-    if ARKConfig.global_config is None:
-        ARKConfig.global_config = ARKConfig(rank, world_size)
-    if ARKConfig.global_config.ark_runtime_state != "start":
+    if ARKConfig.global_config is not None:
         logging.error("ARK runtime is already initialized")
-    if Model.get_global_model() is None:
-        Model.global_model = Model(rank)
+    ARKConfig.global_config = ARKConfig(rank, world_size)
+    Model.global_model = Model(rank)
     ARKConfig.global_config.ark_runtime_state = "init_model"
 
 
