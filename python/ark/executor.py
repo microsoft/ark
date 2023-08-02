@@ -8,7 +8,7 @@ import logging
 
 
 class Executor(_Executor):
-    # global executor
+    # Global Executor
     global_executor = None
 
     def __init__(
