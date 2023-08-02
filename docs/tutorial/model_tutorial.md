@@ -52,31 +52,7 @@ At this step, the system prints a compiling message such as:
 INFO ark/gpu/gpu_compile.cc:236 Compiling /tmp/ark_xxxxxxxxxxx.cu
 ```
 
-If you are interested, you can open the compiled file to inspect the generated CUDA kernel code. Here is a snippet of the generated CUDA kernel code from this tutorial.
-
-```cuda
-#include "ark_kernels.h"
-__device__ ark::sync::State _ARK_LOOP_SYNC_STATE;
-__device__ char *_ARK_BUF;
-DEVICE void uop0(ark::half *_0, ark::half *_1, ark::half *_2, int tx, int ty, int tz) {
-  ark::add<ark::Vec<1, 1, 1, 64>, ark::Vec<1, 1, 1, 32>, ark::Vec<1, 1, 1, 64>, ark::Vec<1, 1, 1, 32>, ark::Vec<1, 1, 1, 64>, ark::Vec<1, 1, 1, 32>, ark::Vec<1, 1, 1, 64>, 32, 0>(_0, _1, _2, tx, ty, tz);
-}
-// tile dims: (1, 1, 1)
-__noinline__ __device__ void op0(int _ti) {
-  uop0((ark::half *)&_ARK_BUF[256], (ark::half *)&_ARK_BUF[0], (ark::half *)&_ARK_BUF[128], 0, 0, _ti);
-}
-DEVICE void depth0() {
-  if (blockIdx.x < 1) {
-    if (threadIdx.x < 32) {
-      op0(blockIdx.x);
-    }
-  }
-}
-__device__ void ark_loop_body(int _iter) {
-  depth0();
-}
-```
-As shown in the code above, the generated CUDA kernel has one depth (`depth0`), which utilizes the first thread block and 32 threads to run the unit operator `uop0`. `uop0` corresponds to the add operator we defined in the Python code. It employs `ark::add` function from `ark_kernels.h`.
+If you are interested, you can open the compiled file to inspect the generated CUDA kernel code. 
 
 Before launching the kernel, users may want to initialize input tensors. You can copy a numpy array into a tensor on GPU using `exe.tensor_memcpy_host_to_device()`.
 
