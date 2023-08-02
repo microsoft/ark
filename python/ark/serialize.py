@@ -9,7 +9,9 @@ import logging
 # Save the state_dict of a module to a file
 def save(state_dict, state_dict_file_path: str):
     if not isinstance(state_dict, dict):
-        print("Warning: Invalid state_dict saved to", state_dict_file_path)
+        logging.warn(
+            "Warning: Invalid state_dict saved to", state_dict_file_path
+        )
     with open(state_dict_file_path, "wb") as f:
         pickle.dump(state_dict, f)
 
@@ -19,7 +21,7 @@ def load(state_dict_file_path: str):
     with open(state_dict_file_path, "rb") as f:
         state_dict = pickle.load(f)
         if not isinstance(state_dict, dict):
-            print("Warning: Invalid state_dict file")
+            logging.warn("Warning: Invalid state_dict file")
         return state_dict
 
 
