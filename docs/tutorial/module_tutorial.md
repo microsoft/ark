@@ -59,20 +59,25 @@ ark.launch()
 The initialization of the model can be done using a state_dict. Note that the parameters of this model in the state_dict must have the same name as the parameters defined in the module. Then, we can use `load_state_dict` to import the parameters of this model.
 
 ```python
+# Initialize the input tensor
 input_tensor_host = (
     (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
 ).astype(np.float16)
-
 ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
+# Initialize the parameters of the ARK module using numpy state_dict
 weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
     np.float16
 )
 weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
     np.float16
 )
-state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
+state_dict = {
+    "weight_1": weight_1_host,
+    "submodule.weight_2": weight_2_host,
+}
 
+# Load model parameters
 ark_model.load_state_dict(state_dict)
 ```
 
