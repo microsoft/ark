@@ -58,7 +58,7 @@ class Module:
                 )
         for name, param in self.parameters.items():
             executor.tensor_memcpy_host_to_device(
-                param, state_dict[prefix + name]
+                param._tensor, state_dict[prefix + name]
             )
 
     # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
@@ -76,7 +76,7 @@ class Module:
                 )
         for name, param in self.parameters.items():
             param_np = np.zeros(param.shape, dtype=np.float16)
-            executor.tensor_memcpy_device_to_host(param_np, param)
+            executor.tensor_memcpy_device_to_host(param_np, param._tensor)
             state_dict[prefix + name] = param_np
         return state_dict
 
