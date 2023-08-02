@@ -140,7 +140,7 @@ ark::unittest::State test_sendrecv_mm_4gpus()
     ark::DimType mat_length = 64;
     ark::DimType mat_size = mat_length * mat_length;
 
-    std::unique_ptr<ark::half_t []> send_data[gpu_num];
+    std::unique_ptr<ark::half_t[]> send_data[gpu_num];
     for (int i = 0; i < gpu_num; ++i) {
         send_data[i] = ark::utils::rand_halfs(mat_size, 5.0f);
     }
@@ -151,10 +151,12 @@ ark::unittest::State test_sendrecv_mm_4gpus()
             ark::Tensor *data = m.tensor({mat_length, mat_length}, ark::FP16);
             m.send_mm(data, (gpu_id + 1) % gpu_num, (gpu_id + 1) % gpu_num);
 
-            ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
+            ark::Tensor *recvbuf =
+                m.tensor({mat_length, mat_length}, ark::FP16);
             m.recv_mm(recvbuf, gpu_id, (gpu_id - 1 + gpu_num) % gpu_num);
 
-            ark::Executor exe{gpu_id, gpu_id, gpu_num, m, "test_sendrecv_mm_copy"};
+            ark::Executor exe{gpu_id, gpu_id, gpu_num, m,
+                              "test_sendrecv_mm_copy"};
             exe.compile();
             exe.tensor_memcpy(data, send_data[gpu_id].get(),
                               mat_size * sizeof(ark::half_t));
