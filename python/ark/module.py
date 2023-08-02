@@ -41,8 +41,7 @@ class Module:
         if isinstance(__value, Module):
             self.register_module(__name, __value)
         elif isinstance(__value, Tensor):
-            if __value.is_parameter:
-                self.register_parameter(__name, __value)
+            self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
     # Loads a model from a state_dict and copy the parameters to the device GPU.
