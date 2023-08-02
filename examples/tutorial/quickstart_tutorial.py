@@ -4,6 +4,7 @@
 import numpy as np
 import ark
 
+
 def quickstart_tutorial():
     # Initialize the ARK model
     ark.init_model()
