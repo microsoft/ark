@@ -20,11 +20,11 @@ LayernormOp::LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
 
 std::string LayernormOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *input = this->in_deps[0];
-    Tensor *output = this->out_deps[0];
+    Tensor *input = this->inputs[0];
+    Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
@@ -66,8 +66,7 @@ Tensor *Model::layernorm(Tensor *input, Tensor *output, const string &name)
         output = this->identity(output);
     }
     LayernormOp op{pt, input, output, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap LayernormConfigMap = {

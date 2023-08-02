@@ -38,8 +38,7 @@ Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
         output = this->tensor(os, input->type);
     }
     MaxPoolOp op{pt, input, output, kernel_size, stride, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 } // namespace ark

@@ -144,6 +144,9 @@ const LogLevel &get_log_level();
         SSTREAM(__VA_ARGS__);                                                  \
         _ss << '\n';                                                           \
         std::clog << _ss.str();                                                \
+        if (level == ark::ERROR) {                                             \
+            throw std::runtime_error("ARK runtime error");                     \
+        }                                                                      \
     } while (0)
 
 //

@@ -31,9 +31,9 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const
         LOGERR("Unexpected error");
     }
 
-    Tensor *input = this->in_deps[0];
-    Tensor *output = this->out_deps[0];
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    Tensor *input = this->inputs[0];
+    Tensor *output = this->outputs[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
 
     return Op::function_name("ark::transpose" + tp_type_str,
@@ -98,8 +98,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
         assert(output->shape == out_shape);
     }
     TransposeOp op{pt, input, output, tp_type, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap TransposeConfigMap = {

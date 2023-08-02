@@ -35,8 +35,7 @@ unittest::State test_gpu_kernel_loop_void()
                           1,
                           0,
                           "",
-                          ctx,
-                          1};
+                          ctx};
         glk.compile(mgr->get_gpu_info());
         glk.load();
 

@@ -11,38 +11,34 @@ using namespace std;
 
 namespace ark {
 
-SimpleScheduler::SimpleScheduler(const int gpu_id, int rank_, int world_size_,
-                                 const Model &model, int wps_)
-    : BaseScheduler(gpu_id, rank_, world_size_, wps_)
+SimpleScheduler::SimpleScheduler(Model &model, int gpu_id, int rank_,
+                                 int world_size_, int num_warps_per_sm_)
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
 {
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    this->codegen = make_unique<SimpleCodeGenerator>(this->buf_trans, gpu_info,
-                                                     wps_, this->world_size);
-    int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
-    this->wps = max(wps_, min_wps);
-    this->create_sched_opseq(model, gpu_info);
-    this->configure_gpu_buf(model.impl->get_tensors());
 }
 
-void SimpleScheduler::create_sched_opseq(const Model &model,
-                                         const GpuInfo &gpu_info)
+//
+void SimpleScheduler::schedule()
 {
+    LOG(DEBUG, "SimpleScheduler start scheduling");
+    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+
     int op_idx = 0;
     int opseq_idx = 0;
     std::vector<Op *> all_ops;
-    for (auto &op : model.impl->get_ops()) {
+    for (auto &op : model->impl->get_ops()) {
         all_ops.push_back(op);
     }
     std::vector<Tensor *> finished_tensors;
 
     // get the input tensors of the model, and add them to the
     // finished_tensors vector
-    for (auto &tns : model.impl->get_tensors()) {
-        if (model.impl->get_gen_op(tns) == nullptr) {
+    for (auto &tns : model->impl->get_tensors()) {
+        if (model->impl->get_producer(tns) == nullptr) {
             finished_tensors.push_back(tns);
         }
     }
-    this->sched_opseqs.emplace_back(opseq_idx);
+    this->opseqs.emplace_back(std::make_unique<SchedOpSeq>(opseq_idx));
     opseq_idx++;
 
     while (!all_ops.empty()) {
@@ -51,7 +47,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         for (size_t i = 0; i < all_ops.size(); i++) {
             bool input_ready = true;
             // check if all the input tensors of the op are ready
-            for (Tensor *&tns : all_ops[i]->in_deps) {
+            for (Tensor *&tns : all_ops[i]->inputs) {
                 if (std::find(finished_tensors.begin(), finished_tensors.end(),
                               tns) == finished_tensors.end()) {
                     input_ready = false;
@@ -63,7 +59,7 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
                 all_ops.erase(all_ops.begin() + i);
                 // add the output tensors of the op to the
                 // finished_tensors
-                for (Tensor *tns : op->out_deps) {
+                for (Tensor *tns : op->outputs) {
                     finished_tensors.push_back(tns);
                 }
                 break;
@@ -93,38 +89,18 @@ void SimpleScheduler::create_sched_opseq(const Model &model,
         }
         // We create an opseq for each op for simplicity, we don't merge ops
         // into opseqs in SimpleScheduler
-        this->sched_opseqs.emplace_back(op_idx);
-        SchedOpSeq &sched_op_seq = this->sched_opseqs.back();
+        this->opseqs.emplace_back(std::make_unique<SchedOpSeq>(op_idx));
+        SchedOpSeq *opseq = this->opseqs.back().get();
 
-        LOG(DEBUG, "get_sched_ops: ", sched_op_seq.get_sched_ops().size());
-        sched_op_seq.append(op, cfg);
+        LOG(DEBUG, "get_sched_ops: ", opseq->get_sched_ops().size());
+        opseq->append(op, cfg);
         op_idx++;
     }
     if (!all_ops.empty()) {
         LOGERR("Cannot schedule all ops");
     }
-}
 
-//
-vector<string> SimpleScheduler::schedule()
-{
-    LOG(DEBUG, "SimpleScheduler start scheduling");
-    int num_sm = this->gpu_mgr->get_gpu_info().num_sm;
-    vector<Sched> scheds;
-    for (auto &seq : this->sched_opseqs) {
-        this->schedule_sched_opseq(seq, this->wps, num_sm, scheds);
-    }
-    return this->codegen->codegen_codes_body(scheds);
-}
-
-//
-GpuBuf *SimpleScheduler::get_gpu_buf(Tensor *tns) const
-{
-    auto search = this->buf_trans.find(tns->buf);
-    if (search == buf_trans.end()) {
-        return nullptr;
-    }
-    return search->second;
+    this->configure_gpu_buf(model->impl->get_tensors());
 }
 
 void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
@@ -230,6 +206,49 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
     }
 }
 
+vector<string> SimpleScheduler::gen_code()
+{
+    LOG(DEBUG, "SimpleScheduler start scheduling");
+    int num_sm = this->gpu_mgr->get_gpu_info().num_sm;
+    vector<Sched> scheds;
+    for (auto &seq : this->opseqs) {
+        this->schedule_sched_opseq(*seq, this->num_warps_per_sm, num_sm,
+                                   scheds);
+    }
+
+    stringstream loop_body_code, sched_opseq_code, data_buf_code;
+    for (int i = 0; i < this->world_size; i++) {
+        data_buf_code << "__device__ char *" << ARK_BUF_NAME << i << ";\n";
+    }
+    loop_body_code << "__device__ void ark_loop_body(int _iter) {\n";
+    // to avoid the same opseq code being generated multiple times
+    set<int> opseq_ids;
+    std::map<std::string, int> uop_map;
+    for (Sched &sched : scheds) {
+        bool virt_opseq = false;
+        // for the baseline scheduler, one opseq is a depth and have a global
+        // sync between each opseq
+        SchedOpSeq *opseq = sched.opseq;
+        if (opseq_ids.find(opseq->get_id()) != opseq_ids.end()) {
+        } else {
+            opseq_ids.insert(opseq->get_id());
+            this->codegen->opseq(sched_opseq_code,
+                                 "opseq_" + to_string(opseq->get_id()), *opseq,
+                                 uop_map);
+        }
+        if (virt_opseq)
+            continue;
+        this->codegen->sched(loop_body_code, sched);
+        loop_body_code << "  ";
+        this->codegen->sync_gpu(loop_body_code);
+    }
+    loop_body_code << "}\n";
+    vector<string> ret;
+    ret.emplace_back(data_buf_code.str() + sched_opseq_code.str() +
+                     loop_body_code.str());
+    return ret;
+}
+
 void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
 {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
@@ -256,7 +275,7 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             sop.get_op()->args.get(&dst_gid, 1);
             // import the recvbuf, the recvbuf should be allocated on the
             // receiver GPU
-            Tensor *recvbuf = sop.get_op()->in_deps[1];
+            Tensor *recvbuf = sop.get_op()->inputs[1];
             this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
                                          recvbuf->buf, sid, 0);
 
@@ -264,7 +283,7 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             // exported to the recv GPU, since the sid of the send_ready_flag
             // should not be the same as the recvBuf, so I use the sid+128 as
             // the sid of the send_ready_flag
-            Tensor *send_ready_flag = sop.get_op()->in_deps[2];
+            Tensor *send_ready_flag = sop.get_op()->inputs[2];
             export_tns_sids[send_ready_flag->buf].emplace_back(
                 send_ready_flag, sid + send_ready_flag_sid_offset);
         } else if (sop.get_op()->type == OP_RECV_MM) {
@@ -275,19 +294,19 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             // configure the recvbuf, the recvbuf needed to be export the to the
             // sender GPU, the sid is the same as the sid of the send_mm op and
             // the recv_mm op
-            Tensor *recvbuf = sop.get_op()->in_deps[1];
+            Tensor *recvbuf = sop.get_op()->inputs[1];
             export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
 
             // import the send_ready_flag, the send_ready_flag tensor should be
             // allocated on the sender GPU
-            Tensor *send_ready_flag = sop.get_op()->in_deps[2];
+            Tensor *send_ready_flag = sop.get_op()->inputs[2];
             this->buf_infos.emplace_back(
                 src_gid, send_ready_flag->shape_bytes(), send_ready_flag->buf,
                 sid + send_ready_flag_sid_offset, 0);
         }
 
         if (sop.get_op()->type == OP_SEND) {
-            Tensor *in = sop.get_op()->in_deps[0];
+            Tensor *in = sop.get_op()->inputs[0];
             int sid;
             int rank;
             int dst_rank;
@@ -307,20 +326,20 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
             export_tns_sids[in->buf].emplace_back(in, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         } else if (sop.get_op()->type == OP_RECV) {
-            Tensor *in = sop.get_op()->in_deps[0];
+            Tensor *in = sop.get_op()->inputs[0];
             int sid;
             sop.get_op()->args.get(&sid, 0);
             export_tns_sids[in->buf].emplace_back(in, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         }
-        for (auto &tns : sop.get_op()->in_deps) {
+        for (auto &tns : sop.get_op()->inputs) {
             // if the tensor is not imported, it should be allocated on this GPU
-            if (tns->imported == false)
+            if (tns->imported_rank < 0)
                 bufs[tns->buf].emplace_back(tns);
         }
         // TODO: print warning if the tensor is not used by any real computation
-        for (auto &tns : sop.get_op()->out_deps) {
-            if (tns->imported == false)
+        for (auto &tns : sop.get_op()->outputs) {
+            if (tns->imported_rank < 0)
                 bufs[tns->buf].emplace_back(tns);
         }
     }
@@ -350,14 +369,14 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
     // the tensor that needed to be allocated
     vector<TensorBuf *> to_alloc;
     for (auto &sop : this->sched_ops) {
-        for (auto &tns : sop.get_op()->in_deps) {
+        for (auto &tns : sop.get_op()->inputs) {
             size_t buf_num = bufs.erase(tns->buf);
             if (buf_num > 0) {
                 assert(buf_num == 1);
                 to_alloc.emplace_back(tns->buf);
             }
         }
-        for (auto &tns : sop.get_op()->out_deps) {
+        for (auto &tns : sop.get_op()->outputs) {
             size_t buf_num = bufs.erase(tns->buf);
             if (buf_num > 0) {
                 assert(buf_num == 1);

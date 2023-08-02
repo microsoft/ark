@@ -29,10 +29,10 @@ ark::unittest::State test_sched_mm_add()
 
         GpuMgr *mgr = get_gpu_mgr(0);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::DefaultScheduler sched{0, 0, 1, model, 8};
+        ark::DefaultScheduler sched{model, 0, 0, 1, 8};
         GpuMgrCtx *ctx = sched.create_context("test_sched_mm_add");
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_sched_mm_add",
                           codes,
@@ -40,8 +40,7 @@ ark::unittest::State test_sched_mm_add()
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         glk.compile(ginfo);
         glk.load();
         GpuStream stream = ctx->create_stream();
@@ -80,10 +79,10 @@ ark::unittest::State test_scheduler_simple_mm()
     GpuMgr *mgr = get_gpu_mgr(0);
     const GpuInfo &ginfo = mgr->get_gpu_info();
 
-    DefaultScheduler sched{0, 0, 1, m, 8};
+    DefaultScheduler sched{m, 0, 0, 1, 8};
     GpuMgrCtx *ctx = sched.create_context("test_scheduler_simple_mm");
-    auto codes = sched.schedule();
-    unsigned int num_depths = sched.get_num_depths();
+    sched.schedule();
+    auto codes = sched.gen_code();
 
     GpuLoopKernel glk{"test_scheduler_simple_mm",
                       codes,
@@ -91,8 +90,7 @@ ark::unittest::State test_scheduler_simple_mm()
                       8,
                       (unsigned int)ginfo.smem_block_total,
                       "",
-                      ctx,
-                      num_depths};
+                      ctx};
     glk.compile(ginfo);
     glk.load();
 
@@ -207,10 +205,10 @@ ark::unittest::State test_sched_gpt3()
     unittest::spawn_process([&]() {
         GpuMgr *mgr = get_gpu_mgr(0);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::DefaultScheduler sched{0, 0, 1, model, 8};
+        ark::DefaultScheduler sched{model, 0, 0, 1, 8};
         GpuMgrCtx *ctx = sched.create_context("test_sched_gpt3");
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_sched_gpt3",
                           codes,
@@ -218,8 +216,7 @@ ark::unittest::State test_sched_gpt3()
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         glk.compile(ginfo);
         glk.load();
         GpuStream stream = ctx->create_stream();
@@ -278,10 +275,10 @@ ark::unittest::State test_sched_comp_baseline()
         Tensor *output = m.scale(middle_result1, 2.3);
         GpuMgr *mgr = get_gpu_mgr(0);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::SimpleScheduler sched{0, 0, 1, m, 8};
+        ark::SimpleScheduler sched{m, 0, 0, 1, 8};
         GpuMgrCtx *ctx = sched.create_context("test_scheduler_simple_mm");
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_scheduler_simple_mm",
                           codes,
@@ -289,8 +286,7 @@ ark::unittest::State test_sched_comp_baseline()
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         glk.compile(ginfo);
         for (int i = 0; i < input_tensor_num; i++) {
             // Get the auto-scheduled buffers.
@@ -333,10 +329,10 @@ ark::unittest::State test_sched_comp_baseline()
 
         GpuMgr *mgr = get_gpu_mgr(0);
         const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::DefaultScheduler sched{0, 0, 1, m, 8};
+        ark::DefaultScheduler sched{m, 0, 0, 1, 8};
         GpuMgrCtx *ctx = sched.create_context("test_scheduler_simple_mm");
-        auto codes = sched.schedule();
-        unsigned int num_depths = sched.get_num_depths();
+        sched.schedule();
+        auto codes = sched.gen_code();
 
         GpuLoopKernel glk{"test_scheduler_simple_mm",
                           codes,
@@ -344,8 +340,7 @@ ark::unittest::State test_sched_comp_baseline()
                           8,
                           (unsigned int)ginfo.smem_block_total,
                           "",
-                          ctx,
-                          num_depths};
+                          ctx};
         glk.compile(ginfo);
         for (int i = 0; i < input_tensor_num; i++) {
             // Get the auto-scheduled buffers.

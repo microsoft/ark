@@ -26,7 +26,7 @@ SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
 
 std::string SendOp::function_name(const OpConfig &) const
 {
-    Tensor *input = this->in_deps[0];
+    Tensor *input = this->inputs[0];
     CHECK(input->is_sequential());
 
     int sid;
@@ -47,7 +47,7 @@ std::string SendOp::function_name(const OpConfig &) const
                                                 }});
 }
 
-OpArgs SendOp::function_call_args(const OpConfig &cfg) const
+OpArgs SendOp::function_call_args(const OpConfig &) const
 {
     return {};
 }
@@ -82,7 +82,7 @@ std::string SendDoneOp::function_name(const OpConfig &) const
                                                      }});
 }
 
-OpArgs SendDoneOp::function_call_args(const OpConfig &cfg) const
+OpArgs SendDoneOp::function_call_args(const OpConfig &) const
 {
     return {};
 }
@@ -103,7 +103,7 @@ RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
 
 std::string RecvOp::function_name(const OpConfig &) const
 {
-    Tensor *input = this->in_deps[0];
+    Tensor *input = this->inputs[0];
     CHECK(input->is_sequential());
 
     int sid;
@@ -120,7 +120,7 @@ std::string RecvOp::function_name(const OpConfig &) const
                                                 }});
 }
 
-OpArgs RecvOp::function_call_args(const OpConfig &cfg) const
+OpArgs RecvOp::function_call_args(const OpConfig &) const
 {
     return {};
 }
@@ -143,8 +143,7 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     }
     SendOp op{OP_PREC_NONE,     input,    output, id,
               this->impl->rank, dst_rank, bytes,  name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 //
@@ -157,8 +156,7 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
     }
     SendDoneOp op{OP_PREC_NONE,     input,    output, id,
                   this->impl->rank, dst_rank, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 //
@@ -180,8 +178,7 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     }
     RecvOp op{OP_PREC_NONE,     input,    output, id,
               this->impl->rank, src_rank, bytes,  name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap CommConfigMap = {
