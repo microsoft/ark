@@ -4,8 +4,10 @@
 import os
 from .model import Model
 from .executor import Executor
-from ._ark_core import _init
+from .tensor import Tensor
+from ._ark_core import _init, TensorType
 import logging
+import numpy as np
 
 # Use a global variable to track the state of the ARK runtime
 ArkRuntimeState = ("start", "init_model", "launch", "run", "destroy")
@@ -82,3 +84,36 @@ def destroy():
     Executor.global_executor = None
     Model.global_model = None
     ARKConfig.global_config = None
+
+
+def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
+    """
+    Copy a tensor from host to device. Used for initializing the tensor on device.
+    """
+    # Check the current ARK runtime status
+    if ARKConfig.global_config.ark_runtime_state != "launch":
+        logging.error("ARK runtime is not launched")
+    Executor.get_executor().tensor_memcpy_host_to_device(dst._tensor, src)
+    return dst
+
+
+def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
+    """
+    Copy a tensor from device to host. If dst is None, a new numpy array will be created.
+    """
+    # Check the current ARK runtime status
+    if ARKConfig.global_config.ark_runtime_state != "launch":
+        logging.error("ARK runtime is not launched")
+    # Create a new numpy array if dst is None
+    src = src._tensor
+    if dst is None:
+        np_type = None
+        if src.tensor_type() == TensorType.FP32:
+            np_type = np.float32
+        elif src.tensor_type() == TensorType.FP16:
+            np_type = np.float16
+        else:
+            logging.error("Unsupported tensor type")
+        dst = np.empty(src.shape, dtype=np_type)
+    Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
+    return dst

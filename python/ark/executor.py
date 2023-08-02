@@ -1,15 +1,14 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Executor, TensorType, _Tensor
-from .tensor import Tensor
-import numpy as np
+from ._ark_core import _Executor, _Tensor
 from .model import Model
+import numpy as np
 import logging
 
 
 class Executor(_Executor):
-    # static list of executors
+    # Static list of executors
     global_executor = None
 
     def __init__(
@@ -28,7 +27,7 @@ class Executor(_Executor):
     def tensor_memcpy_host_to_device(self, dst: _Tensor, src: np.ndarray):
         if not isinstance(src, np.ndarray):
             logging.error("src is not a numpy array")
-        # check if src is contiguous is memory
+        # Check if src is contiguous is memory
         if not src.flags["C_CONTIGUOUS"]:
             logging.debug(
                 "Warning: src is not contiguous in memory, copy to a contiguous array"
@@ -45,33 +44,7 @@ class Executor(_Executor):
 
     @staticmethod
     def get_executor():
-        # get the global executor
+        # Get the global executor
         if Executor.global_executor is None:
             logging.error("Executor is not initialized")
         return Executor.global_executor
-
-
-def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
-    """
-    Copy a tensor from host to device. Used for initializing the tensor on device.
-    """
-    Executor.get_executor().tensor_memcpy_host_to_device(dst._tensor, src)
-    return dst
-
-
-def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
-    """
-    Copy a tensor from device to host. If dst is None, a new numpy array will be created.
-    """
-    src = src._tensor
-    if dst is None:
-        np_type = None
-        if src.tensor_type() == TensorType.FP32:
-            np_type = np.float32
-        elif src.tensor_type() == TensorType.FP16:
-            np_type = np.float16
-        else:
-            logging.error("Unsupported tensor type")
-        dst = np.empty(src.shape, dtype=np_type)
-    Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
-    return dst

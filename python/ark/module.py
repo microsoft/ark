@@ -1,9 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import Optional, Dict, Callable, Any
+from typing import Dict, Callable, Any
 import numpy as np
-from ._ark_core import _Model, _Tensor
 from .tensor import Tensor
 from .executor import Executor
 import logging
@@ -18,13 +17,10 @@ class Module:
     sub_modules: Dict[str, "Module"]
     # The parameters of the module.
     parameters: Dict[str, Tensor]
-    # The gradient computed at backward stage. A map from parameter to gradient.
-    grads: Dict[Tensor, Tensor]
 
     def __init__(self):
         self.sub_modules = dict()
         self.parameters = dict()
-        self.grads = dict()
 
     # Adds a child module to the current module.
     def register_module(self, name: str, module: "Module") -> None:
@@ -39,6 +35,11 @@ class Module:
         self.parameters[name] = param
 
     def __setattr__(self, __name: str, __value: Any) -> None:
+        """
+        When setting an attribute, if the attribute is a Module, add it to
+        the sub_modules. If the attribute is a Tensor and this Tensor is a
+        parameter, add it to the parameters.
+        """
         if isinstance(__value, Module):
             self.register_module(__name, __value)
         elif isinstance(__value, Tensor):
@@ -46,9 +47,11 @@ class Module:
                 self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
-    # Loads a model from a state_dict and copy the parameters to the device GPU.
-    # Must be called after the executor is launched.
     def load_state_dict(self, state_dict, prefix="", executor: Executor = None):
+        """
+        Loads a model from a state_dict and copy the parameters to the device GPU.
+        Must be called after the executor is launched.
+        """
         print("Loading model from state_dict")
         if executor is None:
             executor = Executor.get_executor()
@@ -62,9 +65,11 @@ class Module:
                 param._tensor, state_dict[prefix + name]
             )
 
-    # Copies the parameters from the device GPU to the host and saves the model to a state_dict.
-    # Must be called after the executor is launched.
     def state_dict(self, prefix="", executor: Executor = None):
+        """
+        Copies the parameters from the device GPU to the host and saves the model to a state_dict.
+        Must be called after the executor is launched.
+        """
         if executor is None:
             executor = Executor.get_executor()
         state_dict = {}
