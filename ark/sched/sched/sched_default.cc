@@ -340,9 +340,18 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 void DefaultScheduler::configure_gpu_buf(
     const std::list<Tensor *> &model_tensors)
 {
-    //
+    // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
+    // this rank's GPU, it should be allocated and might be exported to other
+    // GPUs. If it is on a remote GPU (the gid is not equal to this rank), it
+    // should be imported.
+    // A TensorBuf can have multi tensors pointing to it. Different Tensor
+    // represent a different sharding or view of the same TensorBuf.
     std::map<TensorBuf *, std::vector<Tensor *>> bufs;
-    std::map<TensorBuf *, std::vector<std::pair<Tensor *, int>>> tns_eids;
+    // export_tns_sids is a map of the TensorBuf that needed to be exported, and
+    // the corresponding tensors and sids. A TensorBuf can have multiple tensors
+    // pointing to it, and might be exported to multiple ranks as different
+    // Tensor.
+    std::map<TensorBuf *, std::vector<std::pair<Tensor *, int>>> export_tns_sids;
 
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
@@ -371,6 +380,9 @@ void DefaultScheduler::configure_gpu_buf(
                     bufs[tns->buf].emplace_back(tns);
                 }
             }
+
+            const int send_ready_flag_sid_offset = 128;
+
             //
             if (op->type == OP_SEND) {
                 //
@@ -394,15 +406,50 @@ void DefaultScheduler::configure_gpu_buf(
                     this->buf_infos.emplace_back(dst_gpu_id, bytes, nullptr,
                                                  sid, off);
                 }
-                tns_eids[in->buf].emplace_back(in, sid);
+                export_tns_sids[in->buf].emplace_back(in, sid);
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_RECV) {
                 //
                 Tensor *in = op->inputs[0];
                 int sid;
                 op->args.get(&sid, 0);
-                tns_eids[in->buf].emplace_back(in, sid);
+                export_tns_sids[in->buf].emplace_back(in, sid);
                 this->send_recv_ops.emplace_back(op);
+            } else if (op->type == OP_SEND_MM) {
+                int sid;
+                int dst_gid;
+                sop.get_op()->args.get(&sid, 0);
+                sop.get_op()->args.get(&dst_gid, 1);
+                // import the recvbuf, the recvbuf should be allocated on the
+                // receiver GPU
+                Tensor *recvbuf = sop.get_op()->inputs[1];
+                this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
+                                             recvbuf->buf, sid, 0);
+
+                // configure the send_ready_flag, the send_ready_flag needed to be
+                // exported to the recv GPU, since the sid of the send_ready_flag
+                // should not be the same as the recvBuf, so I use the sid+128 as
+                // the sid of the send_ready_flag
+                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                export_tns_sids[send_ready_flag->buf].emplace_back(
+                    send_ready_flag, sid + send_ready_flag_sid_offset);
+            } else if (op->type == OP_RECV_MM) {
+                int sid;
+                int src_gid;
+                sop.get_op()->args.get(&sid, 0);
+                sop.get_op()->args.get(&src_gid, 1);
+                // configure the recvbuf, the recvbuf needed to be export the to the
+                // sender GPU, the sid is the same as the sid of the send_mm op and
+                // the recv_mm op
+                Tensor *recvbuf = sop.get_op()->inputs[1];
+                export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
+
+                // import the send_ready_flag, the send_ready_flag tensor should be
+                // allocated on the sender GPU
+                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                this->buf_infos.emplace_back(
+                    src_gid, send_ready_flag->shape_bytes(), send_ready_flag->buf,
+                    sid + send_ready_flag_sid_offset, 0);
             }
         }
     }
@@ -439,8 +486,8 @@ void DefaultScheduler::configure_gpu_buf(
         TensorBuf *buf = el.first;
         int sid = -1;
         size_t off = 0;
-        auto search = tns_eids.find(buf);
-        if (search != tns_eids.end()) {
+        auto search = export_tns_sids.find(buf);
+        if (search != export_tns_sids.end()) {
             for (auto &p : search->second) {
                 Tensor *t = p.first;
                 sid = p.second;

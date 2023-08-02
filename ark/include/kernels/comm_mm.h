@@ -49,23 +49,23 @@ template <int FLAG> DEVICE void storeLL(DataPacketLL *data_dst, uint64_t val)
 }
 
 template <int TN>
-DEVICE void pre_send_mm_op(volatile int *send_ready_flag, int tile_idx)
+DEVICE void pre_send_mm_op(volatile int *send_ready_flag, int uop_idx)
 {
     if (threadIdx.x % TN == 0) {
-        while (send_ready_flag[tile_idx] != 0) {
+        while (send_ready_flag[uop_idx] != 0) {
         }
-        send_ready_flag[tile_idx] = 1;
+        send_ready_flag[uop_idx] = 1;
     }
     sync_warps<TN>();
 }
 
 template <int TN>
-DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int tile_idx)
+DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int uop_idx)
 {
     sync_warps<TN>();
     if (threadIdx.x % TN == 0) {
         // reset the send_ready_flag to 0
-        send_ready_flag[tile_idx] = 0;
+        send_ready_flag[uop_idx] = 0;
     }
     __syncwarp();
 }
@@ -74,7 +74,7 @@ template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 // send a tile of the tensor from data_src to recv_buff
 DEVICE void sendLL(void *recv_buff, ark::half *data_src,
-                   volatile int *send_ready_flag, int tile_idx)
+                   volatile int *send_ready_flag, int uop_idx)
 {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
@@ -91,11 +91,11 @@ DEVICE void sendLL(void *recv_buff, ark::half *data_src,
     constexpr int IterMNum = math::div_up<TDM, MNumPerLoop>::value;
     constexpr int IterNNum = TDN / NNumPerLoop;
 
-    int t0 = tile_idx % TDM;
-    int t1 = tile_idx / TDM;
+    int t0 = UnitOp::uop_idx_w(uop_idx);
+    int t1 = UnitOp::uop_idx_h(uop_idx);
     int midx = TDM * t0 + math::mod<TDM>(ElePerLoop * UnitOp::thread_id());
     int nidx = TDN * t1 + math::div<TDM>(ElePerLoop * UnitOp::thread_id());
-    pre_send_mm_op<TN>(send_ready_flag, tile_idx);
+    pre_send_mm_op<TN>(send_ready_flag, uop_idx);
 #pragma unroll
     for (int i = 0; i < IterNNum; ++i) {
 #pragma unroll
@@ -113,7 +113,7 @@ DEVICE void sendLL(void *recv_buff, ark::half *data_src,
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
-                   volatile int *send_ready_flag, int tile_idx)
+                   volatile int *send_ready_flag, int uop_idx)
 {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
@@ -130,8 +130,8 @@ DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
     constexpr int IterMNum = math::div_up<TDM, MNumPerLoop>::value;
     constexpr int IterNNum = TDN / NNumPerLoop;
 
-    int t0 = tile_idx % TDM;
-    int t1 = tile_idx / TDM;
+    int t0 = UnitOp::uop_idx_w(uop_idx);
+    int t1 = UnitOp::uop_idx_h(uop_idx);
     int midx = TDM * t0 + math::mod<TDM>(ElePerLoop * UnitOp::thread_id());
     int nidx = TDN * t1 + math::div<TDM>(ElePerLoop * UnitOp::thread_id());
 #pragma unroll
@@ -146,7 +146,7 @@ DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
             (recv_buff_ptr + math::div<4>(idx))->i4 = make_int4(0, 0, 0, 0);
         }
     }
-    post_recv_mm_op<TN>(send_ready_flag, tile_idx);
+    post_recv_mm_op<TN>(send_ready_flag, uop_idx);
 }
 
 } // namespace comm
