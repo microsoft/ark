@@ -63,8 +63,7 @@ class SchedProfiler
         : gpu_mgr{gpu_mgr}, num_warps_per_sm{num_warps_per_sm_}
     {
     }
-    void profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
-                 GpuMgrCtx *ctx);
+    void profile(OpGraph *op_graph, CodeGenerator &codegen, GpuMgrCtx *ctx);
     float profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx);
 
     GpuMgr *gpu_mgr;

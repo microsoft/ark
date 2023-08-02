@@ -3,6 +3,7 @@
 
 #include "logging.h"
 #include "model.h"
+#include "tensor.h"
 
 using namespace std;
 
@@ -17,7 +18,7 @@ TensorOp::TensorOp(const vector<Tensor *> &deps, Tensor *output,
 Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
                       const Dims &ldims, const Dims &offs, const Dims &pads,
                       const vector<Tensor *> &deps, bool exported,
-                      bool imported, const std::string &name)
+                      int imported_rank, const std::string &name)
 {
     LOG(DEBUG, "tensor ", name, " ", shape, " ", type, " ", ldims, " ", offs,
         " ", pads);
@@ -25,9 +26,9 @@ Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
         buf = this->impl->create_tensor_buf();
     }
     Tensor *ret =
-        new Tensor{shape,    type,     buf,
-                   ldims,    offs,     pads,
-                   exported, imported, (int)this->impl->tns_storage.size(),
+        new Tensor{shape,    type,          buf,
+                   ldims,    offs,          pads,
+                   exported, imported_rank, (int)this->impl->tns_storage.size(),
                    name};
     assert(ret != nullptr);
     this->impl->tns_storage.emplace_back(ret);

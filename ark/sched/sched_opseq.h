@@ -14,6 +14,7 @@
 #include "sched/sched_op.h"
 
 namespace ark {
+
 class SchedOpSeq
 {
   public:
@@ -97,9 +98,6 @@ class SchedOpSeq
     int smem_bytes = 0;
     std::array<int, 3> tdims = {{0, 0, 0}};
 };
-
-void to_json(nlohmann::json &j, const SchedOpSeq &opseq);
-void from_json(const nlohmann::json &j, SchedOpSeq &opseq);
 
 struct Sched
 {

@@ -16,6 +16,8 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     this->num_warps_per_sm = std::max(num_warps_per_sm_, min_wps);
+    this->codegen = std::make_unique<CodeGenerator>(this->buf_trans, gpu_info,
+                                                    this->num_warps_per_sm);
 }
 
 // create context on gpu for the model

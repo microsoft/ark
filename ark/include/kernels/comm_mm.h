@@ -11,7 +11,7 @@
 namespace ark {
 namespace comm {
 
-union DataPacketLL {
+union alignas(16) DataPacketLL {
     // on 64bits machine, the access to the 64bits data is atomic, so we combine
     // the 32bits data and flag into one 64bits data to insure the GPU receive
     // complete data
@@ -30,7 +30,7 @@ union DataPacketLL {
 // sizeof(float16). the data is stored in column major, and LDM is the
 // major dimension. The TN is the thread number, TDM and TDN is the tile
 // size.
-template <int FLAG> DEVICE uint64_t readLL(union DataPacketLL *recv_buf)
+template <int FLAG> DEVICE uint64_t readLL(DataPacketLL *recv_buf)
 {
     uint32_t data1, flag1, data2, flag2;
     do {
@@ -41,8 +41,7 @@ template <int FLAG> DEVICE uint64_t readLL(union DataPacketLL *recv_buf)
     uint64_t val64 = data1 + (((uint64_t)data2) << 32);
     return val64;
 }
-template <int FLAG>
-DEVICE void storeLL(union DataPacketLL *data_dst, uint64_t val)
+template <int FLAG> DEVICE void storeLL(DataPacketLL *data_dst, uint64_t val)
 {
     asm volatile(
         "st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" ::"l"(&data_dst->i4),
@@ -73,13 +72,14 @@ DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int tile_idx)
 
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
-// send a tile of the tensor from data_src to recvBuff
-DEVICE void sendLL(union DataPacketLL *recvBuff, ark::half *data_src,
-                   volatile int *send_ready_flag, int tile_idx, int t0, int t1,
-                   int t2)
+// send a tile of the tensor from data_src to recv_buff
+DEVICE void sendLL(void *recv_buff, ark::half *data_src,
+                   volatile int *send_ready_flag, int tile_idx)
 {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
+
+    DataPacketLL *recv_buff_ptr = reinterpret_cast<DataPacketLL *>(recv_buff);
 
     // elementwise copy, a thread copies 4 float16 data (64 bits)
     // in a loop, so the ElePerLoop is 4
@@ -91,6 +91,8 @@ DEVICE void sendLL(union DataPacketLL *recvBuff, ark::half *data_src,
     constexpr int IterMNum = math::div_up<TDM, MNumPerLoop>::value;
     constexpr int IterNNum = TDN / NNumPerLoop;
 
+    int t0 = tile_idx % TDM;
+    int t1 = tile_idx / TDM;
     int midx = TDM * t0 + math::mod<TDM>(ElePerLoop * UnitOp::thread_id());
     int nidx = TDN * t1 + math::div<TDM>(ElePerLoop * UnitOp::thread_id());
     pre_send_mm_op<TN>(send_ready_flag, tile_idx);
@@ -101,21 +103,22 @@ DEVICE void sendLL(union DataPacketLL *recvBuff, ark::half *data_src,
             int idx = midx + j * MNumPerLoop + (nidx + i * NNumPerLoop) * LDM;
             // in ARK the src and dst store the float16 data, so a
             // thread copied 4 float16 (64 bits) data in a loop
-            storeLL<FLAG>(recvBuff + math::div<4>(idx),
+            storeLL<FLAG>(recv_buff_ptr + math::div<4>(idx),
                           *(uint64_t *)&((ark::half *)data_src)[idx]);
         }
     }
 }
 
-// recv a tile of the tensor from recvBuff to data_dst
+// recv a tile of the tensor from recv_buff to data_dst
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
-DEVICE void recvLL(union DataPacketLL *recvBuff, ark::half *data_dst,
-                   volatile int *send_ready_flag, int tile_idx, int t0, int t1,
-                   int t2)
+DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
+                   volatile int *send_ready_flag, int tile_idx)
 {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
+
+    DataPacketLL *recv_buff_ptr = reinterpret_cast<DataPacketLL *>(recv_buff);
 
     // elementwise copy, a thread copies 4 float16 data (64 bits)
     // in a loop, so the ElePerLoop is 4
@@ -127,6 +130,8 @@ DEVICE void recvLL(union DataPacketLL *recvBuff, ark::half *data_dst,
     constexpr int IterMNum = math::div_up<TDM, MNumPerLoop>::value;
     constexpr int IterNNum = TDN / NNumPerLoop;
 
+    int t0 = tile_idx % TDM;
+    int t1 = tile_idx / TDM;
     int midx = TDM * t0 + math::mod<TDM>(ElePerLoop * UnitOp::thread_id());
     int nidx = TDN * t1 + math::div<TDM>(ElePerLoop * UnitOp::thread_id());
 #pragma unroll
@@ -137,8 +142,8 @@ DEVICE void recvLL(union DataPacketLL *recvBuff, ark::half *data_dst,
             // in ARK the src and dst store the float16 data, so a
             // thread copied 4 float16 (64 bits) data in a loop
             *(uint64_t *)&(((ark::half *)data_dst)[idx]) =
-                readLL<FLAG>(recvBuff + math::div<4>(idx));
-            (recvBuff + math::div<4>(idx))->i4 = make_int4(0, 0, 0, 0);
+                readLL<FLAG>(recv_buff_ptr + math::div<4>(idx));
+            (recv_buff_ptr + math::div<4>(idx))->i4 = make_int4(0, 0, 0, 0);
         }
     }
     post_recv_mm_op<TN>(send_ready_flag, tile_idx);

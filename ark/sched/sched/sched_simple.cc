@@ -15,9 +15,6 @@ SimpleScheduler::SimpleScheduler(Model &model, int gpu_id, int rank_,
                                  int world_size_, int num_warps_per_sm_)
     : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
 {
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    this->codegen = make_unique<SimpleCodeGenerator>(
-        this->buf_trans, gpu_info, num_warps_per_sm_, this->world_size);
 }
 
 //
@@ -218,7 +215,38 @@ vector<string> SimpleScheduler::gen_code()
         this->schedule_sched_opseq(*seq, this->num_warps_per_sm, num_sm,
                                    scheds);
     }
-    return this->codegen->codegen_codes_body(scheds);
+
+    stringstream loop_body_code, sched_opseq_code, data_buf_code;
+    for (int i = 0; i < this->world_size; i++) {
+        data_buf_code << "__device__ char *" << ARK_BUF_NAME << i << ";\n";
+    }
+    loop_body_code << "__device__ void ark_loop_body(int _iter) {\n";
+    // to avoid the same opseq code being generated multiple times
+    set<int> opseq_ids;
+    std::map<std::string, int> uop_map;
+    for (Sched &sched : scheds) {
+        bool virt_opseq = false;
+        // for the baseline scheduler, one opseq is a depth and have a global
+        // sync between each opseq
+        SchedOpSeq *opseq = sched.opseq;
+        if (opseq_ids.find(opseq->get_id()) != opseq_ids.end()) {
+        } else {
+            opseq_ids.insert(opseq->get_id());
+            this->codegen->opseq(sched_opseq_code,
+                                 "opseq_" + to_string(opseq->get_id()), *opseq,
+                                 uop_map);
+        }
+        if (virt_opseq)
+            continue;
+        this->codegen->sched(loop_body_code, sched);
+        loop_body_code << "  ";
+        this->codegen->sync_gpu(loop_body_code);
+    }
+    loop_body_code << "}\n";
+    vector<string> ret;
+    ret.emplace_back(data_buf_code.str() + sched_opseq_code.str() +
+                     loop_body_code.str());
+    return ret;
 }
 
 void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
@@ -306,12 +334,12 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
         }
         for (auto &tns : sop.get_op()->inputs) {
             // if the tensor is not imported, it should be allocated on this GPU
-            if (tns->imported == false)
+            if (tns->imported_rank < 0)
                 bufs[tns->buf].emplace_back(tns);
         }
         // TODO: print warning if the tensor is not used by any real computation
         for (auto &tns : sop.get_op()->outputs) {
-            if (tns->imported == false)
+            if (tns->imported_rank < 0)
                 bufs[tns->buf].emplace_back(tns);
         }
     }

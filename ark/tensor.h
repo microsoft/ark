@@ -10,6 +10,7 @@
 namespace ark {
 
 const std::string type_str(const TensorType &type);
+std::ostream &operator<<(std::ostream &os, TensorType type);
 
 } // namespace ark
 

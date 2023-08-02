@@ -58,6 +58,7 @@ class BaseScheduler
     int rank;
     int world_size;
     int num_warps_per_sm;
+    std::unique_ptr<CodeGenerator> codegen;
 
     std::vector<std::unique_ptr<SchedOpSeq>> opseqs;
 
@@ -95,8 +96,6 @@ class SimpleScheduler : public BaseScheduler
                               std::vector<Sched> &scheds);
 
     std::vector<SchedOp> sched_ops;
-
-    std::unique_ptr<SimpleCodeGenerator> codegen;
 };
 
 class DefaultScheduler : public BaseScheduler
@@ -119,8 +118,6 @@ class DefaultScheduler : public BaseScheduler
     void heuristic_optimize_matmul(Model &model, Model::Impl *model_impl,
                                    Op &matmul_op, const GpuInfo &gpu_info,
                                    int num_sm);
-
-    std::unique_ptr<DefaultCodeGenerator> codegen;
 
   private:
     void recursive_schedule(std::list<OpNode *> &nodes,

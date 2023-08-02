@@ -88,8 +88,7 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
             int current_sm_idx = this->sm_id_begin;
             int current_warp_idx = 0;
             int uop_idx = uop_idx_cache[item.opseq_id];
-            // LOG(DEBUG, "item check. opseq_id=", item.opseq_id, " uop_idx=",
-            // uop_idx, " num_uops=", item.num_uops);
+
             while (uop_idx < item.num_uops &&
                    current_sm_idx < this->sm_id_end) {
                 int rem_smem =
@@ -101,7 +100,6 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
                     // No room on this SM for this uop, move to next SM
                     current_sm_idx++;
                     current_warp_idx = 0;
-                    // LOG(DEBUG, "continue 1");
                     continue;
                 }
                 int target_rem_warp =
@@ -111,7 +109,6 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
                     // This SM has too many warps scheduled, move to next SM
                     current_sm_idx++;
                     current_warp_idx = 0;
-                    // LOG(DEBUG, "continue 2");
                     continue;
                 }
                 // Schedule this uop on this SM
@@ -127,7 +124,6 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
                 no_progress = false;
             }
             if (uop_idx == item.num_uops) {
-                // LOG(DEBUG, "item done.");
                 done_items.push_back(item.opseq_id);
             }
             uop_idx_cache[item.opseq_id] = uop_idx;
@@ -148,10 +144,6 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
 
         // Remove items that are done
         for (int done_opseq_id : done_items) {
-            // LOG(DEBUG, "remove item: opseq_id=",
-            // remaining_items[done_idx].opseq_id, " uop_idx=",
-            // uop_idx_cache[remaining_items[done_idx].opseq_id], " num_uops=",
-            // remaining_items[done_idx].num_uops);
             remaining_items.erase(done_opseq_id);
         }
     }

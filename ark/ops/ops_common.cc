@@ -468,12 +468,12 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const
         return static_cast<const SendOp *>(this)->function_call_args(cfg);
     case OP_SEND_DONE:
         return static_cast<const SendDoneOp *>(this)->function_call_args(cfg);
-    // case OP_SEND_MM:
-    //     return static_cast<const SendMMOp *>(this)->function_call_args(cfg);
     case OP_RECV:
         return static_cast<const RecvOp *>(this)->function_call_args(cfg);
-    // case OP_RECV_MM:
-    //     return static_cast<const RecvMMOp *>(this)->function_call_args(cfg);
+    case OP_SEND_MM:
+        return static_cast<const SendMMOp *>(this)->function_call_args(cfg);
+    case OP_RECV_MM:
+        return static_cast<const RecvMMOp *>(this)->function_call_args(cfg);
     default:
         OpArgs opargs;
         std::vector<Tensor *> deps = this->outputs;

@@ -405,6 +405,7 @@ class SendMMOp : public Op
              Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
              size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
 class RecvMMOp : public Op
@@ -414,6 +415,7 @@ class RecvMMOp : public Op
              Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
              size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
 class SendOp : public Op

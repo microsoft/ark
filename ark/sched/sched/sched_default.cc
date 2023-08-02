@@ -9,8 +9,6 @@
 
 using namespace std;
 
-#define ALLOC_UNUSED_TENSORS 1
-
 namespace ark {
 
 /// Calculate the number of tiles for a given op and a tile.
@@ -175,8 +173,6 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
     heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
 
     this->op_graph = make_unique<OpGraph>(model);
-    this->codegen = make_unique<DefaultCodeGenerator>(
-        buf_trans, gpu_info, num_warps_per_sm_, world_size_);
 }
 
 void DefaultScheduler::schedule()
@@ -345,8 +341,8 @@ void DefaultScheduler::configure_gpu_buf(
     const std::list<Tensor *> &model_tensors)
 {
     //
-    map<TensorBuf *, vector<Tensor *>> bufs;
-    map<TensorBuf *, vector<pair<Tensor *, int>>> tns_eids;
+    std::map<TensorBuf *, std::vector<Tensor *>> bufs;
+    std::map<TensorBuf *, std::vector<std::pair<Tensor *, int>>> tns_eids;
 
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
@@ -363,24 +359,30 @@ void DefaultScheduler::configure_gpu_buf(
 
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
-            for (auto &tns : sop.get_op()->inputs) {
-                bufs[tns->buf].emplace_back(tns);
-            }
-            for (auto &tns : sop.get_op()->outputs) {
-                bufs[tns->buf].emplace_back(tns);
+            const Op *op = sop.get_op();
+            std::vector<Tensor *> tensors = op->inputs;
+            tensors.insert(tensors.end(), op->outputs.begin(),
+                           op->outputs.end());
+
+            for (auto &tns : tensors) {
+                // If the tensor is not imported, it should be allocated on this
+                // GPU
+                if (tns->imported_rank < 0) {
+                    bufs[tns->buf].emplace_back(tns);
+                }
             }
             //
-            if (sop.get_op()->type == OP_SEND) {
+            if (op->type == OP_SEND) {
                 //
-                Tensor *in = sop.get_op()->inputs[0];
+                Tensor *in = op->inputs[0];
                 int sid;
                 int rank;
                 int dst_rank;
                 size_t bytes;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&rank, 1);
-                sop.get_op()->args.get(&dst_rank, 2);
-                sop.get_op()->args.get(&bytes, 3);
+                op->args.get(&sid, 0);
+                op->args.get(&rank, 1);
+                op->args.get(&dst_rank, 2);
+                op->args.get(&bytes, 3);
                 size_t off = in->offset() * in->type_bytes();
                 LOG(DEBUG, "OP_SEND: sid: ", sid, " rank: ", rank,
                     " dst_rank: ", dst_rank, " bytes: ", bytes, " off: ", off);
@@ -393,14 +395,14 @@ void DefaultScheduler::configure_gpu_buf(
                                                  sid, off);
                 }
                 tns_eids[in->buf].emplace_back(in, sid);
-                this->send_recv_ops.emplace_back(sop.get_op());
-            } else if (sop.get_op()->type == OP_RECV) {
+                this->send_recv_ops.emplace_back(op);
+            } else if (op->type == OP_RECV) {
                 //
-                Tensor *in = sop.get_op()->inputs[0];
+                Tensor *in = op->inputs[0];
                 int sid;
-                sop.get_op()->args.get(&sid, 0);
+                op->args.get(&sid, 0);
                 tns_eids[in->buf].emplace_back(in, sid);
-                this->send_recv_ops.emplace_back(sop.get_op());
+                this->send_recv_ops.emplace_back(op);
             }
         }
     }
@@ -412,11 +414,6 @@ void DefaultScheduler::configure_gpu_buf(
         }
     }
 
-    struct GpuBufInfo
-    {
-        size_t bytes;
-    };
-    map<TensorBuf *, GpuBufInfo> binfs;
     // Fix TensorBuf size.
     for (auto &el : bufs) {
         TensorBuf *buf = el.first;
@@ -435,14 +432,11 @@ void DefaultScheduler::configure_gpu_buf(
         }
         // Store the size.
         buf->bytes = max_bytes;
-        GpuBufInfo &info = binfs[buf];
-        info.bytes = max_bytes;
     }
 
     // Allocate all GPU buffers.
-    for (auto &el : binfs) {
+    for (auto &el : bufs) {
         TensorBuf *buf = el.first;
-        GpuBufInfo &info = el.second;
         int sid = -1;
         size_t off = 0;
         auto search = tns_eids.find(buf);
@@ -451,22 +445,32 @@ void DefaultScheduler::configure_gpu_buf(
                 Tensor *t = p.first;
                 sid = p.second;
                 off = t->offset() * t->type_bytes();
-                this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, info.bytes,
+                this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, buf->bytes,
                                              buf, sid, off);
             }
         } else {
-            this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, info.bytes, buf,
+            this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, buf->bytes, buf,
                                          sid, off);
         }
     }
 }
 
-vector<string> DefaultScheduler::gen_code()
+std::vector<std::string> DefaultScheduler::gen_code()
 {
     std::stringstream code;
 
-    this->codegen->sync_stream_state(code, 0);
-    this->codegen->sync_stream_state(code, 1);
+    std::set<int> imported_ranks;
+    for (auto &tns : this->model->impl->get_tensors()) {
+        if (tns->imported_rank >= 0) {
+            imported_ranks.insert(tns->imported_rank);
+        }
+    }
+    for (auto rank : imported_ranks) {
+        this->codegen->def_remote_buf(code, rank);
+    }
+
+    this->codegen->def_sync_stream(code, 0);
+    this->codegen->def_sync_stream(code, 1);
 
     std::map<std::string, int> uop_map;
     for (auto &opseq : this->opseqs) {
@@ -478,13 +482,13 @@ vector<string> DefaultScheduler::gen_code()
             // TODO: check if runtime args are the same
             if (p.second) {
                 // If this is a new function, define it.
-                this->codegen->codegen_uop_def(code, sop, uop_id);
+                this->codegen->def_uop(code, sop, uop_id);
             }
         }
     }
     for (auto &opseq : this->opseqs) {
-        this->codegen->codegen_opseq(
-            code, "op" + std::to_string(opseq->get_id()), *opseq, uop_map);
+        this->codegen->opseq(code, "op" + std::to_string(opseq->get_id()),
+                             *opseq, uop_map);
     }
 
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
@@ -495,18 +499,19 @@ vector<string> DefaultScheduler::gen_code()
     for (size_t i = 0; i < this->comp_stream.size(); ++i) {
         for (auto &branches : this->comp_stream[i]->get_branches()) {
             for (auto &branch : branches) {
-                this->codegen->codegen_branch(code, branch);
+                this->codegen->branch(code, branch);
             }
             this->codegen->sync_stream(code, 0, 0, num_sm_comp);
         }
         for (auto &branches : this->comm_stream[i]->get_branches()) {
             for (auto &branch : branches) {
-                this->codegen->codegen_branch(code, branch);
+                this->codegen->branch(code, branch);
             }
-            this->codegen->sync_stream(code, 1, num_sm_comp, num_sm_comp + num_sm_comm);
+            this->codegen->sync_stream(code, 1, num_sm_comp,
+                                       num_sm_comp + num_sm_comm);
         }
         code << "  ";
-        this->codegen->codegen_sync_gpu(code);
+        this->codegen->sync_gpu(code);
     }
     code << "}\n";
     return {code.str()};

@@ -64,6 +64,15 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const
                              }});
 }
 
+OpArgs SendMMOp::function_call_args(const OpConfig &) const
+{
+    OpArgs opargs;
+    opargs.put(this->inputs[1]);
+    opargs.put(this->inputs[0]);
+    opargs.put(this->inputs[2]);
+    return opargs;
+}
+
 RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
                    size_t bytes, const string &name)
@@ -116,6 +125,15 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const
                              }});
 }
 
+OpArgs RecvMMOp::function_call_args(const OpConfig &) const
+{
+    OpArgs opargs;
+    opargs.put(this->inputs[1]);
+    opargs.put(this->inputs[0]);
+    opargs.put(this->inputs[2]);
+    return opargs;
+}
+
 // TODO: set the max_tile_num according to the tile number of the op
 const int max_tile_num = 2048;
 
@@ -143,8 +161,11 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
     recvbuf_shape[ndims - 2] *= 2;
-    Tensor *recvbuf = this->tensor(recvbuf_shape, input->type);
-    recvbuf->imported = true;
+    for (int i = 0; i < ndims; ++i) {
+        recvbuf_shape[i] *= input->type_bytes();
+    }
+    Tensor *recvbuf = this->tensor(recvbuf_shape, ark::BYTE);
+    recvbuf->imported_rank = gpu_dst;
     Tensor *send_ready_flag = this->tensor(
         {
             max_tile_num,
@@ -184,14 +205,17 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
     recvbuf_shape[ndims - 2] *= 2;
-    Tensor *recvbuf = this->tensor(recvbuf_shape, input->type);
+    for (int i = 0; i < ndims; ++i) {
+        recvbuf_shape[i] *= input->type_bytes();
+    }
+    Tensor *recvbuf = this->tensor(recvbuf_shape, ark::BYTE);
     recvbuf->exported = true;
     Tensor *send_ready_flag = this->tensor(
         {
             max_tile_num,
         },
         INT32);
-    send_ready_flag->imported = true;
+    send_ready_flag->imported_rank = gpu_src;
     RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
                 gpu_src,      bytes, name};
     return this->impl->add_op(op)[0];
@@ -201,24 +225,24 @@ const OpConfigMap SendRecvMMConfigMap = {
     {{OP_ARCH_CUDA_70, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+         {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}, {32, 64}, {1, 1}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}, {16, 64}, {1, 1}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}, {8, 64}, {1, 1}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}, {2, 128}, {1, 1}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}, {4, 64}, {1, 1}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}, {2, 64}, {1, 1}}, {{2, 64}}, false, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+         {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}, {32, 64}, {1, 1}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}, {16, 64}, {1, 1}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}, {8, 64}, {1, 1}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}, {2, 128}, {1, 1}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}, {4, 64}, {1, 1}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}, {2, 64}, {1, 1}}, {{2, 64}}, false, false},
      }},
 };
 

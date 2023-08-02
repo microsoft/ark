@@ -107,7 +107,7 @@ std::vector<Tensor *> Model::Impl::add_op(Op &op)
         // to be the current Op.
         this->tns_storage.emplace_back(make_unique<Tensor>(
             tns->shape, tns->type, tns->buf, tns->ldims, tns->offs, tns->pads,
-            tns->exported, tns->imported, (int)this->tns_storage.size(),
+            tns->exported, tns->imported_rank, (int)this->tns_storage.size(),
             tns->name));
         output_tensor = this->tns_storage.back().get();
 

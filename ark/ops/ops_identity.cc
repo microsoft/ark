@@ -29,7 +29,7 @@ Tensor *Model::identity(Tensor *input, const vector<Tensor *> &deps,
     }
     return this->tensor(input->shape, input->type, input->buf, input->ldims,
                         input->offs, input->pads, dep_vec, input->exported,
-                        input->imported, name + "/identity");
+                        input->imported_rank, name + "/identity");
 }
 
 } // namespace ark

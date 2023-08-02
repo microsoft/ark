@@ -17,9 +17,9 @@ TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_}
 // Tensor constructor
 Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
                const Dims &ldims_, const Dims &offs_, const Dims &pads_,
-               bool exported_, bool imported_, int id_, const string &name_)
-    : buf{buf_}, type{type_}, exported{exported_}, imported{imported_}, id{id_},
-      name{name_}
+               bool exported_, int imported_rank_, int id_, const string &name_)
+    : buf{buf_}, type{type_}, exported{exported_},
+      imported_rank{imported_rank_}, id{id_}, name{name_}
 {
     if (shape_.size() == 0) {
         LOGERR("Tensor shape should consist of positive numbers. Given: ",
@@ -86,6 +86,11 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
 //
 void Tensor::update_pads(const vector<DimType> &pads_)
 {
+    for (auto &p : pads_) {
+        if (p <= 0) {
+            LOG(ERROR, "Tensor pads should be positive. Given: ", p);
+        }
+    }
     int ndims = this->ldims.ndims();
     vector<DimType> tmp;
     for (int i = 0; i < ndims - (int)pads_.size(); ++i) {
@@ -152,6 +157,8 @@ unsigned int Tensor::type_bytes() const
         return 4;
     } else if (this->type == INT32) {
         return 4;
+    } else if (this->type == BYTE) {
+        return 1;
     }
     return 0;
 }
@@ -189,55 +196,23 @@ bool Tensor::is_sequential() const
     return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-//
-// void to_json(nlohmann::json &j, const TensorBuf &tbuf)
-// {
-//     j = nlohmann::json{
-//         {"id", tbuf.id},
-//         {"bytes", tbuf.bytes},
-//         {"immutable", tbuf.immutable},
-//     };
-// }
-
-// //
-// void from_json(const nlohmann::json &j, TensorBuf &tbuf)
-// {
-//     j.at("id").get_to(tbuf.id);
-//     j.at("bytes").get_to(tbuf.bytes);
-//     j.at("immutable").get_to(tbuf.immutable);
-// }
-
-//
-// void to_json(nlohmann::json &j, const Tensor &tns)
-// {
-//     j = nlohmann::json{
-//         {"id", tns.id},       {"buf_id", tns.buf->id},    {"type", tns.type},
-//         {"shape", tns.shape}, {"ldims", tns.ldims},       {"offs", tns.offs},
-//         {"pads", tns.pads},   {"exported", tns.exported},
-//     };
-// }
-
-// //
-// void from_json(const nlohmann::json &j, Tensor &tns)
-// {
-//     j.at("id").get_to(tns.id);
-//     j.at("type").get_to(tns.type);
-//     j.at("shape").get_to(tns.shape);
-//     j.at("ldims").get_to(tns.ldims);
-//     j.at("offs").get_to(tns.offs);
-//     j.at("pads").get_to(tns.pads);
-//     j.at("exported").get_to(tns.exported);
-// }
-
 const string type_str(const TensorType &type)
 {
     if (type == FP16)
         return "fp16";
     else if (type == FP32)
         return "fp32";
+    else if (type == INT32)
+        return "int32";
+    else if (type == BYTE)
+        return "byte";
     return "none";
+}
+
+std::ostream &operator<<(std::ostream &os, TensorType type)
+{
+    os << type_str(type);
+    return os;
 }
 
 } // namespace ark

@@ -311,15 +311,12 @@ void GpuLoopKernel::load()
             for (int i = nodes_id * nrph;
                  i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
                  i++) {
-                // TODO: generalize converting rank to GPU ID.
-                int local_gpu_id = i % nrph;
                 GpuPtr data_buf_value = this->ctx->get_data_ref(i);
                 if (data_buf_value == 0) {
                     continue;
                 }
                 GpuPtr data_buf_ptr;
-                string data_buf_name =
-                    ARK_BUF_NAME + std::to_string(local_gpu_id);
+                string data_buf_name = ARK_BUF_NAME + std::to_string(i);
                 CUresult _e = cuModuleGetGlobal(&data_buf_ptr, 0, this->module,
                                                 data_buf_name.c_str());
                 // in some test code the symbol _ARK_BUF_0 is not defined

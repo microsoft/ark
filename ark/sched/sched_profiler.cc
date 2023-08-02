@@ -159,7 +159,7 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm)
     return scheds;
 }
 
-void SchedProfiler::profile(OpGraph *op_graph, DefaultCodeGenerator &codegen,
+void SchedProfiler::profile(OpGraph *op_graph, CodeGenerator &codegen,
                             GpuMgrCtx *ctx)
 {
 #if 0
