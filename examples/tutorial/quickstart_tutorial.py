@@ -7,7 +7,7 @@ import torch.nn as nn
 import ark
 
 
-if __name__ == "__main__":
+def quickstart_tutorial():
     # Initialize the ARK model
     ark.init_model()
 
@@ -39,3 +39,7 @@ if __name__ == "__main__":
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
     )
+
+
+if __name__ == "__main__":
+    quickstart_tutorial()

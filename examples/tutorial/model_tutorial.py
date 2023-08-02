@@ -5,7 +5,7 @@ import ark
 import numpy as np
 
 
-def main():
+def model_tutorial():
     # Initialize the ARK runtime
     ark.init()
 
@@ -60,4 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    model_tutorial()
