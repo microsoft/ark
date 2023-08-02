@@ -3,6 +3,7 @@
 
 from typing import Dict, Callable, Any
 import numpy as np
+from .runtime import tensor_memcpy_device_to_host, tensor_memcpy_host_to_device
 from .tensor import Tensor
 from .executor import Executor
 import logging
@@ -47,42 +48,30 @@ class Module:
                 self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
-    def load_state_dict(self, state_dict, prefix="", executor: Executor = None):
+    def load_state_dict(self, state_dict, prefix=""):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
         Must be called after the executor is launched.
         """
         print("Loading model from state_dict")
-        if executor is None:
-            executor = Executor.get_global_executor()
         for name, module in self.sub_modules.items():
             if module is not None:
-                module.load_state_dict(
-                    state_dict, prefix=prefix + name + ".", executor=executor
-                )
+                module.load_state_dict(state_dict, prefix=prefix + name + ".")
         for name, param in self.parameters.items():
-            executor.tensor_memcpy_host_to_device(
-                param._tensor, state_dict[prefix + name]
-            )
+            tensor_memcpy_host_to_device(param, state_dict[prefix + name])
 
-    def state_dict(self, prefix="", executor: Executor = None):
+    def state_dict(self, prefix=""):
         """
         Copies the parameters from the device GPU to the host and saves the model to a state_dict.
         Must be called after the executor is launched.
         """
-        if executor is None:
-            executor = Executor.get_global_executor()
         state_dict = {}
         for name, module in self.sub_modules.items():
             if module is not None:
-                state_dict.update(
-                    module.state_dict(
-                        prefix=prefix + name + ".", executor=executor
-                    )
-                )
+                state_dict.update(module.state_dict(prefix=prefix + name + "."))
         for name, param in self.parameters.items():
             param_np = np.zeros(param.shape, dtype=np.float16)
-            executor.tensor_memcpy_device_to_host(param_np, param._tensor)
+            tensor_memcpy_device_to_host(param_np, param)
             state_dict[prefix + name] = param_np
         return state_dict
 
