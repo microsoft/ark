@@ -1,12 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import Dict, Callable, Any
-import numpy as np
 from .runtime import tensor_memcpy_device_to_host, tensor_memcpy_host_to_device
 from .tensor import Tensor
-from .executor import Executor
 import logging
+import numpy as np
+from typing import Dict, Callable, Any
 
 
 class Module:

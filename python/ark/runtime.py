@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import os
 from .model import Model
 from .executor import Executor
 from .tensor import Tensor
