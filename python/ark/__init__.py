@@ -17,7 +17,7 @@ from ._ark_core import (
 
 from .runtime import init, init_model, launch, run, destroy
 
-from .tensor import Tensor
+from .tensor import Tensor, Parameter
 
 from .module import Module
 from .executor import (
@@ -75,6 +75,7 @@ __all__ = [
     "run",
     "destroy",
     "Module",
+    "Parameter",
     "Executor",
     "tensor_memcpy_device_to_host",
     "tensor_memcpy_host_to_device",

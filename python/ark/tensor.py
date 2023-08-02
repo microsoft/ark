@@ -9,3 +9,13 @@ class Tensor:
         self._tensor = _tensor
         self.shape = _tensor.shape
         self.is_parameter = False
+
+
+def Parameter(
+    tensor: Tensor,
+) -> Tensor:
+    """
+    Set the tensor as a parameter.
+    """
+    tensor.is_parameter = True
+    return tensor
