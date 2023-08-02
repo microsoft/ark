@@ -54,7 +54,7 @@ class Module:
         """
         print("Loading model from state_dict")
         if executor is None:
-            executor = Executor.get_executor()
+            executor = Executor.get_global_executor()
         for name, module in self.sub_modules.items():
             if module is not None:
                 module.load_state_dict(
@@ -71,7 +71,7 @@ class Module:
         Must be called after the executor is launched.
         """
         if executor is None:
-            executor = Executor.get_executor()
+            executor = Executor.get_global_executor()
         state_dict = {}
         for name, module in self.sub_modules.items():
             if module is not None:

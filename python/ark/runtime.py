@@ -60,8 +60,8 @@ def launch():
     Executor.global_executor = Executor(
         rank, rank, world_size, Model.get_global_model(), "Executor"
     )
-    Executor.get_executor().compile()
-    Executor.get_executor().launch()
+    Executor.get_global_executor().compile()
+    Executor.get_global_executor().launch()
 
 
 def run(iter=1):
@@ -71,8 +71,8 @@ def run(iter=1):
     if ARKConfig.global_config.ark_runtime_state != "launch":
         logging.error("ARK runtime is not launched")
     ARKConfig.global_config.ark_runtime_state = "run"
-    Executor.get_executor().run(iter)
-    Executor.get_executor().stop()
+    Executor.get_global_executor().run(iter)
+    Executor.get_global_executor().stop()
     ARKConfig.global_config.ark_runtime_state = "launch"
 
 
@@ -93,7 +93,9 @@ def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
     # Check the current ARK runtime status
     if ARKConfig.global_config.ark_runtime_state != "launch":
         logging.error("ARK runtime is not launched")
-    Executor.get_executor().tensor_memcpy_host_to_device(dst._tensor, src)
+    Executor.get_global_executor().tensor_memcpy_host_to_device(
+        dst._tensor, src
+    )
     return dst
 
 
@@ -115,5 +117,5 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
         else:
             logging.error("Unsupported tensor type")
         dst = np.empty(src.shape, dtype=np_type)
-    Executor.get_executor().tensor_memcpy_device_to_host(dst, src)
+    Executor.get_global_executor().tensor_memcpy_device_to_host(dst, src)
     return dst

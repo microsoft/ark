@@ -43,7 +43,7 @@ class Executor(_Executor):
         super().tensor_memcpy_device_to_host(dst, src)
 
     @staticmethod
-    def get_executor():
+    def get_global_executor():
         # Get the global executor
         if Executor.global_executor is None:
             logging.error("Executor is not initialized")
