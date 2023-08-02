@@ -38,11 +38,11 @@ void OpNode::remove_self()
 
 std::string OpNode::get_name() const
 {
-    std::string name;
+    std::stringstream name;
     for (auto &op : this->ops) {
-        name += op->name + ";";
+        name << op->name << ";";
     }
-    return name;
+    return name.str();
 }
 
 OpGraph::OpGraph(const Model &model)
@@ -265,6 +265,10 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
         auto &ops = boundary_node->ops;
         producer->ops.insert(producer->ops.end(), ops.begin(), ops.end());
         producer->users = boundary_node->users;
+        for (auto &user : producer->users) {
+            user->producers.erase(boundary_node);
+            user->producers.insert(producer);
+        }
 
         // Remove `boundary_node` from `nodes`.
         auto it =
@@ -293,7 +297,7 @@ OpNode *OpGraph::break_node(OpNode *node, int op_idx)
         LOG(ERROR, "unexpected error: op_idx out of range");
     }
     this->nodes_storage.emplace_back(std::make_unique<OpNode>());
-    auto new_node = this->nodes_storage.back().get();
+    OpNode *new_node = this->nodes_storage.back().get();
     new_node->ops.insert(new_node->ops.end(), node->ops.begin() + op_idx,
                          node->ops.end());
     new_node->users = node->users;

@@ -150,16 +150,7 @@ const LogLevel &get_log_level();
     } while (0)
 
 //
-#ifdef NDEBUG
-#define LOG(level, ...)                                                        \
-    do {                                                                       \
-        if (level != ark::DEBUG) {                                             \
-            LOG_(level, __VA_ARGS__);                                          \
-        }                                                                      \
-    } while (0)
-#else
 #define LOG(level, ...) LOG_(level, __VA_ARGS__)
-#endif
 
 // Logging of an error message and exit.
 #define LOGERR(...)                                                            \
