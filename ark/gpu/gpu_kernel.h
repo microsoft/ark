@@ -81,7 +81,7 @@ class GpuLoopKernel : public GpuKernel
                   const std::vector<std::string> &codes_body,
                   unsigned int num_sm, unsigned int num_warp,
                   unsigned int smem_bytes, const std::string &cubin,
-                  GpuMgrCtx *ctx, unsigned int num_depths);
+                  GpuMgrCtx *ctx);
 
     void compile(const GpuInfo &gpu_info);
     GpuState launch(CUstream stream, bool disable_timing = true);
@@ -92,10 +92,6 @@ class GpuLoopKernel : public GpuKernel
     void stop();
 
     void set_buf(GpuPtr buf_ptr);
-    const unsigned int &get_num_depths() const
-    {
-        return num_depths;
-    }
     const float &get_elapsed_msec() const
     {
         return elapsed_msec;
@@ -107,7 +103,6 @@ class GpuLoopKernel : public GpuKernel
 
   private:
     GpuMgrCtx *ctx;
-    unsigned int num_depths;
     GpuEvent timer_begin;
     GpuEvent timer_end;
 

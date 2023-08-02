@@ -1,440 +1,311 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "json.h"
-#include <algorithm>
-#include <cassert>
-#include <fstream>
-#include <initializer_list>
-#include <ostream>
-#include <unistd.h>
-
-#include "env.h"
-#include "logging.h"
-#include "math.h"
-#include "model.h"
 #include "sched/sched_opgraph.h"
+#include "logging.h"
+#include "model.h"
+#include <algorithm>
 
 using namespace std;
 
+#define DEBUG_OPGRAPH 0
+#define OPGRAPH_DEBUG(...)                                                     \
+    do {                                                                       \
+        if (DEBUG_OPGRAPH) {                                                   \
+            LOG(DEBUG, __VA_ARGS__);                                           \
+        }                                                                      \
+    } while (0);
+
 namespace ark {
 
-/// Construct an @ref OpGraph from a @ref Model.
-///
-/// The @ref OpGraph is a DAG of operators, where each @ref OpGraphNode is a
-/// node. The edges are the dependencies between @ref OpGraphNode.
-///
-/// @param model The @ref Model.
-/// @param gpu_info @ref GpuInfo of the GPU to run the model on.
-///
-OpGraph::OpGraph(const Model &model, const GpuInfo &gpu_info)
+void OpNode::remove_self()
 {
-    int opseq_id = 0;
-    set<const Op *> seen;
-    std::list<std::list<OpGraphNode *>> tmp_depth_nodes;
-    tmp_depth_nodes.emplace_front();
-    list<OpGraphNode *> *depth = &(tmp_depth_nodes.front());
-    {
-        set<Tensor *> final_outputs;
-        for (auto &tns : model.impl->get_tensors()) {
-            if (model.impl->is_no_ref(tns)) {
-                final_outputs.emplace(tns);
-            }
-        }
-        for (Tensor *out : final_outputs) {
-            const Op *op = model.impl->get_gen_op(out);
-            if (op != nullptr) {
-                const OpConfig *cfg = sched_op_config(op, gpu_info);
-                OpGraphNode *ogn =
-                    this->get_or_create_node(opseq_id++, op, cfg);
-                // LOG(INFO, "OGN: ", ogn);
-                depth->emplace_back(ogn);
-                seen.emplace(op);
-                // LOG(DEBUG, "retrieve: final op ", op->type);
-            }
-        }
+    // Remove self from users and producers.
+    for (auto &user : this->users) {
+        user->producers.erase(this);
     }
-    while (depth->size() > 0) {
-        list<OpGraphNode *> *depth_prev = depth;
-        tmp_depth_nodes.emplace_front();
-        depth = &(tmp_depth_nodes.front());
-        // LOG(INFO, "NEXT DEPTH -----------------------");
-
-        set<const Op *> seen_tmp;
-        auto it = depth_prev->begin();
-        for (; it != depth_prev->end(); ++it) {
-            SchedOpSeq &opseq = (*it)->opseq;
-            // LOG(INFO, "retrieve: ", *it, ", last op ",
-            //     (*it)->opseq.get_last_op()->type, " ",
-            //     (*it)->opseq.get_last_op()->name);
-            for (;;) {
-                // Get all Ops of which results are used only by seen Ops
-                // and at least one result is used by `opseq.back()`. If there
-                // is only one such Op, it can be merged into `opseq` unless
-                // this Op requires a global sync after execution or `opseq`
-                // requires a global sync before execution.
-                set<const Op *> dep_ops;
-                for (Tensor *tns : opseq.get_last_op()->in_deps) {
-                    const Op *op = model.impl->get_gen_op(tns);
-                    if (op == nullptr) {
-                        // No Op generates this tensor.
-                        continue;
-                    }
-                    // Ignore if any output of `op` is referred by an unseen Op.
-                    bool is_only = true;
-                    for (auto &out_tns : op->out_deps) {
-                        if (model.impl->is_no_ref(out_tns)) {
-                            // `out_tns` is used nowhere. (pass)
-                            continue;
-                        }
-                        for (auto &ref_op : model.impl->get_ref_ops(out_tns)) {
-                            auto search = seen.find(ref_op);
-                            if (search == seen.end()) {
-                                // `out_tns` is used by an unseen Op. (fail)
-                                is_only = false;
-                                break;
-                            }
-                            // `out_tns` is used by a seen Op. (pass)
-                        }
-                        if (!is_only) {
-                            break;
-                        }
-                    }
-                    if (is_only) {
-                        dep_ops.emplace(op);
-                        // LOG(DEBUG, "retrieve: dep op ", op->name);
-                    }
-                }
-                // If there is only one such Op, check if this can be
-                // merged into `opseq`.
-                if (dep_ops.size() == 1) {
-                    const Op *op = *dep_ops.begin();
-                    const OpConfig *cfg = sched_op_config(op, gpu_info);
-                    // Cannot merge if `opseq` needs a global sync.
-                    const OpConfig *prev_op_cfg =
-                        opseq.get_sched_ops().back().get_cfg();
-                    bool can_merge = true;
-                    if (cfg != nullptr && cfg->sync_post) {
-                        can_merge = false;
-                    }
-                    if (prev_op_cfg != nullptr && prev_op_cfg->sync_pre) {
-                        can_merge = false;
-                    }
-                    if (can_merge) {
-                        // Get all Ops which depends on results of `op`.
-                        set<const Op *> out_dep_ops;
-                        for (auto &out_tns : op->out_deps) {
-                            if (model.impl->is_no_ref(out_tns)) {
-                                continue;
-                            }
-                            for (auto &ref_op :
-                                 model.impl->get_ref_ops(out_tns)) {
-                                out_dep_ops.emplace(ref_op);
-                            }
-                        }
-                        // If both `op` and `opseq` are not virtual,
-                        // the batch size should be the same.
-                        if ((cfg == nullptr) || (opseq.is_virtual()) ||
-                            (opseq.get_tdim_z() == op->out_deps[0]->shape[0])) {
-                            // Check if all Ops in `out_dep_ops` are in `opseq`.
-                            // If so, we can merge `op` into `opseq`.
-                            for (auto &sop : opseq.get_sched_ops()) {
-                                auto search = out_dep_ops.find(sop.get_op());
-                                if (search != out_dep_ops.end()) {
-                                    out_dep_ops.erase(search);
-                                }
-                                if (out_dep_ops.size() == 0) {
-                                    break;
-                                }
-                            }
-                            if (out_dep_ops.size() == 0) {
-                                // Try merge and continue if succeed.
-                                if (opseq.append(
-                                        op, sched_op_config(op, gpu_info))) {
-                                    auto p = seen.emplace(op);
-                                    assert(p.second);
-                                    this->op_to_node_map[op] = *it;
-                                    // LOG(DEBUG, "retrieve: merge");
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                } else if (dep_ops.size() > 1 && opseq.is_virtual()) {
-                    // Ignore current `opseq` and continue on its dependencies
-                    // instead.
-                    for (const Op *op : dep_ops) {
-                        auto p = seen.emplace(op);
-                        if (!p.second) {
-                            continue;
-                        }
-                        const OpConfig *cfg = sched_op_config(op, gpu_info);
-                        OpGraphNode *ogn =
-                            this->get_or_create_node(opseq_id++, op, cfg);
-                        // stringstream ssod;
-                        // for (auto &od : (*it)->out_deps) {
-                        //     ssod << od << ",";
-                        // }
-                        // LOG(INFO, "OGN: ", ogn, " --> ", ssod.str());
-                        depth_prev->emplace_back(ogn);
-                        //
-                        ogn->out_deps.insert((*it)->out_deps.begin(),
-                                             (*it)->out_deps.end());
-                        for (auto &od : (*it)->out_deps) {
-                            od->in_deps.insert(ogn);
-                        }
-                    }
-                    break;
-                }
-                // Put `dep_ops` into `depth` and `seen`, and break.
-                for (const Op *op : dep_ops) {
-                    auto p = seen_tmp.emplace(op);
-                    const OpConfig *cfg = sched_op_config(op, gpu_info);
-                    if (p.second) {
-                        OpGraphNode *ogn =
-                            this->get_or_create_node(opseq_id++, op, cfg);
-                        depth->emplace_back(ogn);
-                        //
-                        (*it)->in_deps.emplace(ogn);
-
-                        for (Tensor *tns : op->out_deps) {
-                            for (const Op *out_dep :
-                                 model.impl->get_ref_ops(tns)) {
-                                OpGraphNode *out_dep_node =
-                                    this->get_node(out_dep);
-                                assert(out_dep_node != nullptr);
-                                // LOG(INFO, "OGN: ", ogn, " --> ",
-                                // out_dep_node);
-                                out_dep_node->in_deps.insert(ogn);
-                                ogn->out_deps.insert(out_dep_node);
-                            }
-                        }
-                    } else {
-                        OpGraphNode *ogn = this->get_node(op);
-                        assert(ogn != nullptr);
-                        // LOG(INFO, "OGN: ", ogn, " --> ", *it);
-                        //
-                        ogn->out_deps.emplace(*it);
-                        (*it)->in_deps.emplace(ogn);
-                    }
-                }
-                break;
-            }
-        }
-        //
-        seen.insert(seen_tmp.begin(), seen_tmp.end());
-        if (depth_prev->size() == 0) {
-            // this->depth_nodes.erase(next(this->depth_nodes.begin()));
-            // LOG(DEBUG, "retrieve: ---------- next depth");
-        }
+    for (auto &producer : this->producers) {
+        producer->users.erase(this);
     }
-
-    for (auto &depth : tmp_depth_nodes) {
-        // Remove virtual operations.
-        for (auto it = depth.begin(); it != depth.end();) {
-            if ((*it)->opseq.is_virtual()) {
-                // LOG(INFO, "Remove OGN: ", *it);
-                for (OpGraphNode *out_dep : (*it)->out_deps) {
-                    for (OpGraphNode *in_dep : (*it)->in_deps) {
-                        in_dep->out_deps.emplace(out_dep);
-                        out_dep->in_deps.emplace(in_dep);
-                    }
-                }
-                for (OpGraphNode *out_dep : (*it)->out_deps) {
-                    out_dep->in_deps.erase(*it);
-                }
-                for (OpGraphNode *in_dep : (*it)->in_deps) {
-                    in_dep->out_deps.erase(*it);
-                }
-                it = depth.erase(it);
-            } else {
-                ++it;
-            }
+    // Connect users and producers.
+    for (auto &user : this->users) {
+        for (auto &producer : this->producers) {
+            user->producers.insert(producer);
+            producer->users.insert(user);
         }
-    }
-
-    int depth_num = 0;
-    for (auto &depth : tmp_depth_nodes) {
-        // LOG(INFO, "Depth ", depth_num, " -------------------- ");
-        for (OpGraphNode *ogn : depth) {
-            ogn->depth = depth_num;
-            // stringstream info;
-            // for (OpGraphNode *x : ogn->in_deps) {
-            //     info << x << ",";
-            // }
-            // info << " --> " << ogn << " --> ";
-            // for (OpGraphNode *x : ogn->out_deps) {
-            //     info << x << ",  ";
-            // }
-            // for (const SchedOp& sop : ogn->opseq.get_sched_ops()) {
-            //     info << sop.func_string();
-            // }
-            // LOG(INFO, info.str());
-        }
-        ++depth_num;
-    }
-
-    int depth_to_migrate = 0;
-    auto it1 = tmp_depth_nodes.begin();
-    for (; it1 != tmp_depth_nodes.end(); ++it1) {
-        for (auto it2 = next(it1); it2 != tmp_depth_nodes.end(); ++it2) {
-            list<OpGraphNode *> &logn = *it2;
-            for (auto oi = logn.begin(); oi != logn.end();) {
-                OpGraphNode *ogn = *oi;
-                bool can_migrate = true;
-                for (OpGraphNode *in_dep : ogn->in_deps) {
-                    if (in_dep->depth >= depth_to_migrate) {
-                        can_migrate = false;
-                        break;
-                    }
-                }
-                if (can_migrate) {
-                    // LOG(INFO, "migrate ", ogn, " to depth ",
-                    // depth_to_migrate); for (OpGraphNode *in_dep :
-                    // ogn->in_deps) {
-                    //     LOG(INFO, "  in_dep: ", in_dep, ", depth ",
-                    //     in_dep->depth);
-                    // }
-                    it1->emplace_back(ogn);
-                    ogn->depth = depth_to_migrate;
-                    oi = logn.erase(oi);
-                } else {
-                    ++oi;
-                }
-            }
-        }
-        ++depth_to_migrate;
-    }
-    auto it = tmp_depth_nodes.begin();
-    for (; it != tmp_depth_nodes.end();) {
-        if (it->size() == 0) {
-            it = tmp_depth_nodes.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    depth_num = 0;
-    for (auto &depth : tmp_depth_nodes) {
-        // LOG(INFO, "Depth ", depth_num, " -------------------- ");
-        for (OpGraphNode *ogn : depth) {
-            ogn->depth = depth_num;
-            // stringstream info;
-            // for (OpGraphNode *x : ogn->in_deps) {
-            //     info << x << ",";
-            // }
-            // info << " --> " << ogn << " --> ";
-            // for (OpGraphNode *x : ogn->out_deps) {
-            //     info << x << ",  ";
-            // }
-            // for (const SchedOp& sop : ogn->opseq.get_sched_ops()) {
-            //     info << sop.func_string();
-            // }
-            // LOG(INFO, info.str());
-        }
-        ++depth_num;
-    }
-
-    //
-    set<OpGraphNode *> seen2;
-    vector<vector<OpGraphNode *>> new_depth_nodes;
-    new_depth_nodes.emplace_back();
-
-    bool comm_found = false;
-    for (auto it = tmp_depth_nodes.begin(); it != tmp_depth_nodes.end(); ++it) {
-        set<OpGraphNode *> seen2_tmp;
-        vector<OpGraphNode *> others;
-        for (OpGraphNode *ogn : *it) {
-            //
-            bool resolved = true;
-            for (OpGraphNode *in_dep : ogn->in_deps) {
-                if (seen2.find(in_dep) == seen2.end()) {
-                    resolved = false;
-                    break;
-                }
-            }
-            if (!resolved) {
-                if (next(it) == tmp_depth_nodes.end()) {
-                    tmp_depth_nodes.emplace_back();
-                }
-                next(it)->emplace_back(ogn);
-                continue;
-            }
-            //
-            // if (ogn->opseq.is_send() || ogn->opseq.is_recv()) {
-            //     comm_found = true;
-            // }
-            if (ogn->opseq.is_send() || ogn->opseq.is_recv() ||
-                ogn->opseq.is_send_done() ||
-                (ogn->opseq.get_last_op()->type != OP_MATMUL)) {
-                new_depth_nodes.back().emplace_back(ogn);
-                seen2_tmp.emplace(ogn);
-            } else {
-                others.emplace_back(ogn);
-            }
-        }
-        if (comm_found) {
-            if (others.size() > 0) {
-                int idx = (int)others.size() - 1;
-                for (auto it = others.rbegin(); it != others.rend(); ++it) {
-                    if ((*it)->opseq.get_last_op()->type == OP_MATMUL) {
-                        break;
-                    }
-                    --idx;
-                }
-                if (idx < 0) {
-                    idx = (int)others.size() - 1;
-                }
-
-                new_depth_nodes.back().emplace_back(others[idx]);
-                seen2_tmp.emplace(others[idx]);
-                if (next(it) == tmp_depth_nodes.end()) {
-                    tmp_depth_nodes.emplace_back();
-                }
-                for (int i = 0; i < (int)others.size(); ++i) {
-                    if (i == idx) {
-                        continue;
-                    }
-                    next(it)->emplace_back(others[i]);
-                }
-            }
-            if (seen2_tmp.size() > 0) {
-                seen2.insert(seen2_tmp.begin(), seen2_tmp.end());
-                if (new_depth_nodes.back().size() > 0) {
-                    new_depth_nodes.emplace_back();
-                }
-            }
-        } else {
-            seen2.insert(seen2_tmp.begin(), seen2_tmp.end());
-            seen2.insert(others.begin(), others.end());
-            new_depth_nodes.back().insert(new_depth_nodes.back().end(),
-                                          others.begin(), others.end());
-            new_depth_nodes.emplace_back();
-        }
-    }
-    this->depth_nodes = new_depth_nodes;
-
-    depth_num = 0;
-    for (auto &depth : this->depth_nodes) {
-        // LOG(INFO, "Depth ", depth_num, " -------------------- ");
-        for (OpGraphNode *ogn : depth) {
-            ogn->depth = depth_num;
-            // stringstream info;
-            // for (OpGraphNode *x : ogn->in_deps) {
-            //     info << x << ",";
-            // }
-            // info << " --> " << ogn << " --> ";
-            // for (OpGraphNode *x : ogn->out_deps) {
-            //     info << x << ",  ";
-            // }
-            // for (const SchedOp &sop : ogn->opseq.get_sched_ops()) {
-            //     info << sop.func_string();
-            // }
-            // LOG(INFO, info.str());
-        }
-        ++depth_num;
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
+std::string OpNode::get_name() const
+{
+    std::string name;
+    for (auto &op : this->ops) {
+        name += op->name + ";";
+    }
+    return name;
+}
+
+OpGraph::OpGraph(const Model &model)
+{
+    if (!model.verify()) {
+        LOG(ERROR, "Model verification failed");
+    }
+    this->create_nodes(model);
+}
+
+OpGraph::OpGraph(OpGraph &graph)
+{
+    // Copy nodes_storage
+    *this = graph;
+}
+
+OpGraph &OpGraph::operator=(const OpGraph &graph)
+{
+    // Copy nodes_storage
+    this->nodes_storage.clear();
+    for (auto &node : graph.nodes_storage) {
+        this->nodes_storage.emplace_back(std::make_unique<OpNode>());
+        this->nodes_storage.back()->ops = node->ops;
+        this->nodes_storage.back()->users = node->users;
+        this->nodes_storage.back()->producers = node->producers;
+    }
+    return *this;
+}
+
+/// Traverse the model graph and merge Ops that one of them is the only
+/// user of the other and the other is the only producer of the first.
+///
+/// @param model The @ref Model.
+///
+void OpGraph::create_nodes(const Model &model)
+{
+    std::list<OpNode *> leaf_nodes;
+    std::map<const Op *, OpNode *> op2node;
+    // Initialize OpNode.
+    OPGRAPH_DEBUG("initialize OpNode. ", model.impl->get_ops().size(), " ops");
+    for (auto &op : model.impl->get_ops()) {
+        this->nodes_storage.emplace_back(std::make_unique<OpNode>());
+        this->nodes_storage.back()->ops.emplace_back(op);
+        op2node[op] = this->nodes_storage.back().get();
+        if (model.impl->get_user_ops(op).size() == 0) {
+            leaf_nodes.emplace_back(this->nodes_storage.back().get());
+        }
+    }
+    // Complete producers and users of OpNode.
+    for (auto &node : this->nodes_storage) {
+        // As nothing is merged yet, all OpNode should have only one Op.
+        Op *op = node->ops[0];
+        OPGRAPH_DEBUG("node ", op->name);
+        for (auto &producer_op : model.impl->get_producer_ops(op)) {
+            node->producers.insert(op2node[producer_op]);
+            OPGRAPH_DEBUG("  producer ", producer_op->name);
+        }
+        for (auto &user_op : model.impl->get_user_ops(op)) {
+            node->users.insert(op2node[user_op]);
+            OPGRAPH_DEBUG("  user ", user_op->name);
+        }
+    }
+
+    std::set<OpNode *> seen_nodes;
+
+    // Remove virtual Ops.
+    recursive_rm_virt(this->nodes_storage, seen_nodes, leaf_nodes);
+    seen_nodes.clear();
+
+    // Recreate leaf_nodes.
+    leaf_nodes.clear();
+    for (auto &node : this->nodes_storage) {
+        if (node->users.empty()) {
+            leaf_nodes.emplace_back(node.get());
+        }
+    }
+
+    // Merge Ops.
+    recursive_merge(this->nodes_storage, seen_nodes, leaf_nodes);
+}
+
+/// Helper of @ref create_nodes().
+/// Traverse the model graph and remove virtual Ops that perform no computation.
+///
+/// @param nodes The list of @ref OpNode.
+/// @param boundary_nodes The list of boundary @ref OpNode.
+///
+void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
+                                std::set<OpNode *> &seen_nodes,
+                                const std::list<OpNode *> &boundary_nodes)
+{
+    if (boundary_nodes.size() == 0) {
+        return;
+    }
+    OPGRAPH_DEBUG("remove virtual ops");
+    std::list<OpNode *> new_boundary_nodes;
+    for (auto &boundary_node : boundary_nodes) {
+        if (boundary_node->ops.size() != 1) {
+            LOG(ERROR, "unexpected error");
+        }
+        OPGRAPH_DEBUG("  boundary node");
+        OPGRAPH_DEBUG("    op: ", boundary_node->get_name());
+        for (auto &producer : boundary_node->producers) {
+            // Exception: if any user of the producer (rather than the current
+            // boundary_node) is unseen, we should not add the producer to the
+            // next boundary.
+            bool should_add = true;
+            for (auto &user : producer->users) {
+                if (user == boundary_node) {
+                    continue;
+                }
+                if (seen_nodes.find(user) == seen_nodes.end()) {
+                    should_add = false;
+                    break;
+                }
+            }
+            if (!should_add) {
+                continue;
+            }
+            if (seen_nodes.find(producer) != seen_nodes.end()) {
+                LOG(ERROR, "unexpected error: circular dependency detected");
+            }
+            OPGRAPH_DEBUG("      added ", producer->get_name(),
+                          " to next boundary");
+            new_boundary_nodes.emplace_back(producer);
+        }
+        if (boundary_node->ops[0]->is_virtual()) {
+            OPGRAPH_DEBUG("    remove op: ", boundary_node->get_name());
+            // Remove this node from the graph.
+            boundary_node->remove_self();
+            // Remove this node from the list of nodes.
+            auto it = std::find_if(
+                nodes.begin(), nodes.end(),
+                [boundary_node](const std::unique_ptr<OpNode> &node) {
+                    return node.get() == boundary_node;
+                });
+            if (it == nodes.end()) {
+                LOG(ERROR, "unexpected error");
+            }
+            nodes.erase(it);
+            OPGRAPH_DEBUG("      nodes.size() ", nodes.size());
+        } else {
+            seen_nodes.insert(boundary_node);
+        }
+    }
+    recursive_rm_virt(nodes, seen_nodes, new_boundary_nodes);
+}
+
+/// Helper of @ref create_nodes().
+/// Traverse the model graph and merge pairs of Ops that are the only user
+/// and producer of each other.
+///
+/// @param nodes The list of @ref OpNode.
+/// @param seen_nodes The set of @ref OpNode that have been seen.
+/// @param boundary_nodes The list of boundary @ref OpNode.
+///
+void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
+                              std::set<OpNode *> &seen_nodes,
+                              const std::list<OpNode *> &boundary_nodes)
+{
+    if (boundary_nodes.size() == 0) {
+        return;
+    }
+    OPGRAPH_DEBUG("merge ops");
+    std::list<OpNode *> new_boundary_nodes;
+    for (auto &boundary_node : boundary_nodes) {
+        OPGRAPH_DEBUG("  boundary node");
+        OPGRAPH_DEBUG("    op: ", boundary_node->get_name());
+        if (boundary_node->producers.size() == 0) {
+            // This node is a root.
+            seen_nodes.insert(boundary_node);
+            OPGRAPH_DEBUG("    root");
+            continue;
+        }
+        // Add all producers of this node to the next boundary.
+        for (auto &producer : boundary_node->producers) {
+            // Exception: if any user of the producer (rather than the current
+            // boundary_node) is unseen, we should not add the producer to the
+            // next boundary.
+            bool should_add = true;
+            for (auto &user : producer->users) {
+                if (user == boundary_node) {
+                    continue;
+                }
+                if (seen_nodes.find(user) == seen_nodes.end()) {
+                    should_add = false;
+                    break;
+                }
+            }
+            if (!should_add) {
+                continue;
+            }
+            if (seen_nodes.find(producer) != seen_nodes.end()) {
+                LOG(ERROR, "unexpected error: circular dependency detected");
+            }
+            new_boundary_nodes.emplace_back(producer);
+        }
+        if (boundary_node->producers.size() > 1) {
+            // This node has multiple producers. It cannot be merged.
+            seen_nodes.insert(boundary_node);
+            OPGRAPH_DEBUG("    multiple producers");
+            continue;
+        }
+        // This node has only one producer.
+        OpNode *producer = *(boundary_node->producers.begin());
+        if (producer->users.size() == 0) {
+            LOG(ERROR, "unexpected error: graph is incomplete");
+        }
+        if (producer->users.size() > 1) {
+            // The producer has multiple users. It cannot be merged.
+            seen_nodes.insert(boundary_node);
+            OPGRAPH_DEBUG("    multiple users");
+            continue;
+        }
+        // The producer has only one user. Merge the two nodes.
+
+        // Merge `boundary_node` into `producer`.
+        OPGRAPH_DEBUG("  merge ops: ", producer->get_name(), " -> ",
+                      boundary_node->get_name());
+        auto &ops = boundary_node->ops;
+        producer->ops.insert(producer->ops.end(), ops.begin(), ops.end());
+        producer->users = boundary_node->users;
+
+        // Remove `boundary_node` from `nodes`.
+        auto it =
+            std::find_if(nodes.begin(), nodes.end(),
+                         [boundary_node](const std::unique_ptr<OpNode> &node) {
+                             return node.get() == boundary_node;
+                         });
+        if (it == nodes.end()) {
+            LOG(ERROR, "unexpected error");
+        }
+        nodes.erase(it);
+
+        // Since producer is already in the next boundary and boundary_node is
+        // merged into producer, we don't need to add anything to
+        // seen_nodes here.
+    }
+    recursive_merge(nodes, seen_nodes, new_boundary_nodes);
+}
+
+OpNode *OpGraph::break_node(OpNode *node, int op_idx)
+{
+    if (op_idx == 0) {
+        return node;
+    }
+    if (op_idx < 0 || op_idx >= (int)node->ops.size()) {
+        LOG(ERROR, "unexpected error: op_idx out of range");
+    }
+    this->nodes_storage.emplace_back(std::make_unique<OpNode>());
+    auto new_node = this->nodes_storage.back().get();
+    new_node->ops.insert(new_node->ops.end(), node->ops.begin() + op_idx,
+                         node->ops.end());
+    new_node->users = node->users;
+    new_node->producers.insert(node);
+    for (auto &user : node->users) {
+        user->producers.erase(node);
+        user->producers.insert(new_node);
+    }
+    node->ops.erase(node->ops.begin() + op_idx, node->ops.end());
+    node->users.clear();
+    node->users.insert(new_node);
+    return new_node;
+}
+
 } // namespace ark

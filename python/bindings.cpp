@@ -79,11 +79,12 @@ PYBIND11_MODULE(_ark_core, m)
             return os.str();
         });
 
-    py::enum_<ark::TensorType>(m, "TensorType",
-                               "Type of tensor data, FP16, FP32, or INT32")
+    py::enum_<ark::TensorType>(
+        m, "TensorType", "Type of tensor data. FP16, FP32, INT32, or BYTE")
         .value("FP16", ark::TensorType::FP16)
         .value("FP32", ark::TensorType::FP32)
         .value("INT32", ark::TensorType::INT32)
+        .value("BYTE", ark::TensorType::BYTE)
         .export_values();
 
     py::class_<ark::TensorBuf>(m, "TensorBuf",
@@ -98,10 +99,10 @@ PYBIND11_MODULE(_ark_core, m)
     py::class_<ark::Tensor>(m, "Tensor")
         .def(py::init<const ark::Dims &, ark::TensorType, ark::TensorBuf *,
                       const ark::Dims &, const ark::Dims &, const ark::Dims &,
-                      bool, bool, int, const std::string &>(),
+                      bool, int, int, const std::string &>(),
              py::arg("shape"), py::arg("type"), py::arg("buf"),
              py::arg("ldims"), py::arg("offs"), py::arg("pads"),
-             py::arg("exported"), py::arg("imported"), py::arg("id"),
+             py::arg("exported"), py::arg("imported_rank"), py::arg("id"),
              py::arg("name"))
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
@@ -131,7 +132,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("ldims") = ark::Dims(), py::arg("offs") = ark::Dims(),
              py::arg("pads") = ark::Dims(),
              py::arg("deps") = std::vector<ark::Tensor *>(),
-             py::arg("exported") = false, py::arg("imported") = false,
+             py::arg("exported") = false, py::arg("imported_rank") = -1,
              py::arg("name") = "tensor")
         .def("reshape",
              (ark::Tensor * (ark::Model::*)(ark::Tensor *, const ark::Dims &,

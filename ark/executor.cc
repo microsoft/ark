@@ -35,23 +35,23 @@ Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
     const GpuInfo &ginfo = mgr->get_gpu_info();
     if (get_env().scheduler == "Simple") {
         this->impl->sched =
-            new SimpleScheduler{gpu_id_, rank_, world_size_, model};
+            new SimpleScheduler{model, gpu_id_, rank_, world_size_};
     }
     if (get_env().scheduler == "Default") {
         this->impl->sched =
-            new DefaultScheduler{gpu_id_, rank_, world_size_, model};
+            new DefaultScheduler{model, gpu_id_, rank_, world_size_};
     }
 #ifdef USE_KAHYPAR
     if (get_env().scheduler == "Kahypar") {
         this->impl->sched =
-            new KahyparScheduler{gpu_id_, rank_, world_size_, model};
+            new KahyparScheduler{model, gpu_id_, rank_, world_size_};
     }
 #endif // USE_KAHYPAR
 
+    this->impl->sched->schedule();
     this->impl->ctx = this->impl->sched->create_context(name);
     this->impl->stream = this->impl->ctx->create_stream();
-    auto codes = this->impl->sched->schedule();
-    unsigned int num_depths = this->impl->sched->get_num_depths();
+    auto codes = this->impl->sched->gen_code();
 
     this->impl->glk = new GpuLoopKernel{name,
                                         codes,
@@ -59,8 +59,7 @@ Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
                                         (unsigned int)num_warps_per_sm_,
                                         (unsigned int)ginfo.smem_block_total,
                                         "",
-                                        this->impl->ctx,
-                                        num_depths};
+                                        this->impl->ctx};
 }
 
 // Destructor.

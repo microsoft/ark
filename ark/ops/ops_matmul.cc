@@ -30,12 +30,12 @@ MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
 
 std::string MatmulOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *mat_a = this->in_deps[0];
-    Tensor *mat_b = this->in_deps[1];
-    Tensor *mat_y = this->out_deps[0];
+    Tensor *mat_a = this->inputs[0];
+    Tensor *mat_b = this->inputs[1];
+    Tensor *mat_y = this->outputs[0];
 
     int ndims_y = mat_y->shape.ndims();
-    const OpTile &tile_out = cfg.out_deps_tiles[0];
+    const OpTile &tile_out = cfg.output_tiles[0];
     CHECK(mat_y->ldims[ndims_y - 1] % tile_out.y == 0);
     if (ndims_y > 1) {
         CHECK(mat_y->ldims[ndims_y - 2] % tile_out.x == 0);
@@ -73,8 +73,8 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
 
     // TODO: verify `leading_dims`
 
-    const OpTile &tile_in0 = cfg.in_deps_tiles[0];
-    const OpTile &tile_in1 = cfg.in_deps_tiles[1];
+    const OpTile &tile_in0 = cfg.input_tiles[0];
+    const OpTile &tile_in1 = cfg.input_tiles[1];
     CHECK(tile_in0.y == tile_in1.x);
     Dims shape{tile_out.x, tile_out.y, tile_in0.y};
 
@@ -230,8 +230,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         MatmulOp op{pt,      mat_a,        mat_b,        mat_y,   nca,
                     ncb,     problem_size, leading_dims, trans_a, trans_b,
                     is_relu, name,         gran_lev};
-        this->impl->add_op(op);
-        return mat_y;
+        return this->impl->add_op(op)[0];
     } else if (split_k > k) {
         LOGERR("Split-K given larger than the K dimension size.");
     }
@@ -285,13 +284,15 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     CHECK(mat_a_shards.size() == (size_t)split_k);
     CHECK(mat_b_shards.size() == (size_t)split_k);
 
+    std::vector<Tensor *> shard_outputs;
     for (DimType i = 0; i < split_k; ++i) {
-        this->matmul(mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1,
-                     trans_a, trans_b, false,
-                     name + "/matmul_shard_" + to_string(i), gran_lev);
+        Tensor *shard_output = this->matmul(
+            mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1, trans_a,
+            trans_b, false, name + "/matmul_shard_" + to_string(i), gran_lev);
+        shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
-    Tensor *ref = this->identity(output_buffer, mat_y_shards, nullptr,
+    Tensor *ref = this->identity(output_buffer, shard_outputs, nullptr,
                                  name + "/identity");
     Tensor *reduced = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
     if (is_relu) {

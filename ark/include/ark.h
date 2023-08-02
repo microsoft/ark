@@ -92,6 +92,7 @@ typedef enum
     FP16,
     FP32,
     INT32,
+    BYTE,
 } TensorType;
 
 // Tensor is a view of a TensorBuf.
@@ -108,7 +109,7 @@ struct Tensor
     // Tensor constructor
     Tensor(const Dims &shape, TensorType type, TensorBuf *buf,
            const Dims &ldims, const Dims &offs, const Dims &pads, bool exported,
-           bool imported, int id, const std::string &name);
+           int imported_rank, int id, const std::string &name);
     Tensor(const Tensor &) = default;
 
     void update_pads(const std::vector<DimType> &pads);
@@ -148,9 +149,9 @@ struct Tensor
     Dims pads;
     // Whether this tensor is accessed by remote devices
     bool exported;
-    // if imported is true, the tensor is imported from another GPU and don't
-    // need to allocate a TensorBuf for it.
-    bool imported;
+    // If imported_rank is non-negative, the tensor is imported from another GPU
+    // and don't need to allocate a TensorBuf for it.
+    int imported_rank;
     // Unique id of this tensor
     int id;
     // Name of this tensor
@@ -172,7 +173,7 @@ class Model
                    TensorBuf *buf = nullptr, const Dims &ldims = {},
                    const Dims &offs = {}, const Dims &pads = {},
                    const std::vector<Tensor *> &deps = {},
-                   bool exported = false, bool imported = false,
+                   bool exported = false, int imported_rank = -1,
                    const std::string &name = "tensor");
 
     Tensor *reshape(Tensor *input, const Dims &shape, bool allowzero = false,
@@ -318,6 +319,10 @@ class Model
     std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
                                      std::vector<Tensor *> output,
                                      const std::string &name);
+
+    /// Verify if this model is valid.
+    /// @return true if the model is valid, false otherwise.
+    bool verify() const;
 
   protected:
     class Impl;

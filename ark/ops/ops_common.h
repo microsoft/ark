@@ -17,7 +17,7 @@ namespace ark {
 /// @param dims2 The second shape.
 Dims broadcast(const Dims &dims1, const Dims &dims2);
 
-// Type of operator argument.
+/// Type of operator argument.
 typedef enum
 {
     OP_ARG_INT,
@@ -29,7 +29,7 @@ typedef enum
     OP_ARG_TENSOR,
 } OpArgType;
 
-// Stores an arbitrary type of argument given to an operator.
+/// Stores an arbitrary type of argument given to an operator.
 struct OpArg
 {
     OpArg(int arg);
@@ -50,7 +50,6 @@ struct OpArg
     void get(Dims *arg) const;
     void get(Tensor **arg) const;
 
-    //
     OpArgType type;
     void *val;
 
@@ -60,6 +59,7 @@ struct OpArg
 
 class Op;
 
+/// Stores a list of @ref OpArg.
 class OpArgs
 {
   public:
@@ -90,7 +90,7 @@ class OpArgs
     friend bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2);
 };
 
-// Type of operator.
+/// Type of @ref Op.
 typedef enum
 {
     OP_UNKNOWN = 0,
@@ -122,7 +122,7 @@ typedef enum
     OP_RECV_MM,
 } OpType;
 
-// Type of precision of operator.
+/// Type of precision of @ref Op.
 typedef enum
 {
     OP_PREC_NONE,
@@ -130,7 +130,7 @@ typedef enum
     OP_PREC_FP32,
 } OpPrecType;
 
-// Type of hardware architecture support.
+/// Type of hardware architecture support.
 typedef enum
 {
     OP_ARCH_CUDA_70,
@@ -139,25 +139,25 @@ typedef enum
 
 struct Tensor;
 
-// 2-dimensional op tile
+/// 2-dimensional op tile
 struct OpTile
 {
     DimType x;
     DimType y;
 };
 
-// Configurations for execution of an operation.
+/// Configurations for execution of a @ref Op.
 struct OpConfig
 {
     int num_warps = 0;
     int smem_bytes = 0;
-    std::vector<OpTile> in_deps_tiles;
-    std::vector<OpTile> out_deps_tiles;
+    std::vector<OpTile> input_tiles;
+    std::vector<OpTile> output_tiles;
     bool sync_pre = false;
     bool sync_post = false;
 };
 
-// Key to find a list of OpConfigs from OpConfigMap.
+/// Key to find a list of OpConfigs from OpConfigMap.
 struct OpConfigKey
 {
     OpArchType arch_type;
@@ -168,42 +168,78 @@ bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
 bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
-// Map from OpConfigKey to a list of OpConfigs.
+/// Map from OpConfigKey to a list of OpConfigs.
 using OpConfigMap = std::map<OpConfigKey, std::vector<OpConfig>>;
 
-// The operator of a model.
+/// Operator.
 class Op
 {
   public:
+    /// Construct an operator.
     Op() = default;
+
+    /// Construct an operator.
+    /// @param type the type of the @ref Op.
+    /// @param prec_type the precision type of the @ref Op.
+    /// @param inputs the input tensors of the @ref Op, including execution
+    /// dependencies.
+    /// @param output_refs the output reference tensors of the @ref Op. Output
+    /// tensors are created based on these references.
+    /// @param args the arguments of the @ref Op.
+    /// @param name the name of the @ref Op.
+    /// @param cfg_map the configuration map of the @ref Op
+    /// @param gran_lev the granularity level of the @ref Op. Larger values
+    /// should indicate finer-grained Ops. If it is -1, the granularity level
+    /// will be automatically determined by the scheduler.
+    /// @param force_inline whether to force inline the kernel of @ref Op.
     Op(const OpType &type, const OpPrecType &prec_type,
-       const std::vector<Tensor *> &in_deps,
-       const std::vector<Tensor *> &out_deps, const OpArgs &args,
+       const std::vector<Tensor *> &inputs,
+       const std::vector<Tensor *> &output_refs, const OpArgs &args,
        const std::string &name, const OpConfigMap *cfg_map = nullptr,
        int gran_lev = -1, bool force_inline = false);
+
+    /// Construct an operator.
     Op(const Op &) = default;
+
+    /// Destruct the operator.
     ~Op(){};
 
+    /// Return the kernel function name of the operator. Includes the template
+    /// arguments of the kernel, if any.
+    /// @param cfg the configuration of the operator.
+    /// @return the kernel function name of the operator.
     std::string function_name(const OpConfig &) const;
+
+    /// Return the kernel function's runtime arguments of the operator.
+    /// @param cfg the configuration of the operator.
+    /// @return the runtime arguments of the kernel function.
     OpArgs function_call_args(const OpConfig &) const;
 
-    //
+    /// Returns true if the operator is virtual (i.e., performs no computation).
+    bool is_virtual() const;
+
+    /// Returns true if the operator is a communication operator.
+    bool is_comm() const;
+
+    /// Type of the operator.
     OpType type;
-    // Precision type of the operator.
+    /// Precision type of the operator.
     OpPrecType prec_type;
-    // The input tensors of the operator.
-    std::vector<Tensor *> in_deps;
-    // The output tensors of the operator.
-    std::vector<Tensor *> out_deps;
-    // Additional arguments of the operator.
+    /// The input tensors of the operator.
+    std::vector<Tensor *> inputs;
+    /// The output tensors of the operator.
+    std::vector<Tensor *> outputs;
+    /// The reference tensors of the output tensors.
+    std::vector<Tensor *> output_refs;
+    /// Additional arguments of the operator.
     OpArgs args;
-    //
+    /// Name of the operator.
     std::string name;
-    //
+    /// Map from OpConfigKey to a list of OpConfigs.
     const OpConfigMap *cfg_map;
-    //
+    /// Granularity level of the operator.
     int gran_lev;
-    //
+    /// Force inlining of the operator kernel.
     bool force_inline;
 
     friend bool operator<(const Op &op1, const Op &op2);
@@ -215,6 +251,8 @@ class Op
 };
 
 std::ostream &operator<<(std::ostream &os, const OpType &s);
+
+/// List all operator classes below.
 
 class AddOp : public Op
 {
@@ -279,8 +317,8 @@ class ReduceOp : public Op
 {
   public:
     ReduceOp(const OpType &type, const OpPrecType &prec_type,
-             const std::vector<Tensor *> &in_deps,
-             const std::vector<Tensor *> &out_deps, const OpArgs &args,
+             const std::vector<Tensor *> &inputs,
+             const std::vector<Tensor *> &outputs, const OpArgs &args,
              const std::string &name, const OpConfigMap *cfg_map, int gran_lev);
 
   protected:
@@ -367,6 +405,7 @@ class SendMMOp : public Op
              Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
              size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
 class RecvMMOp : public Op
@@ -376,6 +415,7 @@ class RecvMMOp : public Op
              Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
              size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
 class SendOp : public Op

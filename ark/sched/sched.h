@@ -10,6 +10,7 @@
 #include "sched/sched_codegen.h"
 #include "sched/sched_opgraph.h"
 #include "sched/sched_profiler.h"
+#include "sched/sched_stream.h"
 
 namespace ark {
 
@@ -38,98 +39,73 @@ struct BufInfo
 class BaseScheduler
 {
   public:
-    BaseScheduler(const int gpu_id, int rank_, int world_size_, int wps_ = 16)
-        : gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_},
-          world_size{world_size_}, wps{wps_}
-    {
-    }
+    BaseScheduler(Model &model, int gpu_id, int rank_, int world_size_,
+                  int num_warps_per_sm_ = 16);
+
     // create context on gpu for the model
     GpuMgrCtx *create_context(const std::string &name);
+
+    GpuBuf *get_gpu_buf(Tensor *tns) const;
+
+    virtual void schedule() = 0;
+
     //
-    virtual std::vector<std::string> schedule() = 0;
-
-    virtual GpuBuf *get_gpu_buf(Tensor *tns) const = 0;
-    // the num of the depth is equal to the num of the op
-    virtual unsigned int get_num_depths() const = 0;
-
-    // This function is used to configure the TensorBuf. The TensorBuf is an
-    // abstraction of the GPU memory, it correspond to a memory region on the
-    // _ARK_BUF. This function will configure the allocation, import and export
-    // of the TensorBuf and stores the TensorBuf information in buf_infos for
-    // later use
-    virtual void configure_gpu_buf(
-        const std::list<Tensor *> &model_tensors) = 0;
+    virtual std::vector<std::string> gen_code() = 0;
 
   protected:
+    Model *model;
     GpuMgr *gpu_mgr;
+    int rank;
+    int world_size;
+    int num_warps_per_sm;
+    std::unique_ptr<CodeGenerator> codegen;
+
+    std::vector<std::unique_ptr<SchedOpSeq>> opseqs;
 
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
+
     // map from TensorBuf to gpu buffer, the TensorBuf is an abstract of the
     // data buffer in the model layer, and the GpuBuf is the real buffer in the
     // GPU address space
     std::map<TensorBuf *, GpuBuf *> buf_trans;
 
     std::vector<const Op *> send_recv_ops;
+
     GpuMgrCtx *ctx;
-    int rank;
-    int world_size;
-    int wps;
 };
 
 class SimpleScheduler : public BaseScheduler
 {
   public:
-    SimpleScheduler(const int gpu_id, int rank_, int world_size_,
-                    const Model &model, int wps_ = 16);
-    void create_sched_opseq(const Model &model, const GpuInfo &gpu_info);
+    SimpleScheduler(Model &model, int gpu_id, int rank, int world_size,
+                    int num_warps_per_sm = 16);
 
-    std::vector<std::string> schedule();
+    void schedule();
 
-    GpuBuf *get_gpu_buf(Tensor *tns) const;
-    // the num of the depth is equal to the num of the op
-    unsigned int get_num_depths() const
-    {
-        return sched_opseqs.size();
-    }
-    std::vector<SchedOp> &get_sched_ops()
-    {
-        return sched_ops;
-    }
-    unsigned int get_num_sched_ops()
-    {
-        return sched_ops.size();
-    }
-    std::vector<SchedOpSeq> &get_sched_opseqs()
-    {
-        return sched_opseqs;
-    }
-    void schedule_sched_opseq(SchedOpSeq &sop, int max_wps, int max_sm_num,
-                              std::vector<Sched> &scheds);
+    std::vector<std::string> gen_code();
+
+  private:
     // This function is used to configure the TensorBuf. The TensorBuf is an
     // abstraction of the GPU memory, it correspond to a memory region on the
     // _ARK_BUF. This function will configure the allocation, import and export
     // of the TensorBuf and stores the TensorBuf information in buf_infos for
     // later use
     void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
+    void schedule_sched_opseq(SchedOpSeq &sop, int max_wps, int max_sm_num,
+                              std::vector<Sched> &scheds);
 
-  private:
-    std::vector<SchedOpSeq> sched_opseqs;
     std::vector<SchedOp> sched_ops;
-
-    std::unique_ptr<SimpleCodeGenerator> codegen;
-    // DefaultCodeGenerator scg;
 };
 
 class DefaultScheduler : public BaseScheduler
 {
   public:
-    DefaultScheduler(const int gpu_id, int rank_, int world_size_, Model &model,
-                     int wps = 16);
+    DefaultScheduler(Model &model, int gpu_id, int rank_, int world_size_,
+                     int num_warps_per_sm = 16);
 
-    std::vector<std::string> schedule();
-    GpuBuf *get_gpu_buf(Tensor *tns) const;
-    unsigned int get_num_depths() const;
+    std::vector<std::string> gen_code();
+    void schedule();
 
   protected:
     void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
@@ -143,20 +119,21 @@ class DefaultScheduler : public BaseScheduler
                                    Op &matmul_op, const GpuInfo &gpu_info,
                                    int num_sm);
 
-    size_t dbytes;
-    OpGraph *op_graph;
+  private:
+    void recursive_schedule(std::list<OpNode *> &nodes,
+                            std::set<OpNode *> &seen_nodes);
 
-    const std::string model_path = "model.json";
-    std::unique_ptr<DefaultCodeGenerator> codegen;
-    unsigned int wps;
+    std::unique_ptr<OpGraph> op_graph;
+    std::vector<std::unique_ptr<SchedStream>> comp_stream;
+    std::vector<std::unique_ptr<SchedStream>> comm_stream;
 };
 
 class KahyparScheduler : public DefaultScheduler
 {
   public:
     KahyparScheduler(const int gpu_id, int rank_, int world_size_,
-                     const Model &model, unsigned int wps = 16);
-    std::vector<std::string> schedule();
+                     const Model &model, unsigned int num_warps_per_sm = 16);
+    std::vector<std::string> gen_code();
 
   private:
     std::vector<Sched> simplify_sched(std::vector<Sched> &original_scheds);

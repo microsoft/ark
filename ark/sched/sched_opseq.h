@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <map>
+#include <sstream>
 #include <string>
 #include <tuple>
 
@@ -13,6 +14,7 @@
 #include "sched/sched_op.h"
 
 namespace ark {
+
 class SchedOpSeq
 {
   public:
@@ -30,6 +32,16 @@ class SchedOpSeq
     bool is_send() const;
     bool is_send_done() const;
     bool is_recv() const;
+    bool is_comm() const;
+
+    const std::string get_name() const
+    {
+        std::stringstream ss;
+        for (auto &sop : seq) {
+            ss << sop.get_op()->name << ";";
+        }
+        return ss.str();
+    }
 
     const int &get_id() const
     {
@@ -42,10 +54,6 @@ class SchedOpSeq
     const Op *get_last_op() const
     {
         return seq.back().get_op();
-    }
-    const std::vector<std::pair<int, int>> &get_fdims() const
-    {
-        return seq_fdims;
     }
     int get_num_warps() const
     {
@@ -86,14 +94,10 @@ class SchedOpSeq
   private:
     const int id;
     std::vector<SchedOp> seq;
-    std::vector<std::pair<int, int>> seq_fdims;
     int num_warps = 0;
     int smem_bytes = 0;
     std::array<int, 3> tdims = {{0, 0, 0}};
 };
-
-void to_json(nlohmann::json &j, const SchedOpSeq &opseq);
-void from_json(const nlohmann::json &j, SchedOpSeq &opseq);
 
 struct Sched
 {
@@ -117,4 +121,5 @@ struct Sched
 };
 
 } // namespace ark
+
 #endif // ARK_SCHED_OPSEQ_H_
