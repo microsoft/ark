@@ -128,7 +128,11 @@ PYBIND11_MODULE(_ark_core, m)
         .def("offset_bytes", &ark::Tensor::offset_bytes, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("tensor_type", &ark::Tensor::tensor_type,
-             "The type of the tensor.");
+             "The type of the tensor.")
+        .def_property(
+            "is_parameter",
+            [](const ark::Tensor &self) { return self.is_parameter; },
+            [](ark::Tensor &self, bool value) { self.is_parameter = value; });
 
     py::class_<ark::Model>(m, "_Model")
         .def(py::init<int>(), py::arg("rank") = 0)

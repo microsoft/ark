@@ -153,6 +153,8 @@ struct Tensor
     // if imported is true, the tensor is imported from another GPU and don't
     // need to allocate a TensorBuf for it.
     bool imported;
+    // if is_parameter is true, the tensor is a parameter of the module.
+    bool is_parameter;
     // Unique id of this tensor
     int id;
     // Name of this tensor

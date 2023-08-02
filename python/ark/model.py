@@ -29,9 +29,42 @@ def tensor(
         if len(shape) > 4:
             logging.error("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
-    return Model.global_model.tensor(
+    tensor = Model.global_model.tensor(
         shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
     )
+    tensor.is_parameter = False
+    return tensor
+
+
+def Parameter(
+    shape,
+    dtype: TensorType = TensorType.FP32,
+    buf: TensorBuf = None,
+    ldims: Dims = Dims(),
+    offs: Dims = Dims(),
+    pads: Dims = Dims(),
+    deps: list = [],
+    exported: bool = False,
+    imported: bool = False,
+    name: str = "tensor",
+):
+    """
+    Construct a tensor with given shape and data type.
+    Usage:
+    tensor = ark.tensor([1, 2, 3, 4], dtype=TensorType.FP32)
+    tensor = ark.tensor(ark.Dims(1, 2), dtype=TensorType.FP16)
+    """
+    # if shape is a list of integers, convert it to a Dims object
+    if isinstance(shape, list):
+        # only support tensors with up to 4 dimensions
+        if len(shape) > 4:
+            logging.error("Only support tensors with up to 4 dimensions")
+        shape = Dims(*shape)
+    tensor = Model.global_model.tensor(
+        shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
+    )
+    tensor.is_parameter = True
+    return tensor
 
 
 def reshape(

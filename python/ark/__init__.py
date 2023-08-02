@@ -33,6 +33,7 @@ from .serialize import (
 from .model import (
     Model,
     tensor,
+    Parameter,
     reshape,
     identity,
     sharding,
@@ -74,6 +75,7 @@ __all__ = [
     "run",
     "destroy",
     "Module",
+    "Parameter",
     "Executor",
     "tensor_memcpy_device_to_host",
     "tensor_memcpy_host_to_device",

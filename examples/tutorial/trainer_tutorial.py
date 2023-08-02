@@ -62,7 +62,9 @@ class matmul_layer(ark.Module):
     def __init__(self, input_size, output_size):
         super(matmul_layer, self).__init__()
         self.other_parameter = {}
-        self.weight = ark.tensor([input_size, output_size], ark.TensorType.FP16)
+        self.weight = ark.Parameter(
+            [input_size, output_size], ark.TensorType.FP16
+        )
 
     def forward(self, inputs):
         self.other_parameter["inputs"] = inputs
