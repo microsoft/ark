@@ -62,6 +62,8 @@ def reshape(
         if len(shape) > 4:
             logging.error("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
+    if output is not None:
+        output = output._tensor
     input = input._tensor
     _tensor = Model.global_model.reshape(input, shape, allowzero, output, name)
     return Tensor(_tensor)
@@ -69,7 +71,7 @@ def reshape(
 
 def identity(
     input: Tensor,
-    deps: list = [],
+    deps: List[Tensor] = [],
     output: Tensor = None,
     name: str = "identity",
 ) -> Tensor:
@@ -78,7 +80,16 @@ def identity(
     Usage:
     tensor_identity = ark.identity(tensor, deps=[tensor1, tensor2])
     """
-    _tensor = Model.global_model.identity(input._tensor, deps, output, name)
+    dep_tensor = []
+    for dep in deps:
+        if not isinstance(dep, Tensor):
+            logging.error("All dependencies should be tensors")
+        dep_tensor.append(dep._tensor)
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.global_model.identity(
+        input._tensor, dep_tensor, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -87,7 +98,7 @@ def sharding(
     axis: int,
     dim_per_shard: int,
     name: str = "sharding",
-) -> Tensor:
+) -> List[Tensor]:
     """
     Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
     Usage:
@@ -97,10 +108,13 @@ def sharding(
     # The first tensor's buffer is the same as the first 64 columns of tensor
     # The second tensor's buffer is the same as the last 64 columns of tensor
     """
-    _tensor = Model.global_model.sharding(
+    _tensor_list = Model.global_model.sharding(
         input._tensor, axis, dim_per_shard, name
     )
-    return Tensor(_tensor)
+    tensor_list = []
+    for _tensor in _tensor_list:
+        tensor_list.append(Tensor(_tensor))
+    return tensor_list
 
 
 def reduce_sum(
