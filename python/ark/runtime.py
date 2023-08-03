@@ -114,7 +114,11 @@ def destroy():
     """
     Destroy the ARK runtime and release all the resources.
     """
-    stop()
+    if (
+        Config.global_config.ark_runtime_state == "run"
+        or Config.global_config.ark_runtime_state == "launch"
+    ):
+        stop()
     Config.global_config.ark_runtime_state = "destroy"
     Executor.global_executor = None
     Model.global_model = None
