@@ -10,8 +10,6 @@
 
 namespace py = pybind11;
 
-// TODO: add more checks for the host_buffer, currently users must make sure
-// that the host_tensor's memory layout is contiguous
 void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
 {
@@ -32,7 +30,7 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
 
 PYBIND11_MODULE(_ark_core, m)
 {
-    m.doc() = "ARK python module interface"; // optional module docstring
+    m.doc() = "ARK python module interface";
     m.def("_init", &ark::init,
           "Init an ark program. Call this function to clean up the shared "
           "memory directory. This is useful when the previous run crashed, as "
@@ -330,7 +328,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
              py::arg("name") = "all_reduce");
-    // register class Executor
+
     py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")
         .def(py::init<const int, int, int, ark::Model &, const std::string &,
