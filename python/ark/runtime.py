@@ -60,7 +60,7 @@ def launch():
         logging.error("ARK runtime is not initialized or already launched")
         raise RuntimeError("ARK runtime is not initialized or already launched")
     if Config.global_config.ark_runtime_state == launch:
-        logging.warning("ARK runtime is already launched, skip launching")
+        logging.warn("ARK runtime is already launched, skip launching")
         return
     Config.global_config.ark_runtime_state = "launch"
     rank = Config.global_config.rank
@@ -105,13 +105,7 @@ def stop():
         Config.global_config.ark_runtime_state != "run"
         and Config.global_config.ark_runtime_state != "launch"
     ):
-        logging.error("ARK runtime is not launched")
-        raise RuntimeError("ARK runtime is not launched")
-    if (
-        Config.global_config.ark_runtime_state == "launch"
-        or Config.global_config.ark_runtime_state == "stop"
-    ):
-        logging.warning("ARK runtime is not running, skip stopping")
+        logging.warn("ARK runtime is not running or launched, skip stopping")
         return
     Executor.get_global_executor().stop()
     Config.global_config.ark_runtime_state = "stop"
