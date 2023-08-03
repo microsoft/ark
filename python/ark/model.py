@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Model, TensorBuf, TensorType, Dims, _Tensor
+from ._ark_core import _Model, TensorBuf, TensorType, Dims
 from .tensor import Tensor
 import logging
 from typing import List
@@ -617,7 +617,8 @@ def all_gather(
     # all-gather
     ark.init_model(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.TensorType.FP16)
-    # The all_gather operation will create the recv tensor shards and return them as a list. The allgather_result[rank] is the same as input_tensor
+    # The all_gather operation will create the recv tensor shards and return
+    them as a list. The allgather_result[rank] is the same as input_tensor
     allgather_result = ark.all_gather(input_tensor, rank, world_size)
 
     # in-place all-gather
