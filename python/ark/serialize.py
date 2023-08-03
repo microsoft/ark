@@ -39,4 +39,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
             logging.error(
                 "Invalid type: " + type + " valid types are torch and numpy"
             )
+            raise TypeError(
+                "Invalid type: " + type + " valid types are torch and numpy"
+            )
     return new_state_dict

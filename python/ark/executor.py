@@ -27,6 +27,7 @@ class Executor(_Executor):
     def tensor_memcpy_host_to_device(self, dst: _Tensor, src: np.ndarray):
         if not isinstance(src, np.ndarray):
             logging.error("src is not a numpy array")
+            raise TypeError("src is not a numpy array")
         # Check if src is contiguous is memory
         if not src.flags["C_CONTIGUOUS"]:
             logging.debug(
@@ -38,8 +39,10 @@ class Executor(_Executor):
     def tensor_memcpy_device_to_host(self, dst: np.ndarray, src: _Tensor):
         if not isinstance(dst, np.ndarray):
             logging.error("dst is not a numpy array")
+            raise TypeError("dst is not a numpy array")
         if not dst.flags["C_CONTIGUOUS"]:
             logging.error("dst is not contiguous in memory")
+            raise ValueError("dst is not contiguous in memory")
         super().tensor_memcpy_device_to_host(dst, src)
 
     @staticmethod
@@ -47,4 +50,5 @@ class Executor(_Executor):
         # Get the global executor
         if Executor.global_executor is None:
             logging.error("Executor is not initialized")
+            raise RuntimeError("Executor is not initialized")
         return Executor.global_executor

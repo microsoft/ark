@@ -41,6 +41,7 @@ def init_model(rank: int = 0, world_size: int = 1):
     """
     if Config.global_config is not None:
         logging.error("ARK runtime is already initialized")
+        raise RuntimeError("ARK runtime is already initialized")
     Config.global_config = Config(rank, world_size)
     Model.global_model = Model(rank)
     Config.global_config.ark_runtime_state = "init_model"
@@ -54,6 +55,7 @@ def launch():
     """
     if Config.global_config.ark_runtime_state != "init_model":
         logging.error("ARK runtime is not initialized or already launched")
+        raise RuntimeError("ARK runtime is not initialized or already launched")
     Config.global_config.ark_runtime_state = "launch"
     rank = Config.global_config.rank
     world_size = Config.global_config.world_size
@@ -70,6 +72,7 @@ def run(iter=1):
     """
     if Config.global_config.ark_runtime_state != "launch":
         logging.error("ARK runtime is not launched")
+        raise RuntimeError("ARK runtime is not launched")
     Config.global_config.ark_runtime_state = "run"
     Executor.get_global_executor().run(iter)
     Executor.get_global_executor().stop()
@@ -93,6 +96,7 @@ def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
     # Check the current ARK runtime status
     if Config.global_config.ark_runtime_state != "launch":
         logging.error("ARK runtime is not launched")
+        raise RuntimeError("ARK runtime is not launched")
     Executor.get_global_executor().tensor_memcpy_host_to_device(
         dst._tensor, src
     )
@@ -106,6 +110,7 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
     # Check the current ARK runtime status
     if Config.global_config.ark_runtime_state != "launch":
         logging.error("ARK runtime is not launched")
+        raise RuntimeError("ARK runtime is not launched")
     # Create a new numpy array if dst is None
     if dst is None:
         np_type = None
@@ -115,6 +120,7 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
             np_type = np.float16
         else:
             logging.error("Unsupported tensor type")
+            raise TypeError("Unsupported tensor type")
         dst = np.empty(src.shape, dtype=np_type)
     Executor.get_global_executor().tensor_memcpy_device_to_host(
         dst, src._tensor

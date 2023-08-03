@@ -30,6 +30,7 @@ def tensor(
         # only support tensors with up to 4 dimensions
         if len(shape) > 4:
             logging.error("Only support tensors with up to 4 dimensions")
+            raise ValueError("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
     _tensor = Model.get_global_model().tensor(
         shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
@@ -61,6 +62,7 @@ def reshape(
         # only support tensors with up to 4 dimensions
         if len(shape) > 4:
             logging.error("Only support tensors with up to 4 dimensions")
+            raise ValueError("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
     if output is not None:
         output = output._tensor
@@ -86,6 +88,7 @@ def identity(
     for dep in deps:
         if not isinstance(dep, Tensor):
             logging.error("All dependencies should be tensors")
+            raise TypeError("All dependencies should be tensors")
         dep_tensor.append(dep._tensor)
     if output is not None:
         output = output._tensor
@@ -683,4 +686,5 @@ class Model(_Model):
     def get_global_model():
         if Model.global_model is None:
             logging.error("Model is not initialized")
+            raise RuntimeError("Model is not initialized")
         return Model.global_model

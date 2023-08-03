@@ -26,12 +26,14 @@ class Module:
     def register_module(self, name: str, module: "Module") -> None:
         if not isinstance(module, Module):
             logging.error("module must be a Module")
+            raise TypeError("module must be a Module")
         self.sub_modules[name] = module
 
     # Adds a parameter to the module.
     def register_parameter(self, name: str, param: Tensor) -> None:
         if not isinstance(param, Tensor):
             logging.error("param must be a Tensor")
+            raise TypeError("param must be a Tensor")
         self.parameters[name] = param
 
     def __setattr__(self, __name: str, __value: Any) -> None:
