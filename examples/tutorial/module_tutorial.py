@@ -92,7 +92,7 @@ def module_test():
     ).astype(np.float16)
     input_tensor.memcpy(input_tensor_host, "host_to_device")
     # The following line has the same effect as the above line
-    # ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host) 
+    # ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
 
     # Initialize the parameters of the ARK module using numpy state_dict
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
