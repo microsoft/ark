@@ -204,6 +204,5 @@ Then we can run the model and compare the results.
         d_ff,
     )
     print("max error: ", max_error, "avg error: ", avg_error)
-    ark.destroy()
 
 ```

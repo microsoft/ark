@@ -155,7 +155,6 @@ def module_test():
         d_ff,
     )
     print("max error: ", max_error, "avg error: ", avg_error)
-    ark.destroy()
 
 
 if __name__ == "__main__":

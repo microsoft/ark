@@ -105,7 +105,6 @@ def test_TestModel():
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    ark.destroy()
     print("ARK module test")
     print(
         "batch_size:",
