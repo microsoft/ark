@@ -24,7 +24,7 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         # send the tensor to rank 1
         send_id, dst_rank = 0, 1
         send_dep_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
-        # A identity operation is used to add an exectuion dependency and
+        # A identity operation is used to add an execution dependency and
         # make sure execution order correct
         ark.send_done(
             ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
@@ -41,13 +41,13 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
 
         # The send must be executed after the recv, identity is used to
-        # add an exectuion dependency between the two operations
+        # add an execution dependency between the two operations
         send_tensor = ark.identity(recv_tensor, [recv_dep])
 
         # Send the received tensor back to rank 0
         send_id, dst_rank = 1, 0
         send_dep_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
-        # A identity operation is used to add an exectuion dependency and
+        # A identity operation is used to add an execution dependency and
         # make sure execution order correct
         ark.send_done(
             ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
