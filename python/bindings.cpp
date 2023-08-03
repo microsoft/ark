@@ -127,9 +127,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def("ldims_bytes", &ark::Tensor::ldims_bytes,
              "Should be the same as the number of bytes of the TensorBuf.")
         .def("offset_bytes", &ark::Tensor::offset_bytes, py::arg("i0") = 0,
-             py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
-        .def("tensor_type", &ark::Tensor::tensor_type,
-             "The type of the tensor.");
+             py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
     py::class_<ark::Model>(m, "_Model")
         .def(py::init<int>(), py::arg("rank") = 0)
