@@ -13,7 +13,7 @@ from enum import Enum
 
 
 class ARKRuntimeState(Enum):
-    init_model = 0
+    init = 0
     launch = 1
     run = 2
     stop = 3
@@ -26,7 +26,7 @@ class ARKRuntime:
     def __init__(self, rank=0, world_size=1):
         self.rank = rank
         self.world_size = world_size
-        self.ark_runtime_state = ARKRuntimeState.init_model
+        self.ark_runtime_state = ARKRuntimeState.init
         Model.global_model = Model(rank)
 
     def __del__(self):
@@ -49,7 +49,7 @@ class ARKRuntime:
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
         if (
-            self.ark_runtime_state != ARKRuntimeState.init_model
+            self.ark_runtime_state != ARKRuntimeState.init
             and self.ark_runtime_state != ARKRuntimeState.stop
         ):
             logging.warn(
@@ -149,7 +149,7 @@ class ARKRuntime:
         return dst
 
 
-def init_model(rank: int = 0, world_size: int = 1):
+def init(rank: int = 0, world_size: int = 1):
     """
     Initialize the ARK runtime and create a global model that will record
     all the operations.

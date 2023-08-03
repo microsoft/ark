@@ -45,7 +45,7 @@ Here, we can create this model and then launch it.
 
 ```python
 # Initialize the ARK model
-ark.init_model()
+ark.init()
 # Create an input tensor
 input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.FP16)
 

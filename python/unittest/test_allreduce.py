@@ -61,7 +61,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
 
 def test_allreduce_internal(world_size, tensor_len):
-    ark.init()
+    ark.cleanup()
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = []

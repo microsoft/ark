@@ -7,7 +7,7 @@ import ark
 
 def quickstart_tutorial():
     # Initialize the ARK model
-    ark.init_model()
+    ark.init()
 
     M, N = 64, 64
     # Create an input tensor

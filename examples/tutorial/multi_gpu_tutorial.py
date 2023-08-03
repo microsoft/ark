@@ -14,7 +14,7 @@ tensor_size = tensor_len * 2
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
     # Initialize the ARK model
-    ark.init_model(rank, world_size)
+    ark.init(rank, world_size)
 
     # Define the behavior for rank 0
     if rank == 0:
@@ -77,7 +77,6 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
 
 
 def sendrecv_test_ping_pong():
-    ark.init()
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = np.random.rand(tensor_len).astype(np.float16)

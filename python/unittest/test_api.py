@@ -56,7 +56,7 @@ class TestModel(nn.Module):
 
 
 def test_TestModel():
-    ark.init_model()
+    ark.init()
 
     input_tensor = ark.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16

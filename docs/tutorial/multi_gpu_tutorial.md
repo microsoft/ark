@@ -23,10 +23,9 @@ tensor_len = 2048
 tensor_size = tensor_len * 2
 ```
 
-Since we have 2 GPUs, we need to run 2 processes. Each process will be assigned to a GPU. Note that `ark.init()` must be called before creating the processes. Otherwise, one process might delete the shared memory created by another process, resulting in an error.
+Since we have 2 GPUs, we need to run 2 processes. Each process will be assigned to a GPU. 
 
 ```python
-ark.init()
 num_processes = world_size  # number of processes
 processes = []
 np_inputs = np.random.rand(tensor_len).astype(np.float16)
@@ -44,7 +43,7 @@ for process in processes:
     process.join()
 ```
 
-The following is the main function for the two processes. We first use `ark.init_model(rank, world_size)` to initialize the model. The `rank` parameter is the rank of the process, and the `world_size` parameter is the number of processes. In ARK, one process corresponds to one GPU. 
+The following is the main function for the two processes. We first use `ark.init(rank, world_size)` to initialize the model. The `rank` parameter is the rank of the process, and the `world_size` parameter is the number of processes. In ARK, one process corresponds to one GPU. 
 
 
 
@@ -52,7 +51,7 @@ The following is the main function for the two processes. We first use `ark.init
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
     # Initialize the ARK model
-    ark.init_model(rank, world_size)
+    ark.init(rank, world_size)
 ```
 
 

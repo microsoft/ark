@@ -10,7 +10,7 @@ import unittest
 
 
 def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
-    ark.init()
+    ark.cleanup()
 
     # Create a Model instance
     model = ark.Model()

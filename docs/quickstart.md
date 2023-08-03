@@ -17,7 +17,7 @@ import ark
 import numpy as np
 
 # Initialize the ARK model
-ark.init_model()
+ark.init()
 
 ```
 First, we need to create the operational graph for our DNN model. In this example, we define a simple model with two input tensors. The output tensor is the sum of these input tensors.

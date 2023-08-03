@@ -618,14 +618,14 @@ def all_gather(
     Performs an all-gather operator across all GPUs.
     Usage:
     # all-gather
-    ark.init_model(rank, world_size)
+    ark.init(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.TensorType.FP16)
     # The all_gather operation will create the recv tensor shards and return
     them as a list. The allgather_result[rank] is the same as input_tensor
     allgather_result = ark.all_gather(input_tensor, rank, world_size)
 
     # in-place all-gather
-    ark.init_model(rank, world_size)
+    ark.init(rank, world_size)
     output_tensor = ark.tensor(
         [tensor_len * world_size], ark.TensorType.FP16
     )
@@ -662,7 +662,7 @@ def all_reduce(
     input tensors. Takes the `input` tensor, the current GPU's
     `gpu_id`, and the total number of GPUs `gpu_num`.
     Usage:
-    ark.init_model(rank, world_size)
+    ark.init(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.TensorType.FP16)
     allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
     """
