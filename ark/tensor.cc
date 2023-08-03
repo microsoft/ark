@@ -183,12 +183,6 @@ DimType Tensor::offset_bytes(DimType i0, DimType i1, DimType i2,
     return this->offset(i0, i1, i2, i3) * this->type_bytes();
 }
 
-// Tensor type.
-TensorType Tensor::tensor_type() const
-{
-    return this->type;
-}
-
 // TODO: deprecate this function.
 bool Tensor::is_sequential() const
 {
