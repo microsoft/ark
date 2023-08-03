@@ -9,7 +9,7 @@ import logging
 import numpy as np
 
 # Use a global variable to track the state of the ARK runtime
-ArkRuntimeState = ("start", "init_model", "launch", "run", "destroy")
+ArkRuntimeState = ("start", "init_model", "launch", "run", "stop", "destroy")
 
 
 class Config:
@@ -53,9 +53,15 @@ def launch():
     the CUDA kernels. The GPU context and the connection between GPUs will be
     initialized. The executor will compile the cuda kernels and launch the ARK runtime.
     """
-    if Config.global_config.ark_runtime_state != "init_model":
+    if (
+        Config.global_config.ark_runtime_state != "init_model"
+        and Config.global_config.ark_runtime_state != "stop"
+    ):
         logging.error("ARK runtime is not initialized or already launched")
         raise RuntimeError("ARK runtime is not initialized or already launched")
+    if Config.global_config.ark_runtime_state == launch:
+        logging.warning("ARK runtime is already launched, skip launching")
+        return
     Config.global_config.ark_runtime_state = "launch"
     rank = Config.global_config.rank
     world_size = Config.global_config.world_size
@@ -66,7 +72,7 @@ def launch():
     Executor.get_global_executor().launch()
 
 
-def run(iter=1):
+def run(iter=1, async_run=False):
     """
     Run the ARK program for iter iterations and wait for the kernel to finish.
     """
@@ -75,14 +81,47 @@ def run(iter=1):
         raise RuntimeError("ARK runtime is not launched")
     Config.global_config.ark_runtime_state = "run"
     Executor.get_global_executor().run(iter)
-    Executor.get_global_executor().stop()
+    if not async_run:
+        stop()
+
+
+def wait():
+    """
+    Wait for the kernel to finish.
+    """
+    if Config.global_config.ark_runtime_state != "run":
+        logging.warn("ARK runtime is not running, skip waiting")
+        return
+    Executor.get_global_executor().wait()
     Config.global_config.ark_runtime_state = "launch"
+
+
+def stop():
+    """
+    Stop the model and return the elapsed time in milliseconds.
+    Once this is called, we need to call `launch()` again to run the model again.
+    """
+    if (
+        Config.global_config.ark_runtime_state != "run"
+        and Config.global_config.ark_runtime_state != "launch"
+    ):
+        logging.error("ARK runtime is not launched")
+        raise RuntimeError("ARK runtime is not launched")
+    if (
+        Config.global_config.ark_runtime_state == "launch"
+        or Config.global_config.ark_runtime_state == "stop"
+    ):
+        logging.warning("ARK runtime is not running, skip stopping")
+        return
+    Executor.get_global_executor().stop()
+    Config.global_config.ark_runtime_state = "stop"
 
 
 def destroy():
     """
     Destroy the ARK runtime and release all the resources.
     """
+    stop()
     Config.global_config.ark_runtime_state = "destroy"
     Executor.global_executor = None
     Model.global_model = None
@@ -94,7 +133,10 @@ def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
     Copy a tensor from host to device. Used for initializing the tensor on device.
     """
     # Check the current ARK runtime status
-    if Config.global_config.ark_runtime_state != "launch":
+    if (
+        Config.global_config.ark_runtime_state != "launch"
+        and Config.global_config.ark_runtime_state != "stop"
+    ):
         logging.error("ARK runtime is not launched")
         raise RuntimeError("ARK runtime is not launched")
     Executor.get_global_executor().tensor_memcpy_host_to_device(
@@ -108,7 +150,10 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
     Copy a tensor from device to host. If dst is None, a new numpy array will be created.
     """
     # Check the current ARK runtime status
-    if Config.global_config.ark_runtime_state != "launch":
+    if (
+        Config.global_config.ark_runtime_state != "launch"
+        and Config.global_config.ark_runtime_state != "stop"
+    ):
         logging.error("ARK runtime is not launched")
         raise RuntimeError("ARK runtime is not launched")
     # Create a new numpy array if dst is None
