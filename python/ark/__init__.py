@@ -25,7 +25,7 @@ from .runtime import (
     tensor_memcpy_host_to_device,
 )
 
-from .tensor import Tensor, Parameter
+from .tensor import Tensor, Parameter, FP16, FP32, INT32, BYTE
 
 from .module import Module
 from .executor import Executor
@@ -75,6 +75,10 @@ __all__ = [
     "TensorType",
     "Tensor",
     "Parameter",
+    "FP16",
+    "FP32",
+    "INT32",
+    "BYTE",
     "init_model",
     "launch",
     "run",

@@ -63,8 +63,8 @@ For more information about the `send` and `recv` operator, please refer to the [
 ```python
     # Define the behavior for rank 0
     if rank == 0:
-        send_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+        send_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
+        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
 
         # send the tensor to rank 1
         send_id, dst_rank = 0, 1
@@ -82,7 +82,7 @@ The following is the model definition for GPU1. Here, GPU1 receives the tensor f
     # Define the behavior for rank 1
     if rank == 1:
         # recv the tensor from rank 0
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
         recv_id, recv_rank = 0, 0
         recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
 

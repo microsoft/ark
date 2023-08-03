@@ -17,9 +17,7 @@ class SubModuleARK(ark.Module):
     def __init__(self):
         super(SubModuleARK, self).__init__()
         # Define the parameters of the submodule
-        self.weight_2 = ark.Parameter(
-            ark.tensor([d_ff, d_model], ark.TensorType.FP16)
-        )
+        self.weight_2 = ark.Parameter(ark.tensor([d_ff, d_model], ark.FP16))
 
     def forward(self, inputs):
         # Perform the forward pass of the submodule
@@ -31,9 +29,7 @@ class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
         # Define the parameters of the module
-        self.weight_1 = ark.Parameter(
-            ark.tensor([d_model, d_ff], ark.TensorType.FP16)
-        )
+        self.weight_1 = ark.Parameter(ark.tensor([d_model, d_ff], ark.FP16))
         # Create a submodule of the module
         self.submodule = SubModuleARK()
 
@@ -79,9 +75,7 @@ def module_test():
     # Initialize the ARK model
     ark.init_model()
     # Create an input tensor
-    input_tensor = ark.tensor(
-        [batch_size, seq_len, d_model], ark.TensorType.FP16
-    )
+    input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.FP16)
 
     # Create an ARK module
     ark_model = TestModelARK()

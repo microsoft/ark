@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Tensor
+from ._ark_core import _Tensor, TensorType
 
 
 class Tensor:
@@ -84,3 +84,9 @@ def Parameter(
     """
     tensor.is_parameter = True
     return tensor
+
+
+FP16 = TensorType.FP16
+FP32 = TensorType.FP32
+INT32 = TensorType.INT32
+BYTE = TensorType.BYTE
