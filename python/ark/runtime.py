@@ -12,7 +12,7 @@ from enum import Enum
 # Use a global variable to track the state of the ARK runtime
 
 
-class ArkRuntimeState(Enum):
+class ARKRuntimeState(Enum):
     init_model = 0
     launch = 1
     run = 2
@@ -26,7 +26,7 @@ class ARKRuntime:
     def __init__(self, rank=0, world_size=1):
         self.rank = rank
         self.world_size = world_size
-        self.ark_runtime_state = ArkRuntimeState.init_model
+        self.ark_runtime_state = ARKRuntimeState.init_model
         Model.global_model = Model(rank)
 
     def __del__(self):
@@ -34,11 +34,11 @@ class ARKRuntime:
         Destroy the ARK runtime and release all the resources.
         """
         if (
-            self.ark_runtime_state == ArkRuntimeState.run
-            or self.ark_runtime_state == ArkRuntimeState.launch
+            self.ark_runtime_state == ARKRuntimeState.run
+            or self.ark_runtime_state == ARKRuntimeState.launch
         ):
             self.stop()
-        self.ark_runtime_state = ArkRuntimeState.destroy
+        self.ark_runtime_state = ARKRuntimeState.destroy
         Executor.global_executor = None
         Model.global_model = None
 
@@ -49,14 +49,14 @@ class ARKRuntime:
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
         if (
-            self.ark_runtime_state != ArkRuntimeState.init_model
-            and self.ark_runtime_state != ArkRuntimeState.stop
+            self.ark_runtime_state != ARKRuntimeState.init_model
+            and self.ark_runtime_state != ARKRuntimeState.stop
         ):
             logging.warn(
                 "ARK runtime is not initialized or already launched, skip launching"
             )
             return
-        self.ark_runtime_state = ArkRuntimeState.launch
+        self.ark_runtime_state = ARKRuntimeState.launch
         Executor.global_executor = Executor(
             self.rank,
             self.rank,
@@ -71,10 +71,10 @@ class ARKRuntime:
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
-        if self.ark_runtime_state != ArkRuntimeState.launch:
+        if self.ark_runtime_state != ARKRuntimeState.launch:
             logging.error("ARK runtime is not launched")
             raise RuntimeError("ARK runtime is not launched")
-        self.ark_runtime_state = ArkRuntimeState.run
+        self.ark_runtime_state = ARKRuntimeState.run
         Executor.get_global_executor().run(iter)
         if not async_run:
             self.stop()
@@ -83,11 +83,11 @@ class ARKRuntime:
         """
         Wait for the kernel to finish.
         """
-        if self.ark_runtime_state != ArkRuntimeState.run:
+        if self.ark_runtime_state != ARKRuntimeState.run:
             logging.warn("ARK runtime is not running, skip waiting")
             return
         Executor.get_global_executor().wait()
-        self.ark_runtime_state = ArkRuntimeState.launch
+        self.ark_runtime_state = ARKRuntimeState.launch
 
     def stop(self):
         """
@@ -95,15 +95,15 @@ class ARKRuntime:
         Once this is called, we need to call `launch()` again to run the model again.
         """
         if (
-            self.ark_runtime_state != ArkRuntimeState.run
-            and self.ark_runtime_state != ArkRuntimeState.launch
+            self.ark_runtime_state != ARKRuntimeState.run
+            and self.ark_runtime_state != ARKRuntimeState.launch
         ):
             logging.warn(
                 "ARK runtime is not running or launched, skip stopping"
             )
             return
         Executor.get_global_executor().stop()
-        self.ark_runtime_state = ArkRuntimeState.stop
+        self.ark_runtime_state = ARKRuntimeState.stop
 
     def tensor_memcpy_host_to_device(self, dst: Tensor, src: np.ndarray):
         """
@@ -111,8 +111,8 @@ class ARKRuntime:
         """
         # Check the current ARK runtime status
         if (
-            self.ark_runtime_state != ArkRuntimeState.launch
-            and self.ark_runtime_state != ArkRuntimeState.stop
+            self.ark_runtime_state != ARKRuntimeState.launch
+            and self.ark_runtime_state != ARKRuntimeState.stop
         ):
             logging.error("ARK runtime is not launched")
             raise RuntimeError("ARK runtime is not launched")
@@ -127,8 +127,8 @@ class ARKRuntime:
         """
         # Check the current ARK runtime status
         if (
-            self.ark_runtime_state != ArkRuntimeState.launch
-            and self.ark_runtime_state != ArkRuntimeState.stop
+            self.ark_runtime_state != ARKRuntimeState.launch
+            and self.ark_runtime_state != ARKRuntimeState.stop
         ):
             logging.error("ARK runtime is not launched")
             raise RuntimeError("ARK runtime is not launched")
