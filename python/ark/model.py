@@ -679,7 +679,12 @@ def all_reduce(
 
 
 class Model(_Model):
-    # a global model object
+    """
+    The Model class will record the all operators and tensors defined
+    by the user.
+    """
+
+    # A global model object
     global_model = None
 
     @staticmethod
