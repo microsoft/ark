@@ -2,6 +2,9 @@
 # Licensed under the MIT license.
 
 from ._ark_core import _Tensor, TensorType
+from . import runtime
+import numpy as np
+import logging
 
 
 class Tensor:
@@ -68,6 +71,21 @@ class Tensor:
         Returns the type of the tensor.
         """
         return self._tensor.type
+
+    def memcpy(
+        self, np_array: np.ndarray = None, memcpy_type: str = "device_to_host"
+    ):
+        """
+        Copies data between the tensor and a host numpy array.
+        """
+        if memcpy_type == "device_to_host":
+            np_array = runtime.tensor_memcpy_device_to_host(np_array, self)
+        elif memcpy_type == "host_to_device":
+            runtime.tensor_memcpy_host_to_device(self, np_array)
+        else:
+            logging.error("Unsupported memcpy type")
+            raise TypeError("Unsupported memcpy type")
+        return np_array
 
 
 def Parameter(
