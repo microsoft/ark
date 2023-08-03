@@ -67,7 +67,7 @@ class Tensor:
         """
         Returns the type of the tensor.
         """
-        return self._tensor.tensor_type()
+        return self._tensor.type
 
 
 def Parameter(

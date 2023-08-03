@@ -107,7 +107,6 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
     if Config.global_config.ark_runtime_state != "launch":
         logging.error("ARK runtime is not launched")
     # Create a new numpy array if dst is None
-    src = src._tensor
     if dst is None:
         np_type = None
         if src.tensor_type() == TensorType.FP32:
@@ -117,5 +116,7 @@ def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
         else:
             logging.error("Unsupported tensor type")
         dst = np.empty(src.shape, dtype=np_type)
-    Executor.get_global_executor().tensor_memcpy_device_to_host(dst, src)
+    Executor.get_global_executor().tensor_memcpy_device_to_host(
+        dst, src._tensor
+    )
     return dst

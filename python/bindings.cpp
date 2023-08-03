@@ -112,6 +112,8 @@ PYBIND11_MODULE(_ark_core, m)
                                    }
                                    return shape_list;
                                })
+        .def_property_readonly("type",
+                               [](const ark::Tensor &t) { return t.type; })
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("size", &ark::Tensor::size,
