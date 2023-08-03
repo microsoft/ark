@@ -40,8 +40,8 @@ def init_model(rank: int = 0, world_size: int = 1):
     all the operations.
     """
     if Config.global_config is not None:
-        logging.error("ARK runtime is already initialized")
-        raise RuntimeError("ARK runtime is already initialized")
+        logging.warn("ARK runtime is already initialized, skip init_model")
+        return
     Config.global_config = Config(rank, world_size)
     Model.global_model = Model(rank)
     Config.global_config.ark_runtime_state = "init_model"
@@ -57,10 +57,9 @@ def launch():
         Config.global_config.ark_runtime_state != "init_model"
         and Config.global_config.ark_runtime_state != "stop"
     ):
-        logging.error("ARK runtime is not initialized or already launched")
-        raise RuntimeError("ARK runtime is not initialized or already launched")
-    if Config.global_config.ark_runtime_state == launch:
-        logging.warn("ARK runtime is already launched, skip launching")
+        logging.warn(
+            "ARK runtime is not initialized or already launched, skip launching"
+        )
         return
     Config.global_config.ark_runtime_state = "launch"
     rank = Config.global_config.rank
