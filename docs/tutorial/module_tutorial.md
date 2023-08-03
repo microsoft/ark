@@ -48,15 +48,20 @@ class TestModelARK(ark.Module):
 Here, we can create this model and then launch it.
 
 ```python
+# Initialize the ARK model
 ark.init_model()
-
+# Create an input tensor
 input_tensor = ark.tensor(
-    ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
+    [batch_size, seq_len, d_model], ark.TensorType.FP16
 )
+
+# Create an ARK module
 ark_model = TestModelARK()
+
+# Perform the forward pass
 output_tensor = ark_model(input_tensor)
 
-# Test the mul method
+# Launch the ARK runtime
 ark.launch()
 ```
 

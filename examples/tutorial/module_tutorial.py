@@ -80,7 +80,7 @@ def module_test():
     ark.init_model()
     # Create an input tensor
     input_tensor = ark.tensor(
-        ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
+        [batch_size, seq_len, d_model], ark.TensorType.FP16
     )
 
     # Create an ARK module
