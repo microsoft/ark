@@ -8,7 +8,10 @@ import logging
 
 
 class Executor(_Executor):
-    # Global Executor
+    """
+    Convenience class for executing a model.
+    """
+
     global_executor = None
 
     def __init__(
@@ -21,10 +24,14 @@ class Executor(_Executor):
         num_warps_per_sm: int = 16,
     ):
         super().__init__(
-            gpu_id, rank, world_size, model, name, num_warps_per_sm=16
+            gpu_id, rank, world_size, model, name, num_warps_per_sm
         )
 
     def tensor_memcpy_host_to_device(self, dst: _Tensor, src: np.ndarray):
+        """
+        Copy contiguous data from a host buffer to the given tensor's
+        (possibly non-contiguous) data range on GPU.
+        """
         if not isinstance(src, np.ndarray):
             logging.error("src is not a numpy array")
             raise TypeError("src is not a numpy array")
@@ -37,6 +44,12 @@ class Executor(_Executor):
         super().tensor_memcpy_host_to_device(dst, src)
 
     def tensor_memcpy_device_to_host(self, dst: np.ndarray, src: _Tensor):
+        """
+        Copy (possibly non-contiguous) data from a tensor on GPU to a
+        contiguous host buffer. The given number of bytes is copied, in
+        order of appearance on the memory. This function assumes that
+        `dst` is large enough to hold the data.
+        """
         if not isinstance(dst, np.ndarray):
             logging.error("dst is not a numpy array")
             raise TypeError("dst is not a numpy array")
@@ -47,7 +60,9 @@ class Executor(_Executor):
 
     @staticmethod
     def get_global_executor():
-        # Get the global executor
+        """
+        Get the global executor
+        """
         if Executor.global_executor is None:
             logging.error("Executor is not initialized")
             raise RuntimeError("Executor is not initialized")
