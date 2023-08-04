@@ -3,10 +3,7 @@
 
 from .model import Model
 from .executor import Executor
-from .tensor import Tensor
-from ._ark_core import TensorType
 import logging
-import numpy as np
 from enum import Enum
 
 # Use a global variable to track the state of the ARK runtime
@@ -114,46 +111,3 @@ class Runtime:
             return
         Executor.get_global_executor().stop()
         self.ark_runtime_state = RuntimeState.stop
-
-    def tensor_memcpy_host_to_device(self, dst: Tensor, src: np.ndarray):
-        """
-        Copy a tensor from host to device. Used for initializing the tensor on device.
-        """
-        # Check the current ARK runtime status
-        if (
-            self.ark_runtime_state != RuntimeState.launch
-            and self.ark_runtime_state != RuntimeState.stop
-        ):
-            logging.error("ARK runtime is not launched")
-            raise RuntimeError("ARK runtime is not launched")
-        Executor.get_global_executor().tensor_memcpy_host_to_device(
-            dst._tensor, src
-        )
-        return dst
-
-    def tensor_memcpy_device_to_host(self, dst: np.ndarray, src: Tensor):
-        """
-        Copy a tensor from device to host. If dst is None, a new numpy array will be created.
-        """
-        # Check the current ARK runtime status
-        if (
-            self.ark_runtime_state != RuntimeState.launch
-            and self.ark_runtime_state != RuntimeState.stop
-        ):
-            logging.error("ARK runtime is not launched")
-            raise RuntimeError("ARK runtime is not launched")
-        # Create a new numpy array if dst is None
-        if dst is None:
-            np_type = None
-            if src.tensor_type() == TensorType.FP32:
-                np_type = np.float32
-            elif src.tensor_type() == TensorType.FP16:
-                np_type = np.float16
-            else:
-                logging.error("Unsupported tensor type")
-                raise TypeError("Unsupported tensor type")
-            dst = np.empty(src.shape, dtype=np_type)
-        Executor.get_global_executor().tensor_memcpy_device_to_host(
-            dst, src._tensor
-        )
-        return dst

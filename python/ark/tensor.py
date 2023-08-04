@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 from ._ark_core import _Tensor, TensorType
-from . import runtime
+from . import executor
 import numpy as np
 import logging
 
@@ -72,30 +72,33 @@ class Tensor:
         """
         return self._tensor.type
 
-    def memcpy(self, ndarray: np.ndarray, memcpy_type: str = "device_to_host"):
-        """
-        Copies data between the tensor and a host numpy array.
-        """
-        if memcpy_type == "device_to_host":
-            ndarray = runtime.tensor_memcpy_device_to_host(ndarray, self)
-        elif memcpy_type == "host_to_device":
-            runtime.tensor_memcpy_host_to_device(self, ndarray)
-        else:
-            logging.error("Unsupported memcpy type")
-            raise TypeError("Unsupported memcpy type")
-        return ndarray
-
     def to_numpy(self, ndarray: np.ndarray = None):
         """
-        Copies the tensor from the device to a host numpy array.
+        Copy a tensor from device to host. If dst is None, a new numpy array will be created.
         """
-        return runtime.tensor_memcpy_device_to_host(ndarray, self)
+        # Create a new numpy array if dst is None
+        if ndarray is None:
+            np_type = None
+            if self.tensor_type() == TensorType.FP32:
+                np_type = np.float32
+            elif self.tensor_type() == TensorType.FP16:
+                np_type = np.float16
+            else:
+                logging.error("Unsupported tensor type")
+                raise TypeError("Unsupported tensor type")
+            ndarray = np.empty(self.shape, dtype=np_type)
+        executor.Executor.get_global_executor().tensor_memcpy_device_to_host(
+            ndarray, self._tensor
+        )
+        return ndarray
 
     def from_numpy(self, ndarray: np.ndarray):
         """
         Copies the tensor from a host numpy array to the device.
         """
-        runtime.tensor_memcpy_host_to_device(self, ndarray)
+        executor.Executor.get_global_executor().tensor_memcpy_host_to_device(
+            self._tensor, ndarray
+        )
         return self
 
 

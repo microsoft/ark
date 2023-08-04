@@ -2,7 +2,6 @@
 # Licensed under the MIT license.
 
 from ._ark_core import _Executor, _Tensor
-from .model import Model
 import numpy as np
 import logging
 
@@ -19,7 +18,7 @@ class Executor(_Executor):
         gpu_id: int,
         rank: int,
         world_size: int,
-        model: Model,
+        model,
         name: str,
         num_warps_per_sm: int = 16,
     ):
