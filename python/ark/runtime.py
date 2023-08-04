@@ -42,6 +42,16 @@ class ARKRuntime:
         Executor.global_executor = None
         Model.global_model = None
 
+    @staticmethod
+    def get_global_runtime():
+        """
+        Get the global ARK runtime.
+        """
+        if ARKRuntime.global_runtime is None:
+            logging.error("ARK runtime is not initialized")
+            raise RuntimeError("ARK runtime is not initialized")
+        return ARKRuntime.global_runtime
+
     def launch(self):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -163,21 +173,21 @@ def launch():
     the CUDA kernels. The GPU context and the connection between GPUs will be
     initialized. The executor will compile the cuda kernels and launch the ARK runtime.
     """
-    ARKRuntime.global_runtime.launch()
+    ARKRuntime.get_global_runtime().launch()
 
 
 def run(iter: int = 1, async_run: bool = False):
     """
     Run the ARK program for iter iterations and wait for the kernel to finish.
     """
-    ARKRuntime.global_runtime.run(iter, async_run)
+    ARKRuntime.get_global_runtime().run(iter, async_run)
 
 
 def wait():
     """
     Wait for the kernel to finish.
     """
-    ARKRuntime.global_runtime.wait()
+    ARKRuntime.get_global_runtime().wait()
 
 
 def stop():
@@ -185,18 +195,22 @@ def stop():
     Stop the model and return the elapsed time in milliseconds.
     Once this is called, we need to call `launch()` again to run the model again.
     """
-    ARKRuntime.global_runtime.stop()
+    ARKRuntime.get_global_runtime().stop()
 
 
 def tensor_memcpy_host_to_device(dst: Tensor, src: np.ndarray):
     """
     Copy a tensor from host to device. Used for initializing the tensor on device.
     """
-    return ARKRuntime.global_runtime.tensor_memcpy_host_to_device(dst, src)
+    return ARKRuntime.get_global_runtime().tensor_memcpy_host_to_device(
+        dst, src
+    )
 
 
 def tensor_memcpy_device_to_host(dst: np.ndarray, src: Tensor):
     """
     Copy a tensor from device to host. If dst is None, a new numpy array will be created.
     """
-    return ARKRuntime.global_runtime.tensor_memcpy_device_to_host(dst, src)
+    return ARKRuntime.get_global_runtime().tensor_memcpy_device_to_host(
+        dst, src
+    )
