@@ -13,7 +13,7 @@ tensor_size = tensor_len * 2
 
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
-    # Initialize the ARK model
+    # Initialize the ARK runtime
     runtime = ark.Runtime(rank, world_size)
 
     # Define the behavior for rank 0

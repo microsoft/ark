@@ -50,8 +50,8 @@ The following is the main function for the two processes. We first use `ark.init
 ```python
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
-    # Initialize the ARK model
-    ark.init(rank, world_size)
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(rank, world_size)
 ```
 
 
@@ -115,15 +115,15 @@ Finally, we can use `ark.launch()` to compile the kernel code and create context
 After we lauch the ARK model, we need to copy the send tensor to GPU0 to initialize the send tensor. Then we can run the ARK program.
 
 ```python
-   # Launch the ARK runtime
-    ark.launch()
+    # Launch the ARK runtime
+    runtime.launch()
 
     # Copy send data to GPU0
     if rank == 0:
         send_tensor.from_numpy(np_inputs)
 
     # Run the ARK program
-    ark.run()
+    runtime.run()
 ```
 
 Finally, we can copy the recv_tensor to the host to check the result. The recv_tensor on both GPUs should be the same as the original send tensor.

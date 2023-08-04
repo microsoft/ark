@@ -44,8 +44,8 @@ class TestModelARK(ark.Module):
 Here, we can create this model and then launch it.
 
 ```python
-# Initialize the ARK model
-ark.init()
+# Initialize the ARK runtime
+runtime = ark.Runtime()
 # Create an input tensor
 input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.FP16)
 
@@ -56,7 +56,7 @@ ark_model = TestModelARK()
 output_tensor = ark_model(input_tensor)
 
 # Launch the ARK runtime
-ark.launch()
+runtime.launch()
 ```
 
 The initialization of the model can be done using a state_dict. Note that the parameters of this model in the state_dict must have the same name as the parameters defined in the module. Then, we can use `load_state_dict` to import the parameters of this model.
@@ -96,7 +96,7 @@ Then we can run the model and get the output.
 
 ```python
 # Run the ARK model
-ark.run()
+runtime.run()
 
 # Copy the ARK module output tensor from device to host
 output_tensor_host = output_tensor.to_numpy()
