@@ -91,9 +91,6 @@ def module_test():
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
     ).astype(np.float16)
     input_tensor.from_numpy(input_tensor_host)
-    # The following line has the same effect as the above line
-    # ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
-    # input_tensor.memcpy(input_tensor_host, "host_to_device")
 
     # Initialize the parameters of the ARK module using numpy state_dict
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
@@ -115,9 +112,6 @@ def module_test():
 
     # Copy the ARK module output tensor from device to host
     output_tensor_host = output_tensor.to_numpy()
-    # The following lines has the same effect as the above line
-    # output_tensor_host = output_tensor.memcpy(memcpy_type="device_to_host")
-    # output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
 
     # For simplicity, we use float32 to compute the ground truth using pytorch
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)

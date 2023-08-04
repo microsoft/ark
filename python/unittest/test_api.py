@@ -71,7 +71,7 @@ def test_TestModel():
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
     ).astype(np.float16)
 
-    ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+    input_tensor.from_numpy(input_tensor_host)
 
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
         np.float16

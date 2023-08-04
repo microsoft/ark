@@ -22,8 +22,6 @@ from .runtime import (
     run,
     wait,
     stop,
-    tensor_memcpy_device_to_host,
-    tensor_memcpy_host_to_device,
 )
 
 from .tensor import Tensor, Parameter, FP16, FP32, INT32, BYTE
@@ -87,8 +85,6 @@ __all__ = [
     "stop",
     "Module",
     "Executor",
-    "tensor_memcpy_device_to_host",
-    "tensor_memcpy_host_to_device",
     "save",
     "load",
     "convert_state_dict",

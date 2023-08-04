@@ -33,7 +33,7 @@ other_tensor = ark.tensor([M, N])
 output_tensor = ark.add(input_tensor, input_tensor)
 ```
 
-Next, we need to launch the ARK runtime and initialize the input and output tensors. You can copy a numpy array into a tensor on GPU using `ark.tensor_memcpy_host_to_device()`. By calling `ark.launch()`, the ARK runtime will be launched, which will freeze and schedule the model. Then, it will generate and compile the CUDA kernel for the model, and allocate GPU memory during the launch. Therefore, it is necessary to call `ark.launch()` before copying the tensor between the host and device. It is not allowed to modify the model after launching the ARK runtime.
+Next, we need to launch the ARK runtime and initialize the input and output tensors. You can copy a numpy array into a tensor on GPU using `tensor.from_numpy(ndarray)`. By calling `ark.launch()`, the ARK runtime will be launched, which will freeze and schedule the model. Then, it will generate and compile the CUDA kernel for the model, and allocate GPU memory during the launch. Therefore, it is necessary to call `ark.launch()` before copying the tensor between the host and device. It is not allowed to modify the model after launching the ARK runtime.
 
 
 ```python
@@ -42,9 +42,9 @@ ark.launch()
 
 # Initialize the input and other tensor with random values
 input_tensor_host = np.random.rand(M, N).astype(np.float32)
-ark.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+input_tensor.from_numpy(input_tensor_host)
 other_tensor_host = np.random.rand(M, N).astype(np.float32)
-ark.tensor_memcpy_host_to_device(other_tensor, other_tensor_host)
+other_tensor.from_numpy(other_tensor_host)
 ```
 
 Next, you can run the ARK runtime using ark.run(). This will launch the CUDA kernel and wait for the kernel to finish.
@@ -59,9 +59,7 @@ Lastly, copy the output tensor back to the host and verify the result.
 ```python
 # Copy the output tensor from device memory to host memory, if dst is 
 # None, a new numpy array of the same shape as the src tensor will be returned
-output_tensor_host = ark.tensor_memcpy_device_to_host(
-    None, output_tensor
-)
+output_tensor_host = output_tensor.to_numpy()
 # Check if the output tensor is equal to the sum of the input and other tensor
 np.testing.assert_allclose(
     output_tensor_host, input_tensor_host + other_tensor_host
