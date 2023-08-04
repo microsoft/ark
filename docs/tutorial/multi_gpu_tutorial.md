@@ -43,7 +43,7 @@ for process in processes:
     process.join()
 ```
 
-The following is the main function for the two processes. We first use `ark.init(rank, world_size)` to initialize the model. The `rank` parameter is the rank of the process, and the `world_size` parameter is the number of processes. In ARK, one process corresponds to one GPU. 
+The following is the main function for the two processes. We first use `ark.Runtime(rank, world_size)` to create the ARK runtime. The `rank` parameter is the rank of the process, and the `world_size` parameter is the number of processes. In ARK, we assume that one process corresponds to one GPU. 
 
 
 
