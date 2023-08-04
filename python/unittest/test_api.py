@@ -56,7 +56,7 @@ class TestModel(nn.Module):
 
 
 def test_TestModel():
-    ark.init()
+    runtime = ark.Runtime()
 
     input_tensor = ark.tensor(
         ark.Dims(batch_size, seq_len, d_model), ark.TensorType.FP16
@@ -65,7 +65,7 @@ def test_TestModel():
     output_tensor = ark_model(input_tensor)
     # Test the mul method
 
-    ark.launch()
+    runtime.launch()
 
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
@@ -82,7 +82,7 @@ def test_TestModel():
     state_dict = {"weight_1": weight_1_host, "weight_2": weight_2_host}
 
     ark_model.load_state_dict(state_dict)
-    ark.run()
+    runtime.run()
 
     output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
 

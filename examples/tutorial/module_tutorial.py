@@ -72,8 +72,8 @@ class TestModelPytorch(nn.Module):
 
 # An example of using the ARK module
 def module_test():
-    # Initialize the ARK model
-    ark.init()
+    # Initialize the ARK runtime
+    runtime = ark.runtime()
     # Create an input tensor
     input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.FP16)
 
@@ -84,7 +84,7 @@ def module_test():
     output_tensor = ark_model(input_tensor)
 
     # Launch the ARK runtime
-    ark.launch()
+    runtime.launch()
 
     # Initialize the input tensor
     input_tensor_host = (
@@ -108,7 +108,7 @@ def module_test():
     ark_model.load_state_dict(state_dict)
 
     # Run the ARK model
-    ark.run()
+    runtime.run()
 
     # Copy the ARK module output tensor from device to host
     output_tensor_host = output_tensor.to_numpy()
