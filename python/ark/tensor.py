@@ -72,20 +72,31 @@ class Tensor:
         """
         return self._tensor.type
 
-    def memcpy(
-        self, np_array: np.ndarray = None, memcpy_type: str = "device_to_host"
-    ):
+    def memcpy(self, ndarray: np.ndarray, memcpy_type: str = "device_to_host"):
         """
         Copies data between the tensor and a host numpy array.
         """
         if memcpy_type == "device_to_host":
-            np_array = runtime.tensor_memcpy_device_to_host(np_array, self)
+            ndarray = runtime.tensor_memcpy_device_to_host(ndarray, self)
         elif memcpy_type == "host_to_device":
-            runtime.tensor_memcpy_host_to_device(self, np_array)
+            runtime.tensor_memcpy_host_to_device(self, ndarray)
         else:
             logging.error("Unsupported memcpy type")
             raise TypeError("Unsupported memcpy type")
-        return np_array
+        return ndarray
+
+    def to_numpy(self, ndarray: np.ndarray = None):
+        """
+        Copies the tensor from the device to a host numpy array.
+        """
+        return runtime.tensor_memcpy_device_to_host(ndarray, self)
+
+    def from_numpy(self, ndarray: np.ndarray):
+        """
+        Copies the tensor from a host numpy array to the device.
+        """
+        runtime.tensor_memcpy_host_to_device(self, ndarray)
+        return self
 
 
 def Parameter(
