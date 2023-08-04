@@ -84,7 +84,7 @@ def test_TestModel():
     ark_model.load_state_dict(state_dict)
     runtime.run()
 
-    output_tensor_host = ark.tensor_memcpy_device_to_host(None, output_tensor)
+    output_tensor_host = output_tensor.to_numpy()
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 
