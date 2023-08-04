@@ -10,7 +10,7 @@ python examples/tutorial/quickstart_tutorial.py
 
 There are environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
 
-Before diving in, let's import the required modules and initialize ARK:
+Before diving in, let's import the required modules and initialize ARK runtime:
 
 ```python
 import ark
