@@ -16,13 +16,7 @@ from ._ark_core import (
     TensorType,
 )
 
-from .runtime import (
-    init,
-    launch,
-    run,
-    wait,
-    stop,
-)
+from .runtime import Runtime
 
 from .tensor import Tensor, Parameter, FP16, FP32, INT32, BYTE
 
@@ -78,11 +72,7 @@ __all__ = [
     "FP32",
     "INT32",
     "BYTE",
-    "init",
-    "launch",
-    "run",
-    "wait",
-    "stop",
+    "Runtime",
     "Module",
     "Executor",
     "save",

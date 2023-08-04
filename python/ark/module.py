@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from .runtime import tensor_memcpy_device_to_host, tensor_memcpy_host_to_device
 from .tensor import Tensor
 import logging
 import numpy as np
@@ -59,7 +58,7 @@ class Module:
             if module is not None:
                 module.load_state_dict(state_dict, prefix=prefix + name + ".")
         for name, param in self.parameters.items():
-            tensor_memcpy_host_to_device(param, state_dict[prefix + name])
+            param.from_numpy(state_dict[prefix + name])
 
     def state_dict(self, prefix=""):
         """
@@ -71,8 +70,7 @@ class Module:
             if module is not None:
                 state_dict.update(module.state_dict(prefix=prefix + name + "."))
         for name, param in self.parameters.items():
-            param_np = np.zeros(param.shape, dtype=np.float16)
-            tensor_memcpy_device_to_host(param_np, param)
+            param_np = param.to_numpy()
             state_dict[prefix + name] = param_np
         return state_dict
 
