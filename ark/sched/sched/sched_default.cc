@@ -70,7 +70,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                "requested (%d).",
                gpu_info.num_sm, num_sm);
     }
-    const OpConfig *cfg = sched_op_config(&matmul_op, gpu_info);
+    const OpConfig *cfg = this->sched_op_config(&matmul_op);
     assert(cfg->output_tiles.size() == 1);
     int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
@@ -217,7 +217,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
             LOG(ERROR, "unexpected error: empty OpNode");
         }
         Op *op = node->ops[0];
-        const OpConfig *cfg = sched_op_config(op, gpu_info);
+        const OpConfig *cfg = this->sched_op_config(op);
         int opseq_id = (int)this->opseqs.size();
         this->opseqs.emplace_back(make_unique<SchedOpSeq>(opseq_id, op, cfg));
         SchedOpSeq *opseq = this->opseqs.back().get();
@@ -226,7 +226,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         for (size_t i = 1; i < node->ops.size(); i++) {
             // If there are multiple Ops, check if the Op configs allow merging.
             Op *next_op = node->ops[i];
-            const OpConfig *next_cfg = sched_op_config(next_op, gpu_info);
+            const OpConfig *next_cfg = this->sched_op_config(next_op);
             bool need_sync_between_ops = cfg->sync_post || next_cfg->sync_pre;
             bool comm_and_comp = (op->is_comm() && !next_op->is_comm()) ||
                                  (!op->is_comm() && next_op->is_comm());

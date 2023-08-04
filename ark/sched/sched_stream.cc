@@ -51,10 +51,13 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
 {
     for (auto &item : items) {
         if (item.num_warps_per_uop > this->num_warps_per_sm) {
-            LOG(ERROR, "uop requires more warps than available on SM");
+            LOG(ERROR, "uop requires more warps (", item.num_warps_per_uop,
+                ") than available on SM (", this->num_warps_per_sm, ")");
         }
         if (item.smem_bytes_per_uop > this->smem_bytes_per_sm) {
-            LOG(ERROR, "uop requires more shared memory than available on SM");
+            LOG(ERROR, "uop requires more shared memory (",
+                item.smem_bytes_per_uop, ") than available on SM (",
+                this->smem_bytes_per_sm, ")");
         }
     }
 
@@ -115,6 +118,10 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
                 this->branches.back()->add(
                     item.opseq_id, uop_idx, current_sm_idx, current_warp_idx,
                     current_warp_idx + item.num_warps_per_uop);
+                if (current_warp_idx + item.num_warps_per_uop >
+                    this->num_warps_per_sm) {
+                    LOG(ERROR, "unexpected error");
+                }
                 remaining_smem_bytes[current_sm_idx - this->sm_id_begin] -=
                     item.smem_bytes_per_uop;
                 remaining_warps[current_sm_idx - this->sm_id_begin] -=
