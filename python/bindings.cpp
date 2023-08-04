@@ -10,8 +10,6 @@
 
 namespace py = pybind11;
 
-// TODO: add more checks for the host_buffer, currently users must make sure
-// that the host_tensor's memory layout is contiguous
 void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
                                   py::buffer host_buffer)
 {
@@ -32,7 +30,7 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
 
 PYBIND11_MODULE(_ark_core, m)
 {
-    m.doc() = "ARK python module interface"; // optional module docstring
+    m.doc() = "ARK python module interface";
     m.def("init", &ark::init,
           "Init an ark program. Call this function to clean up the shared "
           "memory directory. This is useful when the previous run crashed, as "
@@ -96,7 +94,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def_readwrite("id", &ark::TensorBuf::id)
         .def_readwrite("immutable", &ark::TensorBuf::immutable);
 
-    py::class_<ark::Tensor>(m, "Tensor")
+    py::class_<ark::Tensor>(m, "_Tensor")
         .def(py::init<const ark::Dims &, ark::TensorType, ark::TensorBuf *,
                       const ark::Dims &, const ark::Dims &, const ark::Dims &,
                       bool, int, int, const std::string &>(),
@@ -104,14 +102,22 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("ldims"), py::arg("offs"), py::arg("pads"),
              py::arg("exported"), py::arg("imported_rank"), py::arg("id"),
              py::arg("name"))
+        .def_property_readonly("shape",
+                               [](const ark::Tensor &t) {
+                                   py::list shape_list;
+                                   for (int i = 0; i < t.ndims(); ++i) {
+                                       shape_list.append((int)t.shape[i]);
+                                   }
+                                   return shape_list;
+                               })
+        .def_property_readonly("type",
+                               [](const ark::Tensor &t) { return t.type; })
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("size", &ark::Tensor::size,
              "Number of elements in the tensor excluding padding.")
         .def("ndims", &ark::Tensor::ndims,
              "Number of dimensions in the tensor.")
-        .def("shape", &ark::Tensor::padded_shape,
-             "Shape of the tensor including padding.")
         .def("padded_shape", &ark::Tensor::padded_shape,
              "Shape of the tensor including padding.")
         .def("type_bytes", &ark::Tensor::type_bytes,
@@ -123,7 +129,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def("offset_bytes", &ark::Tensor::offset_bytes, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
 
-    py::class_<ark::Model>(m, "Model")
+    py::class_<ark::Model>(m, "_Model")
         .def(py::init<int>(), py::arg("rank") = 0)
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
@@ -322,8 +328,8 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
              py::arg("name") = "all_reduce");
-    // register class Executor
-    py::class_<ark::Executor>(m, "Executor",
+
+    py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")
         .def(py::init<const int, int, int, ark::Model &, const std::string &,
                       int>(),

@@ -5,10 +5,7 @@ import ark
 import numpy as np
 
 
-def main():
-    # Initialize the ARK runtime
-    ark.init()
-
+def model_tutorial():
     # Create a Model instance
     model = ark.Model()
 
@@ -60,4 +57,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    model_tutorial()

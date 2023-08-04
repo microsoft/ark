@@ -4,6 +4,7 @@
 import ark
 import numpy as np
 import multiprocessing
+import unittest
 
 m, n, k = 64, 256, 8
 
@@ -120,6 +121,11 @@ def all_gather_test_main(
         process.join()
 
 
+class TestAllreduce(unittest.TestCase):
+    def test_all_gather(self):
+        all_gather_test_main(2, all_gather_tensor_parallel)
+        all_gather_test_main(4, all_gather_tensor_parallel)
+
+
 if __name__ == "__main__":
-    all_gather_test_main(2, all_gather_tensor_parallel)
-    all_gather_test_main(4, all_gather_tensor_parallel)
+    unittest.main()

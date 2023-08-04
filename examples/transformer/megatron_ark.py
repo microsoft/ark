@@ -75,8 +75,8 @@ class MultiHeadAttention:
         # input_V: [batch_size, len_v(=len_k), d_model]
         # attn_mask: [batch_size, seq_len, seq_len]
         # residual: [batch_size, len_q, d_model]
-        batch_size = input_Q.shape()[0]
-        len_q = input_Q.shape()[1]
+        batch_size = input_Q.shape[0]
+        len_q = input_Q.shape[1]
 
         # Q: [batch_size, len_q, n_heads_per_gpu * d_k]
         Q = self.model.matmul(input_Q, self.W_Q)
@@ -87,7 +87,7 @@ class MultiHeadAttention:
         # Q: [batch_size, n_heads_per_gpu, len_q, d_k]
         Q = self.model.transpose(Q, ark.Dims(0, 2, 1, 3))
 
-        len_k = input_K.shape()[1]
+        len_k = input_K.shape[1]
         # K: [batch_size, len_k, n_heads_per_gpu * d_k]
         K = self.model.matmul(input_K, self.W_K)
         # K: [batch_size, len_k, n_heads_per_gpu, d_k]
@@ -97,7 +97,7 @@ class MultiHeadAttention:
         # K: [batch_size, n_heads_per_gpu, len_k, d_k]
         K = self.model.transpose(K, ark.Dims(0, 2, 1, 3))
 
-        len_v = input_V.shape()[1]
+        len_v = input_V.shape[1]
         # V: [batch_size, len_v(=len_k), n_heads_per_gpu * d_v]
         V = self.model.matmul(input_V, self.W_V)
         # V: [batch_size, len_v(=len_k), n_heads_per_gpu, d_v]
