@@ -58,14 +58,13 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
 
     # Copy send data to GPU0
     if rank == 0:
-        ark.tensor_memcpy_host_to_device(send_tensor, np_inputs)
+        send_tensor.from_numpy(np_inputs)
 
     # Run the ARK program
     ark.run()
 
     # Copy data back to host and calculate errors
-    host_output = np.zeros(tensor_len, dtype=np.float16)
-    ark.tensor_memcpy_device_to_host(host_output, recv_tensor)
+    host_output = recv_tensor.to_numpy()
 
     # Print output and error information
     print("host_output:", host_output)
