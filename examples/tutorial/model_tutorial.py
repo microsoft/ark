@@ -6,9 +6,6 @@ import numpy as np
 
 
 def model_tutorial():
-    # Initialize the ARK runtime
-    ark.init()
-
     # Create a Model instance
     model = ark.Model()
 

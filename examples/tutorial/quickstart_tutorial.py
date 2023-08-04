@@ -6,8 +6,8 @@ import ark
 
 
 def quickstart_tutorial():
-    # Initialize the ARK model
-    ark.init()
+    # Initialize the ARK runtime
+    runtime = ark.Runtime()
 
     M, N = 64, 64
     # Create an input tensor
@@ -19,7 +19,7 @@ def quickstart_tutorial():
     output_tensor = ark.add(input_tensor, other_tensor)
 
     # Launch the ARK runtime
-    ark.launch()
+    runtime.launch()
 
     # Initialize the input and other tensor with random values
     input_tensor_host = np.random.rand(M, N).astype(np.float32)
@@ -28,7 +28,7 @@ def quickstart_tutorial():
     other_tensor.from_numpy(other_tensor_host)
 
     # Run the ARK program
-    ark.run()
+    runtime.run()
 
     # Copy the output tensor from device memory to host memory, if dst is
     # None, a new numpy array of the same shape as the src tensor will be returned

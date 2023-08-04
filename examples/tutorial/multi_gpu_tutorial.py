@@ -14,7 +14,7 @@ tensor_size = tensor_len * 2
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
     # Initialize the ARK model
-    ark.init(rank, world_size)
+    runtime = ark.Runtime(rank, world_size)
 
     # Define the behavior for rank 0
     if rank == 0:
@@ -54,14 +54,14 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         )
 
     # Launch the ARK runtime
-    ark.launch()
+    runtime.launch()
 
     # Copy send data to GPU0
     if rank == 0:
         send_tensor.from_numpy(np_inputs)
 
     # Run the ARK program
-    ark.run()
+    runtime.run()
 
     # Copy data back to host and calculate errors
     host_output = recv_tensor.to_numpy()
