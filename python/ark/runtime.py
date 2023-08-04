@@ -63,16 +63,19 @@ class Runtime:
                 "ARK runtime is not initialized or already launched, skip launching"
             )
             return
-        self.ark_runtime_state = RuntimeState.launch
-        Executor.global_executor = Executor(
-            self.rank,
-            self.rank,
-            self.world_size,
-            Model.get_global_model(),
-            "Executor",
-        )
-        Executor.get_global_executor().compile()
+        # If the RuntimeState is init, we need to create a new executor and
+        # compile the kernels
+        if self.ark_runtime_state == RuntimeState.init:
+            Executor.global_executor = Executor(
+                self.rank,
+                self.rank,
+                self.world_size,
+                Model.get_global_model(),
+                "Executor",
+            )
+            Executor.get_global_executor().compile()
         Executor.get_global_executor().launch()
+        self.ark_runtime_state = RuntimeState.launch
 
     def run(self, iter=1, async_run=False):
         """
