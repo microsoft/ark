@@ -20,6 +20,8 @@ from .runtime import (
     init,
     launch,
     run,
+    wait,
+    stop,
     tensor_memcpy_device_to_host,
     tensor_memcpy_host_to_device,
 )
@@ -81,6 +83,8 @@ __all__ = [
     "init",
     "launch",
     "run",
+    "wait",
+    "stop",
     "Module",
     "Executor",
     "tensor_memcpy_device_to_host",
