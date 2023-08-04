@@ -16,8 +16,8 @@ Before diving in, let's import the required modules and initialize ARK:
 import ark
 import numpy as np
 
-# Initialize the ARK model
-ark.init()
+# Initialize the ARK runtime
+runtime = ark.Runtime()
 
 ```
 First, we need to create the operational graph for our DNN model. In this example, we define a simple model with two input tensors. The output tensor is the sum of these input tensors.
@@ -38,7 +38,7 @@ Next, we need to launch the ARK runtime and initialize the input and output tens
 
 ```python
 # Launch the ARK runtime
-ark.launch()
+runtime.launch()
 
 # Initialize the input and other tensor with random values
 input_tensor_host = np.random.rand(M, N).astype(np.float32)
@@ -51,7 +51,7 @@ Next, you can run the ARK runtime using ark.run(). This will launch the CUDA ker
 
 ```python
 # Run the ARK program
-ark.run()
+runtime.run()
 ```
 
 Lastly, copy the output tensor back to the host and verify the result.
