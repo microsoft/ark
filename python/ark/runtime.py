@@ -87,7 +87,7 @@ class Runtime:
         self.ark_runtime_state = RuntimeState.run
         Executor.get_global_executor().run(iter)
         if not async_run:
-            self.stop()
+            self.wait()
 
     def wait(self):
         """
