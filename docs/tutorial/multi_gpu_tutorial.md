@@ -110,7 +110,7 @@ send_tensor = model.identity(recv_tensor, [recv_dep])
 
 This is because the send operation must be executed after the recv operation. In the current scheduler, if this dependency is not specified, the send operation may be executed before the recv operation, causing an error. We will improve the scheduler in the future to automatically handle this situation.
     
-Finally, we can use `ark.launch()` to compile the kernel code and create contexts for each GPU. The connection between the two GPUs will be established automatically.
+Finally, we can use `runtime.launch()` to compile the kernel code and create contexts for each GPU. The connection between the two GPUs will be established automatically.
 
 After we lauch the ARK model, we need to copy the send tensor to GPU0 to initialize the send tensor. Then we can run the ARK program.
 
