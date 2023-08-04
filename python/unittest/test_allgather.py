@@ -118,7 +118,7 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len, iter=1):
 def all_gather_test_main(
     world_size, tensor_len, allgather_test_func=all_gather_test_not_inplace
 ):
-    ark.cleanup()
+    ark.init()
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = []

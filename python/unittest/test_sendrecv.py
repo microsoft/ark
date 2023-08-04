@@ -64,7 +64,7 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
 
 
 def sendrecv_test_one_dir():
-    ark.cleanup()
+    ark.init()
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = np.random.rand(tensor_len).astype(np.float16)
@@ -127,7 +127,7 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
 
 
 def sendrecv_test_bi_dir():
-    ark.cleanup()
+    ark.init()
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = []

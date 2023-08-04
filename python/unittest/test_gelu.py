@@ -10,7 +10,7 @@ import unittest
 
 
 def test_gelu_internal(batch_size, m, n, iter=1):
-    ark.cleanup()
+    ark.init()
     # Create a Model instance
     model = ark.Model()
 

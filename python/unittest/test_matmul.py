@@ -21,7 +21,7 @@ def test_matmul_internal(
     iter=1,
     data_type="float",
 ):
-    ark.cleanup()
+    ark.init()
 
     # Create a Model instance
     model = ark.Model()

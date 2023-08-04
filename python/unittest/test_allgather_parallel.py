@@ -101,7 +101,7 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size, iter=1):
 def all_gather_test_main(
     world_size, allgather_test_func=all_gather_tensor_parallel
 ):
-    ark.cleanup()
+    ark.init()
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = {

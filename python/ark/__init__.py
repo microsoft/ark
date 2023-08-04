@@ -8,7 +8,7 @@ if ark_root is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
 from ._ark_core import (
-    cleanup,
+    init,
     srand,
     rand,
     Dims,
@@ -60,7 +60,7 @@ from .model import (
 
 
 __all__ = [
-    "cleanup",
+    "init",
     "srand",
     "rand",
     "Dims",
