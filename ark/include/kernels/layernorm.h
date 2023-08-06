@@ -31,7 +31,8 @@ struct LayerNorm
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static DEVICE void run(DataType *out, const DataType *in, int uop_idx)
+    static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
+                           int smem_per_warp)
     {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
         using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
@@ -71,8 +72,8 @@ struct LayerNorm
         }
         UnitOp::sync_threads();
         // final reduction on shared memory using warp shuffle.
-        reduced =
-            warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(reduced, tid);
+        reduced = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
+            reduced, tid, smem_per_warp);
         // get the average result.
         ReduceTypeMean::singlePostReduce(&reduced, &reduced, UnitOutDims::W);
         DataType variance;
@@ -85,8 +86,8 @@ struct LayerNorm
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
         UnitOp::sync_threads();
-        variance =
-            warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(variance, tid);
+        variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
+            variance, tid, smem_per_warp);
         ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutDims::W);
         UnitOp::sync_threads();
         // the output is (input - mean) / sqrt(variance)
@@ -101,21 +102,25 @@ struct LayerNorm
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void layernorm(float *out, const float *in, int uop_idx)
+DEVICE void layernorm(float *out, const float *in, int uop_idx,
+                      int smem_per_warp)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-              SmemBytes, float, NelemPerThread>::run(out, in, uop_idx);
+              SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
+                                                     smem_per_warp);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx)
+DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx,
+                      int smem_per_warp)
 {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-              SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx);
+              SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
+                                                         smem_per_warp);
 }
 
 } // namespace ark

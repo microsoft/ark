@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_UNIT_OP_H_
 #define ARK_KERNELS_UNIT_OP_H_
 
-#include "common.h"
+#include "device.h"
 #include "smem.h"
 #include "static_math.h"
 #include "sync.h"
@@ -112,11 +112,12 @@ struct UnitOp
 
     /// Return a shared memory pointer.
     /// @tparam T Type of the underlying data.
-    template <typename T> static DEVICE T *shared_memory()
+    /// @param smem_per_warp Bytes of shared memory per warp.
+    template <typename T> static DEVICE T *shared_memory(int smem_per_warp)
     {
         static_assert(sizeof(T) <= SmemBytes,
                       "Shared memory is not large enough");
-        return SharedMemory<T, NumThreads>();
+        return SharedMemory<T, NumThreads>::get(smem_per_warp);
     }
 
     /// Do not use `__syncthreads()` and use this function instead.

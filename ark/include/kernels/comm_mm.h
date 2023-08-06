@@ -4,9 +4,7 @@
 #ifndef ARK_COMM_MM_H_
 #define ARK_COMM_MM_H_
 
-#include "half.h"
-#include "sync.h"
-#include "unit_op.h"
+#include "common.h"
 
 namespace ark {
 namespace comm {
@@ -74,7 +72,7 @@ template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 // send a tile of the tensor from data_src to recv_buff
 DEVICE void sendLL(void *recv_buff, ark::half *data_src,
-                   volatile int *send_ready_flag, int uop_idx)
+                   volatile int *send_ready_flag, int uop_idx, int)
 {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
@@ -113,7 +111,7 @@ DEVICE void sendLL(void *recv_buff, ark::half *data_src,
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
-                   volatile int *send_ready_flag, int uop_idx)
+                   volatile int *send_ready_flag, int uop_idx, int)
 {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;

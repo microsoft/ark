@@ -8,6 +8,8 @@
 
 ark::unittest::State test_sched_branch_single_opseq()
 {
+    std::map<int, int> sm_id_to_smem_per_warp;
+
     {
         // Test:
         //   if (0 <= sm_id < 1 && 0 <= warp_id < 4) {
@@ -22,7 +24,8 @@ ark::unittest::State test_sched_branch_single_opseq()
                    /*warp_id_begin*/ warp_id, /*warp_id_end*/ warp_id + 1);
         }
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 1UL);
         UNITTEST_EQ(branches[0].sm_id_begin, 0);
@@ -54,7 +57,8 @@ ark::unittest::State test_sched_branch_single_opseq()
                    /*warp_id_begin*/ warp_id, /*warp_id_end*/ warp_id + 1);
         }
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 1UL);
         UNITTEST_EQ(branches[0].sm_id_begin, 0);
@@ -89,7 +93,8 @@ ark::unittest::State test_sched_branch_single_opseq()
                    /*warp_id_begin*/ warp_id, /*warp_id_end*/ warp_id + 1);
         }
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 2UL);
 
@@ -141,7 +146,8 @@ ark::unittest::State test_sched_branch_single_opseq()
                    /*warp_id_begin*/ warp_id, /*warp_id_end*/ warp_id + 1);
         }
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 3UL);
 
@@ -203,7 +209,8 @@ ark::unittest::State test_sched_branch_single_opseq()
                    /*warp_id_begin*/ 0, /*warp_id_end*/ 2);
         }
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 2UL);
 
@@ -255,7 +262,8 @@ ark::unittest::State test_sched_branch_single_opseq()
         sb.add(/*opseq_id*/ 0, /*uop_id*/ 4, /*sm_id*/ 3, /*warp_id_begin*/ 2,
                /*warp_id_end*/ 3);
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 2UL);
 
@@ -293,6 +301,8 @@ ark::unittest::State test_sched_branch_single_opseq()
 
 ark::unittest::State test_sched_branch_multi_opseq()
 {
+    std::map<int, int> sm_id_to_smem_per_warp;
+
     {
         ark::SchedBranch sb;
         sb.add(/*opseq_id*/ 0, /*uop_id*/ 0, /*sm_id*/ 0, /*warp_id_begin*/ 0,
@@ -340,7 +350,8 @@ ark::unittest::State test_sched_branch_multi_opseq()
         sb.add(/*opseq_id*/ 1, /*uop_id*/ 9, /*sm_id*/ 4, /*warp_id_begin*/ 3,
                /*warp_id_end*/ 4);
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 1UL);
 
@@ -399,7 +410,8 @@ ark::unittest::State test_sched_branch_multi_opseq()
         sb.add(/*opseq_id*/ 0, /*uop_id*/ 4, /*sm_id*/ 1, /*warp_id_begin*/ 3,
                /*warp_id_end*/ 4);
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 2UL);
         UNITTEST_EQ(branches[0].sm_id_begin, 0);
@@ -435,6 +447,7 @@ ark::unittest::State test_sched_branch_multi_opseq()
 
 ark::unittest::State test_sched_branch_clear()
 {
+    std::map<int, int> sm_id_to_smem_per_warp;
     {
         ark::SchedBranch sb;
         for (int uop_id = 0; uop_id < 4; ++uop_id) {
@@ -444,7 +457,8 @@ ark::unittest::State test_sched_branch_clear()
                    /*warp_id_begin*/ warp_id, /*warp_id_end*/ warp_id + 1);
         }
 
-        std::vector<ark::Branch> branches = sb.get_branches();
+        std::vector<ark::Branch> branches =
+            sb.get_branches(sm_id_to_smem_per_warp);
 
         UNITTEST_EQ(branches.size(), 1UL);
 

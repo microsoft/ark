@@ -12,12 +12,14 @@ namespace ark {
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, bool IsColumnA,
           bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>
-DEVICE void matmul(ark::half *C, ark::half *A, ark::half *B, int uop_idx)
+DEVICE void matmul(ark::half *C, ark::half *A, ark::half *B, int uop_idx,
+                   int smem_per_warp)
 {
     // 0x3c00 represents constant 1.0 in half-precision floating point format.
     gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, IsColumnA,
          IsColumnB, IsRelu, NumThreads, SmemBytes>(
-        C, A, B, ark::half::bitcast(0x3c00), ark::half::bitcast(0x0), uop_idx);
+        C, A, B, ark::half::bitcast(0x3c00), ark::half::bitcast(0x0), uop_idx,
+        smem_per_warp);
 }
 
 // /* Fused matrix multiplication and scale kernel. */

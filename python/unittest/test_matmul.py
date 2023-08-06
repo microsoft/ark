@@ -144,7 +144,7 @@ def test_matmul_small_sizes(split_k, is_relu, gran_lev, iter=1):
 
 class TestMatmul(unittest.TestCase):
     def test_matmul_gran(self):
-        for gran_lev in range(-1, 4):
+        for gran_lev in range(-1, 3):
             print("test_matmul_gran gran_lev=", gran_lev)
             test_matmul_small_sizes(1, False, gran_lev)
 
@@ -156,12 +156,11 @@ class TestMatmul(unittest.TestCase):
         print("test_matmul_split")
         for split_k in range(2, 4):
             test_matmul_small_sizes(split_k, False, -1)
-        # TODO: enable this after fixing the bug in the large tensor matmul
-        # for split_k in range(3, 8):
-        #     for gran_lev in range(-1, 4):
-        #         test_matmul_internal(
-        #             128, 4096, 1024, 1, 1, split_k, False, gran_lev, 1, "half"
-        #         )
+        for split_k in range(3, 8):
+            for gran_lev in range(-1, 3):
+                test_matmul_internal(
+                    128, 4096, 1024, 1, 1, split_k, False, gran_lev, 1, "half"
+                )
 
     def test_matmul_perf(self):
         test_matmul_small_sizes(1, False, -1, 1000)

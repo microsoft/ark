@@ -50,6 +50,8 @@ struct GpuInfo
     const unsigned int max_registers_per_block = 65536;
     const unsigned int min_threads_per_block =
         max_registers_per_block / max_registers_per_thread;
+    const unsigned int max_threads_per_block = 1024;
+    const unsigned int smem_align = 128;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -11,8 +11,6 @@
 
 namespace ark {
 
-const OpConfig *sched_op_config(const Op *op, const GpuInfo &gpu_info);
-
 class SchedOp
 {
   public:
