@@ -525,8 +525,8 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     UNITTEST_EQ(node->get_name(), "send;send_done;recv;");
     UNITTEST_EQ(node->producers.size(), 0UL);
 
-    std::vector<ark::OpNode*> users;
-    for (auto& user : node->users) {
+    std::vector<ark::OpNode *> users;
+    for (auto &user : node->users) {
         users.push_back(user);
     }
     UNITTEST_EQ(users[0]->get_name(), "add;");
@@ -540,7 +540,7 @@ ark::unittest::State test_sched_opgraph_all_reduce()
 
     node = users[1];
     users.clear();
-    for (auto& user : node->users) {
+    for (auto &user : node->users) {
         users.push_back(user);
     }
     UNITTEST_EQ(users[0]->get_name(), "add_1;");
