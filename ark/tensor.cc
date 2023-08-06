@@ -141,10 +141,11 @@ int Tensor::ndims() const
 // Shape of the tensor including padding.
 Dims Tensor::padded_shape() const
 {
-    Dims ps{{(DimType)math::pad(this->shape[0], this->pads[0]),
-             (DimType)math::pad(this->shape[1], this->pads[1]),
-             (DimType)math::pad(this->shape[2], this->pads[2]),
-             (DimType)math::pad(this->shape[3], this->pads[3])}};
+    std::vector<DimType> padded_shape;
+    for (int i = 0; i < this->shape.ndims(); ++i) {
+        padded_shape.push_back(math::pad(this->shape[i], this->pads[i]));
+    }
+    Dims ps{padded_shape};
     return ps;
 }
 
