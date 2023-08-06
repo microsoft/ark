@@ -272,12 +272,16 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
                 " (", node->ops.size(), " ops)");
         }
 
+        // Align shared memory size
+        int smem_bytes = opseq->get_smem_bytes();
+        int aligned_smem_bytes = math::pad(smem_bytes, gpu_info.smem_align);
+
         // Create a scheduling item.
         SchedItem item;
         item.opseq_id = opseq_id;
         item.num_uops = opseq->get_tdims_size();
         item.num_warps_per_uop = opseq->get_num_warps();
-        item.smem_bytes_per_uop = opseq->get_smem_bytes();
+        item.smem_bytes_per_uop = aligned_smem_bytes;
         if (op->is_comm()) {
             comm_items.emplace_back(item);
         } else {

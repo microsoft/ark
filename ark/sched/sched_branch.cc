@@ -225,20 +225,16 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
                         // Break.
                         break;
                     } else if (info.uop_id_diff == 0) {
-                        // Diff is undetermined yet. Set it and merge.
+                        // Diff is undetermined yet. Set it.
                         info.uop_id_diff = next_uop.uop_id - info.uop_id_last;
-                        current_warp_id_end = next_uop.warp_id_end;
-                        info.uop_id_last = next_uop.uop_id;
-                        if (info.warp_id_end < current_warp_id_end) {
-                            info.warp_id_end = current_warp_id_end;
-                        }
                     } else {
-                        // Diff is the same as the previous uop. Merge.
-                        current_warp_id_end = next_uop.warp_id_end;
-                        info.uop_id_last = next_uop.uop_id;
-                        if (info.warp_id_end < current_warp_id_end) {
-                            info.warp_id_end = current_warp_id_end;
-                        }
+                        // Diff is the same as the previous uop. Do nothing.
+                    }
+                    // Merge.
+                    current_warp_id_end = next_uop.warp_id_end;
+                    info.uop_id_last = next_uop.uop_id;
+                    if (info.warp_id_end < current_warp_id_end) {
+                        info.warp_id_end = current_warp_id_end;
                     }
                     merged_uop_indices.emplace(j);
                     BRANCH_DEBUG("merged uop id ", next_uop.uop_id, " sm_id ",

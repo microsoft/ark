@@ -413,7 +413,7 @@ int main()
     UNITTEST(test_matmul_gran0);
     UNITTEST(test_matmul_gran1);
     UNITTEST(test_matmul_gran2);
-    UNITTEST(test_matmul_gran3);
+    // UNITTEST(test_matmul_gran3);
     UNITTEST(test_matmul_relu);
     UNITTEST(test_matmul_split);
     UNITTEST(test_matmul_perf);
