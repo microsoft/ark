@@ -4,6 +4,7 @@
 #ifndef ARK_KERNELS_SYNC_H_
 #define ARK_KERNELS_SYNC_H_
 
+#include "device.h"
 #include "static_math.h"
 
 namespace ark {
@@ -26,9 +27,6 @@ struct State
 template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
 {
     constexpr int MaxOldCnt = BlockNum - 1;
-    __threadfence();
-    // Make sure that all threads in this block have done `__threadfence()`
-    // before to flip `flag`.
 #ifdef ARK_KERNELS_SYNC_CLKS_CNT
     static_assert(math::is_pow2<ARK_KERNELS_SYNC_CLKS_CNT>::value == 1, "");
     if (threadIdx.x == 0 && blockIdx.x == 0) {
@@ -37,7 +35,13 @@ template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
     }
 #endif // ARK_KERNELS_SYNC_CLKS_CNT
     __syncthreads();
+    if (BlockNum == 1) {
+        return;
+    }
     if (threadIdx.x == 0) {
+        // Make sure that all threads in this block have done `__threadfence()`
+        // before to flip `flag`.
+        __threadfence();
         int is_add_ = state.is_add ^ 1;
         if (is_add_) {
             if (atomicAdd(&state.cnt, 1) == MaxOldCnt) {
@@ -85,17 +89,15 @@ template <int ThreadsPerWarpGroup> DEVICE void sync_warps()
     // case when we synchronize warps in two-pairs. If we synchronize warps in
     // four-pairs, we need at most 8 barriers. The problem here is that
     // `__syncthreads()` always uses barrier 0, so if `__syncthreads()`
-    // instruction is on flight, `sync_wg()` should not use barrier 0. However,
-    // we cannot know whether `__syncthreads()` will be on flight or not.
-    // So we have two options.
-    // Option 1: Let users take the risk and we just use barrier 0, which
-    // enables to support 64 threads (sync in two-pairs). In this case, users
-    // should make sure that their kernels never issue `__syncthreads()` and
-    // `sync_wg()` at the same time, otherwise the kernel may stop unexpectedly
-    // during runtime.
-    // Option 2: Do not use barrier 0 to be more safe, instead we cannot support
-    // 64 threads.
-    // Here we selected the first option
+    // instruction is on flight, `sync_warps()` should not use barrier 0.
+    // However, we cannot know whether `__syncthreads()` will be on flight or
+    // not. So we have two options. Option 1: Let users take the risk and we
+    // just use barrier 0, which enables to support 64 threads (sync in
+    // two-pairs). In this case, users should make sure that their kernels never
+    // issue `__syncthreads()` and `sync_warps()` at the same time, otherwise
+    // the kernel may stop unexpectedly during runtime. Option 2: Do not use
+    // barrier 0 to be more safe, instead we cannot support 64 threads. Here we
+    // select the first option.
     if (ThreadsPerWarpGroup == 32) {
         __syncwarp();
     } else if (ThreadsPerWarpGroup == 64) {

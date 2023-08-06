@@ -4,9 +4,7 @@
 #ifndef ARK_KERNELS_BROADCAST_H_
 #define ARK_KERNELS_BROADCAST_H_
 
-#include "static_math.h"
-#include "unit_op.h"
-#include "vec.h"
+#include "common.h"
 
 namespace ark {
 

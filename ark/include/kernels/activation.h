@@ -5,7 +5,6 @@
 #define ARK_KERNELS_ACTIVATION_H_
 
 #include "broadcast.h"
-#include "half.h"
 
 namespace ark {
 
@@ -71,7 +70,7 @@ struct Activation<_ActivationType, _InShape, half, 2>
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void relu(half *out, half *in, int uop_idx)
+DEVICE void relu(half *out, half *in, int uop_idx, int)
 {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Activation<Relu, InShape, half, 2>>::run(out, in,
@@ -81,7 +80,7 @@ DEVICE void relu(half *out, half *in, int uop_idx)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void gelu(half *out, half *in, int uop_idx)
+DEVICE void gelu(half *out, half *in, int uop_idx, int)
 {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Activation<Gelu, InShape, half, 2>>::run(out, in,

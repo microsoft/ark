@@ -5,8 +5,6 @@
 #define ARK_KERNELS_IM2COL_H_
 
 #include "ewise.h"
-#include "half.h"
-#include "sync.h"
 
 namespace ark {
 
@@ -121,7 +119,7 @@ template <typename InDims, typename InShape, typename OutDims,
           int SmemBytes, int KernelHeight, int KernelWidth, int StrideHeight,
           int StrideWidth, int PadHeight, int PadWidth, int DilationHeight,
           int DilationWidth>
-DEVICE void im2col(half *y, half *x, int uop_idx)
+DEVICE void im2col(half *y, half *x, int uop_idx, int)
 {
     Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Im2Col<InShape, InDims, OutDims, UnitOutDims, half, 2, KernelHeight,

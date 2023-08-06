@@ -610,7 +610,8 @@ DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx)
     template <typename InDims, typename OutDims, typename OutShape,            \
               typename UnitOutDims, int NumThreads, int SmemBytes,             \
               typename DataType>                                               \
-    DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx)   \
+    DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx,   \
+                                   int)                                        \
     {                                                                          \
         _transpose<InDims, OutDims, OutShape, UnitOutDims, NumThreads,         \
                    SmemBytes,                                                  \
