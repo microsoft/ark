@@ -5,10 +5,8 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
-extern __shared__ int _ARK_SMEM[];
-
 // clang-format off
-#include "half.h"
+#include "common.h"
 // clang-format on
 
 #include "activation.h"
@@ -19,9 +17,7 @@ extern __shared__ int _ARK_SMEM[];
 #include "layernorm.h"
 #include "matmul.h"
 #include "reduce.h"
-#include "smem.h"
 #include "softmax.h"
-#include "sync.h"
 #include "transpose.h"
 
 #endif // ARK_KERNELS_H_

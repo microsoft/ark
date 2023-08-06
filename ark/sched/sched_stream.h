@@ -5,6 +5,7 @@
 #define ARK_SCHED_STREAM_H_
 
 #include "sched_branch.h"
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -18,6 +19,14 @@ struct SchedItem
     int smem_bytes_per_uop;
 };
 
+struct Stream
+{
+    /// Ordered list of branches in the stream
+    std::vector<Branch> branches;
+    /// sm_id -> assigned smem bytes per warp
+    std::map<int, int> sm_id_to_smem_per_warp;
+};
+
 class SchedStream
 {
   public:
@@ -28,7 +37,7 @@ class SchedStream
     void add_items(const std::vector<SchedItem> &items);
     void sync();
     void clear();
-    std::vector<std::vector<Branch>> get_branches();
+    std::vector<Stream> get_streams();
 
     int get_num_sm() const;
 

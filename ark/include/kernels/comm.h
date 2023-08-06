@@ -5,7 +5,6 @@
 #define ARK_KERNELS_COMM_H_
 
 #include "common.h"
-#include "unit_op.h"
 
 namespace ark {
 namespace comm {
@@ -35,7 +34,7 @@ __device__ int _ARK_COMM_SW_SEND_LOCK = 0;
 // Send a Request to the proxy.
 template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid,
           unsigned int DstSid, unsigned long long int Length>
-DEVICE void send(int)
+DEVICE void send(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
@@ -76,7 +75,7 @@ DEVICE void send(int)
 
 // Poll SC and reset.
 template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid>
-DEVICE void send_done(int)
+DEVICE void send_done(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
@@ -90,7 +89,7 @@ DEVICE void send_done(int)
 
 //
 template <unsigned int Rank, unsigned int SrcRank, unsigned int DstSid>
-DEVICE void recv(int)
+DEVICE void recv(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {

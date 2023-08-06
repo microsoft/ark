@@ -275,7 +275,8 @@ std::ostream &CodeGenerator::branch(std::ostream &os, const Branch &br,
                     os << indexing << " + ";
                 }
             }
-            os << branch_op.uop_id_begin << ");\n";
+            os << branch_op.uop_id_begin << ", " << br.smem_bytes_per_warp
+               << ");\n";
         }
         os << "    }\n";
     }
@@ -305,13 +306,13 @@ ostream &CodeGenerator::def_uop(ostream &os, const SchedOp &sop,
         ++cnt_param;
     }
 
-    os << "int _uop_idx) {\n";
+    os << "int _uop_idx, int _smem_per_warp) {\n";
     os << "  " << func_name << "(";
 
     for (int i = 0; i < cnt_param; ++i) {
         os << '_' << i << ", ";
     }
-    os << "_uop_idx);\n}\n";
+    os << "_uop_idx, _smem_per_warp);\n}\n";
     return os;
 }
 
@@ -338,7 +339,7 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
             os << "// tile dims: (" << opseq.get_tdims()[0] << COM
                << opseq.get_tdims()[1] << COM << opseq.get_tdims()[2] << ")\n"
                << "__noinline__ __device__ void " << name
-               << "(int _uop_idx) {\n";
+               << "(int _uop_idx, int _smem_per_warp) {\n";
         }
         --idx;
         os << "  ";
@@ -355,7 +356,7 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
             this->oparg(os, arg) << ", ";
         }
 
-        os << "_uop_idx);\n";
+        os << "_uop_idx, _smem_per_warp);\n";
     }
     if (idx != sched_ops.size()) {
         os << "}\n";

@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_STATIC_MATH_H_
 #define ARK_KERNELS_STATIC_MATH_H_
 
-#include "common.h"
+#include "device.h"
 
 namespace ark {
 namespace math {
@@ -173,6 +173,12 @@ template <int Divisor> static DEVICE int mod(int x)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+/// Greatest multiple of Divisor equal to or smaller than x
+template <int Divisor> static DEVICE int gm(int x)
+{
+    return math::div<Divisor>(x) * Divisor;
+}
 
 } // namespace math
 } // namespace ark

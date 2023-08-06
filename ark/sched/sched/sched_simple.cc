@@ -21,7 +21,6 @@ SimpleScheduler::SimpleScheduler(Model &model, int gpu_id, int rank_,
 void SimpleScheduler::schedule()
 {
     LOG(DEBUG, "SimpleScheduler start scheduling");
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
 
     int op_idx = 0;
     int opseq_idx = 0;
@@ -71,7 +70,7 @@ void SimpleScheduler::schedule()
         }
         // schedule model with sched_op_config and pad the tensors
         // by looking up the config table of the op in sched_op_config
-        const OpConfig *cfg = sched_op_config(op, gpu_info);
+        const OpConfig *cfg = this->sched_op_config(op);
 
         string sched_op_name("op_" + to_string(op_idx) + "_" + op->name);
         for (size_t i = 0; i < sched_op_name.size(); i++) {
