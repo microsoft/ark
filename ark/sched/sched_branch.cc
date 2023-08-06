@@ -54,6 +54,8 @@ struct OpBranchInfo
     int uop_id_diff;
     /// The number of warps per uop.
     int num_warps_per_uop;
+    /// Bytes of shared memory allowed per warp.
+    int smem_bytes_per_warp;
 
     int get_num_uops() const
     {
@@ -76,7 +78,8 @@ class SchedBranch::Impl
     };
 
     static bool cmp_uop(const UnitOp &a, const UnitOp &b);
-    std::vector<OpBranchInfo> get_op_branch_info();
+    std::vector<OpBranchInfo> get_op_branch_info(
+        const std::map<int, int> &sm_id_to_smem_per_warp);
 
     std::vector<UnitOp> uops;
     std::map<int, std::set<int>> opseq_to_uop_ids;
@@ -89,7 +92,8 @@ class SchedBranch::Impl
     void add(int opseq_id, int uop_id, int sm_id, int warp_id_begin,
              int warp_id_end);
     void clear();
-    std::vector<Branch> get_branches();
+    std::vector<Branch> get_branches(
+        const std::map<int, int> &sm_id_to_smem_per_warp);
 
     friend class SchedBranch;
 };
@@ -147,7 +151,8 @@ bool SchedBranch::Impl::cmp_uop(const UnitOp &a, const UnitOp &b)
     }
 }
 
-std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
+std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
+    const std::map<int, int> &sm_id_to_smem_per_warp)
 {
     std::vector<OpBranchInfo> infos;
 
@@ -173,6 +178,13 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
         info.uop_id_diff = 0;
         info.num_warps_per_uop =
             current_uop.warp_id_end - current_uop.warp_id_begin;
+
+        auto search = sm_id_to_smem_per_warp.find(current_uop.sm_id);
+        if (search == sm_id_to_smem_per_warp.end()) {
+            info.smem_bytes_per_warp = 0;
+        } else {
+            info.smem_bytes_per_warp = search->second;
+        }
 
         merged_uop_indices.emplace(i);
         BRANCH_DEBUG("merged uop id ", current_uop.uop_id, " sm_id ",
@@ -210,83 +222,72 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
                     // same SM and warp. This should be handled in another
                     // branch. Skip here.
                     continue;
-                } else if (next_uop.warp_id_begin == current_warp_id_end) {
-                    // Contiguous warps. Try merge.
-                    if (info.uop_id_diff != 0 &&
-                        info.uop_id_diff !=
-                            next_uop.uop_id - info.uop_id_last) {
-                        // Diff is different from the previous uop. Break.
-                        break;
-                    } else if (info.sm_id_end - info.sm_id_begin > 1 &&
-                               (next_uop.warp_id_end > info.warp_id_end ||
-                                next_uop.warp_id_begin < info.warp_id_begin)) {
-                        // This branch is scheduling multiple SMs and next_uop
-                        // uses warp IDs that are not used by previous SMs.
-                        // Break.
-                        break;
-                    } else if (info.uop_id_diff == 0) {
-                        // Diff is undetermined yet. Set it.
-                        info.uop_id_diff = next_uop.uop_id - info.uop_id_last;
-                    } else {
-                        // Diff is the same as the previous uop. Do nothing.
-                    }
-                    // Merge.
-                    current_warp_id_end = next_uop.warp_id_end;
-                    info.uop_id_last = next_uop.uop_id;
-                    if (info.warp_id_end < current_warp_id_end) {
-                        info.warp_id_end = current_warp_id_end;
-                    }
-                    merged_uop_indices.emplace(j);
-                    BRANCH_DEBUG("merged uop id ", next_uop.uop_id, " sm_id ",
-                                 next_uop.sm_id, " warp_id_begin ",
-                                 next_uop.warp_id_begin, " warp_id_end ",
-                                 next_uop.warp_id_end);
-                    continue;
-                } else {
+                } else if (next_uop.warp_id_begin != current_warp_id_end) {
                     // Non-contiguous warps. Break.
                     break;
                 }
+                // Contiguous warps. Try merge.
             } else if (next_uop.sm_id == info.sm_id_end) {
                 // Scheduling the same opseq on the next SM.
                 if (next_uop.warp_id_begin != info.warp_id_begin) {
                     // Using different warp IDs from the next SM. Break.
                     break;
-                } else {
-                    // Contiguous SMs and using the same warp IDs. Try
-                    // merge.
-                    if (info.uop_id_diff == 0) {
-                        // Diff is undetermined yet. Set it and merge.
-                        info.uop_id_diff = next_uop.uop_id - info.uop_id_last;
-                        current_warp_id_end = next_uop.warp_id_end;
-                        info.uop_id_last = next_uop.uop_id;
-                        info.sm_id_end = next_uop.sm_id + 1;
-                        if (info.warp_id_end < current_warp_id_end) {
-                            info.warp_id_end = current_warp_id_end;
-                        }
-                    } else if (info.uop_id_diff ==
-                               next_uop.uop_id - info.uop_id_last) {
-                        // Diff is the same as the previous uop. Merge.
-                        current_warp_id_end = next_uop.warp_id_end;
-                        info.uop_id_last = next_uop.uop_id;
-                        info.sm_id_end = next_uop.sm_id + 1;
-                        if (info.warp_id_end < current_warp_id_end) {
-                            info.warp_id_end = current_warp_id_end;
-                        }
-                    } else {
-                        // Diff is different from the previous uop. Break.
+                }
+
+                search = sm_id_to_smem_per_warp.find(next_uop.sm_id);
+                if (search != sm_id_to_smem_per_warp.end()) {
+                    if (info.smem_bytes_per_warp != search->second) {
+                        // Different SMs have different shared memory bytes
+                        // per warp. Break.
                         break;
                     }
-                    merged_uop_indices.emplace(j);
-                    BRANCH_DEBUG("merged uop id ", next_uop.uop_id, " sm_id ",
-                                 next_uop.sm_id, " warp_id_begin ",
-                                 next_uop.warp_id_begin, " warp_id_end ",
-                                 next_uop.warp_id_end);
-                    continue;
+                } else {
+                    // The next SM is supposed to not use shared memory.
+                    // We can merge it. Do nothing.
                 }
+                // Contiguous SMs and using the same warp IDs. Try merge.
             } else {
                 // Non-contiguous SMs. Break.
                 break;
             }
+
+            // Try merge.
+
+            if (info.uop_id_diff != 0 &&
+                info.uop_id_diff != next_uop.uop_id - info.uop_id_last) {
+                // Diff is different from the previous uop. Break.
+                break;
+            }
+            if (info.sm_id_end - info.sm_id_begin > 1 &&
+                (next_uop.warp_id_end > info.warp_id_end ||
+                 next_uop.warp_id_begin < info.warp_id_begin)) {
+                // This branch is scheduling multiple SMs and next_uop
+                // uses warp IDs that are not used by previous SMs.
+                // Break.
+                break;
+            }
+
+            // Merge.
+            if (info.uop_id_diff == 0) {
+                // Diff is undetermined yet. Set it.
+                info.uop_id_diff = next_uop.uop_id - info.uop_id_last;
+            } else {
+                // Diff is the same as the previous uop. Do nothing.
+            }
+            if (next_uop.sm_id == info.sm_id_end) {
+                // Scheduling the same opseq on the next SM.
+                info.sm_id_end = next_uop.sm_id + 1;
+            }
+            current_warp_id_end = next_uop.warp_id_end;
+            info.uop_id_last = next_uop.uop_id;
+            if (info.warp_id_end < current_warp_id_end) {
+                info.warp_id_end = current_warp_id_end;
+            }
+            merged_uop_indices.emplace(j);
+            BRANCH_DEBUG("merged uop id ", next_uop.uop_id, " sm_id ",
+                         next_uop.sm_id, " warp_id_begin ",
+                         next_uop.warp_id_begin, " warp_id_end ",
+                         next_uop.warp_id_end);
         }
 
         if (current_warp_id_end < info.warp_id_end) {
@@ -309,6 +310,13 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
             new_info.uop_id_last = info.uop_id_last;
             new_info.uop_id_diff = info.uop_id_diff;
             new_info.num_warps_per_uop = info.num_warps_per_uop;
+
+            search = sm_id_to_smem_per_warp.find(new_info.sm_id_begin);
+            if (search == sm_id_to_smem_per_warp.end()) {
+                new_info.smem_bytes_per_warp = 0;
+            } else {
+                new_info.smem_bytes_per_warp = search->second;
+            }
 
             info.sm_id_end -= 1;
             info.uop_id_last = first_uop_id_in_last_sm - info.uop_id_diff;
@@ -366,14 +374,20 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info()
     return infos;
 }
 
-std::vector<Branch> SchedBranch::Impl::get_branches()
+std::vector<Branch> SchedBranch::Impl::get_branches(
+    const std::map<int, int> &sm_id_to_smem_per_warp)
 {
-    std::vector<OpBranchInfo> op_branch_info = this->get_op_branch_info();
+    std::vector<OpBranchInfo> op_branch_info =
+        this->get_op_branch_info(sm_id_to_smem_per_warp);
     std::vector<Branch> branches;
     for (const OpBranchInfo &info : op_branch_info) {
         if (!branches.empty() &&
             branches.back().sm_id_begin == info.sm_id_begin &&
-            branches.back().sm_id_end == info.sm_id_end) {
+            branches.back().sm_id_end == info.sm_id_end &&
+            (branches.back().smem_bytes_per_warp == info.smem_bytes_per_warp ||
+             branches.back().smem_bytes_per_warp * info.smem_bytes_per_warp ==
+                 0)) {
+            Branch &branch = branches.back();
             // Merge with the previous branch.
             BranchOp branch_op;
             branch_op.opseq_id = info.opseq_id;
@@ -383,7 +397,11 @@ std::vector<Branch> SchedBranch::Impl::get_branches()
             branch_op.num_uops_per_sm =
                 (info.warp_id_end - info.warp_id_begin) /
                 info.num_warps_per_uop;
-            WarpBranch &warp_branch = branches.back().warp_branches.back();
+            if (branch.smem_bytes_per_warp != info.smem_bytes_per_warp) {
+                branch.smem_bytes_per_warp = std::max(
+                    branch.smem_bytes_per_warp, info.smem_bytes_per_warp);
+            }
+            WarpBranch &warp_branch = branch.warp_branches.back();
             if (warp_branch.warp_id_begin == info.warp_id_begin &&
                 warp_branch.warp_id_end == info.warp_id_end) {
                 // Merge with the previous warp branch.
@@ -395,8 +413,7 @@ std::vector<Branch> SchedBranch::Impl::get_branches()
                 warp_branch.warp_id_begin = info.warp_id_begin;
                 warp_branch.warp_id_end = info.warp_id_end;
                 warp_branch.branch_ops.emplace_back(std::move(branch_op));
-                branches.back().warp_branches.emplace_back(
-                    std::move(warp_branch));
+                branch.warp_branches.emplace_back(std::move(warp_branch));
             } else {
                 // This may be not possible.
                 LOG(ERROR, "unexpected error");
@@ -406,6 +423,7 @@ std::vector<Branch> SchedBranch::Impl::get_branches()
             Branch branch;
             branch.sm_id_begin = info.sm_id_begin;
             branch.sm_id_end = info.sm_id_end;
+            branch.smem_bytes_per_warp = info.smem_bytes_per_warp;
             WarpBranch warp_branch;
             warp_branch.warp_id_begin = info.warp_id_begin;
             warp_branch.warp_id_end = info.warp_id_end;
@@ -445,9 +463,10 @@ void SchedBranch::clear()
     this->impl->clear();
 }
 
-std::vector<Branch> SchedBranch::get_branches()
+std::vector<Branch> SchedBranch::get_branches(
+    const std::map<int, int> &sm_id_to_smem_per_warp)
 {
-    return this->impl->get_branches();
+    return this->impl->get_branches(sm_id_to_smem_per_warp);
 }
 
 } // namespace ark

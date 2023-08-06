@@ -4,6 +4,7 @@
 #ifndef ARK_KERNELS_SYNC_H_
 #define ARK_KERNELS_SYNC_H_
 
+#include "device.h"
 #include "static_math.h"
 
 namespace ark {

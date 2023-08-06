@@ -4,6 +4,7 @@
 #ifndef ARK_SCHED_BRANCH_H_
 #define ARK_SCHED_BRANCH_H_
 
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -43,6 +44,8 @@ struct Branch
     int sm_id_begin;
     /// The SM ID range of this branch [sm_id_begin, sm_id_end).
     int sm_id_end;
+    /// Bytes of shared memory allowed per warp.
+    int smem_bytes_per_warp;
     /// The list of warp branches that run on every SMs in the range.
     std::vector<WarpBranch> warp_branches;
 };
@@ -72,7 +75,8 @@ class SchedBranch
     void clear();
 
     /// Get the branches.
-    std::vector<Branch> get_branches();
+    std::vector<Branch> get_branches(
+        const std::map<int, int> &sm_id_to_smem_per_warp);
 
   private:
     class Impl;

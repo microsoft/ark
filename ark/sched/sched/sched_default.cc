@@ -322,13 +322,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 
     // Schedule the Ops.
     this->comp_stream.back()->add_items(comp_items);
-    if (comp_items.size() > 0) {
-        this->comp_stream.back()->sync();
-    }
     this->comm_stream.back()->add_items(comm_items);
-    if (comm_items.size() > 0) {
-        this->comm_stream.back()->sync();
-    }
 
     LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
     for (auto &item : comp_items) {
@@ -547,24 +541,24 @@ std::vector<std::string> DefaultScheduler::gen_code()
 
     code << "__device__ void ark_loop_body(int _iter) {\n";
     for (size_t i = 0; i < this->comp_stream.size(); ++i) {
-        auto comp_branches = this->comp_stream[i]->get_branches();
-        for (size_t j = 0; j < comp_branches.size(); ++j) {
-            auto &branches = comp_branches[j];
-            for (auto &branch : branches) {
+        auto comp_streams = this->comp_stream[i]->get_streams();
+        for (size_t j = 0; j < comp_streams.size(); ++j) {
+            auto &stream = comp_streams[j];
+            for (auto &branch : stream.branches) {
                 this->codegen->branch(code, branch);
             }
-            if (!branches.empty() && j != comp_branches.size() - 1) {
+            if (!stream.branches.empty() && j != comp_streams.size() - 1) {
                 code << "  ";
                 this->codegen->sync_stream(code, 0, 0, num_sm_comp);
             }
         }
-        auto comm_branches = this->comm_stream[i]->get_branches();
-        for (size_t j = 0; j < comm_branches.size(); ++j) {
-            auto &branches = comm_branches[j];
-            for (auto &branch : branches) {
+        auto comm_streams = this->comm_stream[i]->get_streams();
+        for (size_t j = 0; j < comm_streams.size(); ++j) {
+            auto &stream = comm_streams[j];
+            for (auto &branch : stream.branches) {
                 this->codegen->branch(code, branch);
             }
-            if (!branches.empty() && j != comp_branches.size() - 1) {
+            if (!stream.branches.empty() && j != comm_streams.size() - 1) {
                 code << "  ";
                 this->codegen->sync_stream(code, 1, num_sm_comp,
                                            num_sm_comp + num_sm_comm);

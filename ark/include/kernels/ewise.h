@@ -4,8 +4,7 @@
 #ifndef ARK_KERNELS_EWISE_H_
 #define ARK_KERNELS_EWISE_H_
 
-#include "static_math.h"
-#include "unit_op.h"
+#include "common.h"
 
 namespace ark {
 

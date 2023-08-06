@@ -35,7 +35,8 @@ struct Softmax
     // TODO(chhwang): support NelemPerThread > 1.
     static_assert(NelemPerThread == 1, "Unimplemented");
 
-    static DEVICE void run(DataType *out, const DataType *in, int uop_idx)
+    static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
+                           int smem_per_warp)
     {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
         using ReduceTypeMax = ReduceTypeMax<DataType, NelemPerThread>;
@@ -78,8 +79,8 @@ struct Softmax
         UnitOp::sync_threads();
 
         // final reduction on shared memory using warp shuffle.
-        max_input =
-            warpsReduce<ReduceTypeMax, UnitOp, ThreadsPerRow>(max_input, tid);
+        max_input = warpsReduce<ReduceTypeMax, UnitOp, ThreadsPerRow>(
+            max_input, tid, smem_per_warp);
         // get the max input.
         ReduceTypeMax::singlePostReduce(&max_input, &max_input, UnitOutDims::W);
 
@@ -94,7 +95,7 @@ struct Softmax
         }
         UnitOp::sync_threads();
         exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
-            exp_sum_input, tid);
+            exp_sum_input, tid, smem_per_warp);
         ReduceTypeSum::singlePostReduce(&exp_sum_input, &exp_sum_input);
         UnitOp::sync_threads();
         // the output is
@@ -109,21 +110,24 @@ struct Softmax
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void softmax(float *out, float *in, int uop_idx)
+DEVICE void softmax(float *out, float *in, int uop_idx, int smem_per_warp)
 {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, float, NelemPerThread>::run(out, in, uop_idx);
+            SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
+                                                   smem_per_warp);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void softmax(ark::half *out, ark::half *in, int uop_idx)
+DEVICE void softmax(ark::half *out, ark::half *in, int uop_idx,
+                    int smem_per_warp)
 {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx);
+            SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
+                                                       smem_per_warp);
 }
 
 } // namespace ark

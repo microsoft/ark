@@ -33,9 +33,7 @@
 #include "cutlass/epilogue/threadblock/default_epilogue_wmma_tensor_op.h"
 #endif // defined(CUTLASS_ARCH_WMMA_ENABLED)
 
-#include "smem.h"
-#include "static_math.h"
-#include "vec.h"
+#include "common.h"
 
 namespace cutlass {
 namespace epilogue {
@@ -966,7 +964,7 @@ template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, bool IsColumnA,
           bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>
 DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
-                 ark::half beta, int uop_idx)
+                 ark::half beta, int uop_idx, int smem_per_warp)
 {
     static_assert(NCA::D2 == 1 && NCA::D3 == 1,
                   "NCA should be two dimensional.");
@@ -1045,7 +1043,8 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
         pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
     }
     typename GemmKernel::SharedStorage *ps =
-        UnitOp::template shared_memory<GemmKernel::SharedStorage>();
+        UnitOp::template shared_memory<GemmKernel::SharedStorage>(
+            smem_per_warp);
     GemmKernel::run(pA, pB, pC, pC, alpha, beta, *ps, uw, uh);
 }
 
