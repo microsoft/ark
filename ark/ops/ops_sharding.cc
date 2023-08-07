@@ -4,14 +4,14 @@
 #include "logging.h"
 #include "math.h"
 #include "model.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 // Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
-vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
-                                 DimType dim_per_shard, const string &name)
+std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
+                                      DimType dim_per_shard,
+                                      const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "sharding ", input->shape, " ", axis, " ", dim_per_shard);
@@ -32,7 +32,7 @@ vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
                    dim_per_shard, ") and this tensor cannot be padded.");
         }
     }
-    vector<Tensor *> shards;
+    std::vector<Tensor *> shards;
     DimType num_shard = math::div_up(input->shape[axis], dim_per_shard);
     Dims shard_shape = input->shape;
     Dims shard_offs = input->offs;
@@ -50,7 +50,7 @@ vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
         Tensor *shard =
             this->identity(this->tensor(shard_shape, input->type, input->buf,
                                         input->ldims, shard_offs, shard_pads),
-                           {input}, name + "/shard_" + to_string(i));
+                           {input}, name + "/shard_" + std::to_string(i));
         shards.emplace_back(shard);
         shard_offs[axis] += dim;
     }

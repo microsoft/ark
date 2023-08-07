@@ -21,15 +21,23 @@ ARK is under active development and a part of its features will be added in a fu
 
 ### ARK v0.1 (Latest Release)
 
-TBU
+* The default tile-based operator scheduler
+* A simple software communication stack
+* Transformer inference examples
 
-### ARK v0.2 (TBU)
+### ARK v0.2 (TBU, Sep. 2023)
 
-TBU
+* A simple operator scheduler for debugging
+* Extended communication interfaces
+* Support more operators
+* More inference examples
 
-### ARK v0.3 (TBU)
+### ARK v0.3 (TBU, Nov. 2023)
 
-TBU
+* Full support for the operator profiler
+* High-performance collective communication
+* Support more operators
+* More inference & training examples
 
 ## Contributing
 

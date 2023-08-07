@@ -3,15 +3,14 @@
 
 #include "logging.h"
 #include "model.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap CommConfigMap;
 
 SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-               int rank, int dst_rank, size_t bytes, const string &name)
+               int rank, int dst_rank, size_t bytes, const std::string &name)
     : Op{OP_SEND,
          prec_type,
          {input},
@@ -53,7 +52,7 @@ OpArgs SendOp::function_call_args(const OpConfig &) const
 }
 
 SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                       int sid, int rank, int dst_rank, const string &name)
+                       int sid, int rank, int dst_rank, const std::string &name)
     : Op{OP_SEND_DONE,
          prec_type,
          {input},
@@ -88,7 +87,7 @@ OpArgs SendDoneOp::function_call_args(const OpConfig &) const
 }
 
 RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-               int rank, int src_rank, size_t bytes, const string &name)
+               int rank, int src_rank, size_t bytes, const std::string &name)
     : Op{OP_RECV,
          prec_type,
          {input},
@@ -127,7 +126,7 @@ OpArgs RecvOp::function_call_args(const OpConfig &) const
 
 //
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
-                    Tensor *output, const string &name)
+                    Tensor *output, const std::string &name)
 {
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
@@ -148,7 +147,7 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 
 //
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
-                         const string &name)
+                         const std::string &name)
 {
     LOG(DEBUG, "send_done ", input->shape, " ", id);
     if (output == nullptr) {
@@ -161,7 +160,7 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
 
 //
 Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
-                    Tensor *output, const string &name)
+                    Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     size_t max_bytes = input->shape_bytes();

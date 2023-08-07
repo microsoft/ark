@@ -5,17 +5,8 @@
 #define ARK_UTILS_H
 
 #include "ark.h"
-#include <array>
-#include <cassert>
-#include <cstring>
 #include <functional>
-#include <iostream>
-#include <list>
-#include <map>
 #include <memory>
-#include <set>
-#include <string>
-#include <utility>
 #include <vector>
 
 namespace ark {

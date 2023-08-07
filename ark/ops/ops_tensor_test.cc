@@ -6,6 +6,7 @@
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
+#include <cstring>
 
 using namespace std;
 

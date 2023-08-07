@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap ArithmeticConfigMap;
 
 MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const string &name)
+             const std::string &name)
     : Op{OP_MUL, prec_type, {input, other},       {output},
          {},     name,      &ArithmeticConfigMap, -1,
          true}
@@ -49,7 +48,7 @@ std::string MulOp::function_name(const OpConfig &cfg) const
 }
 
 Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
-                   const string &name)
+                   const std::string &name)
 {
     LOG(DEBUG, "mul ", input->shape, " ", other->shape);
     assert(input != nullptr);
