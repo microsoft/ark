@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_KERNELS_MATH_H_
-#define ARK_KERNELS_MATH_H_
+#ifndef ARK_KERNELS_MATH_FUNCTIONS_H_
+#define ARK_KERNELS_MATH_FUNCTIONS_H_
 
 #include "broadcast.h"
 
@@ -49,4 +49,4 @@ DEVICE void sqrt(half *out, half *in, int uop_idx, int)
 
 } // namespace ark
 
-#endif // ARK_KERNELS_MATH_H_
+#endif // ARK_KERNELS_MATH_FUNCTIONS_H_
