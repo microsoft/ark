@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap ScaleConfigMap;
 
 ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
-                 const string &name)
+                 const std::string &name)
     : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
          name,     &ScaleConfigMap, -1,      true}
 {
@@ -61,7 +60,7 @@ OpArgs ScaleOp::function_call_args(const OpConfig &) const
 
 // Multiply `input` by `val`.
 Tensor *Model::scale(Tensor *input, float val, Tensor *output,
-                     const string &name)
+                     const std::string &name)
 {
     assert(input != nullptr);
     OpPrecType pt;
