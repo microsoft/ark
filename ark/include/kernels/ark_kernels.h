@@ -15,6 +15,7 @@
 #include "comm_mm.h"
 #include "im2col.h"
 #include "layernorm.h"
+#include "math.h"
 #include "matmul.h"
 #include "reduce.h"
 #include "softmax.h"
