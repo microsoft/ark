@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
+#include <cassert>
 
 using namespace std;
 
