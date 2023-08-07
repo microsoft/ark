@@ -15,7 +15,7 @@ if __name__ == "__main__":
     input_numpy = np.ones((1, 4096))
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
-        "weight": np.ones((4096,)),
+        "weight": np.ones((4096,)).astype(np.float16),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
@@ -27,7 +27,9 @@ if __name__ == "__main__":
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float16))
+    print(rmsnorm_ark.parameters)
     rmsnorm_ark.load_state_dict(state_dict)
+    print(rmsnorm_ark.weight.to_numpy())
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()

@@ -96,6 +96,10 @@ class Tensor:
         """
         Copies the tensor from a host numpy array to the device.
         """
+        if self.tensor_type == TensorType.FP32:
+            ndarray = ndarray.astype(np.float32)
+        elif self.tensor_type == TensorType.FP16:
+            ndarray = ndarray.astype(np.float16)
         executor.Executor.get_global_executor().tensor_memcpy_host_to_device(
             self._tensor, ndarray
         )
