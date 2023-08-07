@@ -32,7 +32,13 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
         // Update pads based on the tile shape. The tiling is applied to the
         // last two dimensions of the tensor. If the tensor is 1D, the first
         // dimension of the tile shape should be 1.
-        auto &tile = this->cfg->input_tiles[i];
+        auto tile = this->cfg->input_tiles[i];
+        if (tile.x < 0) {
+            tile.x = 1;
+        }
+        if (tile.y < 0) {
+            tile.y = 1;
+        }
         int ndims = this->op->inputs[i]->ndims();
         vector<DimType> pads;
         if (ndims == 1) {
@@ -51,7 +57,13 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
         this->op->inputs[i]->update_pads(pads);
     }
     for (unsigned int i = 0; i < this->op->outputs.size(); ++i) {
-        auto &tile = this->cfg->output_tiles[i];
+        auto tile = this->cfg->output_tiles[i];
+        if (tile.x < 0) {
+            tile.x = 1;
+        }
+        if (tile.y < 0) {
+            tile.y = 1;
+        }
         int ndims = this->op->outputs[i]->ndims();
         vector<DimType> pads;
         if (ndims == 1) {

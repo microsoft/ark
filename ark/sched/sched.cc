@@ -108,17 +108,19 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     for (auto &cfg : feasible_configs) {
         assert(cfg->output_tiles.size() > 0);
         const OpTile &ot = cfg->output_tiles[0];
+        DimType ot_x = (ot.x == -1) ? output->ldims[ndims - 2] : ot.x;
+        DimType ot_y = (ot.y == -1) ? output->ldims[ndims - 1] : ot.y;
         DimType num_tiles;
         DimType dim_0;
         DimType dim_1;
         if (ndims == 1) {
-            if (ot.x != 1) {
+            if (ot_x != 1) {
                 ++gran_lev;
                 continue;
             }
             dim_0 = output->shape[0];
             dim_1 = 1;
-            num_tiles = math::div_up(dim_0, ot.y);
+            num_tiles = math::div_up(dim_0, ot_y);
         } else {
             num_tiles = 1;
             for (int i = 0; i < ndims - 2; ++i) {
@@ -126,15 +128,15 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
             }
             dim_0 = output->shape[ndims - 1];
             dim_1 = output->shape[ndims - 2];
-            num_tiles *= math::div_up(dim_0, ot.y);
-            num_tiles *= math::div_up(dim_1, ot.x);
+            num_tiles *= math::div_up(dim_0, ot_y);
+            num_tiles *= math::div_up(dim_1, ot_x);
         }
         if (gran_lev == (int)feasible_configs.size() - 1) {
             // no more option, just use the finest-grained config
             break;
         }
         // magic condition
-        if ((dim_0 * 2 > ot.y) && (dim_1 * 2 > ot.x) &&
+        if ((dim_0 * 2 > ot_y) && (dim_1 * 2 > ot_x) &&
             ((num_tiles * cfg->num_warps) >= (min_wps * gpu_info.num_sm / 2))) {
             break;
         }
@@ -144,11 +146,15 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
         stringstream configs_str;
         if (feasible_configs.size() > 0) {
             const OpTile &ot = feasible_configs[0]->output_tiles[0];
-            configs_str << "{ " << ot.x << ", " << ot.y << " }";
+            DimType ot_x = (ot.x == -1) ? output->ldims[ndims - 2] : ot.x;
+            DimType ot_y = (ot.y == -1) ? output->ldims[ndims - 1] : ot.y;
+            configs_str << "{ " << ot_x << ", " << ot_y << " }";
         }
         for (int i = 1; i < (int)feasible_configs.size(); ++i) {
             const OpTile &ot = feasible_configs[i]->output_tiles[0];
-            configs_str << ", { " << ot.x << ", " << ot.y << " }";
+            DimType ot_x = (ot.x == -1) ? output->ldims[ndims - 2] : ot.x;
+            DimType ot_y = (ot.y == -1) ? output->ldims[ndims - 1] : ot.y;
+            configs_str << ", { " << ot_x << ", " << ot_y << " }";
         }
         configs_str << ".";
         LOGERR("no valid tile configuration found. Output shape ",
@@ -156,15 +162,12 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     }
     const OpConfig *cfg = feasible_configs[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);
-    // TODO: remove this hack way to set the output_tiles[0].y. Probable
-    // solution: Split the layernorm and softmax into two ops, one for
-    // calulating the reduction of the mean and variance, the other for the
-    // normalization the input.
-    if (op->type == OP_LAYERNORM || op->type == OP_SOFTMAX) {
-        // The output_tiles[0].y of the original config is 1, we need to make
-        // output_tiles[0].y equal to the output last dimension size, which is
-        // also the dimension that the layer norm or softmax is performed.
-        cfg_new->output_tiles[0].y = output->shape[ndims - 1];
+    OpTile &op_tile = cfg_new->output_tiles[0];
+    if (op_tile.x == -1) {
+        op_tile.x = output->ldims[ndims - 2];
+    }
+    if (op_tile.y == -1) {
+        op_tile.y = output->ldims[ndims - 1];
     }
     return cfg_new;
 }

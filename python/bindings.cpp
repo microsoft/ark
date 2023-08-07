@@ -171,7 +171,7 @@ PYBIND11_MODULE(_ark_core, m)
              "dependencies `deps`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("deps") = std::vector<ark::Tensor *>(),
-             py::arg("output") = nullptr, py::arg("name") = "identity")
+             py::arg("name") = "identity")
         .def("sharding", &ark::Model::sharding,
              "Shard `input` along `axis` into `dim_per_shard`-dimensional "
              "shards.",

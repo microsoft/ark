@@ -4,38 +4,24 @@
 #ifndef ARK_KERNELS_GEMM_H_
 #define ARK_KERNELS_GEMM_H_
 
+#include "cutlass/gemm/device/default_gemm_configuration.h"
 #include "cutlass/gemm/gemm.h"
 #include "cutlass/gemm/kernel/default_gemm.h"
-#include "cutlass/gemm/device/default_gemm_configuration.h"
 
 #include "common.h"
 
 namespace ark {
 
-template <
-    typename OperatorClass,
-    typename ArchTag,
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator,
-    typename Shape>
+template <typename OperatorClass, typename ArchTag, typename ElementA,
+          typename ElementB, typename ElementC, typename ElementAccumulator,
+          typename Shape>
 struct GemmConfiguration;
 
-template <
-    typename ArchTag,
-    typename ElementA,
-    typename ElementB,
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassSimt,
-    ArchTag,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<128, 128, 8>>
+template <typename ArchTag, typename ElementA, typename ElementB,
+          typename ElementC, typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassSimt, ArchTag, ElementA,
+                         ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<128, 128, 8>>
 {
     static int const kAlignmentA = 1;
     static int const kAlignmentB = 1;
@@ -45,26 +31,15 @@ struct GemmConfiguration<
     static int const kStages = 2;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC,
-        1,
-        ElementAccumulator,
-        ElementAccumulator
-    >;
+        ElementC, 1, ElementAccumulator, ElementAccumulator>;
 
     using Operator = cutlass::arch::OpMultiplyAdd;
 };
 
-template <
-    typename ArchTag,
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassSimt,
-    ArchTag,
-    int8_t,
-    int8_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 128, 32>>
+template <typename ArchTag, typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassSimt, ArchTag, int8_t, int8_t,
+                         ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 128, 32>>
 {
     static int const kAlignmentA = 4;
     static int const kAlignmentB = 4;
@@ -73,29 +48,18 @@ struct GemmConfiguration<
     using InstructionShape = cutlass::gemm::GemmShape<1, 1, 4>;
     static int const kStages = 2;
 
-    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-        ElementC,
-        1,
-        int32_t,
-        float
-    >;
+    using EpilogueOutputOp =
+        cutlass::epilogue::thread::LinearCombinationClamp<ElementC, 1, int32_t,
+                                                          float>;
 
     using Operator = cutlass::arch::OpMultiplyAdd;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm70,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<64, 64, 32>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<64, 64, 32>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -105,30 +69,23 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm70,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<128, 64, 32>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<128, 64, 32>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -138,30 +95,23 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm70,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<64, 128, 32>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<64, 128, 32>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -171,30 +121,23 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm70,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<128, 128, 32>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<128, 128, 32>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -204,30 +147,23 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<64, 64, 64>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<64, 64, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -237,30 +173,23 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<128, 128, 64>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<128, 128, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -270,30 +199,23 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementA, 
-    typename ElementB, 
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    ElementA,
-    ElementB,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<128, 256, 64>>
+template <typename ElementA, typename ElementB, typename ElementC,
+          typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         ElementA, ElementB, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<128, 256, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<ElementA>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<ElementA>::value;
@@ -303,28 +225,22 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = typename cutlass::platform::conditional<
         (cutlass::platform::is_same<ElementA, int8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
-        cutlass::platform::is_same<ElementA, uint8_t>::value ||
-        cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
-        cutlass::arch::OpMultiplyAddSaturate, cutlass::arch::OpMultiplyAdd>::type;
+         cutlass::platform::is_same<ElementA, cutlass::int4b_t>::value ||
+         cutlass::platform::is_same<ElementA, uint8_t>::value ||
+         cutlass::platform::is_same<ElementA, cutlass::uint4b_t>::value),
+        cutlass::arch::OpMultiplyAddSaturate,
+        cutlass::arch::OpMultiplyAdd>::type;
 };
 
-template <
-    typename ElementC,
-    typename ElementAccumulator>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    double,
-    double,
-    ElementC,
-    ElementAccumulator,
-    cutlass::gemm::GemmShape<128, 256, 64>>
+template <typename ElementC, typename ElementAccumulator>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         double, double, ElementC, ElementAccumulator,
+                         cutlass::gemm::GemmShape<128, 256, 64>>
 {
     static int const kAlignmentA = 1;
     static int const kAlignmentB = 1;
@@ -334,22 +250,16 @@ struct GemmConfiguration<
     static int const kStages = 3;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, ElementAccumulator,
-        ElementAccumulator>;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = cutlass::arch::OpMultiplyAdd;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    int8_t,
-    int8_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 64>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         int8_t, int8_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<int8_t>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<int8_t>::value;
@@ -358,22 +268,16 @@ struct GemmConfiguration<
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 32>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    int8_t,
-    uint8_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 64>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         int8_t, uint8_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<int8_t>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<uint8_t>::value;
@@ -382,22 +286,16 @@ struct GemmConfiguration<
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 32>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    uint8_t,
-    int8_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 64>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         uint8_t, int8_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<uint8_t>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<int8_t>::value;
@@ -406,22 +304,16 @@ struct GemmConfiguration<
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 32>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    uint8_t,
-    uint8_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 64>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         uint8_t, uint8_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 64>>
 {
     static int const kAlignmentA = 128 / cutlass::sizeof_bits<uint8_t>::value;
     static int const kAlignmentB = 128 / cutlass::sizeof_bits<uint8_t>::value;
@@ -430,147 +322,132 @@ struct GemmConfiguration<
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 32>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    cutlass::int4b_t,
-    cutlass::int4b_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 128>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         cutlass::int4b_t, cutlass::int4b_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 128>>
 {
-    static int const kAlignmentA = 128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
-    static int const kAlignmentB = 128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
+    static int const kAlignmentA =
+        128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
+    static int const kAlignmentB =
+        128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
 
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 128>;
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 64>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    cutlass::int4b_t,
-    cutlass::uint4b_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 128>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         cutlass::int4b_t, cutlass::uint4b_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 128>>
 {
-    static int const kAlignmentA = 128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
-    static int const kAlignmentB = 128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
+    static int const kAlignmentA =
+        128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
+    static int const kAlignmentB =
+        128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
 
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 128>;
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 64>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    cutlass::uint4b_t,
-    cutlass::int4b_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 128>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         cutlass::uint4b_t, cutlass::int4b_t, ElementC, int32_t,
+                         cutlass::gemm::GemmShape<128, 256, 128>>
 {
-    static int const kAlignmentA = 128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
-    static int const kAlignmentB = 128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
+    static int const kAlignmentA =
+        128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
+    static int const kAlignmentB =
+        128 / cutlass::sizeof_bits<cutlass::int4b_t>::value;
 
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 128>;
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 64>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    cutlass::uint4b_t,
-    cutlass::uint4b_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 128>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         cutlass::uint4b_t, cutlass::uint4b_t, ElementC,
+                         int32_t, cutlass::gemm::GemmShape<128, 256, 128>>
 {
-    static int const kAlignmentA = 128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
-    static int const kAlignmentB = 128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
+    static int const kAlignmentA =
+        128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
+    static int const kAlignmentB =
+        128 / cutlass::sizeof_bits<cutlass::uint4b_t>::value;
 
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 128>;
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 64>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAddSaturate;
+    using Operator = cutlass::arch::OpMultiplyAddSaturate;
 };
 
-template <
-    typename ElementC>
-struct GemmConfiguration<
-    cutlass::arch::OpClassTensorOp,
-    cutlass::arch::Sm80,
-    cutlass::uint1b_t,
-    cutlass::uint1b_t,
-    ElementC,
-    int32_t,
-    cutlass::gemm::GemmShape<128, 256, 512>>
+template <typename ElementC>
+struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+                         cutlass::uint1b_t, cutlass::uint1b_t, ElementC,
+                         int32_t, cutlass::gemm::GemmShape<128, 256, 512>>
 {
-    static int const kAlignmentA = 128 / cutlass::sizeof_bits<cutlass::uint1b_t>::value;
-    static int const kAlignmentB = 128 / cutlass::sizeof_bits<cutlass::uint1b_t>::value;
+    static int const kAlignmentA =
+        128 / cutlass::sizeof_bits<cutlass::uint1b_t>::value;
+    static int const kAlignmentB =
+        128 / cutlass::sizeof_bits<cutlass::uint1b_t>::value;
 
     using WarpShape = cutlass::gemm::GemmShape<64, 64, 512>;
     using InstructionShape = cutlass::gemm::GemmShape<16, 8, 256>;
     static int const kStages = 3;
 
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
-      ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
+    using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationClamp<
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value, int32_t, float>;
 
-  using Operator = cutlass::arch::OpMultiplyAdd;
+    using Operator = cutlass::arch::OpMultiplyAdd;
 };
 
 /// Custom ThreadblockSwizzle for ARK.
-template <typename UnitOp>
-struct GemmThreadblockSwizzle
+template <typename UnitOp> struct GemmThreadblockSwizzle
 {
-    DEVICE GemmThreadblockSwizzle() {}
-
-    DEVICE cutlass::gemm::GemmCoord get_tiled_shape() const {
-        return cutlass::gemm::GemmCoord(UnitOp::UnitOpDims::H, UnitOp::UnitOpDims::W, 1);
+    DEVICE GemmThreadblockSwizzle()
+    {
     }
 
-    DEVICE int get_log_tile(cutlass::gemm::GemmCoord) const {
+    DEVICE cutlass::gemm::GemmCoord get_tiled_shape() const
+    {
+        return cutlass::gemm::GemmCoord(UnitOp::UnitOpDims::H,
+                                        UnitOp::UnitOpDims::W, 1);
+    }
+
+    DEVICE int get_log_tile(cutlass::gemm::GemmCoord) const
+    {
         return 0;
     }
 
-    DEVICE cutlass::gemm::GemmCoord get_tile_offset(int log_tile) const {
+    DEVICE cutlass::gemm::GemmCoord get_tile_offset(int log_tile) const
+    {
         // log_tile is actually uop_idx here.
         int uh = UnitOp::uop_idx_h(log_tile);
         int uw = UnitOp::uop_idx_w(log_tile);
@@ -578,10 +455,7 @@ struct GemmThreadblockSwizzle
     }
 };
 
-// Half-precision GEMM. Row-major.
-// TODO: this kernel returns the error code 716 'misaligned address'
-// when TransposeA is false and the kernel is compiled with "-G" option
-// (which turns off all optimizations on device code).
+/// Half-precision GEMM. Row-major.
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, bool IsColumnA,
           bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>
@@ -628,28 +502,15 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
 
     using GemmShape = cutlass::gemm::GemmShape<Shape::D0, Shape::D1, Shape::D2>;
     using GemmConfig = typename ark::GemmConfiguration<
-        cutlass::arch::OpClassTensorOp, ArchTag, cutlass::half_t, cutlass::half_t,
-        cutlass::half_t, cutlass::half_t, GemmShape>;
+        cutlass::arch::OpClassTensorOp, ArchTag, cutlass::half_t,
+        cutlass::half_t, cutlass::half_t, cutlass::half_t, GemmShape>;
     using GemmKernel = typename cutlass::gemm::kernel::DefaultGemm<
-        cutlass::half_t,
-        LayoutA,
-        GemmConfig::kAlignmentA,
-        cutlass::half_t,
-        LayoutB,
-        GemmConfig::kAlignmentB,
-        cutlass::half_t,
-        LayoutC,
-        cutlass::half_t,
-        cutlass::arch::OpClassTensorOp,
-        ArchTag,
-        GemmShape,
-        typename GemmConfig::WarpShape,
-        typename GemmConfig::InstructionShape,
-        typename GemmConfig::EpilogueOutputOp,
-        ThreadblockSwizzle,
-        GemmConfig::kStages,
-        false,
-        typename GemmConfig::Operator>::GemmKernel;
+        cutlass::half_t, LayoutA, GemmConfig::kAlignmentA, cutlass::half_t,
+        LayoutB, GemmConfig::kAlignmentB, cutlass::half_t, LayoutC,
+        cutlass::half_t, cutlass::arch::OpClassTensorOp, ArchTag, GemmShape,
+        typename GemmConfig::WarpShape, typename GemmConfig::InstructionShape,
+        typename GemmConfig::EpilogueOutputOp, ThreadblockSwizzle,
+        GemmConfig::kStages, false, typename GemmConfig::Operator>::GemmKernel;
 
     constexpr int SizeA = math::mul<ProblemSize::D0, ProblemSize::D2>::value;
     constexpr int SizeB = math::mul<ProblemSize::D1, ProblemSize::D2>::value;
@@ -687,7 +548,8 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
     cutlass::TensorRef<cutlass::half_t, LayoutB> ref_b(pB, layout_b);
     cutlass::TensorRef<cutlass::half_t, LayoutC> ref_c(pC, layout_c);
 
-    cutlass::gemm::GemmCoord problem_size(ProblemSize::D0, ProblemSize::D1, ProblemSize::D2);
+    cutlass::gemm::GemmCoord problem_size(ProblemSize::D0, ProblemSize::D1,
+                                          ProblemSize::D2);
 
     cutlass::gemm::GemmCoord threadblock_shape(Shape::D0, Shape::D1, Shape::D2);
 
@@ -695,8 +557,8 @@ DEVICE void gemm(ark::half *C, ark::half *A, ark::half *B, ark::half alpha,
 
     cutlass::gemm::GemmCoord tiled_shape(swizzle.get_tiled_shape());
 
-    typename GemmKernel::Params params(
-        problem_size, tiled_shape, ref_a, ref_b, ref_c, ref_c);
+    typename GemmKernel::Params params(problem_size, tiled_shape, ref_a, ref_b,
+                                       ref_c, ref_c);
 
     // A hack for custom threadblock swizzle. swizzle_log_tile is useless
     // for ARK, instead we need uop_idx to determine the tile offset.

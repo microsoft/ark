@@ -193,7 +193,6 @@ class Model
     // Returns an identical tensor of `input` with execution dependencies
     // `deps`.
     Tensor *identity(Tensor *input, const std::vector<Tensor *> &deps = {},
-                     Tensor *output = nullptr,
                      const std::string &name = "identity");
 
     // Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
