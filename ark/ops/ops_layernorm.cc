@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap LayernormConfigMap;
 
 LayernormOp::LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                         const string &name)
+                         const std::string &name)
     : Op{OP_LAYERNORM, prec_type,           {input}, {output}, {},
          name,         &LayernormConfigMap, -1}
 {
@@ -45,7 +44,7 @@ std::string LayernormOp::function_name(const OpConfig &cfg) const
                              }});
 }
 
-Tensor *Model::layernorm(Tensor *input, Tensor *output, const string &name)
+Tensor *Model::layernorm(Tensor *input, Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "layernorm ", input->shape, " ", input->ldims, " ");

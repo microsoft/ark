@@ -6,6 +6,7 @@
 #include "include/ark_utils.h"
 #include "logging.h"
 #include "unittest/unittest_utils.h"
+#include <cassert>
 
 using namespace std;
 
