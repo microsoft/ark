@@ -109,6 +109,7 @@ typedef enum
     OP_SCALE,
     OP_RELU,
     OP_GELU,
+    OP_SQRT,
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
@@ -292,6 +293,14 @@ class GeluOp : public Op
 {
   public:
     GeluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+           const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SqrtOp : public Op
+{
+  public:
+    SqrtOp(OpPrecType prec_type, Tensor *input, Tensor *output,
            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };

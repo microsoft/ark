@@ -458,6 +458,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const ReluOp *>(this)->function_name(cfg);
     case OP_GELU:
         return static_cast<const GeluOp *>(this)->function_name(cfg);
+    case OP_SQRT:
+        return static_cast<const SqrtOp *>(this)->function_name(cfg);
     default:
         return "";
     }
