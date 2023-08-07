@@ -14,6 +14,10 @@ struct Sqrt
     {
         return h2sqrt(input);
     }
+    static DEVICE float compute(float input)
+    {
+        return sqrtf(input);
+    }
 };
 
 template <typename _MathType, typename _InShape, typename _DataType,
@@ -38,6 +42,18 @@ struct Math<_MathType, _InShape, half, 2>
     }
 };
 
+template <typename _MathType, typename _InShape>
+struct Math<_MathType, _InShape, float, 1>
+{
+    using DataType = float;
+    static const int NelemPerThread = 1;
+
+    static DEVICE void compute(float *output, const float *input)
+    {
+        *output = _MathType::compute(*input);
+    }
+};
+
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
@@ -45,6 +61,15 @@ DEVICE void sqrt(half *out, half *in, int uop_idx, int)
 {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Math<Sqrt, InShape, half, 2>>::run(out, in, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void sqrt(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Math<Sqrt, InShape, float, 1>>::run(out, in, uop_idx);
 }
 
 } // namespace ark
