@@ -39,11 +39,7 @@ class RMSNorm(torch.nn.Module):
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(dim))
 
-    def rms_norm(self, x):
-        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
-
-    def layernorm(self, x):
-        x = x - x.mean(-1, keepdim=True)
+    def _norm(self, x):
         return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
 
     def forward(self, x):
