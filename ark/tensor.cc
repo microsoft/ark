@@ -86,18 +86,13 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
 //
 void Tensor::update_pads(const vector<DimType> &pads_)
 {
-    for (auto &p : pads_) {
-        if (p <= 0) {
-            LOG(ERROR, "Tensor pads should be positive. Given: ", p);
-        }
-    }
     int ndims = this->ldims.ndims();
     vector<DimType> tmp;
     for (int i = 0; i < ndims - (int)pads_.size(); ++i) {
         tmp.emplace_back(1);
     }
     for (int i = 0; i < (int)pads_.size(); ++i) {
-        tmp.emplace_back(pads_[i]);
+        tmp.emplace_back(pads_[i] == -1 ? 1 : pads_[i]);
     }
     Dims new_pads{tmp};
     for (int i = 0; i < ndims; ++i) {

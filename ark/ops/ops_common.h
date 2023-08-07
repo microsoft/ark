@@ -5,6 +5,7 @@
 #define ARK_OPS_COMMON_H_
 
 #include "include/ark.h"
+#include <map>
 #include <ostream>
 #include <vector>
 

@@ -455,10 +455,7 @@ template <typename UnitOp> struct GemmThreadblockSwizzle
     }
 };
 
-// Half-precision GEMM. Row-major.
-// TODO: this kernel returns the error code 716 'misaligned address'
-// when TransposeA is false and the kernel is compiled with "-G" option
-// (which turns off all optimizations on device code).
+/// Half-precision GEMM. Row-major.
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, bool IsColumnA,
           bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>

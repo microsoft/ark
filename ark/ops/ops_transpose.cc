@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap TransposeConfigMap;
 
 TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                         int tp_type, const string &name)
+                         int tp_type, const std::string &name)
     : Op{OP_TRANSPOSE, prec_type,           {input}, {output}, {{tp_type}},
          name,         &TransposeConfigMap, -1}
 {
@@ -23,7 +22,7 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const
     int tp_type;
     this->args.get(&tp_type, 0);
 
-    std::string tp_type_str = to_string(tp_type);
+    std::string tp_type_str = std::to_string(tp_type);
     if (tp_type_str.size() == DIMS_LEN - 1) {
         tp_type_str = "0" + tp_type_str;
     }

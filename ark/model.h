@@ -6,6 +6,9 @@
 
 #include "include/ark.h"
 #include "ops/ops_common.h"
+#include <list>
+#include <map>
+#include <set>
 
 namespace ark {
 

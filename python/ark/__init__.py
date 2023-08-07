@@ -7,6 +7,10 @@ ark_root = os.environ.get("ARK_ROOT", None)
 if ark_root is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
+from . import _ark_core
+
+__version__ = _ark_core.version()
+
 from ._ark_core import (
     init,
     srand,
@@ -42,7 +46,6 @@ from .model import (
     transpose,
     matmul,
     im2col,
-    conv2d,
     max_pool,
     scale,
     relu,
@@ -96,7 +99,6 @@ __all__ = [
     "transpose",
     "matmul",
     "im2col",
-    "conv2d",
     "max_pool",
     "scale",
     "relu",

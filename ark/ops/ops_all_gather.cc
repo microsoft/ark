@@ -5,14 +5,13 @@
 #include "math.h"
 #include "model.h"
 #include "ops_common.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
                                         std::vector<Tensor *> output,
-                                        const string &)
+                                        const std::string &)
 {
     assert(input != nullptr);
     LOG(DEBUG, "all_gather ", input->shape, " ", gpu_id, " ", gpu_num);
@@ -24,7 +23,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
     LOG(DEBUG, "all gather output size: ", output.size());
 
     int base = this->impl->next_eid;
-    vector<Tensor *> recv_dep_tensors;
+    std::vector<Tensor *> recv_dep_tensors;
     for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
         if (gpu_dst == gpu_id)
             continue;

@@ -4,8 +4,7 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
@@ -67,7 +66,7 @@ extern const OpConfigMap ReduceWConfigMap;
 extern const OpConfigMap ReduceEConfigMap;
 
 ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                           int axis, const string &name)
+                           int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceWConfigMap, -1}
 {
@@ -79,7 +78,7 @@ std::string ReduceWSumOp::function_name(const OpConfig &cfg) const
 }
 
 ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                           int axis, const string &name)
+                           int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceEConfigMap, -1}
 {
@@ -91,7 +90,7 @@ std::string ReduceESumOp::function_name(const OpConfig &cfg) const
 }
 
 ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                           int axis, const string &name)
+                           int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceWConfigMap, -1}
 {
@@ -103,7 +102,7 @@ std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const
 }
 
 ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                           int axis, const string &name)
+                           int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input},           {output},
                {{axis}},        name,      &ReduceEConfigMap, -1}
 {
@@ -115,7 +114,7 @@ std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const
 }
 
 ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input,
-                             Tensor *output, int axis, const string &name)
+                             Tensor *output, int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input},           {output},
                {{axis}},         name,      &ReduceWConfigMap, -1}
 {
@@ -127,7 +126,7 @@ std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const
 }
 
 ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input,
-                             Tensor *output, int axis, const string &name)
+                             Tensor *output, int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input},           {output},
                {{axis}},         name,      &ReduceEConfigMap, -1}
 {
@@ -139,7 +138,7 @@ std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const
 }
 
 Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
-                          const string &name)
+                          const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "reduce_sum ", input->shape, " ", input->ldims, " ", axis);
@@ -174,7 +173,7 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
 }
 
 Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
-                           const string &name)
+                           const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "reduce_mean ", input->shape, " ", input->ldims, " ", axis);
@@ -209,7 +208,7 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
 }
 
 Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
-                          const string &name)
+                          const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "reduce_max ", input->shape, " ", input->ldims, " ", axis);

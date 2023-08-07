@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap LayernormConfigMap;
 
 LayernormOp::LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                         const string &name)
+                         const std::string &name)
     : Op{OP_LAYERNORM, prec_type,           {input}, {output}, {},
          name,         &LayernormConfigMap, -1}
 {
@@ -45,7 +44,7 @@ std::string LayernormOp::function_name(const OpConfig &cfg) const
                              }});
 }
 
-Tensor *Model::layernorm(Tensor *input, Tensor *output, const string &name)
+Tensor *Model::layernorm(Tensor *input, Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "layernorm ", input->shape, " ", input->ldims, " ");
@@ -73,50 +72,50 @@ const OpConfigMap LayernormConfigMap = {
     {{OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
      }},
     {{OP_ARCH_CUDA_70, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
      }},
 };
 
