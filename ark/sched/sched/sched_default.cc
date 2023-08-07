@@ -523,7 +523,6 @@ std::vector<std::string> DefaultScheduler::gen_code()
             std::string sop_func_str = sop.function_name();
             // Insert only if it does not exist
             auto p = uop_map.emplace(sop_func_str, uop_id);
-            // TODO: check if runtime args are the same
             if (p.second) {
                 // If this is a new function, define it.
                 this->codegen->def_uop(code, sop, uop_id);

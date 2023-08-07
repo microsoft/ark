@@ -292,8 +292,8 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
-    Tensor *ref = this->identity(output_buffer, shard_outputs, nullptr,
-                                 name + "/identity");
+    Tensor *ref =
+        this->identity(output_buffer, shard_outputs, name + "/identity");
     Tensor *reduced = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
     if (is_relu) {
         // TODO: overwrite
