@@ -31,6 +31,9 @@ void tensor_memcpy_device_to_host(ark::Executor *executor,
 PYBIND11_MODULE(_ark_core, m)
 {
     m.doc() = "ARK python module interface";
+
+    m.def("version", &ark::version, "Return a version string.");
+
     m.def("init", &ark::init,
           "Init an ark program. Call this function to clean up the shared "
           "memory directory. This is useful when the previous run crashed, as "
@@ -237,13 +240,6 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("pad_height"), py::arg("pad_width"),
              py::arg("dilation_height"), py::arg("dilation_width"),
              py::arg("output") = nullptr, py::arg("name") = "im2col")
-        .def("conv2d", &ark::Model::conv2d,
-             "Implements a 2D convolution layer using the 'im2col' method.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("in_channels"), py::arg("out_channels"),
-             py::arg("kernel_size"), py::arg("stride"), py::arg("padding"),
-             py::arg("bias") = false, py::arg("output") = nullptr,
-             py::arg("name") = "conv2d")
         .def("max_pool", &ark::Model::max_pool,
              "Applies max-pooling on the `input` tensor using `kernel_size` "
              "and `stride`, reducing its spatial size. The output shape is "
