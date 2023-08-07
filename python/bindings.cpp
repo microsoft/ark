@@ -275,6 +275,12 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "add")
+        .def("sub", &ark::Model::sub,
+             "Performs an element-wise addition operator between the `input` "
+             "tensor and the `other` tensor",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("other"), py::arg("output") = nullptr,
+             py::arg("name") = "sub")
         .def("mul", &ark::Model::mul,
              "Performs an element-wise multiplication operator between the "
              "`input` tensor and the `other` tensor,",

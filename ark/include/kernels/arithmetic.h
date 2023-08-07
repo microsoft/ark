@@ -28,6 +28,26 @@ struct Add
     }
 };
 
+struct Sub
+{
+    static DEVICE float compute(float a, float b)
+    {
+        return a - b;
+    }
+    static DEVICE half compute(half a, half b)
+    {
+        return a - b;
+    }
+    static DEVICE __half compute(__half a, __half b)
+    {
+        return __hsub(a, b);
+    }
+    static DEVICE __half2 compute(__half2 a, __half2 b)
+    {
+        return __hsub2(a, b);
+    }
+};
+
 struct Mul
 {
     static DEVICE float compute(float a, float b)
@@ -357,6 +377,35 @@ DEVICE void add(half *c, const half *a, const half *b, int uop_idx, int)
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
                UnitOutDims, NumThreads, SmemBytes,
                Arithmetic<Add, In0Shape, In1Shape, half,
+                          NelemPerThread>>::run(c, a, b, uop_idx);
+}
+
+template <typename In0Dims, typename In0Shape, typename In1Dims,
+          typename In1Shape, typename OutDims, typename OutShape,
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void sub(float *c, const float *a, const float *b, int uop_idx, int)
+{
+    constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Sub, In0Shape, In1Shape, float,
+                          NelemPerThread>>::run(c, a, b, uop_idx);
+}
+
+template <typename In0Dims, typename In0Shape, typename In1Dims,
+          typename In1Shape, typename OutDims, typename OutShape,
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void sub(half *c, const half *a, const half *b, int uop_idx, int)
+{
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Sub, In0Shape, In1Shape, half,
                           NelemPerThread>>::run(c, a, b, uop_idx);
 }
 

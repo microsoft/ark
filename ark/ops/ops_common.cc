@@ -67,6 +67,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_MATMUL:        os << "OP_MATMUL";        break;
     case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
     case OP_ADD:           os << "OP_ADD";           break;
+    case OP_SUB:           os << "OP_SUB";           break;
     case OP_MUL:           os << "OP_MUL";           break;
     case OP_DIV:           os << "OP_DIV";           break;
     case OP_IM2COL:        os << "OP_IM2COL";        break;
@@ -429,6 +430,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const MaxPoolOp *>(this)->function_name(cfg);
     case OP_ADD:
         return static_cast<const AddOp *>(this)->function_name(cfg);
+    case OP_SUB:
+        return static_cast<const SubOp *>(this)->function_name(cfg);
     case OP_MUL:
         return static_cast<const MulOp *>(this)->function_name(cfg);
     case OP_DIV:

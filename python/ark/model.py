@@ -448,6 +448,26 @@ def add(
     return Tensor(_tensor)
 
 
+def sub(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "sub",
+) -> Tensor:
+    """
+    Performs an element-wise addition operator between the `input`
+    tensor and the `other` tensor.
+    Usage:
+    tensor_add = ark.sub(tensor1, tensor2)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().sub(
+        input._tensor, other._tensor, output, name
+    )
+    return Tensor(_tensor)
+
+
 def mul(
     input: Tensor,
     other: Tensor,

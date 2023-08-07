@@ -112,6 +112,7 @@ typedef enum
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
+    OP_SUB,
     OP_MUL,
     OP_DIV,
     OP_IM2COL,
@@ -259,6 +260,14 @@ class AddOp : public Op
 {
   public:
     AddOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SubOp : public Op
+{
+  public:
+    SubOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
           const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
