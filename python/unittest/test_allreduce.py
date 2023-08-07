@@ -10,22 +10,17 @@ import unittest
 def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     tensor_size = tensor_len * 2
     # Create a Model instance
-    model = ark.Model(rank)
+    runtime = ark.Runtime(rank, world_size)
 
-    input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    input_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 
-    allreduce_result = model.all_reduce(input_tensor, rank, world_size)
+    allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
 
-    exe = ark.Executor(rank, rank, world_size, model, "all_reduce_test")
-    exe.compile()
+    runtime.launch()
+    input_tensor.from_numpy(np_inputs[rank])
+    runtime.run(iter)
 
-    exe.launch()
-    exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(iter)
-    elapsed = exe.stop()
-
-    host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, allreduce_result)
+    host_output = allreduce_result.to_numpy()
     gt = np.zeros(tensor_len, dtype=np.float16)
     for np_input in np_inputs:
         gt += np_input
