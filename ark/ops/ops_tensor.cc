@@ -4,20 +4,19 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
-TensorOp::TensorOp(const vector<Tensor *> &deps, Tensor *output,
-                   const string &name)
+TensorOp::TensorOp(const std::vector<Tensor *> &deps, Tensor *output,
+                   const std::string &name)
     : Op{OP_TENSOR, OP_PREC_NONE, deps, {output}, {}, name, nullptr, -1}
 {
 }
 
 Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
                       const Dims &ldims, const Dims &offs, const Dims &pads,
-                      const vector<Tensor *> &deps, bool exported,
+                      const std::vector<Tensor *> &deps, bool exported,
                       int imported_rank, const std::string &name)
 {
     LOG(DEBUG, "tensor ", name, " ", shape, " ", type, " ", ldims, " ", offs,
@@ -32,11 +31,11 @@ Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
                    name};
     assert(ret != nullptr);
     this->impl->tns_storage.emplace_back(ret);
-    set<Tensor *> dep_set;
+    std::set<Tensor *> dep_set;
     for (auto &dep : deps) {
         dep_set.emplace(dep);
     }
-    vector<Tensor *> dep_vec;
+    std::vector<Tensor *> dep_vec;
     for (auto &dep : dep_set) {
         dep_vec.emplace_back(dep);
     }

@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap ActivationConfigMap;
 
 ReluOp::ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-               const string &name)
+               const std::string &name)
     : Op{OP_RELU, prec_type, {input}, {output}, {}, name, &ActivationConfigMap,
          -1,      true}
 {
@@ -44,7 +43,7 @@ std::string ReluOp::function_name(const OpConfig &cfg) const
                                           }});
 }
 
-Tensor *Model::relu(Tensor *input, Tensor *output, const string &name)
+Tensor *Model::relu(Tensor *input, Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     OpPrecType pt;

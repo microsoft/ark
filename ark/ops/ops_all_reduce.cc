@@ -5,13 +5,12 @@
 #include "math.h"
 #include "model.h"
 #include "ops_common.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
-                          Tensor *output, const string &)
+                          Tensor *output, const std::string &)
 {
     assert(input != nullptr);
     if (output != nullptr) {

@@ -4,15 +4,14 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap SoftmaxConfigMap;
 
 SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const string &name)
+                     const std::string &name)
     : Op{OP_SOFTMAX, prec_type, {input},           {output},
          {},         name,      &SoftmaxConfigMap, -1}
 {
@@ -42,7 +41,7 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
                              }});
 }
 
-Tensor *Model::softmax(Tensor *input, Tensor *output, const string &name)
+Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     LOG(DEBUG, "softmax ", input->shape, " ", input->ldims, " ");
