@@ -4,20 +4,21 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 MaxPoolOp::MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     DimType kernel_size, DimType stride, const string &name)
+                     DimType kernel_size, DimType stride,
+                     const std::string &name)
     : Op{OP_MAX_POOL, prec_type, {input}, {output}, {{kernel_size, stride}},
          name,        nullptr,   -1}
 {
 }
 
+// TODO: implement
 Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
-                        Tensor *output, const string &name)
+                        Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     OpPrecType pt;

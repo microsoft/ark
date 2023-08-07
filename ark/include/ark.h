@@ -4,24 +4,30 @@
 #ifndef ARK_H
 #define ARK_H
 
-#include <array>
-#include <cassert>
-#include <iostream>
-#include <list>
-#include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
+#define ARK_MAJOR 0
+#define ARK_MINOR 1
+#define ARK_PATCH 0
+#define ARK_VERSION (ARK_MAJOR * 10000 + ARK_MINOR * 100 + ARK_PATCH)
+
 namespace ark {
+
+/// Return a version string.
+std::string version();
 
 // set random seed
 void srand(int seed = -1);
+
+// get random number
 int rand();
 
-// Init an ark program. Call this function to clean up the shared memory
-// directory
+/// Initialize the ARK runtime.
+///
+/// This function should be called by the user before any other functions are
+/// called. It is safe to call this function multiple times.
 void init();
 
 // Data type for dimension.
@@ -193,7 +199,6 @@ class Model
     // Returns an identical tensor of `input` with execution dependencies
     // `deps`.
     Tensor *identity(Tensor *input, const std::vector<Tensor *> &deps = {},
-                     Tensor *output = nullptr,
                      const std::string &name = "identity");
 
     // Shard `input` along `axis` into `dim_per_shard`-dimensional shards.

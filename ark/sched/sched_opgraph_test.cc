@@ -504,10 +504,12 @@ ark::unittest::State test_sched_opgraph_all_reduce()
 {
     // OpNode graph (parentheses indicate a OpNode):
     //
-    //       (S,SD,R,) --+ (S,SD,R,) --+
-    //                   |             |
-    //   (S,SD,R,Add,) --+--> (Add,) --+--> (Add,)
-    //
+    //               +--> (S,SD,R,) --+--> (S,SD,R,) --+
+    //               |                |                |
+    //   (S,SD,R,) --+--> (Add,)      +--> (Add,)      +--> (Add,)
+    //                      |               ^  |              ^
+    //                      |               |  |              |
+    //                      +---------------+  +--------------+
 
     ark::Model model;
     ark::Tensor *input = model.tensor({1}, ark::FP32);
@@ -516,12 +518,41 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     UNITTEST_TRUE(model.verify());
 
     ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 5UL);
+    UNITTEST_EQ(graph.get_nodes().size(), 6UL);
 
-    auto last_node = graph.get_nodes().back().get();
-    UNITTEST_EQ(last_node->ops[0]->outputs[0], output);
-    UNITTEST_EQ(last_node->producers.size(), 2UL);
-    UNITTEST_EQ(last_node->users.size(), 0UL);
+    auto nodes_iter = graph.get_nodes().begin();
+    auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->get_name(), "send;send_done;recv;");
+    UNITTEST_EQ(node->producers.size(), 0UL);
+
+    std::vector<ark::OpNode *> users;
+    for (auto &user : node->users) {
+        users.push_back(user);
+    }
+    UNITTEST_EQ(users[0]->get_name(), "add;");
+    UNITTEST_EQ(users[0]->producers.size(), 1UL);
+    UNITTEST_EQ(users[0]->users.size(), 1UL);
+    UNITTEST_EQ((*(users[0]->users.begin()))->get_name(), "add_1;");
+
+    UNITTEST_EQ(users[1]->get_name(), "send_1;send_done_1;recv_1;");
+    UNITTEST_EQ(users[1]->producers.size(), 1UL);
+    UNITTEST_EQ(users[1]->users.size(), 2UL);
+
+    node = users[1];
+    users.clear();
+    for (auto &user : node->users) {
+        users.push_back(user);
+    }
+    UNITTEST_EQ(users[0]->get_name(), "add_1;");
+    UNITTEST_EQ(users[0]->producers.size(), 2UL);
+    UNITTEST_EQ(users[0]->users.size(), 1UL);
+    UNITTEST_EQ((*(users[0]->users.begin()))->get_name(), "add_2;");
+
+    UNITTEST_EQ(users[1]->get_name(), "send_2;send_done_2;recv_2;");
+    UNITTEST_EQ(users[1]->producers.size(), 1UL);
+    UNITTEST_EQ(users[1]->users.size(), 1UL);
+    UNITTEST_EQ((*(users[1]->users.begin()))->get_name(), "add_2;");
+    UNITTEST_EQ((*(users[1]->users.begin()))->ops[0]->outputs[0], output);
 
     return ark::unittest::SUCCESS;
 }

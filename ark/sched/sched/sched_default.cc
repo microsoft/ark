@@ -70,7 +70,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                "requested (%d).",
                gpu_info.num_sm, num_sm);
     }
-    const OpConfig *cfg = sched_op_config(&matmul_op, gpu_info);
+    const OpConfig *cfg = this->sched_op_config(&matmul_op);
     assert(cfg->output_tiles.size() == 1);
     int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
@@ -217,7 +217,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
             LOG(ERROR, "unexpected error: empty OpNode");
         }
         Op *op = node->ops[0];
-        const OpConfig *cfg = sched_op_config(op, gpu_info);
+        const OpConfig *cfg = this->sched_op_config(op);
         int opseq_id = (int)this->opseqs.size();
         this->opseqs.emplace_back(make_unique<SchedOpSeq>(opseq_id, op, cfg));
         SchedOpSeq *opseq = this->opseqs.back().get();
@@ -226,7 +226,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         for (size_t i = 1; i < node->ops.size(); i++) {
             // If there are multiple Ops, check if the Op configs allow merging.
             Op *next_op = node->ops[i];
-            const OpConfig *next_cfg = sched_op_config(next_op, gpu_info);
+            const OpConfig *next_cfg = this->sched_op_config(next_op);
             bool need_sync_between_ops = cfg->sync_post || next_cfg->sync_pre;
             bool comm_and_comp = (op->is_comm() && !next_op->is_comm()) ||
                                  (!op->is_comm() && next_op->is_comm());
@@ -272,12 +272,16 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
                 " (", node->ops.size(), " ops)");
         }
 
+        // Align shared memory size
+        int smem_bytes = opseq->get_smem_bytes();
+        int aligned_smem_bytes = math::pad(smem_bytes, gpu_info.smem_align);
+
         // Create a scheduling item.
         SchedItem item;
         item.opseq_id = opseq_id;
         item.num_uops = opseq->get_tdims_size();
         item.num_warps_per_uop = opseq->get_num_warps();
-        item.smem_bytes_per_uop = opseq->get_smem_bytes();
+        item.smem_bytes_per_uop = aligned_smem_bytes;
         if (op->is_comm()) {
             comm_items.emplace_back(item);
         } else {
@@ -318,13 +322,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 
     // Schedule the Ops.
     this->comp_stream.back()->add_items(comp_items);
-    if (comp_items.size() > 0) {
-        this->comp_stream.back()->sync();
-    }
     this->comm_stream.back()->add_items(comm_items);
-    if (comm_items.size() > 0) {
-        this->comm_stream.back()->sync();
-    }
 
     LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
     for (auto &item : comp_items) {
@@ -525,7 +523,6 @@ std::vector<std::string> DefaultScheduler::gen_code()
             std::string sop_func_str = sop.function_name();
             // Insert only if it does not exist
             auto p = uop_map.emplace(sop_func_str, uop_id);
-            // TODO: check if runtime args are the same
             if (p.second) {
                 // If this is a new function, define it.
                 this->codegen->def_uop(code, sop, uop_id);
@@ -543,24 +540,24 @@ std::vector<std::string> DefaultScheduler::gen_code()
 
     code << "__device__ void ark_loop_body(int _iter) {\n";
     for (size_t i = 0; i < this->comp_stream.size(); ++i) {
-        auto comp_branches = this->comp_stream[i]->get_branches();
-        for (size_t j = 0; j < comp_branches.size(); ++j) {
-            auto &branches = comp_branches[j];
-            for (auto &branch : branches) {
+        auto comp_streams = this->comp_stream[i]->get_streams();
+        for (size_t j = 0; j < comp_streams.size(); ++j) {
+            auto &stream = comp_streams[j];
+            for (auto &branch : stream.branches) {
                 this->codegen->branch(code, branch);
             }
-            if (!branches.empty() && j != comp_branches.size() - 1) {
+            if (!stream.branches.empty() && j != comp_streams.size() - 1) {
                 code << "  ";
                 this->codegen->sync_stream(code, 0, 0, num_sm_comp);
             }
         }
-        auto comm_branches = this->comm_stream[i]->get_branches();
-        for (size_t j = 0; j < comm_branches.size(); ++j) {
-            auto &branches = comm_branches[j];
-            for (auto &branch : branches) {
+        auto comm_streams = this->comm_stream[i]->get_streams();
+        for (size_t j = 0; j < comm_streams.size(); ++j) {
+            auto &stream = comm_streams[j];
+            for (auto &branch : stream.branches) {
                 this->codegen->branch(code, branch);
             }
-            if (!branches.empty() && j != comp_branches.size() - 1) {
+            if (!stream.branches.empty() && j != comm_streams.size() - 1) {
                 code << "  ";
                 this->codegen->sync_stream(code, 1, num_sm_comp,
                                            num_sm_comp + num_sm_comm);

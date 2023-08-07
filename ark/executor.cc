@@ -34,17 +34,17 @@ Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
     GpuMgr *mgr = get_gpu_mgr(gpu_id);
     const GpuInfo &ginfo = mgr->get_gpu_info();
     if (get_env().scheduler == "Simple") {
-        this->impl->sched =
-            new SimpleScheduler{model, gpu_id_, rank_, world_size_};
+        this->impl->sched = new SimpleScheduler{model, gpu_id_, rank_,
+                                                world_size_, num_warps_per_sm_};
     }
     if (get_env().scheduler == "Default") {
-        this->impl->sched =
-            new DefaultScheduler{model, gpu_id_, rank_, world_size_};
+        this->impl->sched = new DefaultScheduler{
+            model, gpu_id_, rank_, world_size_, num_warps_per_sm_};
     }
 #ifdef USE_KAHYPAR
     if (get_env().scheduler == "Kahypar") {
-        this->impl->sched =
-            new KahyparScheduler{model, gpu_id_, rank_, world_size_};
+        this->impl->sched = new KahyparScheduler{
+            model, gpu_id_, rank_, world_size_, num_warps_per_sm_};
     }
 #endif // USE_KAHYPAR
 

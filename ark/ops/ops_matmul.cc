@@ -292,8 +292,8 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
-    Tensor *ref = this->identity(output_buffer, shard_outputs, nullptr,
-                                 name + "/identity");
+    Tensor *ref =
+        this->identity(output_buffer, shard_outputs, name + "/identity");
     Tensor *reduced = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
     if (is_relu) {
         // TODO: overwrite
@@ -315,7 +315,7 @@ const OpConfigMap MatmulConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 166912, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
-         {8, 166912, {{256, 64}, {64, 128}}, {{256, 128}}, true, false},
+         // {8, 166912, {{256, 64}, {64, 128}}, {{256, 128}}, true, false},
          {8, 166912, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
          {4, 83456, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
      }},

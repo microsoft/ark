@@ -5,8 +5,7 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
@@ -14,7 +13,7 @@ extern const OpConfigMap SendRecvMMConfigMap;
 
 SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
-                   size_t bytes, const string &name)
+                   size_t bytes, const std::string &name)
     : Op{OP_SEND_MM,
          prec_type,
          {input, recvbuf, send_ready_flag},
@@ -75,7 +74,7 @@ OpArgs SendMMOp::function_call_args(const OpConfig &) const
 
 RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
-                   size_t bytes, const string &name)
+                   size_t bytes, const std::string &name)
     : Op{OP_RECV_MM,
          prec_type,
          {input, recvbuf, send_ready_flag},
@@ -139,7 +138,7 @@ const int max_tile_num = 2048;
 
 // send data from src to dst of id
 Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
-                       Tensor *output, const string &name)
+                       Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
@@ -176,7 +175,7 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
 
 //
 Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
-                       Tensor *output, const string &name)
+                       Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();

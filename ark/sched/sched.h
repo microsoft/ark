@@ -45,6 +45,8 @@ class BaseScheduler
     // create context on gpu for the model
     GpuMgrCtx *create_context(const std::string &name);
 
+    const OpConfig *sched_op_config(const Op *op);
+
     GpuBuf *get_gpu_buf(Tensor *tns) const;
 
     virtual void schedule() = 0;

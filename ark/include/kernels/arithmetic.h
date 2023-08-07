@@ -4,8 +4,7 @@
 #ifndef ARK_KERNELS_ARITHMETIC_H_
 #define ARK_KERNELS_ARITHMETIC_H_
 
-#include "broadcast.h"
-#include "half.h"
+#include "common.h"
 
 namespace ark {
 
@@ -315,7 +314,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void add(float *c, const float *a, const float *b, int uop_idx)
+DEVICE void add(float *c, const float *a, const float *b, int uop_idx, int)
 {
     constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
                                    : (UnitOutDims::W % 2 == 0) ? 2
@@ -329,7 +328,7 @@ DEVICE void add(float *c, const float *a, const float *b, int uop_idx)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void add(half *c, const half *a, const half *b, int uop_idx)
+DEVICE void add(half *c, const half *a, const half *b, int uop_idx, int)
 {
     constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
                                    : (UnitOutDims::W % 4 == 0) ? 4
@@ -344,7 +343,7 @@ DEVICE void add(half *c, const half *a, const half *b, int uop_idx)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void mul(float *c, float *a, float *b, int uop_idx)
+DEVICE void mul(float *c, float *a, float *b, int uop_idx, int)
 {
     constexpr int NelemPerThread = (UnitOutDims::W % 4 == 0)   ? 4
                                    : (UnitOutDims::W % 2 == 0) ? 2
@@ -358,7 +357,7 @@ DEVICE void mul(float *c, float *a, float *b, int uop_idx)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void mul(half *c, half *a, half *b, int uop_idx)
+DEVICE void mul(half *c, half *a, half *b, int uop_idx, int)
 {
     constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
                                    : (UnitOutDims::W % 4 == 0) ? 4
@@ -373,7 +372,7 @@ DEVICE void mul(half *c, half *a, half *b, int uop_idx)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void scale(half *y, half *x, float val, int uop_idx)
+DEVICE void scale(half *y, half *x, float val, int uop_idx, int)
 {
     constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
                                    : (UnitOutDims::W % 4 == 0) ? 4

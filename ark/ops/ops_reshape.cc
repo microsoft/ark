@@ -4,13 +4,12 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
 ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const string &name)
+                     const std::string &name)
     : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, nullptr, -1, true}
 {
 }
@@ -18,14 +17,14 @@ ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
 // Reshape `input` to `shape`. This interface does not support -1 as a dimension
 // of `shape`, because Dims does not allow -1 as a valid dimension.
 static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
-                        bool allowzero, Tensor *output, const string &)
+                        bool allowzero, Tensor *output, const std::string &)
 {
     if (input == nullptr) {
         LOGERR("input is null");
     }
     LOG(DEBUG, "reshape ", input->shape, " ", shape);
     // Infer the actual shape
-    vector<DimType> inferred_shape;
+    std::vector<DimType> inferred_shape;
     if (shape.ndims() == 0) {
         // Convert to a scalar
         inferred_shape.emplace_back(1);
@@ -78,7 +77,7 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
 
 //
 Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
-                       Tensor *output, const string &name)
+                       Tensor *output, const std::string &name)
 {
     output = _reshape(this, input, shape, allowzero, output, name);
     ReshapeOp op{OP_PREC_NONE, input, output, name};
@@ -93,17 +92,18 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
 // be an empty tensor. If `allowzero` is true, `shape` should not include both
 // 0 and -1 at the same time. If `shape` is an empty vector, `input` will be
 // converted to a scalar.
-Tensor *Model::reshape(Tensor *input, const initializer_list<DimType> shape,
-                       bool allowzero, Tensor *output, const string &name)
+Tensor *Model::reshape(Tensor *input,
+                       const std::initializer_list<DimType> shape,
+                       bool allowzero, Tensor *output, const std::string &name)
 {
     if (input == nullptr) {
         LOGERR("input is null");
     }
-    vector<DimType> shape_vec{shape};
+    std::vector<DimType> shape_vec{shape};
     // Infer -1 dimension if exists
     int neg_idx = -1;
     bool zero_exists = false;
-    vector<DimType> inferred_shape;
+    std::vector<DimType> inferred_shape;
     DimType total_size = 1;
     for (size_t i = 0; i < shape_vec.size(); i++) {
         if (shape_vec[i] == -1) {

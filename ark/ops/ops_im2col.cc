@@ -4,8 +4,7 @@
 #include "logging.h"
 #include "model.h"
 #include "tensor.h"
-
-using namespace std;
+#include <cassert>
 
 namespace ark {
 
@@ -14,7 +13,8 @@ extern const OpConfigMap Im2colConfigMap;
 Im2colOp::Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                    int kernel_height, int kernel_width, int stride_height,
                    int stride_width, int pad_height, int pad_width,
-                   int dilation_height, int dilation_width, const string &name)
+                   int dilation_height, int dilation_width,
+                   const std::string &name)
     : Op{OP_IM2COL,
          prec_type,
          {input},
@@ -83,7 +83,7 @@ std::string Im2colOp::function_name(const OpConfig &cfg) const
 Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
                       int stride_height, int stride_width, int pad_height,
                       int pad_width, int dilation_height, int dilation_width,
-                      Tensor *output, const string &name)
+                      Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
     DimType n, c, h, w;

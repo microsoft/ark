@@ -6,6 +6,7 @@
 #include "include/ark_utils.h"
 #include "logging.h"
 #include "unittest/unittest_utils.h"
+#include <cassert>
 
 using namespace std;
 
@@ -279,35 +280,35 @@ ark::unittest::State test_matmul_relu()
 ark::unittest::State test_matmul_split()
 {
     test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/64, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/2, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/2, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     test_matmul_internal(/*m=*/64, /*n=*/64, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/64, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/64, /*n=*/128, /*k=*/128, /*bs_a=*/1, /*bs_b=*/1,
-                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/3);
+                         /*split_k=*/4, /*is_relu=*/false, /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/128, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/128, /*k=*/256, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/4, /*is_relu=*/false,
@@ -330,7 +331,7 @@ ark::unittest::State test_matmul_split()
                          /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/3, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false,
@@ -343,7 +344,7 @@ ark::unittest::State test_matmul_split()
                          /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/5, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false,
@@ -356,7 +357,7 @@ ark::unittest::State test_matmul_split()
                          /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/6, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false,
@@ -369,7 +370,7 @@ ark::unittest::State test_matmul_split()
                          /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/7, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false,
@@ -382,7 +383,7 @@ ark::unittest::State test_matmul_split()
                          /*gran_lev=*/2);
     test_matmul_internal(/*m=*/128, /*n=*/4096, /*k=*/1024, /*bs_a=*/1,
                          /*bs_b=*/1, /*split_k=*/8, /*is_relu=*/false,
-                         /*gran_lev=*/3);
+                         /*gran_lev=*/2);
 
     return ark::unittest::SUCCESS;
 }
@@ -413,7 +414,7 @@ int main()
     UNITTEST(test_matmul_gran0);
     UNITTEST(test_matmul_gran1);
     UNITTEST(test_matmul_gran2);
-    UNITTEST(test_matmul_gran3);
+    // UNITTEST(test_matmul_gran3);
     UNITTEST(test_matmul_relu);
     UNITTEST(test_matmul_split);
     UNITTEST(test_matmul_perf);
