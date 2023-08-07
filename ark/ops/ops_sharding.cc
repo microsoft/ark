@@ -50,7 +50,7 @@ vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
         Tensor *shard =
             this->identity(this->tensor(shard_shape, input->type, input->buf,
                                         input->ldims, shard_offs, shard_pads),
-                           {input}, nullptr, name + "/shard_" + to_string(i));
+                           {input}, name + "/shard_" + to_string(i));
         shards.emplace_back(shard);
         shard_offs[axis] += dim;
     }
