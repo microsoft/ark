@@ -113,6 +113,7 @@ typedef enum
     OP_MAX_POOL,
     OP_ADD,
     OP_MUL,
+    OP_DIV,
     OP_IM2COL,
     OP_TRANSPOSE,
     OP_SEND,
@@ -262,6 +263,22 @@ class AddOp : public Op
     std::string function_name(const OpConfig &cfg) const;
 };
 
+class MulOp : public Op
+{
+  public:
+    MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class DivOp : public Op
+{
+  public:
+    DivOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
 class GeluOp : public Op
 {
   public:
@@ -303,14 +320,6 @@ class MaxPoolOp : public Op
   public:
     MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
               DimType kernel_size, DimType stride, const std::string &name);
-};
-
-class MulOp : public Op
-{
-  public:
-    MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-          const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceOp : public Op

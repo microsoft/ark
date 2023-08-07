@@ -272,6 +272,10 @@ class Model
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
+    // Performs an element-wise division operator between the `input`
+    // tensor and the `other` tensor,
+    Tensor *div(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                const std::string &name = "div");
     /// Sends a tensor to a destination GPU (@p dst_rank). Multiple tensors can
     /// be sent to the same GPU,so an identifier `id` is required to distinguish
     /// the tensor. Each 'send' operator must have a corresponding 'recv'

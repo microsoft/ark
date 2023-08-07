@@ -281,6 +281,12 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "mul")
+        .def("div", &ark::Model::div,
+             "Performs an element-wise division operator between the "
+             "`input` tensor and the `other` tensor,",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("other"), py::arg("output") = nullptr,
+             py::arg("name") = "div")
         .def("send", &ark::Model::send,
              "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "

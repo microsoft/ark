@@ -468,6 +468,26 @@ def mul(
     return Tensor(_tensor)
 
 
+def div(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "div",
+) -> Tensor:
+    """
+    Performs an element-wise division operator between the
+    `input` tensor and the `other` tensor.
+    Usage:
+    tensor_mul = ark.div(tensor1, tensor2)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().div(
+        input._tensor, other._tensor, output, name
+    )
+    return Tensor(_tensor)
+
+
 def send(
     input: Tensor,
     id: int,

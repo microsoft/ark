@@ -68,6 +68,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
     case OP_ADD:           os << "OP_ADD";           break;
     case OP_MUL:           os << "OP_MUL";           break;
+    case OP_DIV:           os << "OP_DIV";           break;
     case OP_IM2COL:        os << "OP_IM2COL";        break;
     case OP_TRANSPOSE:     os << "OP_TRANSPOSE";     break;
     case OP_SEND:          os << "OP_SEND";          break;
@@ -430,6 +431,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const AddOp *>(this)->function_name(cfg);
     case OP_MUL:
         return static_cast<const MulOp *>(this)->function_name(cfg);
+    case OP_DIV:
+        return static_cast<const DivOp *>(this)->function_name(cfg);
     case OP_IM2COL:
         return static_cast<const Im2colOp *>(this)->function_name(cfg);
     case OP_TRANSPOSE:
