@@ -5,6 +5,7 @@ import time
 
 C_DIM = 1024
 
+
 def main(rank, mat_b_data):
     model = ark.Model(rank=rank)
 
@@ -12,34 +13,46 @@ def main(rank, mat_b_data):
         mat_a = model.tensor(ark.Dims(128, C_DIM), ark.FP16)
         mat_b = model.tensor(ark.Dims(C_DIM, C_DIM), ark.FP16)
 
-        mat_a_part0, mat_a_part1 = model.sharding(mat_a, axis=0, dim_per_shard=64)
-        assert(mat_a_part0.shape == [64, C_DIM])
-        assert(mat_a_part1.shape == [64, C_DIM])
+        mat_a_part0, mat_a_part1 = model.sharding(
+            mat_a, axis=0, dim_per_shard=64
+        )
+        assert mat_a_part0.shape == [64, C_DIM]
+        assert mat_a_part1.shape == [64, C_DIM]
 
-        send_tensor = model.send(mat_a_part1, id=0, dst_rank=1, bytes=mat_a_part1.shape_bytes())
+        send_tensor = model.send(
+            mat_a_part1, id=0, dst_rank=1, bytes=mat_a_part1.shape_bytes()
+        )
         mat_a_part0 = model.identity(mat_a_part0, [send_tensor])
 
         output = model.tensor(ark.Dims(128, C_DIM), ark.FP16)
-        output_part0, output_part1 = model.sharding(output, axis=0, dim_per_shard=64)
+        output_part0, output_part1 = model.sharding(
+            output, axis=0, dim_per_shard=64
+        )
 
         matmul_part0 = model.matmul(mat_a_part0, mat_b, output=output_part0)
         output_part1 = model.identity(output_part1, [matmul_part0])
 
-        recv_tensor = model.recv(output_part1, id=1, src_rank=1, bytes=output_part1.shape_bytes())
+        recv_tensor = model.recv(
+            output_part1, id=1, src_rank=1, bytes=output_part1.shape_bytes()
+        )
     else:
         mat_a_part1 = model.tensor(ark.Dims(64, C_DIM), ark.FP16)
         mat_b = model.tensor(ark.Dims(C_DIM, C_DIM), ark.FP16)
 
-        recv_tensor = model.recv(mat_a_part1, id=0, src_rank=0, bytes=mat_a_part1.shape_bytes())
+        recv_tensor = model.recv(
+            mat_a_part1, id=0, src_rank=0, bytes=mat_a_part1.shape_bytes()
+        )
         mat_a_part1 = model.identity(mat_a_part1, [recv_tensor])
         matmul_part1 = model.matmul(mat_a_part1, mat_b)
 
-        send_tensor = model.send(matmul_part1, id=1, dst_rank=0, bytes=matmul_part1.shape_bytes())
+        send_tensor = model.send(
+            matmul_part1, id=1, dst_rank=0, bytes=matmul_part1.shape_bytes()
+        )
         send_done_tensor = model.send_done(send_tensor, id=1, dst_rank=0)
 
     exe = ark.Executor(rank, rank, 2, model, "parallel_matmul")
     exe.compile()
-    
+
     if rank == 0:
         mat_a_data = np.random.rand(128, C_DIM).astype(np.float16)
         exe.tensor_memcpy_host_to_device(mat_a, mat_a_data)
