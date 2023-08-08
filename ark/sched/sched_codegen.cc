@@ -329,9 +329,7 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
 {
     auto &sched_ops = opseq.get_sched_ops();
     unsigned int idx = sched_ops.size();
-    auto it = sched_ops.rbegin();
-    for (; it != sched_ops.rend(); ++it) {
-        auto &sop = *it;
+    for (auto &sop : sched_ops) {
         if (sop.is_virtual()) {
             continue;
         }
