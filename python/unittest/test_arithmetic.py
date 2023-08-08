@@ -67,7 +67,8 @@ def test_arithmetic_internal(
         output_tensor_host, gt, atol=numeric_epsilon_half * 2
     )
     print(
-        "div test",
+        arithmetic_func,
+        "test",
         "batch_size:",
         "{:6d}".format(batch_size),
         "m:",
