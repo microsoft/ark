@@ -3,8 +3,10 @@
 
 #include <cassert>
 #include <fcntl.h>
+#include <fstream>
 #include <stdint.h>
 #include <string.h>
+#include <string>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -18,9 +20,25 @@ using namespace std;
 
 namespace ark {
 
+bool is_gpumem_loaded()
+{
+    std::ifstream file("/proc/modules");
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.find(GPUMEM_DRIVER_NAME) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Expose GPU memory space into CPU memory.
 static int mem_expose(GpuMemExposalInfo *info, GpuPtr addr, uint64_t bytes)
 {
+    if (!is_gpumem_loaded()) {
+        LOG(ERROR, "gpumem driver is not loaded");
+    }
+
     int flag = 1;
     CULOG(cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr));
     // Convert virtual into physical address.
