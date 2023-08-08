@@ -54,7 +54,8 @@ def test_math_functions_internal(
         output_tensor_host, gt, atol=numeric_epsilon_half * 2
     )
     print(
-        "sqrt test",
+        function_type,
+        "test",
         "batch_size:",
         "{:6d}".format(batch_size),
         "m:",

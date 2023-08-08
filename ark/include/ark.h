@@ -263,10 +263,10 @@ class Model
                   const std::string &name = "scale");
     // Calculates the exponential of the `input` tensor, element-wise.
     Tensor *exp(Tensor *input, Tensor *output = nullptr,
-                const std::string &name = "relu");
+                const std::string &name = "exp");
     // Calculates the square root of the `input` tensor, element-wise.
     Tensor *sqrt(Tensor *input, Tensor *output = nullptr,
-                 const std::string &name = "relu");
+                 const std::string &name = "sqrt");
     // ReLU activation
     Tensor *relu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");
@@ -277,7 +277,7 @@ class Model
                  const std::string &name = "gelu");
     // Sigmoid activation
     Tensor *sigmoid(Tensor *input, Tensor *output = nullptr,
-                    const std::string &name = "relu");
+                    const std::string &name = "sigmoid");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
