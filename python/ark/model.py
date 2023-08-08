@@ -400,6 +400,7 @@ def scale(
     )
     return Tensor(_tensor)
 
+
 def exp(
     input: Tensor,
     output: Tensor = None,
@@ -414,6 +415,7 @@ def exp(
         output = output._tensor
     _tensor = Model.get_global_model().exp(input._tensor, output, name)
     return Tensor(_tensor)
+
 
 def sqrt(
     input: Tensor,

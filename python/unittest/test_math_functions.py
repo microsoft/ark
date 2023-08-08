@@ -6,7 +6,9 @@ import ark
 import unittest
 
 
-def test_math_functions_internal(batch_size, m, n, data_type="float",function_type="exp", iter=1):
+def test_math_functions_internal(
+    batch_size, m, n, data_type="float", function_type="exp", iter=1
+):
     if data_type == "float":
         ark_data_type = ark.FP32
         numpy_data_type = np.float32
@@ -76,24 +78,31 @@ def test_math_functions_internal(batch_size, m, n, data_type="float",function_ty
     )
 
 
-class TestSqrt(unittest.TestCase):
-    def test_sqrt(self):
-        test_math_functions_internal(1, 64, 4, "half")
-        test_math_functions_internal(1, 128, 128, "half")
-        test_math_functions_internal(1, 256, 256, "half")
-        test_math_functions_internal(1, 512, 512, "half")
+def test_math_functions(function_type="exp"):
+    test_math_functions_internal(1, 64, 4, "half", function_type)
+    test_math_functions_internal(1, 128, 128, "half", function_type)
+    test_math_functions_internal(1, 256, 256, "half", function_type)
+    test_math_functions_internal(1, 512, 512, "half", function_type)
 
-        test_math_functions_internal(1, 64, 4)
-        test_math_functions_internal(1, 128, 128)
-        test_math_functions_internal(1, 256, 256)
-        test_math_functions_internal(1, 512, 512)
-        test_math_functions_internal(1, 1024, 1024)
-        test_math_functions_internal(1, 4096, 1024)
-        test_math_functions_internal(1, 1024, 4096)
-        test_math_functions_internal(2, 64, 64)
-        test_math_functions_internal(2, 128, 128)
-        test_math_functions_internal(8, 4096, 1024)
-        test_math_functions_internal(8, 1024, 4096)
+    test_math_functions_internal(1, 64, 4, "float", function_type)
+    test_math_functions_internal(1, 128, 128, "float", function_type)
+    test_math_functions_internal(1, 256, 256, "float", function_type)
+    test_math_functions_internal(1, 512, 512, "float", function_type)
+    test_math_functions_internal(1, 1024, 1024, "float", function_type)
+    test_math_functions_internal(1, 4096, 1024, "float", function_type)
+    test_math_functions_internal(1, 1024, 4096, "float", function_type)
+    test_math_functions_internal(2, 64, 64, "float", function_type)
+    test_math_functions_internal(2, 128, 128, "float", function_type)
+    test_math_functions_internal(8, 4096, 1024, "float", function_type)
+    test_math_functions_internal(8, 1024, 4096, "float", function_type)
+
+
+class TestSqrt(unittest.TestCase):
+    def test_exp(self):
+        test_math_functions("exp")
+
+    def test_sqrt(self):
+        test_math_functions("sqrt")
 
 
 if __name__ == "__main__":
