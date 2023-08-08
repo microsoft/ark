@@ -14,8 +14,8 @@ extern const OpConfigMap MathConfigMap;
 
 ExpOp::ExpOp(OpPrecType prec_type, Tensor *input, Tensor *output,
              const string &name)
-    : Op{OP_SQRT, prec_type,      {input}, {output}, {},
-         name,    &MathConfigMap, -1,      true}
+    : Op{OP_EXP, prec_type,      {input}, {output}, {},
+         name,   &MathConfigMap, -1,      true}
 {
 }
 
