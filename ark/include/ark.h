@@ -261,6 +261,9 @@ class Model
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
+    // Calculates the exponential of the `input` tensor, element-wise.
+    Tensor *exp(Tensor *input, Tensor *output = nullptr,
+                const std::string &name = "relu");
     // Calculates the square root of the `input` tensor, element-wise.
     Tensor *sqrt(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");

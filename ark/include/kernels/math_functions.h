@@ -8,15 +8,27 @@
 
 namespace ark {
 
-struct Sqrt
+struct Exp
 {
+    static DEVICE float compute(float input)
+    {
+        return expf(input);
+    }
     static DEVICE __half2 compute(__half2 input)
     {
-        return h2sqrt(input);
+        return h2exp(input);
     }
+};
+
+struct Sqrt
+{
     static DEVICE float compute(float input)
     {
         return sqrtf(input);
+    }
+    static DEVICE __half2 compute(__half2 input)
+    {
+        return h2sqrt(input);
     }
 };
 
@@ -53,6 +65,24 @@ struct Math<_MathType, _InShape, float, 1>
         *output = _MathType::compute(*input);
     }
 };
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void exp(half *out, half *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Math<Exp, InShape, half, 2>>::run(out, in, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void exp(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Math<Exp, InShape, float, 1>>::run(out, in, uop_idx);
+}
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,

@@ -6,7 +6,7 @@ import ark
 import unittest
 
 
-def test_sqrt_internal(batch_size, m, n, data_type="float", iter=1):
+def test_math_functions_internal(batch_size, m, n, data_type="float",function_type="exp", iter=1):
     if data_type == "float":
         ark_data_type = ark.FP32
         numpy_data_type = np.float32
@@ -18,7 +18,10 @@ def test_sqrt_internal(batch_size, m, n, data_type="float", iter=1):
 
     input_tensor = ark.tensor([batch_size, m, n], ark_data_type)
 
-    output_tensor = ark.sqrt(input_tensor)
+    if function_type == "exp":
+        output_tensor = ark.exp(input_tensor)
+    elif function_type == "sqrt":
+        output_tensor = ark.sqrt(input_tensor)
 
     # Launch the ARK runtime
     runtime.launch()
@@ -35,7 +38,10 @@ def test_sqrt_internal(batch_size, m, n, data_type="float", iter=1):
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()
-    gt = np.sqrt(input_tensor_host)
+    if function_type == "exp":
+        gt = np.exp(input_tensor_host)
+    elif function_type == "sqrt":
+        gt = np.sqrt(input_tensor_host)
     # Check if the output tensor is equal to the sum of the input and other tensor
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
@@ -72,22 +78,22 @@ def test_sqrt_internal(batch_size, m, n, data_type="float", iter=1):
 
 class TestSqrt(unittest.TestCase):
     def test_sqrt(self):
-        test_sqrt_internal(1, 64, 4, "half")
-        test_sqrt_internal(1, 128, 128, "half")
-        test_sqrt_internal(1, 256, 256, "half")
-        test_sqrt_internal(1, 512, 512, "half")
+        test_math_functions_internal(1, 64, 4, "half")
+        test_math_functions_internal(1, 128, 128, "half")
+        test_math_functions_internal(1, 256, 256, "half")
+        test_math_functions_internal(1, 512, 512, "half")
 
-        test_sqrt_internal(1, 64, 4)
-        test_sqrt_internal(1, 128, 128)
-        test_sqrt_internal(1, 256, 256)
-        test_sqrt_internal(1, 512, 512)
-        test_sqrt_internal(1, 1024, 1024)
-        test_sqrt_internal(1, 4096, 1024)
-        test_sqrt_internal(1, 1024, 4096)
-        test_sqrt_internal(2, 64, 64)
-        test_sqrt_internal(2, 128, 128)
-        test_sqrt_internal(8, 4096, 1024)
-        test_sqrt_internal(8, 1024, 4096)
+        test_math_functions_internal(1, 64, 4)
+        test_math_functions_internal(1, 128, 128)
+        test_math_functions_internal(1, 256, 256)
+        test_math_functions_internal(1, 512, 512)
+        test_math_functions_internal(1, 1024, 1024)
+        test_math_functions_internal(1, 4096, 1024)
+        test_math_functions_internal(1, 1024, 4096)
+        test_math_functions_internal(2, 64, 64)
+        test_math_functions_internal(2, 128, 128)
+        test_math_functions_internal(8, 4096, 1024)
+        test_math_functions_internal(8, 1024, 4096)
 
 
 if __name__ == "__main__":

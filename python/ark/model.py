@@ -400,6 +400,20 @@ def scale(
     )
     return Tensor(_tensor)
 
+def exp(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "exp",
+) -> Tensor:
+    """
+    Calculates the exponential of the `input` tensor, element-wise.
+    Usage:
+    tensor_exp = ark.exp(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().exp(input._tensor, output, name)
+    return Tensor(_tensor)
 
 def sqrt(
     input: Tensor,
