@@ -343,11 +343,8 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
         os << "  ";
         auto uop_map_it = uop_map.find(sop.function_name());
         if (uop_map_it != uop_map.end()) {
-            LOG(DEBUG, "uop_id: ", uop_map_it->second,
-                " uop_name: ", sop.function_name());
             this->uop(os, uop_map_it->second);
         } else {
-            LOG(DEBUG, "sop.function_name(): ", sop.function_name());
             os << sop.function_name();
         }
         os << '(';

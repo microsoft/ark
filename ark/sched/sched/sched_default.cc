@@ -232,8 +232,6 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
                                  (!op->is_comm() && next_op->is_comm());
             if (!need_sync_between_ops && !comm_and_comp) {
                 if (opseq->append(next_op, next_cfg)) {
-                    LOG(DEBUG, "merged op: %s",
-                        next_op->function_name(*next_cfg));
                     // Merge succeeded.
                     continue;
                 }

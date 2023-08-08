@@ -54,7 +54,7 @@ struct Sigmoid
     static DEVICE __half2 compute(__half2 input)
     {
         __half2 one = __float2half2_rn(1.0f);
-        __half2 exp_neg_input = __h2exp(__hneg2(input));
+        __half2 exp_neg_input = h2exp(__hneg2(input));
         __half2 one_plus_exp_neg_input = __hadd2(one, exp_neg_input);
         return __h2div(one, one_plus_exp_neg_input);
     }
@@ -103,6 +103,16 @@ struct Activation<_ActivationType, _InShape, float, 1>
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
+DEVICE void relu(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Relu, InShape, float, 1>>::run(out, in,
+                                                                    uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
 DEVICE void relu(half *out, half *in, int uop_idx, int)
 {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
@@ -118,6 +128,26 @@ DEVICE void gelu(half *out, half *in, int uop_idx, int)
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Activation<Gelu, InShape, half, 2>>::run(out, in,
                                                                    uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void sigmoid(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Sigmoid, InShape, float, 1>>::run(out, in,
+                                                                       uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void sigmoid(half *out, half *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Sigmoid, InShape, half, 2>>::run(out, in,
+                                                                      uop_idx);
 }
 
 } // namespace ark
