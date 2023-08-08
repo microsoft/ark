@@ -16,7 +16,7 @@ def tensor(
     pads: Dims = Dims(),
     deps: list = [],
     exported: bool = False,
-    imported: bool = False,
+    imported_rank: int = -1,
     name: str = "tensor",
 ) -> Tensor:
     """
@@ -33,7 +33,16 @@ def tensor(
             raise ValueError("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
     _tensor = Model.get_global_model().tensor(
-        shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
+        shape,
+        dtype,
+        buf,
+        ldims,
+        offs,
+        pads,
+        deps,
+        exported,
+        imported_rank,
+        name,
     )
     return Tensor(_tensor)
 
