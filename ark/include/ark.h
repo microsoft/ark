@@ -272,6 +272,9 @@ class Model
     // rectifier function and is widely used in deep learning models.
     Tensor *gelu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "gelu");
+    // Sigmoid activation
+    Tensor *sigmoid(Tensor *input, Tensor *output = nullptr,
+                    const std::string &name = "relu");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,

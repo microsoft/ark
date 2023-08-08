@@ -453,6 +453,23 @@ def gelu(
     return Tensor(_tensor)
 
 
+def sigmoid(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "sigmoid",
+) -> Tensor:
+    """
+    Applies the Sigmoid activation function to the `input` tensor,
+    element-wise.
+    Usage:
+    tensor_sigmoid = ark.sigmoid(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().sigmoid(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
 def add(
     input: Tensor,
     other: Tensor,

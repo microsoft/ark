@@ -7,12 +7,13 @@ import ark
 import numpy as np
 import torch
 
-if __name__ == "__main__":
+
+def test_rmsnorm():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
     rmsnorm_pytorch = llama_pytorch.RMSNorm(4096)
     rmsnorm_ark = llama_ark.RMSNorm(4096)
-    input_numpy = np.ones((1, 4096))
+    input_numpy = np.random.randn(1, 4096).astype(np.float16)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
         "weight": np.ones((4096,)).astype(np.float16),
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()
-    
+
     # test if the result is correct
 
     gt = output_pytorch.detach().numpy().astype(np.float16)
@@ -45,3 +46,7 @@ if __name__ == "__main__":
         "mean_abs_error:",
         "{:.5f}".format(mean_abs_error),
     )
+
+
+if __name__ == "__main__":
+    test_rmsnorm()
