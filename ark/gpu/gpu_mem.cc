@@ -3,12 +3,12 @@
 
 #include <cassert>
 #include <fcntl.h>
+#include <fstream>
 #include <stdint.h>
 #include <string.h>
+#include <string>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <fstream>
-#include <string>
 
 #include "gpumemioctl.h"
 #define GPUMEM_DRIVER_PATH "/dev/" GPUMEM_DRIVER_NAME
@@ -20,7 +20,8 @@ using namespace std;
 
 namespace ark {
 
-bool is_gpumem_loaded() {
+bool is_gpumem_loaded()
+{
     std::ifstream file("/proc/modules");
     std::string line;
     while (std::getline(file, line)) {
