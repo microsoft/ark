@@ -19,22 +19,21 @@ class PoswiseFeedForwardNet:
         )
 
     def forward(self, inputs):
-        middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.model.matmul(middle_result, self.weight_2)
-        middle_result1 = self.model.reshape(
-            middle_result1, ark.Dims(batch_size * seq_len * d_model)
+        output = self.model.matmul(inputs, self.weight_1)
+        output = self.model.relu(output)
+        output = self.model.matmul(output, self.weight_2)
+        output = self.model.reshape(
+            output, ark.Dims(batch_size * seq_len * d_model)
         )
-        middle_result_allreduced = self.model.all_reduce(
-            middle_result1, self.rank, num_gpu
-        )
+        output = self.model.all_reduce(output, self.rank, num_gpu)
         # all_reduce the middle_result to all the GPUs
-        middle_result_allreduced = self.model.reshape(
-            middle_result_allreduced, ark.Dims(batch_size, seq_len, d_model)
+        output = self.model.reshape(
+            output, ark.Dims(batch_size, seq_len, d_model)
         )
-        output = self.model.add(middle_result_allreduced, inputs)
+        output = self.model.add(output, inputs)
 
-        output_layernorm = self.model.layernorm(output)
-        return output_layernorm
+        output = self.model.layernorm(output)
+        return output
 
     def init_model(self, param, exe, prefix=""):
         weight_1 = param[prefix + "weight_1"]

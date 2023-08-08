@@ -458,11 +458,10 @@ template <typename UnitOp> struct GemmThreadblockSwizzle
 /// Half-precision GEMM. Row-major.
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, bool IsColumnA,
-          bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes,
-          typename DataTypeA, typename DataTypeB, typename DataTypeC,
-          typename AccumulateType>
-DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, AccumulateType alpha,
-                 AccumulateType beta, int uop_idx, int smem_per_warp)
+          bool IsColumnB, int NumThreads, int SmemBytes, typename DataTypeA,
+          typename DataTypeB, typename DataTypeC, typename AccumulateType>
+DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
+                 int smem_per_warp)
 {
     static_assert(NCA::D2 == 1 && NCA::D3 == 1,
                   "NCA should be two dimensional.");
@@ -503,13 +502,14 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, AccumulateType alpha,
     using ThreadblockSwizzle = ark::GemmThreadblockSwizzle<UnitOp>;
 
     using GemmShape = cutlass::gemm::GemmShape<Shape::D0, Shape::D1, Shape::D2>;
-    using GemmConfig = typename ark::GemmConfiguration<
-        cutlass::arch::OpClassTensorOp, ArchTag, DataTypeA,
-        DataTypeB, DataTypeC, AccumulateType, GemmShape>;
+    using GemmConfig =
+        typename ark::GemmConfiguration<cutlass::arch::OpClassTensorOp, ArchTag,
+                                        DataTypeA, DataTypeB, DataTypeC,
+                                        AccumulateType, GemmShape>;
     using GemmKernel = typename cutlass::gemm::kernel::DefaultGemm<
-        DataTypeA, LayoutA, GemmConfig::kAlignmentA, DataTypeB,
-        LayoutB, GemmConfig::kAlignmentB, DataTypeC, LayoutC,
-        AccumulateType, cutlass::arch::OpClassTensorOp, ArchTag, GemmShape,
+        DataTypeA, LayoutA, GemmConfig::kAlignmentA, DataTypeB, LayoutB,
+        GemmConfig::kAlignmentB, DataTypeC, LayoutC, AccumulateType,
+        cutlass::arch::OpClassTensorOp, ArchTag, GemmShape,
         typename GemmConfig::WarpShape, typename GemmConfig::InstructionShape,
         typename GemmConfig::EpilogueOutputOp, ThreadblockSwizzle,
         GemmConfig::kStages, false, typename GemmConfig::Operator>::GemmKernel;

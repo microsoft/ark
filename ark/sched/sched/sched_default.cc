@@ -119,10 +119,8 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     Tensor *output = matmul_op.outputs[0];
     bool is_column_a;
     bool is_column_b;
-    bool is_relu;
     matmul_op.args.get(&is_column_a, 4);
     matmul_op.args.get(&is_column_b, 5);
-    matmul_op.args.get(&is_relu, 6);
     std::string matmul_name = matmul_op.name;
 
     // Remove the original matmul op from the model.
@@ -130,7 +128,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 
     // Create a new matmul op with the optimized split_k.
     model.matmul(input_a, input_b, output, split_k, is_column_a, is_column_b,
-                 is_relu, matmul_name);
+                 matmul_name);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized

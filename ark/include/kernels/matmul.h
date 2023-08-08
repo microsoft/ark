@@ -8,33 +8,35 @@
 
 namespace ark {
 
-// Matrix multiplication. Reuse GEMM kernels. Row-major.
+/// Matrix multiplication.
+///
+/// Reuse GEMM kernels. The output is row-major, and the input matrices are
+/// row-major by default. If the input matrices are column-major, the
+/// corresponding @p IsColumnA or @p IsColumnB should be set to true.
+///
+/// @tparam OutDims (ark::Vec) Output tensor leading dimensions.
+/// @tparam NCA (ark::Vec) A 2D vector with N and C dimensions of matrix A.
+/// @tparam NCB (ark::Vec) A 2D vector with N and C dimensions of matrix B.
+/// @tparam Shape (ark::Vec) The tile shape of matmul computation (m, n, k).
+/// @tparam ProblemSize (ark::Vec) The problem size of matmul computation
+/// (m, n, k).
+/// @tparam LeadingDims (ark::Vec) The leading dimensions of matrix inputs
+/// and outputs. (lda, ldc, ldc, ldb).
+/// @tparam IsColumnA (bool) Whether matrix A is column-major.
+/// @tparam IsColumnB (bool) Whether matrix B is column-major.
+/// @tparam NumThreads (int) The number of threads per uop.
+/// @tparam SmemBytes (int) The size of shared memory per uop.
+///
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, bool IsColumnA,
-          bool IsColumnB, bool IsRelu, int NumThreads, int SmemBytes>
-DEVICE void matmul(ark::half *C, ark::half *A, ark::half *B, int uop_idx,
-                   int smem_per_warp)
+          bool IsColumnB, int NumThreads, int SmemBytes>
+DEVICE void matmul(half *C, half *A, half *B, int uop_idx, int smem_per_warp)
 {
     // 0x3c00 represents constant 1.0 in half-precision floating point format.
     gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, IsColumnA,
-         IsColumnB, IsRelu, NumThreads, SmemBytes>(
-        C, A, B, ark::half::bitcast(0x3c00), ark::half::bitcast(0x0), uop_idx,
-        smem_per_warp);
+         IsColumnB, NumThreads, SmemBytes, half, half, half, half>(
+        C, A, B, uop_idx, smem_per_warp);
 }
-
-// /* Fused matrix multiplication and scale kernel. */
-// template <int M, int N, int K, bool TA, bool TB, int BcastType, bool IsRelu,
-//           int NumThreads, int SmemBytes, int TDimM, int TDimN, int TDimK>
-// DEVICE void matmul(
-//    half *C, half *A, half *B, half scale, int tx, int ty, int tz)
-// {
-//     constexpr int BT = BcastType == 0 ? 0 : BcastType == 1 ? 2 : 1;
-//     // 0x3c00 represents constant 1.0 in half-precision floating point
-//     // format.
-//     gemm<N, M, K, TB, TA, BT, IsRelu, NumThreads, SmemBytes, TDimN,
-//     TDimM, TDimK>(
-//         C, B, A, half{scale}, half::bitcast(0x0), ty, tx, tz);
-// }
 
 } // namespace ark
 

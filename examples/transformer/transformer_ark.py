@@ -35,11 +35,12 @@ class PoswiseFeedForwardNet:
         )
 
     def forward(self, inputs):
-        middle_result = self.model.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.model.matmul(middle_result, self.weight_2)
-        output = self.model.add(middle_result1, inputs)
-        output_layernorm = self.model.layernorm(output)
-        return output_layernorm
+        output = self.model.matmul(inputs, self.weight_1)
+        output = self.model.relu(output)
+        output = self.model.matmul(output, self.weight_2)
+        output = self.model.add(output, inputs)
+        output = self.model.layernorm(output)
+        return output
 
     def init_model(self, param, exe, prefix=""):
         exe.tensor_memcpy_host_to_device(
