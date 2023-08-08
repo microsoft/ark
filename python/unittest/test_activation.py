@@ -4,9 +4,13 @@
 import numpy as np
 import ark
 import unittest
+import torch
+import torch.nn.functional as F
 
 
-def test_sigmoid_internal(batch_size, m, n, data_type="float", iter=1):
+def test_activation_internal(
+    batch_size, m, n, data_type="float", activation_type="relu", iter=1
+):
     if data_type == "float":
         ark_data_type = ark.FP32
         numpy_data_type = np.float32
@@ -18,7 +22,12 @@ def test_sigmoid_internal(batch_size, m, n, data_type="float", iter=1):
 
     input_tensor = ark.tensor([batch_size, m, n], ark_data_type)
 
-    output_tensor = ark.sigmoid(input_tensor)
+    if activation_type == "relu":
+        output_tensor = ark.relu(input_tensor)
+    elif activation_type == "gelu":
+        output_tensor = ark.gelu(input_tensor)
+    elif activation_type == "sigmoid":
+        output_tensor = ark.sigmoid(input_tensor)
 
     # Launch the ARK runtime
     runtime.launch()
@@ -35,7 +44,13 @@ def test_sigmoid_internal(batch_size, m, n, data_type="float", iter=1):
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()
-    gt = 1 / (1 + np.exp(-input_tensor_host))
+    if activation_type == "relu":
+        gt = np.maximum(input_tensor_host, 0)
+    elif activation_type == "gelu":
+        torch_input = torch.from_numpy(input_tensor_host.astype(np.float32))
+        gt = F.gelu(torch_input).detach().numpy().astype(np.float16)
+    elif activation_type == "sigmoid":
+        gt = 1 / (1 + np.exp(-input_tensor_host))
     # Check if the output tensor is equal to the sum of the input and other tensor
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
@@ -46,7 +61,8 @@ def test_sigmoid_internal(batch_size, m, n, data_type="float", iter=1):
         output_tensor_host, gt, atol=numeric_epsilon_half * 2
     )
     print(
-        "sigmoid test",
+        activation_type,
+        "test",
         "batch_size:",
         "{:6d}".format(batch_size),
         "m:",
@@ -70,24 +86,31 @@ def test_sigmoid_internal(batch_size, m, n, data_type="float", iter=1):
     )
 
 
-class TestActivation(unittest.TestCase):
-    def test_sigmoid(self):
-        test_sigmoid_internal(1, 64, 4, "half")
-        test_sigmoid_internal(1, 128, 128, "half")
-        test_sigmoid_internal(1, 256, 256, "half")
-        test_sigmoid_internal(1, 512, 512, "half")
+def test_activation(activation_type="relu"):
+    test_activation_internal(1, 64, 4, "half", activation_type)
+    test_activation_internal(1, 128, 128, "half", activation_type)
+    test_activation_internal(1, 256, 256, "half", activation_type)
+    test_activation_internal(1, 512, 512, "half", activation_type)
 
-        test_sigmoid_internal(1, 64, 4)
-        test_sigmoid_internal(1, 128, 128)
-        test_sigmoid_internal(1, 256, 256)
-        test_sigmoid_internal(1, 512, 512)
-        test_sigmoid_internal(1, 1024, 1024)
-        test_sigmoid_internal(1, 4096, 1024)
-        test_sigmoid_internal(1, 1024, 4096)
-        test_sigmoid_internal(2, 64, 64)
-        test_sigmoid_internal(2, 128, 128)
-        test_sigmoid_internal(8, 4096, 1024)
-        test_sigmoid_internal(8, 1024, 4096)
+    test_activation_internal(1, 64, 4, "float", activation_type)
+    test_activation_internal(1, 128, 128, "float", activation_type)
+    test_activation_internal(1, 256, 256, "float", activation_type)
+    test_activation_internal(1, 512, 512, "float", activation_type)
+    test_activation_internal(1, 1024, 1024, "float", activation_type)
+    test_activation_internal(1, 4096, 1024, "float", activation_type)
+    test_activation_internal(1, 1024, 4096, "float", activation_type)
+    test_activation_internal(2, 64, 64, "float", activation_type)
+    test_activation_internal(2, 128, 128, "float", activation_type)
+    test_activation_internal(8, 4096, 1024, "float", activation_type)
+    test_activation_internal(8, 1024, 4096, "float", activation_type)
+
+
+class TestActivation(unittest.TestCase):
+    def test_relu(self):
+        test_activation("relu")
+
+    def test_sigmoid(self):
+        test_activation("sigmoid")
 
 
 if __name__ == "__main__":
