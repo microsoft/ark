@@ -13,21 +13,39 @@ if (NOT USE_KAHYPAR)
     list(REMOVE_ITEM UT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/kahypar_test.cc)
 endif()
 
-set(COMMON_LIBS CUDA::cuda_driver CUDA::nvml ARK::numa ARK::ibverbs pthread rt)
+set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
+if(CUDAToolkit_FOUND)
+    list(APPEND COMMON_LIBS CUDA::cuda_driver CUDA::nvml)
+elseif(ROCM_FOUND)
+    list(APPEND COMMON_LIBS ${ROCR_LIBRARY} ${ROCT_LIBRARY})
+endif()
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(ark_obj PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(ark_obj SYSTEM PRIVATE
-    ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
     ${PROJECT_SOURCE_DIR}/third_party/gpudma/module
     ${PROJECT_SOURCE_DIR}/third_party/json
-    ${CUDAToolkit_INCLUDE_DIRS}
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
 )
+if(CUDAToolkit_FOUND)
+    target_include_directories(ark_obj SYSTEM PRIVATE
+        ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+elseif(ROCM_FOUND)
+    target_include_directories(ark_obj SYSTEM PRIVATE
+        ${ROCM_INCLUDE_DIRS}
+        /opt/rocm/include
+    )
+endif()
 target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
+if(ROCM_FOUND)
+    # define ROCM macro to enable ROCM-specific code
+    target_compile_definitions(ark_obj PRIVATE ARK_ROCM)
+endif()
 
 # Add header files to library targets
 target_sources(ark PUBLIC

@@ -23,7 +23,15 @@ include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
 
 # Find CUDAToolkit
-find_package(CUDAToolkit REQUIRED)
+find_package(CUDAToolkit)
+
+# Find ROCm
+find_package(ROCM)
+
+# Check if one of CUDA or ROCm is found
+if(NOT CUDAToolkit_FOUND AND NOT ROCM_FOUND)
+    message(FATAL_ERROR "Neither CUDA nor ROCm is found")
+endif()
 
 # Third party libraries
 add_subdirectory(third_party)

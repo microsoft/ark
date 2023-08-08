@@ -4,7 +4,12 @@
 #ifndef ARK_GPU_KERNEL_H_
 #define ARK_GPU_KERNEL_H_
 
+#ifndef ARK_ROCM
 #include <cuda.h>
+#else
+#include <hip/hip_runtime.h>
+#endif // ARK_ROCM
+
 #include <string>
 #include <thread>
 #include <vector>
