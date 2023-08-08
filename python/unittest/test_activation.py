@@ -109,6 +109,9 @@ class TestActivation(unittest.TestCase):
     def test_relu(self):
         test_activation("relu")
 
+    def test_gelu(self):
+        test_activation("gelu")
+
     def test_sigmoid(self):
         test_activation("sigmoid")
 
