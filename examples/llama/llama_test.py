@@ -27,18 +27,15 @@ if __name__ == "__main__":
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float16))
-    print(rmsnorm_ark.parameters)
     rmsnorm_ark.load_state_dict(state_dict)
-    print(rmsnorm_ark.weight.to_numpy())
+
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()
-    print(output_ark_host)
-    print(rmsnorm_ark.weight.to_numpy())
-    # Check if the output tensor is equal to the sum of the input and other tensor
+    
     # test if the result is correct
 
-    gt = output_pytorch.detach().numpy()
+    gt = output_pytorch.detach().numpy().astype(np.float16)
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
     print(
