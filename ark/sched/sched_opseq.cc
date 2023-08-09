@@ -30,6 +30,9 @@ bool SchedOpSeq::is_send() const
         if (ot == OP_SEND) {
             continue;
         }
+        if (ot == OP_SEND_MSCCLPP) {
+            continue;
+        }
         return false;
     }
     return true;
@@ -45,6 +48,9 @@ bool SchedOpSeq::is_send_done() const
         if (ot == OP_SEND_DONE) {
             continue;
         }
+        if (ot == OP_SEND_DONE_MSCCLPP) {
+            continue;
+        }
         return false;
     }
     return true;
@@ -58,6 +64,9 @@ bool SchedOpSeq::is_recv() const
         }
         const OpType &ot = sop.get_op()->type;
         if (ot == OP_RECV) {
+            continue;
+        }
+        if (ot == OP_RECV_MSCCLPP) {
             continue;
         }
         return false;

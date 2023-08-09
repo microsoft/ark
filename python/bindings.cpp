@@ -311,6 +311,27 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv_mm")
+        .def("send_mscclpp", &ark::Model::send_mscclpp,
+             "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
+             "tensors can be sent to the same GPU,so an identifier `id` is "
+             "required to distinguish the tensor. Each 'send' operator must "
+             "have a corresponding 'recv' operator that have the same id in "
+             "another GPU's model.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("sid"), py::arg("dst_rank"), py::arg("bytes") = 0,
+             py::arg("output") = nullptr, py::arg("name") = "send_mscclpp")
+        .def("send_done_mscclpp", &ark::Model::send_done_mscclpp,
+             "",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("dst_rank"), py::arg("output") = nullptr,
+             py::arg("name") = "send_done_mscclpp")
+        .def("recv_mscclpp", &ark::Model::recv_mscclpp,
+             "Receives a tensor from a source GPU (`src_rank`), identified by "
+             "the `id` parameter. Blocks the execution until the corresponding "
+             "'recv' operator is completed.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("sid"), py::arg("src_rank"), py::arg("bytes") = 0,
+             py::arg("output") = nullptr, py::arg("name") = "recv_mscclpp")
         .def("all_gather", &ark::Model::all_gather,
              "Performs an all-gather operator across all GPUs",
              py::return_value_policy::reference_internal, py::arg("input"),

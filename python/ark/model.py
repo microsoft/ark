@@ -614,6 +614,87 @@ def recv_mm(
     return Tensor(_tensor)
 
 
+def send_mscclpp(
+    input: Tensor,
+    sid: int,
+    dst_rank: int,
+    bytes: int = 0,
+    output: Tensor = None,
+    name: str = "send_mscclpp",
+) -> Tensor:
+    """
+    Sends a tensor to a destination GPU (`dst_rank`). Multiple
+    tensors can be sent to the same GPU, so an identifier `id` is
+    required to distinguish the tensor. Each 'send' operator must
+    have a corresponding 'recv' operator that have the same id in
+    another GPU's model.
+    Usage:
+    # on GPU0:
+    ark.send(tensor_send, 1, 1)
+    ark.send_done(tensor_send, 1, 1)
+    # on GPU1:
+    ark.recv(tensor, 1, 0)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().send_mscclpp(
+        input._tensor,
+        sid,
+        dst_rank,
+        bytes,
+        output,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+def send_done_mscclpp(
+    input: Tensor,
+    dst_rank: int,
+    output: Tensor = None,
+    name: str = "send_done_mscclpp",
+) -> Tensor:
+    """
+    Blocks the execution until the corresponding 'send' operator
+    with the specified `id` is completed.
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().send_done_mscclpp(
+        input._tensor,
+        dst_rank,
+        output,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+def recv_mscclpp(
+    input: Tensor,
+    sid: int,
+    src_rank: int,
+    bytes: int = 0,
+    output: Tensor = None,
+    name: str = "recv",
+) -> Tensor:
+    """
+    Receives a tensor from a source GPU (`src_rank`), identified by
+    the `id` parameter. Blocks the execution until the corresponding
+    'recv' operator is completed.
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().recv_mscclpp(
+        input._tensor,
+        sid,
+        src_rank,
+        bytes,
+        output,
+        name,
+    )
+    return Tensor(_tensor)
+
+
 def all_gather(
     input: Tensor,
     gpu_id: int,

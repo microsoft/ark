@@ -38,6 +38,10 @@ struct Env
     bool disable_graph_opt;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
+    // Use MSCCL++.
+    bool use_mscclpp;
+    // MSCCL++ bootstrap port.
+    int mscclpp_port;
 };
 
 // Get the global Env.

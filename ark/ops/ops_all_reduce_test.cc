@@ -71,7 +71,8 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             exe.compile();
 
             // Get the auto-scheduled buffers.
-            ark::GpuBuf *buf_tns = exe.get_gpu_buf(allreduce_result);
+            ark::GpuBuf *buf_tns =
+                static_cast<ark::GpuBuf *>(allreduce_result->buf->buf);
             UNITTEST_NE(buf_tns, (ark::GpuBuf *)nullptr);
 
             // Set data.

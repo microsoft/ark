@@ -290,7 +290,8 @@ ark::unittest::State test_sched_comp_baseline()
         glk.compile(ginfo);
         for (int i = 0; i < input_tensor_num; i++) {
             // Get the auto-scheduled buffers.
-            ark::GpuBuf *input_tensor_buf = sched.get_gpu_buf(input[i]);
+            ark::GpuBuf *input_tensor_buf =
+                static_cast<ark::GpuBuf *>(input[i]->buf->buf);
             UNITTEST_NE(input_tensor_buf, (ark::GpuBuf *)nullptr);
 
             // Set data.
@@ -305,7 +306,8 @@ ark::unittest::State test_sched_comp_baseline()
         UNITTEST_EQ(ret, 0);
         glk.run(1);
         glk.stop();
-        ark::GpuBuf *output_tensor_buf = sched.get_gpu_buf(output);
+        ark::GpuBuf *output_tensor_buf =
+            static_cast<ark::GpuBuf *>(output->buf->buf);
         ark::gpu_memcpy(output_data1, output_tensor_buf, bytes);
         for (int i = 0; i < 10; i++) {
             LOG(DEBUG, "output_data1: ", (float)output_data1[i]);
@@ -344,7 +346,9 @@ ark::unittest::State test_sched_comp_baseline()
         glk.compile(ginfo);
         for (int i = 0; i < input_tensor_num; i++) {
             // Get the auto-scheduled buffers.
-            ark::GpuBuf *input_tensor_buf = sched.get_gpu_buf(input[i]);
+            ark::GpuBuf *input_tensor_buf =
+                static_cast<ark::GpuBuf *>(input[i]->buf->buf);
+            ;
             UNITTEST_NE(input_tensor_buf, (ark::GpuBuf *)nullptr);
 
             // Set data.
@@ -356,7 +360,9 @@ ark::unittest::State test_sched_comp_baseline()
         UNITTEST_EQ(ret, 0);
         glk.run(1);
         glk.stop();
-        ark::GpuBuf *output_tensor_buf = sched.get_gpu_buf(output);
+        ark::GpuBuf *output_tensor_buf =
+            static_cast<ark::GpuBuf *>(output->buf->buf);
+        ;
         ark::gpu_memcpy(output_data2, output_tensor_buf, bytes);
         for (int i = 0; i < 10; i++) {
             LOG(DEBUG, "output_data2: ", (float)output_data2[i]);

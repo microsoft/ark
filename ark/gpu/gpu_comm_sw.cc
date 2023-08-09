@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <sstream>
 
 #include "cpu_timer.h"
 #include "env.h"
@@ -15,6 +16,11 @@
 using namespace std;
 
 namespace ark {
+
+mscclpp::Transport IBs[] = {mscclpp::Transport::IB0, mscclpp::Transport::IB1,
+                            mscclpp::Transport::IB2, mscclpp::Transport::IB3,
+                            mscclpp::Transport::IB4, mscclpp::Transport::IB5,
+                            mscclpp::Transport::IB6, mscclpp::Transport::IB7};
 
 //
 GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
@@ -55,6 +61,17 @@ GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
         int ib_dev_id = gpu_id_ % num_ib_dev;
         this->net_ib_mgr = get_net_ib_mgr(ib_dev_id);
         this->sid_mrs.resize(MAX_NUM_SID, nullptr);
+    }
+
+    if (get_env().use_mscclpp) {
+        std::stringstream ip_port;
+        ip_port << get_host(0) << ":" << get_env().mscclpp_port;
+
+        this->bootstrap =
+            std::make_shared<mscclpp::TcpBootstrap>(rank, world_size);
+        this->bootstrap->initialize(ip_port.str());
+        this->comm = std::make_shared<mscclpp::Communicator>(this->bootstrap);
+        this->proxy_service = std::make_shared<mscclpp::ProxyService>();
     }
 }
 
@@ -258,6 +275,48 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
             }
         }
     }
+    if (get_env().use_mscclpp) {
+        // need to setup registered memory for the communicator
+        int num_ranks_per_node = get_env().num_ranks_per_host;
+        const int thisNode = rank / num_ranks_per_node;
+        auto rankToNode = [&](int rank) { return rank / num_ranks_per_node; };
+        const mscclpp::Transport ibTransport = IBs[gpu_id];
+        std::vector<std::shared_ptr<mscclpp::Connection>> connections;
+        const mscclpp::TransportFlags all_transports =
+            mscclpp::Transport::CudaIpc | ibTransport;
+        mscclpp::RegisteredMemory local_reg_memory = this->comm->registerMemory(
+            (void *)(data_mem->ref()), data_mem->get_bytes(), all_transports);
+        std::vector<mscclpp::NonblockingFuture<mscclpp::RegisteredMemory>>
+            remote_reg_memories;
+        for (int r = 0; r < this->world_size; ++r) {
+            if (r == rank) {
+                continue;
+            }
+            mscclpp::Transport transport;
+            if (rankToNode(r) == thisNode) {
+                transport = mscclpp::Transport::CudaIpc;
+            } else {
+                transport = ibTransport;
+            }
+            this->comm->sendMemoryOnSetup(local_reg_memory, r, 0);
+            connections.push_back(this->comm->connectOnSetup(r, 0, transport));
+            auto remote_memory = this->comm->recvMemoryOnSetup(r, 0);
+            remote_reg_memories.push_back(remote_memory);
+        }
+        this->comm->setup();
+        for (size_t i = 0; i < connections.size(); ++i) {
+            LOG(INFO, "Rank ", rank, " connected to rank ", i);
+            this->proxy_channels.push_back(
+                mscclpp::deviceHandle(mscclpp::SimpleProxyChannel(
+                    this->proxy_service->proxyChannel(
+                        this->proxy_service->buildAndAddSemaphore(
+                            *(this->comm), connections[i])),
+                    this->proxy_service->addMemory(
+                        remote_reg_memories[i].get()),
+                    this->proxy_service->addMemory(local_reg_memory))));
+        }
+        this->comm->setup();
+    }
     LOG(DEBUG, "RANK ", this->rank, " config done");
 }
 
@@ -293,6 +352,10 @@ void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
 //
 void GpuCommSw::launch_request_loop()
 {
+    if (get_env().use_mscclpp) {
+        this->proxy_service->startProxy();
+        return;
+    }
     if (this->request_loop_thread == nullptr) {
         this->run_request_loop_thread = true;
         this->request_loop_thread = new thread([&, gid = this->gpu_id] {

@@ -12,7 +12,6 @@
 #include <thread>
 #include <vector>
 
-#include "gpu/gpu_buf.h"
 #include "gpu/gpu_comm_sw.h"
 
 namespace ark {
@@ -116,11 +115,17 @@ class GpuMgrCtx
     GpuBuf *mem_import(size_t bytes, int sid, int gpu_id);
     void reg_sendrecv(int sid, int gpu_dst, std::size_t bytes, bool is_recv);
     void freeze();
+    void gather_memory_offsets(
+        std::map<int, std::map<int, size_t>> &memory_offsets);
     void send(int src, int dst, int rank, size_t bytes);
     GpuState set_current();
     const int &get_world_size() const
     {
         return world_size;
+    }
+    const int &get_rank() const
+    {
+        return rank;
     }
     const int &get_gpu_id() const
     {
@@ -146,6 +151,8 @@ class GpuMgrCtx
     GpuPtr get_rc_ref(int sid) const;
     //
     GpuPtr get_request_ref() const;
+    //
+    GpuCommSw *get_comm_sw() const;
 
     //
     bool is_comm_sw() const
@@ -185,7 +192,7 @@ class GpuMgrCtx
     std::vector<std::pair<int, size_t>> export_sid_offs;
     std::map<int, std::vector<GpuBuf *>> import_gid_bufs;
 
-    GpuCommSw *comm_sw = nullptr;
+    std::unique_ptr<GpuCommSw> comm_sw;
 
     std::set<int> sids_in_use;
 };

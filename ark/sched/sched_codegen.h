@@ -15,8 +15,7 @@ namespace ark {
 class CodeGenerator
 {
   public:
-    CodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                  const GpuInfo &gpu_info_, int num_warps_per_sm_);
+    CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_);
 
     std::ostream &def_remote_buf(std::ostream &os, int remote_rank) const;
 
@@ -46,10 +45,12 @@ class CodeGenerator
 
     std::ostream &sched(std::ostream &os, Sched &sched) const;
 
+    std::ostream &def_proxy_channels(std::ostream &os,
+                                     size_t num_channels) const;
+
   protected:
     size_t get_tensor_offset(const Tensor *tensor) const;
 
-    const std::map<TensorBuf *, GpuBuf *> &buf_trans;
     const GpuInfo &gpu_info;
     int sm_num;
     int num_warps_per_sm;

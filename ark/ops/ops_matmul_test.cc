@@ -91,9 +91,9 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     exe.compile();
 
     // Get the auto-scheduled buffers.
-    ark::GpuBuf *buf_tns_a = exe.get_gpu_buf(tns_a);
-    ark::GpuBuf *buf_tns_b = exe.get_gpu_buf(tns_b);
-    ark::GpuBuf *buf_tns_res = exe.get_gpu_buf(tns_res);
+    ark::GpuBuf *buf_tns_a = static_cast<ark::GpuBuf *>(tns_a->buf->buf);
+    ark::GpuBuf *buf_tns_b = static_cast<ark::GpuBuf *>(tns_b->buf->buf);
+    ark::GpuBuf *buf_tns_res = static_cast<ark::GpuBuf *>(tns_res->buf->buf);
 
     UNITTEST_NE(buf_tns_a, (ark::GpuBuf *)nullptr);
     UNITTEST_NE(buf_tns_b, (ark::GpuBuf *)nullptr);

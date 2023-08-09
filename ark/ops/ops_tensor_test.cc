@@ -22,7 +22,7 @@ ark::unittest::State test_tensor_memcpy()
     ark::Executor exe{0, 0, 1, model, "test_tensor_memcpy"};
     exe.compile();
 
-    ark::GpuBuf *buf = exe.get_gpu_buf(tns);
+    ark::GpuBuf *buf = static_cast<ark::GpuBuf *>(tns->buf->buf);
     UNITTEST_NE(buf, (ark::GpuBuf *)nullptr);
     UNITTEST_EQ(buf->get_bytes(), ldims.size() * sizeof(float));
 
@@ -110,7 +110,7 @@ ark::unittest::State test_tensor_layout()
     ark::Executor exe{0, 0, 1, model, "test_tensor_layout"};
     exe.compile();
 
-    ark::GpuBuf *buf = exe.get_gpu_buf(tns);
+    ark::GpuBuf *buf = static_cast<ark::GpuBuf *>(tns->buf->buf);
     UNITTEST_NE(buf, (ark::GpuBuf *)nullptr);
     UNITTEST_EQ(buf->get_bytes(), 8 * 7 * 6 * 5 * sizeof(float));
 

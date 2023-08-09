@@ -9,10 +9,11 @@ set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
 option(USE_KAHYPAR "Use KaHyPar for scheduling" OFF)
+option(USE_MSCCLPP "Use MSCCL++" ON)
 
 cmake_minimum_required(VERSION 3.25)
 project(ark LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -21,6 +22,11 @@ include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
 
 # Find NUMA
 include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
+
+# Find MSCCL++
+if(USE_MSCCLPP)
+    include(${PROJECT_SOURCE_DIR}/cmake/FindMSCCLPP.cmake)
+endif()
 
 # Find CUDAToolkit
 find_package(CUDAToolkit REQUIRED)

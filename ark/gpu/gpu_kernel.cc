@@ -12,6 +12,7 @@
 #include "gpu/gpu_compile.h"
 #include "gpu/gpu_kernel.h"
 #include "gpu/gpu_logging.h"
+#include <mscclpp/core.hpp>
 
 using namespace std;
 
@@ -329,6 +330,16 @@ void GpuLoopKernel::load()
                     data_buf_ptr, " data_buf_value=", data_buf_value);
                 CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value,
                                    sizeof(GpuPtr)));
+            }
+            if (get_env().use_mscclpp) {
+                GpuPtr channel_addr;
+                CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
+                                        "_ARK_PROXY_CHANS"));
+                const auto &chans =
+                    this->ctx->get_comm_sw()->get_proxy_channels();
+                CULOG(cuMemcpyHtoD(channel_addr, chans.data(),
+                                   sizeof(mscclpp::SimpleProxyChannel) *
+                                       chans.size()));
             }
         }
     }

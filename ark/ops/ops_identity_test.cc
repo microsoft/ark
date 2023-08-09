@@ -19,8 +19,8 @@ ark::unittest::State test_identity()
 
     int num_elem = 2 * 3 * 4 * 5;
 
-    ark::GpuBuf *buf0 = exe.get_gpu_buf(tns0);
-    ark::GpuBuf *buf1 = exe.get_gpu_buf(tns1);
+    ark::GpuBuf *buf0 = static_cast<ark::GpuBuf *>(tns0->buf->buf);
+    ark::GpuBuf *buf1 = static_cast<ark::GpuBuf *>(tns1->buf->buf);
     UNITTEST_NE(buf0, (ark::GpuBuf *)nullptr);
     UNITTEST_NE(buf1, (ark::GpuBuf *)nullptr);
     UNITTEST_EQ(buf0->get_bytes(), num_elem * sizeof(float));

@@ -121,6 +121,9 @@ typedef enum
     OP_RECV,
     OP_SEND_MM,
     OP_RECV_MM,
+    OP_SEND_MSCCLPP,
+    OP_SEND_DONE_MSCCLPP,
+    OP_RECV_MSCCLPP,
 } OpType;
 
 /// Type of precision of @ref Op.
@@ -442,6 +445,35 @@ class RecvOp : public Op
   public:
     RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
            int rank, int src_rank, size_t bytes, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppSendOp : public Op
+{
+  public:
+    MscclppSendOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+                  Tensor *output, int sid, int rank, int dst_rank, size_t bytes,
+                  const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppRecvOp : public Op
+{
+  public:
+    MscclppRecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
+                  int rank, int src_rank, size_t bytes,
+                  const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppSendDoneOp : public Op
+{
+  public:
+    MscclppSendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+                      int rank, int dst_rank, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

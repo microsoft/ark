@@ -57,6 +57,9 @@ from .model import (
     recv,
     send_mm,
     recv_mm,
+    send_mscclpp,
+    send_done_mscclpp,
+    recv_mscclpp,
     all_gather,
     all_reduce,
 )
@@ -107,6 +110,9 @@ __all__ = [
     "recv",
     "send_mm",
     "recv_mm",
+    "send_mscclpp",
+    "send_done_mscclpp",
+    "recv_mscclpp",
     "all_gather",
     "all_reduce",
 ]

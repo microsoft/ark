@@ -18,6 +18,8 @@ using namespace std;
 #define DEFAULT_ARK_SCHEDULER "Default"
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT true
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
+#define DEFAULT_ARK_USE_MSCCLPP true
+#define DEFAULT_ARK_MSCCLPP_PORT 50051
 
 namespace ark {
 
@@ -110,6 +112,22 @@ Env::Env()
         this->shm_name_prefix = DEFAULT_ARK_SHM_NAME_PREFIX;
     } else {
         this->shm_name_prefix = shm_name_prefix_ca;
+    }
+    // If `ARK_USE_MSCCLPP=1`, we use MSCCL++.
+    const char *use_mscclpp_ca = getenv("ARK_USE_MSCCLPP");
+    if (use_mscclpp_ca == nullptr) {
+        this->use_mscclpp = DEFAULT_ARK_USE_MSCCLPP;
+    } else if (strncmp(use_mscclpp_ca, "1", 2) == 0) {
+        this->use_mscclpp = true;
+    } else {
+        this->use_mscclpp = false;
+    }
+    // Get the port number of MSCCL++.
+    const char *mscclpp_port_ca = getenv("ARK_MSCCLPP_PORT");
+    if (mscclpp_port_ca == nullptr) {
+        this->mscclpp_port = DEFAULT_ARK_MSCCLPP_PORT;
+    } else {
+        this->mscclpp_port = atoi(mscclpp_port_ca);
     }
 }
 

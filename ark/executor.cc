@@ -112,17 +112,15 @@ float Executor::stop()
     return this->impl->glk->get_elapsed_msec();
 }
 
-// Get the corresponding GPU buffer of the executor from the given model tensor.
-GpuBuf *Executor::get_gpu_buf(Tensor *tns) const
-{
-    return this->impl->sched->get_gpu_buf(tns);
-}
-
 // Copy contiguous data from a host buffer to the given tensor's (possibly
 // non-contiguous) data range on GPU.
+// TODO: move this function to somewhere else
 void Executor::tensor_memcpy(Tensor *dst, const void *src, size_t bytes)
 {
-    GpuBuf *buf = this->get_gpu_buf(dst);
+    if (dst == nullptr) {
+        LOG(ERROR, "the given tensor is null");
+    }
+    GpuBuf *buf = static_cast<GpuBuf *>(dst->buf->buf);
     if (buf == nullptr) {
         LOGERR("failed to get GPU buffer for tensor ", dst->id);
     }
@@ -181,9 +179,13 @@ void Executor::tensor_memcpy(Tensor *dst, const void *src, size_t bytes)
 // host buffer. The given number of bytes is copied, in order of appearance
 // on the memory. This function assumes that `dst` is large enough to hold
 // the data.
+// TODO: move this function to somewhere else
 void Executor::tensor_memcpy(void *dst, Tensor *src, size_t bytes)
 {
-    GpuBuf *buf = this->get_gpu_buf(src);
+    if (src == nullptr) {
+        LOG(ERROR, "the given tensor is null");
+    }
+    GpuBuf *buf = static_cast<GpuBuf *>(src->buf->buf);
     if (buf == nullptr) {
         LOGERR("failed to get GPU buffer for tensor ", src->id);
     }
@@ -241,9 +243,13 @@ void Executor::tensor_memcpy(void *dst, Tensor *src, size_t bytes)
 }
 
 // Set all bytes of `tns` into zero.
+// TODO: move this function to somewhere else
 void Executor::tensor_clear(Tensor *tns)
 {
-    GpuBuf *buf = this->get_gpu_buf(tns);
+    if (tns == nullptr) {
+        LOG(ERROR, "the given tensor is null");
+    }
+    GpuBuf *buf = static_cast<GpuBuf *>(tns->buf->buf);
     if (buf == nullptr) {
         LOGERR("failed to get GPU buffer for tensor ", tns->id);
     }

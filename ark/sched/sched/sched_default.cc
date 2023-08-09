@@ -413,11 +413,11 @@ void DefaultScheduler::configure_gpu_buf(
             } else if (op->type == OP_SEND_MM) {
                 int sid;
                 int dst_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&dst_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&dst_gid, 1);
                 // import the recvbuf, the recvbuf should be allocated on the
                 // receiver GPU
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
                                              recvbuf->buf, sid, 0);
 
@@ -425,26 +425,43 @@ void DefaultScheduler::configure_gpu_buf(
                 // be exported to the recv GPU, since the sid of the
                 // send_ready_flag should not be the same as the recvBuf, so I
                 // use the sid+128 as the sid of the send_ready_flag
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 export_tns_sids[send_ready_flag->buf].emplace_back(
                     send_ready_flag, sid + send_ready_flag_sid_offset);
             } else if (op->type == OP_RECV_MM) {
                 int sid;
                 int src_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&src_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&src_gid, 1);
                 // configure the recvbuf, the recvbuf needed to be export the to
                 // the sender GPU, the sid is the same as the sid of the send_mm
                 // op and the recv_mm op
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
 
                 // import the send_ready_flag, the send_ready_flag tensor should
                 // be allocated on the sender GPU
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 this->buf_infos.emplace_back(
                     src_gid, send_ready_flag->shape_bytes(),
                     send_ready_flag->buf, sid + send_ready_flag_sid_offset, 0);
+            } else if (op->type == OP_SEND_MSCCLPP) {
+                Tensor *input = op->inputs[0];
+                Tensor *recvbuf = op->inputs[1];
+                int dst_rank;
+                int sid;
+                op->args.get(&dst_rank, 1);
+                op->args.get(&sid, 3);
+                // import the recvbuf, the recvbuf should be allocated on the
+                // receiver GPU
+                this->buf_infos.emplace_back(dst_rank, recvbuf->shape_bytes(),
+                                             recvbuf->buf, sid, 0);
+                export_tns_sids[input->buf].emplace_back(input, sid);
+            } else if (op->type == OP_RECV_MSCCLPP) {
+                Tensor *in = op->inputs[0];
+                int sid;
+                op->args.get(&sid, 3);
+                export_tns_sids[in->buf].emplace_back(in, sid);
             }
         }
     }
@@ -513,6 +530,12 @@ std::vector<std::string> DefaultScheduler::gen_code()
 
     this->codegen->def_sync_stream(code, 0);
     this->codegen->def_sync_stream(code, 1);
+
+    if (get_env().use_mscclpp) {
+        size_t num_chans =
+            this->ctx->get_comm_sw()->get_proxy_channels().size();
+        this->codegen->def_proxy_channels(code, num_chans);
+    }
 
     std::map<std::string, int> uop_map;
     for (auto &opseq : this->opseqs) {

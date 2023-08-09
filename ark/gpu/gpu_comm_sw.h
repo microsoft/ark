@@ -13,6 +13,11 @@
 #include <thread>
 #include <vector>
 
+#ifdef ARK_USE_MSCCLPP
+#include <mscclpp/core.hpp>
+#include <mscclpp/proxy_channel.hpp>
+#endif // ARK_USE_MSCCLPP
+
 #include "gpu/gpu_buf.h"
 #include "gpu/gpu_common.h"
 #include "ipc/ipc_socket.h"
@@ -67,6 +72,14 @@ class GpuCommSw
         return this->net_ib_mgr != nullptr;
     }
 
+#ifdef ARK_USE_MSCCLPP
+    const std::vector<mscclpp::DeviceHandle<mscclpp::SimpleProxyChannel>>
+        &get_proxy_channels() const
+    {
+        return this->proxy_channels;
+    }
+#endif // ARK_USE_MSCCLPP
+
   private:
     //
     const std::string name;
@@ -98,6 +111,14 @@ class GpuCommSw
     std::map<int, NetIbQp *> qps;
     std::vector<GpuSendRecvInfo> send_recv_infos;
     std::map<int, std::vector<NetIbMr::Info>> mris;
+
+#ifdef ARK_USE_MSCCLPP
+    std::shared_ptr<mscclpp::TcpBootstrap> bootstrap;
+    std::shared_ptr<mscclpp::Communicator> comm;
+    std::shared_ptr<mscclpp::ProxyService> proxy_service;
+    std::vector<mscclpp::DeviceHandle<mscclpp::SimpleProxyChannel>>
+        proxy_channels;
+#endif // ARK_USE_MSCCLPP
 };
 
 } // namespace ark

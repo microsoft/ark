@@ -90,6 +90,7 @@ struct TensorBuf
     DimType bytes;
     int id;
     bool immutable = false;
+    void *buf = nullptr;
 };
 
 // Type of tensor data.
@@ -309,6 +310,18 @@ class Model
     Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "recv_mm");
+    //
+    Tensor *send_mscclpp(Tensor *input, int sid, int dst_rank,
+                         std::size_t bytes = 0, Tensor *output = nullptr,
+                         const std::string &name = "send_mscclpp");
+    //
+    Tensor *send_done_mscclpp(Tensor *input, int dst_rank,
+                              Tensor *output = nullptr,
+                              const std::string &name = "send_done_mscclpp");
+    //
+    Tensor *recv_mscclpp(Tensor *input, int sid, int src_rank,
+                         std::size_t bytes = 0, Tensor *output = nullptr,
+                         const std::string &name = "recv_mscclpp");
     // Performs an all-reduce operator across all GPUs, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
     // total number of GPUs `gpu_num`.
@@ -360,9 +373,6 @@ class Executor
     // Once this is called, we need to call `launch()` again to run the model
     // again.
     float stop();
-    // Get the corresponding GPU buffer of the executor from the given model
-    // tensor.
-    GpuBuf *get_gpu_buf(Tensor *tns) const;
     // Copy contiguous data from a host buffer to the given tensor's (possibly
     // non-contiguous) data range on GPU.
     void tensor_memcpy(Tensor *tns, const void *src, size_t bytes);

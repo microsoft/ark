@@ -14,6 +14,9 @@ if (NOT USE_KAHYPAR)
 endif()
 
 set(COMMON_LIBS CUDA::cuda_driver CUDA::nvml ARK::numa ARK::ibverbs pthread rt)
+if (USE_MSCCLPP)
+    set(COMMON_LIBS ${COMMON_LIBS} ARK::mscclpp)
+endif()
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -26,6 +29,12 @@ target_include_directories(ark_obj SYSTEM PRIVATE
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
 )
+if (USE_MSCCLPP)
+    target_include_directories(ark_obj SYSTEM PRIVATE
+        ${MSCCLPP_INCLUDE_DIRS}
+    )
+    target_compile_definitions(ark_obj PRIVATE ARK_USE_MSCCLPP=1)
+endif()
 target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
 
