@@ -27,11 +27,12 @@ class TestModelARK(ark.Module):
         )
 
     def forward(self, inputs):
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = ark.matmul(middle_result, self.weight_2)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = ark.matmul(output, self.weight_2)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 
 
 class TestModel(nn.Module):

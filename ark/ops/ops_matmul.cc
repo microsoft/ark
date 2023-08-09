@@ -15,13 +15,12 @@ extern const OpConfigMap MatmulConfigMap;
 MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
                    Tensor *mat_y, Dims nca, Dims ncb, Dims problem_size,
                    Dims leading_dims, bool is_column_a, bool is_column_b,
-                   bool is_relu, const string &name, int gran_lev)
+                   const string &name, int gran_lev)
     : Op{OP_MATMUL,
          prec_type,
          {mat_a, mat_b},
          {mat_y},
-         {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b,
-           is_relu}},
+         {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b}},
          name,
          &MatmulConfigMap,
          gran_lev}
@@ -49,14 +48,12 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
     Dims leading_dims;
     bool is_column_a;
     bool is_column_b;
-    bool is_relu;
     this->args.get(&nca, 0);
     this->args.get(&ncb, 1);
     this->args.get(&problem_size, 2);
     this->args.get(&leading_dims, 3);
     this->args.get(&is_column_a, 4);
     this->args.get(&is_column_b, 5);
-    this->args.get(&is_relu, 6);
 
     /// Re-calculate the exact leading dimensions. Assume this function is
     /// called after scheduling is done.
@@ -88,14 +85,13 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
                                  leading_dims,         // LeadingDims
                                  is_column_a,          // IsColumnA
                                  is_column_b,          // IsColumnB
-                                 is_relu,              // IsRelu
                                  cfg.num_warps * 32,   // NumThreads
                                  cfg.smem_bytes,       // SmemBytes
                              }});
 }
 
 Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
-                      DimType split_k, bool trans_a, bool trans_b, bool is_relu,
+                      DimType split_k, bool trans_a, bool trans_b,
                       const string &name, int gran_lev)
 {
     CHECK(mat_a != nullptr);
@@ -227,9 +223,9 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
             ldims_y[ldims_y.ndims() - 1], ldims_y[ldims_y.ndims() - 1],
             trans_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1]};
         Dims problem_size{m, n, k};
-        MatmulOp op{pt,      mat_a,        mat_b,        mat_y,   nca,
-                    ncb,     problem_size, leading_dims, trans_a, trans_b,
-                    is_relu, name,         gran_lev};
+        MatmulOp op{pt,      mat_a,   mat_b,        mat_y,
+                    nca,     ncb,     problem_size, leading_dims,
+                    trans_a, trans_b, name,         gran_lev};
         return this->impl->add_op(op)[0];
     } else if (split_k > k) {
         LOGERR("Split-K given larger than the K dimension size.");
@@ -288,18 +284,13 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     for (DimType i = 0; i < split_k; ++i) {
         Tensor *shard_output = this->matmul(
             mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1, trans_a,
-            trans_b, false, name + "/matmul_shard_" + to_string(i), gran_lev);
+            trans_b, name + "/matmul_shard_" + to_string(i), gran_lev);
         shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
     Tensor *ref =
         this->identity(output_buffer, shard_outputs, name + "/identity");
-    Tensor *reduced = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
-    if (is_relu) {
-        // TODO: overwrite
-        reduced = this->relu(reduced, nullptr, name + "/relu");
-    }
-    return reduced;
+    return this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
 }
 
 const OpConfigMap MatmulConfigMap = {
@@ -307,17 +298,22 @@ const OpConfigMap MatmulConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 49152, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
-         {4, 24576, {{64, 32}, {32, 128}}, {{64, 128}}, true, false},
          {4, 24576, {{128, 32}, {32, 64}}, {{128, 64}}, true, false},
          {4, 24576, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 166912, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
-         // {8, 166912, {{256, 64}, {64, 128}}, {{256, 128}}, true, false},
-         {8, 166912, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
-         {4, 83456, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+         {8, 147456, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
+         {8, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
+         {4, 49152, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 147456, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
+         {8, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {4, 49152, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
 };
 

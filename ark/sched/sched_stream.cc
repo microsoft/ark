@@ -148,9 +148,10 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
                     int max_warps_per_sm =
                         std::min(this->num_warps_per_sm,
                                  this->smem_bytes_per_sm / max_smem_per_warp);
-                    if (current_warp_idx >= max_warps_per_sm) {
-                        // This SM has too much shared memory used, move to next
-                        // SM
+                    if (current_warp_idx + item.num_warps_per_uop >
+                        max_warps_per_sm) {
+                        // If we schedule this uop, we will exceed the
+                        // shared memory bytes per SM. Move to next SM.
                         current_sm_idx++;
                         current_warp_idx = 0;
                         continue;
