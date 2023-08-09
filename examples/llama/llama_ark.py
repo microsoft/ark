@@ -39,3 +39,38 @@ class RMSNorm(ark.Module):
     def forward(self, x):
         output = self._norm(x)
         return ark.mul(output, self.weight)
+
+class FeedForward(ark.Module):
+    def __init__(
+        self,
+        dim: int,
+        hidden_dim: int,
+        multiple_of: int,
+        ffn_dim_multiplier: Optional[float],
+    ):
+        super().__init__()
+        hidden_dim = int(2 * hidden_dim / 3)
+        # custom dim factor multiplier
+        if ffn_dim_multiplier is not None:
+            hidden_dim = int(ffn_dim_multiplier * hidden_dim)
+        hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
+
+        self.w1 = ark.tensor(
+            [dim, hidden_dim], ark.FP16
+        )
+        self.w2 = ark.tensor(
+            [hidden_dim, dim], ark.FP16
+        )
+        self.w3 = ark.tensor(
+            [dim, hidden_dim], ark.FP16
+        )
+
+    def forward(self, x):
+        # self.w2(F.silu(self.w1(x)) * self.w3(x))
+        silu_input = ark.matmul(x, self.w1)
+        x = ark.sigmoid(silu_input)
+        x= ark.mul(x, silu_input)
+        x = ark.mul(x, self.w3)
+        x = ark.matmul(x, self.w2)
+        return x
+
