@@ -59,8 +59,8 @@ OpArgs MscclppSendOp::function_call_args(const OpConfig &) const
     GpuBuf *gpubuf_recvbuf = static_cast<GpuBuf *>(recvbuf->buf->buf);
 
     OpArgs opargs;
-    opargs.put(gpubuf_recvbuf->get_offset());
-    opargs.put(gpubuf_input->get_offset());
+    opargs.put((int)(gpubuf_recvbuf->get_offset() + recvbuf->offset_bytes()));
+    opargs.put((int)(gpubuf_input->get_offset() + input->offset_bytes()));
     return opargs;
 }
 

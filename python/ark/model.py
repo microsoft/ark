@@ -85,7 +85,6 @@ def reshape(
 def identity(
     input: Tensor,
     deps: List[Tensor] = [],
-    output: Tensor = None,
     name: str = "identity",
 ) -> Tensor:
     """
@@ -99,10 +98,8 @@ def identity(
             logging.error("All dependencies should be tensors")
             raise TypeError("All dependencies should be tensors")
         dep_tensor.append(dep._tensor)
-    if output is not None:
-        output = output._tensor
     _tensor = Model.get_global_model().identity(
-        input._tensor, dep_tensor, output, name
+        input._tensor, dep_tensor, name
     )
     return Tensor(_tensor)
 
