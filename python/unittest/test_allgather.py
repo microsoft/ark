@@ -40,23 +40,9 @@ def all_gather_test_not_inplace(
         numeric_epsilon_half = np.finfo(np.float16).eps
         np.testing.assert_allclose(host_output, gt, rtol=numeric_epsilon_half)
     print(
-        "allgather not-inplace test",
-        "world_size:",
-        world_size,
-        "rank:",
-        rank,
-        "tensor_len:",
-        "{:6d}".format(tensor_len),
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        " ms ",
-        " iter ",
-        iter,
-        "elapsed_per_iter",
-        "{:.5f}".format(elapsed / iter),
-        " ms ",
+        f"allgather not-inplace test world_size: {world_size} rank: "
+        f"{rank} tensor_len: {tensor_len:6d} max_abs_error: {max_abs_error:.5f} "
+        f"elapsed {elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
 
 

@@ -73,7 +73,7 @@ def test_matmul_internal(
     print(
         f"matmul test: data_type {data_type} bs_a {bs_a:6d} bs_b {bs_b:6d} "
         f"m {m:6d} x {n:6d} x {k:6d} (split_k={split_k}, gran_lev={gran_lev}) "
-        f"max_abs_error {max_abs_error:.5f} elapsed mse {mean_abs_error:.5f} "
+        f"max_abs_error {max_abs_error:.5f} mse {mean_abs_error:.5f} elapsed "
         f"{elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
     return True

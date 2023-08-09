@@ -106,18 +106,11 @@ def test_TestModel():
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("ARK module test")
     print(
-        "batch_size:",
-        batch_size,
-        "seq_len:",
-        seq_len,
-        "d_model:",
-        d_model,
-        "d_ff:",
-        d_ff,
+        f"ARK module test batch_size: {batch_size} seq_len: {seq_len} "
+        f"d_model: {d_model} d_ff: {d_ff} max error: {max_error} "
+        f"avg error: {avg_error}"
     )
-    print("max error: ", max_error, "avg error: ", avg_error)
 
 
 class TestAPI(unittest.TestCase):

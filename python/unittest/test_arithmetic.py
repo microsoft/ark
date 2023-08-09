@@ -67,28 +67,10 @@ def test_arithmetic_internal(
         output_tensor_host, gt, atol=numeric_epsilon_half * 2
     )
     print(
-        arithmetic_func,
-        "test",
-        "batch_size:",
-        "{:6d}".format(batch_size),
-        "m:",
-        "{:6d}".format(m),
-        "n:",
-        "{:6d}".format(n),
-        "data_type:",
-        data_type,
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        " ms ",
-        " iter ",
-        iter,
-        "elapsed_per_iter",
-        "{:.5f}".format(elapsed / iter),
-        " ms ",
+        f"{arithmetic_func} test batch_size: {batch_size:6d} m: {m:6d} "
+        f"n: {n:6d} data_type: {data_type} max_abs_error: {max_abs_error:.5f} "
+        f"mean_abs_error: {mean_abs_error:.5f} elapsed {elapsed:.5f} "
+        f"ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
 
 

@@ -43,23 +43,9 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
         atol = numeric_epsilon_half
         np.testing.assert_allclose(host_output, np_inputs, atol=atol)
         print(
-            "sendrecv_test_one_dir:",
-            "rank",
-            rank,
-            "tensor_len",
-            "{:6d}".format(tensor_len),
-            "max_abs_error:",
-            "{:.5f}".format(max_abs_error),
-            "mean_abs_error:",
-            "{:.5f}".format(mean_abs_error),
-            "elapsed",
-            "{:.5f}".format(elapsed),
-            " ms ",
-            " iter ",
-            iter,
-            "elapsed_per_iter",
-            "{:.5f}".format(elapsed / iter),
-            " ms ",
+            f"sendrecv_test_one_dir: rank {rank} tensor_len {tensor_len:6d} "
+            f"max_abs_error {max_abs_error:.5f} mean_abs_error {mean_abs_error:.5f} "
+            f"elapsed {elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
         )
 
 
