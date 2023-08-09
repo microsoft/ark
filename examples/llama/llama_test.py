@@ -13,22 +13,24 @@ from fairscale.nn.model_parallel.initialize import (
     model_parallel_is_initialized,
 )
 
+dim = 4096
+
 
 def test_rmsnorm():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
-    rmsnorm_pytorch = llama_pytorch.RMSNorm(4096)
-    rmsnorm_ark = llama_ark.RMSNorm(4096)
-    input_numpy = np.random.randn(4, 1, 4096).astype(np.float32)
+    rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
+    rmsnorm_ark = llama_ark.RMSNorm(dim)
+    input_numpy = np.random.randn(batch_size, 1, dim).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
-        "weight": np.ones((4096,)).astype(np.float32),
+        "weight": np.ones((dim,)).astype(np.float32),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
     output_pytorch = rmsnorm_pytorch(torch_input)
 
-    ark_input = ark.tensor([4, 1, 4096], ark.FP32)
+    ark_input = ark.tensor([batch_size, 1, dim], ark.FP32)
     output_ark = rmsnorm_ark(ark_input)
 
     # Launch the ARK runtime
@@ -54,23 +56,26 @@ def test_rmsnorm():
     )
 
 
+batch_size = 1
+
+
 def test_feedforward():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
-    rmsnorm_pytorch = llama_pytorch.FeedForward(4096, 16384, 256, None)
-    rmsnorm_ark = llama_ark.FeedForward(4096, 16384, 256, None)
-    input_numpy = np.random.randn(4, 1, 4096).astype(np.float32)
+    rmsnorm_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
+    rmsnorm_ark = llama_ark.FeedForward(dim, 16384, 256, None)
+    input_numpy = np.random.randn(batch_size, 1, dim).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
-        "w1.weight": np.ones((11008, 4096)).astype(np.float32),
-        "w2.weight": np.ones((4096, 11008)).astype(np.float32),
-        "w3.weight": np.ones((11008, 4096)).astype(np.float32),
+        "w1.weight": np.ones((11008, dim)).astype(np.float32),
+        "w2.weight": np.ones((dim, 11008)).astype(np.float32),
+        "w3.weight": np.ones((11008, dim)).astype(np.float32),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
     output_pytorch = rmsnorm_pytorch(torch_input)
 
-    ark_input = ark.tensor([4, 1, 4096], ark.FP32)
+    ark_input = ark.tensor([batch_size, 1, dim], ark.FP32)
     output_ark = rmsnorm_ark(ark_input)
 
     # Launch the ARK runtime
