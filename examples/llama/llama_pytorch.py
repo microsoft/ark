@@ -46,6 +46,7 @@ class RMSNorm(torch.nn.Module):
         output = self._norm(x.float()).type_as(x)
         return output * self.weight
 
+
 class FeedForward(nn.Module):
     def __init__(
         self,
@@ -59,16 +60,30 @@ class FeedForward(nn.Module):
         # custom dim factor multiplier
         if ffn_dim_multiplier is not None:
             hidden_dim = int(ffn_dim_multiplier * hidden_dim)
-        hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
+        hidden_dim = multiple_of * (
+            (hidden_dim + multiple_of - 1) // multiple_of
+        )
 
         self.w1 = ColumnParallelLinear(
-            dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
+            dim,
+            hidden_dim,
+            bias=False,
+            gather_output=False,
+            init_method=lambda x: x,
         )
         self.w2 = RowParallelLinear(
-            hidden_dim, dim, bias=False, input_is_parallel=True, init_method=lambda x: x
+            hidden_dim,
+            dim,
+            bias=False,
+            input_is_parallel=True,
+            init_method=lambda x: x,
         )
         self.w3 = ColumnParallelLinear(
-            dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
+            dim,
+            hidden_dim,
+            bias=False,
+            gather_output=False,
+            init_method=lambda x: x,
         )
 
     def forward(self, x):
