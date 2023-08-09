@@ -22,7 +22,7 @@ from ._ark_core import (
 
 from .runtime import Runtime
 
-from .tensor import Tensor, Parameter, FP16, FP32, INT32, BYTE
+from .tensor import Tensor, Parameter, FP16, FP32, INT8, INT32, BYTE
 
 from .module import Module
 from .executor import Executor
@@ -73,6 +73,7 @@ __all__ = [
     "Parameter",
     "FP16",
     "FP32",
+    "INT8",
     "INT32",
     "BYTE",
     "Runtime",

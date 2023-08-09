@@ -95,10 +95,11 @@ struct TensorBuf
 // Type of tensor data.
 typedef enum
 {
+    BYTE,
+    INT8,
     FP16,
     FP32,
     INT32,
-    BYTE,
 } TensorType;
 
 // Tensor is a view of a TensorBuf.

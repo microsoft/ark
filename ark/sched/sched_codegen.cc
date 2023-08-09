@@ -80,6 +80,8 @@ ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const
         os << "(ark::half *)";
     } else if (tensor->type == FP32) {
         os << "(float *)";
+    } else if (tensor->type == INT8) {
+        os << "(int8_t *)";
     } else if (tensor->type == INT32) {
         os << "(int *)";
     } else if (tensor->type == BYTE) {
@@ -108,6 +110,9 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
         case FP32:
             os << "float *" << name;
             break;
+        case INT8:
+            os << "int8_t *" << name;
+            break;
         case INT32:
             os << "int *" << name;
             break;
@@ -118,16 +123,18 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
             LOGERR("Not implemented");
             break;
         }
-    } else if (arg.type == OP_ARG_FLOAT) {
-        os << "float " << name;
-    } else if (arg.type == OP_ARG_INT) {
-        os << "int " << name;
     } else if (arg.type == OP_ARG_BOOL) {
         os << "bool " << name;
+    } else if (arg.type == OP_ARG_INT8) {
+        os << "int8_t " << name;
+    } else if (arg.type == OP_ARG_INT32) {
+        os << "int " << name;
     } else if (arg.type == OP_ARG_INT64) {
         os << "long long int " << name;
     } else if (arg.type == OP_ARG_UINT64) {
         os << "uint64_t " << name;
+    } else if (arg.type == OP_ARG_FLOAT) {
+        os << "float " << name;
     } else {
         LOGERR("Not implemented");
     }
@@ -140,16 +147,16 @@ std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const
         Tensor *tns;
         arg.get(&tns);
         this->tensor(os, tns);
-    } else if (arg.type == OP_ARG_FLOAT) {
-        float val;
-        arg.get(&val);
-        os << val;
-    } else if (arg.type == OP_ARG_INT) {
-        int val;
-        arg.get(&val);
-        os << val;
     } else if (arg.type == OP_ARG_BOOL) {
         bool val;
+        arg.get(&val);
+        os << val;
+    } else if (arg.type == OP_ARG_INT8) {
+        int8_t val;
+        arg.get(&val);
+        os << val;
+    } else if (arg.type == OP_ARG_INT32) {
+        int val;
         arg.get(&val);
         os << val;
     } else if (arg.type == OP_ARG_INT64) {
@@ -158,6 +165,10 @@ std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const
         os << val;
     } else if (arg.type == OP_ARG_UINT64) {
         uint64_t val;
+        arg.get(&val);
+        os << val;
+    } else if (arg.type == OP_ARG_FLOAT) {
+        float val;
         arg.get(&val);
         os << val;
     } else {

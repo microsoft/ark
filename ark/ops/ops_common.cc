@@ -84,19 +84,24 @@ ostream &operator<<(ostream &os, const OpType &s)
     return os;
 }
 
-OpArg::OpArg(int arg) : type{OP_ARG_INT}, val{new int{arg}}
+OpArg::OpArg(bool arg) : type{OP_ARG_BOOL}, val{new bool{arg}}
 {
     assert(this->val != nullptr);
 }
-OpArg::OpArg(DimType arg) : type{OP_ARG_INT64}, val{new DimType{arg}}
+OpArg::OpArg(int8_t arg) : type{OP_ARG_INT8}, val{new int8_t{arg}}
+{
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(int arg) : type{OP_ARG_INT32}, val{new int{arg}}
+{
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(long long int arg)
+    : type{OP_ARG_INT64}, val{new long long int{arg}}
 {
     assert(this->val != nullptr);
 }
 OpArg::OpArg(uint64_t arg) : type{OP_ARG_UINT64}, val{new uint64_t{arg}}
-{
-    assert(this->val != nullptr);
-}
-OpArg::OpArg(bool arg) : type{OP_ARG_BOOL}, val{new bool{arg}}
 {
     assert(this->val != nullptr);
 }
@@ -114,45 +119,88 @@ OpArg::OpArg(Tensor *arg) : type{OP_ARG_TENSOR}, val{arg}
 }
 OpArg::OpArg(const OpArg &arg) : type{arg.type}
 {
-    if (this->type == OP_ARG_INT) {
-        this->val = new int{*(int *)arg.val};
-    } else if (this->type == OP_ARG_INT64) {
-        this->val = new DimType{*(DimType *)arg.val};
-    } else if (this->type == OP_ARG_UINT64) {
-        this->val = new uint64_t{*(uint64_t *)arg.val};
-    } else if (this->type == OP_ARG_BOOL) {
-        this->val = new bool{*(bool *)arg.val};
-    } else if (this->type == OP_ARG_FLOAT) {
-        this->val = new float{*(float *)arg.val};
-    } else if (this->type == OP_ARG_DIMS) {
-        this->val = new Dims{*(Dims *)arg.val};
-    } else if (this->type == OP_ARG_TENSOR) {
+    switch (this->type) {
+    case OP_ARG_BOOL:
+        this->val = new bool{*static_cast<bool *>(arg.val)};
+        break;
+    case OP_ARG_INT8:
+        this->val = new int8_t{*static_cast<int8_t *>(arg.val)};
+        break;
+    case OP_ARG_INT32:
+        this->val = new int{*static_cast<int *>(arg.val)};
+        break;
+    case OP_ARG_INT64:
+        this->val = new long long int{*static_cast<long long int *>(arg.val)};
+        break;
+    case OP_ARG_UINT64:
+        this->val = new uint64_t{*static_cast<uint64_t *>(arg.val)};
+        break;
+    case OP_ARG_FLOAT:
+        this->val = new float{*static_cast<float *>(arg.val)};
+        break;
+    case OP_ARG_DIMS:
+        this->val = new Dims{*static_cast<Dims *>(arg.val)};
+        break;
+    case OP_ARG_TENSOR:
         this->val = arg.val;
-    } else {
+        break;
+    default:
         LOGERR("invalid argument type ", this->type);
+        break;
     }
 }
 OpArg::~OpArg()
 {
-    if (this->type == OP_ARG_INT) {
-        delete static_cast<int *>(this->val);
-    } else if (this->type == OP_ARG_INT64) {
-        delete static_cast<DimType *>(this->val);
-    } else if (this->type == OP_ARG_UINT64) {
-        delete static_cast<uint64_t *>(this->val);
-    } else if (this->type == OP_ARG_BOOL) {
+    switch (this->type) {
+    case OP_ARG_BOOL:
         delete static_cast<bool *>(this->val);
-    } else if (this->type == OP_ARG_FLOAT) {
+        break;
+    case OP_ARG_INT8:
+        delete static_cast<int8_t *>(this->val);
+        break;
+    case OP_ARG_INT32:
+        delete static_cast<int *>(this->val);
+        break;
+    case OP_ARG_INT64:
+        delete static_cast<long long int *>(this->val);
+        break;
+    case OP_ARG_UINT64:
+        delete static_cast<uint64_t *>(this->val);
+        break;
+    case OP_ARG_FLOAT:
         delete static_cast<float *>(this->val);
-    } else if (this->type == OP_ARG_DIMS) {
+        break;
+    case OP_ARG_DIMS:
         delete static_cast<Dims *>(this->val);
-    } else if (this->type == OP_ARG_TENSOR) {
+        break;
+    case OP_ARG_TENSOR:
         // Do nothing
+        break;
+    default:
+        LOG(ERROR, "invalid argument type ", this->type);
+        break;
     }
 }
+
+void OpArg::get(bool *arg) const
+{
+    if (this->type != OP_ARG_BOOL) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<bool *>(this->val);
+}
+
+void OpArg::get(int8_t *arg) const
+{
+    if (this->type != OP_ARG_INT8) {
+        LOGERR("invalid argument type ", this->type);
+    }
+    *arg = *static_cast<int8_t *>(this->val);
+}
+
 void OpArg::get(int *arg) const
 {
-    if (this->type != OP_ARG_INT) {
+    if (this->type != OP_ARG_INT32) {
         LOGERR("invalid argument type ", this->type);
     }
     *arg = *static_cast<int *>(this->val);
@@ -172,14 +220,6 @@ void OpArg::get(uint64_t *arg) const
         LOGERR("invalid argument type ", this->type);
     }
     *arg = *static_cast<uint64_t *>(this->val);
-}
-
-void OpArg::get(bool *arg) const
-{
-    if (this->type != OP_ARG_BOOL) {
-        LOGERR("invalid argument type ", this->type);
-    }
-    *arg = *static_cast<bool *>(this->val);
 }
 
 void OpArg::get(float *arg) const
@@ -214,24 +254,30 @@ bool operator<(const OpArg &oa1, const OpArg &oa2)
     assert(oa1.val != nullptr);
     assert(oa2.val != nullptr);
     switch (oa1.type) {
-    case OP_ARG_INT:
-        return *(int *)oa1.val < *(int *)oa2.val;
-    case OP_ARG_INT64:
-        return *(DimType *)oa1.val < *(DimType *)oa2.val;
-    case OP_ARG_UINT64:
-        return *(uint64_t *)oa1.val < *(uint64_t *)oa2.val;
     case OP_ARG_BOOL:
-        return *(bool *)oa1.val < *(bool *)oa2.val;
+        return *static_cast<bool *>(oa1.val) < *static_cast<bool *>(oa2.val);
+    case OP_ARG_INT8:
+        return *static_cast<int8_t *>(oa1.val) <
+               *static_cast<int8_t *>(oa2.val);
+    case OP_ARG_INT32:
+        return *static_cast<int *>(oa1.val) < *static_cast<int *>(oa2.val);
+    case OP_ARG_INT64:
+        return *static_cast<long long int *>(oa1.val) <
+               *static_cast<long long int *>(oa2.val);
+    case OP_ARG_UINT64:
+        return *static_cast<uint64_t *>(oa1.val) <
+               *static_cast<uint64_t *>(oa2.val);
     case OP_ARG_FLOAT:
-        return *(float *)oa1.val < *(float *)oa2.val;
+        return *static_cast<float *>(oa1.val) < *static_cast<float *>(oa2.val);
     case OP_ARG_DIMS:
-        return *(Dims *)oa1.val < *(Dims *)oa2.val;
+        return *static_cast<Dims *>(oa1.val) < *static_cast<Dims *>(oa2.val);
     case OP_ARG_TENSOR:
         return (uintptr_t)oa1.val < (uintptr_t)oa2.val;
     }
     assert(false);
     return false;
 }
+
 bool operator==(const OpArg &oa1, const OpArg &oa2)
 {
     if (oa1.type != oa2.type) {
@@ -240,14 +286,16 @@ bool operator==(const OpArg &oa1, const OpArg &oa2)
     assert(oa1.val != nullptr);
     assert(oa2.val != nullptr);
     switch (oa1.type) {
-    case OP_ARG_INT:
-        return *(int *)oa1.val == *(int *)oa2.val;
-    case OP_ARG_INT64:
-        return *(DimType *)oa1.val == *(DimType *)oa2.val;
-    case OP_ARG_UINT64:
-        return *(uint64_t *)oa1.val == *(uint64_t *)oa2.val;
     case OP_ARG_BOOL:
         return *(bool *)oa1.val == *(bool *)oa2.val;
+    case OP_ARG_INT8:
+        return *(int8_t *)oa1.val == *(int8_t *)oa2.val;
+    case OP_ARG_INT32:
+        return *(int *)oa1.val == *(int *)oa2.val;
+    case OP_ARG_INT64:
+        return *(long long int *)oa1.val == *(long long int *)oa2.val;
+    case OP_ARG_UINT64:
+        return *(uint64_t *)oa1.val == *(uint64_t *)oa2.val;
     case OP_ARG_FLOAT:
         return *(float *)oa1.val == *(float *)oa2.val;
     case OP_ARG_DIMS:
@@ -276,12 +324,34 @@ void OpArgs::put(const OpArg &arg)
     this->args.emplace_back(arg);
 }
 
+void OpArgs::get(bool *arg, size_t idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_BOOL) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<bool *>(this->args[idx].val);
+}
+
+void OpArgs::get(int8_t *arg, size_t idx) const
+{
+    if (this->args.size() <= idx) {
+        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_INT8) {
+        LOGERR("invalid argument type ", this->args[idx].type);
+    }
+    *arg = *static_cast<int8_t *>(this->args[idx].val);
+}
+
 void OpArgs::get(int *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
         LOGERR("invalid argument index ", idx, " size ", this->args.size());
     }
-    if (this->args[idx].type != OP_ARG_INT) {
+    if (this->args[idx].type != OP_ARG_INT32) {
         LOGERR("invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<int *>(this->args[idx].val);
@@ -307,17 +377,6 @@ void OpArgs::get(uint64_t *arg, size_t idx) const
         LOGERR("invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<uint64_t *>(this->args[idx].val);
-}
-
-void OpArgs::get(bool *arg, size_t idx) const
-{
-    if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
-    }
-    if (this->args[idx].type != OP_ARG_BOOL) {
-        LOGERR("invalid argument type ", this->args[idx].type);
-    }
-    *arg = *static_cast<bool *>(this->args[idx].val);
 }
 
 void OpArgs::get(float *arg, size_t idx) const
@@ -499,28 +558,48 @@ std::string Op::function_name(const std::string &kernel_name,
     ss << "<";
     for (size_t i = 0; i < num_args; ++i) {
         auto &arg = template_args.args[i];
-        if (arg.type == OP_ARG_INT) {
-            int val;
-            template_args.get(&val, i);
-            ss << val;
-        } else if (arg.type == OP_ARG_INT64) {
-            long long int val;
-            template_args.get(&val, i);
-            ss << val;
-        } else if (arg.type == OP_ARG_UINT64) {
-            uint64_t val;
-            template_args.get(&val, i);
-            ss << val;
-        } else if (arg.type == OP_ARG_BOOL) {
+        switch (arg.type) {
+        case OP_ARG_BOOL: {
             bool val;
             template_args.get(&val, i);
             ss << val;
-        } else if (arg.type == OP_ARG_FLOAT) {
-            LOGERR("float template args are not supported");
-        } else if (arg.type == OP_ARG_DIMS) {
+            break;
+        }
+        case OP_ARG_INT8: {
+            int8_t val;
+            template_args.get(&val, i);
+            ss << val;
+            break;
+        }
+        case OP_ARG_INT32: {
+            int val;
+            template_args.get(&val, i);
+            ss << val;
+            break;
+        }
+        case OP_ARG_INT64: {
+            long long int val;
+            template_args.get(&val, i);
+            ss << val;
+            break;
+        }
+        case OP_ARG_UINT64: {
+            uint64_t val;
+            template_args.get(&val, i);
+            ss << val;
+            break;
+        }
+        case OP_ARG_DIMS: {
             Dims val;
             template_args.get(&val, i);
             ss << "ark::Vec" << val;
+            break;
+        }
+        default: {
+            LOG(ERROR, "argument type ", arg.type,
+                " is not supported as a template argument.");
+            break;
+        }
         }
         if (i < num_args - 1) {
             ss << ", ";

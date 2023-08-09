@@ -120,5 +120,6 @@ def Parameter(
 
 FP16 = TensorType.FP16
 FP32 = TensorType.FP32
+INT8 = TensorType.INT8
 INT32 = TensorType.INT32
 BYTE = TensorType.BYTE

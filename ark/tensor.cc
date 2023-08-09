@@ -151,6 +151,8 @@ unsigned int Tensor::type_bytes() const
         return 2;
     } else if (this->type == FP32) {
         return 4;
+    } else if (this->type == INT8) {
+        return 1;
     } else if (this->type == INT32) {
         return 4;
     } else if (this->type == BYTE) {
@@ -198,6 +200,8 @@ const string type_str(const TensorType &type)
         return "fp16";
     else if (type == FP32)
         return "fp32";
+    else if (type == INT8)
+        return "int8";
     else if (type == INT32)
         return "int32";
     else if (type == BYTE)

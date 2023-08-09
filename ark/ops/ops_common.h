@@ -21,7 +21,8 @@ Dims broadcast(const Dims &dims1, const Dims &dims2);
 /// Type of operator argument.
 typedef enum
 {
-    OP_ARG_INT,
+    OP_ARG_INT8,
+    OP_ARG_INT32,
     OP_ARG_INT64,
     OP_ARG_UINT64,
     OP_ARG_BOOL,
@@ -33,20 +34,23 @@ typedef enum
 /// Stores an arbitrary type of argument given to an operator.
 struct OpArg
 {
+    OpArg(bool arg);
+    OpArg(int8_t arg);
     OpArg(int arg);
     OpArg(long long int arg);
     OpArg(uint64_t arg);
-    OpArg(bool arg);
     OpArg(float arg);
     OpArg(const Dims &arg);
     OpArg(Tensor *arg);
+
     OpArg(const OpArg &);
     ~OpArg();
 
+    void get(bool *arg) const;
+    void get(int8_t *arg) const;
     void get(int *arg) const;
     void get(long long int *arg) const;
     void get(uint64_t *arg) const;
-    void get(bool *arg) const;
     void get(float *arg) const;
     void get(Dims *arg) const;
     void get(Tensor **arg) const;
@@ -72,10 +76,11 @@ class OpArgs
 
     void put(const OpArg &arg);
 
+    void get(bool *arg, size_t idx) const;
+    void get(int8_t *arg, size_t idx) const;
     void get(int *arg, size_t idx) const;
     void get(long long int *arg, size_t idx) const;
     void get(uint64_t *arg, size_t idx) const;
-    void get(bool *arg, size_t idx) const;
     void get(float *arg, size_t idx) const;
     void get(Dims *arg, size_t idx) const;
     void get(Tensor **arg, size_t idx) const;
@@ -127,6 +132,7 @@ typedef enum
 typedef enum
 {
     OP_PREC_NONE,
+    OP_PREC_INT8,
     OP_PREC_FP16,
     OP_PREC_FP32,
 } OpPrecType;

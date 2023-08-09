@@ -140,7 +140,9 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     }
 
     OpPrecType pt;
-    if (mat_a->type == FP16) {
+    if (mat_a->type == INT8) {
+        pt = OP_PREC_INT8;
+    } else if (mat_a->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (mat_a->type == FP32) {
         pt = OP_PREC_FP32;
@@ -300,6 +302,13 @@ const OpConfigMap MatmulConfigMap = {
          {8, 49152, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
          {4, 24576, {{128, 32}, {32, 64}}, {{128, 64}}, true, false},
          {4, 24576, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_INT8},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 147456, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
+         {8, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
+         {4, 49152, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
      {

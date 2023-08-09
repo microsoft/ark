@@ -81,9 +81,10 @@ PYBIND11_MODULE(_ark_core, m)
         });
 
     py::enum_<ark::TensorType>(
-        m, "TensorType", "Type of tensor data. FP16, FP32, INT32, or BYTE")
+        m, "TensorType", "Type of tensor data. FP16, FP32, INT8, INT32, or BYTE")
         .value("FP16", ark::TensorType::FP16)
         .value("FP32", ark::TensorType::FP32)
+        .value("INT8", ark::TensorType::INT8)
         .value("INT32", ark::TensorType::INT32)
         .value("BYTE", ark::TensorType::BYTE)
         .export_values();
