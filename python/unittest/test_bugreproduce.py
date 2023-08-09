@@ -13,7 +13,7 @@ def model_tutorial():
     input = ark.tensor(ark.Dims(1, dim), ark.TensorType.FP16)
     weight1 = ark.tensor(ark.Dims(hidden_dim, dim), ark.TensorType.FP16)
 
-    weight2 =ark.tensor(ark.Dims(dim, hidden_dim), ark.TensorType.FP16)
+    weight2 = ark.tensor(ark.Dims(dim, hidden_dim), ark.TensorType.FP16)
 
     output1 = ark.matmul(input, weight1, transpose_b=True)
     print("output1.shape: ", output1.shape)
@@ -21,7 +21,6 @@ def model_tutorial():
     print("output2.shape: ", output2.shape)
     runtime.launch()
     runtime.run()
-
 
 
 if __name__ == "__main__":
