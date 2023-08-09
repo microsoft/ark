@@ -256,7 +256,6 @@ def matmul(
     splitk: int = 1,
     transpose_a: bool = False,
     transpose_b: bool = False,
-    is_relu: bool = False,
     name: str = "matmul",
     gran_lev: int = -1,
 ) -> Tensor:
@@ -278,7 +277,6 @@ def matmul(
         splitk,
         transpose_a,
         transpose_b,
-        is_relu,
         name,
         gran_lev,
     )

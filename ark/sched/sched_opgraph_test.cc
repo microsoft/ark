@@ -446,7 +446,7 @@ ark::unittest::State test_sched_opgraph_split_matmul()
     ark::Tensor *t0 = model.tensor({64, 128}, ark::FP16);
     ark::Tensor *t1 = model.tensor({128, 64}, ark::FP16);
     ark::Tensor *m0 =
-        model.matmul(t0, t1, nullptr, 2, false, false, false, "matmul", 3);
+        model.matmul(t0, t1, nullptr, 2, false, false, "matmul", 3);
     UNITTEST_TRUE(model.verify());
 
     ark::OpGraph graph(model);

@@ -227,8 +227,8 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("splitk") = 1, py::arg("trans_input") = false,
-             py::arg("trans_other") = false, py::arg("is_relu") = false,
-             py::arg("name") = "matmul", py::arg("gran_lev") = -1)
+             py::arg("trans_other") = false, py::arg("name") = "matmul",
+             py::arg("gran_lev") = -1)
         .def("im2col", &ark::Model::im2col,
              "Implements the 'im2col' method for 2D convolution layers, which "
              "takes an `input` tensor and reshapes it to a 2D matrix by "

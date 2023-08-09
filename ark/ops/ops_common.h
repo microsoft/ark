@@ -294,8 +294,8 @@ class MatmulOp : public Op
   public:
     MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
              Dims nca, Dims ncb, Dims problem_size, Dims leading_dims,
-             bool is_column_a, bool is_column_b, bool is_relu,
-             const std::string &name, int gran_lev);
+             bool is_column_a, bool is_column_b, const std::string &name,
+             int gran_lev);
     std::string function_name(const OpConfig &cfg) const;
 };
 
