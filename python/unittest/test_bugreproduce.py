@@ -7,8 +7,8 @@ import numpy as np
 
 def model_tutorial():
     runtime = ark.Runtime()
-    dim = 2048
-    hidden_dim = 4096
+    dim = 4096
+    hidden_dim = 16384
     # Create two tensors
     input = ark.tensor(ark.Dims(4, dim), ark.TensorType.FP32)
     weight1 = ark.tensor(ark.Dims(hidden_dim, dim), ark.TensorType.FP32)
