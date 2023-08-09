@@ -231,12 +231,10 @@ class Model
                       const std::string &name = "transpose");
     // Performs matrix multiplication between the `input` tensor and another
     // `other` tensor, storing the result in `output`.
-    // Optional parameters allow controlling the behavior of the multiplication,
-    // such as transposing the input tensors and applying a ReLU activation.
     Tensor *matmul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                    DimType splitk = 1, bool trans_input = false,
-                   bool trans_other = false, bool is_relu = false,
-                   const std::string &name = "matmul", int gran_lev = -1);
+                   bool trans_other = false, const std::string &name = "matmul",
+                   int gran_lev = -1);
     // Implements the 'im2col' method for 2D convolution layers, which takes an
     // `input` tensor and reshapes it to a 2D matrix by extracting image patches
     // from the input tensor based on the provided parameters.

@@ -612,7 +612,7 @@ DEVICE void reduce_e_sum(half *out, half *in, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_sum(float *out, float *in, int uop_idx)
+DEVICE void reduce_e_sum(float *out, float *in, int uop_idx, int)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeSum<float, 1>, Axis>::run(out, in,
@@ -622,7 +622,7 @@ DEVICE void reduce_e_sum(float *out, float *in, int uop_idx)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_mean(half *out, half *in, int uop_idx)
+DEVICE void reduce_e_mean(half *out, half *in, int uop_idx, int)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMean<half, 2>, Axis>::run(out, in,
@@ -632,7 +632,7 @@ DEVICE void reduce_e_mean(half *out, half *in, int uop_idx)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_mean(float *out, float *in, int uop_idx)
+DEVICE void reduce_e_mean(float *out, float *in, int uop_idx, int)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMean<float, 1>, Axis>::run(out, in,
@@ -642,7 +642,7 @@ DEVICE void reduce_e_mean(float *out, float *in, int uop_idx)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_max(half *out, half *in, int uop_idx)
+DEVICE void reduce_e_max(half *out, half *in, int uop_idx, int)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMax<half, 2>, Axis>::run(out, in, uop_idx);
@@ -651,7 +651,7 @@ DEVICE void reduce_e_max(half *out, half *in, int uop_idx)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, int Axis>
-DEVICE void reduce_e_max(float *out, float *in, int uop_idx)
+DEVICE void reduce_e_max(float *out, float *in, int uop_idx, int)
 {
     EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                 SmemBytes, ReduceTypeMax<float, 1>, Axis>::run(out, in,

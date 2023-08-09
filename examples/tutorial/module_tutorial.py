@@ -35,11 +35,12 @@ class TestModelARK(ark.Module):
 
     def forward(self, inputs):
         # Perform the forward pass of the model
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.submodule(middle_result)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = self.submodule(output)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 
 
 # Use pytorch to define the same model

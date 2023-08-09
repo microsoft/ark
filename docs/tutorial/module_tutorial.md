@@ -20,8 +20,8 @@ class SubModuleARK(ark.Module):
 
     def forward(self, inputs):
         # Perform the forward pass of the submodule
-        middle_result1 = ark.matmul(inputs, self.weight_2)
-        return middle_result1
+        output = ark.matmul(inputs, self.weight_2)
+        return output
 
 
 class TestModelARK(ark.Module):
@@ -34,11 +34,12 @@ class TestModelARK(ark.Module):
 
     def forward(self, inputs):
         # Perform the forward pass of the model
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.submodule(middle_result)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = self.submodule(output)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 ```
 
 Here, we can create this model and then launch it.
@@ -112,8 +113,8 @@ class SubModulePytorch(nn.Module):
         self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
 
     def forward(self, inputs):
-        middle_result1 = torch.matmul(inputs, self.weight_2)
-        return middle_result1
+        output = torch.matmul(inputs, self.weight_2)
+        return output
 
 
 class TestModelPytorch(nn.Module):
