@@ -157,8 +157,7 @@ Tensor *Model::send_mscclpp(Tensor *input, int sid, int dst_rank,
     recvbuf->imported_rank = dst_rank;
     MscclppSendOp op{OP_PREC_NONE,     input,    recvbuf, output, sid,
                      this->impl->rank, dst_rank, bytes,   name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 Tensor *Model::send_done_mscclpp(Tensor *input, int dst_rank, Tensor *output,
@@ -170,8 +169,7 @@ Tensor *Model::send_done_mscclpp(Tensor *input, int dst_rank, Tensor *output,
     }
     MscclppSendDoneOp op{OP_PREC_NONE,     input,    output,
                          this->impl->rank, dst_rank, name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
@@ -192,8 +190,7 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
     }
     MscclppRecvOp op{OP_PREC_NONE,     input,    output, sid,
                      this->impl->rank, src_rank, bytes,  name};
-    this->impl->add_op(op);
-    return output;
+    return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap MscclppConfigMap = {

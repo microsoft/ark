@@ -528,6 +528,10 @@ void GpuCommSw::request_loop()
 //
 void GpuCommSw::stop_request_loop()
 {
+    if (get_env().use_mscclpp) {
+        this->proxy_service->stopProxy();
+        return;
+    }
     this->run_request_loop_thread = false;
     if (this->request_loop_thread != nullptr) {
         if (this->request_loop_thread->joinable()) {

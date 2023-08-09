@@ -555,8 +555,11 @@ bool Op::is_virtual() const
 
 bool Op::is_comm() const
 {
+    // NOTE: we treat OP_SEND_MM and OP_RECV_MM as computation as
+    // they run over GPU threads.
     return this->type == OP_SEND || this->type == OP_SEND_DONE ||
-           this->type == OP_RECV;
+           this->type == OP_RECV || this->type == OP_SEND_MSCCLPP ||
+           this->type == OP_SEND_DONE_MSCCLPP || this->type == OP_RECV_MSCCLPP;
 }
 
 bool operator<(const Op &op1, const Op &op2)
