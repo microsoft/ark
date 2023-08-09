@@ -1,4 +1,3 @@
 scikit-build-core
 pyproject_metadata
 numpy
-pickle
