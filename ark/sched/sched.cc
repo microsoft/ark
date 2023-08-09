@@ -87,8 +87,8 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     }
     auto search = op->cfg_map->find({arch_type, op->prec_type});
     if (search == op->cfg_map->end()) {
-        LOG(ERROR, "no config found for op: ", op->name, ", arch_type: ",
-            arch_type, ", prec_type: ", op->prec_type);
+        LOG(ERROR, "no config found for op: ", op->name,
+            ", arch_type: ", arch_type, ", prec_type: ", op->prec_type);
     } else if (op->gran_lev >= 0) {
         if (search->second.size() > (unsigned int)op->gran_lev) {
             return &search->second[op->gran_lev];
