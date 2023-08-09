@@ -7,13 +7,13 @@ import numpy as np
 
 def model_tutorial():
     runtime = ark.Runtime()
-    dim = 4096
+    dim = 512
     hidden_dim = 16384
     # Create two tensors
-    input = ark.tensor(ark.Dims(4, dim), ark.TensorType.FP32)
-    weight1 = ark.tensor(ark.Dims(hidden_dim, dim), ark.TensorType.FP32)
+    input = ark.tensor(ark.Dims(4, dim), ark.TensorType.FP16)
+    weight1 = ark.tensor(ark.Dims(hidden_dim, dim), ark.TensorType.FP16)
 
-    weight2 =ark.tensor(ark.Dims(dim, hidden_dim), ark.TensorType.FP32)
+    weight2 =ark.tensor(ark.Dims(dim, hidden_dim), ark.TensorType.FP16)
 
     output1 = ark.matmul(input, weight1, transpose_b=True)
     print("output1.shape: ", output1.shape)
