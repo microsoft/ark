@@ -28,7 +28,7 @@ class RMSNorm(ark.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
-        self.weight = ark.Parameter(ark.tensor([dim], ark.FP16))
+        self.weight = ark.Parameter(ark.tensor([dim], ark.FP32))
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
@@ -39,6 +39,23 @@ class RMSNorm(ark.Module):
     def forward(self, x):
         output = self._norm(x)
         return ark.mul(output, self.weight)
+
+
+class Linear(ark.Module):
+    def __init__(self, in_dim: int, out_dim: int):
+        super().__init__()
+        self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], ark.FP32))
+
+    def forward(self, x):
+        return ark.matmul(self.weight, x)
+
+
+class Silu(ark.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return ark.mul(x, ark.sigmoid(x))
 
 
 class FeedForward(ark.Module):
@@ -58,15 +75,15 @@ class FeedForward(ark.Module):
             (hidden_dim + multiple_of - 1) // multiple_of
         )
 
-        self.w1 = ark.tensor([hidden_dim, dim], ark.FP16)
-        self.w2 = ark.tensor([dim, hidden_dim], ark.FP16)
-        self.w3 = ark.tensor([hidden_dim, dim], ark.FP16)
+        self.w1 = Linear(dim, hidden_dim)
+        self.w2 = Linear(hidden_dim, dim)
+        self.w3 = Linear(dim, hidden_dim)
 
     def forward(self, x):
         # self.w2(F.silu(self.w1(x)) * self.w3(x))
-        silu_input = ark.matmul(self.w1, x)
-        x = ark.sigmoid(silu_input)
-        x = ark.mul(x, silu_input)
-        x = ark.mul(x, self.w3)
-        x = ark.matmul(x, self.w2)
-        return x
+        x1 = self.w1(x)
+        x1 = Silu()(x1)
+        x2 = self.w3(x)
+        x3 = ark.mul(x1, x2)
+        x4 = self.w2(x3)
+        return x4
