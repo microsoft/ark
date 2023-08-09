@@ -69,11 +69,8 @@ def test_matmul_internal(
     np.testing.assert_allclose(output_tensor_host, gt, atol=atol)
 
     print(
-        f"matmul test: bs_a {bs_a:6d} bs_b {bs_b:6d} m {m:6d} x {n:6d} "
-        f"x {k:6d} (split_k={split_k}, gran_lev={gran_lev}) "
-        f"max_abs_error {max_abs_error:.5f} elapsed mse {mean_abs_error:.5f} "
-        f"{elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
-        f"x {k:6d} (split_k={split_k}, gran_lev={gran_lev}) "
+        f"matmul test: data_type {data_type} bs_a {bs_a:6d} bs_b {bs_b:6d} "
+        f"m {m:6d} x {n:6d} x {k:6d} (split_k={split_k}, gran_lev={gran_lev}) "
         f"max_abs_error {max_abs_error:.5f} elapsed mse {mean_abs_error:.5f} "
         f"{elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
@@ -81,39 +78,47 @@ def test_matmul_internal(
 
 
 # Test the correctness of matmul at small scale
-def test_matmul_small_sizes(split_k, gran_lev, iter=1):
-    test_matmul_internal(64, 64, 32, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(128, 64, 32, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(64, 128, 32, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(128, 128, 32, 1, 1, split_k, gran_lev, iter, "half")
+def test_matmul_small_sizes(split_k, gran_lev, type_str="half", iter=1):
+    test_matmul_internal(64, 64, 32, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(128, 64, 32, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(64, 128, 32, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(128, 128, 32, 1, 1, split_k, gran_lev, iter, type_str)
 
-    test_matmul_internal(64, 64, 64, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(128, 64, 64, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(64, 128, 64, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(128, 128, 64, 1, 1, split_k, gran_lev, iter, "half")
-    test_matmul_internal(256, 128, 64, 1, 1, split_k, gran_lev, iter, "half")
+    test_matmul_internal(64, 64, 64, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(128, 64, 64, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(64, 128, 64, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(128, 128, 64, 1, 1, split_k, gran_lev, iter, type_str)
+    test_matmul_internal(256, 128, 64, 1, 1, split_k, gran_lev, iter, type_str)
 
-    test_matmul_internal(128, 128, 256, 1, 1, split_k, gran_lev, iter, "half")
+    test_matmul_internal(128, 128, 256, 1, 1, split_k, gran_lev, iter, type_str)
 
 
 class TestMatmul(unittest.TestCase):
-    def test_matmul_gran(self):
-        for gran_lev in range(-1, 3):
+    def test_matmul_gran_half(self):
+        for gran_lev in range(0, 3):
             print("test_matmul_gran gran_lev=", gran_lev)
-            test_matmul_small_sizes(1, gran_lev)
+            test_matmul_small_sizes(1, gran_lev, "half")
 
-    def test_matmul_split(self):
+    def test_matmul_split_half(self):
         print("test_matmul_split")
-        for split_k in range(2, 4):
-            test_matmul_small_sizes(split_k, -1)
         for split_k in range(3, 8):
-            for gran_lev in range(-1, 3):
+            for gran_lev in range(0, 3):
                 test_matmul_internal(
                     128, 4096, 1024, 1, 1, split_k, gran_lev, 1, "half"
                 )
 
-    def test_matmul_perf(self):
-        test_matmul_small_sizes(1, -1, 1000)
+    def test_matmul_gran_float(self):
+        for gran_lev in range(0, 3):
+            print("test_matmul_gran gran_lev=", gran_lev)
+            test_matmul_small_sizes(1, gran_lev, "float")
+
+    def test_matmul_split_float(self):
+        print("test_matmul_split")
+        for split_k in range(3, 8):
+            for gran_lev in range(0, 3):
+                test_matmul_internal(
+                    128, 4096, 1024, 1, 1, split_k, gran_lev, 1, "float"
+                )
 
 
 if __name__ == "__main__":

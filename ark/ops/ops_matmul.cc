@@ -298,17 +298,22 @@ const OpConfigMap MatmulConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 49152, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
-         {4, 24576, {{64, 32}, {32, 128}}, {{64, 128}}, true, false},
          {4, 24576, {{128, 32}, {32, 64}}, {{128, 64}}, true, false},
          {4, 24576, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 166912, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
-         // {8, 166912, {{256, 64}, {64, 128}}, {{256, 128}}, true, false},
-         {8, 166912, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
-         {4, 83456, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+         {8, 147456, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
+         {8, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
+         {4, 49152, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 147456, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
+         {8, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {4, 49152, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
 };
 
