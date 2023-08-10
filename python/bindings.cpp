@@ -255,6 +255,14 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("val"), py::arg("output") = nullptr,
              py::arg("name") = "scale")
+        .def("exp", &ark::Model::exp,
+             "Calculates the exponential of the `input` tensor, element-wise.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "exp")
+        .def("sqrt", &ark::Model::sqrt,
+             "Calculates the square root of the `input` tensor, element-wise.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "sqrt")
         .def("relu", &ark::Model::relu, "ReLU activation",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "relu")
@@ -265,18 +273,34 @@ PYBIND11_MODULE(_ark_core, m)
              "deep learning models.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "gelu")
+        .def("sigmoid", &ark::Model::sigmoid, "Sigmoid activation",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "sigmoid")
         .def("add", &ark::Model::add,
              "Performs an element-wise addition operator between the `input` "
              "tensor and the `other` tensor",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "add")
+        .def("sub", &ark::Model::sub,
+             "Performs an element-wise addition operator between the "
+             "`input` "
+             "tensor and the `other` tensor",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("other"), py::arg("output") = nullptr,
+             py::arg("name") = "sub")
         .def("mul", &ark::Model::mul,
              "Performs an element-wise multiplication operator between the "
              "`input` tensor and the `other` tensor,",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("other"), py::arg("output") = nullptr,
              py::arg("name") = "mul")
+        .def("div", &ark::Model::div,
+             "Performs an element-wise division operator between the "
+             "`input` tensor and the `other` tensor,",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("other"), py::arg("output") = nullptr,
+             py::arg("name") = "div")
         .def("send", &ark::Model::send,
              "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "
@@ -293,14 +317,17 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("id"), py::arg("dst_rank"), py::arg("output") = nullptr,
              py::arg("name") = "send_done")
         .def("recv", &ark::Model::recv,
-             "Receives a tensor from a source GPU (`src_rank`), identified by "
-             "the `id` parameter. Blocks the execution until the corresponding "
+             "Receives a tensor from a source GPU (`src_rank`), identified "
+             "by "
+             "the `id` parameter. Blocks the execution until the "
+             "corresponding "
              "'recv' operator is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("src_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv")
         .def("send_mm", &ark::Model::send_mm,
-             "Similar to the 'send_done' function, but implemented using CUDA "
+             "Similar to the 'send_done' function, but implemented using "
+             "CUDA "
              "in-stream RDMA copy and Low Latency (LL) protocol.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_dst"), py::arg("bytes") = 0,
@@ -319,7 +346,8 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("name") = "all_gather")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "
-             "the input tensors. Takes the `input` tensor, the current GPU's "
+             "the input tensors. Takes the `input` tensor, the current "
+             "GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,

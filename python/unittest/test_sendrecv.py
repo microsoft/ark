@@ -14,27 +14,23 @@ tensor_size = tensor_len * 2
 
 def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     # Create a Model instance
-    model = ark.Model(rank)
+    runtime = ark.Runtime(rank, world_size)
 
-    input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    input_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
     if rank == 0:
-        model.send(input_tensor, 0, 1, tensor_size)
-        model.send_done(input_tensor, 0, 1)
+        ark.send(input_tensor, 0, 1, tensor_size)
+        ark.send_done(input_tensor, 0, 1)
     if rank == 1:
-        model.recv(input_tensor, 0, 0)
-    # model.all_reduce(input_tensor, rank, world_size)
+        ark.recv(input_tensor, 0, 0)
+    # ark.all_reduce(input_tensor, rank, world_size)
 
-    exe = ark.Executor(rank, rank, world_size, model, "sendrecv_test_one_dir")
-    exe.compile()
-
-    exe.launch()
+    runtime.launch()
     if rank == 0:
-        exe.tensor_memcpy_host_to_device(input_tensor, np_inputs)
-    exe.run(iter)
-    elapsed = exe.stop()
+        input_tensor.from_numpy(np_inputs)
+    runtime.run(iter, async_run=True)
+    elapsed = runtime.stop()
     if rank == 1:
-        host_output = np.zeros(tensor_len, dtype=np.float16)
-        exe.tensor_memcpy_device_to_host(host_output, input_tensor)
+        host_output = input_tensor.to_numpy()
 
         max_abs_error = np.max(np.abs(host_output - np_inputs))
         mean_abs_error = np.mean(np.abs(host_output - np_inputs))
@@ -43,23 +39,9 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
         atol = numeric_epsilon_half
         np.testing.assert_allclose(host_output, np_inputs, atol=atol)
         print(
-            "sendrecv_test_one_dir:",
-            "rank",
-            rank,
-            "tensor_len",
-            "{:6d}".format(tensor_len),
-            "max_abs_error:",
-            "{:.5f}".format(max_abs_error),
-            "mean_abs_error:",
-            "{:.5f}".format(mean_abs_error),
-            "elapsed",
-            "{:.5f}".format(elapsed),
-            " ms ",
-            " iter ",
-            iter,
-            "elapsed_per_iter",
-            "{:.5f}".format(elapsed / iter),
-            " ms ",
+            f"sendrecv_test_one_dir: rank {rank} tensor_len {tensor_len:6d} "
+            f"max_abs_error {max_abs_error:.5f} mean_abs_error {mean_abs_error:.5f} "
+            f"elapsed {elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
         )
 
 
@@ -80,27 +62,22 @@ def sendrecv_test_one_dir():
 
 
 def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
+    runtime = ark.Runtime(rank, world_size)
     other_rank = 1 - rank
-    # Create a Model instance
-    model = ark.Model(rank)
 
-    send_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-    recv_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-    model.send(send_tensor, rank, other_rank, tensor_size)
-    model.send_done(send_tensor, rank, other_rank)
-    model.recv(recv_tensor, other_rank, other_rank)
+    send_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    ark.send(send_tensor, rank, other_rank, tensor_size)
+    ark.send_done(send_tensor, rank, other_rank)
+    ark.recv(recv_tensor, other_rank, other_rank)
 
-    exe = ark.Executor(rank, rank, world_size, model, "sendrecv_test_bi_dir")
-    exe.compile()
+    runtime.launch()
+    send_tensor.from_numpy(np_inputs[rank])
 
-    exe.launch()
-    exe.tensor_memcpy_host_to_device(send_tensor, np_inputs[rank])
+    runtime.run(iter, async_run=True)
+    elapsed = runtime.stop()
 
-    exe.run(iter)
-    elapsed = exe.stop()
-
-    host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, recv_tensor)
+    host_output = recv_tensor.to_numpy()
 
     gt = np_inputs[other_rank]
     max_abs_error = np.max(np.abs(host_output - gt))
@@ -109,20 +86,9 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
     numeric_epsilon_half = np.finfo(np.float16).eps
     np.testing.assert_allclose(host_output, gt, atol=numeric_epsilon_half)
     print(
-        "sendrecv_test_bi_dir:",
-        "rank",
-        rank,
-        "tensor_len",
-        "{:6d}".format(tensor_len),
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        " ms ",
-        " iter ",
-        iter,
+        f"sendrecv_test_bi_dir: rank {rank} tensor_len {tensor_len:6d} "
+        f"max_abs_error {max_abs_error:.5f} mean_abs_error {mean_abs_error:.5f} "
+        f"elapsed {elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
 
 

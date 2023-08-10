@@ -67,7 +67,9 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_MATMUL:        os << "OP_MATMUL";        break;
     case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
     case OP_ADD:           os << "OP_ADD";           break;
+    case OP_SUB:           os << "OP_SUB";           break;
     case OP_MUL:           os << "OP_MUL";           break;
+    case OP_DIV:           os << "OP_DIV";           break;
     case OP_IM2COL:        os << "OP_IM2COL";        break;
     case OP_TRANSPOSE:     os << "OP_TRANSPOSE";     break;
     case OP_SEND:          os << "OP_SEND";          break;
@@ -78,7 +80,10 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
     case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
     case OP_RELU:          os << "OP_RELU";          break;
+    case OP_SIGMOID:       os << "OP_SIGMOID";       break;
     case OP_GELU:          os << "OP_GELU";          break;
+    case OP_EXP:           os << "OP_EXP";           break;
+    case OP_SQRT:          os << "OP_SQRT";          break;
     }
     // clang-format on
     return os;
@@ -428,8 +433,12 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const MaxPoolOp *>(this)->function_name(cfg);
     case OP_ADD:
         return static_cast<const AddOp *>(this)->function_name(cfg);
+    case OP_SUB:
+        return static_cast<const SubOp *>(this)->function_name(cfg);
     case OP_MUL:
         return static_cast<const MulOp *>(this)->function_name(cfg);
+    case OP_DIV:
+        return static_cast<const DivOp *>(this)->function_name(cfg);
     case OP_IM2COL:
         return static_cast<const Im2colOp *>(this)->function_name(cfg);
     case OP_TRANSPOSE:
@@ -450,8 +459,14 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
     case OP_RELU:
         return static_cast<const ReluOp *>(this)->function_name(cfg);
+    case OP_SIGMOID:
+        return static_cast<const SigmoidOp *>(this)->function_name(cfg);
     case OP_GELU:
         return static_cast<const GeluOp *>(this)->function_name(cfg);
+    case OP_EXP:
+        return static_cast<const ExpOp *>(this)->function_name(cfg);
+    case OP_SQRT:
+        return static_cast<const SqrtOp *>(this)->function_name(cfg);
     default:
         return "";
     }

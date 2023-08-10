@@ -112,5 +112,6 @@ class Runtime:
                 "ARK runtime is not running or launched, skip stopping"
             )
             return
-        Executor.get_global_executor().stop()
+        elapsed = Executor.get_global_executor().stop()
         self.ark_runtime_state = RuntimeState.stop
+        return elapsed

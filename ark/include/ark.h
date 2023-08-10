@@ -259,6 +259,12 @@ class Model
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
+    // Calculates the exponential of the `input` tensor, element-wise.
+    Tensor *exp(Tensor *input, Tensor *output = nullptr,
+                const std::string &name = "exp");
+    // Calculates the square root of the `input` tensor, element-wise.
+    Tensor *sqrt(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "sqrt");
     // ReLU activation
     Tensor *relu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");
@@ -267,14 +273,25 @@ class Model
     // rectifier function and is widely used in deep learning models.
     Tensor *gelu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "gelu");
+    // Sigmoid activation
+    Tensor *sigmoid(Tensor *input, Tensor *output = nullptr,
+                    const std::string &name = "sigmoid");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "add");
+    // Performs an element-wise subtraction operator between the `input` tensor
+    // and the `other` tensor
+    Tensor *sub(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                const std::string &name = "sub");
     // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "mul");
+    // Performs an element-wise division operator between the `input`
+    // tensor and the `other` tensor,
+    Tensor *div(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                const std::string &name = "div");
     /// Sends a tensor to a destination GPU (@p dst_rank). Multiple tensors can
     /// be sent to the same GPU,so an identifier `id` is required to distinguish
     /// the tensor. Each 'send' operator must have a corresponding 'recv'

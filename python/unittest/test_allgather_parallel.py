@@ -72,29 +72,10 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size, iter=1):
     max_abs_error = np.max(np.abs(output_host - gt))
     mean_abs_error = np.mean(np.abs(output_host - gt))
     print(
-        "allgather_parallel_test",
-        "world_size:",
-        world_size,
-        "rank:",
-        rank,
-        "m",
-        m,
-        "n",
-        n,
-        "k",
-        k,
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        " ms ",
-        " iter ",
-        iter,
-        "elapsed_per_iter",
-        "{:.5f}".format(elapsed / iter),
-        " ms ",
+        f"allgather_parallel_test world_size: {world_size} rank: "
+        f"{rank} m: {m} n: {n} k: {k} max_abs_error: {max_abs_error:.5f} "
+        f"mean_abs_error: {mean_abs_error:.5f} elapsed: {elapsed:.5f} ms "
+        f"iter: {iter} elapsed_per_iter: {elapsed / iter:.5f} ms"
     )
 
 
