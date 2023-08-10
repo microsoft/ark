@@ -22,20 +22,25 @@ def test_matmul_internal(
     iter=1,
     data_type="float",
 ):
-    ark.init()
-
-    # Create a Model instance
-    model = ark.Model()
+    runtime = ark.Runtime()
     if data_type == "float":
         ark_data_type = ark.TensorType.FP32
         numpy_data_type = np.float32
     elif data_type == "half":
         ark_data_type = ark.TensorType.FP16
         numpy_data_type = np.float16
-    input_tensor = model.tensor(ark.Dims(bs_a, m, k), ark_data_type)
-    other_tensor = model.tensor(ark.Dims(bs_b, k, n), ark_data_type)
+    if transpose_a:
+        input_shape_a = [bs_a, k, m]
+    else:
+        input_shape_a = [bs_a, m, k]
+    if transpose_b:
+        input_shape_b = [bs_b, n, k]
+    else:
+        input_shape_b = [bs_b, k, n]
+    input_tensor = ark.tensor(input_shape_a, ark_data_type)
+    other_tensor = ark.tensor(input_shape_b, ark_data_type)
 
-    output_tensor = model.matmul(
+    output_tensor = ark.matmul(
         input_tensor,
         other_tensor,
         None,
@@ -45,21 +50,17 @@ def test_matmul_internal(
         "matmul",
         gran_lev,
     )
-    # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_matmul_test")
-    exe.compile()
-    exe.launch()
+    runtime.launch()
     input_tensor_host = np.random.rand(bs_a, m, k).astype(numpy_data_type)
     other_tensor_host = np.random.rand(bs_b, k, n).astype(numpy_data_type)
-    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
-    exe.tensor_memcpy_host_to_device(other_tensor, other_tensor_host)
-    exe.run(1)
+    input_tensor.from_numpy(input_tensor_host)
+    other_tensor.from_numpy(other_tensor_host)
 
-    elapsed = exe.stop()
+    runtime.run(iter, async_run=True)
 
-    output_tensor_host = np.zeros((bs_a, m, n), dtype=numpy_data_type)
+    elapsed = runtime.stop()
 
-    exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
+    output_tensor_host = output_tensor.to_numpy()
 
     gt = np.matmul(input_tensor_host, other_tensor_host)
 
