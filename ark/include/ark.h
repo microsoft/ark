@@ -280,7 +280,7 @@ class Model
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "add");
-    // Performs an element-wise substraction operator between the `input` tensor
+    // Performs an element-wise subtraction operator between the `input` tensor
     // and the `other` tensor
     Tensor *sub(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "sub");
