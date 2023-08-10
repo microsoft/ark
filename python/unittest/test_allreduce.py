@@ -10,22 +10,18 @@ import unittest
 def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     tensor_size = tensor_len * 2
     # Create a Model instance
-    model = ark.Model(rank)
+    runtime = ark.Runtime(rank, world_size)
 
-    input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    input_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
 
-    allreduce_result = model.all_reduce(input_tensor, rank, world_size)
+    allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
 
-    exe = ark.Executor(rank, rank, world_size, model, "all_reduce_test")
-    exe.compile()
+    runtime.launch()
+    input_tensor.from_numpy(np_inputs[rank])
+    runtime.run(iter, async_run=True)
+    elapsed = runtime.stop()
 
-    exe.launch()
-    exe.tensor_memcpy_host_to_device(input_tensor, np_inputs[rank])
-    exe.run(iter)
-    elapsed = exe.stop()
-
-    host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, allreduce_result)
+    host_output = allreduce_result.to_numpy()
     gt = np.zeros(tensor_len, dtype=np.float16)
     for np_input in np_inputs:
         gt += np_input
@@ -38,25 +34,10 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
         host_output, gt, atol=2 * world_size * numeric_epsilon_half
     )
     print(
-        "allreduce test:",
-        "world_size",
-        world_size,
-        "rank",
-        rank,
-        "tensor_len",
-        "{:6d}".format(tensor_len),
-        "max_abs_error",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error",
-        "{:.5f}".format(mean_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        "ms",
-        "iter",
-        iter,
-        "elapsed_per_iter",
-        "{:.5f}".format(elapsed / iter),
-        " ms ",
+        f"allreduce test: world_size {world_size} rank {rank} tensor_len "
+        f"{tensor_len:6d} max_abs_error {max_abs_error:.5f} mean_abs_error "
+        f"{mean_abs_error:.5f} elapsed {elapsed:.5f} ms iter {iter} "
+        f"elapsed_per_iter {elapsed / iter:.5f} ms"
     )
 
 
