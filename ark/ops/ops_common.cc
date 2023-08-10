@@ -459,10 +459,10 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
     case OP_RELU:
         return static_cast<const ReluOp *>(this)->function_name(cfg);
-    case OP_GELU:
-        return static_cast<const GeluOp *>(this)->function_name(cfg);
     case OP_SIGMOID:
         return static_cast<const SigmoidOp *>(this)->function_name(cfg);
+    case OP_GELU:
+        return static_cast<const GeluOp *>(this)->function_name(cfg);
     case OP_EXP:
         return static_cast<const ExpOp *>(this)->function_name(cfg);
     case OP_SQRT:
