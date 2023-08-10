@@ -3,8 +3,6 @@
 
 import ark
 
-import torch
-import torch.nn.functional as F
 import numpy as np
 import unittest
 
@@ -30,15 +28,15 @@ def test_matmul_internal(
         ark_data_type = ark.TensorType.FP16
         numpy_data_type = np.float16
     if transpose_a:
-        input_shape_a = [bs_a, k, m]
+        input_shape = [bs_a, k, m]
     else:
-        input_shape_a = [bs_a, m, k]
+        input_shape = [bs_a, m, k]
     if transpose_b:
-        input_shape_b = [bs_b, n, k]
+        other_shape = [bs_b, n, k]
     else:
-        input_shape_b = [bs_b, k, n]
-    input_tensor = ark.tensor(input_shape_a, ark_data_type)
-    other_tensor = ark.tensor(input_shape_b, ark_data_type)
+        other_shape = [bs_b, k, n]
+    input_tensor = ark.tensor(input_shape, ark_data_type)
+    other_tensor = ark.tensor(other_shape, ark_data_type)
 
     output_tensor = ark.matmul(
         input_tensor,
@@ -51,8 +49,8 @@ def test_matmul_internal(
         gran_lev,
     )
     runtime.launch()
-    input_tensor_host = np.random.rand(bs_a, m, k).astype(numpy_data_type)
-    other_tensor_host = np.random.rand(bs_b, k, n).astype(numpy_data_type)
+    input_tensor_host = np.random.rand(*input_shape).astype(numpy_data_type)
+    other_tensor_host = np.random.rand(*other_shape).astype(numpy_data_type)
     input_tensor.from_numpy(input_tensor_host)
     other_tensor.from_numpy(other_tensor_host)
 
@@ -61,6 +59,11 @@ def test_matmul_internal(
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()
+
+    if transpose_a:
+        input_tensor_host = np.transpose(input_tensor_host, (0, 2, 1))
+    if transpose_b:
+        other_tensor_host = np.transpose(other_tensor_host, (0, 2, 1))
 
     gt = np.matmul(input_tensor_host, other_tensor_host)
 
@@ -264,6 +267,13 @@ class TestMatmul(unittest.TestCase):
                     1,
                     "float",
                 )
+
+    # TODO: enable this test after fixing the bug
+    # def test_matmul_transpose(self):
+    #     test_matmul_small_sizes(1, False, False, 0, "half")
+    #     test_matmul_small_sizes(1, True, True, 0, "half")
+    #     test_matmul_small_sizes(1, False, True, 0, "half")
+    #     test_matmul_small_sizes(1, True, False, 0, "half")
 
 
 if __name__ == "__main__":
