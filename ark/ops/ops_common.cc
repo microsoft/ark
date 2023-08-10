@@ -80,7 +80,10 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
     case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
     case OP_RELU:          os << "OP_RELU";          break;
+    case OP_SIGMOID:       os << "OP_SIGMOID";       break;
     case OP_GELU:          os << "OP_GELU";          break;
+    case OP_EXP:           os << "OP_EXP";           break;
+    case OP_SQRT:          os << "OP_SQRT";          break;
     }
     // clang-format on
     return os;
