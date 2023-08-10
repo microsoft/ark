@@ -283,7 +283,7 @@ class Model
     // Performs an element-wise substraction operator between the `input` tensor
     // and the `other` tensor
     Tensor *sub(Tensor *input, Tensor *other, Tensor *output = nullptr,
-                const std::string &name = "add");
+                const std::string &name = "sub");
     // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
     Tensor *mul(Tensor *input, Tensor *other, Tensor *output = nullptr,
