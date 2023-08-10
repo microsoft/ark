@@ -733,9 +733,7 @@ def all_gather(
         input_tensor, rank, world_size, output_shard
     )
     """
-    for output_shard in output:
-        if output_shard is not None:
-            output_shard = output_shard._tensor
+    output = [output_shard._tensor for output_shard in output]
     tensor_shards = Model.get_global_model().all_gather(
         input._tensor,
         gpu_id,
