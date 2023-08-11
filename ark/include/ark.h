@@ -104,9 +104,7 @@ class TensorBuf
     void *buf = nullptr;
 
     friend class Tensor;
-    friend class CodeGenerator;
     friend class BaseScheduler;
-    friend class SchedOp;
 };
 
 // Type of tensor data.
