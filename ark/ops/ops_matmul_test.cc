@@ -90,17 +90,8 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     ark::Executor exe{0, 0, 1, model, "test_matmul_nt"};
     exe.compile();
 
-    // Get the auto-scheduled buffers.
-    ark::GpuBuf *buf_tns_a = exe.get_gpu_buf(tns_a);
-    ark::GpuBuf *buf_tns_b = exe.get_gpu_buf(tns_b);
-    ark::GpuBuf *buf_tns_res = exe.get_gpu_buf(tns_res);
-
-    UNITTEST_NE(buf_tns_a, (ark::GpuBuf *)nullptr);
-    UNITTEST_NE(buf_tns_b, (ark::GpuBuf *)nullptr);
-
-    // Set data.
-    ark::gpu_memcpy(buf_tns_a, data_a.get(), buf_a_sz);
-    ark::gpu_memcpy(buf_tns_b, data_b.get(), buf_b_sz);
+    tns_a->write(data_a.get());
+    tns_b->write(data_b.get());
 
     exe.launch();
     exe.run(iter);
@@ -109,7 +100,7 @@ void test_matmul_internal(unsigned int m, unsigned int n, unsigned int k,
     // Copy results of the loop kernel routine into CPU memory.
     void *res = malloc(buf_res_sz);
     UNITTEST_NE(res, (void *)nullptr);
-    ark::gpu_memcpy(res, buf_tns_res, buf_res_sz);
+    tns_res->read(res);
 
     // Calculate CPU results
     // float temp;

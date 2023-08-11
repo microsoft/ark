@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "ark.h"
+#include "gpu/gpu_mgr.h"
 #include "logging.h"
 #include "math.h"
 #include <cassert>
@@ -11,6 +12,14 @@ namespace ark {
 
 TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_}
 {
+}
+
+size_t TensorBuf::get_buf_offset() const
+{
+    if (this->buf == nullptr) {
+        LOG(ERROR, "TensorBuf is not configured yet");
+    }
+    return static_cast<GpuBuf *>(this->buf)->get_offset();
 }
 
 // Tensor constructor
@@ -181,6 +190,182 @@ bool Tensor::is_sequential() const
         }
     }
     return true;
+}
+
+void Tensor::write(const void *buf)
+{
+    if (buf == nullptr) {
+        LOG(ERROR, "the given host buffer is null");
+    }
+    GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
+    if (gbuf == nullptr) {
+        LOG(ERROR, "failed to get GPU buffer for tensor ", this->name);
+    }
+    size_t bytes = this->shape_bytes();
+    int ndims = this->ndims();
+    char *ptr = (char *)buf;
+    if (ndims == 1) {
+        gpu_memcpy(gbuf->ref(this->offset_bytes(0)), ptr, bytes);
+        return;
+    }
+    size_t done = 0;
+    size_t rem = bytes;
+    for (DimType i = 0; i < this->shape[0]; ++i) {
+        if (ndims == 2) {
+            size_t cb =
+                std::min(rem, (size_t)this->shape[1] * this->type_bytes());
+            gpu_memcpy(gbuf->ref(this->offset_bytes(i, 0)), &ptr[done], cb);
+            rem -= cb;
+            done += cb;
+            if (rem == 0) {
+                break;
+            }
+            continue;
+        }
+        for (DimType j = 0; j < this->shape[1]; ++j) {
+            if (ndims == 3) {
+                size_t cb =
+                    std::min(rem, (size_t)this->shape[2] * this->type_bytes());
+                gpu_memcpy(gbuf->ref(this->offset_bytes(i, j, 0)), &ptr[done],
+                           cb);
+                rem -= cb;
+                done += cb;
+                if (rem == 0) {
+                    break;
+                }
+                continue;
+            }
+            for (DimType k = 0; k < this->shape[2]; ++k) {
+                size_t cb =
+                    std::min(rem, (size_t)this->shape[3] * this->type_bytes());
+                gpu_memcpy(gbuf->ref(this->offset_bytes(i, j, k, 0)),
+                           &ptr[done], cb);
+                rem -= cb;
+                done += cb;
+                if (rem == 0) {
+                    break;
+                }
+            }
+        }
+    }
+    assert(rem == 0);
+    assert(done == bytes);
+}
+
+void Tensor::read(void *buf)
+{
+    GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
+    if (gbuf == nullptr) {
+        LOG(ERROR, "failed to get GPU buffer for tensor ", this->id);
+    }
+    size_t bytes = this->shape_bytes();
+    int ndims = this->ndims();
+    char *ptr = (char *)buf;
+    if (ndims == 1) {
+        gpu_memcpy(ptr, gbuf->ref(this->offset_bytes(0)), bytes);
+        return;
+    }
+    size_t done = 0;
+    size_t rem = bytes;
+    for (DimType i = 0; i < this->shape[0]; ++i) {
+        if (ndims == 2) {
+            size_t cb =
+                std::min(rem, (size_t)this->shape[1] * this->type_bytes());
+            gpu_memcpy(&ptr[done], gbuf->ref(this->offset_bytes(i, 0)), cb);
+            rem -= cb;
+            done += cb;
+            if (rem == 0) {
+                break;
+            }
+            continue;
+        }
+        for (DimType j = 0; j < this->shape[1]; ++j) {
+            if (ndims == 3) {
+                size_t cb =
+                    std::min(rem, (size_t)this->shape[2] * this->type_bytes());
+                gpu_memcpy(&ptr[done], gbuf->ref(this->offset_bytes(i, j, 0)),
+                           cb);
+                rem -= cb;
+                done += cb;
+                if (rem == 0) {
+                    break;
+                }
+                continue;
+            }
+            for (DimType k = 0; k < this->shape[2]; ++k) {
+                size_t cb =
+                    std::min(rem, (size_t)this->shape[3] * this->type_bytes());
+                gpu_memcpy(&ptr[done],
+                           gbuf->ref(this->offset_bytes(i, j, k, 0)), cb);
+                rem -= cb;
+                done += cb;
+                if (rem == 0) {
+                    break;
+                }
+            }
+        }
+    }
+    assert(rem == 0);
+    assert(done == bytes);
+}
+
+void Tensor::clear()
+{
+    GpuBuf *buf = static_cast<GpuBuf *>(this->buf->buf);
+    if (buf == nullptr) {
+        LOG(ERROR, "failed to get GPU buffer for tensor ", this->name);
+    }
+    int ndims = this->ndims();
+    size_t bytes = this->shape_bytes();
+    assert(bytes % 4 == 0);
+    size_t num = bytes >> 2;
+    if (ndims == 1) {
+        gpu_memset(buf->ref(this->offset_bytes(0)), 0, num);
+        return;
+    }
+    size_t done = 0;
+    size_t rem = num;
+    for (DimType i = 0; i < this->shape[0]; ++i) {
+        if (ndims == 2) {
+            bytes = (size_t)this->shape[1] * this->type_bytes();
+            assert(bytes % 4 == 0);
+            size_t cn = std::min(rem, bytes >> 2);
+            gpu_memset(buf->ref(this->offset_bytes(i, 0)), 0, cn);
+            rem -= cn;
+            done += cn;
+            if (rem == 0) {
+                break;
+            }
+            continue;
+        }
+        for (DimType j = 0; j < this->shape[1]; ++j) {
+            if (ndims == 3) {
+                bytes = (size_t)this->shape[2] * this->type_bytes();
+                assert(bytes % 4 == 0);
+                size_t cn = std::min(rem, bytes >> 2);
+                gpu_memset(buf->ref(this->offset_bytes(i, j, 0)), 0, cn);
+                rem -= cn;
+                done += cn;
+                if (rem == 0) {
+                    break;
+                }
+                continue;
+            }
+            for (DimType k = 0; k < this->shape[2]; ++k) {
+                bytes = (size_t)this->shape[3] * this->type_bytes();
+                assert(bytes % 4 == 0);
+                size_t cn = std::min(rem, bytes >> 2);
+                gpu_memset(buf->ref(this->offset_bytes(i, j, k, 0)), 0, cn);
+                rem -= cn;
+                done += cn;
+                if (rem == 0) {
+                    break;
+                }
+            }
+        }
+    }
+    assert(rem == 0);
+    assert(done == num);
 }
 
 std::ostream &operator<<(std::ostream &os, TensorType type)

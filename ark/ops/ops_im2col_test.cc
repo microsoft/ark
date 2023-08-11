@@ -33,7 +33,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     ark::srand();
     auto data_x =
         ark::utils::range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
-    exe.tensor_memcpy(tns_x, data_x.get(), tns_x->shape_bytes());
+    tns_x->write(data_x.get());
 
     // ark::utils::print_matrix(data_x.get(), h * w, c, h * w, c);
 
@@ -45,7 +45,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     ark::half_t *res =
         (ark::half_t *)calloc(tns_y->shape.size(), sizeof(ark::half_t));
     UNITTEST_NE(res, (ark::half_t *)nullptr);
-    exe.tensor_memcpy(res, tns_y, tns_y->shape_bytes());
+    tns_y->read(res);
 
     // Calculate CPU results
     ark::half_t *gt = (ark::half_t *)calloc(

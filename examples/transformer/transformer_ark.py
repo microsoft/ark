@@ -21,7 +21,7 @@ def attn_pad_mask_init(attention_mask, exe, seq_k_len):
                 if k >= seq_k_len:
                     attention_mask_host[i][j][k] = -1000
 
-    exe.tensor_memcpy_host_to_device(attention_mask, attention_mask_host)
+    attention_mask.from_numpy(attention_mask_host)
 
 
 class PoswiseFeedForwardNet:
@@ -43,12 +43,8 @@ class PoswiseFeedForwardNet:
         return output
 
     def init_model(self, param, exe, prefix=""):
-        exe.tensor_memcpy_host_to_device(
-            self.weight_1, param[prefix + "weight_1"]
-        )
-        exe.tensor_memcpy_host_to_device(
-            self.weight_2, param[prefix + "weight_2"]
-        )
+        self.weight_1.from_numpy(param[prefix + "weight_1"])
+        self.weight_2.from_numpy(param[prefix + "weight_2"])
 
 
 class ScaledDotProductAttention:
@@ -165,10 +161,10 @@ class MultiHeadAttention:
         return output_layernorm, attn
 
     def init_model(self, param, exe, prefix=""):
-        exe.tensor_memcpy_host_to_device(self.W_Q, param[prefix + "W_Q"])
-        exe.tensor_memcpy_host_to_device(self.W_K, param[prefix + "W_K"])
-        exe.tensor_memcpy_host_to_device(self.W_V, param[prefix + "W_V"])
-        exe.tensor_memcpy_host_to_device(self.fc, param[prefix + "fc"])
+        self.W_Q.from_numpy(param[prefix + "W_Q"])
+        self.W_K.from_numpy(param[prefix + "W_K"])
+        self.W_V.from_numpy(param[prefix + "W_V"])
+        self.fc.from_numpy(param[prefix + "fc"])
 
 
 class EncoderLayer:

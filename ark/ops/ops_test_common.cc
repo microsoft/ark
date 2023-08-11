@@ -10,6 +10,7 @@
 using namespace std;
 
 // op_name: "add", "mul"
+// TODO: deprecate this
 template <typename T>
 void test_bcast_internal(string op_name, ark::TensorType type, ark::DimType bs,
                          ark::DimType n, ark::DimType m, bool overwrite)
@@ -95,8 +96,8 @@ void test_bcast_internal(string op_name, ark::TensorType type, ark::DimType bs,
     exe.compile();
 
     // Set data.
-    exe.tensor_memcpy(tns_a, data_a.get(), bs * len * sizeof(T));
-    exe.tensor_memcpy(tns_b, data_b.get(), len * sizeof(T));
+    tns_a->write(data_a.get());
+    tns_b->write(data_b.get());
 
     exe.launch();
     exe.run(1);
@@ -105,7 +106,7 @@ void test_bcast_internal(string op_name, ark::TensorType type, ark::DimType bs,
     // Copy results of the loop kernel routine into CPU memory.
     T *res = (T *)malloc(bs * len * sizeof(T));
     UNITTEST_NE(res, (T *)nullptr);
-    exe.tensor_memcpy(res, tns_c, bs * len * sizeof(T));
+    tns_c->read(res);
 
     // Compare results with the ground truth.
     std::pair<float, float> p =
@@ -113,7 +114,7 @@ void test_bcast_internal(string op_name, ark::TensorType type, ark::DimType bs,
     float max_err = p.second;
 
     if (overwrite) {
-        exe.tensor_memcpy(res, tns_a, bs * len * sizeof(T));
+        tns_a->read(res);
         p = ark::utils::tensor_compare(gt, res, tns_a->shape, true);
         max_err = std::max(max_err, p.second);
     }
