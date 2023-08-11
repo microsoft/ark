@@ -26,7 +26,7 @@ def test_PoswiseFeedForwardNet_process(rank, param):
     exe.launch()
 
     input_tensor_host = param["input_tensor"]
-    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+    input_tensor.from_numpy(input_tensor_host)
     ark_model.init_model(param, exe)
     exe.run(1)
     exe.stop()
@@ -35,7 +35,7 @@ def test_PoswiseFeedForwardNet_process(rank, param):
         (batch_size, seq_len, d_model), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
+    output_tensor.to_numpy(output_tensor_host)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 
@@ -131,9 +131,9 @@ def test_MultiHeadAttention_process(rank, param):
     Q_host = param["Q"]
     K_host = param["K"]
     V_host = param["V"]
-    exe.tensor_memcpy_host_to_device(Q, Q_host)
-    exe.tensor_memcpy_host_to_device(K, K_host)
-    exe.tensor_memcpy_host_to_device(V, V_host)
+    Q.from_numpy(Q_host)
+    K.from_numpy(K_host)
+    V.from_numpy(V_host)
     transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
     ark_model.init_model(param, exe)
     exe.run(1)
@@ -146,8 +146,8 @@ def test_MultiHeadAttention_process(rank, param):
         (batch_size, n_heads_per_gpu, seq_len, seq_len), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
-    exe.tensor_memcpy_device_to_host(attn_host, attn)
+    context.to_numpy(context_host)
+    attn.to_numpy(attn_host)
 
     torch_Q = torch.from_numpy(Q_host.astype(np.float32))
     torch_K = torch.from_numpy(K_host.astype(np.float32))
@@ -276,7 +276,7 @@ def test_EncoderLayer_process(rank, param):
     ark_model.init_model(param, exe)
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(enc_inputs, enc_inputs_host)
+    enc_inputs.from_numpy(enc_inputs_host)
     transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
     exe.run(1)
     exe.stop()
@@ -288,8 +288,8 @@ def test_EncoderLayer_process(rank, param):
         (batch_size, n_heads_per_gpu, seq_len, seq_len), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
-    exe.tensor_memcpy_device_to_host(attn_host, attn)
+    context.to_numpy(context_host)
+    attn.to_numpy(attn_host)
 
     torch_enc_inputs = torch.from_numpy(enc_inputs_host.astype(np.float32))
 

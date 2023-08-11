@@ -26,7 +26,7 @@ def test_PoswiseFeedForwardNet():
     ).astype(np.float16)
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+    input_tensor.from_numpy(input_tensor_host)
 
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
         np.float16
@@ -46,7 +46,7 @@ def test_PoswiseFeedForwardNet():
         (batch_size, seq_len, d_model), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
+    output_tensor.to_numpy(output_tensor_host)
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 
@@ -116,9 +116,9 @@ def test_ScaledDotProductAttention():
     )
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(Q, Q_host)
-    exe.tensor_memcpy_host_to_device(K, K_host)
-    exe.tensor_memcpy_host_to_device(V, V_host)
+    Q.from_numpy(Q_host)
+    K.from_numpy(K_host)
+    V.from_numpy(V_host)
     transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
 
     exe.run(1)
@@ -131,8 +131,8 @@ def test_ScaledDotProductAttention():
         (batch_size, n_heads, seq_len, seq_len), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
-    exe.tensor_memcpy_device_to_host(attn_host, attn)
+    context.to_numpy(context_host)
+    attn.to_numpy(attn_host)
 
     input_seq = np.zeros((batch_size, seq_len), dtype=np.int32)
     for i in range(batch_size):
@@ -237,9 +237,9 @@ def test_MultiHeadAttention():
     ark_model.init_model(param, exe)
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(Q, Q_host)
-    exe.tensor_memcpy_host_to_device(K, K_host)
-    exe.tensor_memcpy_host_to_device(V, V_host)
+    Q.from_numpy(Q_host)
+    K.from_numpy(K_host)
+    V.from_numpy(V_host)
     transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
     exe.run(1)
     exe.stop()
@@ -251,8 +251,8 @@ def test_MultiHeadAttention():
         (batch_size, n_heads, seq_len, seq_len), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
-    exe.tensor_memcpy_device_to_host(attn_host, attn)
+    context.to_numpy(context_host)
+    attn.to_numpy(attn_host)
 
     torch_Q = torch.from_numpy(Q_host.astype(np.float32))
     torch_K = torch.from_numpy(K_host.astype(np.float32))
@@ -360,7 +360,7 @@ def test_EncoderLayer():
     ark_model.init_model(param, exe)
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(enc_inputs, enc_inputs_host)
+    enc_inputs.from_numpy(enc_inputs_host)
     transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
     exe.run(1)
     exe.stop()
@@ -372,8 +372,8 @@ def test_EncoderLayer():
         (batch_size, n_heads, seq_len, seq_len), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
-    exe.tensor_memcpy_device_to_host(attn_host, attn)
+    context.to_numpy(context_host)
+    attn.to_numpy(attn_host)
 
     torch_enc_inputs = torch.from_numpy(enc_inputs_host.astype(np.float32))
 
@@ -480,7 +480,7 @@ def test_Encoder():
     ark_model.init_model(param, exe)
 
     exe.launch()
-    exe.tensor_memcpy_host_to_device(enc_inputs, enc_inputs_host)
+    enc_inputs.from_numpy(enc_inputs_host)
     transformer_ark.attn_pad_mask_init(attn_mask, exe, input_seq_len)
     exe.run(1)
     exe.stop()
@@ -489,13 +489,13 @@ def test_Encoder():
         (batch_size, seq_len, n_heads * d_v), dtype=np.float16
     )
 
-    exe.tensor_memcpy_device_to_host(context_host, context)
+    context.to_numpy(context_host)
     attns_host = []
     for i in range(n_layers):
         attn_host = np.zeros(
             (batch_size, n_heads, seq_len, seq_len), dtype=np.float16
         )
-        exe.tensor_memcpy_device_to_host(attn_host, attns[i])
+        attns[i].to_numpy(attn_host)
         attns_host.append(attn_host)
 
     torch_enc_inputs = torch.from_numpy(enc_inputs_host.astype(np.float32))

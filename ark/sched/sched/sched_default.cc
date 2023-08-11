@@ -381,7 +381,7 @@ void DefaultScheduler::configure_gpu_buf(
 
             const int send_ready_flag_sid_offset = 128;
 
-            //
+            // TODO: move this into BaseScheduler::create_context().
             if (op->type == OP_SEND) {
                 //
                 Tensor *in = op->inputs[0];

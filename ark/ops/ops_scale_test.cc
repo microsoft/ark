@@ -66,7 +66,7 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     exe.compile();
 
     // Set data.
-    exe.tensor_memcpy(tns_x, data_x.get(), len * sizeof(ark::half_t));
+    tns_x->write(data_x.get());
 
     exe.launch();
     exe.run(1);
@@ -75,7 +75,7 @@ void test_scale_internal(unsigned int bs, unsigned int n, unsigned int m,
     // Copy results of the loop kernel routine into CPU memory.
     void *res = malloc(len * sizeof(ark::half_t));
     UNITTEST_NE(res, (void *)nullptr);
-    exe.tensor_memcpy(res, tns_y, len * sizeof(ark::half_t));
+    tns_y->read(res);
 
     // Compare results with the ground truth.
     auto p =

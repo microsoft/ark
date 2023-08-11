@@ -7,8 +7,10 @@
 #include "include/ark.h"
 #include <string>
 
+// TODO: deprecate this
 void test_bcast_fp32(std::string op_name, ark::DimType bs, ark::DimType n,
                      ark::DimType m, bool overwrite = false);
+// TODO: deprecate this
 void test_bcast_fp16(std::string op_name, ark::DimType bs, ark::DimType n,
                      ark::DimType m, bool overwrite = false);
 

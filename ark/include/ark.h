@@ -139,6 +139,45 @@ class Tensor
            int imported_rank, int id, const std::string &name);
     Tensor(const Tensor &) = default;
 
+    /// Copy contiguous data from a host buffer to the given tensor's (possibly
+    /// non-contiguous) data range.
+    ///
+    /// For example, say the tensor is a 2D float tensor with shape [2, 3],
+    /// ldims [2, 4], offs [0, 0], and pads [1, 1], then the data in the host
+    /// buffer is 0, 1, ..., 5. After writing, the data in the tensor will be:
+    ///
+    ///     [[0, 1, 2, ?],
+    ///      [3, 4, 5, ?]]
+    ///
+    /// where ? means the original unmodified value.
+    ///
+    /// @param buf The host buffer to copy from. The buffer must be large enough
+    /// to hold the data.
+    ///
+    void write(const void *buf);
+
+    /// Copy (possibly non-contiguous) data from a tensor on GPU to a contiguous
+    /// host buffer.
+    ///
+    /// The given number of bytes is copied, in order of appearance on the
+    /// memory. This function assumes that @p buf is large enough to hold the
+    /// data. For example, say the tensor is a 2D float tensor with shape [2,
+    /// 3], ldims [2, 4], offs [0, 0], and pads [1, 1], then the data in the
+    /// tensor is:
+    ///
+    ///     [[0, 1, 2, 3],
+    ///      [4, 5, 6, 7]]
+    ///
+    /// After read, the data in the host buffer will be 0, 1, 2, 4, 5, 6.
+    ///
+    /// @param buf The host buffer to copy to. The buffer must be large enough
+    /// to hold the data.
+    ///
+    void read(void *buf);
+
+    /// Set all bytes of the tensor buffer to 0.
+    void clear();
+
     /// Offset to the element [i0][i1][i2][i3] of this tensor in the TensorBuf.
     /// @param i0, i1, i2, i3 The indices of the element.
     /// @return The offset in the number of elements.
@@ -442,21 +481,6 @@ class Executor
     // Once this is called, we need to call `launch()` again to run the model
     // again.
     float stop();
-    // Get the corresponding GPU buffer of the executor from the given model
-    // tensor.
-    GpuBuf *get_gpu_buf(Tensor *tns) const;
-    // Copy contiguous data from a host buffer to the given tensor's (possibly
-    // non-contiguous) data range on GPU.
-    void tensor_memcpy(Tensor *tns, const void *src, size_t bytes);
-    // Copy (possibly non-contiguous) data from a tensor on GPU to a contiguous
-    // host buffer. The given number of bytes is copied, in order of appearance
-    // on the memory. This function assumes that `dst` is large enough to hold
-    // the data.
-    void tensor_memcpy(void *dst, Tensor *src, size_t bytes);
-    // Set all bytes of `tns` into zero.
-    void tensor_clear(Tensor *tns);
-    // Print the content of `tns` to stdout.
-    void print_tensor(Tensor *tns);
 
   protected:
     class Impl;
