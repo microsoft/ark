@@ -34,6 +34,7 @@ if (USE_MSCCLPP)
         ${MSCCLPP_INCLUDE_DIRS}
     )
     target_compile_definitions(ark_obj PRIVATE ARK_USE_MSCCLPP=1)
+    target_compile_definitions(ark_obj PRIVATE ARK_MSCCLPP_INCLUDE_DIR=${MSCCLPP_INCLUDE_DIRS})
 endif()
 target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})

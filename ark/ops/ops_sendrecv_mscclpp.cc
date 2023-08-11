@@ -52,15 +52,10 @@ OpArgs MscclppSendOp::function_call_args(const OpConfig &) const
 
     CHECK(input->buf != nullptr);
     CHECK(recvbuf->buf != nullptr);
-    CHECK(input->buf->buf != nullptr);
-    CHECK(recvbuf->buf->buf != nullptr);
-
-    GpuBuf *gpubuf_input = static_cast<GpuBuf *>(input->buf->buf);
-    GpuBuf *gpubuf_recvbuf = static_cast<GpuBuf *>(recvbuf->buf->buf);
 
     OpArgs opargs;
-    opargs.put((int)(gpubuf_recvbuf->get_offset() + recvbuf->offset_bytes()));
-    opargs.put((int)(gpubuf_input->get_offset() + input->offset_bytes()));
+    opargs.put((int)(input->buf->get_buf_offset() + recvbuf->offset_bytes()));
+    opargs.put((int)(recvbuf->buf->get_buf_offset() + input->offset_bytes()));
     return opargs;
 }
 
@@ -143,7 +138,7 @@ Tensor *Model::send_mscclpp(Tensor *input, int sid, int dst_rank,
 {
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
@@ -178,7 +173,7 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
     assert(input != nullptr);
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;

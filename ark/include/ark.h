@@ -94,6 +94,8 @@ class TensorBuf
     TensorBuf(const DimType &bytes = 0, int id = -1);
     TensorBuf(const TensorBuf &) = default;
 
+    size_t get_buf_offset() const;
+
     DimType bytes;
     int id;
     bool immutable = false;

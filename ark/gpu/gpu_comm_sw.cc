@@ -3,28 +3,155 @@
 
 #include <cassert>
 #include <cerrno>
+#include <list>
+#include <map>
+#include <memory>
+#include <set>
 #include <sstream>
+#include <string>
+#include <sys/mman.h>
+#include <thread>
+#include <vector>
 
 #include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_comm_sw.h"
+#include "gpu/gpu_common.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mgr.h"
 #include "ipc/ipc_coll.h"
 #include "ipc/ipc_hosts.h"
+#include "ipc/ipc_socket.h"
+#include "net/net_ib.h"
+
+#ifdef ARK_USE_MSCCLPP
+#include <mscclpp/core.hpp>
+#include <mscclpp/proxy_channel.hpp>
+#endif // ARK_USE_MSCCLPP
 
 using namespace std;
 
 namespace ark {
 
-mscclpp::Transport IBs[] = {mscclpp::Transport::IB0, mscclpp::Transport::IB1,
-                            mscclpp::Transport::IB2, mscclpp::Transport::IB3,
-                            mscclpp::Transport::IB4, mscclpp::Transport::IB5,
-                            mscclpp::Transport::IB6, mscclpp::Transport::IB7};
+//
+struct GpuCommInfo
+{
+    NetIbMr::Info sid_mris[MAX_NUM_SID];
+    uint64_t sid_offs[MAX_NUM_SID];
+    NetIbQp::Info qpi;
+    uint64_t bytes;
+};
 
 //
-GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
-                     const int world_size_, GpuMem *data_mem, GpuMem *sc_rc_mem)
+struct GpuSendRecvInfo
+{
+    int sid;
+    int remote_rank;
+    std::size_t bytes;
+    bool is_recv;
+};
+
+class GpuCommSw::Impl
+{
+  public:
+    Impl(const std::string &name, const int gpu_id_, const int rank_,
+         const int world_size_, GpuMem *data_mem, GpuMem *sc_rc_mem);
+    ~Impl();
+
+    void reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
+                      bool is_recv);
+    void configure(std::vector<std::pair<int, size_t>> &export_sid_offs,
+                   std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
+    void import_buf(const int gid, GpuBuf *buf);
+
+    void request_loop();
+    void launch_request_loop();
+    void stop_request_loop();
+
+    void set_request(const Request &db);
+
+    GpuMem *get_data_mem(const int gid);
+    GpuMem *get_sc_rc_mem(const int gid);
+    IpcMem *get_info(const int gid);
+    GpuPtr get_request_ref() const;
+    bool is_using_ib() const
+    {
+        return this->net_ib_mgr != nullptr;
+    }
+
+    const void *get_proxy_channels_ref() const
+    {
+#ifdef ARK_USE_MSCCLPP
+        return this->proxy_channels.data();
+#else
+        return nullptr;
+#endif // ARK_USE_MSCCLPP
+    }
+
+    int get_proxy_channels_bytes() const
+    {
+#ifdef ARK_USE_MSCCLPP
+        return this->proxy_channels.size() *
+               sizeof(mscclpp::DeviceHandle<mscclpp::SimpleProxyChannel>);
+#else
+        return 0;
+#endif // ARK_USE_MSCCLPP
+    }
+
+    int get_proxy_channels_num() const
+    {
+#ifdef ARK_USE_MSCCLPP
+        return this->proxy_channels.size();
+#else
+        return 0;
+#endif // ARK_USE_MSCCLPP
+    }
+
+  private:
+    //
+    const std::string name;
+    //
+    const int gpu_id;
+    const int rank;
+    const int world_size;
+    //
+    std::list<std::unique_ptr<GpuMem>> remote_data_mems_storage;
+    std::list<std::unique_ptr<GpuMem>> remote_sc_rc_mems_storage;
+    std::list<std::unique_ptr<IpcMem>> infos_storage;
+    //
+    std::vector<GpuMem *> data_mems;
+    //
+    std::vector<GpuMem *> sc_rc_mems;
+    //
+    std::vector<IpcMem *> infos;
+    //
+    std::vector<std::vector<GpuPtr>> addr_table;
+    //
+    Request *request = nullptr;
+    std::thread *request_loop_thread = nullptr;
+    volatile bool run_request_loop_thread = false;
+    //
+    IpcSocket *ipc_socket = nullptr;
+    //
+    NetIbMgr *net_ib_mgr = nullptr;
+    std::vector<NetIbMr *> sid_mrs;
+    std::map<int, NetIbQp *> qps;
+    std::vector<GpuSendRecvInfo> send_recv_infos;
+    std::map<int, std::vector<NetIbMr::Info>> mris;
+
+#ifdef ARK_USE_MSCCLPP
+    std::shared_ptr<mscclpp::TcpBootstrap> bootstrap;
+    std::shared_ptr<mscclpp::Communicator> comm;
+    std::shared_ptr<mscclpp::ProxyService> proxy_service;
+    std::vector<mscclpp::DeviceHandle<mscclpp::SimpleProxyChannel>>
+        proxy_channels;
+#endif // ARK_USE_MSCCLPP
+};
+
+//
+GpuCommSw::Impl::Impl(const string &name_, const int gpu_id_, const int rank_,
+                      const int world_size_, GpuMem *data_mem,
+                      GpuMem *sc_rc_mem)
     : name{name_}, gpu_id{gpu_id_}, rank{rank_},
       world_size{world_size_}, request{new Request}
 {
@@ -63,6 +190,7 @@ GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
         this->sid_mrs.resize(MAX_NUM_SID, nullptr);
     }
 
+#ifdef ARK_USE_MSCCLPP
     if (get_env().use_mscclpp) {
         std::stringstream ip_port;
         ip_port << get_host(0) << ":" << get_env().mscclpp_port;
@@ -73,9 +201,10 @@ GpuCommSw::GpuCommSw(const string &name_, const int gpu_id_, const int rank_,
         this->comm = std::make_shared<mscclpp::Communicator>(this->bootstrap);
         this->proxy_service = std::make_shared<mscclpp::ProxyService>();
     }
+#endif // ARK_USE_MSCCLPP
 }
 
-GpuCommSw::~GpuCommSw()
+GpuCommSw::Impl::~Impl()
 {
     this->stop_request_loop();
     if (this->request != nullptr) {
@@ -85,16 +214,16 @@ GpuCommSw::~GpuCommSw()
     delete this->ipc_socket;
 }
 
-void GpuCommSw::reg_sendrecv(int sid, int remote_rank, size_t bytes,
-                             bool is_recv)
+void GpuCommSw::Impl::reg_sendrecv(int sid, int remote_rank, size_t bytes,
+                                   bool is_recv)
 {
     this->send_recv_infos.emplace_back(
         GpuSendRecvInfo{sid, remote_rank, bytes, is_recv});
 }
 
 //
-void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
-                          map<int, vector<GpuBuf *>> &import_gid_bufs)
+void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
+                                map<int, vector<GpuBuf *>> &import_gid_bufs)
 {
     map<int, size_t> sid_max_bytes;
     if (this->is_using_ib()) {
@@ -275,11 +404,20 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
             }
         }
     }
+
+#ifdef ARK_USE_MSCCLPP
     if (get_env().use_mscclpp) {
         // need to setup registered memory for the communicator
         int num_ranks_per_node = get_env().num_ranks_per_host;
         const int thisNode = rank / num_ranks_per_node;
         auto rankToNode = [&](int rank) { return rank / num_ranks_per_node; };
+
+        mscclpp::Transport IBs[] = {
+            mscclpp::Transport::IB0, mscclpp::Transport::IB1,
+            mscclpp::Transport::IB2, mscclpp::Transport::IB3,
+            mscclpp::Transport::IB4, mscclpp::Transport::IB5,
+            mscclpp::Transport::IB6, mscclpp::Transport::IB7};
+
         const mscclpp::Transport ibTransport = IBs[gpu_id];
         std::vector<std::shared_ptr<mscclpp::Connection>> connections;
         const mscclpp::TransportFlags all_transports =
@@ -317,11 +455,13 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
         }
         this->comm->setup();
     }
+#endif // ARK_USE_MSCCLPP
+
     LOG(DEBUG, "RANK ", this->rank, " config done");
 }
 
 //
-void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
+void GpuCommSw::Impl::import_buf(const int gid, GpuBuf *buf)
 {
     IpcMem *ie = this->get_info(gid);
     if (ie->get_bytes() == 0) {
@@ -350,12 +490,14 @@ void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
 }
 
 //
-void GpuCommSw::launch_request_loop()
+void GpuCommSw::Impl::launch_request_loop()
 {
+#ifdef ARK_USE_MSCCLPP
     if (get_env().use_mscclpp) {
         this->proxy_service->startProxy();
         return;
     }
+#endif // ARK_USE_MSCCLPP
     if (this->request_loop_thread == nullptr) {
         this->run_request_loop_thread = true;
         this->request_loop_thread = new thread([&, gid = this->gpu_id] {
@@ -375,7 +517,7 @@ void GpuCommSw::launch_request_loop()
 }
 
 //
-void GpuCommSw::request_loop()
+void GpuCommSw::Impl::request_loop()
 {
     const size_t sc_offset = 0;
     const size_t rc_offset = MAX_NUM_SID * sizeof(int);
@@ -528,12 +670,14 @@ void GpuCommSw::request_loop()
 }
 
 //
-void GpuCommSw::stop_request_loop()
+void GpuCommSw::Impl::stop_request_loop()
 {
+#ifdef ARK_USE_MSCCLPP
     if (get_env().use_mscclpp) {
         this->proxy_service->stopProxy();
         return;
     }
+#endif // ARK_USE_MSCCLPP
     this->run_request_loop_thread = false;
     if (this->request_loop_thread != nullptr) {
         if (this->request_loop_thread->joinable()) {
@@ -545,7 +689,7 @@ void GpuCommSw::stop_request_loop()
 }
 
 //
-void GpuCommSw::set_request(const Request &db)
+void GpuCommSw::Impl::set_request(const Request &db)
 {
     if (this->request != nullptr) {
         *(this->request) = db;
@@ -553,7 +697,7 @@ void GpuCommSw::set_request(const Request &db)
 }
 
 //
-GpuMem *GpuCommSw::get_data_mem(const int gid)
+GpuMem *GpuCommSw::Impl::get_data_mem(const int gid)
 {
     int sz = (int)this->data_mems.size();
     assert(sz == (int)this->sc_rc_mems.size());
@@ -580,7 +724,7 @@ GpuMem *GpuCommSw::get_data_mem(const int gid)
 }
 
 //
-GpuMem *GpuCommSw::get_sc_rc_mem(const int gid)
+GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid)
 {
     int sz = (int)this->sc_rc_mems.size();
     assert(sz == (int)this->sc_rc_mems.size());
@@ -601,7 +745,7 @@ GpuMem *GpuCommSw::get_sc_rc_mem(const int gid)
 }
 
 //
-IpcMem *GpuCommSw::get_info(const int gid)
+IpcMem *GpuCommSw::Impl::get_info(const int gid)
 {
     int sz = (int)this->infos.size();
     assert(sz == (int)this->infos.size());
@@ -622,11 +766,85 @@ IpcMem *GpuCommSw::get_info(const int gid)
 }
 
 //
-GpuPtr GpuCommSw::get_request_ref() const
+GpuPtr GpuCommSw::Impl::get_request_ref() const
 {
     GpuPtr ref;
     CULOG(cuMemHostGetDevicePointer(&ref, this->request, 0));
     return ref;
+}
+
+GpuCommSw::GpuCommSw(const std::string &name, const int gpu_id_,
+                     const int rank_, const int world_size_, GpuMem *data_mem,
+                     GpuMem *sc_rc_mem)
+    : impl{std::make_unique<GpuCommSw::Impl>(name, gpu_id_, rank_, world_size_,
+                                             data_mem, sc_rc_mem)}
+{
+}
+
+GpuCommSw::~GpuCommSw()
+{
+}
+
+void GpuCommSw::reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
+                             bool is_recv)
+{
+    this->impl->reg_sendrecv(sid, remote_rank, bytes, is_recv);
+}
+
+void GpuCommSw::configure(std::vector<std::pair<int, size_t>> &export_sid_offs,
+                          std::map<int, std::vector<GpuBuf *>> &import_gid_bufs)
+{
+    this->impl->configure(export_sid_offs, import_gid_bufs);
+}
+
+void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
+{
+    this->impl->import_buf(gid, buf);
+}
+
+void GpuCommSw::launch_request_loop()
+{
+    this->impl->launch_request_loop();
+}
+
+void GpuCommSw::stop_request_loop()
+{
+    this->impl->stop_request_loop();
+}
+
+void GpuCommSw::set_request(const Request &db)
+{
+    this->impl->set_request(db);
+}
+
+GpuMem *GpuCommSw::get_data_mem(const int gid)
+{
+    return this->impl->get_data_mem(gid);
+}
+
+GpuPtr GpuCommSw::get_request_ref() const
+{
+    return this->impl->get_request_ref();
+}
+
+bool GpuCommSw::is_using_ib() const
+{
+    return this->impl->is_using_ib();
+}
+
+const void *GpuCommSw::get_proxy_channels_ref() const
+{
+    return this->impl->get_proxy_channels_ref();
+}
+
+int GpuCommSw::get_proxy_channels_bytes() const
+{
+    return this->impl->get_proxy_channels_bytes();
+}
+
+int GpuCommSw::get_proxy_channels_num() const
+{
+    return this->impl->get_proxy_channels_num();
 }
 
 } // namespace ark

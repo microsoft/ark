@@ -533,8 +533,8 @@ std::vector<std::string> DefaultScheduler::gen_code()
     this->codegen->def_sync_stream(code, 1);
 
     if (get_env().use_mscclpp) {
-        size_t num_chans =
-            this->ctx->get_comm_sw()->get_proxy_channels().size();
+        int num_chans =
+            this->ctx->get_comm_sw()->get_proxy_channels_num();
         this->codegen->def_proxy_channels(code, num_chans);
     }
 

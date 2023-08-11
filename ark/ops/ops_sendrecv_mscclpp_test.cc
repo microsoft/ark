@@ -30,8 +30,7 @@ void test_sendrecv_mscclpp_internal()
                               "test_sendrecv_mscclpp"};
             exe.compile();
             if (gpu_id == 0) {
-                exe.tensor_memcpy(tns_x, data_x.get(),
-                                  len * sizeof(ark::half_t));
+                tns_x->write(data_x.get());
             }
 
             exe.launch();
@@ -40,7 +39,7 @@ void test_sendrecv_mscclpp_internal()
             if (gpu_id == 1) {
                 // Copy results of the loop kernel routine into CPU memory.
                 void *res = malloc(len * sizeof(ark::half_t));
-                exe.tensor_memcpy(res, tns_x, len * sizeof(ark::half_t));
+                tns_x->read(res);
 
                 auto p = ark::utils::cmp_matrix((ark::half_t *)data_x.get(),
                                                 (ark::half_t *)res, 1, 1, len);

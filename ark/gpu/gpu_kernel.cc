@@ -335,11 +335,11 @@ void GpuLoopKernel::load()
                 GpuPtr channel_addr;
                 CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
                                         "_ARK_PROXY_CHANS"));
-                const auto &chans =
-                    this->ctx->get_comm_sw()->get_proxy_channels();
-                CULOG(cuMemcpyHtoD(channel_addr, chans.data(),
-                                   sizeof(mscclpp::SimpleProxyChannel) *
-                                       chans.size()));
+                const void *chans_ref =
+                    this->ctx->get_comm_sw()->get_proxy_channels_ref();
+                size_t chans_bytes =
+                    this->ctx->get_comm_sw()->get_proxy_channels_bytes();
+                CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
             }
         }
     }
