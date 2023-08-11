@@ -361,8 +361,8 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
     if (this->comm_sw == nullptr) {
-        LOGERR("mem_import() is supported only for the "
-               "SW communication stack.");
+        LOG(ERROR, "mem_import() is supported only for the "
+                   "SW communication stack.");
     }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     GpuBuf *buf = new GpuBuf{dm, sid, 0, bytes};
@@ -454,8 +454,8 @@ GpuPtr GpuMgrCtx::get_data_ref(int gid) const
         return this->data_mem.ref();
 
     if (this->comm_sw == nullptr) {
-        LOGERR("get_data_ref() is supported only for the "
-               "SW communication stack.");
+        LOG(ERROR, "get_data_ref() is supported only for the "
+                   "SW communication stack.");
     }
     return this->comm_sw->get_data_mem(gid)->ref();
 }
@@ -477,9 +477,8 @@ GpuPtr GpuMgrCtx::get_request_ref() const
 {
     if (this->comm_sw != nullptr) {
         return this->comm_sw->get_request_ref();
-    } else {
-        LOGERR("Unexpected error.");
     }
+    LOG(ERROR, "Unexpected error.");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
