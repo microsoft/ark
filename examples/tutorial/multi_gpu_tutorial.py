@@ -94,4 +94,5 @@ def sendrecv_test_ping_pong():
 
 
 if __name__ == "__main__":
+    ark.init()
     sendrecv_test_ping_pong()
