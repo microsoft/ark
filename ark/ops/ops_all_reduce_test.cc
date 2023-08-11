@@ -70,12 +70,8 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             Executor exe{gpu_id, gpu_id, num_gpus, model, "test_all_reduce"};
             exe.compile();
 
-            // Get the auto-scheduled buffers.
-            ark::GpuBuf *buf_tns = exe.get_gpu_buf(allreduce_result);
-            UNITTEST_NE(buf_tns, (ark::GpuBuf *)nullptr);
-
             // Set data.
-            ark::gpu_memcpy(buf_tns, input_data[gpu_id].get(), bytes);
+            allreduce_result->write(input_data[gpu_id].get());
 
             // launch kernel
             exe.launch();
@@ -85,7 +81,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             // Copy results of the loop kernel routine into CPU memory.
             ark::half_t *res = (ark::half_t *)malloc(bytes);
             UNITTEST_NE(res, (void *)nullptr);
-            ark::gpu_memcpy(res, buf_tns, bytes);
+            allreduce_result->read(res);
 
             // Compare results with the ground truth.
             auto p = ark::utils::cmp_matrix((ark::half_t *)gt,

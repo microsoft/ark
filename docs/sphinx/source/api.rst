@@ -27,6 +27,5 @@ API Document
 =====================
 
 .. automodule:: ark.Executor
-    :members: compile, launch, run, wait, stop, get_tensor, tensor_memcpy_host_to_device,
-            tensor_memcpy_device_to_host, tensor_clear
+    :members: compile, launch, run, wait, stop
 
