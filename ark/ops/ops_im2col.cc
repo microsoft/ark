@@ -104,8 +104,9 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
         h = input->shape[2];
         w = input->shape[3];
     } else {
-        LOGERR("invalid # of input dimensions. Expected 2, 3, or 4, but given ",
-               input_ndims);
+        LOG(ERROR,
+            "invalid # of input dimensions. Expected 2, 3, or 4, but given ",
+            input_ndims);
     }
     OpPrecType pt;
     if (input->type == FP16) {
@@ -113,7 +114,7 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     DimType out_h = (h + 2 * pad_height - kernel_height) / stride_height + 1;
     DimType out_w = (w + 2 * pad_width - kernel_width) / stride_width + 1;

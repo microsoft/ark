@@ -38,7 +38,7 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
       params{new void *[num_params]}, cubin{cubin_}
 {
     if (this->name.size() == 0) {
-        LOGERR("Invalid kernel name: ", this->name);
+        LOG(ERROR, "Invalid kernel name: ", this->name);
     }
     assert(this->params != nullptr);
     // Default offset zero.
@@ -122,7 +122,7 @@ void GpuKernel::load()
     if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts, opts,
                            optvals) != CUDA_SUCCESS) {
         LOG(DEBUG, infobuf);
-        LOGERR("cuModuleLoadDataEx() failed: ", errbuf);
+        LOG(ERROR, "cuModuleLoadDataEx() failed: ", errbuf);
     }
     delete[] infobuf;
     delete[] errbuf;
@@ -144,7 +144,7 @@ void GpuKernel::load()
 GpuState GpuKernel::launch(GpuStream stream)
 {
     if (!this->is_compiled()) {
-        LOGERR("Kernel is not compiled yet.");
+        LOG(ERROR, "Kernel is not compiled yet.");
     }
     auto it_ptr = this->ptr_args.begin();
     auto it_off = this->buf_offs.begin();
@@ -163,7 +163,7 @@ GpuState GpuKernel::launch(GpuStream stream)
 int GpuKernel::get_function_attribute(CUfunction_attribute attr) const
 {
     if (this->kernel == nullptr) {
-        LOGERR("Kernel is not compiled yet.");
+        LOG(ERROR, "Kernel is not compiled yet.");
     }
     int ret;
     CULOG(cuFuncGetAttribute(&ret, attr, this->kernel));
@@ -268,7 +268,7 @@ void GpuLoopKernel::load()
     GpuKernel::load();
     //
     if (!this->is_compiled()) {
-        LOGERR("Need to compile first before initialization.");
+        LOG(ERROR, "Need to compile first before initialization.");
     }
     if (this->stream != nullptr) {
         // Wait until previous works finish.
@@ -338,15 +338,15 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
 {
     this->elapsed_msec = -1;
     if (!this->is_compiled()) {
-        LOGERR("Need to compile first before initialization.");
+        LOG(ERROR, "Need to compile first before initialization.");
     } else if (stream == nullptr) {
-        LOGERR("Given an invalid stream.");
+        LOG(ERROR, "Given an invalid stream.");
     } else if (this->stream != nullptr) {
         if (this->stream == stream) {
             LOG(WARN, "Ignore launching twice.");
             return CUDA_SUCCESS;
         } else {
-            LOGERR("This loop kernel is already running.");
+            LOG(ERROR, "This loop kernel is already running.");
         }
     }
     if (!disable_timing) {

@@ -22,8 +22,8 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
       imported_rank{imported_rank_}, id{id_}, name{name_}
 {
     if (shape_.size() == 0) {
-        LOGERR("Tensor shape should consist of positive numbers. Given: ",
-               shape_);
+        LOG(ERROR,
+            "Tensor shape should consist of positive numbers. Given: ", shape_);
     } else if (shape_.is_no_dim()) {
         // Assume a single-element constant
         this->shape = {1};
@@ -35,9 +35,10 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
         this->ldims = this->shape;
     } else {
         if (ndims != ldims_.ndims()) {
-            LOGERR("Tensor shape and ldims should have the same number of "
-                   "dimensions. Given: shape ",
-                   this->shape, " ldims ", ldims_);
+            LOG(ERROR,
+                "Tensor shape and ldims should have the same number of "
+                "dimensions. Given: shape ",
+                this->shape, " ldims ", ldims_);
         }
         this->ldims = ldims_;
     }
@@ -49,9 +50,10 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
         this->offs = Dims{dims_vec};
     } else {
         if (ndims != offs_.ndims()) {
-            LOGERR("Tensor shape and offs should have the same number of "
-                   "dimensions. Given: shape ",
-                   this->shape, " offs ", offs_);
+            LOG(ERROR,
+                "Tensor shape and offs should have the same number of "
+                "dimensions. Given: shape ",
+                this->shape, " offs ", offs_);
         }
         this->offs = offs_;
     }
@@ -63,22 +65,23 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
         this->pads = Dims{dims_vec};
     } else {
         if (ndims != pads_.ndims()) {
-            LOGERR("Tensor shape and pads should have the same number of "
-                   "dimensions. Given: shape ",
-                   this->shape, " pads ", pads_);
+            LOG(ERROR,
+                "Tensor shape and pads should have the same number of "
+                "dimensions. Given: shape ",
+                this->shape, " pads ", pads_);
         }
         this->pads = pads_;
     }
     for (int i = 0; i < ndims; ++i) {
         if (this->ldims[i] % this->pads[i] != 0) {
-            LOGERR("Tensor ldims should be a multiple of pads. ldims ",
-                   this->ldims, " pads ", this->pads);
+            LOG(ERROR, "Tensor ldims should be a multiple of pads. ldims ",
+                this->ldims, " pads ", this->pads);
         }
     }
     for (int i = 0; i < ndims; ++i) {
         if (this->offs[i] + this->shape[i] > this->ldims[i]) {
-            LOGERR("Tensor exceeds the memory boundary. offs ", this->offs,
-                   " shape ", this->shape, " ldims ", this->ldims);
+            LOG(ERROR, "Tensor exceeds the memory boundary. offs ", this->offs,
+                " shape ", this->shape, " ldims ", this->ldims);
         }
     }
 }
