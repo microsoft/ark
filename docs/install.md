@@ -90,6 +90,8 @@ If you want to use only the core C++ interfaces, follow the instructions below.
 
 1. Go to the repo root directory and configure CMake. Replace `CMAKE_INSTALL_PREFIX` with your desired installation directory.
 
+    **NOTE:** if you install ARK C++ for debugging purposes, use `-DCMAKE_BUILD_TYPE=Debug` option.
+
     ```bash
     mkdir build
     cd build
