@@ -20,8 +20,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 
         ark::Executor exe{0, 0, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
-        exe.tensor_memcpy(data, send_data.get(),
-                          mat_size * sizeof(ark::half_t));
+        data->write(send_data.get());
         exe.launch();
         exe.run(1);
         exe.stop();
@@ -41,8 +40,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         exe.stop();
 
         auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-        exe.tensor_memcpy(recv_data.get(), recvbuf,
-                          mat_size * sizeof(ark::half_t));
+        recvbuf->read(recv_data.get());
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data[i]) {
@@ -78,15 +76,13 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
 
         ark::Executor exe{0, 0, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
-        exe.tensor_memcpy(data, send_data_0.get(),
-                          mat_size * sizeof(ark::half_t));
+        data->write(send_data_0.get());
         exe.launch();
         exe.run(1);
         exe.stop();
 
         auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-        exe.tensor_memcpy(recv_data.get(), recvbuf,
-                          mat_size * sizeof(ark::half_t));
+        recvbuf->read(recv_data.get());
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data_1[i]) {
@@ -109,15 +105,13 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
 
         ark::Executor exe{1, 1, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
-        exe.tensor_memcpy(data, send_data_1.get(),
-                          mat_size * sizeof(ark::half_t));
+        data->write(send_data_1.get());
         exe.launch();
         exe.run(1);
         exe.stop();
 
         auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-        exe.tensor_memcpy(recv_data.get(), recvbuf,
-                          mat_size * sizeof(ark::half_t));
+        recvbuf->read(recv_data.get());
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data_0[i]) {
@@ -158,15 +152,13 @@ ark::unittest::State test_sendrecv_mm_4gpus()
             ark::Executor exe{gpu_id, gpu_id, gpu_num, m,
                               "test_sendrecv_mm_copy"};
             exe.compile();
-            exe.tensor_memcpy(data, send_data[gpu_id].get(),
-                              mat_size * sizeof(ark::half_t));
+            data->write(send_data[gpu_id].get());
             exe.launch();
             exe.run(1);
             exe.stop();
 
             auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-            exe.tensor_memcpy(recv_data.get(), recvbuf,
-                              mat_size * sizeof(ark::half_t));
+            recvbuf->read(recv_data.get());
 
             auto &gt = send_data[(gpu_id - 1 + gpu_num) % gpu_num];
             for (int i = 0; i < mat_size; i++) {

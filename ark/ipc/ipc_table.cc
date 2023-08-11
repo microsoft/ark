@@ -28,7 +28,7 @@ IpcTable::IpcTable(const string &name_, int rank_, size_t elem_bytes_)
 void *IpcTable::add_entry(int rank, const string &key)
 {
     if (key.find(' ') != string::npos) {
-        LOGERR("the key should not contain any blank character.");
+        LOG(ERROR, "the key should not contain any blank character.");
     }
     if (rank == this->rank) {
         auto &rank_map = this->maps[rank];
@@ -105,7 +105,7 @@ void *IpcTable::get_entry(int rank, const string &key)
     }
     auto &rank_map = this->maps[rank];
     if (rank_map.find(key) == rank_map.end()) {
-        LOGERR("the entry does not exist: rank=", rank, ", key=", key);
+        LOG(ERROR, "the entry does not exist: rank=", rank, ", key=", key);
     }
     return rank_map[key];
 }

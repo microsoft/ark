@@ -10,22 +10,16 @@
 
 namespace py = pybind11;
 
-void tensor_memcpy_host_to_device(ark::Executor *executor, ark::Tensor *tns,
-                                  py::buffer host_buffer)
+void tensor_write(ark::Tensor *tns, py::buffer host_buffer)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = tns->shape_bytes();
-    void *host_buffer_ptr = info.ptr;
-    executor->tensor_memcpy(tns, (const void *)host_buffer_ptr, bytes);
+    tns->write(info.ptr);
 }
 
-void tensor_memcpy_device_to_host(ark::Executor *executor,
-                                  py::buffer host_buffer, ark::Tensor *tns)
+void tensor_read(ark::Tensor *tns, py::buffer host_buffer)
 {
     py::buffer_info info = host_buffer.request();
-    size_t bytes = tns->shape_bytes();
-    void *host_buffer_ptr = info.ptr;
-    executor->tensor_memcpy((void *)host_buffer_ptr, tns, bytes);
+    tns->read(info.ptr);
 }
 
 PYBIND11_MODULE(_ark_core, m)
@@ -115,14 +109,19 @@ PYBIND11_MODULE(_ark_core, m)
                                })
         .def_property_readonly("type",
                                [](const ark::Tensor &t) { return t.type; })
+        .def("write", &tensor_write, py::arg("buf"),
+             "Copy contiguous data from a host buffer to the given tensor's "
+             "(possibly non-contiguous) data range.")
+        .def("read", &tensor_read, py::arg("buf"),
+             "Copy (possibly non-contiguous) data from a tensor on GPU to a "
+             "contiguous host buffer.")
+        .def("clear", &ark::Tensor::clear)
         .def("offset", &ark::Tensor::offset, py::arg("i0") = 0,
              py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
         .def("size", &ark::Tensor::size,
              "Number of elements in the tensor excluding padding.")
         .def("ndims", &ark::Tensor::ndims,
              "Number of dimensions in the tensor.")
-        .def("padded_shape", &ark::Tensor::padded_shape,
-             "Shape of the tensor including padding.")
         .def("type_bytes", &ark::Tensor::type_bytes,
              "Number of bytes of each element in the tensor.")
         .def("shape_bytes", &ark::Tensor::shape_bytes,
@@ -372,17 +371,5 @@ PYBIND11_MODULE(_ark_core, m)
         .def("stop", &ark::Executor::stop,
              "Stop the model and return the elapsed time in milliseconds. Once "
              "this is called, we need to call `launch()` again to run the "
-             "model again.")
-        .def("tensor_memcpy_host_to_device", &tensor_memcpy_host_to_device,
-             "Copy contiguous data from a host buffer to the given tensor's "
-             "(possibly non-contiguous) data range on GPU.",
-             py::arg("tns"), py::arg("src"))
-        .def("tensor_memcpy_device_to_host", &tensor_memcpy_device_to_host,
-             "Copy (possibly non-contiguous) data from a tensor on GPU to a "
-             "contiguous host buffer. The given number of bytes is copied, in "
-             "order of appearance on the memory. This function assumes that "
-             "`dst` is large enough to hold the data.",
-             py::arg("dst"), py::arg("tns"))
-        .def("tensor_clear", &ark::Executor::tensor_clear,
-             "Set all bytes of `tns` into zero.", py::arg("tns"));
+             "model again.");
 }

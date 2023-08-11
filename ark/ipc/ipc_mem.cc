@@ -146,21 +146,21 @@ void *IpcMem::alloc(size_t bytes)
         if (fd == -1) {
             fd = ipc_shm_open(data_name);
             if (fd == -1) {
-                LOGERR("ipc_shm_open: ", strerror(errno), " (", errno, ")");
+                LOG(ERROR, "ipc_shm_open: ", strerror(errno), " (", errno, ")");
             }
         }
     } else if (this->create) {
         // Open the existing data file.
         fd = ipc_shm_open(data_name);
         if (fd == -1) {
-            LOGERR("ipc_shm_open: ", strerror(errno), " (", errno, ")");
+            LOG(ERROR, "ipc_shm_open: ", strerror(errno), " (", errno, ")");
         }
     } else {
         // Wait until the data file appears.
         fd = ipc_shm_open_blocking(data_name);
         if (fd == -1) {
-            LOGERR("ipc_shm_open_blocking: ", strerror(errno), " (", errno,
-                   ")");
+            LOG(ERROR, "ipc_shm_open_blocking: ", strerror(errno), " (", errno,
+                ")");
         }
     }
     if (this->create) {

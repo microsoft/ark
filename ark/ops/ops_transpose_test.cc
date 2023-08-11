@@ -26,7 +26,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
     auto data_in = ark::utils::rand_array<T>(n * c * h * w, 0.01);
     T *in_ptr = data_in.get();
 
-    exe.tensor_memcpy(tns_in, in_ptr, n * c * h * w * sizeof(T));
+    tns_in->write(in_ptr);
 
     exe.launch();
     exe.run(1);
@@ -35,7 +35,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
     // Copy results of the loop kernel routine into CPU memory.
     T *res = (T *)malloc(n * c * h * w * sizeof(T));
     UNITTEST_NE(res, (T *)nullptr);
-    exe.tensor_memcpy(res, tns_out, n * c * h * w * sizeof(T));
+    tns_out->read(res);
 
     // int on = tns_in->shape[pn];
     ark::DimType oc = tns_in->shape[pc];

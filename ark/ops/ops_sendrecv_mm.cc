@@ -4,7 +4,6 @@
 #include "env.h"
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
 #include <cassert>
 
 namespace ark {
@@ -143,19 +142,19 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
     }
     LOG(DEBUG, "send_mm", input->shape, " ", id, " ", gpu_dst, " ", bytes);
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOGERR("invalid output shape: ", output->shape);
+        LOG(ERROR, "invalid output shape: ", output->shape);
     }
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
@@ -180,7 +179,7 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
@@ -189,12 +188,12 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     input->exported = true;
 
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOGERR("invalid output shape: ", output->shape);
+        LOG(ERROR, "invalid output shape: ", output->shape);
     }
     // use a tensor as recvbuf to store the received data, the size of the
     // recvbuf is twice of the input

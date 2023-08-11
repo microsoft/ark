@@ -14,14 +14,14 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
 {
     assert(input != nullptr);
     if (output != nullptr) {
-        LOGERR("all_reduce output is not supported");
+        LOG(ERROR, "all_reduce output is not supported");
     }
     LOG(DEBUG, "all_reduce ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
-        LOGERR("supports only 1D input");
+        LOG(ERROR, "supports only 1D input");
     }
     if (math::pad(input->shape[0], input->pads[0]) < (size_t)input->ldims[0]) {
-        LOGERR("all_reduce of a split tensor is not supported");
+        LOG(ERROR, "all_reduce of a split tensor is not supported");
     }
 
     int base = this->impl->next_eid;
