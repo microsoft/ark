@@ -95,7 +95,7 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     make -j ut
     ```
 
-    **NOTE:** currently unit tests require at least 4 GPUs in the system for communication tests.
+    **NOTE:** currently unit tests require at least 4 GPUs in the system for communication tests. GPUs also need to be peer-to-peer accessible (e.g., on the same PCIe switch or using NVLink).
 
     Lock GPU clock frequency for stable test results:
 
