@@ -228,7 +228,7 @@ const string gpu_compile(const vector<string> &codes,
                 "--define-macro=ARK_COMM_SW=" << (int)use_comm_sw << " "
                 "-I" << ark_root << "/include "
                 "-I" << ark_root << "/include/kernels "
-                "-I /usr/local/mscclpp/include "
+                "-I" << get_env().mscclpp_include_dir << " "
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "
                 "-o " << item.second << ".cubin "

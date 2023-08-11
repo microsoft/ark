@@ -40,6 +40,8 @@ struct Env
     std::string shm_name_prefix;
     // Use MSCCL++.
     bool use_mscclpp;
+    // MSCCL++ include directory path.
+    std::string mscclpp_include_dir;
     // MSCCL++ bootstrap port.
     int mscclpp_port;
 };

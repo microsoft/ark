@@ -19,6 +19,7 @@ using namespace std;
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT true
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_USE_MSCCLPP true
+#define DEFAULT_ARK_MSCCLPP_INCLUDE_DIR "/usr/local/mscclpp/include"
 #define DEFAULT_ARK_MSCCLPP_PORT 50051
 
 namespace ark {
@@ -121,6 +122,13 @@ Env::Env()
         this->use_mscclpp = true;
     } else {
         this->use_mscclpp = false;
+    }
+    // Get the MSCCL++ include directory path.
+    const char *mscclpp_include_dir_ca = getenv("ARK_MSCCLPP_INCLUDE_DIR");
+    if (mscclpp_include_dir_ca == nullptr) {
+        this->mscclpp_include_dir = DEFAULT_ARK_MSCCLPP_INCLUDE_DIR;
+    } else {
+        this->mscclpp_include_dir = mscclpp_include_dir_ca;
     }
     // Get the port number of MSCCL++.
     const char *mscclpp_port_ca = getenv("ARK_MSCCLPP_PORT");

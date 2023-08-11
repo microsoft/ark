@@ -5,7 +5,3 @@
 [submodule "third_party/gpudma"]
 	path = third_party/gpudma
 	url = https://github.com/karakozov/gpudma
-
-[submodule "third_party/mscclpp"]
-	path = third_party/mscclpp
-	url = git@github.com:microsoft/mscclpp.git
