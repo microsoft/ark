@@ -253,7 +253,7 @@ const string gpu_compile(const vector<string> &codes,
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, endl, exec_print_str, endl);
+                LOG(ERROR, endl, exec_cmd.str(), endl, exec_print_str, endl);
             }
         });
     string cu_file_path = items[0].second + ".cu";

@@ -407,7 +407,7 @@ void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
     }
 
 #ifdef ARK_USE_MSCCLPP
-    if (get_env().use_mscclpp) {
+    if (get_env().use_mscclpp && data_mem->get_bytes() > 0) {
         // need to setup registered memory for the communicator
         int num_ranks_per_node = get_env().num_ranks_per_host;
         const int thisNode = rank / num_ranks_per_node;
