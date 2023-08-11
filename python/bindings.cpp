@@ -346,8 +346,7 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("sid"), py::arg("dst_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "send_mscclpp")
-        .def("send_done_mscclpp", &ark::Model::send_done_mscclpp,
-             "",
+        .def("send_done_mscclpp", &ark::Model::send_done_mscclpp, "",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("dst_rank"), py::arg("output") = nullptr,
              py::arg("name") = "send_done_mscclpp")

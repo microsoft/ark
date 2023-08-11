@@ -57,7 +57,9 @@ def main(rank, mat_b_data):
     rt.launch()
 
     if rank == 0:
-        mat_a_data = np.random.uniform(low=-1.0, high=1.0, size=(256, C_DIM)).astype(np.float16)
+        mat_a_data = np.random.uniform(
+            low=-1.0, high=1.0, size=(256, C_DIM)
+        ).astype(np.float16)
         mat_a.from_numpy(mat_a_data)
     mat_b.from_numpy(mat_b_data)
 
@@ -73,7 +75,9 @@ def main(rank, mat_b_data):
 
         for i in range(256):
             try:
-                np.testing.assert_allclose(result[i], ground_truth[i], rtol=0.01, atol=atol)
+                np.testing.assert_allclose(
+                    result[i], ground_truth[i], rtol=0.01, atol=atol
+                )
             except AssertionError as e:
                 print(f"i={i}")
                 print(mat_a_part1.to_numpy())
@@ -85,7 +89,9 @@ def main(rank, mat_b_data):
 if __name__ == "__main__":
     ark.init()
 
-    mat_b_data = np.random.uniform(low=-1.0, high=1.0, size=(C_DIM, C_DIM)).astype(np.float16)
+    mat_b_data = np.random.uniform(
+        low=-1.0, high=1.0, size=(C_DIM, C_DIM)
+    ).astype(np.float16)
     proc0 = mp.Process(target=main, args=(0, mat_b_data))
     proc1 = mp.Process(target=main, args=(1, mat_b_data))
     proc0.start()
