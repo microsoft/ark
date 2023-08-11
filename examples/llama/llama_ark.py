@@ -47,7 +47,15 @@ class Linear(ark.Module):
         self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], ark.FP32))
 
     def forward(self, x):
-        return ark.matmul(x, self.weight, transpose_b=True)
+        # TODO: change this into ark.matmul(x, self.weight, transpose_b=True) after transpose_b is supported
+        weight_reshape = ark.reshape(
+            self.weight, [1, 1, self.weight.shape[0], self.weight.shape[1]]
+        )
+        weight_transpose = ark.transpose(weight_reshape, [0, 1, 3, 2])
+        weight_transpose_reshape = ark.reshape(
+            weight_transpose, [self.weight.shape[1], self.weight.shape[0]]
+        )
+        return ark.matmul(x, weight_transpose_reshape)
 
 
 class Silu(ark.Module):

@@ -238,6 +238,12 @@ def transpose(
     """
     if output is not None:
         output = output._tensor
+    if isinstance(perm, list):
+        # only support tensors with up to 4 dimensions
+        if len(perm) > 4:
+            logging.error("Only support tensors with up to 4 dimensions")
+            raise ValueError("Only support tensors with up to 4 dimensions")
+        perm = Dims(*perm)
     _tensor = Model.get_global_model().transpose(
         input._tensor, perm, output, name
     )
