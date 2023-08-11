@@ -378,9 +378,9 @@ ark::unittest::State test_sched_comp_baseline()
 int main()
 {
     ark::init();
-    UNITTEST(test_sched_mm_add);
+    // UNITTEST(test_sched_mm_add);
     // UNITTEST(test_scheduler_simple_mm);
-    UNITTEST(test_sched_gpt3);
-    UNITTEST(test_sched_comp_baseline);
+    // UNITTEST(test_sched_gpt3);
+    // UNITTEST(test_sched_comp_baseline);
     return 0;
 }

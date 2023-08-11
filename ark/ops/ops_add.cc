@@ -3,7 +3,6 @@
 
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
 
 using namespace std;
 

@@ -414,11 +414,11 @@ void DefaultScheduler::configure_gpu_buf(
             } else if (op->type == OP_SEND_MM) {
                 int sid;
                 int dst_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&dst_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&dst_gid, 1);
                 // import the recvbuf, the recvbuf should be allocated on the
                 // receiver GPU
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
                                              recvbuf->buf, sid, 0);
 
@@ -426,23 +426,23 @@ void DefaultScheduler::configure_gpu_buf(
                 // be exported to the recv GPU, since the sid of the
                 // send_ready_flag should not be the same as the recvBuf, so I
                 // use the sid+128 as the sid of the send_ready_flag
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 export_tns_sids[send_ready_flag->buf].emplace_back(
                     send_ready_flag, sid + send_ready_flag_sid_offset);
             } else if (op->type == OP_RECV_MM) {
                 int sid;
                 int src_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&src_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&src_gid, 1);
                 // configure the recvbuf, the recvbuf needed to be export the to
                 // the sender GPU, the sid is the same as the sid of the send_mm
                 // op and the recv_mm op
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
 
                 // import the send_ready_flag, the send_ready_flag tensor should
                 // be allocated on the sender GPU
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 this->buf_infos.emplace_back(
                     src_gid, send_ready_flag->shape_bytes(),
                     send_ready_flag->buf, sid + send_ready_flag_sid_offset, 0);

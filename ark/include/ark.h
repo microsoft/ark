@@ -5,6 +5,7 @@
 #define ARK_H
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -81,15 +82,29 @@ struct Dims
     DimType data[DIMS_LEN];
 };
 
+class Tensor;
+class CodeGenerator;
+class BaseScheduler;
+class SchedOp;
+
 // TensorBuf refers to a data array that can be shared by multiple tensors.
-struct TensorBuf
+class TensorBuf
 {
+  public:
     TensorBuf(const DimType &bytes = 0, int id = -1);
     TensorBuf(const TensorBuf &) = default;
 
     DimType bytes;
     int id;
     bool immutable = false;
+
+  protected:
+    void *buf = nullptr;
+
+    friend class Tensor;
+    friend class CodeGenerator;
+    friend class BaseScheduler;
+    friend class SchedOp;
 };
 
 // Type of tensor data.
@@ -101,67 +116,93 @@ typedef enum
     BYTE,
 } TensorType;
 
-// Tensor is a view of a TensorBuf.
-//
-// Illustration of a single axis of a tensor:
-//
-// 0           off                                                        ldim
-// |------------|-------------shape-------------|---------------------------|
-//               <----------------------------->
-//                  data range of this tensor
-//
-struct Tensor
+std::ostream &operator<<(std::ostream &os, TensorType type);
+
+/// Tensor is a view of a TensorBuf.
+///
+/// Illustration of a single axis of a tensor:
+///
+/// 0           off                                                        ldim
+/// |------------|-------------shape-------------|---------------------------|
+///       ^       <----------------------------->                ^
+///       |          data range of this tensor                   |
+///       +------------------------------------------+-----------+
+///                                                  |
+///                                        We call these "padding".
+///
+class Tensor
 {
-    // Tensor constructor
+  public:
+    /// Tensor constructor.
     Tensor(const Dims &shape, TensorType type, TensorBuf *buf,
            const Dims &ldims, const Dims &offs, const Dims &pads, bool exported,
            int imported_rank, int id, const std::string &name);
     Tensor(const Tensor &) = default;
 
-    void update_pads(const std::vector<DimType> &pads);
-    // Offset to the element [i0][i1][i2][i3] of this tensor in the TensorBuf.
+    /// Offset to the element [i0][i1][i2][i3] of this tensor in the TensorBuf.
+    /// @param i0, i1, i2, i3 The indices of the element.
+    /// @return The offset in the number of elements.
     DimType offset(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
                    DimType i3 = 0) const;
-    // Number of elements in the tensor excluding padding.
+
+    /// Number of elements in the tensor excluding padding.
+    /// @return The number of elements.
     DimType size() const;
-    // Number of dimensions in the tensor.
+
+    /// Number of dimensions of the tensor.
+    /// @return The number of dimensions.
     int ndims() const;
-    // Shape of the tensor including padding.
-    Dims padded_shape() const;
-    // Number of bytes of each element in the tensor.
-    unsigned int type_bytes() const;
-    // Number of bytes of the tensor.
+
+    /// Number of bytes of each element in the tensor.
+    /// @return The number of bytes.
+    int type_bytes() const;
+
+    /// Number of bytes in the tensor's data range.
+    /// @return The number of bytes.
     DimType shape_bytes() const;
-    // Should be the same as the number of bytes of the TensorBuf.
+
+    /// Equivalent as the number of bytes of the underlying @ref TensorBuf.
+    /// @return The number of bytes.
     DimType ldims_bytes() const;
-    // Offset in bytes.
+
+    /// Offset in bytes.
+    /// @param i0, i1, i2, i3 The indices of the element.
+    /// @return The offset in bytes.
     DimType offset_bytes(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
                          DimType i3 = 0) const;
-    // TODO: deprecate this function.
+
+    /// Checks if the tensor's data range is sequential in memory.
+    /// @return True if the tensor is sequential in memory.
     bool is_sequential() const;
 
-    // TensorBuf that this tensor is associated with
+    /// TensorBuf that this tensor is associated with
     TensorBuf *buf;
-    // Data type of each element in the tensor
+    /// Data type of each element in the tensor
     TensorType type;
-    // Shape of the tensor
+    /// Shape of the tensor
     Dims shape;
-    // Leading dimensions of the underlying data array
+    /// Leading dimensions of the underlying data array
     Dims ldims;
-    // Offset of the tensor in the underlying data array
+    /// Offset of the tensor in the underlying data array
     Dims offs;
-    // Unit dimensions of the underlying data array. ldims[x] should be always
-    // divided by pads[x].
+    /// Unit dimensions of the underlying data array. ldims[x] should be always
+    /// divided by pads[x].
     Dims pads;
-    // Whether this tensor is accessed by remote devices
+    /// Whether this tensor is local and accessed by remote devices.
     bool exported;
-    // If imported_rank is non-negative, the tensor is imported from another GPU
-    // and don't need to allocate a TensorBuf for it.
+    /// If imported_rank is non-negative, the tensor is imported from another
+    /// GPU and don't need to allocate a TensorBuf for it.
     int imported_rank;
-    // Unique id of this tensor
+    /// Unique id of this tensor
     int id;
-    // Name of this tensor
+    /// Name of this tensor
     const std::string name;
+
+  protected:
+    void update_pads(const std::vector<DimType> &pads);
+
+    friend class DefaultScheduler;
+    friend class SchedOp;
 };
 
 class Model
@@ -174,7 +215,36 @@ class Model
 
     ~Model();
 
-    // construct a tensor with given shape and data type.
+    /// Returns a tensor object.
+    ///
+    /// @param shape Shape of the tensor, where the data of interest is.
+    /// @param type Type of the tensor data.
+    /// @param buf The @ref TensorBuf that holds the entire data including the
+    /// padding.
+    /// @param ldims Leading dimensions (ldim) of the tensor, which may be
+    /// different from the shape. @p ldims can be considered as the actual shape
+    /// of the underlying data buffer (@ref TensorBuf).
+    /// @param offs Offsets of the tensor. The data of interest starts at
+    /// @p offs and ends at @p offs + @p shape.
+    /// @param pads If a dimension of @p pads is set to larger than 1, the
+    /// corresponding ldim will be set to the minimum multiple of @p pads that
+    /// is larger than or equal to the previous ldim. Padding is accumulated
+    /// across all tensors that share the same @ref TensorBuf. For example, if
+    /// one tensor sets the last dimension of @p pads to 2, and another tensor
+    /// sets the last dimension of @p pads to 3, then the corresponding ldim
+    /// will be the minimum multiple of 2x3=6 that is larger than or equal to
+    /// the corresponding dimension of @p offs + @p shape.
+    /// @param exported Whether the tensor is exported to other processes. This
+    /// should be set to true if the tensor is used as an input or output of a
+    /// remote process.
+    /// @param imported_rank The rank of the process that exports the tensor.
+    /// If @p imported_rank is set to a non-negative value, the tensor will be
+    /// considered as a remote tensor, hence no memory will be allocated for it
+    /// on the local. @p imported_rank should be set to -1 if the tensor resides
+    /// on the local.
+    /// @param name Name of the tensor.
+    /// @return Pointer to a tensor object.
+    ///
     Tensor *tensor(const Dims &shape, TensorType dtype,
                    TensorBuf *buf = nullptr, const Dims &ldims = {},
                    const Dims &offs = {}, const Dims &pads = {},
@@ -243,11 +313,6 @@ class Model
                    int pad_width, int dilation_height, int dilation_width,
                    Tensor *output = nullptr,
                    const std::string &name = "im2col");
-    // Implements a 2D convolution layer using the 'im2col' method.
-    Tensor *conv2d(Tensor *input, DimType in_channels, DimType out_channels,
-                   DimType kernel_size, DimType stride, DimType padding,
-                   bool bias = false, Tensor *output = nullptr,
-                   const std::string &name = "conv2d");
     // Applies max-pooling on the `input` tensor using `kernel_size` and
     // `stride`, reducing its spatial size. The output shape is calculated based
     // on the input tensor's shape and the stride value as follows: {is[0],
