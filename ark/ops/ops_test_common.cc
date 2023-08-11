@@ -6,6 +6,7 @@
 #include "include/ark_utils.h"
 #include "logging.h"
 #include "unittest/unittest_utils.h"
+#include <cstring>
 
 using namespace std;
 
@@ -140,3 +141,153 @@ void test_bcast_fp16(string op_name, ark::DimType bs, ark::DimType n,
 {
     test_bcast_internal<ark::half_t>(op_name, ark::FP16, bs, n, m, overwrite);
 }
+
+namespace ark {
+
+OpsTestResult op_test(const std::string &test_name, Model &model,
+                      const std::vector<Tensor *> &inputs,
+                      const std::vector<Tensor *> &outputs,
+                      OpsTestBaseline baseline, int num_warps_per_sm,
+                      bool print_on_error)
+{
+    Executor exe{0, 0, 1, model, test_name, num_warps_per_sm};
+    exe.compile();
+
+    // Set random data.
+    std::vector<void *> input_data;
+    for (auto t : inputs) {
+        void *buf = ::malloc(t->shape_bytes());
+        UNITTEST_NE(buf, (void *)nullptr);
+
+        if (t->type == FP32) {
+            ::memcpy(buf, utils::rand_floats(t->shape.size(), 0.01).get(),
+                     t->shape_bytes());
+        } else if (t->type == FP16) {
+            ::memcpy(buf, utils::rand_halfs(t->shape.size(), 0.01).get(),
+                     t->shape_bytes());
+        } else if (t->type == INT32) {
+            ::memcpy(buf, utils::rand_array<int>(t->shape.size(), 10000).get(),
+                     t->shape_bytes());
+        } else if (t->type == BYTE) {
+            ::memcpy(buf, utils::rand_bytes(t->shape.size()).get(),
+                     t->shape_bytes());
+        } else {
+            LOG(ERROR, "Unsupported data type: ", t->type);
+        }
+        t->write(buf);
+        input_data.push_back(buf);
+    }
+
+    exe.launch();
+
+    // Correctness test.
+    exe.run(1);
+    exe.wait();
+
+    // Copy results of the loop kernel routine into CPU memory.
+    std::vector<void *> res;
+    for (auto t : outputs) {
+        void *buf = ::malloc(t->shape_bytes());
+        UNITTEST_NE(buf, (void *)nullptr);
+        t->read(buf);
+        res.push_back(buf);
+    }
+
+    // Compare results with the ground truth.
+    std::vector<void *> gt;
+    for (auto t : outputs) {
+        void *buf = ::malloc(t->shape_bytes());
+        UNITTEST_NE(buf, (void *)nullptr);
+        gt.push_back(buf);
+    }
+    baseline(gt, input_data);
+    OpsTestResult result;
+    for (size_t i = 0; i < outputs.size(); i++) {
+        std::pair<float, float> p;
+        if (outputs[i]->type == FP32) {
+            p = utils::tensor_compare(static_cast<float *>(gt[i]),
+                                      static_cast<float *>(res[i]),
+                                      outputs[i]->shape, print_on_error);
+        } else if (outputs[i]->type == FP16) {
+            p = utils::tensor_compare(static_cast<ark::half_t *>(gt[i]),
+                                      static_cast<ark::half_t *>(res[i]),
+                                      outputs[i]->shape, print_on_error);
+        } else if (outputs[i]->type == INT32) {
+            p = utils::tensor_compare(static_cast<int *>(gt[i]),
+                                      static_cast<int *>(res[i]),
+                                      outputs[i]->shape, print_on_error);
+        } else if (outputs[i]->type == BYTE) {
+            p = utils::tensor_compare(static_cast<uint8_t *>(gt[i]),
+                                      static_cast<uint8_t *>(res[i]),
+                                      outputs[i]->shape, print_on_error);
+        } else {
+            LOG(ERROR, "Unsupported data type: ", outputs[i]->type);
+        }
+        result.mse.push_back(p.first);
+        result.max_err.push_back(p.second);
+    }
+
+    // Throughput test.
+
+    // Rough measure.
+    int warmup_iter = 3;
+    double target_sec = 2;
+    double start = cpu_timer();
+    exe.run(warmup_iter);
+    exe.wait();
+    double end = cpu_timer();
+
+    if (end - start > target_sec) {
+        // Warm-up was long enough.
+        result.elapsed_msec = (end - start) * 1000 / warmup_iter;
+    } else {
+        int iter = int(target_sec / (end - start));
+        start = cpu_timer();
+        exe.run(iter);
+        exe.wait();
+        end = cpu_timer();
+        result.elapsed_msec = (end - start) * 1000 / iter;
+    }
+
+    exe.stop();
+
+    // Free resources
+    for (auto t : inputs) {
+        free(input_data[t->id]);
+    }
+    for (auto t : outputs) {
+        free(res[t->id]);
+        free(gt[t->id]);
+    }
+
+    return result;
+}
+
+OpsTestResult op_test_8(const std::string &test_name, Model &model,
+                        const std::vector<Tensor *> &inputs,
+                        const std::vector<Tensor *> &outputs,
+                        OpsTestBaseline baseline, bool print_on_error)
+{
+    return op_test(test_name, model, inputs, outputs, baseline, 8,
+                   print_on_error);
+}
+
+OpsTestResult op_test_16(const std::string &test_name, Model &model,
+                         const std::vector<Tensor *> &inputs,
+                         const std::vector<Tensor *> &outputs,
+                         OpsTestBaseline baseline, bool print_on_error)
+{
+    return op_test(test_name, model, inputs, outputs, baseline, 16,
+                   print_on_error);
+}
+
+OpsTestResult op_test_32(const std::string &test_name, Model &model,
+                         const std::vector<Tensor *> &inputs,
+                         const std::vector<Tensor *> &outputs,
+                         OpsTestBaseline baseline, bool print_on_error)
+{
+    return op_test(test_name, model, inputs, outputs, baseline, 32,
+                   print_on_error);
+}
+
+} // namespace ark

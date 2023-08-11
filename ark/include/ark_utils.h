@@ -51,6 +51,8 @@ template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
 std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
 // Return a random float array.
 std::unique_ptr<float[]> rand_floats(size_t num, float max_val);
+// Return a random bytes array.
+std::unique_ptr<uint8_t[]> rand_bytes(size_t num);
 
 // Return a half_t range array.
 std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
@@ -103,6 +105,10 @@ void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
 std::pair<float, float> tensor_compare(half_t *ground_truth, half_t *res,
                                        Dims shape, bool print);
 std::pair<float, float> tensor_compare(float *ground_truth, float *res,
+                                       Dims shape, bool print);
+std::pair<float, float> tensor_compare(int *ground_truth, int *res, Dims shape,
+                                       bool print);
+std::pair<float, float> tensor_compare(uint8_t *ground_truth, uint8_t *res,
                                        Dims shape, bool print);
 
 // Spawn a process that runs `func`. Returns PID of the spawned process.

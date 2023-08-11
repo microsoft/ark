@@ -123,6 +123,14 @@ unique_ptr<float[]> rand_floats(size_t num, float max_val)
     return rand_array<float>(num, max_val);
 }
 
+/// Return a random bytes array.
+/// @param num Number of elements
+/// @return std::unique_ptr<uint8_t[]>
+unique_ptr<uint8_t[]> rand_bytes(size_t num)
+{
+    return rand_array<uint8_t>(num, 255);
+}
+
 /// Return an array of values starting from `begin` with difference `diff`.
 /// @tparam T Type of the array
 /// @param num Number of elements
@@ -407,6 +415,30 @@ std::pair<float, float> tensor_compare(float *ground_truth, float *res,
                                        Dims shape, bool print = false)
 {
     return tensor_compare<float>(ground_truth, res, shape, print);
+}
+
+/// Return mean squared error and max error rate between two int tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+std::pair<float, float> tensor_compare(int *ground_truth, int *res, Dims shape,
+                                       bool print = false)
+{
+    return tensor_compare<int>(ground_truth, res, shape, print);
+}
+
+/// Return mean squared error and max error rate between two byte tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+std::pair<float, float> tensor_compare(uint8_t *ground_truth, uint8_t *res,
+                                       Dims shape, bool print = false)
+{
+    return tensor_compare<uint8_t>(ground_truth, res, shape, print);
 }
 
 /// Spawn a process that runs `func`.
