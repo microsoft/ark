@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "tensor.h"
+#include "ark.h"
 #include "logging.h"
 #include "math.h"
+#include <cassert>
 #include <string>
-
-using namespace std;
 
 namespace ark {
 
@@ -17,7 +16,8 @@ TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_}
 // Tensor constructor
 Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
                const Dims &ldims_, const Dims &offs_, const Dims &pads_,
-               bool exported_, int imported_rank_, int id_, const string &name_)
+               bool exported_, int imported_rank_, int id_,
+               const std::string &name_)
     : buf{buf_}, type{type_}, exported{exported_},
       imported_rank{imported_rank_}, id{id_}, name{name_}
 {
@@ -43,7 +43,7 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
         this->ldims = ldims_;
     }
     if (offs_.is_no_dim()) {
-        vector<DimType> dims_vec;
+        std::vector<DimType> dims_vec;
         for (int i = 0; i < ndims; ++i) {
             dims_vec.push_back(0);
         }
@@ -58,7 +58,7 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
         this->offs = offs_;
     }
     if (pads_.is_no_dim()) {
-        vector<DimType> dims_vec;
+        std::vector<DimType> dims_vec;
         for (int i = 0; i < ndims; ++i) {
             dims_vec.push_back(1);
         }
@@ -87,10 +87,10 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
 }
 
 //
-void Tensor::update_pads(const vector<DimType> &pads_)
+void Tensor::update_pads(const std::vector<DimType> &pads_)
 {
     int ndims = this->ldims.ndims();
-    vector<DimType> tmp;
+    std::vector<DimType> tmp;
     for (int i = 0; i < ndims - (int)pads_.size(); ++i) {
         tmp.emplace_back(1);
     }
@@ -136,19 +136,8 @@ int Tensor::ndims() const
     return this->shape.ndims();
 }
 
-// Shape of the tensor including padding.
-Dims Tensor::padded_shape() const
-{
-    std::vector<DimType> padded_shape;
-    for (int i = 0; i < this->shape.ndims(); ++i) {
-        padded_shape.push_back(math::pad(this->shape[i], this->pads[i]));
-    }
-    Dims ps{padded_shape};
-    return ps;
-}
-
 // Number of bytes of each element in the tensor.
-unsigned int Tensor::type_bytes() const
+int Tensor::type_bytes() const
 {
     if (this->type == FP16) {
         return 2;
@@ -181,7 +170,6 @@ DimType Tensor::offset_bytes(DimType i0, DimType i1, DimType i2,
     return this->offset(i0, i1, i2, i3) * this->type_bytes();
 }
 
-// TODO: deprecate this function.
 bool Tensor::is_sequential() const
 {
     // if a tensor's last (ndims-1) shape is the same as its ldims, the tensor
@@ -195,22 +183,25 @@ bool Tensor::is_sequential() const
     return true;
 }
 
-const string type_str(const TensorType &type)
-{
-    if (type == FP16)
-        return "fp16";
-    else if (type == FP32)
-        return "fp32";
-    else if (type == INT32)
-        return "int32";
-    else if (type == BYTE)
-        return "byte";
-    return "none";
-}
-
 std::ostream &operator<<(std::ostream &os, TensorType type)
 {
-    os << type_str(type);
+    switch (type) {
+    case BYTE:
+        os << "byte";
+        break;
+    case INT32:
+        os << "int32";
+        break;
+    case FP16:
+        os << "fp16";
+        break;
+    case FP32:
+        os << "fp32";
+        break;
+    default:
+        os << "none";
+        break;
+    }
     return os;
 }
 

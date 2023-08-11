@@ -4,7 +4,6 @@
 #include "logging.h"
 #include "math.h"
 #include "model.h"
-#include "tensor.h"
 
 using namespace std;
 

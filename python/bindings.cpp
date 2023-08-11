@@ -121,8 +121,6 @@ PYBIND11_MODULE(_ark_core, m)
              "Number of elements in the tensor excluding padding.")
         .def("ndims", &ark::Tensor::ndims,
              "Number of dimensions in the tensor.")
-        .def("padded_shape", &ark::Tensor::padded_shape,
-             "Shape of the tensor including padding.")
         .def("type_bytes", &ark::Tensor::type_bytes,
              "Number of bytes of each element in the tensor.")
         .def("shape_bytes", &ark::Tensor::shape_bytes,

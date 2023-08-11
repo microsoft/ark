@@ -36,12 +36,6 @@ class Tensor:
         """
         return self._tensor.ndims()
 
-    def padded_shape(self):
-        """
-        Returns the shape of the tensor including padding.
-        """
-        return self._tensor.padded_shape()
-
     def type_bytes(self):
         """
         Returns the number of bytes of each element in the tensor.

@@ -174,18 +174,13 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
         href[i] = 0;
     }
     // Use the CPU-side software communication stack.
-    this->comm_sw = new GpuCommSw{name_,       gpu_mgr_->gpu_id, rank_,
-                                  world_size_, &data_mem,        &sc_rc_mem};
-    assert(this->comm_sw != nullptr);
+    this->comm_sw = std::make_unique<GpuCommSw>(
+        name_, gpu_mgr_->gpu_id, rank_, world_size_, &data_mem, &sc_rc_mem);
 }
 
 //
 GpuMgrCtx::~GpuMgrCtx()
 {
-    //
-    if (this->comm_sw != nullptr) {
-        delete this->comm_sw;
-    }
     //
     for (GpuStream s : this->streams) {
         cuStreamDestroy(s);
@@ -300,12 +295,11 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
         total_bytes = off + sz;
         this->usage.emplace_back(off, off + sz);
     }
-    GpuBuf *buf = new GpuBuf{&this->data_mem, id, off, bytes};
-    assert(buf != nullptr);
-    this->bufs.emplace_back(buf);
-    LOG(DEBUG, "GPU Buffer ", this->name, " ID ", id, " off 0x", hex, off, dec,
-        " bytes ", bytes);
-    return buf;
+    this->bufs.emplace_back(
+        std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
+    LOG(DEBUG, "GPU Buffer ", this->name, " rank ", this->rank, " ID ", id,
+        " off 0x", hex, off, dec, " bytes ", bytes);
+    return this->bufs.back().get();
 }
 
 //
@@ -354,22 +348,17 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
     LOG(DEBUG, "Exported GPU Buffer sid ", sid, " offset ",
-        buf->get_offset() + offset);
+        buf->get_offset() + offset, " rank ", this->rank);
 }
 
 //
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
-    if (this->comm_sw == nullptr) {
-        LOG(ERROR, "mem_import() is supported only for the "
-                   "SW communication stack.");
-    }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
-    GpuBuf *buf = new GpuBuf{dm, sid, 0, bytes};
-    assert(buf != nullptr);
+    this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
     LOG(DEBUG, "Imported GPU Buffer from GPU ", gid, " sid ", sid, " bytes ",
         bytes);
-    this->bufs.emplace_back(buf);
+    GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 
     //
@@ -401,10 +390,8 @@ void GpuMgrCtx::freeze()
     }
 
     //
-    if (this->comm_sw != nullptr) {
-        this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
-        this->comm_sw->launch_request_loop();
-    }
+    this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
+    this->comm_sw->launch_request_loop();
 }
 
 // Write a request.
@@ -423,9 +410,7 @@ void GpuMgrCtx::send(int src, int dst, int rank, size_t bytes)
     db.fields.rank = rank;
     db.fields.len = bytes;
     db.fields.rsv = 0;
-    if (this->comm_sw != nullptr) {
-        this->comm_sw->set_request(db);
-    }
+    this->comm_sw->set_request(db);
 }
 
 //
@@ -452,11 +437,6 @@ GpuPtr GpuMgrCtx::get_data_ref(int gid) const
 {
     if (gid == -1)
         return this->data_mem.ref();
-
-    if (this->comm_sw == nullptr) {
-        LOG(ERROR, "get_data_ref() is supported only for the "
-                   "SW communication stack.");
-    }
     return this->comm_sw->get_data_mem(gid)->ref();
 }
 
@@ -475,10 +455,13 @@ GpuPtr GpuMgrCtx::get_rc_ref(int sid) const
 //
 GpuPtr GpuMgrCtx::get_request_ref() const
 {
-    if (this->comm_sw != nullptr) {
-        return this->comm_sw->get_request_ref();
-    }
-    LOG(ERROR, "Unexpected error.");
+    return this->comm_sw->get_request_ref();
+}
+
+//
+GpuCommSw *GpuMgrCtx::get_comm_sw() const
+{
+    return this->comm_sw.get();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
