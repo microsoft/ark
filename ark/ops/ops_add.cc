@@ -60,20 +60,20 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (input->type != other->type) {
-        LOGERR("input data types mismatch: ", type_str(input->type), ", ",
-               type_str(other->type));
+        LOG(ERROR, "input data types mismatch: ", input->type, ", ",
+            other->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     Dims output_shape = broadcast(input->shape, other->shape);
     if (output == nullptr) {
         output = this->tensor(output_shape, input->type);
     } else if (output->shape != output_shape) {
-        LOGERR("invalid output shape: ", output->shape);
+        LOG(ERROR, "invalid output shape: ", output->shape);
     } else if (output == input) {
         output = this->identity(output);
     }

@@ -129,7 +129,7 @@ int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
     KahyparGraph<SchedTile> kg;
     auto search = this->profiler.wps_prof_results.find(this->num_warps_per_sm);
     if (search == this->profiler.wps_prof_results.end()) {
-        LOGERR("Unexpected error.");
+        LOG(ERROR, "Unexpected error.");
     }
     auto &opseq_perf = search->second;
     for (auto &opseq : depth) {

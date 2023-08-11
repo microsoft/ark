@@ -26,8 +26,8 @@ Dims broadcast(const Dims &dims1, const Dims &dims2)
         } else if (d2 == 1) {
             output_dims_reversed.push_back(d1);
         } else {
-            LOGERR("input and other cannot be broadcasted: ", dims1, ", ",
-                   dims2);
+            LOG(ERROR, "input and other cannot be broadcasted: ", dims1, ", ",
+                dims2);
         }
     }
     std::reverse(output_dims_reversed.begin(), output_dims_reversed.end());
@@ -134,7 +134,7 @@ OpArg::OpArg(const OpArg &arg) : type{arg.type}
     } else if (this->type == OP_ARG_TENSOR) {
         this->val = arg.val;
     } else {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
 }
 OpArg::~OpArg()
@@ -158,7 +158,7 @@ OpArg::~OpArg()
 void OpArg::get(int *arg) const
 {
     if (this->type != OP_ARG_INT) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = *static_cast<int *>(this->val);
 }
@@ -166,7 +166,7 @@ void OpArg::get(int *arg) const
 void OpArg::get(long long int *arg) const
 {
     if (this->type != OP_ARG_INT64) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = *static_cast<long long int *>(this->val);
 }
@@ -174,7 +174,7 @@ void OpArg::get(long long int *arg) const
 void OpArg::get(uint64_t *arg) const
 {
     if (this->type != OP_ARG_UINT64) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = *static_cast<uint64_t *>(this->val);
 }
@@ -182,7 +182,7 @@ void OpArg::get(uint64_t *arg) const
 void OpArg::get(bool *arg) const
 {
     if (this->type != OP_ARG_BOOL) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = *static_cast<bool *>(this->val);
 }
@@ -190,7 +190,7 @@ void OpArg::get(bool *arg) const
 void OpArg::get(float *arg) const
 {
     if (this->type != OP_ARG_FLOAT) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = *static_cast<float *>(this->val);
 }
@@ -198,7 +198,7 @@ void OpArg::get(float *arg) const
 void OpArg::get(Dims *arg) const
 {
     if (this->type != OP_ARG_DIMS) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = *static_cast<Dims *>(this->val);
 }
@@ -206,7 +206,7 @@ void OpArg::get(Dims *arg) const
 void OpArg::get(Tensor **arg) const
 {
     if (this->type != OP_ARG_TENSOR) {
-        LOGERR("invalid argument type ", this->type);
+        LOG(ERROR, "invalid argument type ", this->type);
     }
     *arg = static_cast<Tensor *>(this->val);
 }
@@ -284,10 +284,10 @@ void OpArgs::put(const OpArg &arg)
 void OpArgs::get(int *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_INT) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<int *>(this->args[idx].val);
 }
@@ -295,10 +295,10 @@ void OpArgs::get(int *arg, size_t idx) const
 void OpArgs::get(long long int *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_INT64) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<long long int *>(this->args[idx].val);
 }
@@ -306,10 +306,10 @@ void OpArgs::get(long long int *arg, size_t idx) const
 void OpArgs::get(uint64_t *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_UINT64) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<uint64_t *>(this->args[idx].val);
 }
@@ -317,10 +317,10 @@ void OpArgs::get(uint64_t *arg, size_t idx) const
 void OpArgs::get(bool *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_BOOL) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<bool *>(this->args[idx].val);
 }
@@ -328,10 +328,10 @@ void OpArgs::get(bool *arg, size_t idx) const
 void OpArgs::get(float *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_FLOAT) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<float *>(this->args[idx].val);
 }
@@ -339,10 +339,10 @@ void OpArgs::get(float *arg, size_t idx) const
 void OpArgs::get(Dims *arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_DIMS) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<Dims *>(this->args[idx].val);
 }
@@ -350,10 +350,10 @@ void OpArgs::get(Dims *arg, size_t idx) const
 void OpArgs::get(Tensor **arg, size_t idx) const
 {
     if (this->args.size() <= idx) {
-        LOGERR("invalid argument index ", idx, " size ", this->args.size());
+        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
     }
     if (this->args[idx].type != OP_ARG_TENSOR) {
-        LOGERR("invalid argument type ", this->args[idx].type);
+        LOG(ERROR, "invalid argument type ", this->args[idx].type);
     }
     *arg = static_cast<Tensor *>(this->args[idx].val);
 }
@@ -531,7 +531,7 @@ std::string Op::function_name(const std::string &kernel_name,
             template_args.get(&val, i);
             ss << val;
         } else if (arg.type == OP_ARG_FLOAT) {
-            LOGERR("float template args are not supported");
+            LOG(ERROR, "float template args are not supported");
         } else if (arg.type == OP_ARG_DIMS) {
             Dims val;
             template_args.get(&val, i);
@@ -552,6 +552,8 @@ bool Op::is_virtual() const
 
 bool Op::is_comm() const
 {
+    // NOTE: we treat OP_SEND_MM and OP_RECV_MM as computation as
+    // they run over GPU threads.
     return this->type == OP_SEND || this->type == OP_SEND_DONE ||
            this->type == OP_RECV;
 }

@@ -15,7 +15,7 @@
         if (_e != CUDA_SUCCESS) {                                              \
             const char *_estr;                                                 \
             cuGetErrorString(_e, &_estr);                                      \
-            LOGERR("CUDA error ", _e, " '", _estr, "'");                       \
+            LOG(ark::ERROR, "CUDA error ", _e, " '", _estr, "'");              \
         }                                                                      \
     } while (0)
 
@@ -23,7 +23,8 @@
     do {                                                                       \
         nvmlReturn_t _e = cmd;                                                 \
         if (_e != NVML_SUCCESS) {                                              \
-            LOGERR("NVML error ", _e, " '", nvmlErrorString(_e), "'");         \
+            LOG(ark::ERROR, "NVML error ", _e, " '", nvmlErrorString(_e),      \
+                "'");                                                          \
         }                                                                      \
     } while (0)
 
@@ -31,7 +32,8 @@
     do {                                                                       \
         nvrtcResult _e = cmd;                                                  \
         if (_e != NVRTC_SUCCESS) {                                             \
-            LOGERR("NVRTC error ", _e, " '", nvrtcGetErrorString(_e), "'");    \
+            LOG(ark::ERROR, "NVRTC error ", _e, " '", nvrtcGetErrorString(_e), \
+                "'");                                                          \
         }                                                                      \
     } while (0)
 

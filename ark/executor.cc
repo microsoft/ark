@@ -88,7 +88,7 @@ void Executor::launch()
     this->impl->glk->load();
     GpuState ret = this->impl->glk->launch(this->impl->stream, false);
     if (ret != 0) {
-        LOGERR("failed to launch this executor.");
+        LOG(ERROR, "failed to launch this executor.");
     }
 }
 

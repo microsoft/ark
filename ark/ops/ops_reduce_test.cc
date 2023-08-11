@@ -60,7 +60,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
         tns_x = model.tensor({n, m, k}, ark::FP16);
         tns_y = model.tensor({n, m, 1}, ark::FP16);
     } else {
-        LOGERR("invalid axis");
+        LOG(ark::ERROR, "invalid axis");
     }
 
     model.reduce_sum(tns_x, axis, tns_y);

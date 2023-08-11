@@ -87,7 +87,7 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
             if (it == this->qps.end()) {
                 NetIbQp *qp = this->net_ib_mgr->create_qp();
                 if (qp == nullptr) {
-                    LOGERR("create_qp failed");
+                    LOG(ERROR, "create_qp failed");
                 }
                 this->qps[srinfo.remote_rank] = qp;
             }
@@ -137,13 +137,13 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
         int remote_rank = p.first;
         NetIbQp *qp = p.second;
         if (qp == nullptr) {
-            LOGERR("unexpected error");
+            LOG(ERROR, "unexpected error");
         }
         gi.qpi = qp->get_info();
         s = this->ipc_socket->add_item(
             "gpu_comm_info_" + std::to_string(remote_rank), &gi, sizeof(gi));
         if (s != IpcSocket::State::SUCCESS) {
-            LOGERR("Failed to add gpu_comm_info to ipc_socket");
+            LOG(ERROR, "Failed to add gpu_comm_info to ipc_socket");
         }
     }
 
@@ -212,7 +212,7 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
                 "gpu_comm_info_" + std::to_string(this->rank), &gi_remote,
                 sizeof(gi_remote), true);
             if (s != IpcSocket::State::SUCCESS) {
-                LOGERR("Failed to query gpu_comm_info from ipc_socket");
+                LOG(ERROR, "Failed to query gpu_comm_info from ipc_socket");
             }
 
             ret = qp->rtr(&gi_remote.qpi);
@@ -238,7 +238,7 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
         s = this->ipc_socket->add_item("comm_config_done", &dummy_data,
                                        sizeof(dummy_data));
         if (s != IpcSocket::State::SUCCESS) {
-            LOGERR("Failed to add comm_config_done to ipc_socket");
+            LOG(ERROR, "Failed to add comm_config_done to ipc_socket");
         }
         for (auto &p : this->qps) {
             int remote_rank = p.first;
@@ -251,10 +251,10 @@ void GpuCommSw::configure(vector<pair<int, size_t>> &export_sid_offs,
                 get_host(remote_host_id), port_base + remote_gpu_id,
                 "comm_config_done", &remote_data, sizeof(remote_data), true);
             if (s != IpcSocket::State::SUCCESS) {
-                LOGERR("Failed to query gpu_comm_info from ipc_socket");
+                LOG(ERROR, "Failed to query gpu_comm_info from ipc_socket");
             }
             if (remote_data != dummy_data) {
-                LOGERR("Failed to sync comm_config_done");
+                LOG(ERROR, "Failed to sync comm_config_done");
             }
         }
     }
@@ -276,7 +276,7 @@ void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
     // Create a GPU memory mapping if it has not done yet.
     if (mem->get_bytes() == 0) {
         if (info->bytes == 0) {
-            LOGERR("unexpected error");
+            LOG(ERROR, "unexpected error");
         }
         mem->alloc(info->bytes);
     }
@@ -331,7 +331,7 @@ void GpuCommSw::request_loop()
         if (qp != nullptr) {
             int ret = qp->post_recv(((uint64_t)r << sid_shift) + 1);
             if (ret != 0) {
-                LOGERR("post_recv() returns ", ret);
+                LOG(ERROR, "post_recv() returns ", ret);
             }
         }
     }
@@ -340,7 +340,7 @@ void GpuCommSw::request_loop()
     const bool is_using_p2p_memcpy = !get_env().disable_p2p_memcpy;
     const bool is_using_ib = this->is_using_ib();
     if (!is_using_p2p_memcpy && !is_using_ib) {
-        LOGERR("no method for transport");
+        LOG(ERROR, "no method for transport");
     }
     bool is_idle = false;
     unsigned int busy_counter = 0;
@@ -357,8 +357,8 @@ void GpuCommSw::request_loop()
             for (int i = 0; i < wcn; ++i) {
                 int status = this->net_ib_mgr->get_wc_status(i);
                 if (status != 0) {
-                    LOGERR("get_wc_status() returns ", status, ": ",
-                           this->net_ib_mgr->get_wc_status_str(i));
+                    LOG(ERROR, "get_wc_status() returns ", status, ": ",
+                        this->net_ib_mgr->get_wc_status_str(i));
                 }
                 uint64_t wr_id = this->net_ib_mgr->get_wc_wr_id(i);
                 if (wr_id & 0x1) {
@@ -367,11 +367,11 @@ void GpuCommSw::request_loop()
                     rc_href[sid_dst] = 1;
                     NetIbQp *qp = this->qps[wr_id >> sid_shift];
                     if (qp == nullptr) {
-                        LOGERR("Unexpected error");
+                        LOG(ERROR, "Unexpected error");
                     }
                     int ret = qp->post_recv(wr_id);
                     if (ret != 0) {
-                        LOGERR("post_recv() returns ", ret);
+                        LOG(ERROR, "post_recv() returns ", ret);
                     }
                     LOG(DEBUG, "RC DST: ", sid_dst);
                 } else {
@@ -383,7 +383,7 @@ void GpuCommSw::request_loop()
             }
             is_idle = false;
         } else if (wcn < 0) {
-            LOGERR("poll_cq() returns ", wcn);
+            LOG(ERROR, "poll_cq() returns ", wcn);
         }
         uint64_t v = *db_val;
         if (v == (uint64_t)REQUEST_INVALID) {
@@ -405,7 +405,8 @@ void GpuCommSw::request_loop()
         //
         GpuPtr src = this->addr_table[this->gpu_id][db.fields.src];
         if (src == 0) {
-            LOGERR("Invalid SRC SID ", db.fields.src, " in GPU ", this->gpu_id);
+            LOG(ERROR, "Invalid SRC SID ", db.fields.src, " in GPU ",
+                this->gpu_id);
         }
         LOG(DEBUG, "Request SRC: RANK ", this->rank, ", sid ", db.fields.src,
             ", ", (void *)src);
@@ -421,7 +422,8 @@ void GpuCommSw::request_loop()
         } else {
             dst = this->addr_table[gid_dst][db.fields.dst];
             if (dst == 0) {
-                LOGERR("Invalid DST SID ", db.fields.dst, " in GPU ", gid_dst);
+                LOG(ERROR, "Invalid DST SID ", db.fields.dst, " in GPU ",
+                    gid_dst);
             }
             LOG(DEBUG, "Request DST: RANK ", db.fields.rank, ", sid ",
                 db.fields.dst, ", ", (void *)dst);
@@ -448,11 +450,11 @@ void GpuCommSw::request_loop()
                 &this->mris[db.fields.rank][db.fields.dst], db.fields.len,
                 (db.fields.src << sid_shift), db.fields.dst);
             if (ret != 1) {
-                LOGERR("stage_send() returns ", ret);
+                LOG(ERROR, "stage_send() returns ", ret);
             }
             ret = qp->post_send();
             if (ret != 0) {
-                LOGERR("post_send() returns ", ret);
+                LOG(ERROR, "post_send() returns ", ret);
             }
         }
         LOG(DEBUG, "Request processed.");

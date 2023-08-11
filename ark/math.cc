@@ -11,7 +11,7 @@ namespace math {
 size_t div_up(size_t x, size_t div)
 {
     if (div == 0) {
-        LOGERR("division by zero");
+        LOG(ERROR, "division by zero");
     }
     if (x == 0) {
         return 0;
@@ -38,7 +38,7 @@ bool is_pow2(size_t x)
 unsigned int ilog2(unsigned int x)
 {
     if (x == 0) {
-        LOGERR("log of zero is undefined");
+        LOG(ERROR, "log of zero is undefined");
     }
     return (sizeof(unsigned int) * 8) - __builtin_clz(x) - 1;
 }
