@@ -152,21 +152,10 @@ const LogLevel &get_log_level();
 //
 #define LOG(level, ...) LOG_(level, __VA_ARGS__)
 
-// Logging of an error message and exit.
-#define LOGERR(...)                                                            \
-    do {                                                                       \
-        std::stringstream _ss;                                                 \
-        ark::log_header(_ss, ark::ERROR, __FILE__, __LINE__);                  \
-        SSTREAM(__VA_ARGS__);                                                  \
-        _ss << '\n';                                                           \
-        std::clog << _ss.str();                                                \
-        throw std::runtime_error("ARK runtime error");                         \
-    } while (0)
-
 #define CHECK(cond)                                                            \
     do {                                                                       \
         if (!(cond)) {                                                         \
-            LOGERR("failed condition: " #cond);                                \
+            LOG(ERROR, "failed condition: " #cond);                            \
         }                                                                      \
     } while (0)
 

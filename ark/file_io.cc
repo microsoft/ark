@@ -21,14 +21,15 @@ static bool get_stat(const char *path, struct stat *st)
     if (stat(path, st) == -1) {
         switch (errno) {
         case EACCES:
-            LOGERR("permission denied: ", path);
+            LOG(ark::ERROR, "permission denied: ", path);
         case EFAULT:
-            LOGERR("bad address: ", path);
+            LOG(ark::ERROR, "bad address: ", path);
         case ENOENT:
         case ENOTDIR:
             return false;
         default:
-            LOGERR("stat() for file path ", path, " failed with errno ", errno);
+            LOG(ark::ERROR, "stat() for file path ", path,
+                " failed with errno ", errno);
         };
     }
     return true;

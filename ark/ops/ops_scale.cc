@@ -69,15 +69,15 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOGERR("invalid output shape: ", output->shape);
+        LOG(ERROR, "invalid output shape: ", output->shape);
     }
     ScaleOp op{pt, input, output, val, name};
     return this->impl->add_op(op)[0];

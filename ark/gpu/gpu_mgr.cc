@@ -114,7 +114,7 @@ GpuMgrCtx *GpuMgr::create_context(const std::string &name, int rank,
 {
     for (auto &ctx : this->mgr_ctxs) {
         if (ctx->get_name() == name) {
-            LOGERR("GpuMgrCtx ", name, " already exists.");
+            LOG(ERROR, "GpuMgrCtx ", name, " already exists.");
         }
     }
     GpuMgrCtx *ctx = new GpuMgrCtx{this, rank, world_size, name};
@@ -142,7 +142,7 @@ void GpuMgr::validate_total_bytes()
         total_bytes += mgr_ctx->get_total_bytes();
     }
     if (total_bytes > this->gpu_info.gmem_total) {
-        LOGERR("out of GPU memory. Requested ", total_bytes, " bytes");
+        LOG(ERROR, "out of GPU memory. Requested ", total_bytes, " bytes");
     }
     LOG(DEBUG, "Requested ", total_bytes, " bytes");
 }
@@ -313,11 +313,11 @@ void GpuMgrCtx::mem_free(GpuBuf *buf)
 {
     int id = buf->get_id();
     if ((size_t)id >= this->usage.size()) {
-        LOGERR("GpuBuf ID ", id, " has never been allocated");
+        LOG(ERROR, "GpuBuf ID ", id, " has never been allocated");
     }
     auto search = this->id_in_use.find(id);
     if (search == this->id_in_use.end()) {
-        LOGERR("GpuBuf ID ", id, " is already freed");
+        LOG(ERROR, "GpuBuf ID ", id, " is already freed");
     }
     this->id_in_use.erase(search);
     size_t b = this->usage[id].b;
@@ -361,8 +361,8 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
     if (this->comm_sw == nullptr) {
-        LOGERR("mem_import() is supported only for the "
-               "SW communication stack.");
+        LOG(ERROR, "mem_import() is supported only for the "
+                   "SW communication stack.");
     }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     GpuBuf *buf = new GpuBuf{dm, sid, 0, bytes};
@@ -454,8 +454,8 @@ GpuPtr GpuMgrCtx::get_data_ref(int gid) const
         return this->data_mem.ref();
 
     if (this->comm_sw == nullptr) {
-        LOGERR("get_data_ref() is supported only for the "
-               "SW communication stack.");
+        LOG(ERROR, "get_data_ref() is supported only for the "
+                   "SW communication stack.");
     }
     return this->comm_sw->get_data_mem(gid)->ref();
 }
@@ -477,9 +477,8 @@ GpuPtr GpuMgrCtx::get_request_ref() const
 {
     if (this->comm_sw != nullptr) {
         return this->comm_sw->get_request_ref();
-    } else {
-        LOGERR("Unexpected error.");
     }
+    LOG(ERROR, "Unexpected error.");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,18 +490,18 @@ vector<unique_ptr<GpuMgr>> ARK_GPU_MGR_GLOBAL;
 GpuMgr *get_gpu_mgr(const int gpu_id)
 {
     if (gpu_id < 0) {
-        LOGERR("invalid GPU ID ", gpu_id);
+        LOG(ERROR, "invalid GPU ID ", gpu_id);
     }
     if (ARK_GPU_MGR_GLOBAL.size() == 0) {
         gpu_init();
         int ngpu = gpu_num();
         if (ngpu <= 0) {
-            LOGERR("No CUDA-capable GPU is detected.");
+            LOG(ERROR, "No CUDA-capable GPU is detected.");
         }
         ARK_GPU_MGR_GLOBAL.resize(ngpu);
     }
     if ((unsigned int)gpu_id >= ARK_GPU_MGR_GLOBAL.size()) {
-        LOGERR("invalid GPU ID ", gpu_id);
+        LOG(ERROR, "invalid GPU ID ", gpu_id);
     }
     GpuMgr *mgr = ARK_GPU_MGR_GLOBAL[gpu_id].get();
     if (mgr == nullptr) {
@@ -530,8 +529,9 @@ void gpu_memset(GpuBuf *buf, int val, size_t num)
     const size_t &bytes = buf->get_bytes();
     assert(bytes >= 4);
     if ((bytes >> 2) < num) {
-        LOGERR("memset requests too many elements. Expected <= ", bytes >> 2,
-               ", given ", num);
+        LOG(ERROR,
+            "memset requests too many elements. Expected <= ", bytes >> 2,
+            ", given ", num);
     }
     GpuPtr pb = buf->ref();
     if (pb != 0) {
@@ -565,7 +565,7 @@ void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes)
         CULOG(cuMemcpyDtoH(dst->href(), src->ref(), bytes));
     } else {
         // ::memcpy(dst->href(), src->href(), bytes);
-        LOGERR("Unexpected case.");
+        LOG(ERROR, "Unexpected case.");
     }
 }
 

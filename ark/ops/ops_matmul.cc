@@ -107,10 +107,10 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     int ndims_b = shp_b.ndims();
 
     if (ndims_a < 1) {
-        LOGERR("mat_a has an empty shape: ", shp_a);
+        LOG(ERROR, "mat_a has an empty shape: ", shp_a);
     }
     if (ndims_b < 1) {
-        LOGERR("mat_b has an empty shape: ", shp_b);
+        LOG(ERROR, "mat_b has an empty shape: ", shp_b);
     }
 
     // m: the number of rows of output matrix (row-major)
@@ -136,7 +136,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         k2 = tmp;
     }
     if (k != k2) {
-        LOGERR("inner dimensions mismatch: ", k, " and ", k2);
+        LOG(ERROR, "inner dimensions mismatch: ", k, " and ", k2);
     }
 
     OpPrecType pt;
@@ -145,14 +145,14 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     } else if (mat_a->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(mat_a->type));
+        LOG(ERROR, "unsupported input data type: ", mat_a->type);
     }
     if (mat_a->type != mat_b->type) {
-        LOGERR("input data types mismatch: ", type_str(mat_a->type), ", ",
-               type_str(mat_b->type));
+        LOG(ERROR, "input data types mismatch: ", mat_a->type, ", ",
+            mat_b->type);
     }
     if (mat_y != nullptr && mat_a->type != mat_b->type) {
-        LOGERR("invalid output data type: ", type_str(mat_y->type));
+        LOG(ERROR, "invalid output data type: ", mat_y->type);
     }
 
     // N and C dimensions of matrix A
@@ -175,10 +175,10 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
 
     // Verify broadcasting
     if (nca[0] != ncb[0] && nca[0] != 1 && ncb[0] != 1) {
-        LOGERR("N dimension mismatch: ", nca[0], " and ", ncb[0]);
+        LOG(ERROR, "N dimension mismatch: ", nca[0], " and ", ncb[0]);
     }
     if (nca[1] != ncb[1] && nca[1] != 1 && ncb[1] != 1) {
-        LOGERR("C dimension mismatch: ", nca[1], " and ", ncb[1]);
+        LOG(ERROR, "C dimension mismatch: ", nca[1], " and ", ncb[1]);
     }
 
     // N and C dimension of output matrix
@@ -198,12 +198,12 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         mat_y = this->tensor(output_shape, mat_a->type);
     } else {
         if (mat_y->type != mat_a->type) {
-            LOGERR("output data type mismatch: ", type_str(mat_y->type),
-                   " and ", type_str(mat_a->type));
+            LOG(ERROR, "output data type mismatch: ", mat_y->type, " and ",
+                mat_a->type);
         }
         if (mat_y->shape != output_shape) {
-            LOGERR("output shape mismatch: ", mat_y->shape, " and ",
-                   output_shape);
+            LOG(ERROR, "output shape mismatch: ", mat_y->shape, " and ",
+                output_shape);
         }
     }
 
@@ -228,7 +228,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
                     trans_a, trans_b, name,         gran_lev};
         return this->impl->add_op(op)[0];
     } else if (split_k > k) {
-        LOGERR("Split-K given larger than the K dimension size.");
+        LOG(ERROR, "Split-K given larger than the K dimension size.");
     }
 
     // Split the inner dimension.
@@ -251,7 +251,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
             Dims new_shape = t->shape;
             while (new_shape.ndims() != output_shape.ndims()) {
                 if (new_shape[0] != 1) {
-                    LOGERR("invalid shard shape: ", t->shape);
+                    LOG(ERROR, "invalid shard shape: ", t->shape);
                 }
                 new_shape.erase(0);
             }

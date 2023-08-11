@@ -85,7 +85,7 @@ ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const
     } else if (tensor->type == BYTE) {
         os << "(void *)";
     } else {
-        LOGERR("unknown tensor type");
+        LOG(ERROR, "unknown tensor type");
     }
     std::string buf_name = ARK_BUF_NAME;
     if (tensor->imported_rank >= 0) {
@@ -115,7 +115,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
             os << "void *" << name;
             break;
         default:
-            LOGERR("Not implemented");
+            LOG(ERROR, "Not implemented");
             break;
         }
     } else if (arg.type == OP_ARG_FLOAT) {
@@ -129,7 +129,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
     } else if (arg.type == OP_ARG_UINT64) {
         os << "uint64_t " << name;
     } else {
-        LOGERR("Not implemented");
+        LOG(ERROR, "Not implemented");
     }
     return os;
 }
@@ -161,7 +161,7 @@ std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const
         arg.get(&val);
         os << val;
     } else {
-        LOGERR("Not implemented");
+        LOG(ERROR, "Not implemented");
     }
     return os;
 }
@@ -364,7 +364,6 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
 
 std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const
 {
-
     os << "if(";
     if (sched.sm_b > 0)
         os << "blockIdx.x >= " << sched.sm_b << "&& ";

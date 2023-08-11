@@ -88,7 +88,7 @@ void Executor::launch()
     this->impl->glk->load();
     GpuState ret = this->impl->glk->launch(this->impl->stream, false);
     if (ret != 0) {
-        LOGERR("failed to launch this executor.");
+        LOG(ERROR, "failed to launch this executor.");
     }
 }
 
@@ -124,12 +124,12 @@ void Executor::tensor_memcpy(Tensor *dst, const void *src, size_t bytes)
 {
     GpuBuf *buf = this->get_gpu_buf(dst);
     if (buf == nullptr) {
-        LOGERR("failed to get GPU buffer for tensor ", dst->id);
+        LOG(ERROR, "failed to get GPU buffer for tensor ", dst->id);
     }
     Tensor *tns = dst;
     if (bytes > (size_t)tns->shape_bytes()) {
-        LOGERR("the given number of bytes (", bytes,
-               ") is larger than the tensor size (", tns->shape_bytes(), ")");
+        LOG(ERROR, "the given number of bytes (", bytes,
+            ") is larger than the tensor size (", tns->shape_bytes(), ")");
     }
     int ndims = tns->ndims();
     char *ps = (char *)src;
@@ -185,14 +185,14 @@ void Executor::tensor_memcpy(void *dst, Tensor *src, size_t bytes)
 {
     GpuBuf *buf = this->get_gpu_buf(src);
     if (buf == nullptr) {
-        LOGERR("failed to get GPU buffer for tensor ", src->id);
+        LOG(ERROR, "failed to get GPU buffer for tensor ", src->id);
     }
     Tensor *tns = src;
     if (bytes == 0) {
         bytes = tns->shape_bytes();
     } else if (bytes > (size_t)tns->shape_bytes()) {
-        LOGERR("the given number of bytes (", bytes,
-               ") is larger than the tensor size (", tns->shape_bytes(), ")");
+        LOG(ERROR, "the given number of bytes (", bytes,
+            ") is larger than the tensor size (", tns->shape_bytes(), ")");
     }
     int ndims = tns->ndims();
     char *pd = (char *)dst;
@@ -245,7 +245,7 @@ void Executor::tensor_clear(Tensor *tns)
 {
     GpuBuf *buf = this->get_gpu_buf(tns);
     if (buf == nullptr) {
-        LOGERR("failed to get GPU buffer for tensor ", tns->id);
+        LOG(ERROR, "failed to get GPU buffer for tensor ", tns->id);
     }
     int ndims = tns->ndims();
     size_t bytes = tns->shape_bytes();
