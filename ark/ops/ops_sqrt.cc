@@ -5,18 +5,20 @@
 #include "model.h"
 #include <cassert>
 
+using namespace std;
+
 namespace ark {
 
-extern const OpConfigMap ActivationConfigMap;
+extern const OpConfigMap MathConfigMap;
 
-ReluOp::ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-               const std::string &name)
-    : Op{OP_RELU, prec_type, {input}, {output}, {}, name, &ActivationConfigMap,
-         -1,      true}
+SqrtOp::SqrtOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : Op{OP_SQRT, prec_type,      {input}, {output}, {},
+         name,    &MathConfigMap, -1,      true}
 {
 }
 
-std::string ReluOp::function_name(const OpConfig &cfg) const
+std::string SqrtOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
@@ -31,7 +33,7 @@ std::string ReluOp::function_name(const OpConfig &cfg) const
     }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
-    return Op::function_name("ark::relu", {{
+    return Op::function_name("ark::sqrt", {{
                                               input->ldims.dims4(),  // InDims
                                               input->shape.dims4(),  // InShape
                                               output->ldims.dims4(), // OutDims
@@ -42,7 +44,7 @@ std::string ReluOp::function_name(const OpConfig &cfg) const
                                           }});
 }
 
-Tensor *Model::relu(Tensor *input, Tensor *output, const std::string &name)
+Tensor *Model::sqrt(Tensor *input, Tensor *output, const string &name)
 {
     assert(input != nullptr);
     OpPrecType pt;
@@ -61,11 +63,11 @@ Tensor *Model::relu(Tensor *input, Tensor *output, const std::string &name)
     } else if (output->shape != input->shape) {
         LOG(ERROR, "invalid output shape: ", output->shape);
     }
-    ReluOp op{pt, input, output, name};
+    SqrtOp op{pt, input, output, name};
     return this->impl->add_op(op)[0];
 }
 
-const OpConfigMap ActivationConfigMap = {
+const OpConfigMap MathConfigMap = {
     {{OP_ARCH_CUDA_70, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost

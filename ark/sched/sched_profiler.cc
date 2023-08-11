@@ -26,7 +26,7 @@ float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx)
     glk->load();
     GpuState ret = glk->launch(ctx->create_stream(), false);
     if (ret != CUDA_SUCCESS) {
-        LOGERR("launch() failed with error code ", ret);
+        LOG(ERROR, "launch() failed with error code ", ret);
     }
 
     int test_iter = probe_iter * 1e2 / 1;

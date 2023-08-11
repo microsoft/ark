@@ -36,12 +36,6 @@ class Tensor:
         """
         return self._tensor.ndims()
 
-    def padded_shape(self):
-        """
-        Returns the shape of the tensor including padding.
-        """
-        return self._tensor.padded_shape()
-
     def type_bytes(self):
         """
         Returns the number of bytes of each element in the tensor.
@@ -72,6 +66,58 @@ class Tensor:
         """
         return self._tensor.type
 
+    def write(self, buf: np.ndarray):
+        """
+        Copy contiguous data from a host buffer to the given tensor's (possibly
+        non-contiguous) data range.
+
+        For example, say the tensor is a 2D float tensor with shape [2, 3],
+        ldims [2, 4], offs [0, 0], and pads [1, 1], then the data in the host
+        buffer is 0, 1, ..., 5. After writing, the data in the tensor will be:
+
+            [[0, 1, 2, ?],
+             [3, 4, 5, ?]]
+
+        where ? means the original unmodified value.
+        """
+        if not isinstance(buf, np.ndarray):
+            logging.error("buf is not a numpy array")
+            raise TypeError("buf is not a numpy array")
+        # Check if buf is contiguous is memory
+        if not buf.flags["C_CONTIGUOUS"]:
+            logging.debug(
+                "Warning: buf is not contiguous in memory, copy to a contiguous array"
+            )
+            buf = np.ascontiguousarray(buf)
+        self._tensor.write(buf)
+
+    def read(self, buf: np.ndarray):
+        """
+        Copy (possibly non-contiguous) data from a tensor on GPU to a contiguous
+        host buffer.
+
+        The given number of bytes is copied, in order of appearance
+        on the memory. This function assumes that `buf` is large enough to hold
+        the data. For example, say the tensor is a 2D float tensor with shape
+        [2, 3], ldims [2, 4], offs [0, 0], and pads [1, 1], then the data in the
+        tensor is:
+
+            [[0, 1, 2, 3],
+             [4, 5, 6, 7]]
+
+        After read, the data in the host buffer will be 0, 1, 2, 4, 5, 6.
+        """
+        if not isinstance(buf, np.ndarray):
+            logging.error("buf is not a numpy array")
+            raise TypeError("buf is not a numpy array")
+        if not buf.flags["C_CONTIGUOUS"]:
+            logging.error("buf is not contiguous in memory")
+            raise ValueError("buf is not contiguous in memory")
+        self._tensor.read(buf)
+
+    def clear(self):
+        self._tensor.clear()
+
     def to_numpy(self, ndarray: np.ndarray = None):
         """
         Copy a tensor from device to host. If dst is None, a new numpy array will be created.
@@ -87,18 +133,18 @@ class Tensor:
                 logging.error("Unsupported tensor type")
                 raise TypeError("Unsupported tensor type")
             ndarray = np.empty(self.shape, dtype=np_type)
-        executor.Executor.get_global_executor().tensor_memcpy_device_to_host(
-            ndarray, self._tensor
-        )
+        self.read(ndarray)
         return ndarray
 
     def from_numpy(self, ndarray: np.ndarray):
         """
         Copies the tensor from a host numpy array to the device.
         """
-        executor.Executor.get_global_executor().tensor_memcpy_host_to_device(
-            self._tensor, ndarray
-        )
+        if self.tensor_type == TensorType.FP32:
+            ndarray = ndarray.astype(np.float32)
+        elif self.tensor_type == TensorType.FP16:
+            ndarray = ndarray.astype(np.float16)
+        self.write(ndarray)
         return self
 
 

@@ -3,7 +3,6 @@
 
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
 #include <cassert>
 
 namespace ark {
@@ -148,18 +147,18 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR("output tensor cannot be the same as input tensor for "
-               "reduce_sum op");
+        LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                   "reduce_sum op");
     }
     Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
@@ -183,18 +182,18 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR("output tensor cannot be the same as input tensor for "
-               "reduce_mean op");
+        LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                   "reduce_mean op");
     }
     Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
@@ -218,18 +217,18 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR("output tensor cannot be the same as input tensor for "
-               "reduce_max op");
+        LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                   "reduce_max op");
     }
     Tensor *ret;
     if (axis == input->shape.ndims() - 1) {

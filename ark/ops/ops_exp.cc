@@ -5,22 +5,22 @@
 #include "model.h"
 #include <cassert>
 
+using namespace std;
+
 namespace ark {
 
-extern const OpConfigMap ArithmeticConfigMap;
+extern const OpConfigMap MathConfigMap;
 
-MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const std::string &name)
-    : Op{OP_MUL, prec_type, {input, other},       {output},
-         {},     name,      &ArithmeticConfigMap, -1,
-         true}
+ExpOp::ExpOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+             const string &name)
+    : Op{OP_EXP, prec_type,      {input}, {output}, {},
+         name,   &MathConfigMap, -1,      true}
 {
 }
 
-std::string MulOp::function_name(const OpConfig &cfg) const
+std::string ExpOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->inputs[0];
-    Tensor *other = this->inputs[1];
     Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
@@ -33,11 +33,9 @@ std::string MulOp::function_name(const OpConfig &cfg) const
     }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
-    return Op::function_name("ark::mul", {{
-                                             input->ldims.dims4(),  // In0Dims
-                                             input->shape.dims4(),  // In0Shape
-                                             other->ldims.dims4(),  // In1Dims
-                                             other->shape.dims4(),  // In1Shape
+    return Op::function_name("ark::exp", {{
+                                             input->ldims.dims4(),  // InDims
+                                             input->shape.dims4(),  // InShape
                                              output->ldims.dims4(), // OutDims
                                              output->shape.dims4(), // OutShape
                                              unit_out_dims,      // UnitOutDims
@@ -46,12 +44,9 @@ std::string MulOp::function_name(const OpConfig &cfg) const
                                          }});
 }
 
-Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
-                   const std::string &name)
+Tensor *Model::exp(Tensor *input, Tensor *output, const string &name)
 {
-    LOG(DEBUG, "mul ", input->shape, " ", other->shape);
     assert(input != nullptr);
-    assert(other != nullptr);
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -60,22 +55,15 @@ Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
     } else {
         LOG(ERROR, "unsupported input data type: ", input->type);
     }
-    if (input->type != other->type) {
-        LOG(ERROR, "input data types mismatch: ", input->type, ", ",
-            other->type);
-    }
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
-    Dims output_shape = broadcast(input->shape, other->shape);
     if (output == nullptr) {
-        output = this->tensor(output_shape, input->type);
-    } else if (output->shape != output_shape) {
+        output = this->tensor(input->shape, input->type, input->buf);
+    } else if (output->shape != input->shape) {
         LOG(ERROR, "invalid output shape: ", output->shape);
-    } else if (output == input) {
-        output = this->identity(output);
     }
-    MulOp op{pt, input, other, output, name};
+    ExpOp op{pt, input, output, name};
     return this->impl->add_op(op)[0];
 }
 

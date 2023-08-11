@@ -35,8 +35,8 @@ void init()
     for (auto &path : paths) {
         if (path.substr(len, prefix.size()) == prefix) {
             if (remove_file(path) != 0) {
-                LOGERR("init failed: failed to remove ", path, " (errno ",
-                       errno, ")");
+                LOG(ERROR, "init failed: failed to remove ", path, " (errno ",
+                    errno, ")");
             }
         }
     }

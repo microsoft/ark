@@ -10,6 +10,10 @@ namespace ark {
 
 struct Relu
 {
+    static DEVICE float compute(float input)
+    {
+        return max(input, 0.0f);
+    }
     static DEVICE __half2 compute(__half2 input)
     {
         return __hmax2(input, (__half2_raw){0, 0});
@@ -18,6 +22,13 @@ struct Relu
 
 struct Gelu
 {
+    static DEVICE float compute(float input)
+    {
+        return 0.5f * input *
+               (1.0f + tanhf(0.7978845608f *
+                             (input + 0.044715f * input * input * input)));
+    }
+
     static DEVICE __half2 compute(__half2 input)
     {
         __half2 half_pi =
@@ -44,6 +55,21 @@ struct Gelu
     }
 };
 
+struct Sigmoid
+{
+    static DEVICE float compute(float input)
+    {
+        return 1.0f / (1.0f + expf(-input));
+    }
+    static DEVICE __half2 compute(__half2 input)
+    {
+        __half2 one = __float2half2_rn(1.0f);
+        __half2 exp_neg_input = h2exp(__hneg2(input));
+        __half2 one_plus_exp_neg_input = __hadd2(one, exp_neg_input);
+        return __h2div(one, one_plus_exp_neg_input);
+    }
+};
+
 template <typename _ActivationType, typename _InShape, typename _DataType,
           int _NelemPerThread>
 struct Activation;
@@ -67,6 +93,28 @@ struct Activation<_ActivationType, _InShape, half, 2>
     }
 };
 
+template <typename _ActivationType, typename _InShape>
+struct Activation<_ActivationType, _InShape, float, 1>
+{
+    using DataType = float;
+    static const int NelemPerThread = 1;
+
+    static DEVICE void compute(float *output, const float *input)
+    {
+        *output = _ActivationType::compute(*input);
+    }
+};
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void relu(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Relu, InShape, float, 1>>::run(out, in,
+                                                                    uop_idx);
+}
+
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
@@ -80,11 +128,41 @@ DEVICE void relu(half *out, half *in, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
+DEVICE void gelu(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Gelu, InShape, float, 1>>::run(out, in,
+                                                                    uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
 DEVICE void gelu(half *out, half *in, int uop_idx, int)
 {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Activation<Gelu, InShape, half, 2>>::run(out, in,
                                                                    uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void sigmoid(float *out, float *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Sigmoid, InShape, float, 1>>::run(out, in,
+                                                                       uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void sigmoid(half *out, half *in, int uop_idx, int)
+{
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes, Activation<Sigmoid, InShape, half, 2>>::run(out, in,
+                                                                      uop_idx);
 }
 
 } // namespace ark

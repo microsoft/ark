@@ -119,15 +119,15 @@ class GpuMgrCtx
         std::map<int, std::map<int, size_t>> &memory_offsets);
     void send(int src, int dst, int rank, size_t bytes);
     GpuState set_current();
-    const int &get_world_size() const
+    int get_world_size() const
     {
         return world_size;
     }
-    const int &get_rank() const
+    int get_rank() const
     {
         return rank;
     }
-    const int &get_gpu_id() const
+    int get_gpu_id() const
     {
         return gpu_mgr->gpu_id;
     }
@@ -135,7 +135,7 @@ class GpuMgrCtx
     {
         return name;
     }
-    const size_t &get_total_bytes() const
+    size_t get_total_bytes() const
     {
         return total_bytes;
     }

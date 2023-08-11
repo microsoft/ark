@@ -51,11 +51,11 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size, iter=1):
     exe.launch()
 
     # Copy input and other tensors to device
-    exe.tensor_memcpy_host_to_device(input_tensor, np_inputs["input"])
+    input_tensor.from_numpy(np_inputs["input"])
     np_other = np_inputs["other"]
     np_other_shard = np.split(np_other, world_size, axis=1)[rank]
     np_other_shard_copy = np_other_shard.copy()
-    exe.tensor_memcpy_host_to_device(other_tensor_shard, np_other_shard_copy)
+    other_tensor_shard.to_numpy(np_other_shard_copy)
 
     # Run the executor
     exe.run(iter)
@@ -63,7 +63,7 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size, iter=1):
 
     # Copy output tensor to host
     output_host_trans = np.zeros((n, m), dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(output_host_trans, whole_output_trans)
+    whole_output_trans.to_numpy(output_host_trans)
     output_host = output_host_trans.transpose()
 
     # Calculate ground truth
@@ -72,29 +72,10 @@ def all_gather_tensor_parallel(rank, np_inputs, world_size, iter=1):
     max_abs_error = np.max(np.abs(output_host - gt))
     mean_abs_error = np.mean(np.abs(output_host - gt))
     print(
-        "allgather_parallel_test",
-        "world_size:",
-        world_size,
-        "rank:",
-        rank,
-        "m",
-        m,
-        "n",
-        n,
-        "k",
-        k,
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        " ms ",
-        " iter ",
-        iter,
-        "elapsed_per_iter",
-        "{:.5f}".format(elapsed / iter),
-        " ms ",
+        f"allgather_parallel_test world_size: {world_size} rank: "
+        f"{rank} m: {m} n: {n} k: {k} max_abs_error: {max_abs_error:.5f} "
+        f"mean_abs_error: {mean_abs_error:.5f} elapsed: {elapsed:.5f} ms "
+        f"iter: {iter} elapsed_per_iter: {elapsed / iter:.5f} ms"
     )
 
 

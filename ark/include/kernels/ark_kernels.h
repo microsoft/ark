@@ -16,6 +16,7 @@
 #include "comm_mscclpp.h"
 #include "im2col.h"
 #include "layernorm.h"
+#include "math_functions.h"
 #include "matmul.h"
 #include "reduce.h"
 #include "softmax.h"

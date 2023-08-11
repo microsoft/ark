@@ -33,7 +33,7 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
     exe.compile();
 
     // Set data.
-    exe.tensor_memcpy(tns_x, data_a.get(), buf_x_sz);
+    tns_x->write(data_a.get());
 
     exe.launch();
     exe.run(1);

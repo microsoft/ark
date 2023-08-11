@@ -4,7 +4,6 @@
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
-using namespace std;
 
 ark::unittest::State test_identity()
 {
@@ -19,20 +18,13 @@ ark::unittest::State test_identity()
 
     int num_elem = 2 * 3 * 4 * 5;
 
-    ark::GpuBuf *buf0 = static_cast<ark::GpuBuf *>(tns0->buf->buf);
-    ark::GpuBuf *buf1 = static_cast<ark::GpuBuf *>(tns1->buf->buf);
-    UNITTEST_NE(buf0, (ark::GpuBuf *)nullptr);
-    UNITTEST_NE(buf1, (ark::GpuBuf *)nullptr);
-    UNITTEST_EQ(buf0->get_bytes(), num_elem * sizeof(float));
-    UNITTEST_EQ(buf1->get_bytes(), num_elem * sizeof(float));
-
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
     auto data = ark::utils::range_floats(num_elem);
-    exe.tensor_memcpy(tns0, data.get(), num_elem * sizeof(float));
+    tns0->write(data.get());
 
     // Check identity values
-    float *ref_val = new float[num_elem];
-    exe.tensor_memcpy(ref_val, tns1, num_elem * sizeof(float));
+    std::vector<float> ref_val(num_elem);
+    tns1->read(ref_val.data());
     for (int i = 0; i < num_elem; ++i) {
         UNITTEST_EQ(ref_val[i], (float)(i + 1));
     }

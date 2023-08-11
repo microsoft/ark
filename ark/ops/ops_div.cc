@@ -5,19 +5,21 @@
 #include "model.h"
 #include <cassert>
 
+using namespace std;
+
 namespace ark {
 
 extern const OpConfigMap ArithmeticConfigMap;
 
-MulOp::MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const std::string &name)
-    : Op{OP_MUL, prec_type, {input, other},       {output},
+DivOp::DivOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+             const string &name)
+    : Op{OP_DIV, prec_type, {input, other},       {output},
          {},     name,      &ArithmeticConfigMap, -1,
          true}
 {
 }
 
-std::string MulOp::function_name(const OpConfig &cfg) const
+std::string DivOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->inputs[0];
     Tensor *other = this->inputs[1];
@@ -33,7 +35,7 @@ std::string MulOp::function_name(const OpConfig &cfg) const
     }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
-    return Op::function_name("ark::mul", {{
+    return Op::function_name("ark::div", {{
                                              input->ldims.dims4(),  // In0Dims
                                              input->shape.dims4(),  // In0Shape
                                              other->ldims.dims4(),  // In1Dims
@@ -46,10 +48,10 @@ std::string MulOp::function_name(const OpConfig &cfg) const
                                          }});
 }
 
-Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
-                   const std::string &name)
+Tensor *Model::div(Tensor *input, Tensor *other, Tensor *output,
+                   const string &name)
 {
-    LOG(DEBUG, "mul ", input->shape, " ", other->shape);
+    LOG(DEBUG, "div ", input->shape, " ", other->shape);
     assert(input != nullptr);
     assert(other != nullptr);
     OpPrecType pt;
@@ -75,7 +77,7 @@ Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
     } else if (output == input) {
         output = this->identity(output);
     }
-    MulOp op{pt, input, other, output, name};
+    DivOp op{pt, input, other, output, name};
     return this->impl->add_op(op)[0];
 }
 

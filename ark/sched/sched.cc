@@ -49,7 +49,9 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
         } else {
             buf = ctx->mem_import(bi.bytes, bi.sid, bi.gpu_id);
         }
-        bi.tbuf->buf = buf;
+        if (bi.tbuf != nullptr) {
+            bi.tbuf->buf = buf;
+        }
     }
     for (auto &srop : this->send_recv_ops) {
         int sid;
@@ -84,7 +86,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     } else if (gpu_info.arch == GPU_ARCH_CUDA_80) {
         arch_type = OP_ARCH_CUDA_80;
     } else {
-        LOGERR("unsupported GPU architecture: ", gpu_info.arch);
+        LOG(ERROR, "unsupported GPU architecture: ", gpu_info.arch);
     }
     auto search = op->cfg_map->find({arch_type, op->prec_type});
     if (search == op->cfg_map->end()) {
@@ -94,7 +96,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
         if (search->second.size() > (unsigned int)op->gran_lev) {
             return &search->second[op->gran_lev];
         }
-        LOGERR("invalid granularity level: ", op->gran_lev);
+        LOG(ERROR, "invalid granularity level: ", op->gran_lev);
     }
     std::vector<const OpConfig *> feasible_configs;
     for (auto &cfg : search->second) {
@@ -159,8 +161,8 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
             configs_str << ", { " << ot_x << ", " << ot_y << " }";
         }
         configs_str << ".";
-        LOGERR("no valid tile configuration found. Output shape ",
-               output->shape, ", available tiles: ", configs_str.str());
+        LOG(ERROR, "no valid tile configuration found. Output shape ",
+            output->shape, ", available tiles: ", configs_str.str());
     }
     const OpConfig *cfg = feasible_configs[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);

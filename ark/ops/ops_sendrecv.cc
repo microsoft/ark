@@ -130,7 +130,7 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 {
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
@@ -165,7 +165,7 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     assert(input != nullptr);
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;

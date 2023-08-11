@@ -34,7 +34,7 @@ static int calc_num_tiles(const Op &op, const OpTile &tile)
     if (ndims > 1) {
         num_tiles *= math::div_up(s[ndims - 2], tile.x);
     } else if (tile.x != 1) {
-        LOGERR("The tile is 2D, but the output is 1D.");
+        LOG(ERROR, "The tile is 2D, but the output is 1D.");
     }
     // The remaining dimensions are not tiled.
     int remain_dims = ndims - 2;
@@ -59,22 +59,23 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                                                  int num_sm)
 {
     if (matmul_op.type != OP_MATMUL) {
-        LOGERR("This is not a matmul op.");
+        LOG(ERROR, "This is not a matmul op.");
     }
     if (matmul_op.gran_lev != -1) {
         // `gran_lev` is manually set. Do not optimize.
         return;
     }
     if (num_sm > gpu_info.num_sm) {
-        LOGERR("The total number of SMs (%d) is less than the number of SMs "
-               "requested (%d).",
-               gpu_info.num_sm, num_sm);
+        LOG(ERROR,
+            "The total number of SMs (%d) is less than the number of SMs "
+            "requested (%d).",
+            gpu_info.num_sm, num_sm);
     }
     const OpConfig *cfg = this->sched_op_config(&matmul_op);
     assert(cfg->output_tiles.size() == 1);
     int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
-        LOGERR("This matmul has no output tiles.");
+        LOG(ERROR, "This matmul has no output tiles.");
     }
 
     // Heuristically select a split_k value. If split_k is larger than 1, split
@@ -380,7 +381,7 @@ void DefaultScheduler::configure_gpu_buf(
 
             const int send_ready_flag_sid_offset = 128;
 
-            //
+            // TODO: move this into BaseScheduler::create_context().
             if (op->type == OP_SEND) {
                 //
                 Tensor *in = op->inputs[0];
