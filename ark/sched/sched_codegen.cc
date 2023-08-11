@@ -20,16 +20,16 @@ using namespace std;
 
 namespace ark {
 
-CodeGenerator::CodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                             const GpuInfo &gpu_info_, int num_warps_per_sm_)
-    : buf_trans{buf_trans}, gpu_info{gpu_info_}, sm_num{gpu_info_.num_sm},
+CodeGenerator::CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_)
+    : gpu_info{gpu_info_}, sm_num{gpu_info_.num_sm},
       num_warps_per_sm{num_warps_per_sm_}, num_indent{0}
 {
 }
 
 size_t CodeGenerator::get_tensor_offset(const Tensor *tensor) const
 {
-    size_t off = this->buf_trans.find(tensor->buf)->second->get_offset();
+    GpuBuf *gbuf = static_cast<GpuBuf *>(tensor->buf->buf);
+    size_t off = gbuf->get_offset();
     assert(off % 8 == 0);
     return off + tensor->offset_bytes();
 }

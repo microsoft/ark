@@ -47,8 +47,6 @@ class BaseScheduler
 
     const OpConfig *sched_op_config(const Op *op);
 
-    GpuBuf *get_gpu_buf(Tensor *tns) const;
-
     virtual void schedule() = 0;
 
     //
@@ -66,11 +64,6 @@ class BaseScheduler
 
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
-
-    // map from TensorBuf to gpu buffer, the TensorBuf is an abstract of the
-    // data buffer in the model layer, and the GpuBuf is the real buffer in the
-    // GPU address space
-    std::map<TensorBuf *, GpuBuf *> buf_trans;
 
     std::vector<const Op *> send_recv_ops;
 

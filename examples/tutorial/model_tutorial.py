@@ -27,8 +27,8 @@ def model_tutorial():
     input_np = np.random.rand(1, 32).astype(np.float16)
     other_np = np.random.rand(1, 32).astype(np.float16)
 
-    exe.tensor_memcpy_host_to_device(input, input_np)
-    exe.tensor_memcpy_host_to_device(other, other_np)
+    input.from_numpy(input_np)
+    other.from_numpy(other_np)
 
     print("input: ", input_np)
     print("other: ", other_np)
@@ -42,7 +42,7 @@ def model_tutorial():
 
     # Copy the output tensor back to host
     output_np = np.zeros((1, 32), dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(output_np, output)
+    output.to_numpy(output_np)
 
     print("output: ", output_np)
 
