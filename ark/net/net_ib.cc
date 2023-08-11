@@ -274,6 +274,9 @@ NetIbMgr::NetIbMgr(int ib_dev_id, bool sep_sc_rc_)
         }
         this->ports.emplace_back(port);
     }
+    if (this->ports.empty()) {
+        LOG(WARN, "no active IB ports");
+    }
     //
     if (sep_sc_rc_) {
         this->scq =
@@ -311,6 +314,10 @@ NetIbMgr::~NetIbMgr()
 NetIbQp *NetIbMgr::create_qp(int port)
 {
     if (port < 0) {
+        if (this->ports.empty()) {
+            LOG(WARN, "no active IB ports");
+            return nullptr;
+        }
         port = this->ports[0];
     } else {
         bool found = false;
