@@ -39,11 +39,11 @@ class PoswiseFeedForwardNet:
         weight_1 = param[prefix + "weight_1"]
         weight_1_shared = np.split(weight_1, num_gpu, axis=1)[self.rank]
         weight_1_shared_copy = weight_1_shared.copy()
-        exe.tensor_memcpy_host_to_device(self.weight_1, weight_1_shared_copy)
+        self.weight1.from_numpy(weight_1_shared_copy)
         weight_2 = param[prefix + "weight_2"]
         weight_2_shared = np.split(weight_2, num_gpu, axis=0)[self.rank]
         weight_2_shared_copy = weight_2_shared.copy()
-        exe.tensor_memcpy_host_to_device(self.weight_2, weight_2_shared_copy)
+        self.weight2.from_numpy(weight_2_shared_copy)
 
 
 # MultiHeadAttention that uses tensor parallelism, different heads are splited on different GPUs
@@ -141,19 +141,19 @@ class MultiHeadAttention:
         W_Q = param[prefix + "W_Q"]
         W_Q_shared = np.split(W_Q, num_gpu, axis=1)[self.rank]
         W_Q_shared_copy = W_Q_shared.copy()
-        exe.tensor_memcpy_host_to_device(self.W_Q, W_Q_shared_copy)
+        self.W_Q.from_numpy(W_Q_shared_copy)
         W_K = param[prefix + "W_K"]
         W_K_shared = np.split(W_K, num_gpu, axis=1)[self.rank]
         W_K_shared_copy = W_K_shared.copy()
-        exe.tensor_memcpy_host_to_device(self.W_K, W_K_shared_copy)
+        self.W_K.from_numpy(W_K_shared_copy)
         W_V = param[prefix + "W_V"]
         W_V_shared = np.split(W_V, num_gpu, axis=1)[self.rank]
         W_V_shared_copy = W_V_shared.copy()
-        exe.tensor_memcpy_host_to_device(self.W_V, W_V_shared_copy)
+        self.W_V.from_numpy(W_V_shared_copy)
         fc = param[prefix + "fc"]
         fc_shared = np.split(fc, num_gpu, axis=0)[self.rank]
         fc_shared_copy = fc_shared.copy()
-        exe.tensor_memcpy_host_to_device(self.fc, fc_shared_copy)
+        self.fc.from_numpy(fc_shared_copy)
 
 
 class EncoderLayer:
