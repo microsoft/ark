@@ -28,8 +28,7 @@ CodeGenerator::CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_)
 
 size_t CodeGenerator::get_tensor_offset(const Tensor *tensor) const
 {
-    GpuBuf *gbuf = static_cast<GpuBuf *>(tensor->buf->buf);
-    size_t off = gbuf->get_offset();
+    size_t off = tensor->buf->get_buf_offset();
     assert(off % 8 == 0);
     return off + tensor->offset_bytes();
 }
