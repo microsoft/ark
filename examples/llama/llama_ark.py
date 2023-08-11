@@ -63,7 +63,10 @@ class Silu(ark.Module):
         super().__init__()
 
     def forward(self, x):
-        return ark.mul(x, ark.sigmoid(x))
+        # We need to specify output tensor so that the sigmoid op will not be an in-place operator
+        output = ark.tensor(x.shape, ark.FP32)
+        x1 = ark.sigmoid(x, output)
+        return ark.mul(x, x1)
 
 
 class FeedForward(ark.Module):

@@ -21,10 +21,14 @@ def test_rmsnorm():
     runtime = ark.Runtime()
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
-    input_numpy = np.random.randn(batch_size, 1, dim).astype(np.float32)
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, 1, dim)
+    ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
-        "weight": np.ones((dim,)).astype(np.float32),
+        "weight": np.random.uniform(low=-1, high=1, size=(dim,)).astype(
+            np.float32
+        ),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
@@ -64,12 +68,20 @@ def test_feedforward():
     runtime = ark.Runtime()
     rmsnorm_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
     rmsnorm_ark = llama_ark.FeedForward(dim, 16384, 256, None)
-    input_numpy = np.random.randn(batch_size, 1, dim).astype(np.float32)
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, 1, dim)
+    ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
-        "w1.weight": np.ones((11008, dim)).astype(np.float32),
-        "w2.weight": np.ones((dim, 11008)).astype(np.float32),
-        "w3.weight": np.ones((11008, dim)).astype(np.float32),
+        "w1.weight": np.random.uniform(
+            low=-1, high=1, size=(11008, dim)
+        ).astype(np.float32),
+        "w2.weight": np.random.uniform(
+            low=-1, high=1, size=(dim, 11008)
+        ).astype(np.float32),
+        "w3.weight": np.random.uniform(
+            low=-1, high=1, size=(11008, dim)
+        ).astype(np.float32),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
@@ -90,6 +102,9 @@ def test_feedforward():
     # test if the result is correct
 
     gt = output_pytorch.detach().numpy().astype(np.float32)
+    print("output_ark_host:", output_ark_host)
+    print("gt", gt)
+
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
     print(
