@@ -3,6 +3,7 @@
 
 #include "logging.h"
 #include "model.h"
+#include "env.h"
 #include <cassert>
 
 namespace ark {
@@ -128,6 +129,9 @@ OpArgs RecvOp::function_call_args(const OpConfig &) const
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
                     Tensor *output, const std::string &name)
 {
+    if (get_env().use_mscclpp) {
+        return this->send_mscclpp(input, id, dst_rank, bytes, output, name);
+    }
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
         LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
@@ -149,6 +153,9 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
                          const std::string &name)
 {
+    if (get_env().use_mscclpp) {
+        return this->send_done_mscclpp(input, dst_rank, output, name);
+    }
     LOG(DEBUG, "send_done ", input->shape, " ", id);
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
@@ -162,6 +169,9 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
 Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
                     Tensor *output, const std::string &name)
 {
+    if (get_env().use_mscclpp) {
+        return this->recv_mscclpp(input, id, src_rank, bytes, output, name);
+    }
     assert(input != nullptr);
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
