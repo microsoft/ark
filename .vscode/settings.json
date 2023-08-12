@@ -1,0 +1,6 @@
+{
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.environment": {
+        "ARK_ROOT": "${workspaceFolder}/build"
+    },
+}
