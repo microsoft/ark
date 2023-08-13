@@ -66,8 +66,8 @@ struct UnitOp
 
     // Number of unit operators in each dimension.
     using UnitOpDims =
-        Vec<_OutDims::N / _UnitOutDims::N, _OutDims::C / _UnitOutDims::C,
-            _OutDims::H / _UnitOutDims::H, _OutDims::W / _UnitOutDims::W>;
+        Vec<_OutShape::N / _UnitOutDims::N, _OutShape::C / _UnitOutDims::C,
+            _OutShape::H / _UnitOutDims::H, _OutShape::W / _UnitOutDims::W>;
 
     static const int NumThreads = _NumThreads;
     static const int SmemBytes = _SmemBytes;
