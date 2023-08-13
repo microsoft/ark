@@ -112,8 +112,8 @@ class Attention(ark.Module):
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
         self.wq = Linear(args.dim, args.n_heads * self.head_dim)
-        self.wk = Linear(args.dim, args.n_kv_heads * self.head_dim)
-        self.wv = Linear(args.dim, args.n_kv_heads * self.head_dim)
+        self.wk = Linear(args.dim, self.n_kv_heads * self.head_dim)
+        self.wv = Linear(args.dim, self.n_kv_heads * self.head_dim)
         self.wo = Linear(args.n_heads * self.head_dim, args.dim)
 
     def forward(

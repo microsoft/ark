@@ -14,6 +14,7 @@ from fairscale.nn.model_parallel.initialize import (
 )
 
 dim = 4096
+seq_len = 64
 
 
 def test_rmsnorm():
@@ -22,7 +23,7 @@ def test_rmsnorm():
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
     input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, 1, dim)
+        low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
@@ -34,7 +35,7 @@ def test_rmsnorm():
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
     output_pytorch = rmsnorm_pytorch(torch_input)
 
-    ark_input = ark.tensor([batch_size, 1, dim], ark.FP32)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = rmsnorm_ark(ark_input)
 
     # Launch the ARK runtime
@@ -67,11 +68,11 @@ def test_attention():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
     args = llama_ark.ModelArgs()
-    rmsnorm_pytorch = llama_pytorch.Attention(args)
-    rmsnorm_ark = llama_ark.Attention(args)
+    attention_pytorch = llama_pytorch.Attention(args)
+    attention_ark = llama_ark.Attention(args)
     dim = args.dim
     input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, 1, dim)
+        low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
 
@@ -92,45 +93,39 @@ def test_attention():
         ).astype(np.float32),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
-    rmsnorm_pytorch.load_state_dict(state_dict_torch)
-    output_pytorch = rmsnorm_pytorch(torch_input)
+    attention_pytorch.load_state_dict(state_dict_torch)
+    xq_torch, xk_torch, xv_torch = attention_pytorch(torch_input, 0, None)
 
-    ark_input = ark.tensor([batch_size, 1, dim], ark.FP32)
-    output_ark = rmsnorm_ark(ark_input)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    xq, xk, xv = attention_ark(ark_input, 0, None)
 
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
-    rmsnorm_ark.load_state_dict(state_dict)
+    attention_ark.load_state_dict(state_dict)
 
     # Run the ARK program
     runtime.run()
-    output_ark_host = output_ark.to_numpy()
-
+    xq_ark_host = xq.to_numpy()
+    xk_ark_host = xk.to_numpy()
+    xv_ark_host = xv.to_numpy()
     # test if the result is correct
 
-    gt = output_pytorch.detach().numpy().astype(np.float32)
-    print("output_ark_host:", output_ark_host)
-    print("gt", gt)
+    xq_gt = xq_torch.detach().numpy().astype(np.float32)
+    xk_gt = xk_torch.detach().numpy().astype(np.float32)
+    xv_gt = xv_torch.detach().numpy().astype(np.float32)
 
-    max_abs_error = np.max(np.abs(output_ark_host - gt))
-    mean_abs_error = np.mean(np.abs(output_ark_host - gt))
-    print(
-        "rmsnorm test",
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-    )
+    max_abs_error = np.max(np.abs(xq_ark_host - xq_gt))
+    mean_abs_error = np.mean(np.abs(xq_ark_host - xq_gt))
 
 
 def test_feedforward():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
-    rmsnorm_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
-    rmsnorm_ark = llama_ark.FeedForward(dim, 16384, 256, None)
+    feedforward_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
+    feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
     input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, 1, dim)
+        low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
     state_dict = {
@@ -145,16 +140,16 @@ def test_feedforward():
         ).astype(np.float32),
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
-    rmsnorm_pytorch.load_state_dict(state_dict_torch)
-    output_pytorch = rmsnorm_pytorch(torch_input)
+    feedforward_pytorch.load_state_dict(state_dict_torch)
+    output_pytorch = feedforward_pytorch(torch_input)
 
-    ark_input = ark.tensor([batch_size, 1, dim], ark.FP32)
-    output_ark = rmsnorm_ark(ark_input)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    output_ark = feedforward_ark(ark_input)
 
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
-    rmsnorm_ark.load_state_dict(state_dict)
+    feedforward_ark.load_state_dict(state_dict)
 
     # Run the ARK program
     runtime.run()
@@ -180,6 +175,6 @@ def test_feedforward():
 if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
-    # test_rmsnorm()
-    test_attention()
+    test_rmsnorm()
+    # test_attention()
     # test_feedforward()
