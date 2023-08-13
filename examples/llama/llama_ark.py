@@ -98,3 +98,31 @@ class FeedForward(ark.Module):
         x3 = ark.mul(x1, x2)
         x4 = self.w2(x3)
         return x4
+
+
+class Attention(ark.Module):
+    def __init__(self, args: ModelArgs):
+        super().__init__()
+        self.n_kv_heads = (
+            args.n_heads if args.n_kv_heads is None else args.n_kv_heads
+        )
+        model_parallel_size = 1
+        self.n_local_heads = args.n_heads // model_parallel_size
+        self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
+        self.n_rep = self.n_local_heads // self.n_local_kv_heads
+        self.head_dim = args.dim // args.n_heads
+        self.wq = Linear(args.dim, args.n_heads * self.head_dim)
+        self.wk = Linear(args.dim, args.n_kv_heads * self.head_dim)
+        self.wv = Linear(args.dim, args.n_kv_heads * self.head_dim)
+        self.wo = Linear(args.n_heads * self.head_dim, args.dim)
+
+    def forward(
+        self,
+        x: ark.Tensor,
+        start_pos: int,
+        freqs_cis: ark.Tensor,
+        mask: Optional[ark.Tensor],
+    ):
+        bsz, seqlen, _ = x.shape
+        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
+        return xq, xk, xv
