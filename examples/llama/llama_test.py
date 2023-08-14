@@ -174,9 +174,67 @@ def test_feedforward():
     )
 
 
+def test_transformerblock():
+    # Initialize the ARK runtime
+    runtime = ark.Runtime()
+    args = llama_ark.ModelArgs()
+    transformer_block_pytorch = llama_pytorch.TransformerBlock(args)
+    transformer_block_ark = llama_ark.TransformerBlock(args)
+    dim = args.dim
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, seq_len, dim)
+    ).astype(np.float32)
+    torch_input = torch.from_numpy(input_numpy)
+
+    # head_dim = args.dim // args.n_heads
+    # n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
+    # state_dict = {
+    #     "wq.weight": np.random.uniform(
+    #         low=-1, high=1, size=(args.n_heads * head_dim, args.dim)
+    #     ).astype(np.float32),
+    #     "wk.weight": np.random.uniform(
+    #         low=-1, high=1, size=(n_kv_heads * head_dim, args.dim)
+    #     ).astype(np.float32),
+    #     "wv.weight": np.random.uniform(
+    #         low=-1, high=1, size=(n_kv_heads * head_dim, args.dim)
+    #     ).astype(np.float32),
+    #     "wo.weight": np.random.uniform(
+    #         low=-1, high=1, size=(args.dim, args.n_heads * head_dim)
+    #     ).astype(np.float32),
+    # }
+    # state_dict_torch = ark.convert_state_dict(state_dict, "torch")
+    # transformer_block_pytorch.load_state_dict(state_dict_torch)
+    output_torch = transformer_block_pytorch(torch_input, 0, None, None)
+
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    output = transformer_block_ark(ark_input, 0, None, None)
+
+    # Launch the ARK runtime
+    runtime.launch()
+    ark_input.from_numpy(input_numpy.astype(np.float32))
+    # transformer_block_ark.load_state_dict(state_dict)
+
+    # Run the ARK program
+    runtime.run()
+    output_ark_host = output.to_numpy()
+
+    # test if the result is correct
+    output_gt = output_torch.detach().numpy().astype(np.float32)
+    max_abs_error = np.max(np.abs(output_ark_host - output_gt))
+    mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
+    print(
+        "transformer_block test",
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+    )
+
+
 if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     # test_rmsnorm()
-    test_attention()
+    # test_attention()
     # test_feedforward()
+    test_transformerblock()
