@@ -100,6 +100,10 @@ class FeedForward(ark.Module):
         return x4
 
 
+def apply_rotary_emb(xq, xk, freqs_cis):
+    pass
+
+
 class Attention(ark.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
@@ -135,4 +139,14 @@ class Attention(ark.Module):
         xv = ark.reshape(
             xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
         )
-        return xq, xk, xv
+        # TODO: use ark.mul to implement the rotation embedding
+        # xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+
+        # TODO: enable kv cache and mask later
+        keys = xk
+        values = xv
+        # (bs, n_local_heads, seqlen, head_dim)
+        xq = ark.transpose(xq, [0, 2, 1, 3])
+        keys = ark.transpose(keys, [0, 2, 1, 3])
+        values = ark.transpose(values, [0, 2, 1, 3])
+        return xq, keys, values
