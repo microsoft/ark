@@ -6,7 +6,7 @@ runtime = ark.Runtime()
 input = ark.tensor([1, 1, 64, 128], dtype=ark.FP32)
 
 reduce = ark.reduce_mean(input, axis=input.ndims() - 1)
-
+# 1 1 64 1
 other = ark.tensor([1, 1, 64, 128], dtype=ark.FP32)
 
 output = ark.add(reduce, other)
@@ -22,5 +22,5 @@ other.from_numpy(other_numpy)
 
 runtime.run()
 
-# print(output.to_numpy())
+print(output.to_numpy())
 print(reduce.to_numpy())

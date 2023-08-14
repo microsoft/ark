@@ -117,6 +117,8 @@ def test_attention():
 
     xq_max_abs_error = np.max(np.abs(xq_ark_host - xq_gt))
     xq_mean_abs_error = np.mean(np.abs(xq_ark_host - xq_gt))
+    print(xq_ark_host)
+    print(xq_gt)
     print(
         "xq test",
         "max_abs_error:",
