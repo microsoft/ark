@@ -73,5 +73,6 @@ class TestScale(unittest.TestCase):
         test_scale_internal(8, 4096, 1024, "float")
         test_scale_internal(8, 1024, 4096, "float")
 
+
 if __name__ == "__main__":
     unittest.main()

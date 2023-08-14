@@ -183,10 +183,9 @@ class Attention(nn.Module):
         xq = xq.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
-        # scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(
-        #     self.head_dim
-        # )
-        scores = torch.matmul(xq, keys.transpose(2, 3))
+        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(
+            self.head_dim
+        )
         return scores, keys, values
 
         if mask is not None:
