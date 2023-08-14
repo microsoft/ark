@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mem.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ipc/ipc_coll.h"
 #include "net/net_ib.h"
-#include "env.h"
 #include "unittest/unittest_utils.h"
 #include <cstring>
 #include <numa.h>
