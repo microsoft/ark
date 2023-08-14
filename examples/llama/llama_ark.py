@@ -149,4 +149,9 @@ class Attention(ark.Module):
         xq = ark.transpose(xq, [0, 2, 1, 3])
         keys = ark.transpose(keys, [0, 2, 1, 3])
         values = ark.transpose(values, [0, 2, 1, 3])
-        return xq, keys, values
+
+        # (bs, n_local_heads, head_dim, seqlen)
+        keys_transpose = ark.transpose(keys, [0, 1, 3, 2])
+        scores = ark.matmul(xq, keys_transpose)
+        scores = ark.scale(scores, 1.0 / math.sqrt(self.head_dim))
+        return scores, keys, values

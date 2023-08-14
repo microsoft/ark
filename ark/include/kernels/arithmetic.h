@@ -487,6 +487,23 @@ DEVICE void scale(half *y, half *x, float val, int uop_idx, int)
                                                                        uop_idx);
 }
 
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes>
+DEVICE void scale(float *y, float *x, float val, int uop_idx, int)
+{
+    constexpr int NelemPerThread = (UnitOutDims::W % 8 == 0)   ? 8
+                                   : (UnitOutDims::W % 4 == 0) ? 4
+                                   : (UnitOutDims::W % 2 == 0) ? 2
+                                                               : 1;
+    using ValDims = Vec<1, 1, 1, 1>;
+    using ValShape = Vec<1, 1, 1, 1>;
+    Broadcast2<InDims, InShape, ValDims, ValShape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes,
+               Arithmetic<Mul, InShape, ValShape, float,
+                          NelemPerThread>>::run(y, x, &val, uop_idx);
+}
+
 } // namespace ark
 
 #endif // ARK_KERNELS_ARITHMETIC_H_
