@@ -3,7 +3,6 @@ build/
 **/build/
 
 # VS Code
-.vscode/
 .settings/
 
 # Python

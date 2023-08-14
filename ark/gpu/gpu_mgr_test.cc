@@ -65,6 +65,8 @@ unittest::State test_gpu_mgr_remote()
         }
 
         gpu_memset(gpu1_eid6, 5678, 1);
+
+        mgr->destroy_context(ctx);
         return 0;
     });
     UNITTEST_NE(pid0, -1);
@@ -96,6 +98,7 @@ unittest::State test_gpu_mgr_remote()
         while (*ptr != 5678) {
         }
 
+        mgr->destroy_context(ctx);
         return 0;
     });
     UNITTEST_NE(pid1, -1);
@@ -135,6 +138,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
 
         gpu_memset(gpu1_eid6, 5678, 1);
 
+        mgr->destroy_context(ctx);
         return 0;
     });
     UNITTEST_NE(pid0, -1);
@@ -166,6 +170,7 @@ unittest::State test_gpu_mgr_remote_lazy_import()
         while (*ptr != 5678) {
         }
 
+        mgr->destroy_context(ctx);
         return 0;
     });
     UNITTEST_NE(pid1, -1);
@@ -203,6 +208,7 @@ unittest::State test_gpu_mgr_request()
         while (*sc == 0) {
         }
 
+        mgr->destroy_context(ctx);
         return 0;
     });
     UNITTEST_NE(pid0, -1);
@@ -229,6 +235,7 @@ unittest::State test_gpu_mgr_request()
             UNITTEST_EQ(data[i], i + 1);
         }
 
+        mgr->destroy_context(ctx);
         return 0;
     });
     UNITTEST_NE(pid1, -1);

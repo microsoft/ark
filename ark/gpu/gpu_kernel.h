@@ -91,8 +91,7 @@ class GpuLoopKernel : public GpuKernel
     void wait();
     void stop();
 
-    void set_buf(GpuPtr buf_ptr);
-    const float &get_elapsed_msec() const
+    float get_elapsed_msec() const
     {
         return elapsed_msec;
     }

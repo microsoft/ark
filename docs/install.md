@@ -19,6 +19,19 @@
     -v /dev:/dev -v /lib/modules:/lib/modules
     ```
 
+* Mellanox OFED
+
+## Docker images
+
+We currently provide only *base images* for ARK, which contain all the dependencies for ARK but do not contain ARK itself (no [`gpudma`](https://github.com/microsoft/ark/blob/main/docs/install.md#install-gpudma) as well, which should be installed on the host side). The ARK-installed images will be provided in the future.
+
+You can pull a base image via:
+```
+docker pull ghcr.io/microsoft/ark/ark:base-cuda12.1
+```
+
+Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark/ark) for all available Docker images.
+
 ## Install `gpudma`
 
 *NOTE: if you are using a Docker container, the following steps should be done on the host.*
@@ -77,6 +90,8 @@ If you want to use only the core C++ interfaces, follow the instructions below.
 
 1. Go to the repo root directory and configure CMake. Replace `CMAKE_INSTALL_PREFIX` with your desired installation directory.
 
+    **NOTE:** if you install ARK C++ for debugging purposes, use `-DCMAKE_BUILD_TYPE=Debug` option.
+
     ```bash
     mkdir build
     cd build
@@ -106,7 +121,7 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     done
     ```
 
-    Run the tests:
+    Run the tests. If you do want to disable cross-node networking, pass `ARK_DISABLE_IB=1` environment variable to the test command.
 
     ```bash
     ARK_ROOT=$PWD ctest --output-on-failure
