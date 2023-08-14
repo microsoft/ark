@@ -157,8 +157,6 @@ class Attention(ark.Module):
 
         if mask is not None:
             scores = ark.add(scores, mask)
-        print(scores.shape)
-        print(scores.ndims())
         scores = ark.softmax(scores)
 
         output = ark.matmul(
