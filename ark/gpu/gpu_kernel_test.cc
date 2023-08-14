@@ -29,12 +29,12 @@ unittest::State test_gpu_kernel_loop_void()
     ctx->freeze();
 
     GpuLoopKernel glk{"test_kernel_loop_void",
-                        {test_kernel_loop_void},
-                        (unsigned int)mgr->get_gpu_info().num_sm,
-                        1,
-                        0,
-                        "",
-                        ctx};
+                      {test_kernel_loop_void},
+                      (unsigned int)mgr->get_gpu_info().num_sm,
+                      1,
+                      0,
+                      "",
+                      ctx};
     glk.compile(mgr->get_gpu_info());
     glk.load();
 
