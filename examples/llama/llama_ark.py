@@ -28,7 +28,7 @@ class RMSNorm(ark.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
-        self.weight = ark.Parameter(ark.tensor([dim], ark.FP32))
+        self.weight = ark.Parameter(ark.tensor([1, 1, dim], ark.FP32))
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)

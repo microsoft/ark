@@ -6,6 +6,7 @@ import llama_ark
 import ark
 import numpy as np
 import torch
+import torch.nn as nn
 
 from fairscale.nn.model_parallel.initialize import (
     get_model_parallel_rank,
@@ -178,31 +179,19 @@ def test_transformerblock():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
     args = llama_ark.ModelArgs()
-    transformer_block_pytorch = llama_pytorch.TransformerBlock(args)
-    transformer_block_ark = llama_ark.TransformerBlock(args)
+    transformer_block_pytorch = llama_pytorch.TransformerBlock(0, args)
+    transformer_block_ark = llama_ark.TransformerBlock(0, args)
     dim = args.dim
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
 
-    # head_dim = args.dim // args.n_heads
-    # n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-    # state_dict = {
-    #     "wq.weight": np.random.uniform(
-    #         low=-1, high=1, size=(args.n_heads * head_dim, args.dim)
-    #     ).astype(np.float32),
-    #     "wk.weight": np.random.uniform(
-    #         low=-1, high=1, size=(n_kv_heads * head_dim, args.dim)
-    #     ).astype(np.float32),
-    #     "wv.weight": np.random.uniform(
-    #         low=-1, high=1, size=(n_kv_heads * head_dim, args.dim)
-    #     ).astype(np.float32),
-    #     "wo.weight": np.random.uniform(
-    #         low=-1, high=1, size=(args.dim, args.n_heads * head_dim)
-    #     ).astype(np.float32),
-    # }
-    # state_dict_torch = ark.convert_state_dict(state_dict, "torch")
+    # random init the torch model
+    for param in transformer_block_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict = transformer_block_pytorch.state_dict()
+
     # transformer_block_pytorch.load_state_dict(state_dict_torch)
     output_torch = transformer_block_pytorch(torch_input, 0, None, None)
 
@@ -212,8 +201,9 @@ def test_transformerblock():
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
-    # transformer_block_ark.load_state_dict(state_dict)
 
+    ark_state_dict = ark.convert_state_dict(state_dict, "numpy")
+    transformer_block_ark.load_state_dict(ark_state_dict)
     # Run the ARK program
     runtime.run()
     output_ark_host = output.to_numpy()
