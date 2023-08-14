@@ -3,18 +3,18 @@ import numpy as np
 
 runtime = ark.Runtime()
 
-input = ark.tensor([1, 1, 64, 64], dtype=ark.FP32)
+input = ark.tensor([1, 1, 64, 128], dtype=ark.FP32)
 
 reduce = ark.reduce_mean(input, axis=input.ndims() - 1)
 
-other = ark.tensor([1, 1, 64, 64], dtype=ark.FP32)
+other = ark.tensor([1, 1, 64, 128], dtype=ark.FP32)
 
 output = ark.add(reduce, other)
 
 runtime.launch()
 
-input_numpy = np.ones([64, 64], dtype=np.float32)
-other_numpy = np.ones([64, 64], dtype=np.float32)
+input_numpy = np.ones([64, 128], dtype=np.float32)
+other_numpy = np.ones([64, 128], dtype=np.float32)
 
 input.from_numpy(input_numpy)
 
