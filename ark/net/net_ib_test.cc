@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mem.h"
 #include "include/ark.h"
@@ -443,6 +444,12 @@ ark::unittest::State test_net_ib_gpu_bw()
 int main()
 {
     ark::init();
+
+    if (ark::get_env().disable_ib) {
+        LOG(ark::WARN, "IB is disabled by the environment variable. Skip");
+        return 0;
+    }
+
     UNITTEST(test_net_ib_cpu);
     UNITTEST(test_net_ib_gpu);
     UNITTEST(test_net_ib_cpu_bw);

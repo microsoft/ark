@@ -14,6 +14,14 @@ TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_}
 {
 }
 
+size_t TensorBuf::get_buf_offset() const
+{
+    if (this->buf == nullptr) {
+        LOG(ERROR, "TensorBuf is not configured yet");
+    }
+    return static_cast<GpuBuf *>(this->buf)->get_offset();
+}
+
 // Tensor constructor
 Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
                const Dims &ldims_, const Dims &offs_, const Dims &pads_,

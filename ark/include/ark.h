@@ -94,6 +94,8 @@ class TensorBuf
     TensorBuf(const DimType &bytes = 0, int id = -1);
     TensorBuf(const TensorBuf &) = default;
 
+    size_t get_buf_offset() const;
+
     DimType bytes;
     int id;
     bool immutable = false;
@@ -102,9 +104,7 @@ class TensorBuf
     void *buf = nullptr;
 
     friend class Tensor;
-    friend class CodeGenerator;
     friend class BaseScheduler;
-    friend class SchedOp;
 };
 
 // Type of tensor data.
