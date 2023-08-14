@@ -199,3 +199,43 @@ class TransformerBlock(ark.Module):
         h = ark.add(x, h)
         out = ark.add(h, self.feed_forward(self.ffn_norm(h)))
         return out
+
+
+class Transformer(ark.Module):
+    def __init__(self, params: ModelArgs):
+        super().__init__()
+        self.params = params
+        self.vocab_size = params.vocab_size
+        self.n_layers = params.n_layers
+
+        # self.tok_embeddings = Linear(
+        #     params.vocab_size, params.dim, init_method=lambda x: x
+        # )
+
+        self.layers = []
+        for layer_id in range(params.n_layers):
+            self.tmp_layer = TransformerBlock(layer_id, params)
+            self.layers.append(self.tmp_layer)
+
+        # self.norm = RMSNorm(params.dim, eps=params.norm_eps)
+        # self.output = Linear(
+        #     params.dim, params.vocab_size
+        # )
+
+        # self.freqs_cis = precompute_freqs_cis(
+        #     self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
+        # )
+
+    def forward(self, h: ark.Tensor, start_pos: int):
+
+        freqs_cis = None
+
+        mask = None
+
+        for layer in self.layers:
+            h = layer(h, start_pos, freqs_cis, mask)
+        h = self.norm(h)
+        output = self.output(h).float()
+        return output
+
+
