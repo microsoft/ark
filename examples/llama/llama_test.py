@@ -94,10 +94,10 @@ def test_attention():
     }
     state_dict_torch = ark.convert_state_dict(state_dict, "torch")
     attention_pytorch.load_state_dict(state_dict_torch)
-    xq_torch, xk_torch, xv_torch = attention_pytorch(torch_input, 0, None, None)
+    output_torch = attention_pytorch(torch_input, 0, None, None)
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
-    xq, xk, xv = attention_ark(ark_input, 0, None, None)
+    output = attention_ark(ark_input, 0, None, None)
 
     # Launch the ARK runtime
     runtime.launch()
@@ -106,45 +106,18 @@ def test_attention():
 
     # Run the ARK program
     runtime.run()
-    xq_ark_host = xq.to_numpy()
-    xk_ark_host = xk.to_numpy()
-    xv_ark_host = xv.to_numpy()
+    output_ark_host = output.to_numpy()
+
     # test if the result is correct
-
-    xq_gt = xq_torch.detach().numpy().astype(np.float32)
-    xk_gt = xk_torch.detach().numpy().astype(np.float32)
-    xv_gt = xv_torch.detach().numpy().astype(np.float32)
-
-    xq_max_abs_error = np.max(np.abs(xq_ark_host - xq_gt))
-    xq_mean_abs_error = np.mean(np.abs(xq_ark_host - xq_gt))
-    print(xq_ark_host)
-    print(xq_gt)
+    output_gt = output_torch.detach().numpy().astype(np.float32)
+    max_abs_error = np.max(np.abs(output_ark_host - output_gt))
+    mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
-        "xq test",
+        "attention test",
         "max_abs_error:",
-        "{:.5f}".format(xq_max_abs_error),
+        "{:.5f}".format(max_abs_error),
         "mean_abs_error:",
-        "{:.5f}".format(xq_mean_abs_error),
-    )
-
-    xk_max_abs_error = np.max(np.abs(xk_ark_host - xk_gt))
-    xk_mean_abs_error = np.mean(np.abs(xk_ark_host - xk_gt))
-    print(
-        "xk test",
-        "max_abs_error:",
-        "{:.5f}".format(xk_max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(xk_mean_abs_error),
-    )
-
-    xv_max_abs_error = np.max(np.abs(xv_ark_host - xv_gt))
-    xv_mean_abs_error = np.mean(np.abs(xv_ark_host - xv_gt))
-    print(
-        "xv test",
-        "max_abs_error:",
-        "{:.5f}".format(xv_max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(xv_mean_abs_error),
+        "{:.5f}".format(mean_abs_error),
     )
 
 

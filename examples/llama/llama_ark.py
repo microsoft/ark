@@ -154,4 +154,19 @@ class Attention(ark.Module):
         keys_transpose = ark.transpose(keys, [0, 1, 3, 2])
         scores = ark.matmul(xq, keys_transpose)
         scores = ark.scale(scores, 1.0 / math.sqrt(self.head_dim))
-        return scores, keys, values
+
+        if mask is not None:
+            scores = ark.add(scores, mask)
+        print(scores.shape)
+        print(scores.ndims())
+        scores = ark.softmax(scores)
+
+        output = ark.matmul(
+            scores, values
+        )  # (bs, n_local_heads, seqlen, head_dim)
+        output = ark.transpose(output, [0, 2, 1, 3])
+        output = ark.reshape(
+            output, [bsz, seqlen, self.head_dim * self.n_local_heads]
+        )
+        output = self.wo(output)
+        return output

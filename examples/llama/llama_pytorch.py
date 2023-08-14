@@ -186,7 +186,6 @@ class Attention(nn.Module):
         scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(
             self.head_dim
         )
-        return scores, keys, values
 
         if mask is not None:
             scores = (
