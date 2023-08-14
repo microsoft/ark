@@ -227,7 +227,6 @@ class Transformer(ark.Module):
         # )
 
     def forward(self, h: ark.Tensor, start_pos: int):
-
         freqs_cis = None
 
         mask = None
@@ -237,5 +236,3 @@ class Transformer(ark.Module):
         h = self.norm(h)
         output = self.output(h).float()
         return output
-
-
