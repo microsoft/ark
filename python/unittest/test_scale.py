@@ -6,9 +6,8 @@ import ark
 import unittest
 import random
 
-def test_scale_internal(
-    batch_size, m, n, data_type="float", iter=1
-):
+
+def test_scale_internal(batch_size, m, n, data_type="float", iter=1):
     if data_type == "float":
         ark_data_type = ark.FP32
         numpy_data_type = np.float32
