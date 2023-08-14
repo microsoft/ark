@@ -157,10 +157,10 @@ class Attention(nn.Module):
     ):
         bsz, seqlen, _ = x.shape
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
-        return xq, xk, xv
         xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
         xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
         xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        return xq, xk, xv
 
         xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 

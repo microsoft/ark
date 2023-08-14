@@ -125,4 +125,14 @@ class Attention(ark.Module):
     ):
         bsz, seqlen, _ = x.shape
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
+        # xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
+        # xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        # xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        xq = ark.reshape(xq, [bsz, seqlen, self.n_local_heads, self.head_dim])
+        xk = ark.reshape(
+            xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+        )
+        xv = ark.reshape(
+            xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+        )
         return xq, xk, xv
