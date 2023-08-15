@@ -86,3 +86,13 @@ jobs:
       script: |
         cd build && ARK_ROOT=$PWD ctest --verbose
       workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+  - task: Bash@3
+    name: Build Python
+    displayName: Build Python
+    inputs:
+      targetType: 'inline'
+      script: |
+        python3 -m pip install -r requirements.txt
+        python3 -m pip install .
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
