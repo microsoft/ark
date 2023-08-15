@@ -41,7 +41,7 @@ void cublas_matmul_float_nt(int m, int n, int k, const float *a, int lda,
     float alpha = 1;
     float beta = 0;
     cublasStatus_t status =
-        cublasSgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
+        cublasSgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
                     a, lda, &beta, c, ldc);
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasSgemm");
@@ -55,7 +55,7 @@ void cublas_matmul_float_tn(int m, int n, int k, const float *a, int lda,
     float alpha = 1;
     float beta = 0;
     cublasStatus_t status =
-        cublasSgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
+        cublasSgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
                     a, lda, &beta, c, ldc);
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasSgemm");
@@ -97,7 +97,7 @@ void cublas_matmul_half_nt(int m, int n, int k, const half *a, int lda,
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
     cublasStatus_t status =
-        cublasHgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
+        cublasHgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
                     a, lda, &beta, c, ldc);
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasHgemm");
@@ -111,7 +111,7 @@ void cublas_matmul_half_tn(int m, int n, int k, const half *a, int lda,
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
     cublasStatus_t status =
-        cublasHgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
+        cublasHgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
                     a, lda, &beta, c, ldc);
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasHgemm");
@@ -400,7 +400,7 @@ ark::unittest::State test_matmul_nt()
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, false, true, "matmul", 0);
 
         auto result =
-            ark::op_test("matmul_nt", m, {a, b}, {c}, baseline_matmul_nn<half>);
+            ark::op_test("matmul_nt", m, {a, b}, {c}, baseline_matmul_nt<half>);
         ark::op_test_log(result);
     }
     {
@@ -410,7 +410,7 @@ ark::unittest::State test_matmul_nt()
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, false, true, "matmul", 0);
 
         auto result =
-            ark::op_test("matmul_nt", m, {a, b}, {c}, baseline_matmul_nn<half>);
+            ark::op_test("matmul_nt", m, {a, b}, {c}, baseline_matmul_nt<half>);
         ark::op_test_log(result);
     }
     return ark::unittest::SUCCESS;
@@ -425,7 +425,7 @@ ark::unittest::State test_matmul_tn()
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, false, "matmul", 0);
 
         auto result =
-            ark::op_test("matmul_tn", m, {a, b}, {c}, baseline_matmul_nn<half>);
+            ark::op_test("matmul_tn", m, {a, b}, {c}, baseline_matmul_tn<half>, "ones", true);
         ark::op_test_log(result);
     }
     {
@@ -435,7 +435,7 @@ ark::unittest::State test_matmul_tn()
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, false, "matmul", 0);
 
         auto result =
-            ark::op_test("matmul_tn", m, {a, b}, {c}, baseline_matmul_nn<half>);
+            ark::op_test("matmul_tn", m, {a, b}, {c}, baseline_matmul_tn<half>);
         ark::op_test_log(result);
     }
     return ark::unittest::SUCCESS;
@@ -450,7 +450,7 @@ ark::unittest::State test_matmul_tt()
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, true, "matmul", 0);
 
         auto result =
-            ark::op_test("matmul_tt", m, {a, b}, {c}, baseline_matmul_nn<half>);
+            ark::op_test("matmul_tt", m, {a, b}, {c}, baseline_matmul_tt<half>);
         ark::op_test_log(result);
     }
     {
@@ -460,7 +460,7 @@ ark::unittest::State test_matmul_tt()
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, true, "matmul", 0);
 
         auto result =
-            ark::op_test("matmul_tt", m, {a, b}, {c}, baseline_matmul_nn<half>);
+            ark::op_test("matmul_tt", m, {a, b}, {c}, baseline_matmul_tt<half>);
         ark::op_test_log(result);
     }
     return ark::unittest::SUCCESS;
