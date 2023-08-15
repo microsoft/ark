@@ -111,14 +111,15 @@ def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
 
 
 def apply_rotary_emb(xq, xk, freqs_cis):
-    # (batch_size, seq_len, self.n_local_heads, self.head_dim) -> (batch_size * seq_len * self.n_local_heads * self.head_dim//2, 2)
+    # (batch_size, seq_len, self.n_local_heads, self.head_dim) -> 
+    # (batch_size * seq_len * self.n_local_heads * self.head_dim//2, 1, 2)
     xq_shape = xq.shape
     xq_ = ark.reshape(
-        xq, [xq_shape[0] * xq_shape[1] * xq_shape[2] * xq_shape[3] // 2, 2]
+        xq, [xq_shape[0] * xq_shape[1] * xq_shape[2] * xq_shape[3] // 2, 1, 2]
     )
     xk_shape = xk.shape
     xk_ = ark.reshape(
-        xk, [xk_shape[0] * xk_shape[1] * xk_shape[2] * xk_shape[3] // 2, 2]
+        xk, [xk_shape[0] * xk_shape[1] * xk_shape[2] * xk_shape[3] // 2, 1, 2]
     )
     # freqs_cis: (seq_len * self.n_local_heads* self.head_dim, 2, 2)
     xq_out = ark.matmul(xq_, freqs_cis)
