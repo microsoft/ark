@@ -12,7 +12,7 @@
 
 * CMake >= 3.25.0 and Python >= 3.7
 
-* GPUs with CUDA compute capability >= 7.0 and CUDA version >= 11.1
+* GPUs with CUDA compute capability 7.0 (CUDA >= 11.1) / 8.0 (CUDA >= 11.1) / 9.0 (CUDA >= 12.0)
 
 * To run ARK in a Docker container, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Add the following options in the `docker run` command:
     ```
