@@ -207,7 +207,7 @@ class Transformer(ark.Module):
         # )
 
         self.layers = []
-        for layer_id in range(6):
+        for layer_id in range(self.n_layers):
             self.tmp_layer = TransformerBlock(layer_id, params)
             self.layers.append(self.tmp_layer)
 

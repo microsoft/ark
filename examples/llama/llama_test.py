@@ -371,5 +371,5 @@ if __name__ == "__main__":
     # test_attention()
     # test_feedforward()
     # test_transformerblock()
-    # test_transformer()
-    test_rotary_embedding()
+    test_transformer()
+    # test_rotary_embedding()
