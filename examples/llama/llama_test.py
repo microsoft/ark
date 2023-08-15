@@ -280,11 +280,12 @@ def test_rotary_embedding():
     freqs_cis_torch = freqs_cis[start_pos : start_pos + seqlen]
     print("freqs_cis.shape", freqs_cis.shape)
     head_dim = params.dim // params.n_heads
-    xq_torch = torch.ones(
+    xq_torch = torch.randn(
         [batch_size, seq_len, params.n_heads, head_dim],
         dtype=torch.float32,
     )
-    xk_torch = torch.ones(
+
+    xk_torch = torch.randn(
         [batch_size, seq_len, params.n_heads, head_dim],
         dtype=torch.float32,
     )
@@ -313,9 +314,12 @@ def test_rotary_embedding():
     # Add a new axis to freqs_cis_real
     freqs_cis_imag = freqs_cis_complex.imag
     # stack real and imag parts
-    freqs_cis_stack = np.stack([freqs_cis_real, freqs_cis_imag], axis=-1)
+    freqs_cis_stack = np.stack(
+        [freqs_cis_real, freqs_cis_imag], axis=-1
+    ).astype(np.float32)
     print("freqs_cis_stack.shape", freqs_cis_stack.shape)
-    freqs_cis_ark.from_numpy(freqs_cis_stack.astype(np.float32))
+    print("freqs_cis_stack", freqs_cis_stack)
+    freqs_cis_ark.from_numpy(freqs_cis_stack)
     # llama_ark.precompute_freqs_cis(freqs_cis_ark)
 
     runtime.run()
