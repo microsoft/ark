@@ -15,9 +15,9 @@ jobs:
   strategy:
     matrix:
       cuda11:
-        containerImage: ghcr.io/microsoft/mscclpp/mscclpp:base-cuda11.8
+        containerImage: ghcr.io/microsoft/ark/ark:base-cuda11.8
       cuda12:
-        containerImage: ghcr.io/microsoft/mscclpp/mscclpp:base-cuda12.1
+        containerImage: ghcr.io/microsoft/ark/ark:base-cuda12.1
 
   container:
     image: $[ variables['containerImage'] ]
