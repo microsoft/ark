@@ -148,6 +148,7 @@ class Attention(ark.Module):
         scores = ark.scale(scores, 1.0 / math.sqrt(self.head_dim))
 
         if mask is not None:
+            print("scores shape: ", scores.shape)
             scores = ark.add(scores, mask)
         scores = ark.softmax(scores)
 
@@ -200,6 +201,7 @@ class Transformer(ark.Module):
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
 
+        # TODO: implement the token embedding layer later
         # self.tok_embeddings = Linear(
         #     params.vocab_size, params.dim, init_method=lambda x: x
         # )
@@ -209,22 +211,22 @@ class Transformer(ark.Module):
             self.tmp_layer = TransformerBlock(layer_id, params)
             self.layers.append(self.tmp_layer)
 
-        # self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        # self.output = Linear(
-        #     params.dim, params.vocab_size
-        # )
-
-        # self.freqs_cis = precompute_freqs_cis(
-        #     self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
-        # )
+        self.norm = RMSNorm(params.dim, eps=params.norm_eps)
+        self.output = Linear(params.dim, params.vocab_size)
+        seq_len = 64
+        self.freqs_cis = ark.tensor(
+            [1, seq_len, 1, params.dim // params.n_heads], ark.FP32
+        )
+        self.mask = ark.tensor([1, seq_len, seq_len], ark.FP32)
 
     def forward(self, h: ark.Tensor, start_pos: int):
-        freqs_cis = None
-
         mask = None
 
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
-        # h = self.norm(h)
-        # output = self.output(h).float()
-        return h
+            h = layer(h, start_pos, self.freqs_cis, mask)
+        h = self.norm(h)
+        output = self.output(h)
+        return output
+
+    def init_constant_values(self):
+        pass

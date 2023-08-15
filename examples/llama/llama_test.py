@@ -250,6 +250,7 @@ def test_transformer():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
     args = llama_ark.ModelArgs()
+    args.vocab_size = 1024
     transformer_pytorch = llama_pytorch.Transformer(args)
     transformer_ark = llama_ark.Transformer(args)
     dim = args.dim
@@ -375,9 +376,9 @@ def test_rotary_embedding():
 if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
-    test_rmsnorm()
+    # test_rmsnorm()
     # test_attention()
     # test_feedforward()
     # test_transformerblock()
-    # test_transformer()
+    test_transformer()
     # test_rotary_embedding()
