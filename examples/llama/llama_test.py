@@ -301,7 +301,7 @@ def test_rotary_embedding():
         [batch_size, seq_len, params.n_heads, head_dim], ark.FP32
     )
 
-    freqs_cis_ark = ark.tensor([seqlen, 1, head_dim, 2], ark.FP32)
+    freqs_cis_ark = ark.tensor([seqlen, 1, head_dim // 2, 2], ark.FP32)
 
     xq_out_ark = llama_ark.apply_rotary_emb(xq_ark, xk_ark, freqs_cis_ark)
 
@@ -309,7 +309,7 @@ def test_rotary_embedding():
     xq_ark.from_numpy(xq_torch.numpy().astype(np.float32))
     xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
 
-    llama_ark.precompute_freqs_cis(freqs_cis_ark)
+    # llama_ark.precompute_freqs_cis(freqs_cis_ark)
 
     runtime.run()
 
