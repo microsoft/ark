@@ -96,3 +96,12 @@ jobs:
         python3 -m pip install -r requirements.txt
         python3 -m pip install .
       workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+  - task: Bash@3
+    name: RunPythonUT
+    displayName: Run Python UT
+    inputs:
+      targetType: 'inline'
+      script: |
+        cd python/unittest && python3 test_matmul.py
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
