@@ -18,6 +18,19 @@ dim = 4096
 seq_len = 64
 
 
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
+
+
 def test_rmsnorm():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
@@ -32,7 +45,7 @@ def test_rmsnorm():
             np.float32
         ),
     }
-    state_dict_torch = ark.convert_state_dict(state_dict, "torch")
+    state_dict_torch = convert_state_dict(state_dict, "torch")
     rmsnorm_pytorch.load_state_dict(state_dict_torch)
     output_pytorch = rmsnorm_pytorch(torch_input)
 
@@ -93,7 +106,7 @@ def test_attention():
             low=-1, high=1, size=(args.dim, args.n_heads * head_dim)
         ).astype(np.float32),
     }
-    state_dict_torch = ark.convert_state_dict(state_dict, "torch")
+    state_dict_torch = convert_state_dict(state_dict, "torch")
     attention_pytorch.load_state_dict(state_dict_torch)
     output_torch = attention_pytorch(torch_input, 0, None, None)
 
@@ -142,7 +155,7 @@ def test_feedforward():
             low=-1, high=1, size=(11008, dim)
         ).astype(np.float32),
     }
-    state_dict_torch = ark.convert_state_dict(state_dict, "torch")
+    state_dict_torch = convert_state_dict(state_dict, "torch")
     feedforward_pytorch.load_state_dict(state_dict_torch)
     output_pytorch = feedforward_pytorch(torch_input)
 
@@ -202,7 +215,7 @@ def test_transformerblock():
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
 
-    ark_state_dict = ark.convert_state_dict(state_dict, "numpy")
+    ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_block_ark.load_state_dict(ark_state_dict)
     # Run the ARK program
     runtime.run()
@@ -248,7 +261,7 @@ def test_transformer():
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
 
-    # ark_state_dict = ark.convert_state_dict(state_dict, "numpy")
+    # ark_state_dict = convert_state_dict(state_dict, "numpy")
     # transformer_ark.load_state_dict(ark_state_dict)
     # Run the ARK program
     runtime.run()
@@ -348,7 +361,7 @@ if __name__ == "__main__":
     initialize_model_parallel(1)
     # test_rmsnorm()
     # test_attention()
-    # test_feedforward()
+    test_feedforward()
     # test_transformerblock()
     # test_transformer()
-    test_rotary_embedding()
+    # test_rotary_embedding()
