@@ -110,10 +110,15 @@ typedef enum
     OP_SCALE,
     OP_RELU,
     OP_GELU,
+    OP_SIGMOID,
+    OP_EXP,
+    OP_SQRT,
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
+    OP_SUB,
     OP_MUL,
+    OP_DIV,
     OP_IM2COL,
     OP_TRANSPOSE,
     OP_SEND,
@@ -263,10 +268,50 @@ class AddOp : public Op
     std::string function_name(const OpConfig &cfg) const;
 };
 
+class SubOp : public Op
+{
+  public:
+    SubOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class MulOp : public Op
+{
+  public:
+    MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class DivOp : public Op
+{
+  public:
+    DivOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
 class GeluOp : public Op
 {
   public:
     GeluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+           const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class ExpOp : public Op
+{
+  public:
+    ExpOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SqrtOp : public Op
+{
+  public:
+    SqrtOp(OpPrecType prec_type, Tensor *input, Tensor *output,
            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
@@ -294,8 +339,8 @@ class MatmulOp : public Op
   public:
     MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
              Dims nca, Dims ncb, Dims problem_size, Dims leading_dims,
-             bool is_column_a, bool is_column_b, bool is_relu,
-             const std::string &name, int gran_lev);
+             bool is_column_a, bool is_column_b, const std::string &name,
+             int gran_lev);
     std::string function_name(const OpConfig &cfg) const;
 };
 
@@ -304,14 +349,6 @@ class MaxPoolOp : public Op
   public:
     MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
               DimType kernel_size, DimType stride, const std::string &name);
-};
-
-class MulOp : public Op
-{
-  public:
-    MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-          const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceOp : public Op
@@ -380,6 +417,14 @@ class ReluOp : public Op
   public:
     ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
            const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SigmoidOp : public Op
+{
+  public:
+    SigmoidOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+              const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 

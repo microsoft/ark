@@ -16,7 +16,7 @@ def tensor(
     pads: Dims = Dims(),
     deps: list = [],
     exported: bool = False,
-    imported: bool = False,
+    imported_rank: int = -1,
     name: str = "tensor",
 ) -> Tensor:
     """
@@ -33,7 +33,16 @@ def tensor(
             raise ValueError("Only support tensors with up to 4 dimensions")
         shape = Dims(*shape)
     _tensor = Model.get_global_model().tensor(
-        shape, dtype, buf, ldims, offs, pads, deps, exported, imported, name
+        shape,
+        dtype,
+        buf,
+        ldims,
+        offs,
+        pads,
+        deps,
+        exported,
+        imported_rank,
+        name,
     )
     return Tensor(_tensor)
 
@@ -76,7 +85,6 @@ def reshape(
 def identity(
     input: Tensor,
     deps: List[Tensor] = [],
-    output: Tensor = None,
     name: str = "identity",
 ) -> Tensor:
     """
@@ -90,11 +98,7 @@ def identity(
             logging.error("All dependencies should be tensors")
             raise TypeError("All dependencies should be tensors")
         dep_tensor.append(dep._tensor)
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_global_model().identity(
-        input._tensor, dep_tensor, output, name
-    )
+    _tensor = Model.get_global_model().identity(input._tensor, dep_tensor, name)
     return Tensor(_tensor)
 
 
@@ -247,7 +251,6 @@ def matmul(
     splitk: int = 1,
     transpose_a: bool = False,
     transpose_b: bool = False,
-    is_relu: bool = False,
     name: str = "matmul",
     gran_lev: int = -1,
 ) -> Tensor:
@@ -269,7 +272,6 @@ def matmul(
         splitk,
         transpose_a,
         transpose_b,
-        is_relu,
         name,
         gran_lev,
     )
@@ -392,6 +394,38 @@ def scale(
     return Tensor(_tensor)
 
 
+def exp(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "exp",
+) -> Tensor:
+    """
+    Calculates the exponential of the `input` tensor, element-wise.
+    Usage:
+    tensor_exp = ark.exp(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().exp(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
+def sqrt(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "sqrt",
+) -> Tensor:
+    """
+    Calculates the square root of the `input` tensor, element-wise.
+    Usage:
+    tensor_sqrt = ark.sqrt(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().sqrt(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
 def relu(
     input: Tensor,
     output: Tensor = None,
@@ -428,6 +462,23 @@ def gelu(
     return Tensor(_tensor)
 
 
+def sigmoid(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "sigmoid",
+) -> Tensor:
+    """
+    Applies the Sigmoid activation function to the `input` tensor,
+    element-wise.
+    Usage:
+    tensor_sigmoid = ark.sigmoid(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().sigmoid(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
 def add(
     input: Tensor,
     other: Tensor,
@@ -448,6 +499,26 @@ def add(
     return Tensor(_tensor)
 
 
+def sub(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "sub",
+) -> Tensor:
+    """
+    Performs an element-wise addition operator between the `input`
+    tensor and the `other` tensor.
+    Usage:
+    tensor_add = ark.sub(tensor1, tensor2)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().sub(
+        input._tensor, other._tensor, output, name
+    )
+    return Tensor(_tensor)
+
+
 def mul(
     input: Tensor,
     other: Tensor,
@@ -463,6 +534,26 @@ def mul(
     if output is not None:
         output = output._tensor
     _tensor = Model.get_global_model().mul(
+        input._tensor, other._tensor, output, name
+    )
+    return Tensor(_tensor)
+
+
+def div(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "div",
+) -> Tensor:
+    """
+    Performs an element-wise division operator between the
+    `input` tensor and the `other` tensor.
+    Usage:
+    tensor_mul = ark.div(tensor1, tensor2)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().div(
         input._tensor, other._tensor, output, name
     )
     return Tensor(_tensor)
@@ -637,9 +728,7 @@ def all_gather(
         input_tensor, rank, world_size, output_shard
     )
     """
-    for output_shard in output:
-        if output_shard is not None:
-            output_shard = output_shard._tensor
+    output = [output_shard._tensor for output_shard in output]
     tensor_shards = Model.get_global_model().all_gather(
         input._tensor,
         gpu_id,

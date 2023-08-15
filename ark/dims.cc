@@ -16,7 +16,8 @@ Dims::Dims(DimType d0, DimType d1, DimType d2, DimType d3)
     this->data[2] = d2;
     this->data[3] = d3;
     if (this->is_invalid()) {
-        LOGERR("invalid dims given: <", d0, ", ", d1, ", ", d2, ", ", d3, ">");
+        LOG(ERROR, "invalid dims given: <", d0, ", ", d1, ", ", d2, ", ", d3,
+            ">");
     }
 }
 
@@ -24,7 +25,7 @@ Dims::Dims(DimType d0, DimType d1, DimType d2, DimType d3)
 Dims::Dims(const Dims &dims_)
 {
     if (dims_.is_invalid()) {
-        LOGERR("invalid dims given");
+        LOG(ERROR, "invalid dims given");
     }
     for (int i = 0; i < DIMS_LEN; ++i) {
         this->data[i] = dims_.data[i];
@@ -37,13 +38,14 @@ Dims::Dims(const std::vector<DimType> &vec)
 {
     int ds = (int)vec.size();
     if (ds > DIMS_LEN) {
-        LOGERR("only support dims with size <= ", DIMS_LEN, ". Given: ", *this);
+        LOG(ERROR, "only support dims with size <= ", DIMS_LEN,
+            ". Given: ", *this);
     }
     int i = 0;
     for (; i < ds; ++i) {
         const DimType &v = vec[i];
         if (v < 0 && v != NO_DIM) {
-            LOGERR("invalid dims given at index ", i, ": ", v);
+            LOG(ERROR, "invalid dims given at index ", i, ": ", v);
         }
         this->data[i] = v;
     }
@@ -89,7 +91,8 @@ Dims Dims::dims4() const
     const DimType *v = this->data;
     int nd = this->ndims();
     if (nd > DIMS_LEN) {
-        LOGERR("only support dims with size <= ", DIMS_LEN, ". Given: ", nd);
+        LOG(ERROR, "only support dims with size <= ", DIMS_LEN,
+            ". Given: ", nd);
     }
     Dims ret;
     for (int i = 0; i < DIMS_LEN - nd; ++i) {
@@ -139,7 +142,7 @@ DimType Dims::erase(int idx)
 {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {
-        LOGERR("invalid index given: ", idx, " for ", *this);
+        LOG(ERROR, "invalid index given: ", idx, " for ", *this);
     }
     if (idx < 0) {
         idx += nd;
@@ -156,7 +159,7 @@ DimType &Dims::operator[](int idx)
 {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {
-        LOGERR("invalid index given: ", idx, " for ", *this);
+        LOG(ERROR, "invalid index given: ", idx, " for ", *this);
     }
     if (idx < 0) {
         idx += nd;
@@ -168,7 +171,7 @@ const DimType &Dims::operator[](int idx) const
 {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {
-        LOGERR("invalid index given: ", idx, " for ", *this);
+        LOG(ERROR, "invalid index given: ", idx, " for ", *this);
     }
     if (idx < 0) {
         idx += nd;
@@ -207,7 +210,7 @@ void from_json(const nlohmann::json &j, Dims &dims)
 std::ostream &operator<<(std::ostream &os, const Dims &dims)
 {
     if (dims.is_invalid()) {
-        LOGERR("invalid dims given");
+        LOG(ERROR, "invalid dims given");
     }
     os << '<';
     if (dims.data[0] != NO_DIM) {

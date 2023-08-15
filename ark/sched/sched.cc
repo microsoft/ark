@@ -18,8 +18,8 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
     int max_warps_per_sm =
         (int)(gpu_info.max_threads_per_block / gpu_info.threads_per_warp);
     this->num_warps_per_sm = std::min(num_warps_per_sm_, max_warps_per_sm);
-    this->codegen = std::make_unique<CodeGenerator>(this->buf_trans, gpu_info,
-                                                    num_warps_per_sm_);
+    this->codegen =
+        std::make_unique<CodeGenerator>(gpu_info, num_warps_per_sm_);
 }
 
 // create context on gpu for the model
@@ -28,15 +28,16 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
     GpuMgrCtx *ctx =
         this->gpu_mgr->create_context(name, this->rank, this->world_size);
     for (BufInfo &bi : this->buf_infos) {
+        LOG(DEBUG, "buf_info: sid=", bi.sid, " tbuf=", bi.tbuf,
+            " bytes=", bi.bytes, " offset=", bi.offset, " gpu_id=", bi.gpu_id,
+            " rank=", this->gpu_mgr->gpu_id);
         GpuBuf *buf;
         if (bi.gpu_id == this->gpu_mgr->gpu_id) {
-            auto search = this->buf_trans.find(bi.tbuf);
-            if (search != this->buf_trans.end()) {
+            if (bi.tbuf->buf != nullptr) {
                 // Already allocated.
-                buf = search->second;
+                buf = static_cast<GpuBuf *>(bi.tbuf->buf);
                 if (bi.sid != -1) {
-                    ctx->mem_export(this->buf_trans[bi.tbuf], bi.offset,
-                                    bi.sid);
+                    ctx->mem_export(buf, bi.offset, bi.sid);
                 }
             } else if (bi.sid == -1) {
                 buf = ctx->mem_alloc(bi.bytes, 1);
@@ -48,7 +49,9 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
         } else {
             buf = ctx->mem_import(bi.bytes, bi.sid, bi.gpu_id);
         }
-        this->buf_trans[bi.tbuf] = buf;
+        if (bi.tbuf != nullptr) {
+            bi.tbuf->buf = buf;
+        }
     }
     for (auto &srop : this->send_recv_ops) {
         int sid;
@@ -83,16 +86,17 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     } else if (gpu_info.arch == GPU_ARCH_CUDA_80) {
         arch_type = OP_ARCH_CUDA_80;
     } else {
-        LOGERR("unsupported GPU architecture: ", gpu_info.arch);
+        LOG(ERROR, "unsupported GPU architecture: ", gpu_info.arch);
     }
     auto search = op->cfg_map->find({arch_type, op->prec_type});
     if (search == op->cfg_map->end()) {
-        return nullptr;
+        LOG(ERROR, "no config found for op: ", op->name,
+            ", arch_type: ", arch_type, ", prec_type: ", op->prec_type);
     } else if (op->gran_lev >= 0) {
         if (search->second.size() > (unsigned int)op->gran_lev) {
             return &search->second[op->gran_lev];
         }
-        LOGERR("invalid granularity level: ", op->gran_lev);
+        LOG(ERROR, "invalid granularity level: ", op->gran_lev);
     }
     std::vector<const OpConfig *> feasible_configs;
     for (auto &cfg : search->second) {
@@ -157,8 +161,8 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
             configs_str << ", { " << ot_x << ", " << ot_y << " }";
         }
         configs_str << ".";
-        LOGERR("no valid tile configuration found. Output shape ",
-               output->shape, ", available tiles: ", configs_str.str());
+        LOG(ERROR, "no valid tile configuration found. Output shape ",
+            output->shape, ", available tiles: ", configs_str.str());
     }
     const OpConfig *cfg = feasible_configs[gran_lev];
     OpConfig *cfg_new = new OpConfig(*cfg);
@@ -170,21 +174,6 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
         op_tile.y = output->ldims[ndims - 1];
     }
     return cfg_new;
-}
-
-GpuBuf *BaseScheduler::get_gpu_buf(Tensor *tns) const
-{
-    if (tns == nullptr) {
-        return nullptr;
-    }
-    if (tns->buf == nullptr) {
-        return nullptr;
-    }
-    auto search = this->buf_trans.find(tns->buf);
-    if (search == this->buf_trans.end()) {
-        return nullptr;
-    }
-    return search->second;
 }
 
 } // namespace ark

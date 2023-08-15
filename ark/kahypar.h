@@ -87,12 +87,12 @@ template <typename ItemType> class KahyparGraph
         // Verify the graph.
         size_t num_nodes = nws.size();
         if (num_nodes != items.size() || num_nodes != wm.size()) {
-            LOGERR("Unexpected error.");
+            LOG(ERROR, "Unexpected error.");
             throw;
         }
         for (auto wv : wm) {
             if (num_nodes != wv.size()) {
-                LOGERR("Unexpected error.");
+                LOG(ERROR, "Unexpected error.");
                 throw;
             }
         }
@@ -126,12 +126,12 @@ template <typename ItemType> class KahyparGraph
         }
         // Correctness check: duplicated nodes.
         if (partition.size() != dup_chk.size()) {
-            LOGERR("Found duplicated nodes.");
+            LOG(ERROR, "Found duplicated nodes.");
             throw;
         }
         // Correctness check: node count.
         if (partition.size() != num_nodes) {
-            LOGERR("Node count mismatch.");
+            LOG(ERROR, "Node count mismatch.");
             throw;
         }
         //

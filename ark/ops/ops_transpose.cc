@@ -3,7 +3,6 @@
 
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
 #include <cassert>
 
 namespace ark {
@@ -27,7 +26,7 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const
         tp_type_str = "0" + tp_type_str;
     }
     if (tp_type_str.size() != DIMS_LEN) {
-        LOGERR("Unexpected error");
+        LOG(ERROR, "Unexpected error");
     }
 
     Tensor *input = this->inputs[0];
@@ -55,21 +54,23 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     int input_ndims = input->ndims();
     Dims in_shape{1, 1, 1, 1};
     if (input_ndims < 2 || input_ndims > 4) {
-        LOGERR("Invalid # of input dimensions. Expected 2, 3, or 4, but given ",
-               input_ndims);
+        LOG(ERROR,
+            "Invalid # of input dimensions. Expected 2, 3, or 4, but given ",
+            input_ndims);
     }
     for (int i = 0; i < input_ndims; ++i) {
         in_shape[4 - input_ndims + i] = input->shape[i];
     }
     if (perm.ndims() != input_ndims) {
-        LOGERR("Permutation should have the same number of dimensions as the "
-               "one of input. Given input shape: ",
-               input->shape, ", permutation: ", perm);
+        LOG(ERROR,
+            "Permutation should have the same number of dimensions as the "
+            "one of input. Given input shape: ",
+            input->shape, ", permutation: ", perm);
     }
     int count[DIMS_LEN];
     for (int i = 0; i < input_ndims; ++i) {
@@ -77,14 +78,16 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     }
     for (int i = 0; i < input_ndims; ++i) {
         if (perm[i] >= input_ndims) {
-            LOGERR("Each value in permutation should be less than the number "
-                   "of input dimensions. Given permutation: ",
-                   perm);
+            LOG(ERROR,
+                "Each value in permutation should be less than the number "
+                "of input dimensions. Given permutation: ",
+                perm);
         }
         if (count[perm[i]] > 0) {
-            LOGERR("Each value in permutation should be unique. Given "
-                   "permutation: ",
-                   perm);
+            LOG(ERROR,
+                "Each value in permutation should be unique. Given "
+                "permutation: ",
+                perm);
         }
         count[perm[i]]++;
     }

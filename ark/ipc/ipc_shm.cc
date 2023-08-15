@@ -45,11 +45,11 @@ int ipc_shm_open_blocking(const char *name)
     // Monitor file creations in the shm directory.
     int ifd = inotify_init1(IN_NONBLOCK);
     if (ifd == -1) {
-        LOGERR("inotify_init1: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "inotify_init1: ", strerror(errno), " (", errno, ")");
     }
     if (inotify_add_watch(ifd, SHM_DIR, IN_CREATE) == -1) {
         close(ifd);
-        LOGERR("inotify_add_watch: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "inotify_add_watch: ", strerror(errno), " (", errno, ")");
     }
     // Check whether the file already exists.
     // NOTE: `inotify_add_watch()` should come before `shm_open()`
@@ -68,7 +68,7 @@ int ipc_shm_open_blocking(const char *name)
         if (poll_num == -1) {
             if (errno != EINTR) {
                 close(ifd);
-                LOGERR("poll: ", strerror(errno), " (", errno, ")");
+                LOG(ERROR, "poll: ", strerror(errno), " (", errno, ")");
             }
         } else if ((poll_num > 0) && (pfd.revents & POLLIN)) {
             // Read inotify events.
@@ -77,7 +77,7 @@ int ipc_shm_open_blocking(const char *name)
                 if (len == -1) {
                     if (errno != EAGAIN) {
                         close(ifd);
-                        LOGERR("read: ", strerror(errno), " (", errno, ")");
+                        LOG(ERROR, "read: ", strerror(errno), " (", errno, ")");
                     }
                     break;
                 }

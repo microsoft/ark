@@ -3,7 +3,6 @@
 
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
 #include <cassert>
 
 namespace ark {
@@ -148,18 +147,18 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR("output tensor cannot be the same as input tensor for "
-               "reduce_sum op");
+        LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                   "reduce_sum op");
     }
     Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
@@ -183,18 +182,18 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR("output tensor cannot be the same as input tensor for "
-               "reduce_mean op");
+        LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                   "reduce_mean op");
     }
     Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
@@ -218,18 +217,18 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
     } else if (input->type == FP32) {
         pt = OP_PREC_FP32;
     } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
+        LOG(ERROR, "unsupported input data type: ", input->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         Dims reduced_shape{input->shape};
         reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
     } else if (output == input) {
-        LOGERR("output tensor cannot be the same as input tensor for "
-               "reduce_max op");
+        LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                   "reduce_max op");
     }
     Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
@@ -244,6 +243,22 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
 
 const OpConfigMap ReduceEConfigMap = {
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
+         {8, 0, {{256, 128}, {256, 128}}, {{256, 128}}, true, false},
+         {8, 0, {{128, 128}, {128, 128}}, {{128, 128}}, true, false},
+         {4, 0, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+         {2, 0, {{32, 64}, {32, 64}}, {{32, 64}}, true, false},
+         {1, 0, {{16, 64}, {16, 64}}, {{16, 64}}, true, false},
+         {1, 0, {{8, 64}, {8, 64}}, {{8, 64}}, true, false},
+         {1, 0, {{2, 128}, {2, 128}}, {{2, 128}}, true, false},
+         {1, 0, {{4, 64}, {4, 64}}, {{4, 64}}, true, false},
+         {1, 0, {{2, 64}, {2, 64}}, {{2, 64}}, true, false},
+         {1, 0, {{1, 64}, {1, 64}}, {{1, 64}}, true, false},
+         {1, 0, {{1, 32}, {1, 32}}, {{1, 32}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},

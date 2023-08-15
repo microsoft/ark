@@ -27,11 +27,12 @@ class TestModelARK(ark.Module):
         )
 
     def forward(self, inputs):
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = ark.matmul(middle_result, self.weight_2)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = ark.matmul(output, self.weight_2)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 
 
 class TestModel(nn.Module):
@@ -105,18 +106,11 @@ def test_TestModel():
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("ARK module test")
     print(
-        "batch_size:",
-        batch_size,
-        "seq_len:",
-        seq_len,
-        "d_model:",
-        d_model,
-        "d_ff:",
-        d_ff,
+        f"ARK module test batch_size: {batch_size} seq_len: {seq_len} "
+        f"d_model: {d_model} d_ff: {d_ff} max error: {max_error} "
+        f"avg error: {avg_error}"
     )
-    print("max error: ", max_error, "avg error: ", avg_error)
 
 
 class TestAPI(unittest.TestCase):

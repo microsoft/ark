@@ -20,16 +20,15 @@ using namespace std;
 
 namespace ark {
 
-CodeGenerator::CodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                             const GpuInfo &gpu_info_, int num_warps_per_sm_)
-    : buf_trans{buf_trans}, gpu_info{gpu_info_}, sm_num{gpu_info_.num_sm},
+CodeGenerator::CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_)
+    : gpu_info{gpu_info_}, sm_num{gpu_info_.num_sm},
       num_warps_per_sm{num_warps_per_sm_}, num_indent{0}
 {
 }
 
 size_t CodeGenerator::get_tensor_offset(const Tensor *tensor) const
 {
-    size_t off = this->buf_trans.find(tensor->buf)->second->get_offset();
+    size_t off = tensor->buf->get_buf_offset();
     assert(off % 8 == 0);
     return off + tensor->offset_bytes();
 }
@@ -85,7 +84,7 @@ ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const
     } else if (tensor->type == BYTE) {
         os << "(void *)";
     } else {
-        LOGERR("unknown tensor type");
+        LOG(ERROR, "unknown tensor type");
     }
     std::string buf_name = ARK_BUF_NAME;
     if (tensor->imported_rank >= 0) {
@@ -115,7 +114,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
             os << "void *" << name;
             break;
         default:
-            LOGERR("Not implemented");
+            LOG(ERROR, "Not implemented");
             break;
         }
     } else if (arg.type == OP_ARG_FLOAT) {
@@ -129,7 +128,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
     } else if (arg.type == OP_ARG_UINT64) {
         os << "uint64_t " << name;
     } else {
-        LOGERR("Not implemented");
+        LOG(ERROR, "Not implemented");
     }
     return os;
 }
@@ -161,7 +160,7 @@ std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const
         arg.get(&val);
         os << val;
     } else {
-        LOGERR("Not implemented");
+        LOG(ERROR, "Not implemented");
     }
     return os;
 }
@@ -329,9 +328,7 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
 {
     auto &sched_ops = opseq.get_sched_ops();
     unsigned int idx = sched_ops.size();
-    auto it = sched_ops.rbegin();
-    for (; it != sched_ops.rend(); ++it) {
-        auto &sop = *it;
+    for (auto &sop : sched_ops) {
         if (sop.is_virtual()) {
             continue;
         }
@@ -366,7 +363,6 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
 
 std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const
 {
-
     os << "if(";
     if (sched.sm_b > 0)
         os << "blockIdx.x >= " << sched.sm_b << "&& ";

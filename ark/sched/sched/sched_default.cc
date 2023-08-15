@@ -34,7 +34,7 @@ static int calc_num_tiles(const Op &op, const OpTile &tile)
     if (ndims > 1) {
         num_tiles *= math::div_up(s[ndims - 2], tile.x);
     } else if (tile.x != 1) {
-        LOGERR("The tile is 2D, but the output is 1D.");
+        LOG(ERROR, "The tile is 2D, but the output is 1D.");
     }
     // The remaining dimensions are not tiled.
     int remain_dims = ndims - 2;
@@ -59,22 +59,23 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                                                  int num_sm)
 {
     if (matmul_op.type != OP_MATMUL) {
-        LOGERR("This is not a matmul op.");
+        LOG(ERROR, "This is not a matmul op.");
     }
     if (matmul_op.gran_lev != -1) {
         // `gran_lev` is manually set. Do not optimize.
         return;
     }
     if (num_sm > gpu_info.num_sm) {
-        LOGERR("The total number of SMs (%d) is less than the number of SMs "
-               "requested (%d).",
-               gpu_info.num_sm, num_sm);
+        LOG(ERROR,
+            "The total number of SMs (%d) is less than the number of SMs "
+            "requested (%d).",
+            gpu_info.num_sm, num_sm);
     }
     const OpConfig *cfg = this->sched_op_config(&matmul_op);
     assert(cfg->output_tiles.size() == 1);
     int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
-        LOGERR("This matmul has no output tiles.");
+        LOG(ERROR, "This matmul has no output tiles.");
     }
 
     // Heuristically select a split_k value. If split_k is larger than 1, split
@@ -119,10 +120,8 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     Tensor *output = matmul_op.outputs[0];
     bool is_column_a;
     bool is_column_b;
-    bool is_relu;
     matmul_op.args.get(&is_column_a, 4);
     matmul_op.args.get(&is_column_b, 5);
-    matmul_op.args.get(&is_relu, 6);
     std::string matmul_name = matmul_op.name;
 
     // Remove the original matmul op from the model.
@@ -130,7 +129,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 
     // Create a new matmul op with the optimized split_k.
     model.matmul(input_a, input_b, output, split_k, is_column_a, is_column_b,
-                 is_relu, matmul_name);
+                 matmul_name);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized
@@ -382,7 +381,7 @@ void DefaultScheduler::configure_gpu_buf(
 
             const int send_ready_flag_sid_offset = 128;
 
-            //
+            // TODO: move this into BaseScheduler::create_context().
             if (op->type == OP_SEND) {
                 //
                 Tensor *in = op->inputs[0];
@@ -415,11 +414,11 @@ void DefaultScheduler::configure_gpu_buf(
             } else if (op->type == OP_SEND_MM) {
                 int sid;
                 int dst_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&dst_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&dst_gid, 1);
                 // import the recvbuf, the recvbuf should be allocated on the
                 // receiver GPU
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
                                              recvbuf->buf, sid, 0);
 
@@ -427,23 +426,23 @@ void DefaultScheduler::configure_gpu_buf(
                 // be exported to the recv GPU, since the sid of the
                 // send_ready_flag should not be the same as the recvBuf, so I
                 // use the sid+128 as the sid of the send_ready_flag
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 export_tns_sids[send_ready_flag->buf].emplace_back(
                     send_ready_flag, sid + send_ready_flag_sid_offset);
             } else if (op->type == OP_RECV_MM) {
                 int sid;
                 int src_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&src_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&src_gid, 1);
                 // configure the recvbuf, the recvbuf needed to be export the to
                 // the sender GPU, the sid is the same as the sid of the send_mm
                 // op and the recv_mm op
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
 
                 // import the send_ready_flag, the send_ready_flag tensor should
                 // be allocated on the sender GPU
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 this->buf_infos.emplace_back(
                     src_gid, send_ready_flag->shape_bytes(),
                     send_ready_flag->buf, sid + send_ready_flag_sid_offset, 0);

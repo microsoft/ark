@@ -25,7 +25,7 @@ void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
 {
     for (auto &tns : this->tns_storage) {
         if (tns->buf == buf) {
-            LOGERR("dangling tensor detected");
+            LOG(ERROR, "dangling tensor detected");
         }
     }
     bool is_found = false;
@@ -38,7 +38,7 @@ void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
         }
     }
     if (!is_found) {
-        LOGERR("the given TensorBuf is not found");
+        LOG(ERROR, "the given TensorBuf is not found");
     }
 }
 
@@ -133,7 +133,7 @@ void Model::Impl::delete_op(Op *op)
     for (auto &tns : op->inputs) {
         auto search = this->tns_to_users.find(tns);
         if (search == this->tns_to_users.end()) {
-            LOGERR("Not an existing tensor.");
+            LOG(ERROR, "Not an existing tensor.");
         }
         search->second.erase(op);
     }
@@ -142,7 +142,7 @@ void Model::Impl::delete_op(Op *op)
     for (auto &tns : op->outputs) {
         auto search = this->tns_to_producer.find(tns);
         if (search == this->tns_to_producer.end()) {
-            LOGERR("Not an existing tensor.");
+            LOG(ERROR, "Not an existing tensor.");
         }
         this->tns_to_producer.erase(search);
     }
@@ -157,7 +157,7 @@ void Model::Impl::delete_op(Op *op)
         }
     }
     if (!is_found) {
-        LOGERR("the given Op is not found");
+        LOG(ERROR, "the given Op is not found");
     }
     auto search = this->name_cnts.find(op->name);
     if (search != this->name_cnts.end()) {
@@ -213,7 +213,7 @@ const std::set<Op *> &Model::Impl::get_users(Tensor *tns) const
 {
     auto search = this->tns_to_users.find(tns);
     if (search == this->tns_to_users.end()) {
-        LOGERR("Not an existing tensor.");
+        LOG(ERROR, "Not an existing tensor.");
     }
     return search->second;
 }

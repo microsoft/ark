@@ -5,6 +5,7 @@
 #define ARK_KERNELS_COMMON_H_
 
 #include "arch.h"
+#include "checker.h"
 #include "device.h"
 #include "half.h"
 #include "platform.h"

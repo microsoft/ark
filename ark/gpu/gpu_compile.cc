@@ -86,7 +86,7 @@ const string nvrtc_compile(const string &ark_root, const string &arch,
     if (log_size > 1) {
         char *log = new char[log_size];
         NVRTCLOG(nvrtcGetProgramLog(prog, log));
-        // LOGERR(endl, log, endl);
+        // LOG(ERROR, endl, log, endl);
         LOG(DEBUG, endl, log, endl);
         delete[] log;
     }
@@ -222,12 +222,14 @@ const string gpu_compile(const vector<string> &codes,
             if (max_reg_cnt > 0) {
                 exec_cmd << "-maxrregcount " << max_reg_cnt << " ";
             }
+            stringstream include_args;
             // clang-format off
+            include_args << "-I" << ark_root << "/include "
+                         << "-I" << ark_root << "/include/kernels ";
             exec_cmd << "-ccbin g++ -std c++17 -lcuda "
                 "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
-                "--define-macro=ARK_COMM_SW=" << (int)use_comm_sw << " "
-                "-I" << ark_root << "/include "
-                "-I" << ark_root << "/include/kernels "
+                "--define-macro=ARK_COMM_SW=" << (int)use_comm_sw << " " <<
+                include_args.str() <<
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "
                 "-o " << item.second << ".cubin "
@@ -241,14 +243,14 @@ const string gpu_compile(const vector<string> &codes,
             unique_ptr<FILE, decltype(&pclose)> pipe(
                 popen(exec_cmd.str().c_str(), "r"), pclose);
             if (!pipe) {
-                LOGERR("popen() failed");
+                LOG(ERROR, "popen() failed");
             }
             while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
                 exec_print << buffer.data();
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOGERR(endl, exec_print_str, endl);
+                LOG(ERROR, endl, exec_print_str, endl);
             }
         });
     string cu_file_path = items[0].second + ".cu";

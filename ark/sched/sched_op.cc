@@ -43,8 +43,8 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
         vector<DimType> pads;
         if (ndims == 1) {
             if (tile.x != 1) {
-                LOGERR("invalid tile shape for 1D tensor: {", tile.x, ", ",
-                       tile.y, "}");
+                LOG(ERROR, "invalid tile shape for 1D tensor: {", tile.x, ", ",
+                    tile.y, "}");
             }
             pads.emplace_back(tile.y);
         } else {
@@ -68,8 +68,8 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
         vector<DimType> pads;
         if (ndims == 1) {
             if (tile.x != 1) {
-                LOGERR("invalid tile shape for 1D tensor: {", tile.x, ", ",
-                       tile.y, "}");
+                LOG(ERROR, "invalid tile shape for 1D tensor: {", tile.x, ", ",
+                    tile.y, "}");
             }
             pads.emplace_back(tile.y);
         } else {

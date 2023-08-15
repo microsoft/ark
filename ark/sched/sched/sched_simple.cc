@@ -96,7 +96,7 @@ void SimpleScheduler::schedule()
         op_idx++;
     }
     if (!all_ops.empty()) {
-        LOGERR("Cannot schedule all ops");
+        LOG(ERROR, "Cannot schedule all ops");
     }
 
     this->configure_gpu_buf(model->impl->get_tensors());
@@ -200,8 +200,8 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
         LOG(DEBUG, "sched_tile_idx: ", sched_tile_idx);
     }
     if (seq_tile_num != -1 && sched_tile_idx != seq_tile_num) {
-        LOGERR("only ", sched_tile_idx, " tiles are scheduled, but ",
-               seq_tile_num, " tiles are needed to be scheduled");
+        LOG(ERROR, "only ", sched_tile_idx, " tiles are scheduled, but ",
+            seq_tile_num, " tiles are needed to be scheduled");
     }
 }
 

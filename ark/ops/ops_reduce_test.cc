@@ -60,7 +60,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
         tns_x = model.tensor({n, m, k}, ark::FP16);
         tns_y = model.tensor({n, m, 1}, ark::FP16);
     } else {
-        LOGERR("invalid axis");
+        LOG(ark::ERROR, "invalid axis");
     }
 
     model.reduce_sum(tns_x, axis, tns_y);
@@ -70,7 +70,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     exe.compile();
 
     // Set data.
-    exe.tensor_memcpy(tns_x, data_a.get(), buf_x_sz);
+    tns_x->write(data_a.get());
 
     exe.launch();
     exe.run(1);
@@ -79,7 +79,7 @@ void test_reduce_internal(unsigned int n, unsigned int m, unsigned int k,
     // Copy results of the loop kernel routine into CPU memory.
     void *res = malloc(buf_y_sz);
     UNITTEST_NE(res, (void *)nullptr);
-    exe.tensor_memcpy(res, tns_y, buf_y_sz);
+    tns_y->read(res);
 
     // Compare results with the ground truth.
     auto p =

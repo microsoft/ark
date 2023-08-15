@@ -3,8 +3,10 @@
 
 #include <cassert>
 #include <fcntl.h>
+#include <fstream>
 #include <stdint.h>
 #include <string.h>
+#include <string>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -18,9 +20,25 @@ using namespace std;
 
 namespace ark {
 
+bool is_gpumem_loaded()
+{
+    std::ifstream file("/proc/modules");
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.find(GPUMEM_DRIVER_NAME) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Expose GPU memory space into CPU memory.
 static int mem_expose(GpuMemExposalInfo *info, GpuPtr addr, uint64_t bytes)
 {
+    if (!is_gpumem_loaded()) {
+        LOG(ERROR, "gpumem driver is not loaded");
+    }
+
     int flag = 1;
     CULOG(cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr));
     // Convert virtual into physical address.
@@ -65,11 +83,11 @@ static int mem_expose(GpuMemExposalInfo *info, GpuPtr addr, uint64_t bytes)
     int tmp1;
     CULOG(cuMemcpyDtoH(&tmp1, addr, 4));
     if (tmp1 != 77) {
-        LOGERR("mmap test failed: GPU reads ", tmp1, ", expected 77");
+        LOG(ERROR, "mmap test failed: GPU reads ", tmp1, ", expected 77");
     }
     CULOG(cuMemsetD32(addr, 55, 1));
     if (*tmp0 != 55) {
-        LOGERR("mmap test failed: CPU reads ", *tmp0, ", expected 55");
+        LOG(ERROR, "mmap test failed: CPU reads ", *tmp0, ", expected 55");
     }
     // Reset the tested address.
     *tmp0 = 0;
@@ -83,11 +101,11 @@ static void *map_pa_to_va(uint64_t pa, uint64_t bytes)
 {
     int fd = open(GPUMEM_DRIVER_PATH, O_RDWR, 0);
     if (fd < 0) {
-        LOGERR("open: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "open: ", strerror(errno), " (", errno, ")");
     }
     void *map = mmap(0, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, pa);
     if (map == MAP_FAILED) {
-        LOGERR("mmap: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "mmap: ", strerror(errno), " (", errno, ")");
         close(fd);
     }
     close(fd);
@@ -137,7 +155,7 @@ void GpuMem::alloc(size_t bytes)
     // Align the bytes by 64KB.
     this->bytes = ((bytes + 65535) >> 16) << 16;
     if (this->bytes == 0) {
-        LOGERR("Tried to allocate zero byte.");
+        LOG(ERROR, "Tried to allocate zero byte.");
     }
     if (this->shm.get() && !this->shm->is_create()) {
         GpuMemInfo *info = (GpuMemInfo *)this->shm->alloc(sizeof(GpuMemInfo));
@@ -146,14 +164,14 @@ void GpuMem::alloc(size_t bytes)
                                           CU_IPC_MEM_LAZY_ENABLE_PEER_ACCESS);
         if (res == CUDA_ERROR_PEER_ACCESS_UNSUPPORTED) {
             // this->addr = 0;
-            LOGERR("not implemented yet.");
+            LOG(ERROR, "not implemented yet.");
         } else if (res != CUDA_SUCCESS) {
             // Unexpected error.
             CULOG(res);
         }
         this->exp_info.mmap = map_pa_to_va(info->phys_addr, this->bytes);
         if (this->exp_info.mmap == nullptr) {
-            LOGERR("map_pa_to_va failed");
+            LOG(ERROR, "map_pa_to_va failed");
         }
         LOG(DEBUG, "Imported GpuMem addr ", hex, this->addr, " map ",
             this->exp_info.mmap, dec, " bytes ", this->bytes);
@@ -163,7 +181,7 @@ void GpuMem::alloc(size_t bytes)
         LOG(DEBUG, "request bytes ", this->bytes, " addr ", hex, this->addr);
         int state = mem_expose(&this->exp_info, this->addr, this->bytes);
         if (state != 0) {
-            LOGERR("mem_expose() failed with errno ", state);
+            LOG(ERROR, "mem_expose() failed with errno ", state);
         }
         if (this->shm.get()) {
             IpcLockGuard lg{this->shm->get_lock()};

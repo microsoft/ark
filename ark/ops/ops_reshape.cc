@@ -3,7 +3,6 @@
 
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
 #include <cassert>
 
 namespace ark {
@@ -20,7 +19,7 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
                         bool allowzero, Tensor *output, const std::string &)
 {
     if (input == nullptr) {
-        LOGERR("input is null");
+        LOG(ERROR, "input is null");
     }
     LOG(DEBUG, "reshape ", input->shape, " ", shape);
     // Infer the actual shape
@@ -29,8 +28,8 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
         // Convert to a scalar
         inferred_shape.emplace_back(1);
         if (input->shape.size() != 1) {
-            LOGERR("number of elements mismatch: reshape from ", input->shape,
-                   " to ", shape);
+            LOG(ERROR, "number of elements mismatch: reshape from ",
+                input->shape, " to ", shape);
         }
     } else {
         DimType total_size = 1;
@@ -50,8 +49,8 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
             }
         }
         if (input->shape.size() != total_size) {
-            LOGERR("number of elements mismatch: reshape from ", input->shape,
-                   " to ", shape);
+            LOG(ERROR, "number of elements mismatch: reshape from ",
+                input->shape, " to ", shape);
         }
     }
     Dims new_shape{inferred_shape};
@@ -59,11 +58,11 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
     if (output != nullptr) {
         // Verfiy given `output`
         if (input->type != output->type) {
-            LOGERR("invalid output data type: ", type_str(output->type));
+            LOG(ERROR, "invalid output data type: ", output->type);
         }
         if (input->shape.size() != output->shape.size()) {
-            LOGERR("shape sizes mismatch: input ", input->shape, ", output ",
-                   output->shape);
+            LOG(ERROR, "shape sizes mismatch: input ", input->shape,
+                ", output ", output->shape);
         }
     }
 
@@ -97,7 +96,7 @@ Tensor *Model::reshape(Tensor *input,
                        bool allowzero, Tensor *output, const std::string &name)
 {
     if (input == nullptr) {
-        LOGERR("input is null");
+        LOG(ERROR, "input is null");
     }
     std::vector<DimType> shape_vec{shape};
     // Infer -1 dimension if exists
@@ -108,13 +107,14 @@ Tensor *Model::reshape(Tensor *input,
     for (size_t i = 0; i < shape_vec.size(); i++) {
         if (shape_vec[i] == -1) {
             if (neg_idx != -1) {
-                LOGERR("multiple -1 in shape: ", Dims(shape_vec));
+                LOG(ERROR, "multiple -1 in shape: ", Dims(shape_vec));
             }
             neg_idx = (int)i;
         } else if (shape_vec[i] < 0) {
-            LOGERR("shape cannot include negative values except -1. "
-                   "Given: ",
-                   Dims(shape_vec));
+            LOG(ERROR,
+                "shape cannot include negative values except -1. "
+                "Given: ",
+                Dims(shape_vec));
         } else {
             if (shape_vec[i] == 0) {
                 zero_exists = true;
@@ -125,22 +125,23 @@ Tensor *Model::reshape(Tensor *input,
     }
     if (neg_idx != -1) {
         if (zero_exists) {
-            LOGERR("shape cannot include both 0 and -1 at the same "
-                   "time. Given: ",
-                   Dims(shape_vec));
+            LOG(ERROR,
+                "shape cannot include both 0 and -1 at the same "
+                "time. Given: ",
+                Dims(shape_vec));
         }
         // Infer the -1 dimension
         if (total_size <= 0) {
-            LOGERR("Unexpected error");
+            LOG(ERROR, "Unexpected error");
         }
         if (input->shape.size() % total_size != 0) {
-            LOGERR("number of elements mismatch: reshape from ", input->shape,
-                   " to ", Dims(shape_vec));
+            LOG(ERROR, "number of elements mismatch: reshape from ",
+                input->shape, " to ", Dims(shape_vec));
         }
         inferred_shape[neg_idx] = input->shape.size() / total_size;
     } else if (input->shape.size() != total_size) {
-        LOGERR("number of elements mismatch: reshape from ", input->shape,
-               " to ", Dims(shape_vec));
+        LOG(ERROR, "number of elements mismatch: reshape from ", input->shape,
+            " to ", Dims(shape_vec));
     }
     output =
         _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
