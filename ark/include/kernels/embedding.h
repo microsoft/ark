@@ -10,15 +10,16 @@ namespace ark {
 
 struct RoPE
 {
-    using DataType = float2;
-    static const int NelemPerThread = 1;
+    using DataType = float;
+    static const int NelemPerThread = 2;
     // RoPE: https://arxiv.org/pdf/2104.09864.pdf
-    static DEVICE float2 compute(float2 a, float2 b)
+    static DEVICE void compute(float *c, const float *a, const float *b)
     {
-        float2 result;
-        result.x = a.x * b.x - a.y * b.y;
-        result.y = a.x * b.y + a.y * b.x;
-        return result;
+        float2 *pc = (float2 *)c;
+        const float2 *pa = (const float2 *)a;
+        const float2 *pb = (const float2 *)b;
+        pc->x = pa.x * pb.x - pa.y * pb.y;
+        pc->y = pa.x * pb.y + pa.y * pb.x;
     }
     static DEVICE __half2 compute(__half2 a, __half2 b)
     {
@@ -32,10 +33,7 @@ template <typename In0Dims, typename In0Shape, typename In1Dims,
 DEVICE void rope(float *c, float *a, float *b, int uop_idx, int)
 {
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-               UnitOutDims, NumThreads, SmemBytes, RoPE>::run((float2 *)c,
-                                                              (float2 *)a,
-                                                              (float2 *)b,
-                                                              uop_idx);
+               UnitOutDims, NumThreads, SmemBytes, RoPE>::run(c, a, b, uop_idx);
 }
 
 // template <typename In0Dims, typename In0Shape, typename In1Dims,

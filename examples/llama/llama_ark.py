@@ -198,8 +198,8 @@ class Attention(ark.Module):
         xv = ark.reshape(
             xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
         )
-
-        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+        if freqs_cis is not None:
+            xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
         # TODO: enable kv cache and mask later
         keys = xk
