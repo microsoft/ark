@@ -95,7 +95,7 @@ class FeedForward(ark.Module):
 def apply_rotary_emb(xq, xk, freqs_cis):
     xq_out = ark.rope(xq, freqs_cis)
     xk_out = ark.rope(xk, freqs_cis)
-    return xq_out
+    return xq_out, xk_out
 
 
 class Attention(ark.Module):

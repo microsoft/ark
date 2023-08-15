@@ -291,7 +291,6 @@ def test_rotary_embedding():
     start_pos = 0
     seqlen = 64
     freqs_cis_torch = freqs_cis[start_pos : start_pos + seqlen]
-    print("freqs_cis.shape", freqs_cis.shape)
     head_dim = params.dim // params.n_heads
     xq_torch = torch.randn(
         [batch_size, seq_len, params.n_heads, head_dim],
@@ -317,11 +316,12 @@ def test_rotary_embedding():
 
     freqs_cis_ark = ark.tensor([1, seqlen, 1, head_dim], ark.FP32)
 
-    xq_out_ark = llama_ark.apply_rotary_emb(xq_ark, xk_ark, freqs_cis_ark)
+    xq_out_ark, xk_out_ark = llama_ark.apply_rotary_emb(
+        xq_ark, xk_ark, freqs_cis_ark
+    )
 
     runtime.launch()
     xq_ark.from_numpy(xq_torch.numpy().astype(np.float32))
-    print("xq_ark numpy", xq_ark.to_numpy())
     xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
     freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
 
@@ -331,8 +331,6 @@ def test_rotary_embedding():
     ).astype(np.float32)
 
     freqs_cis_ark.from_numpy(freqs_cis_stack)
-    print("freqs_cis_stack.shape", freqs_cis_stack.shape)
-    print("freqs_cis_stack", freqs_cis_ark.to_numpy())
     runtime.run()
 
     xq_out_ark_host = xq_out_ark.to_numpy()
@@ -343,8 +341,20 @@ def test_rotary_embedding():
     mean_abs_error = np.mean(
         np.abs(xq_out_ark_host - xq_out_torch.detach().numpy())
     )
-    print("xq_out_ark_host", xq_out_ark_host)
-    print("xq_out_torch", xq_out_torch.detach().numpy())
+    print(
+        "rotary_embedding test",
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+    )
+
+    xk_ark_host = xk_out_ark.to_numpy()
+
+    max_abs_error = np.max(np.abs(xk_ark_host - xk_out_torch.detach().numpy()))
+    mean_abs_error = np.mean(
+        np.abs(xk_ark_host - xk_out_torch.detach().numpy())
+    )
     print(
         "rotary_embedding test",
         "max_abs_error:",
