@@ -1,14 +1,18 @@
-# A Quick Guide to Using ARK with Python for DNN Applications
+# A Quick Guide to Using ARK with Python
 
-Welcome to this tutorial on using ARK to run a simple deep neural network (DNN) application in Python. We will walk you through a basic Python example to illustrate the process.
+Welcome to this tutorial on using ARK in Python. We will walk you through a basic Python example to illustrate the process.
 
-After completing the [installation](./install.md), you can run the tutorial example at [tutorial.py](../examples/tutorial/quickstart_tutorial.py) to see how ARK works.
+## Install & Configuration
+
+Please refer to the [ARK Install Instructions](./install.md) to install ARK for Python. You may also want to check environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
+
+## Quick Start Tutorial
+
+You can run a tutorial example at [tutorial.py](../examples/tutorial/quickstart_tutorial.py) to see how ARK works.
 
 ```bash
 python examples/tutorial/quickstart_tutorial.py
 ```
-
-There are environment variables available to configure ARK. For more details about these variables, please refer to [Environment Variables](./env.md).
 
 Before diving in, let's import the required modules and initialize ARK runtime:
 
@@ -66,6 +70,6 @@ np.testing.assert_allclose(
 )
 ```
 
-Congratulations! You have successfully learned how to run a DNN model over ARK. Happy coding!
+Congratulations! You have successfully learned how to run ARK. Happy coding!
 
-For more tutorials, please refer to [Tutorials](./tutorial/).
+For more tutorials, please refer to [tutorials](./tutorial/).
