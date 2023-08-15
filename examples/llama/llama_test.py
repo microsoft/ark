@@ -308,6 +308,7 @@ def test_rotary_embedding():
 
     runtime.launch()
     xq_ark.from_numpy(xq_torch.numpy().astype(np.float32))
+    print("xq_ark numpy", xq_ark.to_numpy())
     xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
     freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
     freqs_cis_real = freqs_cis_complex.real
@@ -317,11 +318,10 @@ def test_rotary_embedding():
     freqs_cis_stack = np.stack(
         [freqs_cis_real, freqs_cis_imag], axis=-1
     ).astype(np.float32)
-    print("freqs_cis_stack.shape", freqs_cis_stack.shape)
-    print("freqs_cis_stack", freqs_cis_stack)
-    freqs_cis_ark.from_numpy(freqs_cis_stack)
-    # llama_ark.precompute_freqs_cis(freqs_cis_ark)
 
+    freqs_cis_ark.from_numpy(freqs_cis_stack)
+    print("freqs_cis_stack.shape", freqs_cis_stack.shape)
+    print("freqs_cis_stack", freqs_cis_ark.to_numpy())
     runtime.run()
 
     xq_out_ark_host = xq_out_ark.to_numpy()
