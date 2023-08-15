@@ -171,9 +171,21 @@ class Tensor
     /// After read, the data in the host buffer will be 0, 1, 2, 4, 5, 6.
     ///
     /// @param buf The host buffer to copy to. The buffer must be large enough
-    /// to hold the data.
+    /// to hold the data. If @p buf is nullptr, a new buffer will be allocated.
+    /// @return The host buffer that holds the data.
     ///
-    void read(void *buf);
+    void *read(void *buf = nullptr);
+
+    /// Copy all the underlying buffer data (including padding) to a contiguous
+    /// host buffer.
+    ///
+    /// This function is mainly for debugging purposes.
+    ///
+    /// @param buf The host buffer to copy to. The buffer must be large enough
+    /// to hold the data. If @p buf is nullptr, a new buffer will be allocated.
+    /// @return The host buffer that holds the data.
+    ///
+    void *read_raw(void *buf = nullptr);
 
     /// Set all bytes of the tensor buffer to 0.
     void clear();

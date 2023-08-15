@@ -3,140 +3,415 @@
 
 #include "ops_test_common.h"
 #include "gpu/gpu_kernel.h"
-#include "include/ark_utils.h"
 #include "logging.h"
+#include "random.h"
 #include "unittest/unittest_utils.h"
+#include <cstring>
+#include <cuda_runtime.h>
 
-using namespace std;
+namespace ark {
 
-// op_name: "add", "mul"
-// TODO: deprecate this
-template <typename T>
-void test_bcast_internal(string op_name, ark::TensorType type, ark::DimType bs,
-                         ark::DimType n, ark::DimType m, bool overwrite)
+std::ostream &operator<<(std::ostream &os, const OpsTestResult &result)
 {
-    string type_name;
-    if (type == ark::FP32) {
-        type_name = "fp32";
-    } else if (type == ark::FP16) {
-        type_name = "fp16";
-    } else {
-        UNITTEST_FEXIT("Unsupported tensor type:", type);
+    os << "op test: " << result.test_name << " #warp/sm "
+       << result.num_warps_per_sm << ", msec/iter " << result.msec_per_iter;
+    os << std::setprecision(4);
+    for (size_t i = 0; i < result.mse.size(); i++) {
+        float err_pcnt = result.max_err_rate[i] * 100;
+        os << ", mse " << result.mse[i] << ", max_diff " << result.max_diff[i]
+           << ", max_err_rate " << err_pcnt << "%";
     }
-    string kernel_name = "simple_" + op_name + "_" + type_name;
+    return os;
+}
 
-    ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
-    ark::GpuMgrCtx *ctx = mgr->create_context("test_simple_" + op_name, 0, 1);
+/// Calculate the error rate between two values.
+/// @tparam T Type of the values
+/// @param a First value
+/// @param b Second value
+/// @return The error rate
+template <typename T> float error_rate(T a, T b)
+{
+    T diff = abs(a - b);
+    T max = std::max(abs(a), abs(b));
+    if (max == 0) {
+        return 0;
+    }
+    return (float)diff / (float)max;
+}
 
-    ark::DimType len = m * n;
-    ark::GpuBuf *buf_a = ctx->mem_alloc(bs * len * sizeof(T));
-    ark::GpuBuf *buf_b = ctx->mem_alloc(len * sizeof(T));
-    ark::GpuBuf *buf_c = ctx->mem_alloc(bs * len * sizeof(T));
+/// Calculate the error rate between two @ref half_t values.
+/// @param a First value
+/// @param b Second value
+/// @return The error rate
+float error_rate(half_t a, half_t b)
+{
+    return error_rate<half_t>(a, b);
+}
 
-    ctx->freeze();
+/// Calculate the error rate between two floats.
+/// @param a First value
+/// @param b Second value
+/// @return The error rate
+float error_rate(float a, float b)
+{
+    return error_rate<float>(a, b);
+}
 
-    ark::GpuKernel gk{kernel_name,
-                      {ark::unittest::get_kernel_code("simple_" + op_name)},
-                      {(unsigned int)mgr->get_gpu_info().num_sm, 1, 1},
-                      {512, 1, 1},
-                      0,
-                      {buf_c, buf_a, buf_b},
-                      {},
-                      {
-                          {&bs, sizeof(bs)},
-                          {&len, sizeof(len)},
-                      },
-                      ""};
-    gk.compile(mgr->get_gpu_info());
-    gk.load();
-
-    // Set data.
-    ark::srand();
-    auto data_a = ark::utils::rand_array<T>(bs * len, 0.01);
-    auto data_b = ark::utils::rand_array<T>(len, 0.01);
-    ark::gpu_memcpy(buf_a, data_a.get(), bs * len * sizeof(T));
-    ark::gpu_memcpy(buf_b, data_b.get(), len * sizeof(T));
-
-    // Run the GPU kernel.
-    ark::GpuStream s = ctx->create_stream();
-    int ret = gk.launch(s);
-    UNITTEST_EQ(ret, 0);
-    ret = ctx->sync_stream(s);
-    UNITTEST_EQ(ret, 0);
-
-    // Copy the ground truth results into CPU memory.
-    T *gt = (T *)malloc(bs * len * sizeof(T));
-    UNITTEST_NE(gt, (T *)nullptr);
-    ark::gpu_memcpy(gt, buf_c, bs * len * sizeof(T));
-
-    mgr->destroy_context(ctx);
-
-    //
-    ark::Model model;
-    ark::Tensor *tns_a = model.tensor({bs, n, m}, type);
-    ark::Tensor *tns_b = model.tensor({1, n, m}, type);
-    ark::Tensor *tns_c = nullptr;
-    if (op_name == "add") {
-        if (overwrite) {
-            tns_c = model.add(tns_a, tns_b, tns_a);
-        } else {
-            tns_c = model.add(tns_a, tns_b);
+/// Return mean squared error and max error rate between two tensors.
+/// @tparam T data type of the tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+template <typename T>
+TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
+                                   bool print = false)
+{
+    DimType nelem = shape.size();
+    int ndims = shape.ndims();
+    float l2_loss = 0;
+    float max_err = 0;
+    float max_diff = 0;
+    for (DimType i = 0; i < nelem; ++i) {
+        float diff = (float)(ground_truth[i] - res[i]);
+        if (std::abs(diff) > max_diff) {
+            max_diff = std::abs(diff);
         }
-    } else if (op_name == "mul") {
-        if (overwrite) {
-            tns_c = model.mul(tns_a, tns_b, tns_a);
-        } else {
-            tns_c = model.mul(tns_a, tns_b);
+        l2_loss += diff * diff;
+
+        float err = error_rate(ground_truth[i], res[i]);
+        if (err > 0.) {
+            if (print) {
+                Dims idx(std::vector<DimType>(ndims, 0));
+                for (int j = 0; j < ndims; ++j) {
+                    DimType vol = 1;
+                    for (int k = j + 1; k < ndims; ++k) {
+                        vol *= shape[k];
+                    }
+                    idx[j] = (i / vol) % shape[j];
+                }
+                std::cout << idx << " expected " << ground_truth[i]
+                          << ", actually " << res[i] << " (err: " << err << ")"
+                          << std::endl;
+            }
+            if (err > max_err) {
+                max_err = err;
+            }
         }
     }
-    UNITTEST_NE(tns_c, (ark::Tensor *)nullptr);
+    TensorCompareResult result;
+    result.mse = l2_loss / nelem;
+    result.max_diff = max_diff;
+    result.max_error_rate = max_err;
+    return result;
+}
 
-    //
-    ark::Executor exe{0, 0, 1, model, "test_" + op_name + "_" + type_name};
+/// Return mean squared error and max error rate between two @ref half_t
+/// tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+TensorCompareResult tensor_compare(half_t *ground_truth, half_t *res,
+                                   Dims shape, bool print)
+{
+    return tensor_compare<half_t>(ground_truth, res, shape, print);
+}
+
+/// Return mean squared error and max error rate between two float tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+TensorCompareResult tensor_compare(float *ground_truth, float *res, Dims shape,
+                                   bool print)
+{
+    return tensor_compare<float>(ground_truth, res, shape, print);
+}
+
+/// Return mean squared error and max error rate between two int tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+TensorCompareResult tensor_compare(int *ground_truth, int *res, Dims shape,
+                                   bool print)
+{
+    return tensor_compare<int>(ground_truth, res, shape, print);
+}
+
+/// Return mean squared error and max error rate between two byte tensors.
+/// @param ground_truth ground truth data array.
+/// @param res input data array to compare with the ground truth.
+/// @param shape shape of the tensor.
+/// @param print whether to print wrong values.
+/// @return a pair of mean squared error and max error rate.
+TensorCompareResult tensor_compare(uint8_t *ground_truth, uint8_t *res,
+                                   Dims shape, bool print)
+{
+    return tensor_compare<uint8_t>(ground_truth, res, shape, print);
+}
+
+OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
+                      const std::vector<Tensor *> &inputs,
+                      const std::vector<Tensor *> &outputs,
+                      OpsTestBaseline baseline, const std::string &init_method,
+                      bool print_on_error, int num_warps_per_sm)
+{
+    Executor exe{0, 0, 1, model, "op_test_" + rand_anum(4), num_warps_per_sm};
     exe.compile();
 
-    // Set data.
-    tns_a->write(data_a.get());
-    tns_b->write(data_b.get());
+    // Set random data.
+    std::vector<void *> input_data;
+    for (auto t : inputs) {
+        void *buf = ::malloc(t->shape_bytes());
+        UNITTEST_NE(buf, (void *)nullptr);
+
+        if (init_method == "random") {
+            if (t->type == FP32) {
+                ::memcpy(buf, utils::rand_floats(t->shape.size(), 0.1).get(),
+                         t->shape_bytes());
+            } else if (t->type == FP16) {
+                ::memcpy(buf, utils::rand_halfs(t->shape.size(), 0.1).get(),
+                         t->shape_bytes());
+            } else if (t->type == INT32) {
+                ::memcpy(buf,
+                         utils::rand_array<int>(t->shape.size(), 10000).get(),
+                         t->shape_bytes());
+            } else if (t->type == BYTE) {
+                ::memcpy(buf, utils::rand_bytes(t->shape.size()).get(),
+                         t->shape_bytes());
+            } else {
+                LOG(ERROR, "Unsupported data type: ", t->type);
+            }
+        } else if (init_method == "ones") {
+            if (t->type == FP32) {
+                ::memcpy(buf, utils::ones<float>(t->shape.size()).get(),
+                         t->shape_bytes());
+            } else if (t->type == FP16) {
+                ::memcpy(buf, utils::ones<ark::half_t>(t->shape.size()).get(),
+                         t->shape_bytes());
+            } else if (t->type == INT32) {
+                ::memcpy(buf, utils::ones<int>(t->shape.size()).get(),
+                         t->shape_bytes());
+            } else if (t->type == BYTE) {
+                ::memcpy(buf, utils::ones<char>(t->shape.size()).get(),
+                         t->shape_bytes());
+            } else {
+                LOG(ERROR, "Unsupported data type: ", t->type);
+            }
+        } else {
+            LOG(ERROR, "Unsupported init method: ", init_method);
+        }
+        t->write(buf);
+        input_data.push_back(buf);
+    }
 
     exe.launch();
+
+    // Correctness test.
     exe.run(1);
+    exe.wait();
     exe.stop();
 
     // Copy results of the loop kernel routine into CPU memory.
-    T *res = (T *)malloc(bs * len * sizeof(T));
-    UNITTEST_NE(res, (T *)nullptr);
-    tns_c->read(res);
-
-    // Compare results with the ground truth.
-    std::pair<float, float> p =
-        ark::utils::tensor_compare(gt, res, tns_c->shape, true);
-    float max_err = p.second;
-
-    if (overwrite) {
-        tns_a->read(res);
-        p = ark::utils::tensor_compare(gt, res, tns_a->shape, true);
-        max_err = std::max(max_err, p.second);
+    std::vector<void *> res;
+    for (auto t : outputs) {
+        void *buf = ::malloc(t->shape_bytes());
+        UNITTEST_NE(buf, (void *)nullptr);
+        t->read(buf);
+        res.push_back(buf);
     }
 
-    LOG(ark::INFO, op_name, ":", n, 'x', m, ",", type_name, ",bs=", bs,
-        ",overwrite=", overwrite, setprecision(4), " mse ", p.first,
-        " max_err ", max_err * 100, "%");
+    std::vector<void *> gt;
+    for (auto t : outputs) {
+        void *buf = ::malloc(t->shape_bytes());
+        UNITTEST_NE(buf, (void *)nullptr);
+        gt.push_back(buf);
+    }
 
-    free(res);
-    free(gt);
+    std::vector<ark::Dims> output_shapes;
+    for (auto t : outputs) {
+        output_shapes.push_back(t->shape);
+    }
+    std::vector<ark::Dims> input_shapes;
+    for (auto t : inputs) {
+        input_shapes.push_back(t->shape);
+    }
 
-    UNITTEST_EQ(max_err, 0.0);
+    // Calculate ground truth.
+    baseline(gt, output_shapes, input_data, input_shapes);
+
+    std::stringstream test_name;
+    test_name << test_name_prefix;
+    for (size_t i = 0; i < inputs.size(); i++) {
+        test_name << ";in" << i << "=" << inputs[i]->shape;
+    }
+    for (size_t i = 0; i < outputs.size(); i++) {
+        test_name << ";out" << i << "=" << outputs[i]->shape;
+    }
+    test_name << ";";
+
+    OpsTestResult result;
+    result.test_name = test_name.str();
+    result.num_warps_per_sm = num_warps_per_sm;
+
+    // Compare results with the ground truth.
+    for (size_t i = 0; i < outputs.size(); i++) {
+        TensorCompareResult comp;
+        if (outputs[i]->type == FP32) {
+            comp = tensor_compare(static_cast<float *>(gt[i]),
+                                  static_cast<float *>(res[i]),
+                                  outputs[i]->shape.dims4(), print_on_error);
+        } else if (outputs[i]->type == FP16) {
+            comp = tensor_compare(static_cast<ark::half_t *>(gt[i]),
+                                  static_cast<ark::half_t *>(res[i]),
+                                  outputs[i]->shape.dims4(), print_on_error);
+        } else if (outputs[i]->type == INT32) {
+            comp = tensor_compare(static_cast<int *>(gt[i]),
+                                  static_cast<int *>(res[i]),
+                                  outputs[i]->shape.dims4(), print_on_error);
+        } else if (outputs[i]->type == BYTE) {
+            comp = tensor_compare(static_cast<uint8_t *>(gt[i]),
+                                  static_cast<uint8_t *>(res[i]),
+                                  outputs[i]->shape.dims4(), print_on_error);
+        } else {
+            LOG(ERROR, "Unsupported data type: ", outputs[i]->type);
+        }
+        result.mse.push_back(comp.mse);
+        result.max_diff.push_back(comp.max_diff);
+        result.max_err_rate.push_back(comp.max_error_rate);
+    }
+
+    // Throughput test.
+
+    // Restart the executor.
+    exe.launch();
+
+    // Rough measure.
+    int warmup_iter = 3;
+    float target_msec = 2000;
+    exe.run(warmup_iter);
+    float warmup_msec = exe.stop();
+
+    if (warmup_msec > target_msec) {
+        // Warm-up was long enough.
+        result.msec_per_iter = warmup_msec / warmup_iter;
+    } else {
+        int iter = int(target_msec / warmup_msec);
+        exe.launch();
+        exe.run(iter);
+        float msec = exe.stop();
+        result.msec_per_iter = msec / iter;
+    }
+
+    exe.stop();
+
+    // Free resources
+    for (auto ptr : input_data) {
+        ::free(ptr);
+    }
+    for (auto ptr : res) {
+        ::free(ptr);
+    }
+    for (auto ptr : gt) {
+        ::free(ptr);
+    }
+
+    return result;
 }
 
-void test_bcast_fp32(string op_name, ark::DimType bs, ark::DimType n,
-                     ark::DimType m, bool overwrite)
+OpsTestResult op_test_8(const std::string &test_name_prefix, Model &model,
+                        const std::vector<Tensor *> &inputs,
+                        const std::vector<Tensor *> &outputs,
+                        OpsTestBaseline baseline,
+                        const std::string &init_method, bool print_on_error)
 {
-    test_bcast_internal<float>(op_name, ark::FP32, bs, n, m, overwrite);
+    return op_test(test_name_prefix, model, inputs, outputs, baseline,
+                   init_method, 8, print_on_error);
 }
 
-void test_bcast_fp16(string op_name, ark::DimType bs, ark::DimType n,
-                     ark::DimType m, bool overwrite)
+OpsTestResult op_test_16(const std::string &test_name_prefix, Model &model,
+                         const std::vector<Tensor *> &inputs,
+                         const std::vector<Tensor *> &outputs,
+                         OpsTestBaseline baseline,
+                         const std::string &init_method, bool print_on_error)
 {
-    test_bcast_internal<ark::half_t>(op_name, ark::FP16, bs, n, m, overwrite);
+    return op_test(test_name_prefix, model, inputs, outputs, baseline,
+                   init_method, 16, print_on_error);
 }
+
+OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
+                         const std::vector<Tensor *> &inputs,
+                         const std::vector<Tensor *> &outputs,
+                         OpsTestBaseline baseline,
+                         const std::string &init_method, bool print_on_error)
+{
+    return op_test(test_name_prefix, model, inputs, outputs, baseline,
+                   init_method, 32, print_on_error);
+}
+
+void op_test_log(const OpsTestResult &result)
+{
+    LOG(INFO, result);
+}
+
+#define CUDA_CHECK(status)                                                     \
+    do {                                                                       \
+        cudaError_t error = status;                                            \
+        if (error != cudaSuccess) {                                            \
+            std::ostringstream oss;                                            \
+            oss << "Got bad cuda status: " << cudaGetErrorString(error)        \
+                << " at line: " << __LINE__;                                   \
+            throw std::runtime_error(oss.str());                               \
+        }                                                                      \
+    } while (0);
+
+OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size)
+{
+    CUDA_CHECK(cudaMalloc(&this->gpu_ptr_, size));
+}
+
+OpsTestGpuMem::~OpsTestGpuMem()
+{
+    cudaFree(this->gpu_ptr_);
+}
+
+void *OpsTestGpuMem::get() const
+{
+    return this->gpu_ptr_;
+}
+
+size_t OpsTestGpuMem::size() const
+{
+    return this->size_;
+}
+
+OpsTestGpuMem to_gpu(const void *host_ptr, size_t size)
+{
+    OpsTestGpuMem gpu_mem(size);
+    CUDA_CHECK(
+        cudaMemcpy(gpu_mem.get(), host_ptr, size, cudaMemcpyHostToDevice));
+    return gpu_mem;
+}
+
+void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr)
+{
+    if (host_ptr == nullptr) {
+        host_ptr = ::malloc(test_gpu_mem.size());
+    }
+    CUDA_CHECK(cudaMemcpy(host_ptr, test_gpu_mem.get(), test_gpu_mem.size(),
+                          cudaMemcpyDeviceToHost));
+    return host_ptr;
+}
+
+void sync_gpu()
+{
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+} // namespace ark

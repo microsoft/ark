@@ -5,6 +5,7 @@
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "logging.h"
+#include "ops/ops_test_common.h"
 #include "sched/sched.h"
 #include "unittest/unittest_utils.h"
 
@@ -354,12 +355,11 @@ ark::unittest::State test_sched_comp_baseline()
     ark::unittest::wait_all_processes();
     // TODO: the output data are set on different processes,  we need to copy
     //  run the test on the same process
-    auto p =
-        ark::utils::cmp_matrix((ark::half_t *)output_data1,
-                               (ark::half_t *)output_data2, channel, units);
+    auto comp = tensor_compare(output_data1, output_data2,
+                               ark::Dims(batch_size, units, units));
     LOG(ark::INFO, " scheduler compare test: ", " total_bytes: ", bytes,
-        " iter: ", 1, setprecision(4), " mse: ", p.first,
-        " max_err: ", p.second * 100, "%");
+        " iter: ", 1, setprecision(4), " mse: ", comp.mse,
+        " max_err: ", comp.max_error_rate * 100, "%");
     return unittest::SUCCESS;
 }
 

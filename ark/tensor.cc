@@ -252,7 +252,7 @@ void Tensor::write(const void *buf)
     assert(done == bytes);
 }
 
-void Tensor::read(void *buf)
+void *Tensor::read(void *buf)
 {
     GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
     if (gbuf == nullptr) {
@@ -260,10 +260,16 @@ void Tensor::read(void *buf)
     }
     size_t bytes = this->shape_bytes();
     int ndims = this->ndims();
+    if (buf == nullptr) {
+        buf = ::malloc(bytes);
+        if (buf == nullptr) {
+            LOG(ERROR, "failed to allocate host buffer");
+        }
+    }
     char *ptr = (char *)buf;
     if (ndims == 1) {
         gpu_memcpy(ptr, gbuf->ref(this->offset_bytes(0)), bytes);
-        return;
+        return ptr;
     }
     size_t done = 0;
     size_t rem = bytes;
@@ -307,6 +313,24 @@ void Tensor::read(void *buf)
     }
     assert(rem == 0);
     assert(done == bytes);
+    return buf;
+}
+
+void *Tensor::read_raw(void *buf)
+{
+    GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
+    if (gbuf == nullptr) {
+        LOG(ERROR, "failed to get GPU buffer for tensor ", this->id);
+    }
+    size_t bytes = this->ldims_bytes();
+    if (buf == nullptr) {
+        buf = ::malloc(bytes);
+        if (buf == nullptr) {
+            LOG(ERROR, "failed to allocate host buffer");
+        }
+    }
+    gpu_memcpy(buf, gbuf->ref(this->offset_bytes(0)), bytes);
+    return buf;
 }
 
 void Tensor::clear()

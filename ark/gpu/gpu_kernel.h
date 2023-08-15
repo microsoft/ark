@@ -33,7 +33,6 @@ class GpuKernel
     ~GpuKernel();
 
     void compile(const GpuInfo &gpu_info, bool use_comm_sw = true);
-    void load();
     GpuState launch(GpuStream stream);
 
     const std::string &get_name()
