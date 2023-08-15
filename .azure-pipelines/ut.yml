@@ -21,7 +21,7 @@ jobs:
 
   container:
     image: $[ variables['containerImage'] ]
-    options: --privileged --shm-size=1g --ipc=host --net=host --gpus=all --ulimit memlock=-1:-1 --ulimit stack=67108864 -v /usr/src:/usr/src -v /dev:/dev -v /lib/modules:/lib/modules
+    options: --privileged --shm-size=1g --ipc=host --gpus=all --ulimit memlock=-1:-1 --ulimit stack=67108864 -v /usr/src:/usr/src -v /dev:/dev -v /lib/modules:/lib/modules
 
   steps:
   - task: Bash@3
