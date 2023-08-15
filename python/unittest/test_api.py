@@ -15,6 +15,18 @@ seq_len = 64
 
 import ark
 
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
+
 
 class TestModelARK(ark.Module):
     def __init__(self):
@@ -93,7 +105,7 @@ def test_TestModel():
 
     torch_model = TestModel()
 
-    torch_model.load_state_dict(ark.convert_state_dict(state_dict, "torch"))
+    torch_model.load_state_dict(convert_state_dict(state_dict, "torch"))
 
     gt = torch_model(torch_input).detach().numpy().astype(np.float16)
 

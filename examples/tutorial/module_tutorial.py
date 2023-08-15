@@ -12,6 +12,17 @@ seq_len = 64
 d_model = 512
 d_ff = 2048
 
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
 
 class SubModuleARK(ark.Module):
     def __init__(self):
@@ -120,8 +131,8 @@ def module_test():
 
     torch_model = TestModelPytorch()
 
-    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict using ark.convert_state_dict
-    torch_state_dict = ark.convert_state_dict(state_dict, "torch")
+    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict
+    torch_state_dict = convert_state_dict(state_dict, "torch")
     # Load model parameters
     torch_model.load_state_dict(torch_state_dict)
 

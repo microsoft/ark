@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import torch
 import pickle
 import logging
 
@@ -29,21 +28,3 @@ def load(state_dict_file_path: str):
         return state_dict
 
 
-def convert_state_dict(state_dict: dict, type="numpy"):
-    """
-    Convert the state_dict of a module to np.ndarray or torch.Tensor type
-    """
-    new_state_dict = {}
-    for key in state_dict:
-        if type == "torch":
-            new_state_dict[key] = torch.from_numpy(state_dict[key])
-        elif type == "numpy":
-            new_state_dict[key] = state_dict[key].numpy()
-        else:
-            logging.error(
-                "Invalid type: " + type + " valid types are torch and numpy"
-            )
-            raise TypeError(
-                "Invalid type: " + type + " valid types are torch and numpy"
-            )
-    return new_state_dict
