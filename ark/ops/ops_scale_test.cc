@@ -28,8 +28,8 @@ ark::unittest::State test_scale_fp16()
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
     ark::Tensor *out = m.scale(t, SCALE_FACTOR);
 
-    auto result = ark::op_test("scale_fp16", m, {t}, {out},
-                               baseline_scale<ark::half_t>);
+    auto result =
+        ark::op_test("scale_fp16", m, {t}, {out}, baseline_scale<ark::half_t>);
     ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }

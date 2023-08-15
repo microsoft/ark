@@ -62,10 +62,10 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
     const Dims &ldims_y = mat_y->ldims;
     int ndims_a = ldims_a.ndims();
     int ndims_b = ldims_b.ndims();
-    leading_dims[0] = is_column_a ? ldims_a[ndims_a - 2] : ldims_a[ndims_a - 1];
+    leading_dims[0] = ldims_a[ndims_a - 1];
     leading_dims[1] = ldims_y[ldims_y.ndims() - 1];
     leading_dims[2] = ldims_y[ldims_y.ndims() - 1];
-    leading_dims[3] = is_column_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1];
+    leading_dims[3] = ldims_b[ndims_b - 1];
 
     // TODO: verify `leading_dims`
 

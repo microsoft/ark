@@ -32,8 +32,8 @@ ark::unittest::State test_gelu_fp32()
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
     ark::Tensor *out = m.gelu(t);
 
-    auto result = ark::op_test("gelu_fp32", m, {t}, {out},
-                               baseline_gelu<float>);
+    auto result =
+        ark::op_test("gelu_fp32", m, {t}, {out}, baseline_gelu<float>);
     ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }

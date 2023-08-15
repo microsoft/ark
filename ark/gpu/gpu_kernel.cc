@@ -94,7 +94,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
     std::unique_ptr<void *[]> optvals(new void *[num_opts]);
     std::string infobuf;
     std::string errbuf;
-    
+
     infobuf.resize(buflen, ' ');
     errbuf.resize(buflen, ' ');
 
@@ -115,8 +115,8 @@ void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
     opts[4] = CU_JIT_GENERATE_DEBUG_INFO;
     optvals[4] = (void *)(long)enable;
 
-    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts, opts.get(),
-                           optvals.get()) != CUDA_SUCCESS) {
+    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts,
+                           opts.get(), optvals.get()) != CUDA_SUCCESS) {
         LOG(DEBUG, infobuf);
         LOG(ERROR, "cuModuleLoadDataEx() failed: ", errbuf);
     }
