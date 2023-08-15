@@ -147,11 +147,35 @@ def apply_rotary_emb(xq, xk, freqs_cis):
     xq_out_shards = ark.sharding(xq_out_, axis=3, dim_per_shard=1)
 
     xq_out_real = xq_out_shards[0]
+    xq_out_real = ark.reshape(
+        xq_out_real,
+        [xq_out_real.shape[0], xq_out_real.shape[1], xq_out_real.shape[2]],
+    )
     xq_out_imag = xq_out_shards[1]
+    xq_out_imag = ark.reshape(
+        xq_out_imag,
+        [xq_out_imag.shape[0], xq_out_imag.shape[1], xq_out_imag.shape[2]],
+    )
 
     freqs_cis_shard = ark.sharding(freqs_cis, axis=3, dim_per_shard=1)
     freqs_cis_real = freqs_cis_shard[0]
+    freqs_cis_real = ark.reshape(
+        freqs_cis_real,
+        [
+            freqs_cis_real.shape[0],
+            freqs_cis_real.shape[1],
+            freqs_cis_real.shape[2],
+        ],
+    )
     freqs_cis_imag = freqs_cis_shard[1]
+    freqs_cis_imag = ark.reshape(
+        freqs_cis_imag,
+        [
+            freqs_cis_imag.shape[0],
+            freqs_cis_imag.shape[1],
+            freqs_cis_imag.shape[2],
+        ],
+    )
     # (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
     ark.sub(
         ark.mul(xq_real, freqs_cis_real),
