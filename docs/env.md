@@ -1,4 +1,4 @@
-# Environment variables:  
+# Environment Variables
 
 - `ARK_ROOT`: The installation directory of ARK. Defaults to `/usr/local/ark` when unset.  
 
