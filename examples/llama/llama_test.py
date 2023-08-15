@@ -277,7 +277,7 @@ def test_rotary_embedding():
     batch_size = 1
     start_pos = 0
     seqlen = 64
-    freqs_cis = freqs_cis[start_pos : start_pos + seqlen]
+    freqs_cis_torch = freqs_cis[start_pos : start_pos + seqlen]
     print("freqs_cis.shape", freqs_cis.shape)
     head_dim = params.dim // params.n_heads
     xq_torch = torch.ones(
@@ -290,7 +290,7 @@ def test_rotary_embedding():
     )
 
     xq_out_torch, xk_out_torch = llama_pytorch.apply_rotary_emb(
-        xq_torch, xk_torch, freqs_cis
+        xq_torch, xk_torch, freqs_cis_torch
     )
 
     runtime = ark.Runtime()
@@ -308,7 +308,14 @@ def test_rotary_embedding():
     runtime.launch()
     xq_ark.from_numpy(xq_torch.numpy().astype(np.float32))
     xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
-
+    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
+    freqs_cis_real = freqs_cis_complex.real
+    # Add a new axis to freqs_cis_real
+    freqs_cis_imag = freqs_cis_complex.imag
+    # stack real and imag parts
+    freqs_cis_stack = np.stack([freqs_cis_real, freqs_cis_imag], axis=-1)
+    print("freqs_cis_stack.shape", freqs_cis_stack.shape)
+    freqs_cis_ark.from_numpy(freqs_cis_stack.astype(np.float32))
     # llama_ark.precompute_freqs_cis(freqs_cis_ark)
 
     runtime.run()
@@ -321,6 +328,8 @@ def test_rotary_embedding():
     mean_abs_error = np.mean(
         np.abs(xq_out_ark_host - xq_out_torch.detach().numpy())
     )
+    print("xq_out_ark_host", xq_out_ark_host)
+    print("xq_out_torch", xq_out_torch.detach().numpy())
     print(
         "rotary_embedding test",
         "max_abs_error:",
