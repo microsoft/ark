@@ -106,6 +106,7 @@ typedef enum
     OP_REDUCE_W_MEAN,
     OP_REDUCE_W_MAX,
     OP_LAYERNORM,
+    OP_RMSNORM,
     OP_SOFTMAX,
     OP_SCALE,
     OP_RELU,
@@ -340,6 +341,14 @@ class LayernormOp : public Op
   public:
     LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                 const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class RMSnormOp : public Op
+{
+  public:
+    RMSnormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+              const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 

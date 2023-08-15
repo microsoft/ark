@@ -203,6 +203,11 @@ PYBIND11_MODULE(_ark_core, m)
              "the normalized tensor as `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "layernorm")
+        .def("rmsnorm", &ark::Model::rmsnorm,
+             "Applies RMS (Root Mean Square Layer Normalization) normalization to the `input` tensor and returns "
+             "the normalized tensor as `output`.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "rmsnorm")
         .def("softmax", &ark::Model::softmax,
              "Applies softmax activation to the `input` tensor, with the "
              "softmax operator being performed on the last dimension of the "

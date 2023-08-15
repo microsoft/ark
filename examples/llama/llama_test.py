@@ -375,8 +375,8 @@ def test_rotary_embedding():
 if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
-    # test_rmsnorm()
-    test_attention()
+    test_rmsnorm()
+    # test_attention()
     # test_feedforward()
     # test_transformerblock()
     # test_transformer()

@@ -204,6 +204,21 @@ def layernorm(
     _tensor = Model.get_global_model().layernorm(input._tensor, output, name)
     return Tensor(_tensor)
 
+def rmsnorm(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "rmsnorm",
+) -> Tensor:
+    """
+    Applies layer normalization to the `input` tensor and returns
+    the normalized tensor as `output`.
+    Usage:
+    tensor_rmsnorm = ark.rmsnorm(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().rmsnorm(input._tensor, output, name)
+    return Tensor(_tensor)
 
 def softmax(
     input: Tensor,
