@@ -46,10 +46,8 @@ def test_layernorm_internal(
     elif layer_norm_type == "rmsnorm":
         gt = (
             torch_input
-            * torch.sqrt(
-                torch.mean(torch_input**2, dim=-1, keepdim=True) + 1e-5
-            ).numpy()
-        )
+            * torch.rsqrt(torch_input.pow(2).mean(-1, keepdim=True) + 1e-5)
+        ).numpy()
 
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))
