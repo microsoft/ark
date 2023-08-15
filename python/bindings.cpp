@@ -204,7 +204,8 @@ PYBIND11_MODULE(_ark_core, m)
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "layernorm")
         .def("rmsnorm", &ark::Model::rmsnorm,
-             "Applies RMS (Root Mean Square Layer Normalization) normalization to the `input` tensor and returns "
+             "Applies RMS (Root Mean Square Layer Normalization) normalization "
+             "to the `input` tensor and returns "
              "the normalized tensor as `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "rmsnorm")

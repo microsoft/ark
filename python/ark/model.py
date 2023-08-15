@@ -204,6 +204,7 @@ def layernorm(
     _tensor = Model.get_global_model().layernorm(input._tensor, output, name)
     return Tensor(_tensor)
 
+
 def rmsnorm(
     input: Tensor,
     output: Tensor = None,
@@ -219,6 +220,7 @@ def rmsnorm(
         output = output._tensor
     _tensor = Model.get_global_model().rmsnorm(input._tensor, output, name)
     return Tensor(_tensor)
+
 
 def softmax(
     input: Tensor,
