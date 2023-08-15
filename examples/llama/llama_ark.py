@@ -93,73 +93,8 @@ class FeedForward(ark.Module):
 
 
 def apply_rotary_emb(xq, xk, freqs_cis):
-    xq_shape = xq.shape
-    xq_ = ark.reshape(
-        xq, [xq_shape[0] * xq_shape[1], xq_shape[2], xq_shape[3] // 2, 2]
-    )
-    xq_split = ark.sharding(xq_, axis=3, dim_per_shard=1)
-
-    xq_real = xq_split[0]
-    xq_real = ark.reshape(
-        xq_real, [xq_real.shape[0], xq_real.shape[1], xq_real.shape[2]]
-    )
-    xq_imag = xq_split[1]
-    xq_imag = ark.reshape(
-        xq_imag, [xq_imag.shape[0], xq_imag.shape[1], xq_imag.shape[2]]
-    )
-    xq_out = ark.tensor(xq_.shape, ark.FP32)
-    xq_out_ = ark.reshape(
-        xq_out, [xq_shape[0] * xq_shape[1], xq_shape[2], xq_shape[3] // 2, 2]
-    )
-    xq_out_shards = ark.sharding(xq_out_, axis=3, dim_per_shard=1)
-
-    xq_out_real = xq_out_shards[0]
-    xq_out_real = ark.reshape(
-        xq_out_real,
-        [xq_out_real.shape[0], xq_out_real.shape[1], xq_out_real.shape[2]],
-    )
-    xq_out_imag = xq_out_shards[1]
-    xq_out_imag = ark.reshape(
-        xq_out_imag,
-        [xq_out_imag.shape[0], xq_out_imag.shape[1], xq_out_imag.shape[2]],
-    )
-
-    freqs_cis_shard = ark.sharding(freqs_cis, axis=3, dim_per_shard=1)
-    freqs_cis_real = freqs_cis_shard[0]
-    freqs_cis_real = ark.reshape(
-        freqs_cis_real,
-        [
-            freqs_cis_real.shape[0],
-            freqs_cis_real.shape[1],
-            freqs_cis_real.shape[2],
-        ],
-    )
-    freqs_cis_imag = freqs_cis_shard[1]
-    freqs_cis_imag = ark.reshape(
-        freqs_cis_imag,
-        [
-            freqs_cis_imag.shape[0],
-            freqs_cis_imag.shape[1],
-            freqs_cis_imag.shape[2],
-        ],
-    )
-    # (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
-    tmp1 = ark.mul(xq_real, freqs_cis_real)
-    tmp2 = ark.mul(xq_imag, freqs_cis_imag)
-    ark.sub(tmp1, tmp2, xq_out_real)
-    # ark.mul(xq_real, freqs_cis_imag, xq_out_imag)
-    # ark.sub(
-    #     ark.mul(xq_real, freqs_cis_real),
-    #     ark.mul(xq_imag, freqs_cis_imag),
-    #     xq_out_real,
-    # )
-    # ark.add(
-    #     ark.mul(xq_real, freqs_cis_imag),
-    #     ark.mul(xq_imag, freqs_cis_real),
-    #     xq_out_imag,
-    # )
-    # change back to original shape
-    xq_out = ark.reshape(xq_out_, xq_shape)
+    xq_out = ark.rope(xq, freqs_cis)
+    xk_out = ark.rope(xk, freqs_cis)
     return xq_out
 
 

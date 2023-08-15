@@ -315,7 +315,7 @@ def test_rotary_embedding():
         [batch_size, seq_len, params.n_heads, head_dim], ark.FP32
     )
 
-    freqs_cis_ark = ark.tensor([seqlen, 1, head_dim // 2, 2], ark.FP32)
+    freqs_cis_ark = ark.tensor([1, seqlen, 1, head_dim], ark.FP32)
 
     xq_out_ark = llama_ark.apply_rotary_emb(xq_ark, xk_ark, freqs_cis_ark)
 
@@ -324,12 +324,10 @@ def test_rotary_embedding():
     print("xq_ark numpy", xq_ark.to_numpy())
     xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
     freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
-    freqs_cis_real = freqs_cis_complex.real
-    # Add a new axis to freqs_cis_real
-    freqs_cis_imag = freqs_cis_complex.imag
+
     # stack real and imag parts
     freqs_cis_stack = np.stack(
-        [freqs_cis_real, freqs_cis_imag], axis=-1
+        [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
     ).astype(np.float32)
 
     freqs_cis_ark.from_numpy(freqs_cis_stack)
@@ -360,8 +358,8 @@ if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     # test_rmsnorm()
-    test_attention()
+    # test_attention()
     # test_feedforward()
     # test_transformerblock()
     # test_transformer()
-    # test_rotary_embedding()
+    test_rotary_embedding()
