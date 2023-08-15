@@ -431,6 +431,24 @@ def sqrt(
     _tensor = Model.get_global_model().sqrt(input._tensor, output, name)
     return Tensor(_tensor)
 
+def rope(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "rope",
+) -> Tensor:
+    """
+    Performs rotary position embedding (RoPE) on the `input` tensor
+    Usage:
+    tensor_mul = ark.rope(tensor1, tensor2)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_global_model().rope(
+        input._tensor, other._tensor, output, name
+    )
+    return Tensor(_tensor)
+
 
 def relu(
     input: Tensor,

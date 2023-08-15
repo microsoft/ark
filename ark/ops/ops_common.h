@@ -119,6 +119,7 @@ typedef enum
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    OP_ROPE,
     OP_IM2COL,
     OP_TRANSPOSE,
     OP_SEND,
@@ -313,6 +314,14 @@ class SqrtOp : public Op
   public:
     SqrtOp(OpPrecType prec_type, Tensor *input, Tensor *output,
            const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class RoPEOp : public Op
+{
+  public:
+    RoPEOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+          const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 

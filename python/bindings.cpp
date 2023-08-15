@@ -262,6 +262,11 @@ PYBIND11_MODULE(_ark_core, m)
              "Calculates the square root of the `input` tensor, element-wise.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "sqrt")
+     .def("rope", &ark::Model::rope,
+             "Performs rotary position embedding (RoPE) on the `input` tensor"
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("other"), py::arg("output") = nullptr,
+             py::arg("name") = "rope")
         .def("relu", &ark::Model::relu, "ReLU activation",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "relu")

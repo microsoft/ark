@@ -152,18 +152,22 @@ def apply_rotary_emb(xq, xk, freqs_cis):
         ],
     )
     # (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
-    ark.sub(
-        ark.mul(xq_real, freqs_cis_real),
-        ark.mul(xq_imag, freqs_cis_imag),
-        xq_out_real,
-    )
-    ark.add(
-        ark.mul(xq_real, freqs_cis_imag),
-        ark.mul(xq_imag, freqs_cis_real),
-        xq_out_imag,
-    )
+    tmp1 = ark.mul(xq_real, freqs_cis_real)
+    tmp2 = ark.mul(xq_imag, freqs_cis_imag)
+    ark.sub(tmp1, tmp2, xq_out_real)
+    # ark.mul(xq_real, freqs_cis_imag, xq_out_imag)
+    # ark.sub(
+    #     ark.mul(xq_real, freqs_cis_real),
+    #     ark.mul(xq_imag, freqs_cis_imag),
+    #     xq_out_real,
+    # )
+    # ark.add(
+    #     ark.mul(xq_real, freqs_cis_imag),
+    #     ark.mul(xq_imag, freqs_cis_real),
+    #     xq_out_imag,
+    # )
     # change back to original shape
-    xq_out = ark.reshape(xq_out, xq_shape)
+    xq_out = ark.reshape(xq_out_, xq_shape)
     return xq_out
 
 
