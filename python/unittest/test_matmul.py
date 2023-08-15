@@ -269,12 +269,11 @@ class TestMatmul(unittest.TestCase):
                     "float",
                 )
 
-    # TODO: enable this test after fixing the bug
-    # def test_matmul_transpose(self):
-    #     test_matmul_small_sizes(1, False, False, 0, "half")
-    #     test_matmul_small_sizes(1, True, True, 0, "half")
-    #     test_matmul_small_sizes(1, False, True, 0, "half")
-    #     test_matmul_small_sizes(1, True, False, 0, "half")
+    def test_matmul_transpose(self):
+        test_matmul_small_sizes(1, False, False, 0, "half")
+        test_matmul_small_sizes(1, True, True, 0, "half")
+        test_matmul_small_sizes(1, False, True, 0, "half")
+        test_matmul_small_sizes(1, True, False, 0, "half")
 
 
 if __name__ == "__main__":
