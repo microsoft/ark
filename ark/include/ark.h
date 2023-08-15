@@ -382,7 +382,7 @@ class Model
                     const std::string &name = "sigmoid");
     // Performs rotary position embedding (RoPE) on the `input` tensor
     Tensor *rope(Tensor *input, Tensor *other, Tensor *output = nullptr,
-                const std::string &name = "rope");
+                 const std::string &name = "rope");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,

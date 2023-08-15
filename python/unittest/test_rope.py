@@ -25,23 +25,27 @@ def test_rope_internal(batch_size, m, n, data_type="float", iter=1):
     runtime.launch()
 
     # Initialize the input and other tensor with random values
-    input_tensor_host = (
-        np.random.rand(batch_size, m, n).astype(numpy_data_type)
-    )
+    input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
     input_tensor.from_numpy(input_tensor_host)
-    other_tensor_host = (
-        np.random.rand(batch_size, m, n).astype(numpy_data_type)
-    )
+    other_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
     # Run the ARK program
     runtime.run(iter=iter, async_run=True)
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()
     # Calculate the ground truth
-    input_tensor_host_reshape = input_tensor_host.reshape(batch_size, m , n // 2, 2)
-    input_tensor_host_complex = input_tensor_host_reshape[0] + input_tensor_host_reshape[1] * 1j
-    other_tensor_host_reshape = other_tensor_host.reshape(batch_size, m , n // 2, 2)
-    other_tensor_host_complex = other_tensor_host_reshape[0] + other_tensor_host_reshape[1] * 1j
+    input_tensor_host_reshape = input_tensor_host.reshape(
+        batch_size, m, n // 2, 2
+    )
+    input_tensor_host_complex = (
+        input_tensor_host_reshape[0] + input_tensor_host_reshape[1] * 1j
+    )
+    other_tensor_host_reshape = other_tensor_host.reshape(
+        batch_size, m, n // 2, 2
+    )
+    other_tensor_host_complex = (
+        other_tensor_host_reshape[0] + other_tensor_host_reshape[1] * 1j
+    )
     gt = input_tensor_host_complex * other_tensor_host_complex
     gt = gt.reshape(batch_size, m, n).real
     # Check if the output tensor is equal to the sum of the input and other tensor

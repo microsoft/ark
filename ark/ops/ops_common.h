@@ -317,11 +317,11 @@ class SqrtOp : public Op
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class RoPEOp : public Op
+class RopeOp : public Op
 {
   public:
-    RoPEOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-          const std::string &name);
+    RopeOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+           const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 

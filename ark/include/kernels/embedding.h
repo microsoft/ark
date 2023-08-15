@@ -32,12 +32,12 @@ template <typename In0Dims, typename In0Shape, typename In1Dims,
 DEVICE void rope(float *c, float *a, float *b, int uop_idx, int)
 {
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-               UnitOutDims, NumThreads, SmemBytes,
-              RoPE>::run((float2*)c, (float2*)a, (float2*)b, uop_idx);
+               UnitOutDims, NumThreads, SmemBytes, RoPE>::run((float2 *)c,
+                                                              (float2 *)a,
+                                                              (float2 *)b,
+                                                              uop_idx);
 }
 
 } // namespace ark
 
-#endif  // ARK_KERNELS_EMBEDDING_H_
-
-
+#endif // ARK_KERNELS_EMBEDDING_H_

@@ -431,6 +431,7 @@ def sqrt(
     _tensor = Model.get_global_model().sqrt(input._tensor, output, name)
     return Tensor(_tensor)
 
+
 def rope(
     input: Tensor,
     other: Tensor,
