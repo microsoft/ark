@@ -38,16 +38,18 @@ def test_rope_internal(batch_size, m, n, data_type="float", iter=1):
         batch_size, m, n // 2, 2
     )
     input_tensor_host_complex = (
-        input_tensor_host_reshape[0] + input_tensor_host_reshape[1] * 1j
+        input_tensor_host_reshape[:, :, :, 0]
+        + input_tensor_host_reshape[:, :, :, 1] * 1j
     )
     other_tensor_host_reshape = other_tensor_host.reshape(
         batch_size, m, n // 2, 2
     )
     other_tensor_host_complex = (
-        other_tensor_host_reshape[0] + other_tensor_host_reshape[1] * 1j
+        other_tensor_host_reshape[:, :, :, 0]
+        + other_tensor_host_reshape[:, :, :, 1] * 1j
     )
     gt = input_tensor_host_complex * other_tensor_host_complex
-    gt = gt.reshape(batch_size, m, n).real
+    gt = np.stack((gt.real, gt.imag), axis=-1).reshape(batch_size, m, n)
     # Check if the output tensor is equal to the sum of the input and other tensor
     # test if the result is correct
     max_abs_error = np.max(np.abs(output_tensor_host - gt))

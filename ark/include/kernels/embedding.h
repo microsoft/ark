@@ -18,8 +18,10 @@ struct RoPE
         float2 *pc = (float2 *)c;
         const float2 *pa = (const float2 *)a;
         const float2 *pb = (const float2 *)b;
-        pc->x = pa.x * pb.x - pa.y * pb.y;
-        pc->y = pa.x * pb.y + pa.y * pb.x;
+        printf("pa->x: %f, pa->y: %f pb->x: %f, pb->y: %f\n", pa->x, pa->y,
+               pb->x, pb->y);
+        pc->x = pa->x * pb->x - pa->y * pb->y;
+        pc->y = pa->x * pb->y + pa->y * pb->x;
     }
     static DEVICE __half2 compute(__half2 a, __half2 b)
     {
