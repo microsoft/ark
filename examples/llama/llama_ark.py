@@ -100,18 +100,32 @@ class FeedForward(ark.Module):
         return x4
 
 
+def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+    freqs = 1.0 / (
+        theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim)
+    )
+    t = torch.arange(end, device=freqs.device)  # type: ignore
+    freqs = torch.outer(t, freqs).float()  # type: ignore
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
+    return freqs_cis
+
+
 def apply_rotary_emb(xq, xk, freqs_cis):
-    # (batch_size, seq_len, self.n_local_heads, self.head_dim) -> (batch_size * seq_len, self.n_local_heads, self.head_dim//2, 2)
+    # (batch_size, seq_len, self.n_local_heads, self.head_dim) -> (batch_size * seq_len * self.n_local_heads * self.head_dim//2, 2)
     xq_shape = xq.shape
-    xq_ = ark.reshape(xq, [xq_shape[0]* xq_shape[1], xq_shape[2],xq_shape[3]//2, 2])
+    xq_ = ark.reshape(
+        xq, [xq_shape[0] * xq_shape[1] * xq_shape[2] * xq_shape[3] // 2, 2]
+    )
     xk_shape = xk.shape
-    xk_ = ark.reshape(xk, [xk_shape[0]* xk_shape[1], xk_shape[2],xk_shape[3]//2, 2])
-
-    xq_out1 = ark.mul(xq, freqs_cis)
-    xk_out1 = ark.mul(xk, freqs_cis)
-
-    xq_out = ark.reduce_sum(xq_out1, axis=4)
-    xk_out = ark.reduce_sum(xk_out1, axis=4)
+    xk_ = ark.reshape(
+        xk, [xk_shape[0] * xk_shape[1] * xk_shape[2] * xk_shape[3] // 2, 2]
+    )
+    # freqs_cis: (seq_len * self.n_local_heads* self.head_dim, 2, 2)
+    xq_out = ark.matmul(xq_, freqs_cis)
+    xk_out = ark.matmul(xk_, freqs_cis)
+    # change back to original shape
+    xq_out = ark.reshape(xq_out, xq_shape)
+    xk_out = ark.reshape(xk_out, xk_shape)
     return xq_out, xk_out
 
 

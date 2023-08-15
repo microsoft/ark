@@ -267,38 +267,72 @@ def test_transformer():
     # )
 
 
-def test_freqs_cis():
-    # Initialize the ARK runtime
+def test_rotary_embedding():
+    # Initialize the ARK runtimes
+    params = llama_pytorch.ModelArgs()
+
+    freqs_cis = llama_pytorch.precompute_freqs_cis(
+        params.dim // params.n_heads, params.max_seq_len * 2
+    )
+    batch_size = 1
+    start_pos = 0
+    seqlen = 64
+    freqs_cis = freqs_cis[start_pos : start_pos + seqlen]
+    print("freqs_cis.shape", freqs_cis.shape)
+    head_dim = params.dim // params.n_heads
+    xq_torch = torch.ones(
+        [batch_size, seq_len, params.n_heads, head_dim],
+        dtype=torch.float32,
+    )
+    xk_torch = torch.ones(
+        [batch_size, seq_len, params.n_heads, head_dim],
+        dtype=torch.float32,
+    )
+
+    xq_out_torch, xk_out_torch = llama_pytorch.apply_rotary_emb(
+        xq_torch, xk_torch, freqs_cis
+    )
+
     runtime = ark.Runtime()
-    args = llama_ark.ModelArgs()
-    # transformer_pytorch = llama_pytorch.Transformer(args)
-    transformer_ark = llama_ark.Transformer(args)
-    dim = args.dim
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np.float32)
-    torch_input = torch.from_numpy(input_numpy)
+    xq_ark = ark.tensor(
+        [batch_size, seq_len, params.n_heads, head_dim], ark.FP32
+    )
+    xk_ark = ark.tensor(
+        [batch_size, seq_len, params.n_heads, head_dim], ark.FP32
+    )
 
-    # random init the torch model
-    # for param in transformer_pytorch.parameters():
-    #     nn.init.uniform_(param, a=-0.1, b=0.1)
-    # state_dict = transformer_pytorch.state_dict()
+    freqs_cis_ark = ark.tensor(
+        [seqlen * params.n_heads * head_dim // 2, 2, 2], ark.FP32
+    )
 
-    # transformer_pytorch.load_state_dict(state_dict_torch)
-    # output_torch = transformer_pytorch(torch_input, 0, None, None)
+    xq_out_ark, xk_out_ark = llama_ark.apply_rotary_emb(
+        xq_ark, xk_ark, freqs_cis_ark
+    )
 
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
-    output = transformer_ark(ark_input, 0)
-
-    # Launch the ARK runtime
     runtime.launch()
-    ark_input.from_numpy(input_numpy.astype(np.float32))
+    xq_ark.from_numpy(xq_torch.numpy().astype(np.float32))
+    xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
 
-    # ark_state_dict = ark.convert_state_dict(state_dict, "numpy")
-    # transformer_ark.load_state_dict(ark_state_dict)
-    # Run the ARK program
+    llama_ark.precompute_freqs_cis(freqs_cis_ark)
+
     runtime.run()
-    output_ark_host = output.to_numpy()
+
+    xq_out_ark_host = xq_out_ark.to_numpy()
+    xk_out_ark_host = xk_out_ark.to_numpy()
+
+    max_abs_error = np.max(
+        np.abs(xq_out_ark_host - xq_out_torch.detach().numpy())
+    )
+    mean_abs_error = np.mean(
+        np.abs(xq_out_ark_host - xq_out_torch.detach().numpy())
+    )
+    print(
+        "rotary_embedding test",
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+    )
 
 
 if __name__ == "__main__":
@@ -308,4 +342,5 @@ if __name__ == "__main__":
     # test_attention()
     # test_feedforward()
     # test_transformerblock()
-    test_transformer()
+    # test_transformer()
+    test_rotary_embedding()
