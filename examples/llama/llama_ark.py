@@ -101,7 +101,18 @@ class FeedForward(ark.Module):
 
 
 def apply_rotary_emb(xq, xk, freqs_cis):
-    pass
+    # (batch_size, seq_len, self.n_local_heads, self.head_dim) -> (batch_size * seq_len, self.n_local_heads, self.head_dim//2, 2)
+    xq_shape = xq.shape
+    xq_ = ark.reshape(xq, [xq_shape[0]* xq_shape[1], xq_shape[2],xq_shape[3]//2, 2])
+    xk_shape = xk.shape
+    xk_ = ark.reshape(xk, [xk_shape[0]* xk_shape[1], xk_shape[2],xk_shape[3]//2, 2])
+
+    xq_out1 = ark.mul(xq, freqs_cis)
+    xk_out1 = ark.mul(xk, freqs_cis)
+
+    xq_out = ark.reduce_sum(xq_out1, axis=4)
+    xk_out = ark.reduce_sum(xk_out1, axis=4)
+    return xq_out, xk_out
 
 
 class Attention(ark.Module):
@@ -139,8 +150,8 @@ class Attention(ark.Module):
         xv = ark.reshape(
             xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
         )
-        # TODO: use ark.mul to implement the rotation embedding
-        # xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+
+        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
         # TODO: enable kv cache and mask later
         keys = xk
@@ -213,7 +224,7 @@ class Transformer(ark.Module):
         # )
 
         self.layers = []
-        for layer_id in range(params.n_layers):
+        for layer_id in range(6):
             self.tmp_layer = TransformerBlock(layer_id, params)
             self.layers.append(self.tmp_layer)
 
@@ -233,6 +244,6 @@ class Transformer(ark.Module):
 
         for layer in self.layers:
             h = layer(h, start_pos, freqs_cis, mask)
-        h = self.norm(h)
-        output = self.output(h).float()
-        return output
+        # h = self.norm(h)
+        # output = self.output(h).float()
+        return h

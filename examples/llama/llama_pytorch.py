@@ -161,7 +161,7 @@ class Attention(nn.Module):
         xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
         xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
 
-        # xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
         self.cache_k = self.cache_k.to(xq)
         self.cache_v = self.cache_v.to(xq)
