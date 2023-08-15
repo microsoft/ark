@@ -32,9 +32,7 @@ class RMSNorm(ark.Module):
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
-        square = ark.mul(x, x)
-        square_mean = ark.reduce_mean(square, axis=square.ndims() - 1)
-        return ark.div(x, ark.sqrt(square_mean))
+        return ark.rmsnorm(x)
 
     def forward(self, x):
         output = self._norm(x)
