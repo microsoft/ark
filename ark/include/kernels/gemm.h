@@ -69,11 +69,8 @@ struct GemmConfiguration<cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
     static int const kStages = 2;
 
     using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-        ElementC,
-        128 / cutlass::sizeof_bits<ElementC>::value,
-        ElementAccumulator,
-        ElementAccumulator
-    >;
+        ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+        ElementAccumulator, ElementAccumulator>;
 
     using Operator = cutlass::arch::OpMultiplyAdd;
 };
