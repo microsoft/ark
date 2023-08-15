@@ -77,7 +77,7 @@ def test_matmul_internal(
     print(
         f"matmul test: data_type {data_type} bs_a {bs_a:6d} bs_b {bs_b:6d} "
         f"m {m:6d} n {n:6d} k {k:6d} (split_k={split_k}, gran_lev={gran_lev}) "
-        f"trans_input {trans_input} trans_other {trans_other}"
+        f"trans_input {trans_input} trans_other {trans_other} "
         f"max_abs_error {max_abs_error:.5f} mse {mean_abs_error:.5f} elapsed "
         f"{elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
@@ -269,12 +269,15 @@ class TestMatmul(unittest.TestCase):
                     "float",
                 )
 
-    # TODO: enable this test after fixing the bug
-    # def test_matmul_transpose(self):
-    #     test_matmul_small_sizes(1, False, False, 0, "half")
-    #     test_matmul_small_sizes(1, True, True, 0, "half")
-    #     test_matmul_small_sizes(1, False, True, 0, "half")
-    #     test_matmul_small_sizes(1, True, False, 0, "half")
+    def test_matmul_transpose(self):
+        test_matmul_small_sizes(1, False, False, 0, "half")
+        test_matmul_small_sizes(1, True, True, 0, "half")
+        test_matmul_small_sizes(1, False, True, 0, "half")
+        test_matmul_small_sizes(1, True, False, 0, "half")
+        test_matmul_small_sizes(1, False, False, 0, "float")
+        test_matmul_small_sizes(1, True, True, 0, "float")
+        test_matmul_small_sizes(1, False, True, 0, "float")
+        test_matmul_small_sizes(1, True, False, 0, "float")
 
 
 if __name__ == "__main__":
