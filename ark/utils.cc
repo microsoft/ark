@@ -176,19 +176,11 @@ unique_ptr<float[]> range_floats(size_t num, float begin, float diff)
 template <typename T> float error_rate(T a, T b)
 {
     T diff = abs(a - b);
-    if (diff < numeric_limits<T>::min()) {
+    T max = std::max(abs(a), abs(b));
+    if (max == 0) {
         return 0;
     }
-    diff -= numeric_limits<T>::epsilon();
-    T half_eps = numeric_limits<T>::epsilon() * T(0.5);
-    if (a > b) {
-        a -= half_eps;
-        b += half_eps;
-    } else {
-        a += half_eps;
-        b -= half_eps;
-    }
-    return (float)diff / max(abs((float)a), abs((float)b));
+    return (float)diff / (float)max;
 }
 
 /// Calculate the error rate between two @ref half_t values.
@@ -372,7 +364,7 @@ std::pair<float, float> tensor_compare(T *ground_truth, T *res, Dims shape,
         float err = error_rate(ground_truth[i], res[i]);
         if (err > 0.) {
             if (print) {
-                Dims idx;
+                Dims idx(std::vector<DimType>(ndims, 0));
                 for (int j = 0; j < ndims; ++j) {
                     DimType vol = 1;
                     for (int k = j + 1; k < ndims; ++k) {

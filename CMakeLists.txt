@@ -11,9 +11,11 @@ set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 option(USE_KAHYPAR "Use KaHyPar for scheduling" OFF)
 
 cmake_minimum_required(VERSION 3.25)
-project(ark LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 14)
+project(ark LANGUAGES CXX CUDA)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wall,-Wextra")
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 # Find ibverbs
@@ -24,6 +26,19 @@ include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
 
 # Find CUDAToolkit
 find_package(CUDAToolkit REQUIRED)
+if(CUDAToolkit_FOUND)
+    if(CUDAToolkit_VERSION_MAJOR LESS 11)
+        message(FATAL_ERROR "CUDA 11 or higher is required but detected ${CUDAToolkit_VERSION}")
+    endif()
+
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
+        set(CMAKE_CUDA_ARCHITECTURES 70 80)
+    endif()
+
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
+        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 70 80 90)
+    endif()
+endif()
 
 # Third party libraries
 add_subdirectory(third_party)
