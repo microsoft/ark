@@ -38,6 +38,21 @@ DEVICE void rope(float *c, float *a, float *b, int uop_idx, int)
                                                               uop_idx);
 }
 
+// template <typename In0Dims, typename In0Shape, typename In1Dims,
+//           typename In1Shape, typename OutDims, typename OutShape,
+//           typename UnitOutDims, int NumThreads, int SmemBytes>
+// DEVICE void rope(half *c, half *a, half *b, int uop_idx, int)
+// {
+//     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+//                UnitOutDims, NumThreads, SmemBytes, RoPE<half2>>::run((half2
+//                *)c,
+//                                                                      (half2
+//                                                                      *)a,
+//                                                                      (half2
+//                                                                      *)b,
+//                                                                      uop_idx);
+// }
+
 } // namespace ark
 
 #endif // ARK_KERNELS_EMBEDDING_H_
