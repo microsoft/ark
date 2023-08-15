@@ -26,5 +26,3 @@ def load(state_dict_file_path: str):
         if not isinstance(state_dict, dict):
             logging.warn("Warning: Invalid state_dict file")
         return state_dict
-
-

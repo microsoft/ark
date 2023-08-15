@@ -12,6 +12,7 @@ seq_len = 64
 d_model = 512
 d_ff = 2048
 
+
 def convert_state_dict(state_dict: dict, type="numpy"):
     """
     Convert the state_dict of a module to np.ndarray or torch.Tensor type
@@ -23,6 +24,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
         elif type == "numpy":
             new_state_dict[key] = state_dict[key].numpy()
     return new_state_dict
+
 
 class SubModuleARK(ark.Module):
     def __init__(self):

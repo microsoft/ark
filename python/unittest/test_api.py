@@ -15,6 +15,7 @@ seq_len = 64
 
 import ark
 
+
 def convert_state_dict(state_dict: dict, type="numpy"):
     """
     Convert the state_dict of a module to np.ndarray or torch.Tensor type
