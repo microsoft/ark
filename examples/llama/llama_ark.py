@@ -138,8 +138,13 @@ def apply_rotary_emb(xq, xk, freqs_cis):
     xq_split = ark.sharding(xq_, axis=3, dim_per_shard=1)
 
     xq_real = xq_split[0]
+    xq_real = ark.reshape(
+        xq_real, [xq_real.shape[0], xq_real.shape[1], xq_real.shape[2]]
+    )
     xq_imag = xq_split[1]
-
+    xq_imag = ark.reshape(
+        xq_imag, [xq_imag.shape[0], xq_imag.shape[1], xq_imag.shape[2]]
+    )
     xq_out = ark.tensor(xq_.shape, ark.FP32)
     xq_out_ = ark.reshape(
         xq_out, [xq_shape[0] * xq_shape[1], xq_shape[2], xq_shape[3] // 2, 2]
