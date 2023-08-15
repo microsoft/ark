@@ -15,8 +15,10 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result)
 {
     os << "op test: " << result.test_name << " #warp/sm "
        << result.num_warps_per_sm << ", msec/iter " << result.msec_per_iter;
+    os << std::setprecision(4) << std::fixed;
     for (size_t i = 0; i < result.mse.size(); i++) {
-        os << ", mse " << result.mse[i] << ", max_err " << result.max_err[i];
+        float err_pcnt = result.max_err[i] * 100;
+        os << ", mse " << result.mse[i] << ", max_err " << err_pcnt << "%";
     }
     return os;
 }
