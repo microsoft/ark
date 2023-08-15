@@ -274,6 +274,10 @@ class TestMatmul(unittest.TestCase):
         test_matmul_small_sizes(1, True, True, 0, "half")
         test_matmul_small_sizes(1, False, True, 0, "half")
         test_matmul_small_sizes(1, True, False, 0, "half")
+        test_matmul_small_sizes(1, False, False, 0, "float")
+        test_matmul_small_sizes(1, True, True, 0, "float")
+        test_matmul_small_sizes(1, False, True, 0, "float")
+        test_matmul_small_sizes(1, True, False, 0, "float")
 
 
 if __name__ == "__main__":
