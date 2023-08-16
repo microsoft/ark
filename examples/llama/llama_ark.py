@@ -208,8 +208,7 @@ class Transformer(ark.Module):
 
         self.layers = []
         for layer_id in range(self.n_layers):
-            self.tmp_layer = TransformerBlock(layer_id, params)
-            self.layers.append(self.tmp_layer)
+            self.layers.append(TransformerBlock(layer_id, params))
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = Linear(params.dim, params.vocab_size)

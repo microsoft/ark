@@ -320,6 +320,59 @@ def test_transformerblock():
     )
 
 
+def test_transformer():
+    # Initialize the ARK runtime
+    runtime = ark.Runtime()
+    args = llama_ark.ModelArgs()
+    # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
+    args.n_layers = 2
+    args.vocab_size = 1024
+    transformer_pytorch = llama_pytorch.Transformer(args)
+    transformer_ark = llama_ark.Transformer(args)
+    dim = args.dim
+    input_tokens = np.random.randint(
+        low=0, high=args.vocab_size, size=(batch_size, seq_len)
+    ).astype(np.int64)
+    torch_input = torch.from_numpy(input_tokens)
+
+    # random init the torch model
+    for param in transformer_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict = transformer_pytorch.state_dict()
+    print(state_dict.keys())
+    # transformer_pytorch.load_state_dict(state_dict_torch)
+    output_torch = transformer_pytorch(torch_input, 0)
+
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    output = transformer_ark(ark_input, 0)
+
+    # Launch the ARK runtime
+    runtime.launch()
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, seq_len, dim)
+    ).astype(np.float32)
+
+    ark_input.from_numpy(input_numpy.astype(np.float32))
+
+    ark_state_dict = convert_state_dict(state_dict, "numpy")
+    transformer_ark.load_state_dict(ark_state_dict)
+    # Run the ARK program
+    runtime.run()
+    output_ark_host = output.to_numpy()
+
+    # test if the result is correct
+    output_gt = output_torch.detach().numpy().astype(np.float32)
+    max_abs_error = np.max(np.abs(output_ark_host - output_gt))
+    mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
+    print(
+        "transformer_block test",
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+    )
+
+
 if __name__ == "__main__":
     # Set up the environment variables for nccl
     # export RANK=0
