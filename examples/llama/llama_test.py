@@ -18,6 +18,7 @@ from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 batch_size = 1
 seq_len = 64
 dim = 4096
+start_pos = 0
 
 
 def convert_state_dict(state_dict: dict, type="numpy"):
@@ -83,8 +84,7 @@ def test_rotary_embedding():
     freqs_cis = llama_pytorch.precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
     )
-    batch_size = 1
-    start_pos = 0
+
     freqs_cis_torch = freqs_cis[start_pos : start_pos + seq_len]
     head_dim = args.dim // args.n_heads
     xq_torch = torch.randn(
