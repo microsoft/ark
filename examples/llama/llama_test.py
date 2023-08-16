@@ -1,7 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import llama_pytorch
+import sys
+import os
+sys.path.append("./llama/llama")
+import model as llama_pytorch
 import llama_ark
 import ark
 import numpy as np
@@ -389,6 +392,16 @@ def test_rotary_embedding():
 
 
 if __name__ == "__main__":
+    # Set up the environment variables for nccl
+    # export RANK=0
+    # export WORLD_SIZE=1
+    # export MASTER_ADDR=localhost
+    # export MASTER_PORT=29500
+    os.environ["RANK"] = "0"
+    os.environ["WORLD_SIZE"] = "1"
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "29500"
+
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     test_rmsnorm()
