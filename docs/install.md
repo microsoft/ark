@@ -1,6 +1,6 @@
 # ARK Install Instructions
 
-## Preliminaries
+## Prerequisites
 
 * Linux kernel >= 4.15.0
 
