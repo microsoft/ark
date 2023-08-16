@@ -344,16 +344,30 @@ def test_transformer():
     output_torch = transformer_pytorch(torch_input, 0)
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
-    output = transformer_ark(ark_input, 0)
+    freqs_cis_ark = ark.tensor(
+        [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
+    )
+    output = transformer_ark(ark_input, 0, freqs_cis_ark, None)
 
     # Launch the ARK runtime
     runtime.launch()
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
+    input_embedding = transformer_pytorch.tok_embeddings(torch_input)
+    input_embedding_numpy = input_embedding.detach().numpy().astype(np.float32)
+
+    ark_input.from_numpy(input_embedding_numpy.astype(np.float32))
+
+    freqs_cis_torch = llama_pytorch.precompute_freqs_cis(
+        args.dim // args.n_heads, args.max_seq_len * 2
+    )
+    freqs_cis_torch = freqs_cis_torch[0:seq_len]
+
+    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
+    # stack real and imag parts
+    freqs_cis_stack = np.stack(
+        [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
     ).astype(np.float32)
 
-    ark_input.from_numpy(input_numpy.astype(np.float32))
-
+    freqs_cis_ark.from_numpy(freqs_cis_stack)
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_ark.load_state_dict(ark_state_dict)
     # Run the ARK program
@@ -386,8 +400,9 @@ if __name__ == "__main__":
 
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
-    test_rmsnorm()
-    test_rotary_embedding()
-    test_attention()
-    test_feedforward()
-    test_transformerblock()
+    # test_rmsnorm()
+    # test_rotary_embedding()
+    # test_attention()
+    # test_feedforward()
+    # test_transformerblock()
+    test_transformer()

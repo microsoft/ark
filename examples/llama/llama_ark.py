@@ -209,18 +209,17 @@ class Transformer(ark.Module):
         self.layers = []
         for layer_id in range(self.n_layers):
             self.layers.append(TransformerBlock(layer_id, params))
-
+            self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = Linear(params.dim, params.vocab_size)
-        seq_len = 64
-        self.freqs_cis = ark.tensor(
-            [1, seq_len, 1, params.dim // params.n_heads], ark.FP32
-        )
-        self.mask = ark.tensor([1, seq_len, seq_len], ark.FP32)
 
-    def forward(self, h: ark.Tensor, start_pos: int):
-        mask = None
-
+    def forward(
+        self,
+        h: ark.Tensor,
+        start_pos: int,
+        freqs_cis: ark.Tensor,
+        mask: Optional[ark.Tensor],
+    ):
         for layer in self.layers:
             h = layer(h, start_pos, self.freqs_cis, mask)
         h = self.norm(h)
