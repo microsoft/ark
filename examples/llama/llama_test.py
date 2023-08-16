@@ -87,8 +87,6 @@ def test_attention():
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
 
-    head_dim = args.dim // args.n_heads
-    n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
     # random init the torch model
     for param in attention_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -98,10 +96,13 @@ def test_attention():
         args.dim // args.n_heads, args.max_seq_len * 2
     )
     freqs_cis_torch = freqs_cis_torch[0:seq_len]
+
     output_torch = attention_pytorch(torch_input, 0, freqs_cis_torch, None)
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
-    freqs_cis_ark = ark.tensor([1, seq_len, 1, head_dim], ark.FP32)
+    freqs_cis_ark = ark.tensor(
+        [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
+    )
     output = attention_ark(ark_input, 0, freqs_cis_ark, None)
 
     # Launch the ARK runtime
@@ -143,19 +144,10 @@ def test_feedforward():
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
-    state_dict = {
-        "w1.weight": np.random.uniform(
-            low=-1, high=1, size=(11008, dim)
-        ).astype(np.float32),
-        "w2.weight": np.random.uniform(
-            low=-1, high=1, size=(dim, 11008)
-        ).astype(np.float32),
-        "w3.weight": np.random.uniform(
-            low=-1, high=1, size=(11008, dim)
-        ).astype(np.float32),
-    }
-    state_dict_torch = convert_state_dict(state_dict, "torch")
-    feedforward_pytorch.load_state_dict(state_dict_torch)
+    for param in feedforward_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict_torch = feedforward_pytorch.state_dict()
+
     output_pytorch = feedforward_pytorch(torch_input)
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
@@ -164,7 +156,8 @@ def test_feedforward():
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
-    feedforward_ark.load_state_dict(state_dict)
+    state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
+    feedforward_ark.load_state_dict(state_dict_ark)
 
     # Run the ARK program
     runtime.run()
