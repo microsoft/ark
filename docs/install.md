@@ -10,7 +10,7 @@
         sudo apt-get install -y linux-image-4.15.0-13-generic linux-header-4.15.0-13-generic
         ```
 
-* CMake >= 3.25.0 and Python >= 3.7
+* CMake >= 3.25.0 and Python >= 3.8
 
 * GPUs with CUDA compute capability 7.0 (CUDA >= 11.1) / 8.0 (CUDA >= 11.1) / 9.0 (CUDA >= 12.0)
 
