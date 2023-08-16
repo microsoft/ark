@@ -5,9 +5,9 @@
 * Linux kernel >= 4.15.0
 
     - If you have a lower version, you can upgrade it via:
-        ```
-        apt-get update
-        apt-get install -y linux-image-4.15.0-13-generic linux-header-4.15.0-13-generic
+        ```bash
+        sudo apt-get update
+        sudo apt-get install -y linux-image-4.15.0-13-generic linux-header-4.15.0-13-generic
         ```
 
 * CMake >= 3.25.0 and Python >= 3.7
@@ -53,8 +53,8 @@ Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark/ark) 
 3. Load `gpumem` driver.
 
     ```bash
-    insmod third_party/gpudma/module/gpumem.ko
-    chmod 666 /dev/gpumem
+    sudo insmod third_party/gpudma/module/gpumem.ko
+    sudo chmod 666 /dev/gpumem
     ```
 
 4. Check if the `gpumem` driver is running.
@@ -115,9 +115,9 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     Lock GPU clock frequency for stable test results:
 
     ```bash
-    nvidia-smi -pm 1
+    sudo nvidia-smi -pm 1
     for i in $(seq 0 $(( $(nvidia-smi -L | wc -l) - 1 ))); do
-        nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
+        sudo nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
     done
     ```
 
