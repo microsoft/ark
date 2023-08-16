@@ -338,7 +338,6 @@ def test_transformer():
     for param in transformer_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
     state_dict = transformer_pytorch.state_dict()
-    print(state_dict.keys())
     # transformer_pytorch.load_state_dict(state_dict_torch)
     output_torch = transformer_pytorch(torch_input, 0)
 
