@@ -83,6 +83,22 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
 }
 
 const OpConfigMap ScaleConfigMap = {
+    {{OP_ARCH_CUDA_70, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{128, 256}}, {{128, 256}}, false, false},
+         {8, 0, {{256, 128}}, {{256, 128}}, false, false},
+         {8, 0, {{128, 128}}, {{128, 128}}, false, false},
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
+         {1, 0, {{1, 32}}, {{1, 32}}, false, false},
+     }},
     {{OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
@@ -94,6 +110,23 @@ const OpConfigMap ScaleConfigMap = {
          {1, 0, {{4, 64}}, {{4, 64}}, false, false},
          {1, 0, {{2, 64}}, {{2, 64}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
+     }},
+    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{128, 256}}, {{128, 256}}, false, false},
+         {8, 0, {{256, 128}}, {{256, 128}}, false, false},
+         {8, 0, {{128, 128}}, {{128, 128}}, false, false},
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+         {1, 0, {{1, 128}}, {{1, 128}}, false, false},
+         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
+         {1, 0, {{1, 32}}, {{1, 32}}, false, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
      {

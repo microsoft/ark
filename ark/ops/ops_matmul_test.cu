@@ -424,8 +424,8 @@ ark::unittest::State test_matmul_tn()
         ark::Tensor *b = m.tensor(ark::Dims(64, 256), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, false, "matmul", 0);
 
-        auto result =
-            ark::op_test("matmul_tn", m, {a, b}, {c}, baseline_matmul_tn<half>, "ones", true);
+        auto result = ark::op_test("matmul_tn", m, {a, b}, {c},
+                                   baseline_matmul_tn<half>, "ones", true);
         ark::op_test_log(result);
     }
     {

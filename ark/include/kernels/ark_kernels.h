@@ -13,6 +13,7 @@
 #include "arithmetic.h"
 #include "comm.h"
 #include "comm_mm.h"
+#include "embedding.h"
 #include "im2col.h"
 #include "layernorm.h"
 #include "math_functions.h"
