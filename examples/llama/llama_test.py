@@ -3,6 +3,7 @@
 
 import sys
 import os
+
 sys.path.append("./llama/llama")
 import model as llama_pytorch
 import llama_ark
@@ -11,14 +12,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from fairscale.nn.model_parallel.initialize import (
-    get_model_parallel_rank,
-    initialize_model_parallel,
-    model_parallel_is_initialized,
-)
+from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 
-dim = 4096
+batch_size = 1
 seq_len = 64
+dim = 4096
 
 
 def convert_state_dict(state_dict: dict, type="numpy"):
@@ -43,13 +41,10 @@ def test_rmsnorm():
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np.float32)
     torch_input = torch.from_numpy(input_numpy)
-    state_dict = {
-        "weight": np.random.uniform(low=-1, high=1, size=(dim,)).astype(
-            np.float32
-        ),
-    }
-    state_dict_torch = convert_state_dict(state_dict, "torch")
-    rmsnorm_pytorch.load_state_dict(state_dict_torch)
+    for param in rmsnorm_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict_torch = rmsnorm_pytorch.state_dict()
+
     output_pytorch = rmsnorm_pytorch(torch_input)
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
@@ -58,7 +53,9 @@ def test_rmsnorm():
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
-    rmsnorm_ark.load_state_dict(state_dict)
+    state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
+
+    rmsnorm_ark.load_state_dict(state_dict_ark)
 
     # Run the ARK program
     runtime.run()
@@ -78,9 +75,6 @@ def test_rmsnorm():
     )
 
 
-batch_size = 1
-
-
 def test_attention():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
@@ -95,22 +89,11 @@ def test_attention():
 
     head_dim = args.dim // args.n_heads
     n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-    state_dict = {
-        "wq.weight": np.random.uniform(
-            low=-1, high=1, size=(args.n_heads * head_dim, args.dim)
-        ).astype(np.float32),
-        "wk.weight": np.random.uniform(
-            low=-1, high=1, size=(n_kv_heads * head_dim, args.dim)
-        ).astype(np.float32),
-        "wv.weight": np.random.uniform(
-            low=-1, high=1, size=(n_kv_heads * head_dim, args.dim)
-        ).astype(np.float32),
-        "wo.weight": np.random.uniform(
-            low=-1, high=1, size=(args.dim, args.n_heads * head_dim)
-        ).astype(np.float32),
-    }
-    state_dict_torch = convert_state_dict(state_dict, "torch")
-    attention_pytorch.load_state_dict(state_dict_torch)
+    # random init the torch model
+    for param in attention_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict_torch = attention_pytorch.state_dict()
+
     freqs_cis_torch = llama_pytorch.precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
     )
@@ -124,7 +107,8 @@ def test_attention():
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
-    attention_ark.load_state_dict(state_dict)
+    state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
+    attention_ark.load_state_dict(state_dict_ark)
     freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
     # stack real and imag parts
     freqs_cis_stack = np.stack(
@@ -189,8 +173,6 @@ def test_feedforward():
     # test if the result is correct
 
     gt = output_pytorch.detach().numpy().astype(np.float32)
-    print("output_ark_host:", output_ark_host)
-    print("gt", gt)
 
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
