@@ -4,7 +4,7 @@
 import ark
 import math
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Optional
 
 
 @dataclass
@@ -227,6 +227,3 @@ class Transformer(ark.Module):
         h = self.norm(h)
         output = self.output(h)
         return output
-
-    def init_constant_values(self):
-        pass
