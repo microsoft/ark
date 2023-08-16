@@ -14,6 +14,8 @@
 
 * GPUs with CUDA compute capability 7.0 (CUDA >= 11.1) / 8.0 (CUDA >= 11.1) / 9.0 (CUDA >= 12.0)
 
+    - Compute capability 9.0 support will be added in the future.
+
 * To run ARK in a Docker container, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Add the following options in the `docker run` command:
     ```
     -v /dev:/dev -v /lib/modules:/lib/modules
