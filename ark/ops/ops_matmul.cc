@@ -62,10 +62,10 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
     const Dims &ldims_y = mat_y->ldims;
     int ndims_a = ldims_a.ndims();
     int ndims_b = ldims_b.ndims();
-    leading_dims[0] = is_column_a ? ldims_a[ndims_a - 2] : ldims_a[ndims_a - 1];
+    leading_dims[0] = ldims_a[ndims_a - 1];
     leading_dims[1] = ldims_y[ldims_y.ndims() - 1];
     leading_dims[2] = ldims_y[ldims_y.ndims() - 1];
-    leading_dims[3] = is_column_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1];
+    leading_dims[3] = ldims_b[ndims_b - 1];
 
     // TODO: verify `leading_dims`
 
@@ -296,9 +296,7 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_CUDA_70, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 49152, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
-         {4, 24576, {{128, 32}, {32, 64}}, {{128, 64}}, true, false},
-         {4, 24576, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+         {8, 49152, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP16},
      {

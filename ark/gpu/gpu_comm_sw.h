@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
-#include "gpu_mem.h"
 #include "gpu_buf.h"
 #include "gpu_common.h"
+#include "gpu_mem.h"
 
 namespace ark {
 

@@ -65,9 +65,10 @@ struct UnitOp
     static_assert(_SmemBytes >= 0, "Bytes of shared memory is negative");
 
     // Number of unit operators in each dimension.
-    using UnitOpDims =
-        Vec<_OutDims::N / _UnitOutDims::N, _OutDims::C / _UnitOutDims::C,
-            _OutDims::H / _UnitOutDims::H, _OutDims::W / _UnitOutDims::W>;
+    using UnitOpDims = Vec<math::div_up<_OutShape::N, _UnitOutDims::N>::value,
+                           math::div_up<_OutShape::C, _UnitOutDims::C>::value,
+                           math::div_up<_OutShape::H, _UnitOutDims::H>::value,
+                           math::div_up<_OutShape::W, _UnitOutDims::W>::value>;
 
     static const int NumThreads = _NumThreads;
     static const int SmemBytes = _SmemBytes;

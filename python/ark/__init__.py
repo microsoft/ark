@@ -29,7 +29,6 @@ from .executor import Executor
 from .serialize import (
     save,
     load,
-    convert_state_dict,
 )
 
 from .model import (
@@ -88,7 +87,6 @@ __all__ = [
     "Executor",
     "save",
     "load",
-    "convert_state_dict",
     "Optimizer",
     "Trainer",
     "Model",

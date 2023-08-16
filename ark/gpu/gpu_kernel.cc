@@ -86,32 +86,28 @@ void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
         this->cubin =
             gpu_compile(this->codes, gpu_info.arch, max_reg_cnt, use_comm_sw);
     }
-}
 
-//
-void GpuKernel::load()
-{
     //
-    unsigned int buflen = 8192;
-    char *infobuf = new char[buflen];
-    char *errbuf = new char[buflen];
-    assert(infobuf != nullptr);
-    assert(errbuf != nullptr);
+    size_t num_opts = 5;
+    size_t buflen = 8192;
+    std::unique_ptr<CUjit_option[]> opts(new CUjit_option[num_opts]);
+    std::unique_ptr<void *[]> optvals(new void *[num_opts]);
+    std::string infobuf;
+    std::string errbuf;
+
+    infobuf.resize(buflen, ' ');
+    errbuf.resize(buflen, ' ');
+
     int enable = 1;
-    int num_opts = 5;
-    CUjit_option *opts = new CUjit_option[num_opts];
-    void **optvals = new void *[num_opts];
-    assert(opts != nullptr);
-    assert(optvals != nullptr);
 
     opts[0] = CU_JIT_INFO_LOG_BUFFER;
-    optvals[0] = (void *)infobuf;
+    optvals[0] = (void *)infobuf.data();
 
     opts[1] = CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES;
     optvals[1] = (void *)(long)buflen;
 
     opts[2] = CU_JIT_ERROR_LOG_BUFFER;
-    optvals[2] = (void *)errbuf;
+    optvals[2] = (void *)errbuf.data();
 
     opts[3] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
     optvals[3] = (void *)(long)buflen;
@@ -119,13 +115,11 @@ void GpuKernel::load()
     opts[4] = CU_JIT_GENERATE_DEBUG_INFO;
     optvals[4] = (void *)(long)enable;
 
-    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts, opts,
-                           optvals) != CUDA_SUCCESS) {
+    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts,
+                           opts.get(), optvals.get()) != CUDA_SUCCESS) {
         LOG(DEBUG, infobuf);
         LOG(ERROR, "cuModuleLoadDataEx() failed: ", errbuf);
     }
-    delete[] infobuf;
-    delete[] errbuf;
     CULOG(cuModuleGetFunction(&this->kernel, this->module, this->name.c_str()));
     //
     int static_smem_size_bytes;
@@ -136,8 +130,6 @@ void GpuKernel::load()
     CULOG(cuFuncSetAttribute(this->kernel,
                              CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,
                              dynamic_smem_size_bytes));
-    // Now code string is not needed.
-    // this->code.clear();
 }
 
 //
@@ -265,7 +257,6 @@ void GpuLoopKernel::compile(const GpuInfo &gpu_info)
 void GpuLoopKernel::load()
 {
     this->ctx->set_current();
-    GpuKernel::load();
     //
     if (!this->is_compiled()) {
         LOG(ERROR, "Need to compile first before initialization.");
@@ -379,25 +370,10 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
 void GpuLoopKernel::run(int iter)
 {
     if (iter > 0) {
-#if 0
-        int idx = this->flip_flag ? 0 : 1;
-        int rem = iter;
-        while (rem--) {
-            while (this->get_flag(idx) > 0) {
-                cpu_ntimer_sleep(500);
-            }
-            this->set_flag(idx, 1);
-            idx ^= 1;
-        }
-        if (iter & 1) {
-            this->flip_flag = !(this->flip_flag);
-        }
-#else
         volatile int *href = this->flag_href;
         while (*href > 0) {
         }
         *href = iter;
-#endif
     }
 }
 

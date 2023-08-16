@@ -54,3 +54,5 @@ ENV PATH="/usr/local/mpi/bin:${PATH}" \
 
 RUN echo PATH="${PATH}" > /etc/environment && \
     echo LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" >> /etc/environment
+
+ENTRYPOINT []
