@@ -10,7 +10,7 @@ cd examples/llama
 git clone https://github.com/facebookresearch/llama
 ```
 
-Next, please install the dependencies of LLaMa official implementations and run the PyTorch LLaMa model according to the instructions in the official repository. 
+Next, please install the dependencies of LLaMa official implementations and run the PyTorch LLaMa model according to the instructions in the LLaMa official repository. 
 
 # Verifying the Correctness of the ARK LLaMa Implementation
 
