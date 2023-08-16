@@ -148,7 +148,6 @@ class Attention(ark.Module):
         scores = ark.scale(scores, 1.0 / math.sqrt(self.head_dim))
 
         if mask is not None:
-            print("scores shape: ", scores.shape)
             scores = ark.add(scores, mask)
         scores = ark.softmax(scores)
 

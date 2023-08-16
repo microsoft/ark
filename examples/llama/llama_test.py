@@ -375,7 +375,7 @@ def test_transformer():
         mask_torch = torch.full((1, 1, seq_len, seq_len), float("-inf"))
         mask_torch = torch.triu(mask_torch, diagonal=start_pos + 1)
 
-    mask_numpy = mask_torch.to_numpy().astype(np.float32)
+    mask_numpy = mask_torch.numpy().astype(np.float32)
     mask_ark.from_numpy(mask_numpy)
     # Run the ARK program
     runtime.run()
