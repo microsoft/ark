@@ -1,18 +1,20 @@
 # ARK Install Instructions
 
-## Preliminaries
+## Prerequisites
 
 * Linux kernel >= 4.15.0
 
     - If you have a lower version, you can upgrade it via:
-        ```
-        apt-get update
-        apt-get install -y linux-image-4.15.0-13-generic linux-header-4.15.0-13-generic
+        ```bash
+        sudo apt-get update
+        sudo apt-get install -y linux-image-4.15.0-13-generic linux-header-4.15.0-13-generic
         ```
 
-* CMake >= 3.25.0 and Python >= 3.7
+* CMake >= 3.25.0 and Python >= 3.8
 
-* GPUs with CUDA compute capability >= 7.0 and CUDA version >= 11.1
+* GPUs with CUDA compute capability 7.0 (CUDA >= 11.1) / 8.0 (CUDA >= 11.1) / 9.0 (CUDA >= 12.0)
+
+    - Compute capability 9.0 support will be added in the future.
 
 * To run ARK in a Docker container, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Add the following options in the `docker run` command:
     ```
@@ -21,7 +23,7 @@
 
 * Mellanox OFED
 
-## Docker images
+## Docker Images
 
 We currently provide only *base images* for ARK, which contain all the dependencies for ARK but do not contain ARK itself (no [`gpudma`](https://github.com/microsoft/ark/blob/main/docs/install.md#install-gpudma) as well, which should be installed on the host side). The ARK-installed images will be provided in the future.
 
@@ -30,7 +32,7 @@ You can pull a base image via:
 docker pull ghcr.io/microsoft/ark/ark:base-cuda12.1
 ```
 
-Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark/ark) for all available Docker images.
+Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
 ## Install `gpudma`
 
@@ -53,8 +55,8 @@ Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark/ark) 
 3. Load `gpumem` driver.
 
     ```bash
-    insmod third_party/gpudma/module/gpumem.ko
-    chmod 666 /dev/gpumem
+    sudo insmod third_party/gpudma/module/gpumem.ko
+    sudo chmod 666 /dev/gpumem
     ```
 
 4. Check if the `gpumem` driver is running.
@@ -115,16 +117,16 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     Lock GPU clock frequency for stable test results:
 
     ```bash
-    nvidia-smi -pm 1
+    sudo nvidia-smi -pm 1
     for i in $(seq 0 $(( $(nvidia-smi -L | wc -l) - 1 ))); do
-        nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
+        sudo nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
     done
     ```
 
     Run the tests. If you do want to disable cross-node networking, pass `ARK_DISABLE_IB=1` environment variable to the test command.
 
     ```bash
-    ARK_ROOT=$PWD ctest --output-on-failure
+    ARK_ROOT=$PWD ctest --verbose
     ```
 
     **NOTE:** unit tests may take tens of minutes to finish.
