@@ -30,7 +30,7 @@ You can pull a base image via:
 docker pull ghcr.io/microsoft/ark/ark:base-cuda12.1
 ```
 
-Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark/ark) for all available Docker images.
+Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
 ## Install `gpudma`
 
