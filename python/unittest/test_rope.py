@@ -70,10 +70,10 @@ def test_rope_internal(batch_size, m, n, data_type="float", iter=1):
 
 class TestRoPE(unittest.TestCase):
     def test_rope(self):
-        # test_rope_internal(1, 64, 4, "half")
-        # test_rope_internal(1, 128, 128, "half")
-        # test_rope_internal(1, 256, 256, "half")
-        # test_rope_internal(1, 512, 512, "half")
+        test_rope_internal(1, 64, 4, "half")
+        test_rope_internal(1, 128, 128, "half")
+        test_rope_internal(1, 256, 256, "half")
+        test_rope_internal(1, 512, 512, "half")
 
         test_rope_internal(1, 64, 4, "float")
         test_rope_internal(1, 128, 128, "float")

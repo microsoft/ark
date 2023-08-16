@@ -8,11 +8,14 @@
 
 namespace ark {
 
-struct RoPE
+// Rotary Position Embedding(RoPE): https://arxiv.org/pdf/2104.09864.pdf
+
+template <typename DataType> struct RoPE;
+
+template <> struct RoPE<float>
 {
     using DataType = float;
     static const int NelemPerThread = 2;
-    // RoPE: https://arxiv.org/pdf/2104.09864.pdf
     static DEVICE void compute(float *c, const float *a, const float *b)
     {
         float2 *pc = (float2 *)c;
@@ -21,9 +24,19 @@ struct RoPE
         pc->x = pa->x * pb->x - pa->y * pb->y;
         pc->y = pa->x * pb->y + pa->y * pb->x;
     }
-    static DEVICE __half2 compute(__half2 a, __half2 b)
+};
+
+template <> struct RoPE<half>
+{
+    using DataType = half;
+    static const int NelemPerThread = 2;
+    static DEVICE void compute(half *c, const half *a, const half *b)
     {
-        return __hmul2(a, b);
+        __half2 *pc = (__half2 *)c;
+        const __half2 *pa = (const __half2 *)a;
+        const __half2 *pb = (const __half2 *)b;
+        pc->x = __hmul(pa->x, pb->x) - __hmul(pa->y, pb->y);
+        pc->y = __hmul(pa->x, pb->y) + __hmul(pa->y, pb->x);
     }
 };
 
@@ -33,23 +46,19 @@ template <typename In0Dims, typename In0Shape, typename In1Dims,
 DEVICE void rope(float *c, float *a, float *b, int uop_idx, int)
 {
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-               UnitOutDims, NumThreads, SmemBytes, RoPE>::run(c, a, b, uop_idx);
+               UnitOutDims, NumThreads, SmemBytes, RoPE<float>>::run(c, a, b,
+                                                                     uop_idx);
 }
 
-// template <typename In0Dims, typename In0Shape, typename In1Dims,
-//           typename In1Shape, typename OutDims, typename OutShape,
-//           typename UnitOutDims, int NumThreads, int SmemBytes>
-// DEVICE void rope(half *c, half *a, half *b, int uop_idx, int)
-// {
-//     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-//                UnitOutDims, NumThreads, SmemBytes, RoPE<half2>>::run((half2
-//                *)c,
-//                                                                      (half2
-//                                                                      *)a,
-//                                                                      (half2
-//                                                                      *)b,
-//                                                                      uop_idx);
-// }
+template <typename In0Dims, typename In0Shape, typename In1Dims,
+          typename In1Shape, typename OutDims, typename OutShape,
+          typename UnitOutDims, int NumThreads, int SmemBytes>
+DEVICE void rope(half *c, half *a, half *b, int uop_idx, int)
+{
+    Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
+               UnitOutDims, NumThreads, SmemBytes, RoPE<half>>::run(c, a, b,
+                                                                    uop_idx);
+}
 
 } // namespace ark
 
