@@ -385,7 +385,7 @@ def test_transformer():
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
-        "transformer_block test",
+        "transformer test",
         "max_abs_error:",
         "{:.5f}".format(max_abs_error),
         "mean_abs_error:",
