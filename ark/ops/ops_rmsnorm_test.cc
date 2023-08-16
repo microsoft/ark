@@ -24,24 +24,22 @@ void baseline_rmsnorm(std::vector<void *> &outputs,
     for (ark::DimType n = 0; n < ish[0]; ++n) {
         for (ark::DimType c = 0; c < ish[1]; ++c) {
             for (ark::DimType h = 0; h < ish[2]; ++h) {
+                T sum = 0;
                 for (ark::DimType w = 0; w < ish[3]; ++w) {
-                    T sum = 0;
-                    for (ark::DimType k = 0; k < ish[1]; ++k) {
-                        T val = input[n * ish[1] * ish[2] * ish[3] +
-                                      c * ish[2] * ish[3] + h * ish[3] + w];
-                        sum += val * val;
-                    }
-                    T mean = sum / ish[1];
+                    T val = input[n * ish[1] * ish[2] * ish[3] +
+                                  c * ish[2] * ish[3] + h * ish[3] + w];
+                    sum += val * val;
+                    T mean = sum / ish[3];
                     T rms = sqrt(mean);
                     T eps = 1e-5;
                     rms = rms + eps;
-                    for (ark::DimType k = 0; k < ish[1]; ++k) {
-                        out[n * ish[1] * ish[2] * ish[3] + c * ish[2] * ish[3] +
-                            h * ish[3] + w] =
-                            input[n * ish[1] * ish[2] * ish[3] +
-                                  c * ish[2] * ish[3] + h * ish[3] + w] /
-                            rms;
-                    }
+                }
+                for (ark::DimType w = 0; w < ish[3]; ++w) {
+                    out[n * osh[1] * osh[2] * osh[3] + c * osh[2] * osh[3] +
+                        h * osh[3] + w] =
+                        input[n * osh[1] * osh[2] * osh[3] +
+                              c * osh[2] * osh[3] + h * osh[3] + w] /
+                        rms;
                 }
             }
         }
@@ -51,10 +49,11 @@ void baseline_rmsnorm(std::vector<void *> &outputs,
 ark::unittest::State test_rmsnorm_fp32()
 {
     ark::Model m;
-    ark::Tensor *t = m.tensor(ark::Dims(1, 64, 64, 1024), ark::FP32);
+    ark::Tensor *t = m.tensor(ark::Dims(1, 32, 32, 512), ark::FP32);
     ark::Tensor *out = m.rmsnorm(t);
     auto result =
-        ark::op_test("rmsnorm", m, {t}, {out}, baseline_rmsnorm<ark::float_t>);
+        ark::op_test("rmsnorm", m, {t}, {out}, baseline_rmsnorm<float>);
+    ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }
 
@@ -65,6 +64,7 @@ ark::unittest::State test_rmsnorm_fp16()
     ark::Tensor *out = m.rmsnorm(t);
     auto result =
         ark::op_test("rmsnorm", m, {t}, {out}, baseline_rmsnorm<ark::half_t>);
+    ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }
 
