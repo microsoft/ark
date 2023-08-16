@@ -32,7 +32,7 @@ void baseline_rmsnorm(std::vector<void *> &outputs,
                     square_sum += val * val;
                 }
                 T eps = 1e-5;
-                T rms = sqrt(square_sum / ish[3]) + eps;
+                T rms = (T)sqrt((float)square_sum / ish[3]) + eps;
                 for (ark::DimType w = 0; w < ish[3]; ++w) {
                     out[n * osh[1] * osh[2] * osh[3] + c * osh[2] * osh[3] +
                         h * osh[3] + w] =
