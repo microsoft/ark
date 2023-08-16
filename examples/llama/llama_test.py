@@ -192,7 +192,7 @@ def test_feedforward():
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
     print(
-        "rmsnorm test",
+        "feedforward test",
         "max_abs_error:",
         "{:.5f}".format(max_abs_error),
         "mean_abs_error:",
@@ -217,11 +217,19 @@ def test_transformerblock():
         nn.init.uniform_(param, a=-0.1, b=0.1)
     state_dict = transformer_block_pytorch.state_dict()
 
-    # transformer_block_pytorch.load_state_dict(state_dict_torch)
-    output_torch = transformer_block_pytorch(torch_input, 0, None, None)
+    freqs_cis_torch = llama_pytorch.precompute_freqs_cis(
+        args.dim // args.n_heads, args.max_seq_len * 2
+    )
+    freqs_cis_torch = freqs_cis_torch[0:seq_len]
+    output_torch = transformer_block_pytorch(
+        torch_input, 0, freqs_cis_torch, None
+    )
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
-    output = transformer_block_ark(ark_input, 0, None, None)
+    freqs_cis_ark = ark.tensor(
+        [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
+    )
+    output = transformer_block_ark(ark_input, 0, freqs_cis_ark, None)
 
     # Launch the ARK runtime
     runtime.launch()
@@ -229,6 +237,13 @@ def test_transformerblock():
 
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_block_ark.load_state_dict(ark_state_dict)
+    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
+    # stack real and imag parts
+    freqs_cis_stack = np.stack(
+        [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
+    ).astype(np.float32)
+
+    freqs_cis_ark.from_numpy(freqs_cis_stack)
     # Run the ARK program
     runtime.run()
     output_ark_host = output.to_numpy()
@@ -376,9 +391,9 @@ def test_rotary_embedding():
 if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
-    # test_rmsnorm()
-    # test_attention()
-    # test_feedforward()
-    # test_transformerblock()
-    test_transformer()
-    # test_rotary_embedding()
+    test_rmsnorm()
+    test_attention()
+    test_feedforward()
+    test_transformerblock()
+    # test_transformer()
+    test_rotary_embedding()
