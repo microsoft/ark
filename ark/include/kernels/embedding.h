@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_EMBEDDING_H_
 #define ARK_KERNELS_EMBEDDING_H_
 
-#include "arithmetic.h"
+#include "common.h"
 
 namespace ark {
 
