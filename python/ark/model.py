@@ -211,8 +211,8 @@ def rmsnorm(
     name: str = "rmsnorm",
 ) -> Tensor:
     """
-    Applies layer normalization to the `input` tensor and returns
-    the normalized tensor as `output`.
+    Applies RMS (Root Mean Square Layer Normalization) normalization
+    to the `input` tensor and returns the normalized tensor as `output`.
     Usage:
     tensor_rmsnorm = ark.rmsnorm(tensor)
     """
