@@ -5,6 +5,7 @@
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
+#include <assert.h>
 
 using namespace std;
 
@@ -21,7 +22,7 @@ void baseline_rope(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0].dims4();
     ark::Dims ish = input_shapes[0].dims4();
     ark::Dims other_sh = input_shapes[1].dims4();
-    // assert(ish == other_sh);
+    assert(ish == other_sh);
 
     for (ark::DimType n = 0; n < ish[0]; ++n) {
         for (ark::DimType c = 0; c < ish[1]; ++c) {
@@ -43,12 +44,24 @@ void baseline_rope(std::vector<void *> &outputs,
 
 ark::unittest::State test_rope_fp32()
 {
-    ark::Model m;
-    ark::Tensor *input = m.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
-    ark::Tensor *other = m.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
-    ark::Tensor *out = m.rope(input, other);
-    auto result =
-        ark::op_test("rope", m, {input, other}, {out}, baseline_rope<float>);
+    ark::Model model;
+    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+    ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+    ark::Tensor *out = model.rope(input, other);
+    auto result = ark::op_test("rope", model, {input, other}, {out},
+                               baseline_rope<float>);
+    ark::op_test_log(result);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_rope_fp16()
+{
+    ark::Model model;
+    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP16);
+    ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP16);
+    ark::Tensor *out = model.rope(input, other);
+    auto result = ark::op_test("rope", model, {input, other}, {out},
+                               baseline_rope<ark::half_t>);
     ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }
@@ -57,5 +70,6 @@ int main()
 {
     ark::init();
     UNITTEST(test_rope_fp32);
+    UNITTEST(test_rope_fp16);
     return ark::unittest::SUCCESS;
 }
