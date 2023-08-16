@@ -160,15 +160,29 @@ ARK state_dict's format is
     "submodule.weight_2": weight_2_torch,
 }
 ```
-`weight_1_torch` and `weight_2_torch` are `torch.Tensor` type. We need to convert the `numpy.ndarray` type state_dict to `torch.Tensor` type state_dict using `ark.convert_state_dict`.
+`weight_1_torch` and `weight_2_torch` are `torch.Tensor` type. We need to convert the `numpy.ndarray` type state_dict to `torch.Tensor` type state_dict.
 
 
 ```python
-    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict using       
-    #  ark.convert_state_dict
-    torch_state_dict = ark.convert_state_dict(state_dict, "torch")
+    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict
+    torch_state_dict = convert_state_dict(state_dict, "torch")
     # Load model parameters
     torch_model.load_state_dict(torch_state_dict)
+```
+
+The `convert_state_dict` function is defined as follows.
+```python
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
 ```
 
 Then we can run the model and compare the results.

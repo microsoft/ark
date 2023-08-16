@@ -51,6 +51,8 @@ template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
 std::unique_ptr<half_t[]> rand_halfs(size_t num, float max_val);
 // Return a random float array.
 std::unique_ptr<float[]> rand_floats(size_t num, float max_val);
+// Return a random bytes array.
+std::unique_ptr<uint8_t[]> rand_bytes(size_t num);
 
 // Return a half_t range array.
 std::unique_ptr<half_t[]> range_halfs(size_t num, float begin = 1.0f,
@@ -78,32 +80,6 @@ template <typename T> std::unique_ptr<T[]> ones(size_t num)
     }
     return std::unique_ptr<T[]>(ret);
 }
-
-// Return the error rate between two values.
-float error_rate(half_t a, half_t b);
-float error_rate(float a, float b);
-
-// Return mean squared error and max error rate between two matrices.
-std::pair<float, float> cmp_matrix(half_t *ground_truth, half_t *res,
-                                   unsigned int m, unsigned int n,
-                                   unsigned int bs = 1, unsigned int lm = 0,
-                                   unsigned int ln = 0, bool print = false);
-std::pair<float, float> cmp_matrix(float *ground_truth, float *res,
-                                   unsigned int m, unsigned int n,
-                                   unsigned int bs = 1, unsigned int lm = 0,
-                                   unsigned int ln = 0, bool print = false);
-
-// Print a matrix.
-void print_matrix(half_t *val, unsigned int m, unsigned int n, unsigned int bs,
-                  unsigned int lm, unsigned int ln);
-void print_matrix(float *val, unsigned int m, unsigned int n, unsigned int bs,
-                  unsigned int lm, unsigned int ln);
-
-//
-std::pair<float, float> tensor_compare(half_t *ground_truth, half_t *res,
-                                       Dims shape, bool print);
-std::pair<float, float> tensor_compare(float *ground_truth, float *res,
-                                       Dims shape, bool print);
 
 // Spawn a process that runs `func`. Returns PID of the spawned process.
 int proc_spawn(const std::function<int()> &func);

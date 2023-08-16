@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cc)
-file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cc)
+file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cc *_test.cu)
 file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unittest/*.cc)
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 file(GLOB_RECURSE INTERFACE_HEADERS CONFIGURE_DEPENDS include/ark*.h)
@@ -61,7 +61,7 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
     add_executable(${exe_name} ${ut_source} ${UT_COMMON_SOURCES})
     add_dependencies(${exe_name} build)
     set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)
-    target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS})
+    target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
     target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(${exe_name} SYSTEM PRIVATE
         ${PROJECT_SOURCE_DIR}/third_party/json

@@ -5,12 +5,12 @@
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "logging.h"
+#include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
 using namespace std;
 using namespace ark;
-// used for print the all_reduce result and check the correctness
-//  #define PRINT_MATRIX
+
 void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
 {
     // bytes/num_gpus is the number of bytes a GPU send in one iteration, the
@@ -40,22 +40,7 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
         }
         gt[i] = ark::half_t(sum);
     }
-#ifdef PRINT_MATRIX
-    // print input data.
-    for (int gpu_id = 0; gpu_id < num_gpus; gpu_id++) {
-        cout << "input data of gpu_id: " << gpu_id << endl;
-        for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
-            cout << (float)input_data[gpu_id].get()[i] << " ";
-        }
-        cout << endl;
-    }
-    // print ground truth.
-    cout << "ground truth: " << endl;
-    for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10; i++) {
-        cout << (float)gt[i] << " ";
-    }
-    cout << endl;
-#endif
+
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, num_gpus, &input_data, &gt, bytes,
                                       iter]() {
@@ -84,25 +69,13 @@ void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
             allreduce_result->read(res);
 
             // Compare results with the ground truth.
-            auto p = ark::utils::cmp_matrix((ark::half_t *)gt,
-                                            (ark::half_t *)res, 1, bytes / 2);
-#ifdef PRINT_MATRIX
-            // print result, to avoid too long output, only print the first 10
-            // elements if(gpu_id == 0)
-            {
-                cout << "result on gpu_id: " << gpu_id << " ";
-                for (size_t i = 0; i < bytes / sizeof(ark::half_t) && i < 10;
-                     i++) {
-                    cout << (float)res[i] << " ";
-                }
-                cout << endl;
-            }
-#endif
+            auto comp = tensor_compare(gt, res, allreduce_result->shape);
+
             free(res);
             LOG(ark::INFO, " all_reduce on gpu: ", gpu_id,
                 " num_gpus: ", num_gpus, " total_bytes: ", bytes,
-                " iter: ", iter, setprecision(4), " mse: ", p.first,
-                " max_err: ", p.second * 100, "%",
+                " iter: ", iter, setprecision(4), " mse: ", comp.mse,
+                " max_err: ", comp.max_error_rate * 100, "%",
                 " elapsed_msec: ", elapsed_msec, "ms");
             return ark::unittest::SUCCESS;
         });

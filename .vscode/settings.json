@@ -3,4 +3,7 @@
     "cmake.environment": {
         "ARK_ROOT": "${workspaceFolder}/build"
     },
+    "cmake.ctestArgs": [
+        "--verbose"
+    ],
 }
