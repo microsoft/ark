@@ -1,16 +1,19 @@
 # ARK LLaMa Implementation Example
 
-This is an implementation of the LLaMa model using ARK. In this code, we have fully implemented all parts of the Transformer block, including the attention layer, RMSnorm layer and the feed forward layer.
+This code provides an example of the LLaMa model implementation using ARK. We have successfully implemented all parts of the Transformer block, including the attention layer, RMSnorm layer, and the feed-forward layer.
 
-To verify the correctness of the LLaMa code implementation, you can first clone the official implementation of LLaMa by running the following command:
+# Cloning the Official LLaMa Implementation
+To verify the correctness of the LLaMa code implementation, please clone the official implementation of LLaMa by executing the following command:
 
 ```bash
 git clone https://github.com/facebookresearch/llama
 ```
 
-Then, please install the dependencies of LLaMa official implementations and run LLaMa model according to the instructions in the official repository. 
+Next, please install the dependencies of LLaMa official implementations and run the PyTorch LLaMa model according to the instructions in the official repository. 
 
-You can run the following command to verify the correctness of the ARK LLaMa implementation:
+# Verifying the Correctness of the ARK LLaMa Implementation
+
+To verify the correctness of the ARK LLaMa implementation, please execute the following command:
 
 ```bash
 cd examples/llama
