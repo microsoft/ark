@@ -85,8 +85,7 @@ def test_rotary_embedding():
     )
     batch_size = 1
     start_pos = 0
-    seqlen = 64
-    freqs_cis_torch = freqs_cis[start_pos : start_pos + seqlen]
+    freqs_cis_torch = freqs_cis[start_pos : start_pos + seq_len]
     head_dim = args.dim // args.n_heads
     xq_torch = torch.randn(
         [batch_size, seq_len, args.n_heads, head_dim],
@@ -106,7 +105,7 @@ def test_rotary_embedding():
     xq_ark = ark.tensor([batch_size, seq_len, args.n_heads, head_dim], ark.FP32)
     xk_ark = ark.tensor([batch_size, seq_len, args.n_heads, head_dim], ark.FP32)
 
-    freqs_cis_ark = ark.tensor([1, seqlen, 1, head_dim], ark.FP32)
+    freqs_cis_ark = ark.tensor([1, seq_len, 1, head_dim], ark.FP32)
 
     xq_out_ark, xk_out_ark = llama_ark.apply_rotary_emb(
         xq_ark, xk_ark, freqs_cis_ark
@@ -347,8 +346,8 @@ def test_transformer():
     freqs_cis_ark = ark.tensor(
         [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
     )
-    output = transformer_ark(ark_input, 0, freqs_cis_ark, None)
-
+    mask_ark = ark.tensor([1, seq_len, seq_len], ark.FP32)
+    output = transformer_ark(ark_input, 0, freqs_cis_ark, mask_ark)
     # Launch the ARK runtime
     runtime.launch()
     input_embedding = transformer_pytorch.tok_embeddings(torch_input)
@@ -370,6 +369,14 @@ def test_transformer():
     freqs_cis_ark.from_numpy(freqs_cis_stack)
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_ark.load_state_dict(ark_state_dict)
+
+    mask_torch = None
+    if seq_len > 1:
+        mask_torch = torch.full((1, 1, seq_len, seq_len), float("-inf"))
+        mask_torch = torch.triu(mask_torch, diagonal=start_pos + 1)
+
+    mask_numpy = mask_torch.to_numpy().astype(np.float32)
+    mask_ark.from_numpy(mask_numpy)
     # Run the ARK program
     runtime.run()
     output_ark_host = output.to_numpy()

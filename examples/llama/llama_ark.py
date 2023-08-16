@@ -221,7 +221,7 @@ class Transformer(ark.Module):
         mask: Optional[ark.Tensor],
     ):
         for layer in self.layers:
-            h = layer(h, start_pos, self.freqs_cis, mask)
+            h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)
         output = self.output(h)
         return output
