@@ -21,7 +21,7 @@
 
 * Mellanox OFED
 
-## Docker images
+## Docker Images
 
 We currently provide only *base images* for ARK, which contain all the dependencies for ARK but do not contain ARK itself (no [`gpudma`](https://github.com/microsoft/ark/blob/main/docs/install.md#install-gpudma) as well, which should be installed on the host side). The ARK-installed images will be provided in the future.
 
