@@ -78,12 +78,14 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_RECV:          os << "OP_RECV";          break;
     case OP_RECV_MM:       os << "OP_RECV_MM";       break;
     case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
+    case OP_RMSNORM:       os << "OP_RMSNORM";       break;
     case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
     case OP_RELU:          os << "OP_RELU";          break;
     case OP_SIGMOID:       os << "OP_SIGMOID";       break;
     case OP_GELU:          os << "OP_GELU";          break;
     case OP_EXP:           os << "OP_EXP";           break;
     case OP_SQRT:          os << "OP_SQRT";          break;
+    case OP_ROPE:          os << "OP_ROPE";          break;
     }
     // clang-format on
     return os;
@@ -455,6 +457,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const RecvMMOp *>(this)->function_name(cfg);
     case OP_LAYERNORM:
         return static_cast<const LayernormOp *>(this)->function_name(cfg);
+    case OP_RMSNORM:
+        return static_cast<const RMSnormOp *>(this)->function_name(cfg);
     case OP_SOFTMAX:
         return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
     case OP_RELU:
@@ -467,6 +471,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const ExpOp *>(this)->function_name(cfg);
     case OP_SQRT:
         return static_cast<const SqrtOp *>(this)->function_name(cfg);
+    case OP_ROPE:
+        return static_cast<const RopeOp *>(this)->function_name(cfg);
     default:
         return "";
     }
