@@ -24,7 +24,7 @@ import numpy as np
 runtime = ark.Runtime()
 
 ```
-First, we need to create the operational graph for our DNN model. In this example, we define a simple model with two input tensors. The output tensor is the sum of these input tensors.
+First, we need to create the operational graph for our model. In this example, we define a simple model with two input tensors. The output tensor is the sum of these input tensors.
 
 ```python
 M, N = 64, 64
