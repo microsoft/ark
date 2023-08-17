@@ -39,7 +39,7 @@ def performance_ark(runtime, iter=None):
     runtime.launch()
     runtime.run(iter=iter, non_blocking=True)
     elapsed = runtime.stop()
-    return 1.0 * elapsed / 1000, iter
+    return 1.0 * elapsed / (1000 * iter), iter
 
 
 def performance_torch(torch_func, iter=None):
@@ -62,25 +62,25 @@ def performance_torch(torch_func, iter=None):
     torch.cuda.synchronize()
     end_torch = time.time()
     elapsed = end_torch - start_torch
-    return elapsed, iter
+    return 1.0 * elapsed / iter, iter
 
 
 def performance_comparison(runtime, torch_func):
     # The performance comparison is only enabled when performance_analysis is True
     if not performance_analysis:
         return
-    ark_elapsed, iter_ark = performance_ark(runtime)
-    torch_elapsed, iter_torch = performance_torch(torch_func)
+    ark_elapsed_per_iter, iter_ark = performance_ark(runtime)
+    torch_elapsed_per_iter, iter_torch = performance_torch(torch_func)
     print(
         "performance comparison",
         "iter_ark:",
         iter_ark,
         "iter_torch:",
         iter_torch,
-        "ark_elapsed:",
-        "{:.5f}".format(1.0 * ark_elapsed / iter),
-        "torch_elapsed:",
-        "{:.5f}".format(1.0 * torch_elapsed / iter),
+        "ark_elapsed_per_iter:",
+        "{:.5f}".format(ark_elapsed_per_iter),
+        "torch_elapsed_per_iter:",
+        "{:.5f}".format(torch_elapsed_per_iter),
     )
 
 
@@ -113,24 +113,20 @@ def test_rmsnorm():
     rmsnorm_pytorch = rmsnorm_pytorch.to(torch_device)
     torch_input = torch_input.to(torch_device)
     output_pytorch = rmsnorm_pytorch(torch_input)
-
+    output_pytorch = output_pytorch.cpu()
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = rmsnorm_ark(ark_input)
-
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np.float32))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
 
     rmsnorm_ark.load_state_dict(state_dict_ark)
-
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()
-
     # test if the result is correct
-
-    gt = output_pytorch.cpu().detach().numpy().astype(np.float32)
+    gt = output_pytorch.detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
 
@@ -174,6 +170,7 @@ def test_attention():
     torch_input = torch_input.to(torch_device)
     freqs_cis_torch = freqs_cis_torch.to(torch_device)
     output_torch = attention_pytorch(torch_input, 0, freqs_cis_torch, None)
+    output_torch = output_torch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     freqs_cis_ark = ark.tensor(
@@ -199,7 +196,7 @@ def test_attention():
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.cpu().detach().numpy().astype(np.float32)
+    output_gt = output_torch.detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
@@ -231,6 +228,7 @@ def test_feedforward():
     feedforward_pytorch.to(torch_device)
     torch_input = torch_input.to(torch_device)
     output_pytorch = feedforward_pytorch(torch_input)
+    output_pytorch = output_pytorch.cpu()
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = feedforward_ark(ark_input)
 
@@ -246,7 +244,7 @@ def test_feedforward():
 
     # test if the result is correct
 
-    gt = output_pytorch.cpu().detach().numpy().astype(np.float32)
+    gt = output_pytorch.detach().numpy().astype(np.float32)
 
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
@@ -291,7 +289,7 @@ def test_transformerblock():
     output_torch = transformer_block_pytorch(
         torch_input, 0, freqs_cis_torch, None
     )
-
+    output_torch = output_torch.cpu()
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     freqs_cis_ark = ark.tensor(
         [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
@@ -316,7 +314,7 @@ def test_transformerblock():
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.cpu().detach().numpy().astype(np.float32)
+    output_gt = output_torch.detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
@@ -354,7 +352,7 @@ def test_transformer():
     state_dict = transformer_pytorch.state_dict()
     # transformer_pytorch.load_state_dict(state_dict_torch)
     output_torch = transformer_pytorch(torch_input, 0)
-
+    output_torch = output_torch.cpu()
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     freqs_cis_ark = ark.tensor(
         [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
