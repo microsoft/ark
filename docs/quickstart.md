@@ -54,7 +54,7 @@ other_tensor_host = np.random.rand(M, N).astype(np.float32)
 other_tensor.from_numpy(other_tensor_host)
 ```
 
-Next, you can run the ARK runtime using `runtime.run()`, which will run a single iteration of the model. To run multiple iterations, you can provide the number as an argument like `runtime.run(iter=100)`. To run asynchronously, you can use `runtime.run(async=True)` and wait for its completion with `runtime.wait()`.
+Next, you can run the ARK runtime using `runtime.run()`, which will run a single iteration of the model. To run multiple iterations, you can provide the number as an argument like `runtime.run(iter=100)`. To run asynchronously, you can use `runtime.run(non_blocking=True)` and wait for its completion with `runtime.wait()`.
 
 ```python
 # Run the ARK program for a single iteration, synchronously.
