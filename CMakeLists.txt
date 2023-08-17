@@ -9,7 +9,7 @@ set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
 option(USE_KAHYPAR "Use KaHyPar for scheduling" OFF)
-option(USE_MSCCLPP "Use MSCCL++" ON)
+option(USE_MSCCLPP "Use MSCCL++" OFF)
 
 cmake_minimum_required(VERSION 3.25)
 project(ark LANGUAGES CXX CUDA)
@@ -28,6 +28,9 @@ include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
 # Find MSCCL++
 if(USE_MSCCLPP)
     include(${PROJECT_SOURCE_DIR}/cmake/FindMSCCLPP.cmake)
+    if (NOT MSCCLPP_FOUND)
+        message(FATAL_ERROR "MSCCL++ not found")
+    endif()
 endif()
 
 # Find CUDAToolkit

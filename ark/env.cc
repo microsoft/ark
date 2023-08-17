@@ -18,7 +18,7 @@ using namespace std;
 #define DEFAULT_ARK_SCHEDULER "Default"
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT true
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
-#define DEFAULT_ARK_USE_MSCCLPP true
+#define DEFAULT_ARK_USE_MSCCLPP false
 #define DEFAULT_ARK_MSCCLPP_INCLUDE_DIR "/usr/local/mscclpp/include"
 #define DEFAULT_ARK_MSCCLPP_PORT 50051
 

@@ -13,7 +13,9 @@
 #include "arithmetic.h"
 #include "comm.h"
 #include "comm_mm.h"
+#ifdef ARK_USE_MSCCLPP
 #include "comm_mscclpp.h"
+#endif // ARK_USE_MSCCLPP
 #include "im2col.h"
 #include "layernorm.h"
 #include "math_functions.h"
