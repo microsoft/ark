@@ -33,7 +33,7 @@ def test_math_functions_internal(
     input_tensor.from_numpy(input_tensor_host)
 
     # Run the ARK program
-    runtime.run(iter=iter, async_run=True)
+    runtime.run(iter=iter)
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()

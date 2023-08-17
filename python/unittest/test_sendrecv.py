@@ -27,7 +27,7 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     runtime.launch()
     if rank == 0:
         input_tensor.from_numpy(np_inputs)
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
     elapsed = runtime.stop()
     if rank == 1:
         host_output = input_tensor.to_numpy()
@@ -74,7 +74,7 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
     runtime.launch()
     send_tensor.from_numpy(np_inputs[rank])
 
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
     elapsed = runtime.stop()
 
     host_output = recv_tensor.to_numpy()
