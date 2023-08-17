@@ -29,7 +29,6 @@ warmup_iter = 20
 
 
 def performance_ark(runtime, iter=None):
-    target_msec = 10.0 * 1000
     # Restart the ARK runtime
     runtime.launch()
     # Rough measure the execution time
