@@ -12,6 +12,7 @@ import ark
 import numpy as np
 import torch
 import torch.nn as nn
+import time
 
 from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 
@@ -19,6 +20,63 @@ batch_size = 1
 seq_len = 64
 dim = 4096
 start_pos = 0
+
+performance_analysis = False
+
+
+def performance_ark(runtime, iter=None):
+    target_msec = 2000
+    # Restart the ARK runtime
+    runtime.launch()
+    # Rough measure the execution time
+    warmup_iter = 3
+    runtime.run(iter=warmup_iter)
+    warmup_msec = runtime.stop()
+
+    if iter is None:
+        iter = max(int(target_msec / warmup_msec), warmup_iter)
+    runtime.launch()
+    runtime.run(iter=iter, non_blocking=True)
+    elapsed = runtime.stop()
+    return 1.0 * elapsed / 1000, iter
+
+
+def performance_torch(torch_func, iter=None):
+    warmup_iter = 3
+    torch.cuda.synchronize()
+    start_torch = time.time()
+    for i in range(warmup_iter):
+        torch_func()
+    torch.cuda.synchronize()
+    end_torch = time.time()
+    elapsed = 1.0 * (end_torch - start_torch)
+
+    if iter is None:
+        iter = max(int(2000 / elapsed), warmup_iter)
+    torch.cuda.synchronize()
+    start_torch = time.time()
+    for i in range(iter):
+        torch_func()
+    torch.cuda.synchronize()
+    end_torch = time.time()
+    elapsed = end_torch - start_torch
+    return elapsed, iter
+
+
+def performance_comparison(runtime, torch_func):
+    if not performance_analysis:
+        return
+    ark_elapsed, iter = performance_ark(runtime)
+    torch_elapsed, iter = performance_torch(torch_func, iter)
+    print(
+        "performance comparison",
+        "iter:",
+        iter,
+        "ark_elapsed:",
+        "{:.5f}".format(1.0 * ark_elapsed / iter),
+        "torch_elapsed:",
+        "{:.5f}".format(1.0 * torch_elapsed / iter),
+    )
 
 
 def convert_state_dict(state_dict: dict, type="numpy"):
@@ -68,6 +126,7 @@ def test_rmsnorm():
     gt = output_pytorch.detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
+
     print(
         "rmsnorm test",
         "max_abs_error:",
@@ -75,6 +134,11 @@ def test_rmsnorm():
         "mean_abs_error:",
         "{:.5f}".format(mean_abs_error),
     )
+
+    def pytorch_func():
+        rmsnorm_pytorch(torch_input)
+
+    performance_comparison(runtime, pytorch_func)
 
 
 def test_rotary_embedding():
@@ -214,6 +278,11 @@ def test_attention():
         "{:.5f}".format(mean_abs_error),
     )
 
+    def pytorch_func():
+        attention_pytorch(torch_input, 0, freqs_cis_torch, None)
+
+    performance_comparison(runtime, pytorch_func)
+
 
 def test_feedforward():
     # Initialize the ARK runtime
@@ -256,6 +325,11 @@ def test_feedforward():
         "mean_abs_error:",
         "{:.5f}".format(mean_abs_error),
     )
+
+    def pytorch_func():
+        feedforward_pytorch(torch_input)
+
+    performance_comparison(runtime, pytorch_func)
 
 
 def test_transformerblock():
@@ -317,6 +391,11 @@ def test_transformerblock():
         "mean_abs_error:",
         "{:.5f}".format(mean_abs_error),
     )
+
+    def pytorch_func():
+        transformer_block_pytorch(torch_input, 0, freqs_cis_torch, None)
+
+    performance_comparison(runtime, pytorch_func)
 
 
 def test_transformer():
@@ -392,6 +471,11 @@ def test_transformer():
         "{:.5f}".format(mean_abs_error),
     )
 
+    def pytorch_func():
+        transformer_pytorch(torch_input, 0)
+
+    performance_comparison(runtime, pytorch_func)
+
 
 if __name__ == "__main__":
     # Set up the environment variables for nccl
@@ -403,7 +487,7 @@ if __name__ == "__main__":
     os.environ["WORLD_SIZE"] = "1"
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
-
+    performance_analysis = True
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     test_rmsnorm()
