@@ -30,7 +30,7 @@ def test_rope_internal(batch_size, m, n, data_type="float", iter=1):
     other_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
     other_tensor.from_numpy(other_tensor_host)
     # Run the ARK program
-    runtime.run(iter=iter, async_run=True)
+    runtime.run(iter=iter)
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()

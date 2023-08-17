@@ -18,7 +18,7 @@ def all_gather_test_not_inplace(
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
     elapsed = runtime.stop()
     max_abs_error = 0
     for tensor_shard in range(world_size):
@@ -54,7 +54,7 @@ def all_gather_test_inplace(rank, np_inputs, world_size, tensor_len, iter=1):
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
     elapsed = runtime.stop()
     host_output = output_tensor.to_numpy()
 

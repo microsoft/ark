@@ -77,7 +77,7 @@ class Runtime:
         Executor.get_global_executor().launch()
         self.ark_runtime_state = RuntimeState.launch
 
-    def run(self, iter=1, async_run=False):
+    def run(self, iter=1, non_blocking=False):
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
@@ -86,7 +86,7 @@ class Runtime:
             raise RuntimeError("ARK runtime is not launched")
         self.ark_runtime_state = RuntimeState.run
         Executor.get_global_executor().run(iter)
-        if not async_run:
+        if not non_blocking:
             self.wait()
 
     def wait(self):

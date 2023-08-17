@@ -18,7 +18,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
     elapsed = runtime.stop()
 
     host_output = allreduce_result.to_numpy()
