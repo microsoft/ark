@@ -29,7 +29,7 @@ def test_scale_internal(batch_size, m, n, data_type="float", iter=1):
     input_tensor.from_numpy(input_tensor_host)
 
     # Run the ARK program
-    runtime.run(iter=iter, async_run=True)
+    runtime.run(iter=iter)
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()
