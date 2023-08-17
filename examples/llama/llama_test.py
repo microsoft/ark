@@ -30,7 +30,7 @@ def performance_ark(runtime, iter=None):
     # Restart the ARK runtime
     runtime.launch()
     # Rough measure the execution time
-    warmup_iter = 3
+    warmup_iter = 20
     runtime.run(iter=warmup_iter)
     warmup_msec = runtime.stop()
 
@@ -43,7 +43,7 @@ def performance_ark(runtime, iter=None):
 
 
 def performance_torch(torch_func, iter=None):
-    warmup_iter = 3
+    warmup_iter = 20
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(warmup_iter):
