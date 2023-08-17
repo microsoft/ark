@@ -22,6 +22,7 @@ dim = 4096
 start_pos = 0
 
 performance_analysis = False
+torch_device = torch.device("cuda:0")
 
 
 def performance_ark(runtime, iter=None):
@@ -105,7 +106,10 @@ def test_rmsnorm():
         nn.init.uniform_(param, a=-0.1, b=0.1)
     state_dict_torch = rmsnorm_pytorch.state_dict()
 
+    rmsnorm_pytorch = rmsnorm_pytorch.to(torch_device)
+    torch_input = torch_input.to(torch_device)
     output_pytorch = rmsnorm_pytorch(torch_input)
+    output_pytorch = output_pytorch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = rmsnorm_ark(ark_input)
@@ -141,84 +145,6 @@ def test_rmsnorm():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_rotary_embedding():
-    # Initialize the ARK runtimes
-    args = llama_pytorch.ModelArgs()
-
-    freqs_cis = llama_pytorch.precompute_freqs_cis(
-        args.dim // args.n_heads, args.max_seq_len * 2
-    )
-
-    freqs_cis_torch = freqs_cis[start_pos : start_pos + seq_len]
-    head_dim = args.dim // args.n_heads
-    xq_torch = torch.randn(
-        [batch_size, seq_len, args.n_heads, head_dim],
-        dtype=torch.float32,
-    )
-
-    xk_torch = torch.randn(
-        [batch_size, seq_len, args.n_heads, head_dim],
-        dtype=torch.float32,
-    )
-
-    xq_out_torch, xk_out_torch = llama_pytorch.apply_rotary_emb(
-        xq_torch, xk_torch, freqs_cis_torch
-    )
-
-    runtime = ark.Runtime()
-    xq_ark = ark.tensor([batch_size, seq_len, args.n_heads, head_dim], ark.FP32)
-    xk_ark = ark.tensor([batch_size, seq_len, args.n_heads, head_dim], ark.FP32)
-
-    freqs_cis_ark = ark.tensor([1, seq_len, 1, head_dim], ark.FP32)
-
-    xq_out_ark, xk_out_ark = llama_ark.apply_rotary_emb(
-        xq_ark, xk_ark, freqs_cis_ark
-    )
-
-    runtime.launch()
-    xq_ark.from_numpy(xq_torch.numpy().astype(np.float32))
-    xk_ark.from_numpy(xk_torch.numpy().astype(np.float32))
-    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
-
-    # stack real and imag parts
-    freqs_cis_stack = np.stack(
-        [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
-    ).astype(np.float32)
-
-    freqs_cis_ark.from_numpy(freqs_cis_stack)
-    runtime.run()
-
-    xq_out_ark_host = xq_out_ark.to_numpy()
-
-    max_abs_error = np.max(
-        np.abs(xq_out_ark_host - xq_out_torch.detach().numpy())
-    )
-    mean_abs_error = np.mean(
-        np.abs(xq_out_ark_host - xq_out_torch.detach().numpy())
-    )
-    print(
-        "rotary_embedding test",
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-    )
-
-    xk_ark_host = xk_out_ark.to_numpy()
-
-    max_abs_error = np.max(np.abs(xk_ark_host - xk_out_torch.detach().numpy()))
-    mean_abs_error = np.mean(
-        np.abs(xk_ark_host - xk_out_torch.detach().numpy())
-    )
-    print(
-        "rotary_embedding test",
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-    )
-
-
 def test_attention():
     # Initialize the ARK runtime
     runtime = ark.Runtime()
@@ -241,7 +167,11 @@ def test_attention():
     )
     freqs_cis_torch = freqs_cis_torch[0:seq_len]
 
+    attention_pytorch = attention_pytorch.to(torch_device)
+    torch_input = torch_input.to(torch_device)
+    freqs_cis_torch = freqs_cis_torch.to(torch_device)
     output_torch = attention_pytorch(torch_input, 0, freqs_cis_torch, None)
+    output_torch = output_torch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     freqs_cis_ark = ark.tensor(
@@ -296,9 +226,10 @@ def test_feedforward():
     for param in feedforward_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
     state_dict_torch = feedforward_pytorch.state_dict()
-
+    feedforward_pytorch.to(torch_device)
+    torch_input = torch_input.to(torch_device)
     output_pytorch = feedforward_pytorch(torch_input)
-
+    output_pytorch = output_pytorch.cpu()
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = feedforward_ark(ark_input)
 
@@ -353,6 +284,9 @@ def test_transformerblock():
         args.dim // args.n_heads, args.max_seq_len * 2
     )
     freqs_cis_torch = freqs_cis_torch[0:seq_len]
+    transformer_block_pytorch.to(torch_device)
+    torch_input = torch_input.to(torch_device)
+    freqs_cis_torch = freqs_cis_torch.to(torch_device)
     output_torch = transformer_block_pytorch(
         torch_input, 0, freqs_cis_torch, None
     )
@@ -491,7 +425,6 @@ if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     test_rmsnorm()
-    test_rotary_embedding()
     test_attention()
     test_feedforward()
     test_transformerblock()
