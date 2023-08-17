@@ -54,7 +54,7 @@ def test_matmul_internal(
     input_tensor.from_numpy(input_tensor_host)
     other_tensor.from_numpy(other_tensor_host)
 
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
 
     elapsed = runtime.stop()
 

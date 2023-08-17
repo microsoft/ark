@@ -25,7 +25,7 @@ def test_reduce_internal(batch_size, m, n, data_type="float", iter=1):
     input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
 
     input_tensor.from_numpy(input_tensor_host)
-    runtime.run(iter, async_run=True)
+    runtime.run(iter)
 
     elapsed = runtime.stop()
 
