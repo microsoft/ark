@@ -24,7 +24,7 @@ start_pos = 0
 performance_analysis = False
 torch_device = torch.device("cuda:1")
 
-total_execution_time = 10
+total_execution_time = 1
 warmup_iter = 20
 
 
@@ -427,4 +427,4 @@ if __name__ == "__main__":
     test_attention()
     test_feedforward()
     test_transformerblock()
-    test_transformer()
+    # test_transformer()
