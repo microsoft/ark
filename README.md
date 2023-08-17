@@ -4,7 +4,7 @@ A GPU-driven system framework for scalable AI applications.
 
 [![License](https://img.shields.io/github/license/microsoft/ark.svg)](LICENSE)
 [![CodeQL](https://github.com/microsoft/ark/actions/workflows/codeql.yml/badge.svg)](https://github.com/microsoft/ark/actions/workflows/codeql.yml)
-[![Unit Tests](https://dev.azure.com/binyli/HPC/_apis/build/status/ark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main)
+[![Build Status](https://dev.azure.com/binyli/HPC/_apis/build/status%2Fark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main)
 
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
