@@ -109,7 +109,6 @@ def test_rmsnorm():
     rmsnorm_pytorch = rmsnorm_pytorch.to(torch_device)
     torch_input = torch_input.to(torch_device)
     output_pytorch = rmsnorm_pytorch(torch_input)
-    output_pytorch = output_pytorch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = rmsnorm_ark(ark_input)
@@ -127,7 +126,7 @@ def test_rmsnorm():
 
     # test if the result is correct
 
-    gt = output_pytorch.detach().numpy().astype(np.float32)
+    gt = output_pytorch.cpu().detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
 
@@ -171,7 +170,6 @@ def test_attention():
     torch_input = torch_input.to(torch_device)
     freqs_cis_torch = freqs_cis_torch.to(torch_device)
     output_torch = attention_pytorch(torch_input, 0, freqs_cis_torch, None)
-    output_torch = output_torch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     freqs_cis_ark = ark.tensor(
@@ -184,7 +182,7 @@ def test_attention():
     ark_input.from_numpy(input_numpy.astype(np.float32))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
     attention_ark.load_state_dict(state_dict_ark)
-    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
+    freqs_cis_complex = freqs_cis_torch.cpu().numpy().astype(np.complex64)
     # stack real and imag parts
     freqs_cis_stack = np.stack(
         [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
@@ -197,7 +195,7 @@ def test_attention():
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.detach().numpy().astype(np.float32)
+    output_gt = output_torch.cpu().detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
@@ -229,7 +227,6 @@ def test_feedforward():
     feedforward_pytorch.to(torch_device)
     torch_input = torch_input.to(torch_device)
     output_pytorch = feedforward_pytorch(torch_input)
-    output_pytorch = output_pytorch.cpu()
     ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
     output_ark = feedforward_ark(ark_input)
 
@@ -245,7 +242,7 @@ def test_feedforward():
 
     # test if the result is correct
 
-    gt = output_pytorch.detach().numpy().astype(np.float32)
+    gt = output_pytorch.cpu().detach().numpy().astype(np.float32)
 
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
@@ -303,7 +300,7 @@ def test_transformerblock():
 
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_block_ark.load_state_dict(ark_state_dict)
-    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
+    freqs_cis_complex = freqs_cis_torch.cpu().numpy().astype(np.complex64)
     # stack real and imag parts
     freqs_cis_stack = np.stack(
         [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
@@ -315,7 +312,7 @@ def test_transformerblock():
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.detach().numpy().astype(np.float32)
+    output_gt = output_torch.cpu().detach().numpy().astype(np.float32)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
