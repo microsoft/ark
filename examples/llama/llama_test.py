@@ -52,8 +52,9 @@ def performance_torch(torch_func, iter=None):
     end_torch = time.time()
     elapsed = 1.0 * (end_torch - start_torch)
 
+    # Rough measure the execution time
     if iter is None:
-        iter = max(int(2 / elapsed), warmup_iter)
+        iter = max(int(10 / elapsed), warmup_iter)
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(iter):
@@ -65,14 +66,17 @@ def performance_torch(torch_func, iter=None):
 
 
 def performance_comparison(runtime, torch_func):
+    # The performance comparison is only enabled when performance_analysis is True
     if not performance_analysis:
         return
-    ark_elapsed, iter = performance_ark(runtime)
-    torch_elapsed, iter = performance_torch(torch_func, iter)
+    ark_elapsed, iter_ark = performance_ark(runtime)
+    torch_elapsed, iter_torch = performance_torch(torch_func)
     print(
         "performance comparison",
-        "iter:",
-        iter,
+        "iter_ark:",
+        iter_ark,
+        "iter_torch:",
+        iter_torch,
         "ark_elapsed:",
         "{:.5f}".format(1.0 * ark_elapsed / iter),
         "torch_elapsed:",
@@ -89,7 +93,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
         if type == "torch":
             new_state_dict[key] = torch.from_numpy(state_dict[key])
         elif type == "numpy":
-            new_state_dict[key] = state_dict[key].numpy()
+            new_state_dict[key] = state_dict[key].cpu().numpy()
     return new_state_dict
 
 
