@@ -24,18 +24,20 @@ start_pos = 0
 performance_analysis = False
 torch_device = torch.device("cuda:1")
 
+total_execution_time = 10
+warmup_iter = 20
+
 
 def performance_ark(runtime, iter=None):
     target_msec = 10.0 * 1000
     # Restart the ARK runtime
     runtime.launch()
     # Rough measure the execution time
-    warmup_iter = 20
     runtime.run(iter=warmup_iter)
-    warmup_msec = runtime.stop()
+    warmup_sec_per_iter = 1.0 * runtime.stop() / (warmup_iter * 1000)
 
     if iter is None:
-        iter = max(int(target_msec / warmup_msec), warmup_iter)
+        iter = max(int(total_execution_time / warmup_sec_per_iter), warmup_iter)
     runtime.launch()
     runtime.run(iter=iter, non_blocking=True)
     elapsed = runtime.stop()
@@ -43,18 +45,17 @@ def performance_ark(runtime, iter=None):
 
 
 def performance_torch(torch_func, iter=None):
-    warmup_iter = 20
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(warmup_iter):
         torch_func()
     torch.cuda.synchronize()
     end_torch = time.time()
-    elapsed = 1.0 * (end_torch - start_torch)
+    elapsed_per_iter = 1.0 * (end_torch - start_torch) / warmup_iter
 
     # Rough measure the execution time
     if iter is None:
-        iter = max(int(10.0 / elapsed), warmup_iter)
+        iter = max(int(total_execution_time / elapsed_per_iter), warmup_iter)
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(iter):
