@@ -26,7 +26,7 @@ torch_device = torch.device("cuda:0")
 
 
 def performance_ark(runtime, iter=None):
-    target_msec = 2000
+    target_msec = 10 * 1000
     # Restart the ARK runtime
     runtime.launch()
     # Rough measure the execution time
