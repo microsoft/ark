@@ -354,6 +354,9 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
     if (!disable_timing) {
         CULOG(cuEventRecord(this->timer_begin, stream));
     }
+
+    this->ctx->get_comm_sw()->launch_request_loop();
+
     // Initialize loop flags.
     *(this->flag_href) = 0;
     GpuState res = GpuKernel::launch(stream);
@@ -420,6 +423,7 @@ void GpuLoopKernel::stop()
         this->is_recording = false;
     }
     this->stream = nullptr;
+    this->ctx->get_comm_sw()->stop_request_loop();
 }
 
 } // namespace ark

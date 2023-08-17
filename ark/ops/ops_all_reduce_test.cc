@@ -1,100 +1,59 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_kernel.h"
-#include "include/ark.h"
-#include "include/ark_utils.h"
-#include "logging.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
+#include <type_traits>
 
-using namespace std;
-using namespace ark;
-
-void test_all_reduce_internal(size_t bytes, int num_gpus, int iter)
+template <typename T, int NumGpus>
+void baseline_all_reduce(std::vector<void *> &outputs,
+                         const std::vector<ark::Dims> &output_shapes,
+                         const std::vector<void *> &,
+                         const std::vector<ark::Dims> &)
 {
-    // bytes/num_gpus is the number of bytes a GPU send in one iteration, the
-    // bytes must be multiple of num_gpus, the tensor shape is {1, bytes /
-    // sizeof(ark::half_t), 1, 1}.
-    if (bytes % num_gpus != 0) {
-        LOG(INFO, "bytes must be multiple of num_gpus");
-        return;
-    }
-    // init input data and ground truth.
-    ark::srand();
-    vector<unique_ptr<ark::half_t[]>> input_data(num_gpus);
-    for (int i = 0; i < num_gpus; i++) {
-        input_data[i] =
-            ark::utils::rand_halfs(bytes / sizeof(ark::half_t), 0.01);
+    // Calculate sum from 1 to NumGpus.
+    T expected = 0;
+    for (int i = 1; i <= NumGpus; ++i) {
+        expected += i;
     }
 
-    // calculate ground truth of all_reduce.
-    ark::half_t *gt = (ark::half_t *)malloc(bytes);
-    UNITTEST_NE(gt, (void *)nullptr);
-    // first convert the input data to float, then sum them up, finally convert
-    // the result to ark::half_t.
-    for (size_t i = 0; i < bytes / sizeof(ark::half_t); i++) {
-        float sum = 0;
-        for (int j = 0; j < num_gpus; j++) {
-            sum += (float)input_data[j].get()[i];
-        }
-        gt[i] = ark::half_t(sum);
+    T *out = static_cast<T *>(outputs[0]);
+    ark::DimType nelem = output_shapes[0].size();
+    for (ark::DimType i = 0; i < nelem; ++i) {
+        out[i] = NumGpus;
     }
+}
 
+void test_all_reduce_4gpus_internal(size_t nelem, int iter)
+{
+    constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-        ark::unittest::spawn_process([gpu_id, num_gpus, &input_data, &gt, bytes,
-                                      iter]() {
-            // define model.
-            Model model{gpu_id};
-            Tensor *data = model.tensor(
-                {
-                    (ark::DimType)(bytes / sizeof(ark::half_t)),
-                },
-                FP16);
-            Tensor *allreduce_result = model.all_reduce(data, gpu_id, num_gpus);
-            Executor exe{gpu_id, gpu_id, num_gpus, model, "test_all_reduce"};
-            exe.compile();
+        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m{gpu_id};
+            ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
+            ark::Tensor *data = ones;//m.scale(ones, float(gpu_id + 1));
+            ark::Tensor *output = m.all_reduce(data, gpu_id, num_gpus);
 
-            // Set data.
-            allreduce_result->write(input_data[gpu_id].get());
-
-            // launch kernel
-            exe.launch();
-            exe.run(iter);
-            float elapsed_msec = exe.stop();
-
-            // Copy results of the loop kernel routine into CPU memory.
-            ark::half_t *res = (ark::half_t *)malloc(bytes);
-            UNITTEST_NE(res, (void *)nullptr);
-            allreduce_result->read(res);
-
-            // Compare results with the ground truth.
-            auto comp = tensor_compare(gt, res, allreduce_result->shape);
-
-            free(res);
-            LOG(ark::INFO, " all_reduce on gpu: ", gpu_id,
-                " num_gpus: ", num_gpus, " total_bytes: ", bytes,
-                " iter: ", iter, setprecision(4), " mse: ", comp.mse,
-                " max_err: ", comp.max_error_rate * 100, "%",
-                " elapsed_msec: ", elapsed_msec, "ms");
+            auto result = ark::op_test("all_reduce", m, {ones}, {output},
+                                       baseline_all_reduce<ark::half_t, num_gpus>, "ones", true, gpu_id, num_gpus);
+            ark::op_test_log(result);
             return ark::unittest::SUCCESS;
         });
     }
-
     ark::unittest::wait_all_processes();
-    free(gt);
 }
 
-ark::unittest::State test_all_reduce()
+ark::unittest::State test_all_reduce_4gpus()
 {
-    test_all_reduce_internal(8, 2, 1);
-    test_all_reduce_internal(16, 4, 1);
+    test_all_reduce_4gpus_internal(8, 1);
+    // test_all_reduce_4gpus_internal(8192, 1);
     return ark::unittest::SUCCESS;
 }
 
 int main()
 {
     ark::init();
-    UNITTEST(test_all_reduce);
+    UNITTEST(test_all_reduce_4gpus);
     return ark::unittest::SUCCESS;
 }

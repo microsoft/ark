@@ -499,6 +499,25 @@ void GpuCommSw::Impl::launch_request_loop()
         return;
     }
 #endif // ARK_USE_MSCCLPP
+
+    const size_t sc_offset = 0;
+    const size_t rc_offset = MAX_NUM_SID * sizeof(int);
+
+    // Get the local SC/RC host addresses.
+    int *sc_href = (int *)this->get_sc_rc_mem(this->gpu_id)->href(sc_offset);
+    assert(sc_href != nullptr);
+    int *rc_href = (int *)this->get_sc_rc_mem(this->gpu_id)->href(rc_offset);
+    assert(rc_href != nullptr);
+
+    // Initialize SCs to ones.
+    for (int i = 0; i < MAX_NUM_SID; ++i) {
+        sc_href[i] = 1;
+    }
+    // Initialize RCs to zeros.
+    for (int i = 0; i < MAX_NUM_SID; ++i) {
+        rc_href[i] = 0;
+    }
+
     if (this->request_loop_thread == nullptr) {
         this->run_request_loop_thread = true;
         this->request_loop_thread = new thread([&, gid = this->gpu_id] {

@@ -166,15 +166,6 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
       sc_rc_mem{ARK_GPU_SC_RC_NAME + name_ + to_string(gpu_mgr_->gpu_id),
                 2 * MAX_NUM_SID * sizeof(int), true}
 {
-    // Initialize SCs to ones.
-    int *href = (int *)this->sc_rc_mem.href();
-    for (int i = 0; i < MAX_NUM_SID; ++i) {
-        href[i] = 1;
-    }
-    // Initialize RCs to zeros.
-    for (int i = MAX_NUM_SID; i < 2 * MAX_NUM_SID; ++i) {
-        href[i] = 0;
-    }
     // Use the CPU-side software communication stack.
     this->comm_sw = std::make_unique<GpuCommSw>(
         name_, gpu_mgr_->gpu_id, rank_, world_size_, &data_mem, &sc_rc_mem);
@@ -393,7 +384,6 @@ void GpuMgrCtx::freeze()
 
     //
     this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
-    this->comm_sw->launch_request_loop();
 }
 
 // Write a request.
