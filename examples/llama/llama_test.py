@@ -52,7 +52,7 @@ def performance_torch(torch_func, iter=None):
     elapsed = 1.0 * (end_torch - start_torch)
 
     if iter is None:
-        iter = max(int(2000 / elapsed), warmup_iter)
+        iter = max(int(2 / elapsed), warmup_iter)
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(iter):
