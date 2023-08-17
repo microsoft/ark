@@ -22,7 +22,7 @@ dim = 4096
 start_pos = 0
 
 performance_analysis = False
-torch_device = torch.device("cuda:0")
+torch_device = torch.device("cuda:1")
 
 
 def performance_ark(runtime, iter=None):
