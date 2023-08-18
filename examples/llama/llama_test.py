@@ -18,11 +18,11 @@ from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 
 batch_size = 1
 seq_len = 64
-dim = 4096
+dim = llama_ark.ModelArgs().dim
 start_pos = 0
 
 np_type = np.float32
-ark_type = ark.FP32
+ark_type = llama_ark.ark_type
 
 performance_analysis = False
 torch_device = torch.device("cuda:1")
@@ -423,7 +423,7 @@ if __name__ == "__main__":
     os.environ["WORLD_SIZE"] = "1"
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
-    performance_analysis = True
+    # performance_analysis = True
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     test_rmsnorm()
