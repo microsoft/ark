@@ -140,9 +140,9 @@ class Tensor:
         """
         Copies the tensor from a host numpy array to the device.
         """
-        if self.tensor_type == TensorType.FP32:
+        if self.tensor_type() == TensorType.FP32:
             ndarray = ndarray.astype(np.float32)
-        elif self.tensor_type == TensorType.FP16:
+        elif self.tensor_type() == TensorType.FP16:
             ndarray = ndarray.astype(np.float16)
         self.write(ndarray)
         return self
