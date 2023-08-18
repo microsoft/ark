@@ -23,7 +23,8 @@ start_pos = 0
 
 ark_type = llama_ark.ark_type
 
-np_type = np.float16 if ark_type == ark.FP16 else np.float32
+# np_type = np.float16 if ark_type == ark.FP16 else np.float32
+np_type = np.float32
 
 performance_analysis = False
 torch_device = torch.device("cuda:1")
