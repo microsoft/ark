@@ -30,7 +30,7 @@ performance_analysis = False
 torch_device = torch.device("cuda:1")
 
 total_execution_time = 1
-warmup_iter = 20
+warmup_iter = 50
 
 
 def performance_ark(runtime, iter=None):
