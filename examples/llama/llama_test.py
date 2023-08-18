@@ -21,8 +21,9 @@ seq_len = 64
 dim = llama_ark.ModelArgs().dim
 start_pos = 0
 
-np_type = np.float32
 ark_type = llama_ark.ark_type
+
+np_type = np.float16 if ark_type == ark.FP16 else np.float32
 
 performance_analysis = False
 torch_device = torch.device("cuda:1")
@@ -107,7 +108,7 @@ def test_rmsnorm():
     rmsnorm_ark = llama_ark.RMSNorm(dim)
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np.float32)
+    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
     for param in rmsnorm_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -121,7 +122,7 @@ def test_rmsnorm():
     output_ark = rmsnorm_ark(ark_input)
     # Launch the ARK runtime
     runtime.launch()
-    ark_input.from_numpy(input_numpy.astype(np.float32))
+    ark_input.from_numpy(input_numpy.astype(np_type))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
 
     rmsnorm_ark.load_state_dict(state_dict_ark)
@@ -129,7 +130,7 @@ def test_rmsnorm():
     runtime.run()
     output_ark_host = output_ark.to_numpy()
     # test if the result is correct
-    gt = output_pytorch.detach().numpy().astype(np.float32)
+    gt = output_pytorch.detach().numpy().astype(np_type)
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
 
@@ -156,7 +157,7 @@ def test_attention():
     dim = args.dim
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np.float32)
+    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
 
     # random init the torch model
@@ -183,14 +184,14 @@ def test_attention():
 
     # Launch the ARK runtime
     runtime.launch()
-    ark_input.from_numpy(input_numpy.astype(np.float32))
+    ark_input.from_numpy(input_numpy.astype(np_type))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
     attention_ark.load_state_dict(state_dict_ark)
     freqs_cis_complex = freqs_cis_torch.cpu().numpy().astype(np.complex64)
     # stack real and imag parts
     freqs_cis_stack = np.stack(
         [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
-    ).astype(np.float32)
+    ).astype(np_type)
 
     freqs_cis_ark.from_numpy(freqs_cis_stack)
 
@@ -199,7 +200,7 @@ def test_attention():
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.detach().numpy().astype(np.float32)
+    output_gt = output_torch.detach().numpy().astype(np_type)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
@@ -223,7 +224,7 @@ def test_feedforward():
     feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np.float32)
+    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
     for param in feedforward_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -237,7 +238,7 @@ def test_feedforward():
 
     # Launch the ARK runtime
     runtime.launch()
-    ark_input.from_numpy(input_numpy.astype(np.float32))
+    ark_input.from_numpy(input_numpy.astype(np_type))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
     feedforward_ark.load_state_dict(state_dict_ark)
 
@@ -247,7 +248,7 @@ def test_feedforward():
 
     # test if the result is correct
 
-    gt = output_pytorch.detach().numpy().astype(np.float32)
+    gt = output_pytorch.detach().numpy().astype(np_type)
 
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
@@ -274,7 +275,7 @@ def test_transformerblock():
     dim = args.dim
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np.float32)
+    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
 
     # random init the torch model
@@ -301,7 +302,7 @@ def test_transformerblock():
 
     # Launch the ARK runtime
     runtime.launch()
-    ark_input.from_numpy(input_numpy.astype(np.float32))
+    ark_input.from_numpy(input_numpy.astype(np_type))
 
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_block_ark.load_state_dict(ark_state_dict)
@@ -309,7 +310,7 @@ def test_transformerblock():
     # stack real and imag parts
     freqs_cis_stack = np.stack(
         [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
-    ).astype(np.float32)
+    ).astype(np_type)
 
     freqs_cis_ark.from_numpy(freqs_cis_stack)
     # Run the ARK program
@@ -317,7 +318,7 @@ def test_transformerblock():
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.detach().numpy().astype(np.float32)
+    output_gt = output_torch.detach().numpy().astype(np_type)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
@@ -365,9 +366,9 @@ def test_transformer():
     # Launch the ARK runtime
     runtime.launch()
     input_embedding = transformer_pytorch.tok_embeddings(torch_input)
-    input_embedding_numpy = input_embedding.detach().numpy().astype(np.float32)
+    input_embedding_numpy = input_embedding.detach().numpy().astype(np_type)
 
-    ark_input.from_numpy(input_embedding_numpy.astype(np.float32))
+    ark_input.from_numpy(input_embedding_numpy.astype(np_type))
 
     freqs_cis_torch = llama_pytorch.precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
@@ -378,7 +379,7 @@ def test_transformer():
     # stack real and imag parts
     freqs_cis_stack = np.stack(
         [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
-    ).astype(np.float32)
+    ).astype(np_type)
 
     freqs_cis_ark.from_numpy(freqs_cis_stack)
     ark_state_dict = convert_state_dict(state_dict, "numpy")
@@ -389,14 +390,14 @@ def test_transformer():
         mask_torch = torch.full((1, 1, seq_len, seq_len), float("-inf"))
         mask_torch = torch.triu(mask_torch, diagonal=start_pos + 1)
 
-    mask_numpy = mask_torch.numpy().astype(np.float32)
+    mask_numpy = mask_torch.numpy().astype(np_type)
     mask_ark.from_numpy(mask_numpy)
     # Run the ARK program
     runtime.run()
     output_ark_host = output.to_numpy()
 
     # test if the result is correct
-    output_gt = output_torch.detach().numpy().astype(np.float32)
+    output_gt = output_torch.detach().numpy().astype(np_type)
     max_abs_error = np.max(np.abs(output_ark_host - output_gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - output_gt))
     print(
@@ -423,7 +424,7 @@ if __name__ == "__main__":
     os.environ["WORLD_SIZE"] = "1"
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
-    # performance_analysis = True
+    performance_analysis = True
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     test_rmsnorm()
