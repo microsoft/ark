@@ -10,12 +10,12 @@ namespace ark {
 
 extern const OpConfigMap CommConfigMap;
 
-SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
+SendOp::SendOp(OpPrecType prec_type, Tensor *input, int sid,
                int rank, int dst_rank, size_t bytes, const std::string &name)
     : Op{OP_SEND,
          prec_type,
          {input},
-         {output},
+         {input},
          {{sid, rank, dst_rank, bytes}},
          name,
          &CommConfigMap,
@@ -127,10 +127,10 @@ OpArgs RecvOp::function_call_args(const OpConfig &) const
 
 //
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
-                    Tensor *output, const std::string &name)
+                    const std::string &name)
 {
     if (get_env().use_mscclpp) {
-        return this->send_mscclpp(input, id, dst_rank, bytes, output, name);
+        return this->send_mscclpp(input, id, dst_rank, bytes, name);
     }
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
@@ -139,12 +139,9 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "send ", input->shape, " ", id, " ", dst_rank, " ", bytes);
     input->exported = true;
-    if (output == nullptr) {
-        output = this->tensor({1, 1, 1, 1}, INT32);
-    }
-    SendOp op{OP_PREC_NONE,     input,    output, id,
+
+    SendOp op{OP_PREC_NONE,     input,    id,
               this->impl->rank, dst_rank, bytes,  name};
     return this->impl->add_op(op)[0];
 }
@@ -180,7 +177,6 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "recv ", input->shape, " ", id, " ", src_rank, " ", bytes);
     input->exported = true;
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
@@ -194,12 +190,12 @@ const OpConfigMap CommConfigMap = {
     {{OP_ARCH_CUDA_70, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 1}}, {{1, 1}}, true, true},
+         {1, 0, {{-1, -1}}, {{-1, -1}}, true, true},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 1}}, {{1, 1}}, true, true},
+         {1, 0, {{-1, -1}}, {{-1, -1}}, true, true},
      }},
 };
 

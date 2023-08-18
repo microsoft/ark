@@ -564,7 +564,6 @@ def send(
     id: int,
     dst_rank: int,
     bytes: int = 0,
-    output: Tensor = None,
     name: str = "send",
 ) -> Tensor:
     """
@@ -580,14 +579,11 @@ def send(
     # on GPU1:
     ark.recv(tensor, 1, 0)
     """
-    if output is not None:
-        output = output._tensor
     _tensor = Model.get_global_model().send(
         input._tensor,
         id,
         dst_rank,
         bytes,
-        output,
         name,
     )
     return Tensor(_tensor)
@@ -703,7 +699,6 @@ def send_mscclpp(
     sid: int,
     dst_rank: int,
     bytes: int = 0,
-    output: Tensor = None,
     name: str = "send_mscclpp",
 ) -> Tensor:
     """
@@ -719,14 +714,11 @@ def send_mscclpp(
     # on GPU1:
     ark.recv(tensor, 1, 0)
     """
-    if output is not None:
-        output = output._tensor
     _tensor = Model.get_global_model().send_mscclpp(
         input._tensor,
         sid,
         dst_rank,
         bytes,
-        output,
         name,
     )
     return Tensor(_tensor)

@@ -11,13 +11,13 @@ namespace ark {
 extern const OpConfigMap MscclppConfigMap;
 
 MscclppSendOp::MscclppSendOp(OpPrecType prec_type, Tensor *input,
-                             Tensor *recvbuf, Tensor *output, int sid, int rank,
+                             Tensor *recvbuf, int sid, int rank,
                              int dst_rank, size_t bytes,
                              const std::string &name)
     : Op{OP_SEND_MSCCLPP,
          prec_type,
          {input, recvbuf},
-         {output},
+         {input},
          {{rank, dst_rank, bytes, sid}},
          name,
          &MscclppConfigMap,
@@ -133,8 +133,7 @@ OpArgs MscclppRecvOp::function_call_args(const OpConfig &) const
 }
 
 Tensor *Model::send_mscclpp(Tensor *input, int sid, int dst_rank,
-                            std::size_t bytes, Tensor *output,
-                            const std::string &name)
+                            std::size_t bytes, const std::string &name)
 {
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
@@ -145,12 +144,10 @@ Tensor *Model::send_mscclpp(Tensor *input, int sid, int dst_rank,
     }
     LOG(DEBUG, "send_mscclpp ", input->shape, " ", dst_rank, " ", bytes);
     input->exported = true;
-    if (output == nullptr) {
-        output = this->tensor({1, 1, 1, 1}, INT32);
-    }
+
     Tensor *recvbuf = this->tensor(input->shape, input->type);
     recvbuf->imported_rank = dst_rank;
-    MscclppSendOp op{OP_PREC_NONE,     input,    recvbuf, output, sid,
+    MscclppSendOp op{OP_PREC_NONE,     input,    recvbuf, sid,
                      this->impl->rank, dst_rank, bytes,   name};
     return this->impl->add_op(op)[0];
 }

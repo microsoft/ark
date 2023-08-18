@@ -17,7 +17,7 @@ void test_sendrecv_internal()
             ark::Model model{gpu_id};
             ark::Tensor *tns_x = model.tensor({1024}, ark::FP16);
             if (gpu_id == 0) {
-                model.send(tns_x, 0, 1, 1024);
+                tns_x = model.send(tns_x, 0, 1, 1024);
                 model.send_done(tns_x, 0, 1);
             }
             if (gpu_id == 1) {

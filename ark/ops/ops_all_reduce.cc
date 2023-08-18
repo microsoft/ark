@@ -16,7 +16,6 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
     if (output != nullptr) {
         LOG(ERROR, "all_reduce output is not supported");
     }
-    LOG(DEBUG, "all_reduce ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
     }

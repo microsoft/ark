@@ -46,8 +46,8 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter)
 
 ark::unittest::State test_all_reduce_4gpus()
 {
-    test_all_reduce_4gpus_internal(8, 1);
-    // test_all_reduce_4gpus_internal(8192, 1);
+    // test_all_reduce_4gpus_internal(8, 1);
+    test_all_reduce_4gpus_internal(8192, 1);
     return ark::unittest::SUCCESS;
 }
 

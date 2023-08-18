@@ -417,11 +417,10 @@ class Model
     /// @param id
     /// @param dst_rank Rank of the GPU to send to.
     /// @param bytes
-    /// @param output
     /// @param name
     /// @return
     Tensor *send(Tensor *input, int id, int dst_rank, std::size_t bytes = 0,
-                 Tensor *output = nullptr, const std::string &name = "send");
+                 const std::string &name = "send");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
     Tensor *send_done(Tensor *input, int id, int dst_rank,
@@ -444,8 +443,7 @@ class Model
                     const std::string &name = "recv_mm");
     //
     Tensor *send_mscclpp(Tensor *input, int sid, int dst_rank,
-                         std::size_t bytes = 0, Tensor *output = nullptr,
-                         const std::string &name = "send_mscclpp");
+                         std::size_t bytes = 0, const std::string &name = "send_mscclpp");
     //
     Tensor *send_done_mscclpp(Tensor *input, int dst_rank,
                               Tensor *output = nullptr,

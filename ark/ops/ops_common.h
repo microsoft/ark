@@ -470,7 +470,7 @@ class RecvMMOp : public Op
 class SendOp : public Op
 {
   public:
-    SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
+    SendOp(OpPrecType prec_type, Tensor *input, int sid,
            int rank, int dst_rank, size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
@@ -498,7 +498,7 @@ class MscclppSendOp : public Op
 {
   public:
     MscclppSendOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
-                  Tensor *output, int sid, int rank, int dst_rank, size_t bytes,
+                  int sid, int rank, int dst_rank, size_t bytes,
                   const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;

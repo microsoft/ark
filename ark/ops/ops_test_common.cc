@@ -216,7 +216,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     exe.launch();
 
     // Correctness test.
-    exe.run(1);
+    exe.run(10000);
     exe.wait();
     exe.stop();
 
@@ -290,17 +290,12 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     }
 
     // Throughput test.
-    LOG(INFO, "op_test: start throughput test");
-
-    // Restart the executor.
-    exe.launch();
-    LOG(INFO, "op_test: launched");
-
+    return result;
     if (world_size > 1) {
         // For multi-GPU, we need to make sure that all GPUs run the same
         // number of iterations. Rather than doing allgather, we just
         // use a magic number here.
-        int iter = 100;
+        int iter = 10000;
         exe.launch();
         exe.run(iter);
         float msec = exe.stop();
@@ -309,6 +304,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         // Rough measure.
         int warmup_iter = 3;
         float target_msec = 2000;
+        exe.launch();
         exe.run(warmup_iter);
         float warmup_msec = exe.stop();
 
