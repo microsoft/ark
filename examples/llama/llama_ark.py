@@ -6,6 +6,8 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
+ark_type = ark.FP32
+
 
 @dataclass
 class ModelArgs:
@@ -28,7 +30,7 @@ class RMSNorm(ark.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
-        self.weight = ark.Parameter(ark.tensor([1, 1, dim], ark.FP32))
+        self.weight = ark.Parameter(ark.tensor([1, 1, dim], ark_type))
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
@@ -42,7 +44,7 @@ class RMSNorm(ark.Module):
 class Linear(ark.Module):
     def __init__(self, in_dim: int, out_dim: int):
         super().__init__()
-        self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], ark.FP32))
+        self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], ark_type))
 
     def forward(self, x):
         return ark.matmul(x, self.weight, transpose_b=True)
@@ -54,7 +56,7 @@ class Silu(ark.Module):
 
     def forward(self, x):
         # We need to specify output tensor so that the sigmoid op will not be an in-place operator
-        output = ark.tensor(x.shape, ark.FP32)
+        output = ark.tensor(x.shape, ark_type)
         x1 = ark.sigmoid(x, output)
         return ark.mul(x, x1)
 

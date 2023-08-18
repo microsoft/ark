@@ -21,6 +21,9 @@ seq_len = 64
 dim = 4096
 start_pos = 0
 
+np_type = np.float32
+ark_type = ark.FP32
+
 performance_analysis = False
 torch_device = torch.device("cuda:1")
 
@@ -114,7 +117,7 @@ def test_rmsnorm():
     torch_input = torch_input.to(torch_device)
     output_pytorch = rmsnorm_pytorch(torch_input)
     output_pytorch = output_pytorch.cpu()
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
     output_ark = rmsnorm_ark(ark_input)
     # Launch the ARK runtime
     runtime.launch()
@@ -172,9 +175,9 @@ def test_attention():
     output_torch = attention_pytorch(torch_input, 0, freqs_cis_torch, None)
     output_torch = output_torch.cpu()
 
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
     freqs_cis_ark = ark.tensor(
-        [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
+        [1, seq_len, 1, args.dim // args.n_heads], ark_type
     )
     output = attention_ark(ark_input, 0, freqs_cis_ark, None)
 
@@ -229,7 +232,7 @@ def test_feedforward():
     torch_input = torch_input.to(torch_device)
     output_pytorch = feedforward_pytorch(torch_input)
     output_pytorch = output_pytorch.cpu()
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
     output_ark = feedforward_ark(ark_input)
 
     # Launch the ARK runtime
@@ -290,9 +293,9 @@ def test_transformerblock():
         torch_input, 0, freqs_cis_torch, None
     )
     output_torch = output_torch.cpu()
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
     freqs_cis_ark = ark.tensor(
-        [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
+        [1, seq_len, 1, args.dim // args.n_heads], ark_type
     )
     output = transformer_block_ark(ark_input, 0, freqs_cis_ark, None)
 
@@ -353,11 +356,11 @@ def test_transformer():
     # transformer_pytorch.load_state_dict(state_dict_torch)
     output_torch = transformer_pytorch(torch_input, 0)
     output_torch = output_torch.cpu()
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark.FP32)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
     freqs_cis_ark = ark.tensor(
-        [1, seq_len, 1, args.dim // args.n_heads], ark.FP32
+        [1, seq_len, 1, args.dim // args.n_heads], ark_type
     )
-    mask_ark = ark.tensor([1, seq_len, seq_len], ark.FP32)
+    mask_ark = ark.tensor([1, seq_len, seq_len], ark_type)
     output = transformer_ark(ark_input, 0, freqs_cis_ark, mask_ark)
     # Launch the ARK runtime
     runtime.launch()
