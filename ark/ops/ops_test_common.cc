@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "ops_test_common.h"
+#include "env.h"
 #include "gpu/gpu_kernel.h"
 #include "logging.h"
 #include "random.h"
@@ -160,9 +161,13 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
                       const std::vector<Tensor *> &outputs,
                       OpsTestBaseline baseline, const std::string &init_method,
-                      bool print_on_error, int num_warps_per_sm)
+                      bool print_on_error, int rank, int world_size,
+                      int num_warps_per_sm)
 {
-    Executor exe{0, 0, 1, model, "op_test_" + rand_anum(4), num_warps_per_sm};
+    int gpu_id = rank % get_env().num_ranks_per_host;
+    Executor exe{
+        gpu_id,          rank, world_size, model, "op_test_" + rand_anum(4),
+        num_warps_per_sm};
     exe.compile();
 
     // Set random data.
@@ -288,28 +293,34 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     }
 
     // Throughput test.
-
-    // Restart the executor.
-    exe.launch();
-
-    // Rough measure.
-    int warmup_iter = 3;
-    float target_msec = 2000;
-    exe.run(warmup_iter);
-    float warmup_msec = exe.stop();
-
-    if (warmup_msec > target_msec) {
-        // Warm-up was long enough.
-        result.msec_per_iter = warmup_msec / warmup_iter;
-    } else {
-        int iter = int(target_msec / warmup_msec);
+    if (world_size > 1) {
+        // For multi-GPU, we need to make sure that all GPUs run the same
+        // number of iterations. Rather than doing allgather, we just
+        // use a magic number here.
+        int iter = 100;
         exe.launch();
         exe.run(iter);
         float msec = exe.stop();
         result.msec_per_iter = msec / iter;
-    }
+    } else {
+        // Rough measure.
+        int warmup_iter = 3;
+        float target_msec = 2000;
+        exe.launch();
+        exe.run(warmup_iter);
+        float warmup_msec = exe.stop();
 
-    exe.stop();
+        if (warmup_msec > target_msec) {
+            // Warm-up was long enough.
+            result.msec_per_iter = warmup_msec / warmup_iter;
+        } else {
+            int iter = int(target_msec / warmup_msec);
+            exe.launch();
+            exe.run(iter);
+            float msec = exe.stop();
+            result.msec_per_iter = msec / iter;
+        }
+    }
 
     // Free resources
     for (auto ptr : input_data) {
@@ -329,30 +340,33 @@ OpsTestResult op_test_8(const std::string &test_name_prefix, Model &model,
                         const std::vector<Tensor *> &inputs,
                         const std::vector<Tensor *> &outputs,
                         OpsTestBaseline baseline,
-                        const std::string &init_method, bool print_on_error)
+                        const std::string &init_method, bool print_on_error,
+                        int rank, int world_size)
 {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   init_method, 8, print_on_error);
+                   init_method, print_on_error, rank, world_size, 8);
 }
 
 OpsTestResult op_test_16(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &inputs,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
-                         const std::string &init_method, bool print_on_error)
+                         const std::string &init_method, bool print_on_error,
+                         int rank, int world_size)
 {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   init_method, 16, print_on_error);
+                   init_method, print_on_error, rank, world_size, 16);
 }
 
 OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &inputs,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
-                         const std::string &init_method, bool print_on_error)
+                         const std::string &init_method, bool print_on_error,
+                         int rank, int world_size)
 {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   init_method, 32, print_on_error);
+                   init_method, print_on_error, rank, world_size, 32);
 }
 
 void op_test_log(const OpsTestResult &result)

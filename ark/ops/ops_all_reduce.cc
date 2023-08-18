@@ -43,7 +43,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
                             base + gpu_id * gpu_num + gpu_dst, gpu_dst);
         Tensor *recv_buf = this->tensor(input->shape, input->type);
         Tensor *recv = this->recv(this->identity(recv_buf, {send_done_tensor}),
-                                  base + gpu_src * gpu_num + gpu_id, gpu_dst);
+                                  base + gpu_src * gpu_num + gpu_id, gpu_src);
         prev_recv = recv;
         cumulate = this->add(cumulate, this->identity(recv_buf, {recv}));
     }
