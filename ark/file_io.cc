@@ -141,9 +141,7 @@ vector<string> list_dir(const string &path)
     if (d) {
         struct dirent *p;
 
-        r = 0;
-        while (!r && (p = readdir(d))) {
-            int r2 = -1;
+        while ((p = readdir(d))) {
             char *buf;
             size_t len;
 
@@ -163,7 +161,6 @@ vector<string> list_dir(const string &path)
                 }
                 free(buf);
             }
-            r = r2;
         }
         closedir(d);
     }
