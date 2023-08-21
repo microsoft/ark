@@ -40,10 +40,6 @@ DEVICE void send(int, int)
     if (UnitOp::thread_id() != 0) {
         return;
     }
-    volatile unsigned int *done = &(_ARK_SC[SrcSid]);
-    while (!(*done)) {
-    }
-    *done = 0;
     constexpr unsigned long long int dbval =
         Request<ReqType::Send, DstSid, SrcSid, DstRank, Length>::value;
 #if (ARK_COMM_SW != 0)
