@@ -27,7 +27,7 @@ ark_type = llama_ark.ark_type
 np_type = np.float32
 
 performance_analysis = False
-torch_device = torch.device("cuda:1")
+torch_device = None
 
 total_execution_time = 1
 warmup_iter = 50
@@ -424,8 +424,7 @@ if __name__ == "__main__":
 
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
-    torch.cuda.set_device(local_rank)
-
+    torch_device = torch.device("cuda", local_rank)
     # Seed must be the same in all processes
     torch.manual_seed(1)
     os.environ["MASTER_ADDR"] = "localhost"
