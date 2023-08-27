@@ -107,9 +107,16 @@ class RowParallelLinear(ark.Module):
         output_parallel = ark.matmul(
             x_shards[local_rank], self.weight, transpose_b=True
         )
+        # allreduce the output_parallel, currently we only support allreduce on 1D tensor,
+        # so we need to reshape the output_parallel to 1D
         output_shape = output_parallel.shape
+        # multiply the output_shape list
+        output_shape_bytes = 1
+        for i in range(len(output_shape)):
+            output_shape_bytes *= output_shape[i]
         output_parallel_reshape = ark.reshape(
-            output_parallel, output_parallel.shape_bytes()
+            output_parallel,
+            [output_shape_bytes],
         )
         output_reshape = ark.all_reduce(
             output_parallel_reshape, local_rank, world_size
