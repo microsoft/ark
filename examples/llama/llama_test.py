@@ -152,6 +152,59 @@ def test_rmsnorm():
     performance_comparison(runtime, pytorch_func)
 
 
+def test_linear():
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(local_rank, world_size)
+    parallel_linear_ark = llama_ark.RowParallelLinear(dim, dim)
+    parallel_linear_pytorch = fairscale.nn.model_parallel.RowParallelLinear(
+        dim,
+        dim,
+        bias=False,
+        input_is_parallel=True,
+        init_method=lambda x: x,
+    )
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, seq_len, dim)
+    ).astype(np_type)
+    torch_input = torch.from_numpy(input_numpy)
+    for param in parallel_linear_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict_torch = parallel_linear_pytorch.state_dict()
+
+    parallel_linear_pytorch = parallel_linear_pytorch.to(torch_device)
+    torch_input = torch_input.to(torch_device)
+    output_pytorch = parallel_linear_pytorch(torch_input)
+    output_pytorch = output_pytorch.cpu()
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
+    output_ark = parallel_linear_ark(ark_input)
+    # Launch the ARK runtime
+    runtime.launch()
+    ark_input.from_numpy(input_numpy.astype(np_type))
+    state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
+
+    parallel_linear_ark.load_state_dict(state_dict_ark)
+    # Run the ARK program
+    runtime.run()
+    output_ark_host = output_ark.to_numpy()
+    # test if the result is correct
+    gt = output_pytorch.detach().numpy().astype(np_type)
+    max_abs_error = np.max(np.abs(output_ark_host - gt))
+    mean_abs_error = np.mean(np.abs(output_ark_host - gt))
+
+    print(
+        "rmsnorm test",
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+    )
+
+    def pytorch_func():
+        parallel_linear_pytorch(torch_input)
+
+    performance_comparison(runtime, pytorch_func)
+
+
 def test_attention():
     # Initialize the ARK runtime
     runtime = ark.Runtime(local_rank, world_size)
@@ -436,10 +489,12 @@ if __name__ == "__main__":
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(world_size)
     # test_rmsnorm()
+    test_linear()
+    exit(0)
+
     # Make sure that all processes have finished the rmsnorm test
     # torch.distributed.barrier()
     test_attention()
-    exit(0)
     # torch.distributed.barrier()
     test_feedforward()
     # torch.distributed.barrier()
