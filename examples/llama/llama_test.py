@@ -426,16 +426,23 @@ if __name__ == "__main__":
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     torch.cuda.set_device(local_rank)
 
-    # seed must be the same in all processes
+    # Seed must be the same in all processes
     torch.manual_seed(1)
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
-    # if you want to test the performance of ARK, set performance_analysis to True
+    # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(world_size)
     test_rmsnorm()
+    # Make sure that all processes have finished the rmsnorm test
+    torch.distributed.barrier()
     test_attention()
+    torch.distributed.barrier()
     test_feedforward()
+    torch.distributed.barrier()
     test_transformerblock()
-    # test_transformer()
+    torch.distributed.barrier()
+    test_transformer()
+    torch.distributed.barrier()
+    torch.distributed.destroy_process_group()
