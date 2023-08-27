@@ -28,7 +28,6 @@ If you want to test the correctness and the performance of the ARK LLaMa impleme
 world_size = 2
 cd examples/llama
 python -m torch.distributed.launch \
-       --nnodes 1 \
        --nproc_per_node $world_size \
        llama_test.py
 ```

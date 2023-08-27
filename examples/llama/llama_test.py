@@ -419,11 +419,8 @@ def test_transformer():
 
 
 if __name__ == "__main__":
+    # Usage: python -m torch.distributed.launch --nproc_per_node num_gpus llama_test.py
     # Set up the environment variables for nccl
-    # export RANK=0
-    # export WORLD_SIZE=1
-    # export MASTER_ADDR=localhost
-    # export MASTER_PORT=29500
 
     if os.environ.get("RANK") is None:
         os.environ["RANK"] = "0"
@@ -436,7 +433,8 @@ if __name__ == "__main__":
 
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
-    performance_analysis = True
+    # if you want to test the performance of ARK, set performance_analysis to True
+    performance_analysis = False
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(1)
     test_rmsnorm()
