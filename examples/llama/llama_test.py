@@ -13,8 +13,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import time
-
-from fairscale.nn.model_parallel.initialize import initialize_model_parallel
+import fairscale
 
 batch_size = 1
 seq_len = 64
@@ -487,7 +486,7 @@ if __name__ == "__main__":
     # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
     torch.distributed.init_process_group("nccl")
-    initialize_model_parallel(world_size)
+    fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
     # test_rmsnorm()
     test_linear()
     exit(0)
