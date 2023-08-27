@@ -32,7 +32,7 @@ torch_device = torch.device("cuda:1")
 total_execution_time = 1
 warmup_iter = 50
 
-rank = 0
+local_rank = 0
 world_size = 1
 
 
@@ -107,7 +107,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
 
 def test_rmsnorm():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
     input_numpy = np.random.uniform(
@@ -154,7 +154,7 @@ def test_rmsnorm():
 
 def test_attention():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     args = llama_ark.ModelArgs()
     attention_pytorch = llama_pytorch.Attention(args)
     attention_ark = llama_ark.Attention(args)
@@ -223,7 +223,7 @@ def test_attention():
 
 def test_feedforward():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     feedforward_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
     feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
     input_numpy = np.random.uniform(
@@ -272,7 +272,7 @@ def test_feedforward():
 
 def test_transformerblock():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     args = llama_ark.ModelArgs()
     transformer_block_pytorch = llama_pytorch.TransformerBlock(0, args)
     transformer_block_ark = llama_ark.TransformerBlock(0, args)
@@ -341,7 +341,7 @@ def test_transformerblock():
 
 def test_transformer():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     args = llama_ark.ModelArgs()
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
     args.n_layers = 2
@@ -422,9 +422,12 @@ if __name__ == "__main__":
     # Usage: python -m torch.distributed.launch --nproc_per_node num_gpus llama_test.py
     # Set up the environment variables for nccl
 
-    rank = int(os.environ.get("RANK", 0))
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
+    torch.cuda.set_device(local_rank)
 
+    # seed must be the same in all processes
+    torch.manual_seed(1)
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
     # if you want to test the performance of ARK, set performance_analysis to True
