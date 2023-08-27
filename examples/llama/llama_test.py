@@ -424,6 +424,8 @@ if __name__ == "__main__":
 
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
+    llama_ark.local_rank = local_rank
+    llama_ark.world_size = world_size
     torch_device = torch.device("cuda", local_rank)
     # Seed must be the same in all processes
     torch.manual_seed(1)
@@ -435,13 +437,13 @@ if __name__ == "__main__":
     initialize_model_parallel(world_size)
     test_rmsnorm()
     # Make sure that all processes have finished the rmsnorm test
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
     test_attention()
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
     test_feedforward()
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
     test_transformerblock()
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
     test_transformer()
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
     torch.distributed.destroy_process_group()

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 ark_type = ark.FP16
+local_rank = 0
+world_size = 1
 
 
 @dataclass
@@ -39,6 +41,74 @@ class RMSNorm(ark.Module):
     def forward(self, x):
         output = self._norm(x)
         return ark.mul(output, self.weight)
+
+
+class ColumnParallelLinear(ark.Module):
+    """Linear layer with column parallelism.
+
+    The linear layer is defined as Y = XA + b. A is parallelized along
+    its second dimension as A = [A_1, ..., A_p].
+    Here the weight = A^T, so we need to partition the weight matrix along
+    its first dimension.
+
+    """
+
+    def __init__(self, in_dim: int, out_dim: int):
+        super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.weight = ark.Parameter(
+            ark.tensor([out_dim // world_size, in_dim], ark_type)
+        )
+
+    def forward(self, x):
+        input_shape = x.shape
+        # Change the last shape of input_shape to out_dim
+        ndims = len(input_shape)
+        output_shape = input_shape[:-1] + [self.out_dim]
+        output_tensor = ark.tensor(output_shape, ark_type)
+        output_tensor_shards = ark.sharding(
+            output_tensor, ndims - 1, self.out_dim // world_size
+        )
+        ark.matmul(
+            x, self.weight, output_tensor_shards[local_rank], transpose_b=True
+        )
+        return output_tensor
+
+
+class RowParallelLinear(ark.Module):
+    """Linear layer with row parallelism.
+
+    The linear layer is defined as Y = XA + b. A is parallelized along
+    its first dimension and X along its second dimension as:
+               -   -
+              | A_1 |
+              | .   |
+          A = | .   |        X = [X_1, ..., X_p]
+              | .   |
+              | A_p |
+               -   -
+
+    Here the weight = A^T, so we need to partition the weight matrix along
+    its second dimension.
+    """
+
+    def __init__(self, in_dim: int, out_dim: int):
+        super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.weight = ark.Parameter(
+            ark.tensor([out_dim, in_dim // world_size], ark_type)
+        )
+
+    def forward(self, x):
+        x_ndims = len(x.shape)
+        x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // world_size)
+        output_parallel = ark.matmul(
+            x_shards[local_rank], self.weight, transpose_b=True
+        )
+        output = ark.allreduce(output_parallel, local_rank, world_size)
+        return output
 
 
 class Linear(ark.Module):
@@ -78,9 +148,9 @@ class FeedForward(ark.Module):
             (hidden_dim + multiple_of - 1) // multiple_of
         )
 
-        self.w1 = Linear(dim, hidden_dim)
-        self.w2 = Linear(hidden_dim, dim)
-        self.w3 = Linear(dim, hidden_dim)
+        self.w1 = ColumnParallelLinear(dim, hidden_dim)
+        self.w2 = RowParallelLinear(hidden_dim, dim)
+        self.w3 = ColumnParallelLinear(dim, hidden_dim)
 
     def forward(self, x):
         # self.w2(F.silu(self.w1(x)) * self.w3(x))
@@ -109,10 +179,14 @@ class Attention(ark.Module):
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
-        self.wq = Linear(args.dim, args.n_heads * self.head_dim)
-        self.wk = Linear(args.dim, self.n_kv_heads * self.head_dim)
-        self.wv = Linear(args.dim, self.n_kv_heads * self.head_dim)
-        self.wo = Linear(args.n_heads * self.head_dim, args.dim)
+        self.wq = ColumnParallelLinear(args.dim, args.n_heads * self.head_dim)
+        self.wk = ColumnParallelLinear(
+            args.dim, self.n_kv_heads * self.head_dim
+        )
+        self.wv = ColumnParallelLinear(
+            args.dim, self.n_kv_heads * self.head_dim
+        )
+        self.wo = RowParallelLinear(args.n_heads * self.head_dim, args.dim)
 
     def forward(
         self,
@@ -212,7 +286,7 @@ class Transformer(ark.Module):
             self.layers.append(TransformerBlock(layer_id, params))
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = Linear(params.dim, params.vocab_size)
+        self.output = ColumnParallelLinear(params.dim, params.vocab_size)
 
     def forward(
         self,
