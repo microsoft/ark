@@ -107,7 +107,14 @@ class RowParallelLinear(ark.Module):
         output_parallel = ark.matmul(
             x_shards[local_rank], self.weight, transpose_b=True
         )
-        output = ark.allreduce(output_parallel, local_rank, world_size)
+        output_shape = output_parallel.shape
+        output_parallel_reshape = ark.reshape(
+            output_parallel, output_parallel.shape_bytes()
+        )
+        output_reshape = ark.all_reduce(
+            output_parallel_reshape, local_rank, world_size
+        )
+        output = ark.reshape(output_reshape, output_shape)
         return output
 
 

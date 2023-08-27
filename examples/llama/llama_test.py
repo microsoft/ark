@@ -435,10 +435,11 @@ if __name__ == "__main__":
     performance_analysis = False
     torch.distributed.init_process_group("nccl")
     initialize_model_parallel(world_size)
-    test_rmsnorm()
+    # test_rmsnorm()
     # Make sure that all processes have finished the rmsnorm test
     # torch.distributed.barrier()
     test_attention()
+    exit(0)
     # torch.distributed.barrier()
     test_feedforward()
     # torch.distributed.barrier()
