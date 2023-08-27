@@ -32,6 +32,9 @@ torch_device = torch.device("cuda:1")
 total_execution_time = 1
 warmup_iter = 50
 
+rank = 0
+world_size = 1
+
 
 def performance_ark(runtime, iter=None):
     # Restart the ARK runtime
@@ -104,7 +107,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
 
 def test_rmsnorm():
     # Initialize the ARK runtime
-    runtime = ark.Runtime()
+    runtime = ark.Runtime(rank, world_size)
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
     input_numpy = np.random.uniform(
@@ -151,7 +154,7 @@ def test_rmsnorm():
 
 def test_attention():
     # Initialize the ARK runtime
-    runtime = ark.Runtime()
+    runtime = ark.Runtime(rank, world_size)
     args = llama_ark.ModelArgs()
     attention_pytorch = llama_pytorch.Attention(args)
     attention_ark = llama_ark.Attention(args)
@@ -220,7 +223,7 @@ def test_attention():
 
 def test_feedforward():
     # Initialize the ARK runtime
-    runtime = ark.Runtime()
+    runtime = ark.Runtime(rank, world_size)
     feedforward_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
     feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
     input_numpy = np.random.uniform(
@@ -269,7 +272,7 @@ def test_feedforward():
 
 def test_transformerblock():
     # Initialize the ARK runtime
-    runtime = ark.Runtime()
+    runtime = ark.Runtime(rank, world_size)
     args = llama_ark.ModelArgs()
     transformer_block_pytorch = llama_pytorch.TransformerBlock(0, args)
     transformer_block_ark = llama_ark.TransformerBlock(0, args)
@@ -338,7 +341,7 @@ def test_transformerblock():
 
 def test_transformer():
     # Initialize the ARK runtime
-    runtime = ark.Runtime()
+    runtime = ark.Runtime(rank, world_size)
     args = llama_ark.ModelArgs()
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
     args.n_layers = 2
@@ -421,8 +424,16 @@ if __name__ == "__main__":
     # export WORLD_SIZE=1
     # export MASTER_ADDR=localhost
     # export MASTER_PORT=29500
-    os.environ["RANK"] = "0"
-    os.environ["WORLD_SIZE"] = "1"
+
+    if os.environ.get("RANK") is None:
+        os.environ["RANK"] = "0"
+    else:
+        rank = int(os.environ["RANK"])
+    if os.environ.get("WORLD_SIZE") is None:
+        os.environ["WORLD_SIZE"] = "1"
+    else:
+        world_size = int(os.environ["WORLD_SIZE"])
+
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
     performance_analysis = True

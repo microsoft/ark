@@ -20,3 +20,17 @@ To verify the correctness of the ARK LLaMa implementation, please execute the fo
 cd examples/llama
 python llama_test.py
 ```
+
+If you want to test the correctness and the performance of the ARK LLaMa implementation on multiple GPUs, please execute the following command:
+
+```bash
+# The number of GPUs
+world_size = 2
+cd examples/llama
+python -m torch.distributed.launch \
+       --nnodes 1 \
+       --nproc_per_node $world_size \
+       llama_test.py
+```
+
+Please note that the ARK has no dependency on PyTorch, here we use PyTorch distributed launch utility to launch multiple processes for multiple GPUs. Pytorch is also used to compare the results of the ARK LLaMa implementation with the official LLaMa implementation.
