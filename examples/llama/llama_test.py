@@ -159,7 +159,6 @@ def test_linear():
         dim,
         dim,
         bias=False,
-        input_is_parallel=True,
         init_method=lambda x: x,
     )
     input_numpy = np.random.uniform(
