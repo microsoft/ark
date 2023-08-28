@@ -56,7 +56,6 @@ def unittest(test_func):
             torch.distributed.barrier()
 
     proc = []
-    nccl_port = 29500
     llama_ark.world_size = world_size
     # Set up the environment variables for nccl
 
@@ -578,13 +577,8 @@ def test_transformer():
 if __name__ == "__main__":
     unittest(test_rmsnorm)
     unittest(test_row_parallel_linear)
-
     unittest(test_column_parallel_linear)
-
     unittest(test_attention)
-
     unittest(test_feedforward)
-
     unittest(test_transformerblock)
-
     unittest(test_transformer)
