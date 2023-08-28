@@ -81,6 +81,8 @@ class ColumnParallelLinear(ark.Module):
         # (batch_size * seq_len, in_dim)
         x = ark.reshape(x, [input_shape[0] * input_shape[1], input_shape[2]])
 
+        # Here we need to transpose the input tensor to make the matmul output to
+        # be contigious in memory
         # (out_dim // world_size, in_dim) * (batch_size * seq_len, in_dim)^T =
         # (out_dim // world_size, batch_size * seq_len)
         ark.matmul(

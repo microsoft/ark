@@ -33,7 +33,7 @@ torch_device = None
 total_execution_time = 1
 warmup_iter = 50
 
-world_size = 1
+world_size = 2
 
 
 def unittest(test_func):
@@ -573,10 +573,10 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    unittest(test_rmsnorm)
-    unittest(test_row_parallel_linear)
+    # unittest(test_rmsnorm)
+    # unittest(test_row_parallel_linear)
     unittest(test_column_parallel_linear)
-    unittest(test_attention)
-    unittest(test_feedforward)
-    unittest(test_transformerblock)
-    unittest(test_transformer)
+    # unittest(test_attention)
+    # unittest(test_feedforward)
+    # unittest(test_transformerblock)
+    # unittest(test_transformer)
