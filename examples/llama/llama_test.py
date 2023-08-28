@@ -33,7 +33,7 @@ torch_device = None
 total_execution_time = 1
 warmup_iter = 50
 
-world_size = 4
+world_size = 1
 
 
 def unittest(test_func):
@@ -42,7 +42,7 @@ def unittest(test_func):
         # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend
         # and cpu device for PyTorch model
         if world_size == 1:
-            torch_device = torch.device("cuda", local_rank)
+            torch_device = torch.device("cuda", 0)
             torch.distributed.init_process_group("nccl")
         else:
             torch_device = torch.device("cpu")
