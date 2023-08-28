@@ -71,7 +71,8 @@ class ColumnParallelLinear(ark.Module):
         output_trans_tensor_shards = ark.sharding(
             output_trans_tensor, 0, self.out_dim // world_size
         )
-        output_tensor_shard_trans = ark.matmul(
+        x = ark.reshape(x, [input_shape[0] * input_shape[1], input_shape[2]])
+        ark.matmul(
             self.weight,
             x,
             output_trans_tensor_shards[local_rank],
