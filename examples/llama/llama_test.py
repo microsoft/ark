@@ -231,7 +231,9 @@ def test_column_parallel_linear():
         nn.init.uniform_(param, a=-0.1, b=0.1)
     state_dict_torch = column_parallel_linear_pytorch.state_dict()
 
-    column_parallel_linear_pytorch = column_parallel_linear_pytorch.to(torch_device)
+    column_parallel_linear_pytorch = column_parallel_linear_pytorch.to(
+        torch_device
+    )
     torch_input = torch_input.to(torch_device)
     output_pytorch = column_parallel_linear_pytorch(torch_input)
     output_pytorch = output_pytorch.cpu()
@@ -548,7 +550,7 @@ if __name__ == "__main__":
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
     # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
-    # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend 
+    # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend
     # and cpu device for PyTorch model
     if world_size == 1:
         torch_device = torch.device("cuda", local_rank)
@@ -557,8 +559,6 @@ if __name__ == "__main__":
         torch_device = torch.device("cpu")
         torch.distributed.init_process_group("gloo")
 
-    
-    
     fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
 
     # If you want to test the performance of ARK, set performance_analysis to True
