@@ -561,19 +561,18 @@ if __name__ == "__main__":
 
     # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
-    # test_rmsnorm()
-    # test_row_parallel_linear()
+    test_rmsnorm()
+    torch.distributed.barrier()
+    test_row_parallel_linear()
+    torch.distributed.barrier()
     test_column_parallel_linear()
-    exit(0)
-
-    # Make sure that all processes have finished the rmsnorm test
-    # torch.distributed.barrier()
+    torch.distributed.barrier()
     test_attention()
-    # torch.distributed.barrier()
+    torch.distributed.barrier()
     test_feedforward()
-    # torch.distributed.barrier()
+    torch.distributed.barrier()
     test_transformerblock()
-    # torch.distributed.barrier()
+    torch.distributed.barrier()
     test_transformer()
-    # torch.distributed.barrier()
+    torch.distributed.barrier()
     torch.distributed.destroy_process_group()

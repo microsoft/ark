@@ -62,6 +62,8 @@ class ColumnParallelLinear(ark.Module):
         )
 
     def forward(self, x):
+        if world_size == 1:
+            return ark.matmul(x, self.weight, transpose_b=True)
         input_shape = x.shape
         # ColumnParallelLinear only support 3D tensor
         assert len(input_shape) == 3
@@ -138,6 +140,8 @@ class RowParallelLinear(ark.Module):
         )
 
     def forward(self, x):
+        if world_size == 1:
+            return ark.matmul(x, self.weight, transpose_b=True)
         x_ndims = len(x.shape)
         x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // world_size)
         output_parallel = ark.matmul(
