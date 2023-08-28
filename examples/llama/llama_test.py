@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import time
 import fairscale
+import multiprocessing
 
 batch_size = 1
 seq_len = 64
@@ -25,16 +26,57 @@ ark_type = llama_ark.ark_type
 # np_type = np.float16 if ark_type == ark.FP16 else np.float32
 np_type = np.float32
 
+# If you want to test the performance of ARK, set performance_analysis to True
 performance_analysis = False
 torch_device = None
 
 total_execution_time = 1
 warmup_iter = 50
 
-local_rank = 0
-world_size = 1
+world_size = 4
 
-nccl_port = 29500
+
+def unittest(test_func):
+    def _test_func():
+        # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
+        # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend
+        # and cpu device for PyTorch model
+        if world_size == 1:
+            torch_device = torch.device("cuda", local_rank)
+            torch.distributed.init_process_group("nccl")
+        else:
+            torch_device = torch.device("cpu")
+            torch.distributed.init_process_group("gloo")
+
+        fairscale.nn.model_parallel.initialize.initialize_model_parallel(
+            world_size
+        )
+        test_func()
+        torch.distributed.barrier()
+        # torch.distributed.destroy_process_group()
+
+    proc = []
+    nccl_port = 29500
+    llama_ark.world_size = world_size
+    # Set up the environment variables for nccl
+
+    # Seed must be the same in all processes
+    torch.manual_seed(1)
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "29500"
+    os.environ["WORLD_SIZE"] = str(world_size)
+    # spawn a new process for each rank
+    for rank in range(world_size):
+        local_rank = rank
+        llama_ark.local_rank = local_rank
+
+        os.environ["RANK"] = str(rank)
+        os.environ["LOCAL_RANK"] = str(rank)
+        proc.append(multiprocessing.Process(target=_test_func))
+        proc[rank].start()
+    for rank in range(world_size):
+        proc[rank].join()
+        assert proc[rank].exitcode == 0
 
 
 def performance_ark(runtime, iter=None):
@@ -108,7 +150,7 @@ def convert_state_dict(state_dict: dict, type="numpy"):
 
 def test_rmsnorm():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
     input_numpy = np.random.uniform(
@@ -155,7 +197,7 @@ def test_rmsnorm():
 
 def test_row_parallel_linear():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     row_parallel_linear_ark = llama_ark.RowParallelLinear(dim, dim)
     row_parallel_linear_pytorch = fairscale.nn.model_parallel.RowParallelLinear(
         dim,
@@ -210,7 +252,7 @@ def test_row_parallel_linear():
 
 def test_column_parallel_linear():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     column_parallel_linear_ark = llama_ark.ColumnParallelLinear(dim, dim)
     column_parallel_linear_pytorch = (
         fairscale.nn.model_parallel.ColumnParallelLinear(
@@ -247,10 +289,8 @@ def test_column_parallel_linear():
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()
-    print("output_ark_host", output_ark_host, local_rank)
     # test if the result is correct
     gt = output_pytorch.detach().numpy().astype(np_type)
-    print("gt", gt, local_rank)
 
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
@@ -271,7 +311,7 @@ def test_column_parallel_linear():
 
 def test_attention():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     args = llama_ark.ModelArgs()
     attention_pytorch = llama_pytorch.Attention(args)
     attention_ark = llama_ark.Attention(args)
@@ -340,7 +380,7 @@ def test_attention():
 
 def test_feedforward():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     feedforward_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
     feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
     input_numpy = np.random.uniform(
@@ -389,7 +429,7 @@ def test_feedforward():
 
 def test_transformerblock():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     args = llama_ark.ModelArgs()
     transformer_block_pytorch = llama_pytorch.TransformerBlock(0, args)
     transformer_block_ark = llama_ark.TransformerBlock(0, args)
@@ -458,7 +498,7 @@ def test_transformerblock():
 
 def test_transformer():
     # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
+    runtime = ark.Runtime(llama_ark.local_rank, world_size)
     args = llama_ark.ModelArgs()
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
     args.n_layers = 2
@@ -536,43 +576,15 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    # Usage: python -m torch.distributed.launch --nproc_per_node num_gpus llama_test.py
-    # Set up the environment variables for nccl
+    unittest(test_rmsnorm)
+    unittest(test_row_parallel_linear)
 
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
-    llama_ark.local_rank = local_rank
-    llama_ark.world_size = world_size
-    # Seed must be the same in all processes
-    torch.manual_seed(1)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "29500"
-    # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
-    # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend
-    # and cpu device for PyTorch model
-    if world_size == 1:
-        torch_device = torch.device("cuda", local_rank)
-        torch.distributed.init_process_group("nccl")
-    else:
-        torch_device = torch.device("cpu")
-        torch.distributed.init_process_group("gloo")
+    unittest(test_column_parallel_linear)
 
-    fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
+    unittest(test_attention)
 
-    # If you want to test the performance of ARK, set performance_analysis to True
-    performance_analysis = False
-    test_rmsnorm()
-    torch.distributed.barrier()
-    test_row_parallel_linear()
-    torch.distributed.barrier()
-    test_column_parallel_linear()
-    torch.distributed.barrier()
-    test_attention()
-    torch.distributed.barrier()
-    test_feedforward()
-    torch.distributed.barrier()
-    test_transformerblock()
-    torch.distributed.barrier()
-    test_transformer()
-    torch.distributed.barrier()
-    torch.distributed.destroy_process_group()
+    unittest(test_feedforward)
+
+    unittest(test_transformerblock)
+
+    unittest(test_transformer)

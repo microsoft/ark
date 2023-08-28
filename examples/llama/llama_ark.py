@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
-ark_type = ark.FP16
+ark_type = ark.FP32
 local_rank = 0
 world_size = 1
 
