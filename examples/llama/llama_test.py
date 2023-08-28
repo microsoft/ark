@@ -551,14 +551,14 @@ if __name__ == "__main__":
     # Their will be bug when we call torch.distributed.init_process_group("nccl") and
     # launch the ark runtime in the same process, so we use mpi to init the PyTorch
     # process group instead
-    torch.distributed.init_process_group("mpi")
+    torch.distributed.init_process_group("gloo")
     fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
 
     # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
-    # test_rmsnorm()
-    # test_row_parallel_linear()
-    test_column_parallel_linear()
+    test_rmsnorm()
+    test_row_parallel_linear()
+    # test_column_parallel_linear()
     exit(0)
 
     # Make sure that all processes have finished the rmsnorm test
