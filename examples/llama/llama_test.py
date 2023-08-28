@@ -52,6 +52,8 @@ def unittest(test_func):
             world_size
         )
         test_func()
+        if world_size > 1:
+            torch.distributed.barrier()
 
     proc = []
     nccl_port = 29500
