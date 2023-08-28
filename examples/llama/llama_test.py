@@ -34,6 +34,8 @@ warmup_iter = 50
 local_rank = 0
 world_size = 1
 
+nccl_port = 29500
+
 
 def performance_ark(runtime, iter=None):
     # Restart the ARK runtime
@@ -161,6 +163,9 @@ def test_linear():
         bias=False,
         init_method=lambda x: x,
     )
+    os.environ["MASTER_PORT"] = str(nccl_port)
+    nccl_port += 1
+    torch.distributed.init_process_group("nccl")
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np_type)
@@ -173,6 +178,9 @@ def test_linear():
     torch_input = torch_input.to(torch_device)
     output_pytorch = parallel_linear_pytorch(torch_input)
     output_pytorch = output_pytorch.cpu()
+    # Their will be bug when we call torch.distributed.init_process_group and launch the ark runtime in the same process, so we need to distroy the process group before we launch ark runtime
+    torch.distributed.destroy_process_group()
+
     ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
     output_ark = parallel_linear_ark(ark_input)
     # Launch the ARK runtime
@@ -481,10 +489,8 @@ if __name__ == "__main__":
     # Seed must be the same in all processes
     torch.manual_seed(1)
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "29500"
     # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
-    torch.distributed.init_process_group("nccl")
     fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
     # test_rmsnorm()
     test_linear()
@@ -500,4 +506,3 @@ if __name__ == "__main__":
     # torch.distributed.barrier()
     test_transformer()
     # torch.distributed.barrier()
-    torch.distributed.destroy_process_group()
