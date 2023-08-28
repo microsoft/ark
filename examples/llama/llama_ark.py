@@ -65,13 +65,22 @@ class ColumnParallelLinear(ark.Module):
         input_shape = x.shape
         # ColumnParallelLinear only support 3D tensor
         assert len(input_shape) == 3
-
+        batch_size = input_shape[0]
         output_trans_shape = [self.out_dim, input_shape[0] * input_shape[1]]
+
+        # (out_dim, batch_size * seq_len)
         output_trans_tensor = ark.tensor(output_trans_shape, ark_type)
+
+        # (out_dim // world_size, batch_size * seq_len) for each rank
         output_trans_tensor_shards = ark.sharding(
             output_trans_tensor, 0, self.out_dim // world_size
         )
+
+        # (batch_size * seq_len, in_dim)
         x = ark.reshape(x, [input_shape[0] * input_shape[1], input_shape[2]])
+
+        # (out_dim // world_size, in_dim) * (batch_size * seq_len, in_dim)^T =
+        # (out_dim // world_size, batch_size * seq_len)
         ark.matmul(
             self.weight,
             x,
@@ -84,10 +93,15 @@ class ColumnParallelLinear(ark.Module):
             world_size,
             output_trans_tensor_shards,
         )
-        output_tensor = ark.transpose(output_trans_tensor, [1, 0])
-        output_tensor = ark.reshape(
-            output_tensor, [input_shape[0], input_shape[1], self.out_dim]
+        # (1, out_dim, batch_size, seq_len)
+        output_trans_tensor = ark.reshape(
+            output_trans_tensor,
+            [1, self.out_dim, input_shape[0], input_shape[1]],
         )
+
+        # Currently we only support transpose on 4D tensor
+        output_tensor = ark.transpose(output_trans_tensor, [0, 2, 3, 1])
+        # (batch_size, seq_len, out_dim)
         return output_tensor
 
 
