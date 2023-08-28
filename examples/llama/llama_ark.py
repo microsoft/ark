@@ -63,15 +63,29 @@ class ColumnParallelLinear(ark.Module):
 
     def forward(self, x):
         input_shape = x.shape
-        # Change the last shape of input_shape to out_dim
-        ndims = len(input_shape)
-        output_shape = input_shape[:-1] + [self.out_dim]
-        output_tensor = ark.tensor(output_shape, ark_type)
-        output_tensor_shards = ark.sharding(
-            output_tensor, ndims - 1, self.out_dim // world_size
+        # ColumnParallelLinear only support 3D tensor
+        assert len(input_shape) == 3
+
+        output_trans_shape = [self.out_dim, input_shape[0] * input_shape[1]]
+        output_trans_tensor = ark.tensor(output_trans_shape, ark_type)
+        output_trans_tensor_shards = ark.sharding(
+            output_trans_tensor, 0, self.out_dim // world_size
         )
-        ark.matmul(
-            x, self.weight, output_tensor_shards[local_rank], transpose_b=True
+        output_tensor_shard_trans = ark.matmul(
+            self.weight,
+            x,
+            output_trans_tensor_shards[local_rank],
+            transpose_b=True,
+        )
+        ark.all_gather(
+            output_trans_tensor_shards[local_rank],
+            local_rank,
+            world_size,
+            output_trans_tensor_shards,
+        )
+        output_tensor = ark.transpose(output_trans_tensor, [1, 0])
+        output_tensor = ark.reshape(
+            output_tensor, [input_shape[0], input_shape[1], self.out_dim]
         )
         return output_tensor
 
