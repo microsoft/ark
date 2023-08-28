@@ -66,9 +66,7 @@ def unittest(test_func):
     os.environ["WORLD_SIZE"] = str(world_size)
     # spawn a new process for each rank
     for rank in range(world_size):
-        local_rank = rank
-        llama_ark.local_rank = local_rank
-
+        llama_ark.local_rank = rank
         os.environ["RANK"] = str(rank)
         os.environ["LOCAL_RANK"] = str(rank)
         proc.append(multiprocessing.Process(target=_test_func))
