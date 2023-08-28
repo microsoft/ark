@@ -561,9 +561,9 @@ if __name__ == "__main__":
 
     # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
-    test_rmsnorm()
-    test_row_parallel_linear()
-    # test_column_parallel_linear()
+    # test_rmsnorm()
+    # test_row_parallel_linear()
+    test_column_parallel_linear()
     exit(0)
 
     # Make sure that all processes have finished the rmsnorm test

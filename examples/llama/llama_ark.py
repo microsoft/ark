@@ -93,21 +93,21 @@ class ColumnParallelLinear(ark.Module):
             world_size,
             output_trans_tensor_shards,
         )
-        # (1, out_dim, batch_size, seq_len)
-        output_trans_tensor = ark.reshape(
-            output_trans_tensor,
-            [1, self.out_dim, input_shape[0], input_shape[1]],
-        )
         # Here the output_trans_tensor should have the dependence on the all_gather operator
         output_trans_tensor = ark.identity(
             output_trans_tensor, output_trans_tensor_shards
         )
         # Currently we only support transpose on 4D tensor
-        output_tensor = ark.transpose(output_trans_tensor, [0, 2, 3, 1])
+        # (1, 1, out_dim, batch_size * seq_len)
+        output_trans_tensor = ark.reshape(
+            output_trans_tensor,
+            [1, 1, output_trans_tensor.shape[0], output_trans_tensor.shape[1]],
+        )
+        # (1, 1, batch_size * seq_len, out_dim)
+        output_tensor = ark.transpose(output_trans_tensor, [0, 1, 3, 2])
         # (batch_size, seq_len, out_dim)
         output_tensor = ark.reshape(
-            output_tensor,
-            [input_shape[0], input_shape[1], self.out_dim],
+            output_tensor, [input_shape[0], input_shape[1], self.out_dim]
         )
         return output_tensor
 
