@@ -52,8 +52,6 @@ def unittest(test_func):
             world_size
         )
         test_func()
-        torch.distributed.barrier()
-        # torch.distributed.destroy_process_group()
 
     proc = []
     nccl_port = 29500
