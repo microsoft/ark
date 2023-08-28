@@ -153,11 +153,11 @@ def test_rmsnorm():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_linear():
+def test_row_parallel_linear():
     # Initialize the ARK runtime
     runtime = ark.Runtime(local_rank, world_size)
-    parallel_linear_ark = llama_ark.RowParallelLinear(dim, dim)
-    parallel_linear_pytorch = fairscale.nn.model_parallel.RowParallelLinear(
+    row_parallel_linear_ark = llama_ark.RowParallelLinear(dim, dim)
+    row_parallel_linear_pytorch = fairscale.nn.model_parallel.RowParallelLinear(
         dim,
         dim,
         bias=False,
@@ -168,33 +168,36 @@ def test_linear():
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
-    for param in parallel_linear_pytorch.parameters():
+    for param in row_parallel_linear_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
-    state_dict_torch = parallel_linear_pytorch.state_dict()
+    state_dict_torch = row_parallel_linear_pytorch.state_dict()
 
-    parallel_linear_pytorch = parallel_linear_pytorch.to(torch_device)
-    torch_input = torch_input.to(torch_device)
-    output_pytorch = parallel_linear_pytorch(torch_input)
-    output_pytorch = output_pytorch.cpu()
+    # row_parallel_linear_pytorch = row_parallel_linear_pytorch.to(torch_device)
+    # torch_input = torch_input.to(torch_device)
+    output_pytorch = row_parallel_linear_pytorch(torch_input)
+    # output_pytorch = output_pytorch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
-    output_ark = parallel_linear_ark(ark_input)
+    output_ark = row_parallel_linear_ark(ark_input)
     # Launch the ARK runtime
     runtime.launch()
     ark_input.from_numpy(input_numpy.astype(np_type))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
 
-    parallel_linear_ark.load_state_dict(state_dict_ark)
+    row_parallel_linear_ark.load_state_dict(state_dict_ark)
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()
+    print("output_ark_host", output_ark_host, local_rank)
     # test if the result is correct
     gt = output_pytorch.detach().numpy().astype(np_type)
+    print("gt", gt, local_rank)
+
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
 
     print(
-        "linear test",
+        "row_parallel_linear test",
         "max_abs_error:",
         "{:.5f}".format(max_abs_error),
         "mean_abs_error:",
@@ -202,7 +205,66 @@ def test_linear():
     )
 
     def pytorch_func():
-        parallel_linear_pytorch(torch_input)
+        row_parallel_linear_pytorch(torch_input)
+
+    performance_comparison(runtime, pytorch_func)
+
+
+def test_column_parallel_linear():
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(local_rank, world_size)
+    column_parallel_linear_ark = llama_ark.ColumnParallelLinear(dim, dim)
+    column_parallel_linear_pytorch = (
+        fairscale.nn.model_parallel.ColumnParallelLinear(
+            dim,
+            dim,
+            bias=False,
+            init_method=lambda x: x,
+        )
+    )
+
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, seq_len, dim)
+    ).astype(np_type)
+    torch_input = torch.from_numpy(input_numpy)
+    for param in column_parallel_linear_pytorch.parameters():
+        nn.init.uniform_(param, a=-0.1, b=0.1)
+    state_dict_torch = column_parallel_linear_pytorch.state_dict()
+
+    # column_parallel_linear_pytorch = column_parallel_linear_pytorch.to(torch_device)
+    # torch_input = torch_input.to(torch_device)
+    output_pytorch = column_parallel_linear_pytorch(torch_input)
+    # output_pytorch = output_pytorch.cpu()
+
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
+    output_ark = column_parallel_linear_ark(ark_input)
+    # Launch the ARK runtime
+    runtime.launch()
+    ark_input.from_numpy(input_numpy.astype(np_type))
+    state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
+
+    column_parallel_linear_ark.load_state_dict(state_dict_ark)
+    # Run the ARK program
+    runtime.run()
+    output_ark_host = output_ark.to_numpy()
+    print("output_ark_host", output_ark_host, local_rank)
+    # test if the result is correct
+    gt = output_pytorch.detach().numpy().astype(np_type)
+    print("gt", gt, local_rank)
+
+    max_abs_error = np.max(np.abs(output_ark_host - gt))
+    mean_abs_error = np.mean(np.abs(output_ark_host - gt))
+
+    print(
+        "column_parallel_linear test",
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+    )
+
+    def pytorch_func():
+        column_parallel_linear_pytorch(torch_input)
 
     performance_comparison(runtime, pytorch_func)
 
@@ -485,6 +547,7 @@ if __name__ == "__main__":
     # Seed must be the same in all processes
     torch.manual_seed(1)
     os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "29500"
     # Their will be bug when we call torch.distributed.init_process_group("nccl") and
     # launch the ark runtime in the same process, so we use mpi to init the PyTorch
     # process group instead
@@ -494,7 +557,8 @@ if __name__ == "__main__":
     # If you want to test the performance of ARK, set performance_analysis to True
     performance_analysis = False
     # test_rmsnorm()
-    test_linear()
+    # test_row_parallel_linear()
+    test_column_parallel_linear()
     exit(0)
 
     # Make sure that all processes have finished the rmsnorm test
