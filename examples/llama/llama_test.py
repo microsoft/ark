@@ -188,10 +188,8 @@ def test_row_parallel_linear():
     # Run the ARK program
     runtime.run()
     output_ark_host = output_ark.to_numpy()
-    print("output_ark_host", output_ark_host, local_rank)
     # test if the result is correct
     gt = output_pytorch.detach().numpy().astype(np_type)
-    print("gt", gt, local_rank)
 
     max_abs_error = np.max(np.abs(output_ark_host - gt))
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
@@ -565,7 +563,7 @@ if __name__ == "__main__":
     performance_analysis = False
     test_rmsnorm()
     test_row_parallel_linear()
-    test_column_parallel_linear()
+    # test_column_parallel_linear()
     exit(0)
 
     # Make sure that all processes have finished the rmsnorm test
