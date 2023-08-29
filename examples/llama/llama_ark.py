@@ -77,9 +77,15 @@ class ColumnParallelLinear(ark.Module):
         output_tensor_shards = ark.sharding(
             output_tensor, 2, self.out_dim // world_size
         )
+        output_dependency = []
         # Copy all the all_gather_tensor_shards to output_tensor_shards
         for i in range(world_size):
-            ark.scale(all_gather_tensor_shards[i], 1.0, output_tensor_shards[i])
+            output_tensor_shard = ark.scale(
+                all_gather_tensor_shards[i], 1.0, output_tensor_shards[i]
+            )
+            output_dependency.append(output_tensor_shard)
+        # The output_tensor should depend on the scale operators
+        output_tensor = ark.identity(output_tensor, output_dependency)
         return output_tensor
 
 
