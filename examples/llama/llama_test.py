@@ -326,8 +326,9 @@ def test_attention():
 
     attention_pytorch = attention_pytorch.to(torch_device)
     torch_input = torch_input.to(torch_device)
-    freqs_cis_torch = freqs_cis_torch.to(torch_device)
-    output_torch = attention_pytorch(torch_input, 0, freqs_cis_torch, None)
+    output_torch = attention_pytorch(
+        torch_input, 0, freqs_cis_torch.to(torch_device), None
+    )
     output_torch = output_torch.cpu()
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
@@ -341,7 +342,7 @@ def test_attention():
     ark_input.from_numpy(input_numpy.astype(np_type))
     state_dict_ark = convert_state_dict(state_dict_torch, "numpy")
     attention_ark.load_state_dict(state_dict_ark)
-    freqs_cis_complex = freqs_cis_torch.cpu().numpy().astype(np.complex64)
+    freqs_cis_complex = freqs_cis_torch.numpy().astype(np.complex64)
     # stack real and imag parts
     freqs_cis_stack = np.stack(
         [freqs_cis_complex.real, freqs_cis_complex.imag], axis=-1
