@@ -34,10 +34,12 @@ total_execution_time = 1
 warmup_iter = 50
 
 world_size = 2
+input_numpy = None
 
 
 def unittest(test_func):
     def _test_func():
+        global torch_device
         # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
         # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend
         # and cpu device for PyTorch model
@@ -55,12 +57,15 @@ def unittest(test_func):
         if world_size > 1:
             torch.distributed.barrier()
 
+    # The input data should be the same in all processes
+    global input_numpy
+    input_numpy = np.random.uniform(
+        low=-1, high=1, size=(batch_size, seq_len, dim)
+    ).astype(np_type)
     proc = []
     llama_ark.world_size = world_size
     # Set up the environment variables for nccl
 
-    # Seed must be the same in all processes
-    torch.manual_seed(1)
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
     os.environ["WORLD_SIZE"] = str(world_size)
@@ -150,9 +155,6 @@ def test_rmsnorm():
     runtime = ark.Runtime(llama_ark.local_rank, world_size)
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
     for param in rmsnorm_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -203,9 +205,6 @@ def test_row_parallel_linear():
         init_method=lambda x: x,
     )
 
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
     for param in row_parallel_linear_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -260,9 +259,6 @@ def test_column_parallel_linear():
         )
     )
 
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np_type)
     torch_input = torch.from_numpy(input_numpy)
     for param in column_parallel_linear_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -318,9 +314,7 @@ def test_attention():
     attention_pytorch = llama_pytorch.Attention(args)
     attention_ark = llama_ark.Attention(args)
     dim = args.dim
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np_type)
+
     torch_input = torch.from_numpy(input_numpy)
 
     # random init the torch model
@@ -385,9 +379,7 @@ def test_feedforward():
     runtime = ark.Runtime(llama_ark.local_rank, world_size)
     feedforward_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
     feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np_type)
+
     torch_input = torch.from_numpy(input_numpy)
     for param in feedforward_pytorch.parameters():
         nn.init.uniform_(param, a=-0.1, b=0.1)
@@ -436,9 +428,7 @@ def test_transformerblock():
     transformer_block_pytorch = llama_pytorch.TransformerBlock(0, args)
     transformer_block_ark = llama_ark.TransformerBlock(0, args)
     dim = args.dim
-    input_numpy = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, dim)
-    ).astype(np_type)
+
     torch_input = torch.from_numpy(input_numpy)
 
     # random init the torch model
