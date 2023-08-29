@@ -64,55 +64,22 @@ class ColumnParallelLinear(ark.Module):
     def forward(self, x):
         if world_size == 1:
             return ark.matmul(x, self.weight, transpose_b=True)
-        input_shape = x.shape
-        # ColumnParallelLinear only support 3D tensor
-        assert len(input_shape) == 3
-        batch_size = input_shape[0]
-        output_trans_shape = [self.out_dim, input_shape[0] * input_shape[1]]
-
-        # (out_dim, batch_size * seq_len)
-        output_trans_tensor = ark.tensor(output_trans_shape, ark_type)
-
-        # (out_dim // world_size, batch_size * seq_len) for each rank
-        output_trans_tensor_shards = ark.sharding(
-            output_trans_tensor, 0, self.out_dim // world_size
+        # (batch_size, seq_len, out_dim // world_size)
+        output_tensor_shard = ark.matmul(x, self.weight, transpose_b=True)
+        all_gather_tensor_shards = ark.all_gather(
+            output_tensor_shard, local_rank, world_size
         )
-
-        # (batch_size * seq_len, in_dim)
-        x = ark.reshape(x, [input_shape[0] * input_shape[1], input_shape[2]])
-
-        # Here we need to transpose the input tensor to make the matmul output to
-        # be contigious in memory
-        # (out_dim // world_size, in_dim) * (batch_size * seq_len, in_dim)^T =
-        # (out_dim // world_size, batch_size * seq_len)
-        ark.matmul(
-            self.weight,
-            x,
-            output_trans_tensor_shards[local_rank],
-            transpose_b=True,
+        # We need to concat the output_tensor_shards along the last dimension
+        assert len(all_gather_tensor_shards) == world_size
+        output_tensor = ark.tensor(
+            [x.shape[0], x.shape[1], self.out_dim], ark_type
         )
-        output_trans_tensor_shards = ark.all_gather(
-            output_trans_tensor_shards[local_rank],
-            local_rank,
-            world_size,
-            output_trans_tensor_shards,
+        output_tensor_shards = ark.sharding(
+            output_tensor, 2, self.out_dim // world_size
         )
-        # Here the output_trans_tensor should have the dependence on the all_gather operator
-        output_trans_tensor = ark.identity(
-            output_trans_tensor, output_trans_tensor_shards
-        )
-        # Currently we only support transpose on 4D tensor
-        # (1, 1, out_dim, batch_size * seq_len)
-        output_trans_tensor = ark.reshape(
-            output_trans_tensor,
-            [1, 1, output_trans_tensor.shape[0], output_trans_tensor.shape[1]],
-        )
-        # (1, 1, batch_size * seq_len, out_dim)
-        output_tensor = ark.transpose(output_trans_tensor, [0, 1, 3, 2])
-        # (batch_size, seq_len, out_dim)
-        output_tensor = ark.reshape(
-            output_tensor, [input_shape[0], input_shape[1], self.out_dim]
-        )
+        # Copy all the all_gather_tensor_shards to output_tensor_shards
+        for i in range(world_size):
+            ark.scale(all_gather_tensor_shards[i], 1.0, output_tensor_shards[i])
         return output_tensor
 
 

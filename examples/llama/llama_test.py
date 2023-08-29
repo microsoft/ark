@@ -293,6 +293,11 @@ def test_column_parallel_linear():
     mean_abs_error = np.mean(np.abs(output_ark_host - gt))
 
     print(
+        "output_ark_host", output_ark_host, "local_rank", llama_ark.local_rank
+    )
+    print("gt", gt, "local_rank", llama_ark.local_rank)
+
+    print(
         "column_parallel_linear test",
         "max_abs_error:",
         "{:.5f}".format(max_abs_error),
