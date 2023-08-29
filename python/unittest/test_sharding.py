@@ -22,7 +22,7 @@ def test_sharding_internal(batch_size, m, n, data_type="float", iter=1):
     output_tensor = ark.tensor(ark.Dims(batch_size, m, n), ark_data_type)
     output_tensor_shards = ark.sharding(output_tensor, 2, n // 2)
     ark.scale(input_tensor0, 1.0, output_tensor_shards[0])
-    # ark.scale(input_tensor1, 1.0, output_tensor_shards[1])
+    ark.scale(input_tensor1, 1.0, output_tensor_shards[1])
     # Test the mul method
     runtime.launch()
     input_tensor0_host = np.random.rand(batch_size, m, n // 2).astype(
