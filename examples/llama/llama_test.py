@@ -53,6 +53,8 @@ def unittest(test_func):
         fairscale.nn.model_parallel.initialize.initialize_model_parallel(
             world_size
         )
+        # Set seed as the rank of the process
+        torch.manual_seed(llama_ark.local_rank)
         test_func()
         if world_size > 1:
             torch.distributed.barrier()
