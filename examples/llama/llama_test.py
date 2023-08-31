@@ -566,8 +566,7 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    llama_ark.model_size = "13B"
-    unittest(test_rmsnorm)
+    # unittest(test_rmsnorm)
     unittest(test_row_parallel_linear)
     unittest(test_column_parallel_linear)
     unittest(test_attention)

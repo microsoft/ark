@@ -10,7 +10,8 @@ ark_type = ark.FP32
 local_rank = 0
 world_size = 1
 
-model_size = "7B"
+model_size = "13B"
+
 
 def ModelArgs():
     if model_size == "7B":
