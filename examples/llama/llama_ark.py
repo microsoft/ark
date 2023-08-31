@@ -329,3 +329,53 @@ class Transformer(ark.Module):
         h = self.norm(h)
         output = self.output(h)
         return output
+
+
+def unittest(test_func):
+    def _test_func():
+        test_func()
+
+    proc = []
+    global local_rank
+
+    for rank in range(world_size):
+        local_rank = rank
+        proc.append(multiprocessing.Process(target=_test_func))
+        proc[rank].start()
+    for rank in range(world_size):
+        proc[rank].join()
+        assert proc[rank].exitcode == 0
+
+
+import multiprocessing
+
+
+def test_transformer():
+    batch_size = 1
+    seq_len = 64
+    dim = ModelArgs().dim
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(local_rank, world_size)
+    args = ModelArgs()
+    # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
+    args.n_layers = 2
+    args.vocab_size = 1024
+    transformer_ark = Transformer(args)
+    dim = args.dim
+
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
+    freqs_cis_ark = ark.tensor(
+        [1, seq_len, 1, args.dim // args.n_heads], ark_type
+    )
+    mask_ark = ark.tensor([1, seq_len, seq_len], ark_type)
+    output = transformer_ark(ark_input, 0, freqs_cis_ark, mask_ark)
+    # Launch the ARK runtime
+    runtime.launch()
+
+    # Run the ARK program
+    runtime.run()
+
+
+if __name__ == "__main__":
+    world_size = 1
+    unittest(test_transformer)
