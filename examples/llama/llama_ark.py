@@ -14,6 +14,9 @@ model_size = "70B"
 
 
 def ModelArgs():
+    """
+    Create a ModelArgs object for the specified model size.
+    """
     if model_size == "7B":
         return ModelArgs7B()
     elif model_size == "13B":
@@ -53,7 +56,6 @@ class ModelArgs13B:
     )
     ffn_dim_multiplier: Optional[float] = None
     norm_eps: float = 1e-5
-
     max_batch_size: int = 32
     max_seq_len: int = 2048
 
@@ -70,12 +72,15 @@ class ModelArgs70B:
     )
     ffn_dim_multiplier: Optional[float] = None
     norm_eps: float = 1e-5
-
     max_batch_size: int = 32
     max_seq_len: int = 4096
 
 
 class RMSNorm(ark.Module):
+    """
+    Root mean square layer normalization (RMSNorm).
+    """
+
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
@@ -188,6 +193,10 @@ class RowParallelLinear(ark.Module):
 
 
 class Linear(ark.Module):
+    """
+    Linear layer module with weights and no bias.
+    """
+
     def __init__(self, in_dim: int, out_dim: int):
         super().__init__()
         self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], ark_type))
@@ -197,6 +206,10 @@ class Linear(ark.Module):
 
 
 class Silu(ark.Module):
+    """
+    Silu activation function, silu(x) = x * sigmoid(x)
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -239,6 +252,9 @@ class FeedForward(ark.Module):
 
 
 def apply_rotary_emb(xq, xk, freqs_cis):
+    """
+    Apply rotary embeddings to xq and xk.
+    """
     xq_out = ark.rope(xq, freqs_cis)
     xk_out = ark.rope(xk, freqs_cis)
     return xq_out, xk_out
