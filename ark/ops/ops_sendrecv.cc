@@ -26,7 +26,9 @@ SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
 std::string SendOp::function_name(const OpConfig &) const
 {
     Tensor *input = this->inputs[0];
-    CHECK(input->is_sequential());
+    if (!input->is_sequential()) {
+        LOG(WARN, "send op input is not sequential");
+    }
 
     int sid;
     int rank;

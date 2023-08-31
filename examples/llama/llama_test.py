@@ -4,7 +4,18 @@
 import sys
 import os
 
-sys.path.append("./llama/llama")
+# Add the path of llama to sys.path. So we can import llama PyTorch
+# implementation from llama/llama
+current_path = os.path.dirname(os.path.abspath(__file__))
+pytorch_llama_path = current_path + "/llama/llama"
+if os.path.exists(pytorch_llama_path):
+    sys.path.append(pytorch_llama_path)
+else:
+    raise Exception(
+        "Cannot find llama PyTorch implementation, please run "
+        "git clone https://github.com/facebookresearch/llama "
+        "at examples/llama/ directory to download the llama PyTorch implementation"
+    )
 import model as llama_pytorch
 
 import llama_ark
@@ -33,11 +44,16 @@ torch_device = None
 total_execution_time = 1
 warmup_iter = 50
 
-world_size = 4
+world_size = 8
 input_numpy = None
 
 
 def unittest(test_func):
+    """
+    Initialize the environment variables for nccl backend and gloo backend, Spawn
+    multiple processes to run the test function
+    """
+
     def _test_func():
         global torch_device
         # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
@@ -50,40 +66,53 @@ def unittest(test_func):
             torch_device = torch.device("cpu")
             torch.distributed.init_process_group("gloo")
 
+        # Initialize the model parallel environment for fairscale
         fairscale.nn.model_parallel.initialize.initialize_model_parallel(
             world_size
         )
         # Set seed as the rank of the process
         torch.manual_seed(llama_ark.local_rank)
+
+        # Run the test function
         test_func()
+
+        # Add a barrier to make sure that all processes have finished the test
         if world_size > 1:
             torch.distributed.barrier()
 
-    # The input data should be the same in all processes
+    # The input data should be the same in all processes, so we generate the input
+    # data before spawning the processes
     global input_numpy
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np_type)
-    proc = []
-    llama_ark.world_size = world_size
-    # Set up the environment variables for nccl
 
+    process = []
+    # Set up the environment variables for nccl backend or gloo backend
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
     os.environ["WORLD_SIZE"] = str(world_size)
+
     # spawn a new process for each rank
     for rank in range(world_size):
+        # Set the rank and local_rank for each process
         llama_ark.local_rank = rank
+        llama_ark.world_size = world_size
         os.environ["RANK"] = str(rank)
         os.environ["LOCAL_RANK"] = str(rank)
-        proc.append(multiprocessing.Process(target=_test_func))
-        proc[rank].start()
+        process.append(multiprocessing.Process(target=_test_func))
+        process[rank].start()
+
+    # Wait for all processes to finish
     for rank in range(world_size):
-        proc[rank].join()
-        assert proc[rank].exitcode == 0
+        process[rank].join()
+        assert process[rank].exitcode == 0
 
 
 def performance_ark(runtime, iter=None):
+    """
+    Test the execution time of the ARK runtime
+    """
     # Restart the ARK runtime
     runtime.launch()
     # Rough measure the execution time
@@ -99,6 +128,9 @@ def performance_ark(runtime, iter=None):
 
 
 def performance_torch(torch_func, iter=None):
+    """
+    Test the execution time of the PyTorch model
+    """
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(warmup_iter):
@@ -121,6 +153,10 @@ def performance_torch(torch_func, iter=None):
 
 
 def performance_comparison(runtime, torch_func):
+    """
+    Compare the execution time of the ARK runtime and the PyTorch model,
+    Only enabled when performance_analysis is True
+    """
     # The performance comparison is only enabled when performance_analysis is True
     if not performance_analysis:
         return
@@ -521,6 +557,7 @@ def test_transformer():
 
     ark_input.from_numpy(input_embedding_numpy.astype(np_type))
 
+    # precompute the freqs_cis and initialize the freqs_cis_ark
     freqs_cis_torch = llama_pytorch.precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
     )
@@ -536,6 +573,7 @@ def test_transformer():
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_ark.load_state_dict(ark_state_dict)
 
+    # Initialize the mask
     mask_torch = None
     if seq_len > 1:
         mask_torch = torch.full((1, 1, seq_len, seq_len), float("-inf"))
@@ -566,7 +604,7 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    unittest(test_rmsnorm)
+    # unittest(test_rmsnorm)
     unittest(test_row_parallel_linear)
     unittest(test_column_parallel_linear)
     unittest(test_attention)

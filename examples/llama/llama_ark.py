@@ -10,9 +10,25 @@ ark_type = ark.FP32
 local_rank = 0
 world_size = 1
 
+model_size = "70B"
+
+
+def ModelArgs():
+    """
+    Create a ModelArgs object for the specified model size.
+    """
+    if model_size == "7B":
+        return ModelArgs7B()
+    elif model_size == "13B":
+        return ModelArgs13B()
+    elif model_size == "70B":
+        return ModelArgs70B()
+    else:
+        raise ValueError(f"Unsupported model size {model_size}")
+
 
 @dataclass
-class ModelArgs:
+class ModelArgs7B:
     dim: int = 4096
     n_layers: int = 32
     n_heads: int = 32
@@ -28,7 +44,43 @@ class ModelArgs:
     max_seq_len: int = 2048
 
 
+@dataclass
+class ModelArgs13B:
+    dim: int = 5120
+    n_layers: int = 40
+    n_heads: int = 40
+    n_kv_heads: Optional[int] = None
+    vocab_size: int = -1  # defined later by tokenizer
+    multiple_of: int = (
+        256  # make SwiGLU hidden layer size multiple of large power of 2
+    )
+    ffn_dim_multiplier: Optional[float] = None
+    norm_eps: float = 1e-5
+    max_batch_size: int = 32
+    max_seq_len: int = 2048
+
+
+@dataclass
+class ModelArgs70B:
+    dim: int = 8192
+    n_layers: int = 80
+    n_heads: int = 64
+    n_kv_heads: Optional[int] = None
+    vocab_size: int = -1
+    multiple_of: int = (
+        256  # make SwiGLU hidden layer size multiple of large power of 2
+    )
+    ffn_dim_multiplier: Optional[float] = None
+    norm_eps: float = 1e-5
+    max_batch_size: int = 32
+    max_seq_len: int = 4096
+
+
 class RMSNorm(ark.Module):
+    """
+    Root mean square layer normalization (RMSNorm).
+    """
+
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
@@ -141,6 +193,10 @@ class RowParallelLinear(ark.Module):
 
 
 class Linear(ark.Module):
+    """
+    Linear layer module with weights and no bias.
+    """
+
     def __init__(self, in_dim: int, out_dim: int):
         super().__init__()
         self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], ark_type))
@@ -150,6 +206,10 @@ class Linear(ark.Module):
 
 
 class Silu(ark.Module):
+    """
+    Silu activation function, silu(x) = x * sigmoid(x)
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -192,6 +252,9 @@ class FeedForward(ark.Module):
 
 
 def apply_rotary_emb(xq, xk, freqs_cis):
+    """
+    Apply rotary embeddings to xq and xk.
+    """
     xq_out = ark.rope(xq, freqs_cis)
     xk_out = ark.rope(xk, freqs_cis)
     return xq_out, xk_out
@@ -349,53 +412,6 @@ def unittest(test_func):
 
 import multiprocessing
 
-def test_rmsnorm():
-    batch_size = 1
-    seq_len = 64
-    dim = ModelArgs().dim
-    # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
-    rmsnorm_ark = RMSNorm(dim)
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
-    output = rmsnorm_ark(ark_input)
-    # Launch the ARK runtime
-    runtime.launch()
-
-    # Run the ARK program
-    runtime.run()
-    print("ARK LLaMA RMSNorm test passed.")
-
-def test_column_parallel_linear():
-    batch_size = 1
-    seq_len = 64
-    dim = ModelArgs().dim
-    # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
-    column_parallel_linear_ark = ColumnParallelLinear(dim, dim)
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
-    output = column_parallel_linear_ark(ark_input)
-    # Launch the ARK runtime
-    runtime.launch()
-
-    # Run the ARK program
-    runtime.run()
-    print("ARK LLaMA ColumnParallelLinear test passed.")
-
-def test_row_parallel_linear():
-    batch_size = 1
-    seq_len = 64
-    dim = ModelArgs().dim
-    # Initialize the ARK runtime
-    runtime = ark.Runtime(local_rank, world_size)
-    row_parallel_linear_ark = RowParallelLinear(dim, dim)
-    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
-    output = row_parallel_linear_ark(ark_input)
-    # Launch the ARK runtime
-    runtime.launch()
-
-    # Run the ARK program
-    runtime.run()
-    print("ARK LLaMA RowParallelLinear test passed.")
 
 def test_transformer():
     batch_size = 1
@@ -405,7 +421,7 @@ def test_transformer():
     runtime = ark.Runtime(local_rank, world_size)
     args = ModelArgs()
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
-    args.n_layers = 2
+    args.n_layers = 4
     args.vocab_size = 1024
     transformer_ark = Transformer(args)
     dim = args.dim
@@ -425,5 +441,5 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    world_size = 4
+    world_size = 8
     unittest(test_transformer)
