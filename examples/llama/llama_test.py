@@ -55,37 +55,47 @@ def unittest(test_func):
             torch_device = torch.device("cpu")
             torch.distributed.init_process_group("gloo")
 
+        # Initialize the model parallel environment for fairscale
         fairscale.nn.model_parallel.initialize.initialize_model_parallel(
             world_size
         )
         # Set seed as the rank of the process
         torch.manual_seed(llama_ark.local_rank)
+
+        # Run the test function
         test_func()
+
+        # Add a barrier to make sure that all processes have finished the test
         if world_size > 1:
             torch.distributed.barrier()
 
-    # The input data should be the same in all processes
+    # The input data should be the same in all processes, so we generate the input
+    # data before spawning the processes
     global input_numpy
     input_numpy = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, dim)
     ).astype(np_type)
-    proc = []
-    llama_ark.world_size = world_size
-    # Set up the environment variables for nccl
 
+    process = []
+    # Set up the environment variables for nccl backend or gloo backend
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
     os.environ["WORLD_SIZE"] = str(world_size)
+
     # spawn a new process for each rank
     for rank in range(world_size):
+        # Set the rank and local_rank for each process
         llama_ark.local_rank = rank
+        llama_ark.world_size = world_size
         os.environ["RANK"] = str(rank)
         os.environ["LOCAL_RANK"] = str(rank)
-        proc.append(multiprocessing.Process(target=_test_func))
-        proc[rank].start()
+        process.append(multiprocessing.Process(target=_test_func))
+        process[rank].start()
+
+    # Wait for all processes to finish
     for rank in range(world_size):
-        proc[rank].join()
-        assert proc[rank].exitcode == 0
+        process[rank].join()
+        assert process[rank].exitcode == 0
 
 
 def performance_ark(runtime, iter=None):
@@ -536,6 +546,7 @@ def test_transformer():
 
     ark_input.from_numpy(input_embedding_numpy.astype(np_type))
 
+    # precompute the freqs_cis and initialize the freqs_cis_ark
     freqs_cis_torch = llama_pytorch.precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
     )
@@ -551,6 +562,7 @@ def test_transformer():
     ark_state_dict = convert_state_dict(state_dict, "numpy")
     transformer_ark.load_state_dict(ark_state_dict)
 
+    # Initialize the mask
     mask_torch = None
     if seq_len > 1:
         mask_torch = torch.full((1, 1, seq_len, seq_len), float("-inf"))
