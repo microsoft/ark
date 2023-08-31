@@ -376,6 +376,7 @@ def test_transformer():
     runtime.run()
     print("ARK LLaMA Transformer test passed.")
 
+
 if __name__ == "__main__":
     world_size = 1
     unittest(test_transformer)
