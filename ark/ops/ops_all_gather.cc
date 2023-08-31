@@ -10,7 +10,7 @@
 namespace ark {
 
 std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
-                                        std::vector<Tensor *> output,
+                                        const std::vector<Tensor *> &output,
                                         const std::string &)
 {
     assert(input != nullptr);
@@ -20,46 +20,46 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
             "warning: if the send tensor if not contiguous, the all_gather "
             "may not work correctly");
     }
-    LOG(DEBUG, "all gather output size: ", output.size());
+    if (!output.empty() && output.size() != (size_t)gpu_num) {
+        LOG(ERROR, "all_gather output size should be 0 or gpu_num");
+    }
+    CHECK(gpu_num > 1);
+
+    std::vector<Tensor *> result(gpu_num);
 
     int base = this->impl->next_eid;
-    std::vector<Tensor *> recv_dep_tensors;
-    for (int gpu_dst = 0; gpu_dst < gpu_num; gpu_dst++) {
-        if (gpu_dst == gpu_id)
-            continue;
+    Tensor *prev_recv = nullptr;
+    for (int i = 1; i < gpu_num; i++) {
+        int gpu_dst = (gpu_id + i) % gpu_num;
+        int gpu_src = (gpu_id + gpu_num - i) % gpu_num;
+        Tensor *send_data;
+        if (prev_recv != nullptr) {
+            send_data = this->identity(input, {prev_recv});
+        } else {
+            send_data = input;
+        }
         Tensor *send_tensor =
-            this->send(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
+            this->send(send_data, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
         Tensor *send_done_tensor =
-            this->send_done(input, base + gpu_id * gpu_num + gpu_dst, gpu_dst);
-        recv_dep_tensors.push_back(send_tensor);
-        recv_dep_tensors.push_back(send_done_tensor);
-    }
-    recv_dep_tensors.push_back(input);
-
-    Tensor *recv_buf;
-    for (int gpu_src = 0; gpu_src < gpu_num; gpu_src++) {
-        recv_buf = nullptr;
-        // if gpu_src == gpu_id, the tensor is local
-        if (gpu_src == gpu_id) {
-            output.push_back(input);
-            continue;
-        }
-        if (output.size() > (size_t)gpu_src) {
+            this->send_done(this->identity(input, {send_tensor}),
+                            base + gpu_id * gpu_num + gpu_dst, gpu_dst);
+        Tensor *recv_buf;
+        if (!output.empty()) {
+            CHECK(output.size() > (size_t)gpu_src);
+            CHECK(output[gpu_src]->shape == input->shape);
+            CHECK(output[gpu_src]->type == input->type);
             recv_buf = output[gpu_src];
-        }
-        if (recv_buf == nullptr) {
+        } else {
             recv_buf = this->tensor(input->shape, input->type);
-            output.push_back(recv_buf);
         }
-        Tensor *recv = this->recv(this->identity(recv_buf, recv_dep_tensors),
+        Tensor *recv = this->recv(this->identity(recv_buf, {send_done_tensor}),
                                   base + gpu_src * gpu_num + gpu_id, gpu_src);
-        // The output should depend on the recv tensor
-        recv_buf = this->identity(recv_buf, {recv});
-        output[gpu_src] = recv_buf;
+        prev_recv = recv;
+        result[gpu_src] = this->identity(recv_buf, {recv});
     }
-
+    result[gpu_id] = this->identity(input, {prev_recv});
     this->impl->next_eid += gpu_num * gpu_num;
-    return output;
+    return result;
 }
 
 } // namespace ark
