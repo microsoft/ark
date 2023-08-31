@@ -36,8 +36,6 @@ class Runtime:
         ):
             self.stop()
         self.ark_runtime_state = RuntimeState.destroy
-        del Executor.global_executor
-        del Model.global_model
         Executor.global_executor = None
         Model.global_model = None
 
