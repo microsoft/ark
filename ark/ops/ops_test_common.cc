@@ -157,6 +157,17 @@ TensorCompareResult tensor_compare(uint8_t *ground_truth, uint8_t *res,
     return tensor_compare<uint8_t>(ground_truth, res, shape, print);
 }
 
+#define CUDA_CHECK(status)                                                     \
+    do {                                                                       \
+        cudaError_t error = status;                                            \
+        if (error != cudaSuccess) {                                            \
+            std::ostringstream oss;                                            \
+            oss << "Got bad cuda status: " << cudaGetErrorString(error)        \
+                << " at line: " << __LINE__;                                   \
+            throw std::runtime_error(oss.str());                               \
+        }                                                                      \
+    } while (0);
+
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
                       const std::vector<Tensor *> &outputs,
@@ -292,6 +303,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         result.max_err_rate.push_back(comp.max_error_rate);
     }
 
+    CUDA_CHECK(cudaDeviceSynchronize());
+
     // Throughput test.
     if (world_size > 1) {
         // For multi-GPU, we need to make sure that all GPUs run the same
@@ -373,17 +386,6 @@ void op_test_log(const OpsTestResult &result)
 {
     LOG(INFO, result);
 }
-
-#define CUDA_CHECK(status)                                                     \
-    do {                                                                       \
-        cudaError_t error = status;                                            \
-        if (error != cudaSuccess) {                                            \
-            std::ostringstream oss;                                            \
-            oss << "Got bad cuda status: " << cudaGetErrorString(error)        \
-                << " at line: " << __LINE__;                                   \
-            throw std::runtime_error(oss.str());                               \
-        }                                                                      \
-    } while (0);
 
 OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size)
 {
