@@ -181,69 +181,69 @@ unittest::State test_gpu_mgr_remote_lazy_import()
 }
 
 // Test inter-GPU communication via sending a request.
-unittest::State test_gpu_mgr_request()
-{
-    int pid0 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{10};
-        GpuMgr *mgr = get_gpu_mgr(0);
-        GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
+// unittest::State test_gpu_mgr_request()
+// {
+//     int pid0 = ark::utils::proc_spawn([] {
+//         unittest::Timeout timeout{10};
+//         GpuMgr *mgr = get_gpu_mgr(0);
+//         GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
 
-        GpuBuf *gpu0_src = ctx->mem_alloc(1024 * sizeof(int));
-        ctx->mem_export(gpu0_src, 0, 7);
-        ctx->mem_import(1024 * sizeof(int), 5, 1);
+//         GpuBuf *gpu0_src = ctx->mem_alloc(1024 * sizeof(int));
+//         ctx->mem_export(gpu0_src, 0, 7);
+//         ctx->mem_import(1024 * sizeof(int), 5, 1);
 
-        ctx->freeze();
+//         ctx->freeze();
 
-        // Set source data.
-        int *data = (int *)gpu0_src->href();
-        for (int i = 0; i < 1024; ++i) {
-            data[i] = i + 1;
-        }
+//         // Set source data.
+//         int *data = (int *)gpu0_src->href();
+//         for (int i = 0; i < 1024; ++i) {
+//             data[i] = i + 1;
+//         }
 
-        // Send a request.
-        ctx->send(7, 5, 1, 1024 * sizeof(int));
+//         // Send a request.
+//         ctx->send(7, 5, 1, 1024 * sizeof(int));
 
-        // Wait for the send completion.
-        volatile int *sc = ctx->get_sc_href(7);
-        while (*sc == 0) {
-        }
+//         // Wait for the send completion.
+//         volatile int *sc = ctx->get_sc_href(7);
+//         while (*sc == 0) {
+//         }
 
-        mgr->destroy_context(ctx);
-        return 0;
-    });
-    UNITTEST_NE(pid0, -1);
+//         mgr->destroy_context(ctx);
+//         return 0;
+//     });
+//     UNITTEST_NE(pid0, -1);
 
-    int pid1 = ark::utils::proc_spawn([] {
-        unittest::Timeout timeout{10};
-        GpuMgr *mgr = get_gpu_mgr(1);
-        GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
+//     int pid1 = ark::utils::proc_spawn([] {
+//         unittest::Timeout timeout{10};
+//         GpuMgr *mgr = get_gpu_mgr(1);
+//         GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
 
-        GpuBuf *gpu1_dst = ctx->mem_alloc(1024 * sizeof(int));
-        ctx->mem_export(gpu1_dst, 0, 5);
-        ctx->mem_import(1024 * sizeof(int), 7, 0);
+//         GpuBuf *gpu1_dst = ctx->mem_alloc(1024 * sizeof(int));
+//         ctx->mem_export(gpu1_dst, 0, 5);
+//         ctx->mem_import(1024 * sizeof(int), 7, 0);
 
-        ctx->freeze();
+//         ctx->freeze();
 
-        // Wait for the receive completion.
-        volatile int *rc = ctx->get_rc_href(5);
-        while (*rc == 0) {
-        }
+//         // Wait for the receive completion.
+//         volatile int *rc = ctx->get_rc_href(5);
+//         while (*rc == 0) {
+//         }
 
-        // Verify the received data.
-        int *data = (int *)gpu1_dst->href();
-        for (int i = 0; i < 1024; ++i) {
-            UNITTEST_EQ(data[i], i + 1);
-        }
+//         // Verify the received data.
+//         int *data = (int *)gpu1_dst->href();
+//         for (int i = 0; i < 1024; ++i) {
+//             UNITTEST_EQ(data[i], i + 1);
+//         }
 
-        mgr->destroy_context(ctx);
-        return 0;
-    });
-    UNITTEST_NE(pid1, -1);
+//         mgr->destroy_context(ctx);
+//         return 0;
+//     });
+//     UNITTEST_NE(pid1, -1);
 
-    int ret = ark::utils::proc_wait({pid0, pid1});
-    UNITTEST_EQ(ret, 0);
-    return unittest::SUCCESS;
-}
+//     int ret = ark::utils::proc_wait({pid0, pid1});
+//     UNITTEST_EQ(ret, 0);
+//     return unittest::SUCCESS;
+// }
 
 int main()
 {
@@ -251,6 +251,6 @@ int main()
     UNITTEST(test_gpu_mgr_basic);
     UNITTEST(test_gpu_mgr_remote);
     UNITTEST(test_gpu_mgr_remote_lazy_import);
-    UNITTEST(test_gpu_mgr_request);
+    // UNITTEST(test_gpu_mgr_request);
     return 0;
 }

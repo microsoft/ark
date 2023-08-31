@@ -40,8 +40,7 @@ std::string SendOp::function_name(const OpConfig &) const
     return Op::function_name("ark::comm::send", {{
                                                     rank,     // Rank
                                                     dst_rank, // DstRank
-                                                    sid,      // SrcSid
-                                                    sid,      // DstSid
+                                                    sid,      // Sid
                                                     bytes,    // Length
                                                 }});
 }
@@ -77,7 +76,7 @@ std::string SendDoneOp::function_name(const OpConfig &) const
     return Op::function_name("ark::comm::send_done", {{
                                                          rank,     // Rank
                                                          dst_rank, // DstRank
-                                                         sid,      // SrcSid
+                                                         sid,      // Sid
                                                      }});
 }
 
@@ -115,7 +114,7 @@ std::string RecvOp::function_name(const OpConfig &) const
     return Op::function_name("ark::comm::recv", {{
                                                     rank,     // Rank
                                                     src_rank, // DstRank
-                                                    sid,      // SrcSid
+                                                    sid,      // Sid
                                                 }});
 }
 
