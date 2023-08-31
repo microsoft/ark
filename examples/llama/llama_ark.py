@@ -10,7 +10,7 @@ ark_type = ark.FP32
 local_rank = 0
 world_size = 1
 
-model_size = "13B"
+model_size = "70B"
 
 
 def ModelArgs():
@@ -60,9 +60,9 @@ class ModelArgs13B:
 
 @dataclass
 class ModelArgs70B:
-    dim: int = 4096
-    n_layers: int = 32
-    n_heads: int = 32
+    dim: int = 8192
+    n_layers: int = 80
+    n_heads: int = 64
     n_kv_heads: Optional[int] = None
     vocab_size: int = -1
     multiple_of: int = (
@@ -72,7 +72,7 @@ class ModelArgs70B:
     norm_eps: float = 1e-5
 
     max_batch_size: int = 32
-    max_seq_len: int = 2048
+    max_seq_len: int = 4096
 
 
 class RMSNorm(ark.Module):
