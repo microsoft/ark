@@ -10,7 +10,7 @@ cd examples/llama
 git clone https://github.com/facebookresearch/llama
 ```
 
-Currently their is a bug that will cause the next test cannot be run. Please change the following line in the file `llama/llama/model.py`:
+Currently their is a bug that will cause some errors in the PyTorch inference stage. Please change the following line in the file `llama/llama/model.py`:
 
 ```python
 # At line 270

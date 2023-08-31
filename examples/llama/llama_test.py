@@ -38,6 +38,11 @@ input_numpy = None
 
 
 def unittest(test_func):
+    """
+    Initialize the environment variables for nccl backend and gloo backend, Spawn
+    multiple processes to run the test function
+    """
+
     def _test_func():
         global torch_device
         # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
@@ -84,6 +89,9 @@ def unittest(test_func):
 
 
 def performance_ark(runtime, iter=None):
+    """
+    Test the execution time of the ARK runtime
+    """
     # Restart the ARK runtime
     runtime.launch()
     # Rough measure the execution time
@@ -99,6 +107,9 @@ def performance_ark(runtime, iter=None):
 
 
 def performance_torch(torch_func, iter=None):
+    """
+    Test the execution time of the PyTorch model
+    """
     torch.cuda.synchronize()
     start_torch = time.time()
     for i in range(warmup_iter):
@@ -121,6 +132,10 @@ def performance_torch(torch_func, iter=None):
 
 
 def performance_comparison(runtime, torch_func):
+    """
+    Compare the execution time of the ARK runtime and the PyTorch model,
+    Only enabled when performance_analysis is True
+    """
     # The performance comparison is only enabled when performance_analysis is True
     if not performance_analysis:
         return
