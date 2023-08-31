@@ -349,6 +349,7 @@ def unittest(test_func):
 
 import multiprocessing
 
+
 def test_rmsnorm():
     batch_size = 1
     seq_len = 64
@@ -364,6 +365,7 @@ def test_rmsnorm():
     # Run the ARK program
     runtime.run()
     print("ARK LLaMA RMSNorm test passed.")
+
 
 def test_column_parallel_linear():
     batch_size = 1
@@ -381,6 +383,7 @@ def test_column_parallel_linear():
     runtime.run()
     print("ARK LLaMA ColumnParallelLinear test passed.")
 
+
 def test_row_parallel_linear():
     batch_size = 1
     seq_len = 64
@@ -397,6 +400,7 @@ def test_row_parallel_linear():
     runtime.run()
     print("ARK LLaMA RowParallelLinear test passed.")
 
+
 def test_transformer():
     batch_size = 1
     seq_len = 64
@@ -405,7 +409,7 @@ def test_transformer():
     runtime = ark.Runtime(local_rank, world_size)
     args = ModelArgs()
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
-    args.n_layers = 2
+    args.n_layers = 4
     args.vocab_size = 1024
     transformer_ark = Transformer(args)
     dim = args.dim
@@ -425,5 +429,5 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    world_size = 4
+    world_size = 8
     unittest(test_transformer)

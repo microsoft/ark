@@ -33,7 +33,7 @@ torch_device = None
 total_execution_time = 1
 warmup_iter = 50
 
-world_size = 4
+world_size = 8
 input_numpy = None
 
 
