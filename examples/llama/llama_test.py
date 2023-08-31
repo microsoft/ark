@@ -4,7 +4,18 @@
 import sys
 import os
 
-sys.path.append("./llama/llama")
+# Add the path of llama to sys.path. So we can import llama PyTorch
+# implementation from llama/llama
+current_path = os.path.dirname(os.path.abspath(__file__))
+pytorch_llama_path = current_path + "/llama/llama"
+if os.path.exists(pytorch_llama_path):
+    sys.path.append(pytorch_llama_path)
+else:
+    raise Exception(
+        "Cannot find llama PyTorch implementation, please run "
+        "git clone https://github.com/facebookresearch/llama "
+        "at examples/llama/ directory to download the llama PyTorch implementation"
+    )
 import model as llama_pytorch
 
 import llama_ark
