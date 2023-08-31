@@ -459,8 +459,8 @@ class Model
     // total number of GPUs `gpu_num`. Returns a vector of tensors, each
     // containing the aggregated data from all GPUs.
     std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
-                                     std::vector<Tensor *> output,
-                                     const std::string &name);
+                                     const std::vector<Tensor *> &output = {},
+                                     const std::string &name = "all_gather");
 
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
