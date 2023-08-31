@@ -10,9 +10,17 @@ ark_type = ark.FP32
 local_rank = 0
 world_size = 1
 
+model_size = "7B"
 
 def ModelArgs():
-    return ModelArgs13B()
+    if model_size == "7B":
+        return ModelArgs7B()
+    elif model_size == "13B":
+        return ModelArgs13B()
+    elif model_size == "70B":
+        return ModelArgs70B()
+    else:
+        raise ValueError(f"Unsupported model size {model_size}")
 
 
 @dataclass
