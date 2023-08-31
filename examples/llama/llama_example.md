@@ -10,6 +10,15 @@ cd examples/llama
 git clone https://github.com/facebookresearch/llama
 ```
 
+Currently their is a bug that will cause the next test cannot be run. Please change the following line in the file `llama/llama/model.py`:
+
+```python
+# At line 270
+@torch.inference_mode()
+# Change to
+@torch.no_grad()
+```
+
 Next, please install the dependencies of LLaMa official implementations and run the PyTorch LLaMa model according to the instructions in the LLaMa official repository. 
 
 # Verifying the Correctness of the ARK LLaMa Implementation
