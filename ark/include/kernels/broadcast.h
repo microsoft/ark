@@ -112,7 +112,8 @@ struct Broadcast1
 
             int idx_in;
 
-            if constexpr (VecIsEq<InShape, OutShape>::value) {
+            if constexpr (VecIsEq<InShape, OutShape>::value &&
+                          VecIsEq<InDims, OutDims>::value) {
                 idx_in = idx_out;
             } else {
                 idx_in =
@@ -199,7 +200,8 @@ struct Broadcast2
             if constexpr (VecIsEq<In1Shape, OutShape>::value &&
                           VecIsEq<In1Dims, OutDims>::value) {
                 idx_in1 = idx_out;
-            } else if constexpr (VecIsEq<In1Shape, In0Shape>::value) {
+            } else if constexpr (VecIsEq<In1Shape, In0Shape>::value &&
+                                 VecIsEq<In1Dims, In0Dims>::value) {
                 idx_in1 = idx_in0;
             } else {
                 idx_in1 =
