@@ -349,6 +349,53 @@ def unittest(test_func):
 
 import multiprocessing
 
+def test_rmsnorm():
+    batch_size = 1
+    seq_len = 64
+    dim = ModelArgs().dim
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(local_rank, world_size)
+    rmsnorm_ark = RMSNorm(dim)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
+    output = rmsnorm_ark(ark_input)
+    # Launch the ARK runtime
+    runtime.launch()
+
+    # Run the ARK program
+    runtime.run()
+    print("ARK LLaMA RMSNorm test passed.")
+
+def test_column_parallel_linear():
+    batch_size = 1
+    seq_len = 64
+    dim = ModelArgs().dim
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(local_rank, world_size)
+    column_parallel_linear_ark = ColumnParallelLinear(dim, dim)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
+    output = column_parallel_linear_ark(ark_input)
+    # Launch the ARK runtime
+    runtime.launch()
+
+    # Run the ARK program
+    runtime.run()
+    print("ARK LLaMA ColumnParallelLinear test passed.")
+
+def test_row_parallel_linear():
+    batch_size = 1
+    seq_len = 64
+    dim = ModelArgs().dim
+    # Initialize the ARK runtime
+    runtime = ark.Runtime(local_rank, world_size)
+    row_parallel_linear_ark = RowParallelLinear(dim, dim)
+    ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
+    output = row_parallel_linear_ark(ark_input)
+    # Launch the ARK runtime
+    runtime.launch()
+
+    # Run the ARK program
+    runtime.run()
+    print("ARK LLaMA RowParallelLinear test passed.")
 
 def test_transformer():
     batch_size = 1
@@ -378,5 +425,5 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    world_size = 1
+    world_size = 4
     unittest(test_transformer)
