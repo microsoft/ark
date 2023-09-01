@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 ark_type = ark.FP32
-local_rank = 0
-world_size = 1
 
 model_size = "70B"
 
@@ -105,33 +103,35 @@ class ColumnParallelLinear(ark.Module):
 
     """
 
-    def __init__(self, in_dim: int, out_dim: int):
+    def __init__(self, in_dim: int, out_dim: int, local_rank: int, world_size: int):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.weight = ark.Parameter(
             ark.tensor([out_dim // world_size, in_dim], ark_type)
         )
+        self.local_rank = local_rank
+        self.world_size = world_size
 
     def forward(self, x):
-        if world_size == 1:
+        if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_b=True)
         # (batch_size, seq_len, out_dim // world_size)
         output_tensor_shard = ark.matmul(x, self.weight, transpose_b=True)
         all_gather_tensor_shards = ark.all_gather(
-            output_tensor_shard, local_rank, world_size
+            output_tensor_shard, self.local_rank, self.world_size
         )
         # We need to concat the output_tensor_shards along the last dimension
-        assert len(all_gather_tensor_shards) == world_size
+        assert len(all_gather_tensor_shards) == self.world_size
         output_tensor = ark.tensor(
             [x.shape[0], x.shape[1], self.out_dim], ark_type
         )
         output_tensor_shards = ark.sharding(
-            output_tensor, 2, self.out_dim // world_size
+            output_tensor, 2, self.out_dim // self.world_size
         )
         output_dependency = []
         # Copy all the all_gather_tensor_shards to output_tensor_shards
-        for i in range(world_size):
+        for i in range(self.world_size):
             output_tensor_shard = ark.scale(
                 all_gather_tensor_shards[i], 1.0, output_tensor_shards[i]
             )
@@ -158,21 +158,23 @@ class RowParallelLinear(ark.Module):
     its second dimension.
     """
 
-    def __init__(self, in_dim: int, out_dim: int):
+    def __init__(self, in_dim: int, out_dim: int, local_rank: int, world_size: int):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.weight = ark.Parameter(
             ark.tensor([out_dim, in_dim // world_size], ark_type)
         )
+        self.local_rank = local_rank
+        self.world_size = world_size
 
     def forward(self, x):
-        if world_size == 1:
+        if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_b=True)
         x_ndims = len(x.shape)
-        x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // world_size)
+        x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // self.world_size)
         output_parallel = ark.matmul(
-            x_shards[local_rank], self.weight, transpose_b=True
+            x_shards[self.local_rank], self.weight, transpose_b=True
         )
         # allreduce the output_parallel, currently we only support allreduce on 1D tensor,
         # so we need to reshape the output_parallel to 1D
@@ -186,7 +188,7 @@ class RowParallelLinear(ark.Module):
             [output_shape_bytes],
         )
         output_reshape = ark.all_reduce(
-            output_parallel_reshape, local_rank, world_size
+            output_parallel_reshape, self.local_rank, self.world_size
         )
         output = ark.reshape(output_reshape, output_shape)
         return output
@@ -227,6 +229,8 @@ class FeedForward(ark.Module):
         hidden_dim: int,
         multiple_of: int,
         ffn_dim_multiplier: Optional[float],
+        local_rank: int,
+        world_size: int,
     ):
         super().__init__()
         hidden_dim = int(2 * hidden_dim / 3)
@@ -237,9 +241,9 @@ class FeedForward(ark.Module):
             (hidden_dim + multiple_of - 1) // multiple_of
         )
 
-        self.w1 = ColumnParallelLinear(dim, hidden_dim)
-        self.w2 = RowParallelLinear(hidden_dim, dim)
-        self.w3 = ColumnParallelLinear(dim, hidden_dim)
+        self.w1 = ColumnParallelLinear(dim, hidden_dim, local_rank, world_size)
+        self.w2 = RowParallelLinear(hidden_dim, dim, local_rank, world_size)
+        self.w3 = ColumnParallelLinear(dim, hidden_dim, local_rank, world_size)
 
     def forward(self, x):
         # self.w2(F.silu(self.w1(x)) * self.w3(x))
@@ -261,7 +265,7 @@ def apply_rotary_emb(xq, xk, freqs_cis):
 
 
 class Attention(ark.Module):
-    def __init__(self, args: ModelArgs):
+    def __init__(self, args: ModelArgs, local_rank: int, world_size: int):
         super().__init__()
         self.n_kv_heads = (
             args.n_heads if args.n_kv_heads is None else args.n_kv_heads
@@ -271,14 +275,14 @@ class Attention(ark.Module):
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
-        self.wq = ColumnParallelLinear(args.dim, args.n_heads * self.head_dim)
+        self.wq = ColumnParallelLinear(args.dim, args.n_heads * self.head_dim, local_rank, world_size)
         self.wk = ColumnParallelLinear(
-            args.dim, self.n_kv_heads * self.head_dim
+            args.dim, self.n_kv_heads * self.head_dim, local_rank, world_size
         )
         self.wv = ColumnParallelLinear(
-            args.dim, self.n_kv_heads * self.head_dim
+            args.dim, self.n_kv_heads * self.head_dim, local_rank, world_size
         )
-        self.wo = RowParallelLinear(args.n_heads * self.head_dim, args.dim)
+        self.wo = RowParallelLinear(args.n_heads * self.head_dim, args.dim, local_rank, world_size)
 
     def forward(
         self,
@@ -331,17 +335,19 @@ class Attention(ark.Module):
 
 
 class TransformerBlock(ark.Module):
-    def __init__(self, layer_id: int, args: ModelArgs):
+    def __init__(self, layer_id: int, args: ModelArgs, local_rank: int, world_size: int):
         super().__init__()
         self.n_heads = args.n_heads
         self.dim = args.dim
         self.head_dim = args.dim // args.n_heads
-        self.attention = Attention(args)
+        self.attention = Attention(args, local_rank, world_size)
         self.feed_forward = FeedForward(
             dim=args.dim,
             hidden_dim=4 * args.dim,
             multiple_of=args.multiple_of,
             ffn_dim_multiplier=args.ffn_dim_multiplier,
+            local_rank=local_rank,
+            world_size=world_size,
         )
         self.layer_id = layer_id
         self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
@@ -362,7 +368,7 @@ class TransformerBlock(ark.Module):
 
 
 class Transformer(ark.Module):
-    def __init__(self, params: ModelArgs):
+    def __init__(self, params: ModelArgs, local_rank: int, world_size: int):
         super().__init__()
         self.params = params
         self.vocab_size = params.vocab_size
@@ -375,10 +381,10 @@ class Transformer(ark.Module):
 
         self.layers = []
         for layer_id in range(self.n_layers):
-            self.layers.append(TransformerBlock(layer_id, params))
+            self.layers.append(TransformerBlock(layer_id, params, local_rank, world_size))
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = ColumnParallelLinear(params.dim, params.vocab_size)
+        self.output = ColumnParallelLinear(params.dim, params.vocab_size, local_rank, world_size)
 
     def forward(
         self,
@@ -395,25 +401,27 @@ class Transformer(ark.Module):
 
 
 def unittest(test_func):
-    def _test_func():
-        test_func()
+    def _test_func(local_rank: int, world_size: int):
+        test_func(local_rank, world_size)
 
     proc = []
-    global local_rank
+    world_size = 8
+    for rank in range(world_size):
+        proc.append(multiprocessing.Process(target=_test_func,
+                                            args=(rank, world_size)))
 
-    for rank in range(world_size):
-        local_rank = rank
-        proc.append(multiprocessing.Process(target=_test_func))
-        proc[rank].start()
-    for rank in range(world_size):
-        proc[rank].join()
-        assert proc[rank].exitcode == 0
+    for p in proc:
+        p.start()
+
+    for p in proc:
+        p.join()
+        assert p.exitcode == 0
 
 
 import multiprocessing
 
 
-def test_transformer():
+def test_transformer(local_rank: int, world_size: int):
     batch_size = 1
     seq_len = 64
     dim = ModelArgs().dim
@@ -423,7 +431,7 @@ def test_transformer():
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
     args.n_layers = 4
     args.vocab_size = 1024
-    transformer_ark = Transformer(args)
+    transformer_ark = Transformer(args, local_rank, world_size)
     dim = args.dim
 
     ark_input = ark.tensor([batch_size, seq_len, dim], ark_type)
@@ -441,5 +449,4 @@ def test_transformer():
 
 
 if __name__ == "__main__":
-    world_size = 8
     unittest(test_transformer)
