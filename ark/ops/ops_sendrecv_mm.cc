@@ -147,7 +147,6 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "send_mm", input->shape, " ", id, " ", gpu_dst, " ", bytes);
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
@@ -184,7 +183,6 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "recv_mm", input->shape, " ", id, " ", gpu_src, " ", bytes);
     input->exported = true;
 
     if (output != nullptr && input->type != output->type) {

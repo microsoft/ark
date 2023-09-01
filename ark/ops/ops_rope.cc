@@ -49,7 +49,6 @@ std::string RopeOp::function_name(const OpConfig &cfg) const
 Tensor *Model::rope(Tensor *input, Tensor *other, Tensor *output,
                     const std::string &name)
 {
-    LOG(DEBUG, "rope ", input->shape, " ", other->shape);
     assert(input != nullptr);
     assert(other != nullptr);
     OpPrecType pt;

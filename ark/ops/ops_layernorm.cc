@@ -46,7 +46,6 @@ std::string LayernormOp::function_name(const OpConfig &cfg) const
 Tensor *Model::layernorm(Tensor *input, Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "layernorm ", input->shape, " ", input->ldims, " ");
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;

@@ -297,8 +297,6 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
     }
     this->bufs.emplace_back(
         std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
-    LOG(DEBUG, "GPU Buffer ", this->name, " rank ", this->rank, " ID ", id,
-        " off 0x", hex, off, dec, " bytes ", bytes);
     return this->bufs.back().get();
 }
 
@@ -347,8 +345,6 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 {
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
-    LOG(DEBUG, "Exported GPU Buffer sid ", sid, " offset ",
-        buf->get_offset() + offset, " rank ", this->rank);
 }
 
 //
@@ -356,8 +352,6 @@ GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
-    LOG(DEBUG, "Imported GPU Buffer from GPU ", gid, " sid ", sid, " bytes ",
-        bytes);
     GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 

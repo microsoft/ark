@@ -49,7 +49,6 @@ std::string MulOp::function_name(const OpConfig &cfg) const
 Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
                    const std::string &name)
 {
-    LOG(DEBUG, "mul ", input->shape, " ", other->shape);
     assert(input != nullptr);
     assert(other != nullptr);
     OpPrecType pt;

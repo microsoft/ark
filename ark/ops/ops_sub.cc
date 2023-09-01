@@ -51,7 +51,6 @@ std::string SubOp::function_name(const OpConfig &cfg) const
 Tensor *Model::sub(Tensor *input, Tensor *other, Tensor *output,
                    const string &name)
 {
-    LOG(DEBUG, "sub ", input->shape, " ", other->shape);
     assert(input != nullptr);
     assert(other != nullptr);
     OpPrecType pt;
