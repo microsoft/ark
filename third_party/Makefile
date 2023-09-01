@@ -27,7 +27,7 @@ $(GPUDMA_TARGET): $(GPUDMA_PATCHES)
 	rm -r $(TMPDIR)
 
 cutlass:
-	@cd $(CUTLASS_DIR) && patch --skip -p1 < $(MKDIR)/patches/cutlass/cutlass.patch
+	@cd $(CUTLASS_DIR) && patch -sN -p1 < $(MKDIR)/patches/cutlass/cutlass.patch | true
 
 patch-$(MKDIR)/patches/%.patch: $(MKDIR)/% $(MKDIR)/patches/%.patch
 	@patch -sN $< -i $(word 2,$^) -r /dev/null | true
