@@ -701,20 +701,10 @@ index dc98823c..5dcb29a4 100644
  
          // Load A, B shmem->regs for k_block+1
 diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
-index 94f4656f..cc8cfc20 100644
+index 94f4656f..49502f90 100644
 --- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
 +++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
-@@ -136,7 +136,8 @@ struct CollectiveMma<
- 
-   using MainloopPipeline = cutlass::PipelineTmaAsync<
-                              DispatchPolicy::Stages,
--                             typename DispatchPolicy::ClusterShape>;
-+                             typename DispatchPolicy::ClusterShape,
-+                             size(TiledMma{})>;
-   using PipelineState = cutlass::PipelineState<DispatchPolicy::Stages>;
- 
-   using PipelineParams = typename MainloopPipeline::Params;
-@@ -348,7 +349,8 @@ struct CollectiveMma<
+@@ -348,7 +348,8 @@ struct CollectiveMma<
    {
  
      using namespace cute;
@@ -724,7 +714,7 @@ index 94f4656f..cc8cfc20 100644
      int warp_idx_in_warp_group  = warp_idx % 4;
      int lane_predicate = cute::elect_one_sync();
  
-@@ -420,7 +422,8 @@ struct CollectiveMma<
+@@ -420,7 +421,8 @@ struct CollectiveMma<
    CUTLASS_DEVICE void
    load_tail(MainloopPipeline pipeline, PipelineState smem_pipe_write)
    {
@@ -734,7 +724,7 @@ index 94f4656f..cc8cfc20 100644
      int warp_idx_in_warp_group = warp_idx % 4;
      int lane_predicate = cute::elect_one_sync();
  
-@@ -462,7 +465,8 @@ struct CollectiveMma<
+@@ -462,7 +464,8 @@ struct CollectiveMma<
        "SM90 GMMA mainloops cannot have a non-void copy atom for smem sourced instructions.");
  
      // Obtain warp index
@@ -745,20 +735,10 @@ index 94f4656f..cc8cfc20 100644
      
      Tensor sA_ = make_tensor(make_smem_ptr(shared_tensors.smem_A.data()), SmemLayoutA{});         // (BLK_M,BLK_K,PIPE)
 diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
-index 932765ea..ab4ae9f8 100644
+index 932765ea..071f0a15 100644
 --- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
 +++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
-@@ -108,7 +108,8 @@ struct CollectiveMma<
- 
-   using MainloopPipeline = cutlass::PipelineTmaAsync<
-                              DispatchPolicy::Stages,
--                             typename DispatchPolicy::ClusterShape>;
-+                             typename DispatchPolicy::ClusterShape,
-+                             size(TiledMma{})>;
- 
-   using PipelineParams = typename MainloopPipeline::Params;
-   using PipelineState  = typename cutlass::PipelineState<DispatchPolicy::Stages>;
-@@ -326,7 +327,8 @@ struct CollectiveMma<
+@@ -326,7 +326,8 @@ struct CollectiveMma<
  
  
      // Obtain warp index
@@ -768,7 +748,7 @@ index 932765ea..ab4ae9f8 100644
      int warp_group_thread_idx = thread_idx % NumThreadsPerWarpGroup;
  
      PipelineParams params;
-@@ -353,7 +355,7 @@ struct CollectiveMma<
+@@ -353,7 +354,7 @@ struct CollectiveMma<
        cute::cluster_wait();
      }
      else {
@@ -777,7 +757,7 @@ index 932765ea..ab4ae9f8 100644
      }
  
      // Set predicate for the lowest lane_id in the warp
-@@ -420,7 +422,7 @@ struct CollectiveMma<
+@@ -420,7 +421,7 @@ struct CollectiveMma<
      CUTE_STATIC_ASSERT_V(Int<DispatchPolicy::Stages>{} == size<2>(sA));        // PIPE
      CUTE_STATIC_ASSERT_V(Int<DispatchPolicy::Stages>{} == size<2>(sB));        // PIPE
  
@@ -787,20 +767,10 @@ index 932765ea..ab4ae9f8 100644
      tiled_mma.accumulate_ = GMMA::ScaleOut::Zero;
  
 diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp
-index c7dee7b1..8675d54e 100644
+index c7dee7b1..5cade6ce 100644
 --- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp
 +++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp
-@@ -109,7 +109,8 @@ struct CollectiveMma<
- 
-   using MainloopPipeline = cutlass::PipelineTmaAsync<
-                              DispatchPolicy::Stages,
--                             typename DispatchPolicy::ClusterShape>;
-+                             typename DispatchPolicy::ClusterShape,
-+                             size(TiledMma{})>;
-   using PipelineState = cutlass::PipelineState<DispatchPolicy::Stages>;
- 
-   using PipelineParams = typename MainloopPipeline::Params;
-@@ -281,7 +282,8 @@ struct CollectiveMma<
+@@ -281,7 +281,8 @@ struct CollectiveMma<
    {
  
      using namespace cute;
@@ -810,7 +780,7 @@ index c7dee7b1..8675d54e 100644
      int warp_idx_in_warp_group  = warp_idx % 4;
      int lane_predicate = cute::elect_one_sync();
  
-@@ -356,7 +358,8 @@ struct CollectiveMma<
+@@ -356,7 +357,8 @@ struct CollectiveMma<
        MainloopPipeline pipeline, 
        PipelineState smem_pipe_write)
    {
@@ -821,20 +791,10 @@ index c7dee7b1..8675d54e 100644
      int lane_predicate = cute::elect_one_sync();
  
 diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp
-index 0e160271..b3160307 100644
+index 0e160271..307cd4b8 100644
 --- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp
 +++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp
-@@ -110,7 +110,8 @@ struct CollectiveMma<
- 
-   using MainloopPipeline = cutlass::PipelineTmaAsync<
-                              DispatchPolicy::Stages,
--                             typename DispatchPolicy::ClusterShape>;
-+                             typename DispatchPolicy::ClusterShape,
-+                             size(TiledMma{})>;
-   using PipelineState = cutlass::PipelineState<DispatchPolicy::Stages>;
- 
-   using PipelineParams = typename MainloopPipeline::Params;
-@@ -279,7 +280,8 @@ struct CollectiveMma<
+@@ -279,7 +279,8 @@ struct CollectiveMma<
    {
  
      using namespace cute;
@@ -844,7 +804,7 @@ index 0e160271..b3160307 100644
      int warp_idx_in_warp_group  = warp_idx % 4;
      int lane_predicate = cute::elect_one_sync();
  
-@@ -354,7 +356,8 @@ struct CollectiveMma<
+@@ -354,7 +355,8 @@ struct CollectiveMma<
        MainloopPipeline pipeline,
        PipelineState smem_pipe_write)
    {
@@ -1551,9 +1511,18 @@ index e1fc4ec9..65c54b77 100644
      auto [m_coord, n_coord, l_coord] = blockIdx;
      auto blk_coord_mnkl = make_coord(m_coord, n_coord, _, l_coord);                                        // (m,n,k,l)
 diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
-index 7ab238f6..0147d184 100644
+index 7ab238f6..16714265 100644
 --- a/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
 +++ b/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
+@@ -105,7 +105,7 @@ public:
+   using StrideC  = typename CollectiveEpilogue::StrideC;
+   using ElementD = typename CollectiveEpilogue::ElementD;
+   using StrideD  = typename CollectiveEpilogue::StrideD;
+-  using EpilogueArguments = typename CollectiveEpilogue::Params;
++  using EpilogueArguments = typename CollectiveEpilogue::Arguments;
+   using EpilogueParams = typename CollectiveEpilogue::Params;
+   static_assert(cute::is_same_v<ElementAccumulator, typename CollectiveEpilogue::ElementAccumulator>,
+     "Mainloop and epilogue do not agree on accumulator value type.");
 @@ -224,8 +224,10 @@ public:
      static_assert(rank(StrideC{}) == 3, "StrideC must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
      static_assert(rank(StrideD{}) == 3, "StrideD must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
@@ -2134,70 +2103,6 @@ index b79b43e7..965f802e 100644
      #endif
  
      ref_.add_coord_offset(origin_);
-diff --git a/include/cutlass/pipeline/sm90_pipeline.hpp b/include/cutlass/pipeline/sm90_pipeline.hpp
-index e86d04ce..9ff938e5 100644
---- a/include/cutlass/pipeline/sm90_pipeline.hpp
-+++ b/include/cutlass/pipeline/sm90_pipeline.hpp
-@@ -190,11 +190,13 @@ PipelineState<Pipeline::Stages> make_producer_start_state() {
- // Currently, it is optional to elect a leader for the Consumers
- template <
-   int Stages_,
--  class ClusterShape_
-+  class ClusterShape_,
-+  int MaxThreadsPerBlock_,
- >
- class PipelineTmaAsync {
- public :
-   using ClusterShape = ClusterShape_;
-+  using MaxThreadsPerBlock = MaxThreadsPerBlock_;
-   using FullBarrier = cutlass::arch::ClusterTransactionBarrier;
-   using EmptyBarrier = cutlass::arch::ClusterBarrier;
-   using ProducerBarrierType = FullBarrier::ValueType;
-@@ -202,6 +204,8 @@ public :
-   static constexpr uint32_t Stages = Stages_;
-   using PipelineState = cutlass::PipelineState<Stages>;
- 
-+  static constexpr uint32_t MaxWarpsPerBlock = MaxThreadsPerBlock / NumThreadsPerWarp;
-+
-   struct SharedStorage {
-     FullBarrier full_barrier_[Stages];
-     EmptyBarrier empty_barrier_[Stages];
-@@ -229,7 +233,7 @@ public :
-       , full_barrier_ptr_(&storage.full_barrier_[0])
-       , empty_barrier_ptr_(&storage.empty_barrier_[0]) {
- 
--    int warp_idx = canonical_warp_idx();
-+    int warp_idx = canonical_warp_idx() % MaxWarpsPerBlock;
-     int lane_predicate = cute::elect_one_sync();
-     auto cluster_shape = ClusterShape{};
-     if (warp_idx == cute::get<0>(params.active_warps) && lane_predicate == 1) {
-@@ -631,7 +635,7 @@ public :
-     , full_barrier_ptr_(storage.full_barrier_.data())
-     , empty_barrier_ptr_(storage.empty_barrier_.data()) {
- 
--    int warp_idx = canonical_warp_idx();
-+    int warp_idx = canonical_warp_idx() % MaxWarpsPerBlock;
-     int lane_predicate = cute::elect_one_sync();
- 
-     // Barrier FULL, EMPTY init
-@@ -826,7 +830,7 @@ public :
-       full_barrier_ptr_(&storage.full_barrier_[0]),
-       empty_barrier_ptr_(&storage.empty_barrier_[0]) {
- 
--    int warp_idx = canonical_warp_idx();
-+    int warp_idx = canonical_warp_idx() % MaxWarpsPerBlock;
-     int lane_predicate = cute::elect_one_sync();
- 
-     // Barrier FULL, EMPTY init
-@@ -1015,7 +1019,7 @@ public:
-       barrier_ptr_(&storage.barrier_[0][0]),
-       // Group 0 - starts with an opposite phase
-       stage_({0, params.group_id == 0, 0}) {
--    int warp_idx = canonical_warp_idx();
-+    int warp_idx = canonical_warp_idx() % MaxWarpsPerBlock;
-     int lane_predicate = cute::elect_one_sync();
- 
-     // Barrier FULL, EMPTY init
 diff --git a/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h b/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
 index 5a0b9f47..1e4f8407 100644
 --- a/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
