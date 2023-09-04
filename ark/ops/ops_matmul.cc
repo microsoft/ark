@@ -302,8 +302,8 @@ const OpConfigMap MatmulConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 147456, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
-         {8, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
-         {4, 49152, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+         {4, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
+         {4, 98304, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_CUDA_80, OP_PREC_FP32},
      {
