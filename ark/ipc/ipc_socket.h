@@ -47,6 +47,7 @@ class IpcSocket
                               bool block);
 
     int send_all(int sock, const void *buf, int size);
+    int recv_try(int sock, void *buf, int size);
     int recv_all(int sock, void *buf, int size);
 
     const std::string ip;
@@ -55,7 +56,7 @@ class IpcSocket
 
     int sock_listen;
     bool run_server;
-    std::thread *server;
+    std::thread server;
 
     std::map<std::string, struct Item> items;
 };
