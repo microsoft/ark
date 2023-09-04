@@ -68,10 +68,10 @@ void GpuInfo::init(const int gpu_id)
         this->arch = GPU_ARCH_CUDA_60;
     } else if (this->arch_str == "70") {
         this->arch = GPU_ARCH_CUDA_70;
-    } else if (this->arch_str == "75") {
-        this->arch = GPU_ARCH_CUDA_75;
     } else if (this->arch_str == "80") {
         this->arch = GPU_ARCH_CUDA_80;
+    } else if (this->arch_str == "90") {
+        this->arch = GPU_ARCH_CUDA_90;
     } else {
         this->arch = GPU_ARCH_UNKNOWN;
     }
@@ -297,8 +297,6 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
     }
     this->bufs.emplace_back(
         std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
-    LOG(DEBUG, "GPU Buffer ", this->name, " rank ", this->rank, " ID ", id,
-        " off 0x", hex, off, dec, " bytes ", bytes);
     return this->bufs.back().get();
 }
 
@@ -347,8 +345,6 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 {
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
-    LOG(DEBUG, "Exported GPU Buffer sid ", sid, " offset ",
-        buf->get_offset() + offset, " rank ", this->rank);
 }
 
 //
@@ -356,8 +352,6 @@ GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
-    LOG(DEBUG, "Imported GPU Buffer from GPU ", gid, " sid ", sid, " bytes ",
-        bytes);
     GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 
@@ -393,24 +387,6 @@ void GpuMgrCtx::freeze()
     this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
     this->comm_sw->launch_request_loop();
 }
-
-// // Write a request.
-// void GpuMgrCtx::send(int sid, int rank, size_t bytes)
-// {
-//     // Wait for the send completion.
-//     volatile int *sc = this->get_sc_href(sid);
-//     while (*sc == 0) {
-//     }
-//     *sc = 0;
-
-//     Request db;
-//     db.fields.req = 0;
-//     db.fields.sid = sid;
-//     db.fields.rank = rank;
-//     db.fields.len = bytes;
-//     db.fields.rsv = 0;
-//     this->comm_sw->set_request(db);
-// }
 
 //
 GpuState GpuMgrCtx::set_current()

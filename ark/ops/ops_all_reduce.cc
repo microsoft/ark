@@ -16,7 +16,6 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
     if (output != nullptr) {
         LOG(ERROR, "all_reduce output is not supported");
     }
-    LOG(DEBUG, "all_reduce ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
     }
@@ -36,9 +35,11 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         } else {
             send_data = input;
         }
-        Tensor *send_tensor = this->send(send_data, base + gpu_id, gpu_dst);
-        Tensor *send_done_tensor = this->send_done(
-            this->identity(input, {send_tensor}), base + gpu_id, gpu_dst);
+        Tensor *send_tensor =
+            this->send(send_data, base + gpu_id, gpu_dst);
+        Tensor *send_done_tensor =
+            this->send_done(this->identity(input, {send_tensor}),
+                            base + gpu_id, gpu_dst);
         Tensor *recv_buf = this->tensor(input->shape, input->type);
         Tensor *recv = this->recv(this->identity(recv_buf, {send_done_tensor}),
                                   base + gpu_src, gpu_src);

@@ -14,7 +14,6 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
                                         const std::string &)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "all_gather ", input->shape, " ", gpu_id, " ", gpu_num);
     if (input->ndims() > 1) {
         LOG(WARN,
             "warning: if the send tensor if not contiguous, the all_gather "
@@ -38,9 +37,11 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
         } else {
             send_data = input;
         }
-        Tensor *send_tensor = this->send(send_data, base + gpu_id, gpu_dst);
-        Tensor *send_done_tensor = this->send_done(
-            this->identity(input, {send_tensor}), base + gpu_id, gpu_dst);
+        Tensor *send_tensor =
+            this->send(send_data, base + gpu_id, gpu_dst);
+        Tensor *send_done_tensor =
+            this->send_done(this->identity(input, {send_tensor}),
+                            base + gpu_id, gpu_dst);
         Tensor *recv_buf;
         if (!output.empty()) {
             CHECK(output.size() > (size_t)gpu_src);
