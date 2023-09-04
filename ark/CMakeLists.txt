@@ -5,9 +5,6 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cc)
 file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cc *_test.cu)
 file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unittest/*.cc)
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
-file(GLOB_RECURSE INTERFACE_HEADERS CONFIGURE_DEPENDS include/ark*.h)
-file(GLOB_RECURSE KERNEL_HEADERS CONFIGURE_DEPENDS include/kernels/*.h)
-file(GLOB_RECURSE CUTLASS_HEADERS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/third_party/cutlass/include/*.h)
 if (NOT USE_KAHYPAR)
     list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/sched/sched/sched_kahypar.cc)
     list(REMOVE_ITEM UT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/kahypar_test.cc)
@@ -28,32 +25,6 @@ target_include_directories(ark_obj SYSTEM PRIVATE
 )
 target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
-
-# Add header files to library targets
-target_sources(ark PUBLIC
-    FILE_SET install_headers
-    TYPE HEADERS
-    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-    FILES ${INTERFACE_HEADERS} ${KERNEL_HEADERS}
-)
-target_sources(ark_static PUBLIC
-    FILE_SET install_headers
-    TYPE HEADERS
-    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-    FILES ${INTERFACE_HEADERS} ${KERNEL_HEADERS}
-)
-target_sources(ark PUBLIC
-    FILE_SET install_cutlass_headers
-    TYPE HEADERS
-    BASE_DIRS ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
-    FILES ${CUTLASS_HEADERS}
-)
-target_sources(ark_static PUBLIC
-    FILE_SET install_cutlass_headers
-    TYPE HEADERS
-    BASE_DIRS ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
-    FILES ${CUTLASS_HEADERS}
-)
 
 # ARK unit tests
 foreach(ut_source IN ITEMS ${UT_SOURCES})

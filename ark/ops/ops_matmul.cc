@@ -307,7 +307,7 @@ const OpConfigMap MatmulConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 147456, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
-         {8, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {4, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
          {4, 49152, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
 };
