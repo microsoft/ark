@@ -388,24 +388,6 @@ void GpuMgrCtx::freeze()
     this->comm_sw->launch_request_loop();
 }
 
-// // Write a request.
-// void GpuMgrCtx::send(int sid, int rank, size_t bytes)
-// {
-//     // Wait for the send completion.
-//     volatile int *sc = this->get_sc_href(sid);
-//     while (*sc == 0) {
-//     }
-//     *sc = 0;
-
-//     Request db;
-//     db.fields.req = 0;
-//     db.fields.sid = sid;
-//     db.fields.rank = rank;
-//     db.fields.len = bytes;
-//     db.fields.rsv = 0;
-//     this->comm_sw->set_request(db);
-// }
-
 //
 GpuState GpuMgrCtx::set_current()
 {

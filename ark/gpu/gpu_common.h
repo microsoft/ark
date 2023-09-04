@@ -18,7 +18,7 @@ namespace ark {
 enum
 {
     REQUEST_INVALID = -1,
-    MAX_NUM_SID = 8192
+    MAX_NUM_SID = 65536
 };
 
 //

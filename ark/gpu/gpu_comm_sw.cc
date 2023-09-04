@@ -346,7 +346,7 @@ void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
             int nrph = get_env().num_ranks_per_host;
             int remote_gpu_id = remote_rank % nrph;
             int remote_host_id = remote_rank / nrph;
-            int remote_data;
+            int remote_data = -1;
             s = this->ipc_socket->query_item(
                 get_host(remote_host_id), port_base + remote_gpu_id,
                 "comm_config_done", &remote_data, sizeof(remote_data), true);
