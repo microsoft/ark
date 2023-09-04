@@ -51,13 +51,14 @@ set_target_properties(ark_obj PROPERTIES
     VERSION ${ARK_VERSION}
     SOVERSION ${ARK_SOVERSION}
 )
-add_dependencies(ark_obj tp-cutlass-patch)
+add_dependencies(ark_obj tp-cutlass)
 
 # Build
 add_custom_target(build)
-add_dependencies(build ark_obj tp-cutlass)
+add_dependencies(build ark_obj)
 add_custom_command(TARGET build POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/ark/include ${BUILD_DIR}/include
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/third_party/cutlass/include ${BUILD_DIR}/include/kernels
 )
 
 # ARK shared library
@@ -84,6 +85,38 @@ add_custom_target(ut)
 
 # Details
 add_subdirectory(ark)
+
+# Add header files to library targets
+file(GLOB_RECURSE ARK_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/ark/include/*.h)
+file(GLOB_RECURSE CUTLASS_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/third_party/cutlass/include/*.h
+    ${CMAKE_SOURCE_DIR}/third_party/cutlass/include/*.hpp
+    ${CMAKE_SOURCE_DIR}/third_party/cutlass/include/*.inl)
+target_sources(ark PUBLIC
+    FILE_SET install_headers
+    TYPE HEADERS
+    BASE_DIRS ${CMAKE_SOURCE_DIR}/ark/include
+    FILES ${ARK_HEADERS}
+)
+target_sources(ark_static PUBLIC
+    FILE_SET install_headers
+    TYPE HEADERS
+    BASE_DIRS ${CMAKE_SOURCE_DIR}/ark/include
+    FILES ${ARK_HEADERS}
+)
+target_sources(ark PUBLIC
+    FILE_SET install_cutlass_headers
+    TYPE HEADERS
+    BASE_DIRS ${CMAKE_SOURCE_DIR}/third_party/cutlass/include
+    FILES ${CUTLASS_HEADERS}
+)
+target_sources(ark_static PUBLIC
+    FILE_SET install_cutlass_headers
+    TYPE HEADERS
+    BASE_DIRS ${CMAKE_SOURCE_DIR}/third_party/cutlass/include
+    FILES ${CUTLASS_HEADERS}
+)
 
 # Install libraries
 install(TARGETS ark ark_static
