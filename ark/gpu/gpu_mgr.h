@@ -22,8 +22,8 @@ typedef enum
     GPU_ARCH_UNKNOWN = -1,
     GPU_ARCH_CUDA_60,
     GPU_ARCH_CUDA_70,
-    GPU_ARCH_CUDA_75,
     GPU_ARCH_CUDA_80,
+    GPU_ARCH_CUDA_90,
 } GpuArchType;
 
 // Details of a GPU device.

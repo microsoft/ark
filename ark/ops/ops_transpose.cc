@@ -104,7 +104,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
 }
 
 const OpConfigMap TransposeConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_FP32},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},
@@ -113,27 +113,7 @@ const OpConfigMap TransposeConfigMap = {
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
          {2, 0, {{1, 1}}, {{32, 32}}, true, false},
      }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
-         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
-         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
-         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
-         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
-         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
-         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
-         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
-         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
-         {1, 0, {{1, 1}}, {{16, 16}}, true, false},
-         {1, 0, {{1, 1}}, {{8, 16}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_FP16},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},
