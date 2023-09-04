@@ -177,12 +177,7 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
 }
 
 const OpConfigMap CommConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_NONE},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 1}}, {{1, 1}}, true, true},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{1, 1}}, {{1, 1}}, true, true},

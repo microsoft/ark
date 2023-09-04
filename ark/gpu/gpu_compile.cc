@@ -149,10 +149,10 @@ const string gpu_compile(const vector<string> &codes,
         arch = "60";
     } else if (arch_type == GPU_ARCH_CUDA_70) {
         arch = "70";
-    } else if (arch_type == GPU_ARCH_CUDA_75) {
-        arch = "75";
     } else if (arch_type == GPU_ARCH_CUDA_80) {
         arch = "80";
+    } else if (arch_type == GPU_ARCH_CUDA_90) {
+        arch = "90";
     } else {
         arch = "";
     }

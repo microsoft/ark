@@ -48,6 +48,38 @@ bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2)
     return ops1.arch_type == ops2.arch_type && ops1.prec_type == ops2.prec_type;
 }
 
+OpConfigMap::OpConfigMap(
+    std::initializer_list<
+        std::pair<const OpConfigKey, const std::vector<OpConfig>>>
+        ilist)
+    : cfg_map{ilist}
+{
+}
+
+// A dummy OpConfig vector to return when no config is found
+static const std::vector<OpConfig> NoneConfigs;
+
+const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const
+{
+    auto search = this->cfg_map.find(key);
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({key.arch_type, OP_PREC_ANY});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, OP_PREC_ANY});
+    if (search == this->cfg_map.end()) {
+        return NoneConfigs;
+    }
+    return search->second;
+}
+
 ostream &operator<<(ostream &os, const OpType &s)
 {
     // clang-format off
