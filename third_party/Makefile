@@ -10,8 +10,6 @@ GPUDMA_PATCH_TARGETS := $(patsubst %,patch-%,$(GPUDMA_PATCHES))
 GPUDMA_TARGET := $(GPUDMA_DIR)/module/gpumem.ko
 
 CUTLASS_DIR := $(MKDIR)/cutlass
-CUTLASS_PATCHES       := $(shell find $(MKDIR)/patches/cutlass -name '*.patch')
-CUTLASS_PATCH_TARGETS := $(patsubst %,patch-%,$(CUTLASS_PATCHES))
 
 TMPDIR := $(MKDIR)/.tmp
 
@@ -29,7 +27,7 @@ $(GPUDMA_TARGET): $(GPUDMA_PATCHES)
 	rm -r $(TMPDIR)
 
 cutlass:
-	@$(MAKE) -j $(CUTLASS_PATCH_TARGETS)
+	@cd $(CUTLASS_DIR) && patch -sN -p1 < $(MKDIR)/patches/cutlass/cutlass.patch | true
 
 patch-$(MKDIR)/patches/%.patch: $(MKDIR)/% $(MKDIR)/patches/%.patch
 	@patch -sN $< -i $(word 2,$^) -r /dev/null | true

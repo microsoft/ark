@@ -16,7 +16,6 @@ void baseline_all_gather(std::vector<void *> &outputs,
             out[j] = i + 1;
         }
     }
-
 }
 
 void test_all_gather_4gpus_internal(size_t nelem, int iter)
