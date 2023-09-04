@@ -134,6 +134,7 @@ typedef enum
 typedef enum
 {
     OP_PREC_NONE,
+    OP_PREC_ANY,
     OP_PREC_FP16,
     OP_PREC_FP32,
 } OpPrecType;
@@ -141,8 +142,11 @@ typedef enum
 /// Type of hardware architecture support.
 typedef enum
 {
+    OP_ARCH_CUDA_ANY,
+    OP_ARCH_CUDA_60,
     OP_ARCH_CUDA_70,
     OP_ARCH_CUDA_80,
+    OP_ARCH_CUDA_90,
 } OpArchType;
 
 struct Tensor;
@@ -177,7 +181,19 @@ bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
 bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
 /// Map from OpConfigKey to a list of OpConfigs.
-using OpConfigMap = std::map<OpConfigKey, std::vector<OpConfig>>;
+class OpConfigMap
+{
+  public:
+    OpConfigMap(std::initializer_list<
+                std::pair<const OpConfigKey, const std::vector<OpConfig>>>
+                    ilist);
+    ~OpConfigMap(){};
+
+    const std::vector<OpConfig> &get(const OpConfigKey &key) const;
+
+  private:
+    const std::map<OpConfigKey, const std::vector<OpConfig>> cfg_map;
+};
 
 /// Operator.
 class Op

@@ -68,10 +68,10 @@ void GpuInfo::init(const int gpu_id)
         this->arch = GPU_ARCH_CUDA_60;
     } else if (this->arch_str == "70") {
         this->arch = GPU_ARCH_CUDA_70;
-    } else if (this->arch_str == "75") {
-        this->arch = GPU_ARCH_CUDA_75;
     } else if (this->arch_str == "80") {
         this->arch = GPU_ARCH_CUDA_80;
+    } else if (this->arch_str == "90") {
+        this->arch = GPU_ARCH_CUDA_90;
     } else {
         this->arch = GPU_ARCH_UNKNOWN;
     }
