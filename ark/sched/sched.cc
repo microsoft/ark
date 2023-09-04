@@ -81,25 +81,30 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     }
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     OpArchType arch_type;
-    if (gpu_info.arch == GPU_ARCH_CUDA_70) {
+    if (gpu_info.arch == GPU_ARCH_CUDA_60) {
+        arch_type = OP_ARCH_CUDA_60;
+    } else if (gpu_info.arch == GPU_ARCH_CUDA_70) {
         arch_type = OP_ARCH_CUDA_70;
     } else if (gpu_info.arch == GPU_ARCH_CUDA_80) {
         arch_type = OP_ARCH_CUDA_80;
+    } else if (gpu_info.arch == GPU_ARCH_CUDA_90) {
+        arch_type = OP_ARCH_CUDA_90;
     } else {
         LOG(ERROR, "unsupported GPU architecture: ", gpu_info.arch);
     }
-    auto search = op->cfg_map->find({arch_type, op->prec_type});
-    if (search == op->cfg_map->end()) {
+    auto &configs = op->cfg_map->get({arch_type, op->prec_type});
+    if (configs.empty()) {
         LOG(ERROR, "no config found for op: ", op->name,
             ", arch_type: ", arch_type, ", prec_type: ", op->prec_type);
-    } else if (op->gran_lev >= 0) {
-        if (search->second.size() > (unsigned int)op->gran_lev) {
-            return &search->second[op->gran_lev];
+    }
+    if (op->gran_lev >= 0) {
+        if (configs.size() > (unsigned int)op->gran_lev) {
+            return &configs[op->gran_lev];
         }
         LOG(ERROR, "invalid granularity level: ", op->gran_lev);
     }
     std::vector<const OpConfig *> feasible_configs;
-    for (auto &cfg : search->second) {
+    for (auto &cfg : configs) {
         if (cfg.num_warps <= this->num_warps_per_sm) {
             feasible_configs.push_back(&cfg);
         }
