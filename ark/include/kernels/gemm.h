@@ -61,7 +61,7 @@ struct GemmConfiguration;
 
 template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<
-    UnitOp, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+    UnitOp, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
     cutlass::half_t, LayoutA, cutlass::half_t,
     LayoutB, cutlass::half_t, LayoutC,
     cutlass::gemm::GemmShape<128, 256, 32>>
