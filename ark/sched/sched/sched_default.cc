@@ -323,13 +323,13 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
     this->comp_stream.back()->add_items(comp_items);
     this->comm_stream.back()->add_items(comm_items);
 
-    LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
-    for (auto &item : comp_items) {
-        LOG(DEBUG, "  comp: ", this->opseqs[item.opseq_id]->get_name());
-    }
-    for (auto &item : comm_items) {
-        LOG(DEBUG, "  comm: ", this->opseqs[item.opseq_id]->get_name());
-    }
+    // LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
+    // for (auto &item : comp_items) {
+    //     LOG(DEBUG, "  comp: ", this->opseqs[item.opseq_id]->get_name());
+    // }
+    // for (auto &item : comm_items) {
+    //     LOG(DEBUG, "  comm: ", this->opseqs[item.opseq_id]->get_name());
+    // }
 
     recursive_schedule(next_nodes, seen_nodes);
 }
@@ -468,8 +468,8 @@ void DefaultScheduler::configure_gpu_buf(
                 max_bytes = tns_bytes;
             }
             // TODO: more verficiations.
-            auto &sh = tns->shape;
-            auto &ld = tns->ldims;
+            // auto &sh = tns->shape;
+            // auto &ld = tns->ldims;
         }
         // Store the size.
         buf->bytes = max_bytes;
