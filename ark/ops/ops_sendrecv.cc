@@ -134,7 +134,6 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "send ", input->shape, " ", id, " ", dst_rank, " ", bytes);
     input->exported = true;
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
@@ -148,7 +147,6 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
                          const std::string &name)
 {
-    LOG(DEBUG, "send_done ", input->shape, " ", id);
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
@@ -169,7 +167,6 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "recv ", input->shape, " ", id, " ", src_rank, " ", bytes);
     input->exported = true;
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);

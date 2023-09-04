@@ -18,8 +18,6 @@ Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
                       const std::vector<Tensor *> &deps, bool exported,
                       int imported_rank, const std::string &name)
 {
-    LOG(DEBUG, "tensor ", name, " ", shape, " ", type, " ", ldims, " ", offs,
-        " ", pads);
     if (buf == nullptr) {
         buf = this->impl->create_tensor_buf();
     }

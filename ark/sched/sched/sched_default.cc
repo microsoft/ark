@@ -470,8 +470,6 @@ void DefaultScheduler::configure_gpu_buf(
             // TODO: more verficiations.
             auto &sh = tns->shape;
             auto &ld = tns->ldims;
-            LOG(DEBUG, "Tensor buf ", tns->buf, " pads ", tns->pads,
-                " padding ", sh, " -> ", ld, " exported ", tns->exported);
         }
         // Store the size.
         buf->bytes = max_bytes;

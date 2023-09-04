@@ -50,7 +50,6 @@ std::string AddOp::function_name(const OpConfig &cfg) const
 Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
                    const string &name)
 {
-    LOG(DEBUG, "add ", input->shape, " ", other->shape);
     CHECK(input != nullptr);
     CHECK(other != nullptr);
     OpPrecType pt;
