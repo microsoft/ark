@@ -28,9 +28,6 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
     GpuMgrCtx *ctx =
         this->gpu_mgr->create_context(name, this->rank, this->world_size);
     for (BufInfo &bi : this->buf_infos) {
-        LOG(DEBUG, "buf_info: sid=", bi.sid, " tbuf=", bi.tbuf,
-            " bytes=", bi.bytes, " offset=", bi.offset, " gpu_id=", bi.gpu_id,
-            " rank=", this->gpu_mgr->gpu_id);
         GpuBuf *buf;
         if (bi.gpu_id == this->gpu_mgr->gpu_id) {
             if (bi.tbuf->buf != nullptr) {
@@ -61,8 +58,6 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
         srop->args.get(&remote_rank, 2);
         srop->args.get(&bytes, 3);
 
-        LOG(DEBUG, "reg_sendrecv: sid=", sid, " remote=", remote_rank,
-            " bytes=", bytes, " is_recv=", srop->type == OP_RECV);
         ctx->reg_sendrecv(sid, remote_rank, bytes, srop->type == OP_RECV);
     }
     ctx->freeze();

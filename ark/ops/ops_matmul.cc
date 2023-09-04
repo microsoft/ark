@@ -96,8 +96,6 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     CHECK(mat_a != nullptr);
     CHECK(mat_b != nullptr);
     CHECK(split_k >= 1);
-    LOG(DEBUG, "matmul ", mat_a->shape, " ", mat_b->shape, " ", mat_a->ldims,
-        " ", mat_b->ldims, " ", split_k);
 
     // Shape verification.
     const Dims &shp_a = mat_a->shape;
