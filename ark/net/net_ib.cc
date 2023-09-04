@@ -74,7 +74,6 @@ NetIbQp::NetIbQp(void *qp_, int port_)
     std::memset(this->wrs, 0,
                 sizeof(struct ibv_send_wr) * ARK_NET_IB_MAX_SENDS);
     std::memset(this->sges, 0, sizeof(struct ibv_sge) * ARK_NET_IB_MAX_SENDS);
-    LOG(DEBUG, "QP INIT: qpn=", this->info.qpn);
 }
 
 NetIbQp::~NetIbQp()
@@ -126,7 +125,6 @@ int NetIbQp::rtr(const NetIbQp::Info *info)
     qp_attr.ah_attr.sl = 0;
     qp_attr.ah_attr.src_path_bits = 0;
     qp_attr.ah_attr.port_num = info->port;
-    LOG(DEBUG, "QP RTR: qpn=", this->info.qpn, " remote=", info->qpn);
     if (ibv_modify_qp((struct ibv_qp *)this->qp, &qp_attr,
                       IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU |
                           IBV_QP_DEST_QPN | IBV_QP_RQ_PSN |
@@ -155,7 +153,6 @@ int NetIbQp::rts()
         LOG(WARN, "ibv_modify_qp failed (", errno, ")");
         return -1;
     }
-    LOG(DEBUG, "QP RTS: qpn=", this->info.qpn);
     return 0;
 }
 

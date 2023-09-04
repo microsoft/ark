@@ -115,7 +115,7 @@ class GpuMgrCtx
     GpuBuf *mem_import(size_t bytes, int sid, int gpu_id);
     void reg_sendrecv(int sid, int gpu_dst, std::size_t bytes, bool is_recv);
     void freeze();
-    void send(int src, int dst, int rank, size_t bytes);
+    // void send(int sid, int rank, size_t bytes);
     GpuState set_current();
     int get_world_size() const
     {
