@@ -10,8 +10,7 @@
 using namespace std;
 
 template <typename T>
-void baseline_rope(std::vector<void *> &outputs,
-                   const std::vector<ark::Dims> &,
+void baseline_rope(std::vector<void *> &outputs, const std::vector<ark::Dims> &,
                    const std::vector<void *> &inputs,
                    const std::vector<ark::Dims> &input_shapes)
 {

@@ -181,7 +181,7 @@ DimType Tensor::offset_bytes(DimType i0, DimType i1, DimType i2,
 
 bool Tensor::is_sequential() const
 {
-    return this->shape == this->ldims;
+    return (this->shape == this->ldims) || (this->shape.ndims() == 1);
 }
 
 void Tensor::write(const void *buf)
