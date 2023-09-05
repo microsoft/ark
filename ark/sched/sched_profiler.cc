@@ -89,23 +89,23 @@ bool operator<(const ProfInfo &info0, const ProfInfo &info1)
     return info0.type < info1.type;
 }
 
-static string prof_name(const SchedTileSet &ts)
-{
-    const int &id0 = ts.tiles[0].opseq->get_id();
-    if (ts.type == SCHED_TILE_SET_MIXED) {
-        const int &id1 = ts.tiles[1].opseq->get_id();
-        return "prof_" + to_string(id0) + "_" + to_string(id1);
-    } else if (ts.type == SCHED_TILE_SET_S) {
-        return "prof_" + to_string(id0) + "_s";
-    } else if (ts.type == SCHED_TILE_SET_X) {
-        return "prof_" + to_string(id0) + "_x";
-    } else if (ts.type == SCHED_TILE_SET_Y) {
-        return "prof_" + to_string(id0) + "_y";
-    } else {
-        assert(ts.type == SCHED_TILE_SET_XY);
-        return "prof_" + to_string(id0) + "_xy";
-    }
-}
+// static string prof_name(const SchedTileSet &ts)
+// {
+//     const int &id0 = ts.tiles[0].opseq->get_id();
+//     if (ts.type == SCHED_TILE_SET_MIXED) {
+//         const int &id1 = ts.tiles[1].opseq->get_id();
+//         return "prof_" + to_string(id0) + "_" + to_string(id1);
+//     } else if (ts.type == SCHED_TILE_SET_S) {
+//         return "prof_" + to_string(id0) + "_s";
+//     } else if (ts.type == SCHED_TILE_SET_X) {
+//         return "prof_" + to_string(id0) + "_x";
+//     } else if (ts.type == SCHED_TILE_SET_Y) {
+//         return "prof_" + to_string(id0) + "_y";
+//     } else {
+//         assert(ts.type == SCHED_TILE_SET_XY);
+//         return "prof_" + to_string(id0) + "_xy";
+//     }
+// }
 
 // convert SchedTileDepth to Sched
 vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm)
@@ -159,8 +159,7 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm)
     return scheds;
 }
 
-void SchedProfiler::profile(OpGraph *op_graph, CodeGenerator &codegen,
-                            GpuMgrCtx *ctx)
+void SchedProfiler::profile(OpGraph *, CodeGenerator &, GpuMgrCtx *)
 {
 #if 0
     using ProfCallback = function<void(float, int)>;

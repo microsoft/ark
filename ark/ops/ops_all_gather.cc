@@ -14,10 +14,9 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
                                         const std::string &)
 {
     assert(input != nullptr);
-    if (input->ndims() > 1) {
-        LOG(INFO,
-            "warning: if the send tensor if not contiguous, the all_gather "
-            "may not work correctly");
+    if (!input->is_sequential()) {
+        LOG(WARN, "all_gather may not work correctly if the input tensor is "
+                  "not contiguous");
     }
     if (!output.empty() && output.size() != (size_t)gpu_num) {
         LOG(ERROR, "all_gather output size should be 0 or gpu_num");

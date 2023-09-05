@@ -190,7 +190,7 @@ void GpuMem::alloc(size_t bytes)
             CULOG(cuIpcGetMemHandle(&info->ipc_hdl, this->addr));
             info->phys_addr = this->exp_info.phys;
         }
-        LOG(DEBUG, "Created GpuMem addr ", hex, this->addr, " map ",
+        LOG(DEBUG, "Created GpuMem addr 0x", hex, this->addr, " map ",
             this->exp_info.mmap, dec, " bytes ", this->bytes);
     }
 }

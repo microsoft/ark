@@ -63,8 +63,8 @@ class GpuCommSw::Impl
 
     void reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
                       bool is_recv);
-    void configure(std::vector<std::pair<int, size_t>> &export_sid_offs,
-                   std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
+    void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
+                   const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
     void import_buf(const int gid, GpuBuf *buf);
 
     void request_loop();
@@ -106,7 +106,7 @@ class GpuCommSw::Impl
     std::thread *request_loop_thread = nullptr;
     volatile bool run_request_loop_thread = false;
     //
-    IpcSocket *ipc_socket = nullptr;
+    std::unique_ptr<IpcSocket> ipc_socket;
     //
     NetIbMgr *net_ib_mgr = nullptr;
     std::vector<NetIbMr *> sid_mrs;
@@ -140,14 +140,13 @@ GpuCommSw::Impl::Impl(const string &name_, const int gpu_id_, const int rank_,
     this->data_mems[gpu_id_] = data_mem;
     this->sc_rc_mems[gpu_id_] = sc_rc_mem;
 
-    IpcMem *ie =
-        new IpcMem{ARK_GPU_INFO_NAME + name_ + to_string(gpu_id_), true};
-    this->infos_storage.emplace_back(ie);
-    this->infos[gpu_id_] = ie;
+    this->infos_storage.emplace_back(std::make_unique<IpcMem>(
+        ARK_GPU_INFO_NAME + name_ + to_string(gpu_id_), true));
+    this->infos[gpu_id_] = this->infos_storage.back().get();
 
-    int port_base = get_env().ipc_listen_port_base;
+    int port = get_env().ipc_listen_port_base + gpu_id_;
     int host_id = rank_ / get_env().num_ranks_per_host;
-    this->ipc_socket = new IpcSocket{get_host(host_id), port_base + gpu_id_};
+    this->ipc_socket = std::make_unique<IpcSocket>(get_host(host_id), port);
 
     if (!get_env().disable_ib) {
         int num_ib_dev = get_net_ib_device_num();
@@ -165,7 +164,6 @@ GpuCommSw::Impl::~Impl()
         cuMemHostUnregister((void *)this->request);
         delete this->request;
     }
-    delete this->ipc_socket;
 }
 
 void GpuCommSw::Impl::reg_sendrecv(int sid, int remote_rank, size_t bytes,
@@ -176,8 +174,9 @@ void GpuCommSw::Impl::reg_sendrecv(int sid, int remote_rank, size_t bytes,
 }
 
 //
-void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
-                                map<int, vector<GpuBuf *>> &import_gid_bufs)
+void GpuCommSw::Impl::configure(
+    const vector<pair<int, size_t>> &export_sid_offs,
+    const map<int, vector<GpuBuf *>> &import_gid_bufs)
 {
     map<int, size_t> sid_max_bytes;
     if (this->is_using_ib()) {
@@ -598,11 +597,10 @@ GpuMem *GpuCommSw::Impl::get_data_mem(const int gid)
     }
     GpuMem *dm = this->data_mems[gid];
     if (dm == nullptr) {
-        dm = new GpuMem{ARK_GPU_DATA_NAME + this->name + to_string(gid), 0,
-                        false};
-        assert(dm != nullptr);
+        this->remote_data_mems_storage.emplace_back(std::make_unique<GpuMem>(
+            ARK_GPU_DATA_NAME + this->name + to_string(gid), 0, false));
+        dm = this->remote_data_mems_storage.back().get();
         this->data_mems[gid] = dm;
-        this->remote_data_mems_storage.emplace_back(dm);
     }
     //
     while (this->addr_table.size() < this->data_mems.size()) {
@@ -625,10 +623,11 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid)
     }
     GpuMem *sm = this->sc_rc_mems[gid];
     if (sm == nullptr) {
-        sm = new GpuMem{ARK_GPU_SC_RC_NAME + this->name + to_string(gid),
-                        2 * MAX_NUM_SID * sizeof(int), false};
+        this->remote_sc_rc_mems_storage.emplace_back(std::make_unique<GpuMem>(
+            ARK_GPU_SC_RC_NAME + this->name + to_string(gid),
+            2 * MAX_NUM_SID * sizeof(int), false));
+        sm = this->remote_sc_rc_mems_storage.back().get();
         this->sc_rc_mems[gid] = sm;
-        this->remote_sc_rc_mems_storage.emplace_back(sm);
     }
     return sm;
 }
@@ -646,9 +645,9 @@ IpcMem *GpuCommSw::Impl::get_info(const int gid)
     }
     IpcMem *ie = this->infos[gid];
     if (ie == nullptr) {
-        ie = new IpcMem{ARK_GPU_INFO_NAME + this->name + to_string(gid), false};
-        assert(ie != nullptr);
-        this->infos_storage.emplace_back(ie);
+        this->infos_storage.emplace_back(std::make_unique<IpcMem>(
+            ARK_GPU_INFO_NAME + this->name + to_string(gid), false));
+        ie = this->infos_storage.back().get();
         this->infos[gid] = ie;
     }
     return ie;
@@ -680,8 +679,9 @@ void GpuCommSw::reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
     this->impl->reg_sendrecv(sid, remote_rank, bytes, is_recv);
 }
 
-void GpuCommSw::configure(std::vector<std::pair<int, size_t>> &export_sid_offs,
-                          std::map<int, std::vector<GpuBuf *>> &import_gid_bufs)
+void GpuCommSw::configure(
+    const std::vector<std::pair<int, size_t>> &export_sid_offs,
+    const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs)
 {
     this->impl->configure(export_sid_offs, import_gid_bufs);
 }
@@ -714,11 +714,6 @@ GpuMem *GpuCommSw::get_data_mem(const int gid)
 GpuPtr GpuCommSw::get_request_ref() const
 {
     return this->impl->get_request_ref();
-}
-
-bool GpuCommSw::is_using_ib() const
-{
-    return this->impl->is_using_ib();
 }
 
 } // namespace ark
