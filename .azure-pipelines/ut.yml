@@ -1,8 +1,9 @@
-pr:
-  branches:
-    include:
-    - main
-  drafts: false
+trigger:
+  pr:
+    branches:
+      include:
+      - main
+    drafts: false
 
 jobs:
 - job: UnitTest
