@@ -1,0 +1,2193 @@
+diff --git a/include/cutlass/conv/kernel/direct_convolution.h b/include/cutlass/conv/kernel/direct_convolution.h
+index ef7a920e..c094e21e 100644
+--- a/include/cutlass/conv/kernel/direct_convolution.h
++++ b/include/cutlass/conv/kernel/direct_convolution.h
+@@ -388,7 +388,7 @@ struct DirectConvolution {
+     }
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+     int iterator_column_offset = 0;
+     int filter_row_offset = 0;
+     if (kGroupMode != GroupMode::kNone) {
+@@ -422,7 +422,7 @@ struct DirectConvolution {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
++    int warp_idx = __shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0);
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/conv/kernel/implicit_gemm_convolution.h b/include/cutlass/conv/kernel/implicit_gemm_convolution.h
+index 2669ff77..1faeb115 100644
+--- a/include/cutlass/conv/kernel/implicit_gemm_convolution.h
++++ b/include/cutlass/conv/kernel/implicit_gemm_convolution.h
+@@ -294,7 +294,7 @@ struct ImplicitGemmConvolution {
+     }
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+     int iterator_A_column_offset = threadblock_tile_idx.k() * Mma::Shape::kK;
+     if (kGroupMode != GroupMode::kNone) {
+       if (kGroupMode != GroupMode::kDepthwise) {
+@@ -332,7 +332,7 @@ struct ImplicitGemmConvolution {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/conv/kernel/implicit_gemm_convolution_fusion.h b/include/cutlass/conv/kernel/implicit_gemm_convolution_fusion.h
+index 8183d5c0..0a28c5e8 100644
+--- a/include/cutlass/conv/kernel/implicit_gemm_convolution_fusion.h
++++ b/include/cutlass/conv/kernel/implicit_gemm_convolution_fusion.h
+@@ -296,7 +296,7 @@ struct ImplicitGemmConvolutionFusion {
+     }
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A operand
+     typename Mma::IteratorA iterator_A(
+@@ -339,7 +339,7 @@ struct ImplicitGemmConvolutionFusion {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/conv/kernel/implicit_gemm_convolution_strided_dgrad.h b/include/cutlass/conv/kernel/implicit_gemm_convolution_strided_dgrad.h
+index 6ebfcded..776cd5b2 100644
+--- a/include/cutlass/conv/kernel/implicit_gemm_convolution_strided_dgrad.h
++++ b/include/cutlass/conv/kernel/implicit_gemm_convolution_strided_dgrad.h
+@@ -296,7 +296,7 @@ struct ImplicitGemmConvolutionStridedDgrad {
+     }
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Compute starting filter position for strided dgrad
+     int tile_m_per_filter = strided_dgrad_tile_m_per_filter(params.problem_size, 
+@@ -338,7 +338,7 @@ struct ImplicitGemmConvolutionStridedDgrad {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     // Check if CTA contributes valid MMA (Dy * w) and accumulator will be non-zero after MMA
+diff --git a/include/cutlass/conv/kernel/implicit_gemm_convolution_with_fused_epilogue.h b/include/cutlass/conv/kernel/implicit_gemm_convolution_with_fused_epilogue.h
+index c6e7a813..946e4fd3 100644
+--- a/include/cutlass/conv/kernel/implicit_gemm_convolution_with_fused_epilogue.h
++++ b/include/cutlass/conv/kernel/implicit_gemm_convolution_with_fused_epilogue.h
+@@ -314,7 +314,7 @@ struct ImplicitGemmConvolutionWithFusedEpilogue {
+     }
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -341,7 +341,7 @@ struct ImplicitGemmConvolutionWithFusedEpilogue {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h b/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h
+index 26bbe577..b3530f7d 100644
+--- a/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h
++++ b/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h
+@@ -382,7 +382,7 @@ public:
+     /////////////////////////////////////////////////////////////////////////////
+     // Waits until kStages-2 stages have committed. 
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -483,7 +483,7 @@ public:
+ 
+           // Waits until kStages-2 stages of cp.async have committed
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next cta
+           iterator_A.advance();
+@@ -536,7 +536,7 @@ public:
+     // Insert fence and wait for all outstanding cp.async operations to commit.
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ 
+diff --git a/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h b/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h
+index 1f82769b..09cb2e83 100644
+--- a/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h
++++ b/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h
+@@ -218,7 +218,7 @@ public:
+     ++this->smem_iterator_A_;
+     ++this->smem_iterator_B_;
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math instructions
+     WarpFragmentA warp_frag_A[2];
+@@ -272,7 +272,7 @@ public:
+ 
+           this->smem_iterator_B_.store(transform_B(tb_frag_B));
+ 
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+           
+           if(rs_plane_idx == gemm_k_iterations_per_channel - 1){
+             // Move to next set of filter groups.
+diff --git a/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h b/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h
+index cc33c69e..c9a2b64c 100644
+--- a/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h
++++ b/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h
+@@ -616,7 +616,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed. 
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -740,7 +740,7 @@ public:
+ 
+           // Waits until kStages-2 stages of cp.async have committed
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.advance();
+@@ -788,7 +788,7 @@ public:
+     // Insert fence and wait for all outstanding cp.async operations to commit.
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/conv/threadblock/implicit_gemm_multistage.h b/include/cutlass/conv/threadblock/implicit_gemm_multistage.h
+index 437ae6c1..cc68489a 100644
+--- a/include/cutlass/conv/threadblock/implicit_gemm_multistage.h
++++ b/include/cutlass/conv/threadblock/implicit_gemm_multistage.h
+@@ -357,7 +357,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed. 
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -480,7 +480,7 @@ public:
+ 
+           // Waits until kStages-2 stages of cp.async have committed
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.advance();
+@@ -525,7 +525,7 @@ public:
+     // Insert fence and wait for all outstanding cp.async operations to commit.
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h b/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h
+index 1a319263..13329181 100644
+--- a/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h
++++ b/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h
+@@ -218,7 +218,7 @@ public:
+     ++this->smem_iterator_A_;
+     ++this->smem_iterator_B_;
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math instructions
+     WarpFragmentA warp_frag_A[2];
+@@ -264,7 +264,7 @@ public:
+ 
+           this->smem_iterator_B_.store(transform_B(tb_frag_B));
+ 
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+           
+           ++this->smem_iterator_A_;
+           ++this->smem_iterator_B_;
+diff --git a/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h b/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h
+index 13b5a348..ad1e0849 100644
+--- a/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h
++++ b/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h
+@@ -551,7 +551,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed. 
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -674,7 +674,7 @@ public:
+ 
+           // Waits until kStages-2 stages of cp.async have committed
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.advance();
+@@ -715,7 +715,7 @@ public:
+     // Insert fence and wait for all outstanding cp.async operations to commit.
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/conv/threadblock/predicated_scale_bias_vector_access_iterator.h b/include/cutlass/conv/threadblock/predicated_scale_bias_vector_access_iterator.h
+index 8b5b111e..a603a532 100644
+--- a/include/cutlass/conv/threadblock/predicated_scale_bias_vector_access_iterator.h
++++ b/include/cutlass/conv/threadblock/predicated_scale_bias_vector_access_iterator.h
+@@ -276,7 +276,7 @@ class PredicatedScaleBiasVectorAccessIterator<ThreadblockShape_,
+     uint32_t enabled = 0;
+ 
+ #if defined(_MSC_VER) || (__CUDACC_VER_MAJOR__ < 11)
+-    enabled = threadIdx.x < kThreads * 2;
++    enabled = (threadIdx.x % ThreadblockShape::kCount) < kThreads * 2;
+ #else
+     asm volatile(
+         "{\n"
+diff --git a/include/cutlass/conv/warp/mma_depthwise_simt_tile_iterator.h b/include/cutlass/conv/warp/mma_depthwise_simt_tile_iterator.h
+index b750a4b4..07cb6ad1 100644
+--- a/include/cutlass/conv/warp/mma_depthwise_simt_tile_iterator.h
++++ b/include/cutlass/conv/warp/mma_depthwise_simt_tile_iterator.h
+@@ -373,6 +373,8 @@ class DepthwiseDirect2dConvSimtTileIterator<Shape_,
+   static_assert(Policy::WarpShape::kRow > 0, "Policy::WarpShape::kRow must be greater than zero.");
+   static_assert(Shape::kRow / Policy::WarpShape::kRow > 0, "Shape::kRow / Policy::WarpShape::kRow must be greater than zero.");
+ 
++  static constexpr int kThreadCount = ThreadBlockOutputShape::kCount / ThreadOutputShape::kCount;
++
+ // Thread-level shape of a fragment
+   using ThreadShape = MatrixShape<
+     ThreadOutputShape::kNHW, // Output tile shape Computed by current threads
+@@ -455,7 +457,7 @@ public:
+     inc_next_r_ = params.inc_next[1];
+ 
+     // Get base HW offset of current threads
+-    int threadgroup = threadIdx.x / (ThreadBlockOutputShape::kC / ThreadOutputShape::kC);
++    int threadgroup = (threadIdx.x % kThreadCount) / (ThreadBlockOutputShape::kC / ThreadOutputShape::kC);
+     int base_p_ =
+         (threadgroup / (ThreadTileCount::kColumn)) * ThreadOutputShape::kH;
+     int base_q_ =
+@@ -750,7 +752,7 @@ class DepthwiseDirect2dConvSimtTileIterator<Shape_,
+       Params const &params) {
+ 
+     // Get base HW offset of current threads
+-    int threadgroup = threadIdx.x / (ThreadBlockOutputShape::kC / ThreadOutputShape::kC);
++    int threadgroup = (threadIdx.x % kThreadCount) / (ThreadBlockOutputShape::kC / ThreadOutputShape::kC);
+     int base_h =
+         (threadgroup / (ThreadTileCount::kColumn)) * ThreadOutputShape::kH * StrideShape::kRow;
+     int base_w =
+diff --git a/include/cutlass/cutlass.h b/include/cutlass/cutlass.h
+index bbef6fc2..eb9155ba 100644
+--- a/include/cutlass/cutlass.h
++++ b/include/cutlass/cutlass.h
+@@ -37,6 +37,10 @@
+ 
+ #include "cutlass/detail/helper_macros.hpp"
+ 
++#ifdef ARK_KERNELS_H_
++#include "sync.h"
++#endif // ARK_KERNELS_H_
++
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ namespace cutlass {
+diff --git a/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp b/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp
+index 0374a103..1bd10a6f 100644
+--- a/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp
++++ b/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp
+@@ -167,9 +167,9 @@ public:
+ 
+     // synchronizing function for smem reads/writes
+ #if CUDA_BARRIER_ENABLED
+-    auto synchronize = [] () { cutlass::arch::NamedBarrier::sync(typename TiledCopyS2R::TiledNumThr{}, 0); };
++    auto synchronize = [] () { ark::sync_warps<typename TiledCopyS2R::TiledNumThr{}>(); };
+ #else
+-    auto synchronize = [] () { __syncthreads(); };
++    auto synchronize = [] () { ark::sync_warps<size(TiledMma{})>(); };
+ #endif
+ 
+     // Separate out problem shape for convenience
+diff --git a/include/cutlass/epilogue/threadblock/epilogue.h b/include/cutlass/epilogue/threadblock/epilogue.h
+index 42ca5573..e46d1b79 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue.h
++++ b/include/cutlass/epilogue/threadblock/epilogue.h
+@@ -337,7 +337,7 @@ public:
+     // Store fragment to shared memory
+     this->warp_tile_iterator_.store(accum_fragment);
+ 
+-    __syncthreads();
++    ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Initialize/load source-fragment data
+     typename OutputTileIterator::Fragment source_fragment;
+@@ -426,7 +426,7 @@ public:
+     if (!output_op.is_source_needed())
+     {
+       source_iterator.clear_mask();
+-      __syncthreads();  // Dummy (CUDA 11.0)
++      ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();  // Dummy (CUDA 11.0)
+     }
+ 
+     operator()(output_op, destination_iterator, accumulators, SourceAspectNeeded(source_iterator));
+@@ -490,12 +490,12 @@ public:
+       // Convert and store fragment
+       //
+ 
+-      __syncthreads();
++      ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+         iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+diff --git a/include/cutlass/epilogue/threadblock/epilogue_depthwise.h b/include/cutlass/epilogue/threadblock/epilogue_depthwise.h
+index d5a52ea5..52267f97 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue_depthwise.h
++++ b/include/cutlass/epilogue/threadblock/epilogue_depthwise.h
+@@ -237,7 +237,7 @@ class EpilogueDepthwise {
+     // store to smem
+     warp_tile_iterator_.store(accumulators);
+ 
+-    __syncthreads();
++    ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     typename SharedLoadIterator::Fragment aligned_accum_fragment;
+ 
+@@ -262,7 +262,7 @@ class EpilogueDepthwise {
+     // store to smem
+     warp_tile_iterator_.store(accumulators);
+ 
+-    __syncthreads();
++    ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     typename SharedLoadIterator::Fragment aligned_accum_fragment;
+ 
+diff --git a/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h b/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h
+index 1c70bedc..0c7c29d8 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h
++++ b/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h
+@@ -285,7 +285,7 @@ public:
+       // Convert and store fragment
+       //
+       
+-      __syncthreads();
++      ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       typename AccumulatorFragmentIterator::Fragment accum_fragment_real;
+       typename AccumulatorFragmentIterator::Fragment accum_fragment_imag;
+@@ -299,7 +299,7 @@ public:
+       this->warp_tile_iterator_.store(accum_fragment_real);
+       this->warp_tile_iterator_.store_with_pointer_offset(accum_fragment_imag, SharedStorage::kImaginaryStride);
+ 
+-      __syncthreads();
++      ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+diff --git a/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h b/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h
+index 54f822fe..c8b6821f 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h
++++ b/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h
+@@ -285,7 +285,7 @@ public:
+     // Store fragment to shared memory
+     this->warp_tile_iterator_.store(accum_fragment);
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     Base::reduce(reduce_fragment_idx, output_op, broadcast_ptr, destination_iterator, source_iterator1, source_iterator2, tensor_iterator, problem_size, threadblock_offset);
+     
+@@ -427,7 +427,7 @@ public:
+     // Store fragment to shared memory
+     this->warp_tile_iterator_.store(accum_fragment);
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     Base::reduce(reduce_fragment_idx, output_op, broadcast_ptr, destination_iterator, source_iterator, tensor_iterator, problem_size, threadblock_offset);
+     
+diff --git a/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h b/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h
+index 7a97e0cb..89464b98 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h
++++ b/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h
+@@ -573,7 +573,7 @@ private:
+       //
+       
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem_source_not_needed<
+           cutlass::make_index_sequence<OutputTileIterator::kIterations /
+@@ -581,7 +581,7 @@ private:
+                                                                         accum_fragment_iterator,
+                                                                         this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+@@ -720,12 +720,12 @@ private:
+       // Convert and store fragment
+       //
+       
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem_source_needed<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+           iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+@@ -1343,7 +1343,7 @@ private:
+       //
+       
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem_source_not_needed<
+           cutlass::make_index_sequence<OutputTileIterator::kIterations /
+@@ -1351,7 +1351,7 @@ private:
+                                                                         accum_fragment_iterator,
+                                                                         this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+@@ -1484,12 +1484,12 @@ private:
+       // Convert and store fragment
+       //
+       
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem_source_needed<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+           iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+diff --git a/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h b/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h
+index 6e76f7e7..bb24ae3d 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h
++++ b/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h
+@@ -351,7 +351,7 @@ private:
+     //
+ 
+     // Guard against uses of the existing SMEM tile
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+     
+     using AccessType = AlignedArray<ElementAccumulator, ThreadMap::kElementsPerAccess>;
+ 
+@@ -380,7 +380,7 @@ private:
+       aligned_reduction_ptr[col_idx] = frag_ptr[column];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     //
+     // Now, threads are assigned several columns of the output. They fetch over all rows from
+@@ -479,12 +479,12 @@ private:
+       tensor_iterator.load(tensor_fragment);
+       ++tensor_iterator;
+       
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+           iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+@@ -587,12 +587,12 @@ private:
+       // Convert and store fragment
+       //
+       
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem<cutlass::make_index_sequence<OutputTileIterator::kIterations>>::push(
+           iter, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+diff --git a/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h b/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h
+index 6c543539..d003b150 100644
+--- a/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h
++++ b/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h
+@@ -275,12 +275,12 @@ public:
+       // Convert and store fragment
+       //
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       acc2smem_source_needed<cutlass::make_index_sequence<Visitor::kIterations>>::push(
+           iter_idx, accum_fragment_iterator, this->warp_tile_iterator_);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Load fragments from shared memory
+diff --git a/include/cutlass/epilogue/threadblock/interleaved_epilogue.h b/include/cutlass/epilogue/threadblock/interleaved_epilogue.h
+index b4d1bbe0..766370a1 100644
+--- a/include/cutlass/epilogue/threadblock/interleaved_epilogue.h
++++ b/include/cutlass/epilogue/threadblock/interleaved_epilogue.h
+@@ -342,7 +342,7 @@ public:
+     if (!output_op.is_source_needed())
+     {
+       source_iterator.clear_mask();
+-      __syncthreads();  // Dummy (CUDA 11.0)
++      ark::sync_warps<WarpCount::kCount * NumThreadsPerWarp>();  // Dummy (CUDA 11.0)
+     }
+ 
+     operator()(output_op, destination_iterator, accumulators, SourceAspectNeeded(source_iterator));
+diff --git a/include/cutlass/gemm/collective/sm70_mma_twostage.hpp b/include/cutlass/gemm/collective/sm70_mma_twostage.hpp
+index ffe1ea6d..6f568c55 100644
+--- a/include/cutlass/gemm/collective/sm70_mma_twostage.hpp
++++ b/include/cutlass/gemm/collective/sm70_mma_twostage.hpp
+@@ -236,7 +236,7 @@ struct CollectiveMma<
+     copy(tArA, tAsA);
+     copy(tBrB, tBsB);
+     // Clear accumulators
+-    __syncthreads();
++    ark::sync_warps<size(TiledMma{})>();
+ 
+     // Load A, B smem->rmem for k=0
+     copy(tCsA(_,_,0), tCrA_copy_view(_,_,0));
+@@ -256,12 +256,12 @@ struct CollectiveMma<
+       {
+         if (k_block == K_BLOCK_MAX - 1) 
+         {
+-          __syncthreads();
++          ark::sync_warps<size(TiledMma{})>();
+ 
+           // Copy rmem to smem
+           copy(tArA, tAsA);
+           copy(tBrB, tBsB);
+-          __syncthreads();
++          ark::sync_warps<size(TiledMma{})>();
+         }
+ 
+         // Load A, B smem->rmem for k+1
+@@ -533,7 +533,7 @@ struct CollectiveMma<
+     copy(tArA, tAsA);
+     copy(tBrB, tBsB);
+     // Clear accumulators
+-    __syncthreads();
++    ark::sync_warps<size(TiledMma{})>();
+ 
+     // Load A, B smem->rmem for k=0
+     copy(tCsA(_,_,0), tCrA_copy_view(_,_,0));
+@@ -553,12 +553,12 @@ struct CollectiveMma<
+       {
+         if (k_block == K_BLOCK_MAX - 1) 
+         {
+-          __syncthreads();
++          ark::sync_warps<size(TiledMma{})>();
+ 
+           // Copy rmem to smem
+           copy(tArA, tAsA);
+           copy(tBrB, tBsB);
+-          __syncthreads();
++          ark::sync_warps<size(TiledMma{})>();
+         }
+ 
+         // Load A, B smem->rmem for k+1
+diff --git a/include/cutlass/gemm/collective/sm80_mma_multistage.hpp b/include/cutlass/gemm/collective/sm80_mma_multistage.hpp
+index dc98823c..5dcb29a4 100644
+--- a/include/cutlass/gemm/collective/sm80_mma_multistage.hpp
++++ b/include/cutlass/gemm/collective/sm80_mma_multistage.hpp
+@@ -279,7 +279,7 @@ struct CollectiveMma<
+     if (K_BLOCK_MAX > 1) {
+       // Wait until our first prefetched tile is loaded in
+       cp_async_wait<DispatchPolicy::Stages-2>();
+-      __syncthreads();
++      ark::sync_warps<size(TiledMma{})>();
+ 
+       // Prefetch the first rmem from the first k-tile
+       copy(smem_tiled_copy_A, tCsA_p(_,_,Int<0>{}), tCrA_copy_view(_,_,Int<0>{}));
+@@ -303,7 +303,7 @@ struct CollectiveMma<
+ 
+           // Commit the smem for smem_pipe_read
+           cp_async_wait<DispatchPolicy::Stages-2>();
+-          __syncthreads();
++          ark::sync_warps<size(TiledMma{})>();
+         }
+ 
+         // Load A, B shmem->regs for k_block+1
+@@ -620,7 +620,7 @@ struct CollectiveMma<
+     if (K_BLOCK_MAX > 1) {
+       // Wait until our first prefetched tile is loaded in
+       cp_async_wait<DispatchPolicy::Stages-2>();
+-      __syncthreads();
++      ark::sync_warps<size(TiledMma{})>();
+ 
+       // Prefetch the first rmem from the first k-tile
+       copy(smem_tiled_copy_A, tCsA_p(_,_,Int<0>{}), tCrA_copy_view(_,_,Int<0>{}));
+@@ -644,7 +644,7 @@ struct CollectiveMma<
+ 
+           // Commit the smem for smem_pipe_read
+           cp_async_wait<DispatchPolicy::Stages-2>();
+-          __syncthreads();
++          ark::sync_warps<size(TiledMma{})>();
+         }
+ 
+         // Load A, B shmem->regs for k_block+1
+diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
+index 94f4656f..49502f90 100644
+--- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
++++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
+@@ -348,7 +348,8 @@ struct CollectiveMma<
+   {
+ 
+     using namespace cute;
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group  = warp_idx % 4;
+     int lane_predicate = cute::elect_one_sync();
+ 
+@@ -420,7 +421,8 @@ struct CollectiveMma<
+   CUTLASS_DEVICE void
+   load_tail(MainloopPipeline pipeline, PipelineState smem_pipe_write)
+   {
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group = warp_idx % 4;
+     int lane_predicate = cute::elect_one_sync();
+ 
+@@ -462,7 +464,8 @@ struct CollectiveMma<
+       "SM90 GMMA mainloops cannot have a non-void copy atom for smem sourced instructions.");
+ 
+     // Obtain warp index
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     [[maybe_unused]] int warp_group_thread_idx = thread_idx % 128;
+     
+     Tensor sA_ = make_tensor(make_smem_ptr(shared_tensors.smem_A.data()), SmemLayoutA{});         // (BLK_M,BLK_K,PIPE)
+diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
+index 932765ea..071f0a15 100644
+--- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
++++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
+@@ -326,7 +326,8 @@ struct CollectiveMma<
+ 
+ 
+     // Obtain warp index
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_group_thread_idx = thread_idx % NumThreadsPerWarpGroup;
+ 
+     PipelineParams params;
+@@ -353,7 +354,7 @@ struct CollectiveMma<
+       cute::cluster_wait();
+     }
+     else {
+-      __syncthreads();
++      ark::sync_warps<size(TiledMma{})>();
+     }
+ 
+     // Set predicate for the lowest lane_id in the warp
+@@ -420,7 +421,7 @@ struct CollectiveMma<
+     CUTE_STATIC_ASSERT_V(Int<DispatchPolicy::Stages>{} == size<2>(sA));        // PIPE
+     CUTE_STATIC_ASSERT_V(Int<DispatchPolicy::Stages>{} == size<2>(sB));        // PIPE
+ 
+-    __syncthreads();
++    ark::sync_warps<size(TiledMma{})>();
+ 
+     tiled_mma.accumulate_ = GMMA::ScaleOut::Zero;
+ 
+diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp
+index c7dee7b1..5cade6ce 100644
+--- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp
++++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized.hpp
+@@ -281,7 +281,8 @@ struct CollectiveMma<
+   {
+ 
+     using namespace cute;
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group  = warp_idx % 4;
+     int lane_predicate = cute::elect_one_sync();
+ 
+@@ -356,7 +357,8 @@ struct CollectiveMma<
+       MainloopPipeline pipeline, 
+       PipelineState smem_pipe_write)
+   {
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group = warp_idx % 4;
+     int lane_predicate = cute::elect_one_sync();
+ 
+diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp
+index 0e160271..307cd4b8 100644
+--- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp
++++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss_warpspecialized_fp8.hpp
+@@ -279,7 +279,8 @@ struct CollectiveMma<
+   {
+ 
+     using namespace cute;
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group  = warp_idx % 4;
+     int lane_predicate = cute::elect_one_sync();
+ 
+@@ -354,7 +355,8 @@ struct CollectiveMma<
+       MainloopPipeline pipeline,
+       PipelineState smem_pipe_write)
+   {
+-    int warp_idx = canonical_warp_idx_sync();
++    constexpr int num_warps = size(TiledMma{}) / NumThreadsPerWarp;
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group = warp_idx % 4;
+     int lane_predicate = cute::elect_one_sync();
+ 
+diff --git a/include/cutlass/gemm/kernel/ell_gemm.h b/include/cutlass/gemm/kernel/ell_gemm.h
+index 88a1bd33..a3bd3915 100644
+--- a/include/cutlass/gemm/kernel/ell_gemm.h
++++ b/include/cutlass/gemm/kernel/ell_gemm.h
+@@ -230,11 +230,11 @@ struct EllGemm {
+     int tile_offset_m = threadblock_tile_offset.m() % tile_in_ell_block;
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
++    int warp_idx = __shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0);
+     int lane_idx = threadIdx.x % 32;
+ 
+     typename Mma::FragmentC accumulators;
+@@ -615,11 +615,11 @@ struct EllGemm<Mma_, Epilogue_, ThreadblockSwizzle_, SplitKSerial, false> {
+     int tile_offset_n = threadblock_tile_offset.n() % tile_in_ell_block;
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
++    int warp_idx = __shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0);
+     int lane_idx = threadIdx.x % 32;
+ 
+     typename Mma::FragmentC accumulators;
+diff --git a/include/cutlass/gemm/kernel/gemm.h b/include/cutlass/gemm/kernel/gemm.h
+index 1d2c024b..a651c580 100644
+--- a/include/cutlass/gemm/kernel/gemm.h
++++ b/include/cutlass/gemm/kernel/gemm.h
+@@ -235,7 +235,7 @@ struct Gemm {
+     int gemm_k_iterations = (problem_size_k - tb_offset_A.column() + Mma::Shape::kK - 1) / Mma::Shape::kK;
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -256,7 +256,7 @@ struct Gemm {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/gemm/kernel/gemm_array.h b/include/cutlass/gemm/kernel/gemm_array.h
+index 464c355e..1ddb8f9d 100644
+--- a/include/cutlass/gemm/kernel/gemm_array.h
++++ b/include/cutlass/gemm/kernel/gemm_array.h
+@@ -170,7 +170,7 @@ struct GemmArray {
+       };
+ 
+       // Compute position within threadblock
+-      int thread_idx = threadIdx.x;
++      int thread_idx = threadIdx.x % kThreadCount;
+ 
+       // Construct iterators to A and B operands
+       typename Mma::IteratorA iterator_A(
+@@ -193,7 +193,7 @@ struct GemmArray {
+       
+       // Broadcast the warp_id computed by lane 0 to ensure dependent code
+       // is compiled as warp-uniform.
+-      int warp_idx = canonical_warp_idx_sync();
++      int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+       int lane_idx = threadIdx.x % 32;
+       
+diff --git a/include/cutlass/gemm/kernel/gemm_batched.h b/include/cutlass/gemm/kernel/gemm_batched.h
+index fcb4ec2d..c9ff90c0 100644
+--- a/include/cutlass/gemm/kernel/gemm_batched.h
++++ b/include/cutlass/gemm/kernel/gemm_batched.h
+@@ -176,7 +176,7 @@ struct GemmBatched {
+       };
+ 
+       // Compute position within threadblock
+-      int thread_idx = threadIdx.x;
++      int thread_idx = threadIdx.x % kThreadCount;
+ 
+       // Construct iterators to A and B operands
+       typename Mma::IteratorA iterator_A(
+@@ -204,7 +204,7 @@ struct GemmBatched {
+ 
+       // Broadcast the warp_id computed by lane 0 to ensure dependent code
+       // is compiled as warp-uniform.
+-      int warp_idx = canonical_warp_idx_sync();
++      int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+       int lane_idx = threadIdx.x % 32;
+       
+diff --git a/include/cutlass/gemm/kernel/gemm_grouped.h b/include/cutlass/gemm/kernel/gemm_grouped.h
+index 310ff3b1..7c085121 100644
+--- a/include/cutlass/gemm/kernel/gemm_grouped.h
++++ b/include/cutlass/gemm/kernel/gemm_grouped.h
+@@ -372,7 +372,7 @@ public:
+       };
+ 
+       // Compute position within threadblock
+-      int thread_idx = threadIdx.x;
++      int thread_idx = threadIdx.x % kThreadCount;
+ 
+       // Construct iterators to A and B operands
+       typename Mma::IteratorA iterator_A(
+@@ -395,7 +395,7 @@ public:
+       
+       // Broadcast the warp_id computed by lane 0 to ensure dependent code
+       // is compiled as warp-uniform.
+-      int warp_idx = canonical_warp_idx_sync();
++      int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+       int lane_idx = threadIdx.x % 32;
+ 
+@@ -410,7 +410,7 @@ public:
+       int gemm_k_iterations = (problem_size.k() + Mma::Shape::kK - 1) / Mma::Shape::kK;
+ 
+       // Wait for all threads to finish their epilogue phases from the previous tile.
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       // Compute threadblock-scoped matrix multiply-add
+       mma(
+diff --git a/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h b/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h
+index cac99f5c..076793bf 100644
+--- a/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h
++++ b/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h
+@@ -391,7 +391,7 @@ public:
+       };
+ 
+       // Compute position within threadblock
+-      int thread_idx = threadIdx.x;
++      int thread_idx = threadIdx.x % kThreadCount;
+ 
+       // Construct iterators to A and B operands
+       typename Mma::IteratorA iterator_A(
+@@ -423,7 +423,7 @@ public:
+ 
+       // Broadcast the warp_id computed by lane 0 to ensure dependent code
+       // is compiled as warp-uniform.
+-      int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
++      int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0) % WarpCount::kCount;
+ 
+       int lane_idx = threadIdx.x % 32;
+ 
+@@ -438,7 +438,7 @@ public:
+       int gemm_k_iterations = (problem_size.k() + Mma::Shape::kK - 1) / Mma::Shape::kK;
+ 
+       // Wait for all threads to finish their epilogue phases from the previous tile.
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       // Compute threadblock-scoped matrix multiply-add
+       mma(
+diff --git a/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h b/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h
+index 3fe842a0..c84e6402 100644
+--- a/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h
++++ b/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h
+@@ -577,7 +577,7 @@ public:
+       ptr_B = static_cast<ElementB * const *>(params.ptr_B)[threadblock_tile_offset.k()];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_A{
+@@ -591,7 +591,7 @@ public:
+     };
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -632,7 +632,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
++    int warp_idx = __shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0);
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/gemm_pipelined.h b/include/cutlass/gemm/kernel/gemm_pipelined.h
+index 900e0442..57676598 100644
+--- a/include/cutlass/gemm/kernel/gemm_pipelined.h
++++ b/include/cutlass/gemm/kernel/gemm_pipelined.h
+@@ -94,7 +94,8 @@ __global__ void GemmPipelined(
+   };
+ 
+   // Compute position within threadblock
+-  int tb_thread_id = threadIdx.x;
++  constexpr int num_threads = Mma::WarpCount::kCount * NumThreadsPerWarp;
++  int tb_thread_id = threadIdx.x % num_threads;
+ 
+   // Construct iterators to A and B operands
+   typename Mma::IteratorA iterator_A(
+@@ -111,7 +112,7 @@ __global__ void GemmPipelined(
+     tb_thread_id,
+     tb_offset_B);
+ 
+-  int warp_id = canonical_warp_idx_sync();
++  int warp_idx = canonical_warp_idx_sync() % Mma::WarpCount::kCount;
+   int lane_id = threadIdx.x % 32;
+ 
+   //
+diff --git a/include/cutlass/gemm/kernel/gemm_planar_complex.h b/include/cutlass/gemm/kernel/gemm_planar_complex.h
+index 6987d7e6..7316b990 100644
+--- a/include/cutlass/gemm/kernel/gemm_planar_complex.h
++++ b/include/cutlass/gemm/kernel/gemm_planar_complex.h
+@@ -489,7 +489,7 @@ public:
+       ptr_B_imag = static_cast<ElementB * const *>(params.ptr_B_imag)[threadblock_tile_offset.k()];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_A{
+@@ -504,7 +504,7 @@ public:
+ 
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A_real(
+@@ -537,7 +537,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/gemm_planar_complex_array.h b/include/cutlass/gemm/kernel/gemm_planar_complex_array.h
+index 6a3aa11c..35cbb7e2 100644
+--- a/include/cutlass/gemm/kernel/gemm_planar_complex_array.h
++++ b/include/cutlass/gemm/kernel/gemm_planar_complex_array.h
+@@ -466,11 +466,12 @@ public:
+         //
+         // Compute indices within threadblock and warp.
+         //
+-        int thread_idx = threadIdx.x;
++        constexpr int num_threads = Mma::WarpCount::kCount * NumThreadsPerWarp;
++        int thread_idx = threadIdx.x % num_threads;
+ 
+         // Broadcast the warp_id computed by lane 0 to ensure dependent code
+         // is compiled as warp-uniform.
+-        int warp_idx = canonical_warp_idx_sync();
++        int warp_idx = canonical_warp_idx_sync() % Mma::WarpCount::kCount;
+         int lane_idx = threadIdx.x % 32;
+     
+         //
+diff --git a/include/cutlass/gemm/kernel/gemm_splitk_parallel.h b/include/cutlass/gemm/kernel/gemm_splitk_parallel.h
+index ffb928c3..bb4e9385 100644
+--- a/include/cutlass/gemm/kernel/gemm_splitk_parallel.h
++++ b/include/cutlass/gemm/kernel/gemm_splitk_parallel.h
+@@ -170,7 +170,7 @@ struct GemmSplitKParallel {
+     int gemm_k_iterations = (problem_size_k - tb_offset_A.column() + Mma::Shape::kK - 1) / Mma::Shape::kK;
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -187,7 +187,7 @@ struct GemmSplitKParallel {
+       thread_idx,
+       tb_offset_B);
+ 
+-    int warp_idx = threadIdx.x / 32;
++    int warp_idx = (threadIdx.x % kThreadCount) / 32;
+     int lane_idx = threadIdx.x % 32;
+ 
+ 
+diff --git a/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h b/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h
+index 6d6714d8..ca752a84 100644
+--- a/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h
++++ b/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h
+@@ -669,7 +669,7 @@ protected:
+         params.params_A,
+         ptr_A,
+         { m_end, tile_work.k_end },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { m_begin, tile_work.k_begin });
+ 
+   }
+@@ -698,7 +698,7 @@ protected:
+         params.params_B,
+         ptr_B,
+         { tile_work.k_end, n_end },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { tile_work.k_begin, n_begin });
+   }
+ 
+@@ -1185,7 +1185,7 @@ protected:
+       }
+ 
+       // Continue to next tile
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       if (block_idx >= dp_start_block_idx)
+       {
+@@ -1229,8 +1229,8 @@ public:
+     :
+       params(params),
+       shared_storage(shared_storage),
+-      thread_idx(threadIdx.x),
+-      warp_idx(__shfl_sync(0xffffffff, threadIdx.x / 32, 0)),   // broadcast the warp_id computed by lane 0 to ensure dependent code
++      thread_idx(threadIdx.x % kThreadCount),
++      warp_idx(__shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0)),   // broadcast the warp_id computed by lane 0 to ensure dependent code
+       lane_idx(threadIdx.x % 32),
+       epilogue(
+         shared_storage.epilogue,
+@@ -1843,7 +1843,7 @@ protected:
+         params.params_A,
+         ptr_A,
+         { m_end, tile_work.k_end },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { m_begin, tile_work.k_begin });
+ 
+   }
+@@ -1872,7 +1872,7 @@ protected:
+         params.params_B,
+         ptr_B,
+         { tile_work.k_end, n_end },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { tile_work.k_begin, n_begin });
+   }
+ 
+@@ -2333,7 +2333,7 @@ protected:
+       }
+ 
+       // Continue to next tile
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       if (block_idx >= dp_start_block_idx)
+       {
+@@ -2377,8 +2377,8 @@ public:
+     :
+       params(params),
+       shared_storage(shared_storage),
+-      thread_idx(threadIdx.x),
+-      warp_idx(__shfl_sync(0xffffffff, threadIdx.x / 32, 0)),   // broadcast the warp_id computed by lane 0 to ensure dependent code
++      thread_idx(threadIdx.x % kThreadCount),
++      warp_idx(__shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0)),   // broadcast the warp_id computed by lane 0 to ensure dependent code
+       lane_idx(threadIdx.x % 32),
+       epilogue(
+         shared_storage.epilogue,
+diff --git a/include/cutlass/gemm/kernel/gemm_universal.h b/include/cutlass/gemm/kernel/gemm_universal.h
+index 8f146afb..cc277f23 100644
+--- a/include/cutlass/gemm/kernel/gemm_universal.h
++++ b/include/cutlass/gemm/kernel/gemm_universal.h
+@@ -511,7 +511,7 @@ public:
+       ptr_B = static_cast<ElementB * const *>(params.ptr_B)[threadblock_tile_offset.k()];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_A{
+@@ -525,7 +525,7 @@ public:
+     };
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -546,7 +546,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/gemm_universal_streamk.h b/include/cutlass/gemm/kernel/gemm_universal_streamk.h
+index c52a15c3..1eae72f7 100644
+--- a/include/cutlass/gemm/kernel/gemm_universal_streamk.h
++++ b/include/cutlass/gemm/kernel/gemm_universal_streamk.h
+@@ -666,7 +666,7 @@ protected:
+         params.params_A,
+         ptr_A,
+         { m_end, tile_work.k_end },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { m_begin, tile_work.k_begin });
+ 
+   }
+@@ -695,7 +695,7 @@ protected:
+         params.params_B,
+         ptr_B,
+         { tile_work.k_end, n_end },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { tile_work.k_begin, n_begin });
+   }
+ 
+@@ -1100,7 +1100,7 @@ protected:
+       }
+ 
+       // Continue to next tile
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       if (block_idx >= dp_start_block_idx)
+       {
+@@ -1144,8 +1144,8 @@ public:
+     :
+       params(params),
+       shared_storage(shared_storage),
+-      thread_idx(threadIdx.x),
+-      warp_idx(__shfl_sync(0xffffffff, threadIdx.x / 32, 0)),   // broadcast the warp_id computed by lane 0 to ensure dependent code
++      thread_idx(threadIdx.x % kThreadCount),
++      warp_idx(__shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0)),   // broadcast the warp_id computed by lane 0 to ensure dependent code
+       lane_idx(threadIdx.x % 32),
+       epilogue(
+         shared_storage.epilogue,
+diff --git a/include/cutlass/gemm/kernel/gemm_with_fused_epilogue.h b/include/cutlass/gemm/kernel/gemm_with_fused_epilogue.h
+index 1c58b44e..1a8aaa5e 100644
+--- a/include/cutlass/gemm/kernel/gemm_with_fused_epilogue.h
++++ b/include/cutlass/gemm/kernel/gemm_with_fused_epilogue.h
+@@ -500,7 +500,7 @@ public:
+     };
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -519,7 +519,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
++    int warp_idx = __shfl_sync(0xffffffff, (threadIdx.x % kThreadCount) / 32, 0);
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+@@ -1224,7 +1224,7 @@ public:
+     };
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -1243,7 +1243,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/gemm_with_k_reduction.h b/include/cutlass/gemm/kernel/gemm_with_k_reduction.h
+index 863b0c4c..a87a7667 100644
+--- a/include/cutlass/gemm/kernel/gemm_with_k_reduction.h
++++ b/include/cutlass/gemm/kernel/gemm_with_k_reduction.h
+@@ -480,7 +480,7 @@ public:
+       ptr_B = static_cast<ElementB * const *>(params.ptr_B)[threadblock_tile_offset.k()];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_A{
+@@ -495,7 +495,7 @@ public:
+ 
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -514,7 +514,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/gemv_batched_strided.h b/include/cutlass/gemm/kernel/gemv_batched_strided.h
+index 11490daf..abc873c8 100755
+--- a/include/cutlass/gemm/kernel/gemv_batched_strided.h
++++ b/include/cutlass/gemm/kernel/gemv_batched_strided.h
+@@ -132,7 +132,7 @@ CUTLASS_DEVICE void GemvBatchedStridedDevice(
+       params_B,
+       ref_B.data(),
+       { problem_size.k(), problem_size.n() },
+-      threadIdx.x,
++      threadIdx.x % kThreadCount,
+       { 0, tb_offset.n()*ThreadBlockGemv::Shape::kN });
+ 
+   //
+@@ -163,7 +163,7 @@ CUTLASS_DEVICE void GemvBatchedStridedDevice(
+         params_C,
+         ref_C.data(),
+         { 1, problem_size.n() },
+-        threadIdx.x,
++        threadIdx.x % kThreadCount,
+         { 0, tb_offset.n()*ThreadBlockGemv::Shape::kN });
+     iterator_C.load(fragment_CD);
+   }
+@@ -180,7 +180,7 @@ CUTLASS_DEVICE void GemvBatchedStridedDevice(
+       params_D,
+       ref_D.data(),
+       { 1, problem_size.n() },
+-      threadIdx.x,
++      threadIdx.x % kThreadCount,
+       { 0, tb_offset.n()*ThreadBlockGemv::Shape::kN });
+   iterator_D.store(fragment_CD);
+ }
+diff --git a/include/cutlass/gemm/kernel/grouped_problem_visitor.h b/include/cutlass/gemm/kernel/grouped_problem_visitor.h
+index d013af02..3affed81 100644
+--- a/include/cutlass/gemm/kernel/grouped_problem_visitor.h
++++ b/include/cutlass/gemm/kernel/grouped_problem_visitor.h
+@@ -391,7 +391,7 @@ struct GroupedProblemVisitor<ProblemSizeHelper,
+     int32_t prefetch_idx = (tiles_computed % kPrefetchTileCount);
+     if (prefetch_idx == 0) {
+       // Ensure all previous stores to shared memory have been completed
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+     }
+ 
+     auto problem_info = shared_storage.prefetched_problems[prefetch_idx];
+@@ -400,7 +400,7 @@ struct GroupedProblemVisitor<ProblemSizeHelper,
+     if ((tiles_computed % kPrefetchTileCount) == 0) {
+       // Begin prefetching next set of tiles. Synchronize first to ensure that
+       // we don't overwrite the current buffer while someone else is using it.
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+       prefetch_tiles();
+     }
+ 
+@@ -446,7 +446,7 @@ private:
+   void prefetch_tiles() {
+     CUTLASS_PRAGMA_UNROLL
+     for (int32_t i = 0; i < kPrefetchTileCount; i += kThreadCount) {
+-      int32_t offset = threadIdx.x + i;
++      int32_t offset = (threadIdx.x % kThreadCount) + i;
+       if (offset < kPrefetchTileCount && (tiles_computed + offset < iterations_per_block)) {
+         shared_storage.prefetched_problems[offset] = problem_info_ptr[block_load_start + tiles_computed + offset];
+       }
+diff --git a/include/cutlass/gemm/kernel/rank_2k_grouped.h b/include/cutlass/gemm/kernel/rank_2k_grouped.h
+index 55955d43..1492ae01 100644
+--- a/include/cutlass/gemm/kernel/rank_2k_grouped.h
++++ b/include/cutlass/gemm/kernel/rank_2k_grouped.h
+@@ -491,7 +491,7 @@ public:
+       );
+ 
+       // Compute position within threadblock
+-      int thread_idx = threadIdx.x;
++      int thread_idx = threadIdx.x % kThreadCount;
+ 
+       // Construct iterators to A and B operands for Mma1
+       typename Mma1::IteratorA iterator_A(
+@@ -525,7 +525,7 @@ public:
+ 
+       // Broadcast the warp_id computed by lane 0 to ensure dependent code
+       // is compiled as warp-uniform.
+-      int warp_idx = canonical_warp_idx_sync();
++      int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+       int lane_idx = threadIdx.x % 32;
+ 
+@@ -547,7 +547,7 @@ public:
+       int gemm_k_iterations = (problem_size_k - offset_k + Mma1::Shape::kK - 1) / Mma1::Shape::kK;
+ 
+       // Wait for all threads to finish their epilogue phases from the previous tile.
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       // Compute threadblock-scoped matrix multiply-add (A x BT)
+       mma1(
+@@ -607,7 +607,7 @@ public:
+           accumulators,
+           iterator_C);
+ 
+-        __syncthreads();
++        ark::sync_warps<kThreadCount>();
+ 
+         accumulators.clear();
+       }
+diff --git a/include/cutlass/gemm/kernel/rank_2k_universal.h b/include/cutlass/gemm/kernel/rank_2k_universal.h
+index 2775710d..b418ccba 100644
+--- a/include/cutlass/gemm/kernel/rank_2k_universal.h
++++ b/include/cutlass/gemm/kernel/rank_2k_universal.h
+@@ -401,7 +401,7 @@ public:
+       offset_k = threadblock_tile_offset.k() * params.gemm_k_size;
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_MxK{
+@@ -416,7 +416,7 @@ public:
+ 
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands for Mma1
+     typename Mma1::IteratorA iterator_A(
+@@ -450,7 +450,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+@@ -607,7 +607,7 @@ public:
+         semaphore.release(lock);
+       }
+ 
+-      __syncthreads();
++      ark::sync_warps<kThreadCount>();
+ 
+       accumulators.clear();
+     }
+diff --git a/include/cutlass/gemm/kernel/rank_k_universal.h b/include/cutlass/gemm/kernel/rank_k_universal.h
+index 188a4e70..85ad1bfb 100644
+--- a/include/cutlass/gemm/kernel/rank_k_universal.h
++++ b/include/cutlass/gemm/kernel/rank_k_universal.h
+@@ -369,7 +369,7 @@ public:
+       ptr_B = static_cast<ElementB * const *>(params.ptr_B)[threadblock_tile_offset.k()];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_A{
+@@ -384,7 +384,7 @@ public:
+ 
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A and B operands
+     typename Mma::IteratorA iterator_A(
+@@ -403,7 +403,7 @@ public:
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/sm70_gemm.hpp b/include/cutlass/gemm/kernel/sm70_gemm.hpp
+index e1fc4ec9..65c54b77 100644
+--- a/include/cutlass/gemm/kernel/sm70_gemm.hpp
++++ b/include/cutlass/gemm/kernel/sm70_gemm.hpp
+@@ -199,7 +199,7 @@ public:
+     static_assert(rank(StrideD{}) == 3, "StrideD must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
+ 
+     // Get the appropriate blocks for this thread block -- potential for thread block locality
+-    int thread_idx = int(threadIdx.x);
++    int thread_idx = int(threadIdx.x % MaxThreadsPerBlock);
+     auto blk_shape = TileShape{};                                                                // (BLK_M,BLK_N,BLK_K)
+     auto [m_coord, n_coord, l_coord] = blockIdx;
+     auto blk_coord_mnkl = make_coord(m_coord, n_coord, _, l_coord);                                        // (m,n,k,l)
+diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
+index 7ab238f6..16714265 100644
+--- a/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
++++ b/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
+@@ -105,7 +105,7 @@ public:
+   using StrideC  = typename CollectiveEpilogue::StrideC;
+   using ElementD = typename CollectiveEpilogue::ElementD;
+   using StrideD  = typename CollectiveEpilogue::StrideD;
+-  using EpilogueArguments = typename CollectiveEpilogue::Params;
++  using EpilogueArguments = typename CollectiveEpilogue::Arguments;
+   using EpilogueParams = typename CollectiveEpilogue::Params;
+   static_assert(cute::is_same_v<ElementAccumulator, typename CollectiveEpilogue::ElementAccumulator>,
+     "Mainloop and epilogue do not agree on accumulator value type.");
+@@ -224,8 +224,10 @@ public:
+     static_assert(rank(StrideC{}) == 3, "StrideC must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
+     static_assert(rank(StrideD{}) == 3, "StrideD must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
+ 
+-    int thread_idx = int(threadIdx.x);
+-    int warp_idx   = canonical_warp_idx_sync();
++    constexpr int num_warps = MaxThreadsPerBlock / NumThreadsPerWarp;
++
++    int thread_idx = int(threadIdx.x % MaxThreadsPerBlock);
++    int warp_idx   = canonical_warp_idx_sync() % num_warps;
+     int lane_predicate = cute::elect_one_sync();
+     uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
+ 
+diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp
+index 01d44274..1de5072e 100644
+--- a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp
++++ b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp
+@@ -241,12 +241,15 @@ public:
+     // Kernel level shared memory storage
+     SharedStorage& shared_storage = *reinterpret_cast<SharedStorage*>(smem_buf);
+ 
+-    int thread_idx = int(threadIdx.x);
++    constexpr int num_warps = MaxThreadsPerBlock / NumThreadsPerWarp;
++    constexpr int num_warp_groups = num_warps / NumWarpsPerWarpGroup;
++
++    int thread_idx = int(threadIdx.x % MaxThreadsPerBlock);
+     int lane_idx = canonical_lane_idx();
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group = warp_idx % NumWarpsPerWarpGroup;
+     int warp_group_thread_idx = thread_idx % NumThreadsPerWarpGroup;
+-    auto warp_group_role = WarpGroupRole(canonical_warp_group_idx());
++    auto warp_group_role = WarpGroupRole(canonical_warp_group_idx() % num_warp_groups);
+     auto producer_warp_role = ProducerWarpRole(warp_idx_in_warp_group);
+     int lane_predicate = cute::elect_one_sync();
+     uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
+@@ -312,7 +315,7 @@ public:
+         return [] () { cute::cluster_wait(); };
+       }
+       else {
+-        __syncthreads();
++        ark::sync_warps<MaxThreadsPerBlock>();
+         return [] () {}; // do nothing
+       }
+     } ();
+diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp
+index dfa18ad2..716f3ead 100644
+--- a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp
++++ b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp
+@@ -286,13 +286,16 @@ public:
+     // Kernel level shared memory storage
+     SharedStorage& shared_storage = *reinterpret_cast<SharedStorage*>(smem_buf);
+ 
+-    int thread_idx = int(threadIdx.x);
++    constexpr int num_warps = MaxThreadsPerBlock / NumThreadsPerWarp;
++    constexpr int num_warp_groups = num_warps / NumWarpsPerWarpGroup;
++
++    int thread_idx = int(threadIdx.x % MaxThreadsPerBlock);
+     int lane_idx = canonical_lane_idx();
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group = warp_idx % NumWarpsPerWarpGroup;
+     int warp_group_thread_idx = thread_idx % NumThreadsPerWarpGroup;
+     int mma_thread_idx = thread_idx % size(TiledMma{});
+-    auto warp_group_role = WarpGroupRole(canonical_warp_group_idx());
++    auto warp_group_role = WarpGroupRole(canonical_warp_group_idx() % num_warp_groups);
+     auto producer_warp_role = ProducerWarpRole(warp_idx_in_warp_group);
+     int lane_predicate = cute::elect_one_sync();
+     uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
+@@ -362,7 +365,7 @@ public:
+         return [] () { cute::cluster_wait(); };
+       }
+       else {
+-        __syncthreads();
++        ark::sync_warps<MaxThreadsPerBlock>();
+         return [] () {}; // do nothing
+       }
+     } ();
+@@ -526,7 +529,7 @@ public:
+         mainloop_pipe_consumer_state.advance(work_k_tile_count);
+ 
+         // Index of warp group within consumer warp groups
+-        int consumer_warp_group_idx = canonical_warp_group_idx() - NumLoadWarpGroups;
++        int consumer_warp_group_idx = canonical_warp_group_idx() % num_warp_groups - NumLoadWarpGroups;
+ 
+         // Perform reduction across splits, if needed
+         TileScheduler::fixup(
+diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp
+index 77c88c32..16086c03 100644
+--- a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp
++++ b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp
+@@ -283,12 +283,15 @@ public:
+     // Kernel level shared memory storage
+     SharedStorage& shared_storage = *reinterpret_cast<SharedStorage*>(smem_buf);
+ 
+-    int thread_idx = int(threadIdx.x);
++    constexpr int num_warps = MaxThreadsPerBlock / NumThreadsPerWarp;
++    constexpr int num_warp_groups = num_warps / NumWarpsPerWarpGroup;
++
++    int thread_idx = int(threadIdx.x % MaxThreadsPerBlock);
+     int lane_idx = canonical_lane_idx();
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % num_warps;
+     int warp_idx_in_warp_group = warp_idx % NumWarpsPerWarpGroup;
+     int warp_group_thread_idx = thread_idx % NumThreadsPerWarpGroup;
+-    auto warp_group_role = WarpGroupRole(canonical_warp_group_idx());
++    auto warp_group_role = WarpGroupRole(canonical_warp_group_idx() % num_warp_groups);
+     auto producer_warp_role = ProducerWarpRole(warp_idx_in_warp_group);
+     int lane_predicate = cute::elect_one_sync();
+     uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
+@@ -341,7 +344,7 @@ public:
+ 
+     typename MathWarpGroupOrderBarrier::Params params_math_wg_order_barrier;
+     // DMA Load WG will not participate in these Ordered Barrier syncs
+-    params_math_wg_order_barrier.group_id = canonical_warp_group_idx() - static_cast<int>(WarpGroupRole::Consumer0);
++    params_math_wg_order_barrier.group_id = canonical_warp_group_idx() % num_warp_groups - static_cast<int>(WarpGroupRole::Consumer0);
+     params_math_wg_order_barrier.group_size = NumThreadsPerWarpGroup; // Number of threads / participants in a group
+     MathWarpGroupOrderBarrier math_wg_order_barrier(shared_storage.pipelines.math_wg_order, params_math_wg_order_barrier);
+ 
+@@ -364,7 +367,7 @@ public:
+         return [] () { cute::cluster_wait(); };
+       }
+       else {
+-        __syncthreads();
++        ark::sync_warps<MaxThreadsPerBlock>();
+         return [] () {}; // do nothing
+       }
+     } ();
+diff --git a/include/cutlass/gemm/kernel/sparse_gemm.h b/include/cutlass/gemm/kernel/sparse_gemm.h
+index 1964fba8..51b4af5a 100644
+--- a/include/cutlass/gemm/kernel/sparse_gemm.h
++++ b/include/cutlass/gemm/kernel/sparse_gemm.h
+@@ -252,7 +252,7 @@ struct SparseGemm {
+     int gemm_k_iterations = (problem_size_k - tb_offset_B.row() + Mma::Shape::kK - 1) / Mma::Shape::kK;
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A, B, and E operands
+     typename Mma::IteratorA iterator_A(
+@@ -277,7 +277,7 @@ struct SparseGemm {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/gemm/kernel/sparse_gemm_row_broadcast.h b/include/cutlass/gemm/kernel/sparse_gemm_row_broadcast.h
+index 9c94efde..4c6e06bd 100644
+--- a/include/cutlass/gemm/kernel/sparse_gemm_row_broadcast.h
++++ b/include/cutlass/gemm/kernel/sparse_gemm_row_broadcast.h
+@@ -252,7 +252,7 @@ struct SparseGemmRowBroadcast {
+     int gemm_k_iterations = (problem_size_k - tb_offset_B.row() + Mma::Shape::kK - 1) / Mma::Shape::kK;
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Construct iterators to A, B, and E operands
+     typename Mma::IteratorA iterator_A(
+@@ -277,7 +277,7 @@ struct SparseGemmRowBroadcast {
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx();
++    int warp_idx = canonical_warp_idx() % WarpCount::kCount;
+     int lane_idx = threadIdx.x % 32;
+ 
+     //
+diff --git a/include/cutlass/gemm/kernel/symm_universal.h b/include/cutlass/gemm/kernel/symm_universal.h
+index f05cf7df..2980b985 100755
+--- a/include/cutlass/gemm/kernel/symm_universal.h
++++ b/include/cutlass/gemm/kernel/symm_universal.h
+@@ -387,7 +387,7 @@ public:
+       offset_k = threadblock_tile_offset.k() * params.gemm_k_size;
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_MxK_mma1{
+@@ -411,11 +411,11 @@ public:
+     };
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/kernel/trmm_universal.h b/include/cutlass/gemm/kernel/trmm_universal.h
+index bca9450b..5715b623 100644
+--- a/include/cutlass/gemm/kernel/trmm_universal.h
++++ b/include/cutlass/gemm/kernel/trmm_universal.h
+@@ -362,7 +362,7 @@ public:
+       ptr_B = static_cast<ElementB * const *>(params.ptr_B)[threadblock_tile_offset.k()];
+     }
+ 
+-    __syncthreads();
++    ark::sync_warps<kThreadCount>();
+ 
+     // Compute initial location in logical coordinates
+     cutlass::MatrixCoord tb_offset_A{
+@@ -376,11 +376,11 @@ public:
+     };
+ 
+     // Compute position within threadblock
+-    int thread_idx = threadIdx.x;
++    int thread_idx = threadIdx.x % kThreadCount;
+ 
+     // Broadcast the warp_id computed by lane 0 to ensure dependent code
+     // is compiled as warp-uniform.
+-    int warp_idx = canonical_warp_idx_sync();
++    int warp_idx = canonical_warp_idx_sync() % WarpCount::kCount;
+ 
+     int lane_idx = threadIdx.x % 32;
+ 
+diff --git a/include/cutlass/gemm/threadblock/ell_mma_multistage.h b/include/cutlass/gemm/threadblock/ell_mma_multistage.h
+index fa0945a4..30b7d43f 100644
+--- a/include/cutlass/gemm/threadblock/ell_mma_multistage.h
++++ b/include/cutlass/gemm/threadblock/ell_mma_multistage.h
+@@ -436,7 +436,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -574,7 +574,7 @@ public:
+ 
+           // Waits until kStages-2 stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.add_tile_offset({0, 1});
+@@ -634,7 +634,7 @@ public:
+     // Commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/threadblock/ell_mma_pipelined.h b/include/cutlass/gemm/threadblock/ell_mma_pipelined.h
+index 8b1c2c43..8a6c6cfc 100644
+--- a/include/cutlass/gemm/threadblock/ell_mma_pipelined.h
++++ b/include/cutlass/gemm/threadblock/ell_mma_pipelined.h
+@@ -240,7 +240,7 @@ public:
+     ++this->smem_iterator_A_;
+     ++this->smem_iterator_B_;
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math instructions
+     WarpFragmentA warp_frag_A[2];
+@@ -297,7 +297,7 @@ public:
+ 
+           this->smem_iterator_B_.store(transform_B(tb_frag_B));
+ 
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+           
+           ++this->smem_iterator_A_;
+           ++this->smem_iterator_B_;
+diff --git a/include/cutlass/gemm/threadblock/mma_blas3_multistage.h b/include/cutlass/gemm/threadblock/mma_blas3_multistage.h
+index 214916d9..a9a432be 100644
+--- a/include/cutlass/gemm/threadblock/mma_blas3_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_blas3_multistage.h
+@@ -499,7 +499,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -628,7 +628,7 @@ public:
+ 
+           // Waits until kStages-2 stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.add_tile_offset({0, 1});
+@@ -687,13 +687,13 @@ public:
+       // commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+       cutlass::arch::cp_async_fence();
+       cutlass::arch::cp_async_wait<0>();
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+     }
+ 
+     // Commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h b/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h
+index 197d0872..f035f9c5 100644
+--- a/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h
+@@ -663,7 +663,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -785,7 +785,7 @@ public:
+ 
+           // Waits until kStages-2 stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.add_tile_offset({0, 1});
+@@ -849,7 +849,7 @@ public:
+     // commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/threadblock/mma_multistage.h b/include/cutlass/gemm/threadblock/mma_multistage.h
+index 1cc72e2e..c9a0b1cc 100644
+--- a/include/cutlass/gemm/threadblock/mma_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_multistage.h
+@@ -487,7 +487,7 @@ public:
+   {
+     // Wait until we have at least one committed global fetch stage. (#uncommitted = Base::kStages - 1 - #committed)
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+   }
+ 
+ 
+@@ -663,7 +663,7 @@ public:
+     // Commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ 
+diff --git a/include/cutlass/gemm/threadblock/mma_pipelined.h b/include/cutlass/gemm/threadblock/mma_pipelined.h
+index 8ada21cd..bfb4ca0e 100644
+--- a/include/cutlass/gemm/threadblock/mma_pipelined.h
++++ b/include/cutlass/gemm/threadblock/mma_pipelined.h
+@@ -274,7 +274,7 @@ public:
+   CUTLASS_DEVICE
+   void gmem_wait()
+   {
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+   }
+ 
+ 
+diff --git a/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h b/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h
+index 9ff59893..a6e2a484 100644
+--- a/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h
+@@ -480,7 +480,7 @@ public:
+ 
+     // Blocks until all but kStages-2 cp.async stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -573,7 +573,7 @@ public:
+ 
+           // Blocks until all but kStages-2 cp.async stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A_real.add_tile_offset({0, 1});
+@@ -632,7 +632,7 @@ public:
+     // Commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h b/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h
+index d6beec45..f0dab381 100644
+--- a/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h
++++ b/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h
+@@ -287,7 +287,7 @@ public:
+     ++this->smem_iterator_A_;
+     ++this->smem_iterator_B_;
+ 
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math instructions
+     WarpFragmentA warp_frag_real_A[2];
+@@ -349,7 +349,7 @@ public:
+           this->smem_iterator_B_.store(tb_frag_B_real);
+           this->smem_iterator_B_.store_with_pointer_offset(tb_frag_B_imag, Base::SharedStorage::kImaginaryStrideB);
+ 
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+           
+           ++this->smem_iterator_B_;
+           ++this->smem_iterator_A_;
+diff --git a/include/cutlass/gemm/threadblock/mma_singlestage.h b/include/cutlass/gemm/threadblock/mma_singlestage.h
+index 3ce8ac80..efe60f4b 100644
+--- a/include/cutlass/gemm/threadblock/mma_singlestage.h
++++ b/include/cutlass/gemm/threadblock/mma_singlestage.h
+@@ -214,7 +214,7 @@ public:
+       this->smem_iterator_A_.store(tb_frag_A);
+       this->smem_iterator_B_.store(tb_frag_B);
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       //
+       // Loop over GEMM K dimension
+@@ -242,7 +242,7 @@ public:
+       this->warp_tile_iterator_A_.add_tile_offset({0, -Policy::kPartitionsK * Base::kWarpGemmIterations});
+       this->warp_tile_iterator_B_.add_tile_offset({-Policy::kPartitionsK * Base::kWarpGemmIterations, 0});
+ 
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+       iterator_A.load(tb_frag_A);
+       iterator_B.load(tb_frag_B);
+diff --git a/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h b/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h
+index 0f54c8bf..5dced509 100644
+--- a/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h
+@@ -559,7 +559,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -675,7 +675,7 @@ public:
+ 
+           // Waits until kStages-2 stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.add_tile_offset({0, 1});
+@@ -736,13 +736,13 @@ public:
+       // commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+       cutlass::arch::cp_async_fence();
+       cutlass::arch::cp_async_wait<0>();
+-      __syncthreads();
++      ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+     }
+ 
+     // Commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/threadblock/mma_sparse_multistage.h b/include/cutlass/gemm/threadblock/mma_sparse_multistage.h
+index 4b35e696..034e4039 100644
+--- a/include/cutlass/gemm/threadblock/mma_sparse_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_sparse_multistage.h
+@@ -475,7 +475,7 @@ public:
+     accum = src_accum;
+ 
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -595,7 +595,7 @@ public:
+ 
+           // Waits until kStages-2 stages have committed. 
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.add_tile_offset({0, 1});
+@@ -654,7 +654,7 @@ public:
+     // Commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h b/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h
+index 8586c3d9..f081ced1 100644
+--- a/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h
++++ b/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h
+@@ -383,7 +383,7 @@ public:
+ 
+     // Waits until kStages-2 stages have committed.
+     cutlass::arch::cp_async_wait<Base::kStages - 2>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+     // Pair of fragments used to overlap shared memory loads and math
+     // instructions
+@@ -480,7 +480,7 @@ public:
+ 
+           // Waits until kStages-2 stages have committed.
+           arch::cp_async_wait<Base::kStages - 2>();
+-          __syncthreads();
++          ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+           // Move to the next stage
+           iterator_A.add_tile_offset({0, 1});
+@@ -531,7 +531,7 @@ public:
+     // commit and drain all pending and predicated cp.async pnz from the GEMM mainloop
+     cutlass::arch::cp_async_fence();
+     cutlass::arch::cp_async_wait<0>();
+-    __syncthreads();
++    ark::sync_warps<Base::WarpCount::kCount * NumThreadsPerWarp>();
+ 
+   }
+ };
+diff --git a/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h b/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h
+index b79b43e7..965f802e 100644
+--- a/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h
++++ b/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h
+@@ -2422,7 +2422,7 @@ public:
+     }
+ 
+     #if defined(__CUDA_ARCH__)
+-    __syncthreads();
++    ark::sync_warps<kThreads>();
+     #endif
+ 
+     ref_.add_coord_offset(origin_);
+@@ -2773,7 +2773,7 @@ public:
+     }
+ 
+     #if defined(__CUDA_ARCH__)
+-    __syncthreads();
++    ark::sync_warps<kThreads>();
+     #endif
+ 
+     ref_.add_coord_offset(origin_);
+diff --git a/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h b/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
+index 5a0b9f47..1e4f8407 100644
+--- a/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
++++ b/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
+@@ -346,7 +346,7 @@ private:
+     while (thread_count > 1) {
+       thread_count /= 2;
+ 
+-      __syncthreads();
++      ark::sync_warps<Threads>();
+ 
+       if (thread_j < thread_count) {
+         ElementCompute other = frag_ptr[thread_j + thread_count];
+@@ -356,7 +356,7 @@ private:
+         frag_ptr[thread_j] = reduced_accumulator;
+       }
+ 
+-      __syncthreads();
++      ark::sync_warps<Threads>();
+     }
+ 
+ 
+@@ -417,7 +417,7 @@ public:
+           *reinterpret_cast<ElementOutput *>(dst_byte_ptr + dst_byte_offset) = cvt;
+         }
+ 
+-        __syncthreads();
++        ark::sync_warps<Threads>();
+ 
+         // Update indices and pointers
+         idx_linear += gridDim.y * blockDim.y;
+@@ -450,7 +450,7 @@ public:
+           *reinterpret_cast<ElementCompute *>(dst_byte_ptr + byte_offset) = result;
+         }
+ 
+-        __syncthreads();
++        ark::sync_warps<Threads>();
+ 
+         // Update indices and pointers
+         idx_linear += gridDim.y * blockDim.y;
+diff --git a/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h b/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h
+index 574c836d..9f5b3b38 100644
+--- a/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h
++++ b/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h
+@@ -328,7 +328,7 @@ private:
+ 
+       frag_ptr[thread_idx] = accumulator;
+ 
+-      __syncthreads();
++      ark::sync_warps<Threads>();
+ 
+       if (threadIdx.z == 0) {
+         // Load all additional block indices
+@@ -342,7 +342,7 @@ private:
+         } 
+       }
+ 
+-      __syncthreads();
++      ark::sync_warps<Threads>();
+     }
+ 
+     return accumulator;
+diff --git a/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp b/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp
+index 27039c64..4d40c598 100644
+--- a/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp
++++ b/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp
+@@ -224,7 +224,7 @@ public:
+         copy(sB_tiled_copy, tCsB_copy_tile(_,step), transpose_fragment);
+ 
+         // Make sure all elements are read before being overwritten
+-        __syncthreads();
++        ark::sync_warps<size(TiledMma{})>();
+ 
+         copy(sB_tiled_copy, transpose_fragment, tCsB_copy_tile_transposed(_,step));
+       }
+diff --git a/include/cutlass/transform/threadblock/predicated_scale_bias_vector_access_iterator.h b/include/cutlass/transform/threadblock/predicated_scale_bias_vector_access_iterator.h
+index 61bed18a..6eb8184e 100644
+--- a/include/cutlass/transform/threadblock/predicated_scale_bias_vector_access_iterator.h
++++ b/include/cutlass/transform/threadblock/predicated_scale_bias_vector_access_iterator.h
+@@ -188,7 +188,7 @@ class PredicatedScaleBiasVectorAccessIterator<ThreadblockShape_,
+   void add_tile_offset(
+       TensorCoord const &tile_offset) {
+ 
+-    guard_ = threadIdx.x < kThreads * 2;
++    guard_ = (threadIdx.x % ThreadblockShape::kCount) < kThreads * 2;
+ 
+     TensorCoord offset = is_residue_tile_ ?
+       TensorCoord(residue_size_ + ThreadblockShape::kContiguous * (tile_offset.contiguous() - 1), 0)

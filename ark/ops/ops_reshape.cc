@@ -21,7 +21,6 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
     if (input == nullptr) {
         LOG(ERROR, "input is null");
     }
-    LOG(DEBUG, "reshape ", input->shape, " ", shape);
     // Infer the actual shape
     std::vector<DimType> inferred_shape;
     if (shape.ndims() == 0) {

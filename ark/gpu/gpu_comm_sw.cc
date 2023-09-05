@@ -26,15 +26,23 @@
 
 using namespace std;
 
+#define DEBUG_REQUEST 0
+#define REQUEST_DEBUG(...)                                                     \
+    do {                                                                       \
+        if (DEBUG_REQUEST) {                                                   \
+            LOG(DEBUG, __VA_ARGS__);                                           \
+        }                                                                      \
+    } while (0);
+
 namespace ark {
 
 //
 struct GpuCommInfo
 {
-    NetIbMr::Info sid_mris[MAX_NUM_SID];
-    uint64_t sid_offs[MAX_NUM_SID];
     NetIbQp::Info qpi;
     uint64_t bytes;
+    NetIbMr::Info sid_mris[MAX_NUM_SID];
+    uint64_t sid_offs[MAX_NUM_SID];
 };
 
 //
@@ -338,7 +346,7 @@ void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
             int nrph = get_env().num_ranks_per_host;
             int remote_gpu_id = remote_rank % nrph;
             int remote_host_id = remote_rank / nrph;
-            int remote_data;
+            int remote_data = -1;
             s = this->ipc_socket->query_item(
                 get_host(remote_host_id), port_base + remote_gpu_id,
                 "comm_config_done", &remote_data, sizeof(remote_data), true);
@@ -493,15 +501,15 @@ void GpuCommSw::Impl::request_loop()
         }
         *db_val = (uint64_t)REQUEST_INVALID;
         Request &db = (Request &)v;
-        LOG(DEBUG, "Request arrived.");
+        REQUEST_DEBUG("Request arrived.");
         //
-        GpuPtr src = this->addr_table[this->gpu_id][db.fields.src];
+        GpuPtr src = this->addr_table[this->gpu_id][db.fields.sid];
         if (src == 0) {
-            LOG(ERROR, "Invalid SRC SID ", db.fields.src, " in GPU ",
+            LOG(ERROR, "Invalid SRC SID ", db.fields.sid, " in GPU ",
                 this->gpu_id);
         }
-        LOG(DEBUG, "Request SRC: RANK ", this->rank, ", sid ", db.fields.src,
-            ", ", (void *)src);
+        REQUEST_DEBUG("Request SRC: RANK ", this->rank, ", sid ", db.fields.sid,
+                      ", ", (void *)src);
         GpuPtr dst = 0;
         // TODO: generalize converting rank to GPU ID.
         int nrph = get_env().num_ranks_per_host;
@@ -509,18 +517,18 @@ void GpuCommSw::Impl::request_loop()
         if ((db.fields.rank / nrph) != (this->rank / nrph)) {
             // This GPU is not in this machine.
             gid_dst = -1;
-            LOG(DEBUG, "Request DST: RANK ", db.fields.rank, ", sid ",
-                db.fields.dst, ", remote");
+            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
+                          db.fields.sid, ", remote");
         } else {
-            dst = this->addr_table[gid_dst][db.fields.dst];
+            dst = this->addr_table[gid_dst][db.fields.sid];
             if (dst == 0) {
-                LOG(ERROR, "Invalid DST SID ", db.fields.dst, " in GPU ",
+                LOG(ERROR, "Invalid DST SID ", db.fields.sid, " in GPU ",
                     gid_dst);
             }
-            LOG(DEBUG, "Request DST: RANK ", db.fields.rank, ", sid ",
-                db.fields.dst, ", ", (void *)dst);
+            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
+                          db.fields.sid, ", ", (void *)dst);
         }
-        LOG(DEBUG, "Request LEN: ", db.fields.len);
+        REQUEST_DEBUG("Request LEN: ", db.fields.len);
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {
@@ -528,19 +536,19 @@ void GpuCommSw::Impl::request_loop()
             GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
             volatile int *rc_array = (volatile int *)mem->href(rc_offset);
             if (rc_array != nullptr) {
-                rc_array[db.fields.dst] = 1;
+                rc_array[db.fields.sid] = 1;
             } else {
                 GpuPtr rc_ref =
-                    mem->ref(rc_offset + db.fields.dst * sizeof(int));
+                    mem->ref(rc_offset + db.fields.sid * sizeof(int));
                 CULOG(cuMemsetD32(rc_ref, 1, 1));
             }
-            sc_href[db.fields.src] = 1;
+            sc_href[db.fields.sid] = 1;
         } else {
             NetIbQp *qp = this->qps[db.fields.rank];
             int ret = qp->stage_send(
-                this->sid_mrs[db.fields.src],
-                &this->mris[db.fields.rank][db.fields.dst], db.fields.len,
-                (db.fields.src << sid_shift), db.fields.dst);
+                this->sid_mrs[db.fields.sid],
+                &this->mris[db.fields.rank][db.fields.sid], db.fields.len,
+                (db.fields.sid << sid_shift), db.fields.sid);
             if (ret != 1) {
                 LOG(ERROR, "stage_send() returns ", ret);
             }
@@ -549,7 +557,7 @@ void GpuCommSw::Impl::request_loop()
                 LOG(ERROR, "post_send() returns ", ret);
             }
         }
-        LOG(DEBUG, "Request processed.");
+        REQUEST_DEBUG("Request processed.");
         //
         is_idle = false;
         busy_counter = 0;

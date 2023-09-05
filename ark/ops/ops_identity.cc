@@ -12,7 +12,6 @@ Tensor *Model::identity(Tensor *input, const std::vector<Tensor *> &deps,
                         const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "identity ", input->shape);
     std::set<Tensor *> dep_set;
     dep_set.emplace(input);
     for (auto &dep : deps) {

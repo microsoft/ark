@@ -140,7 +140,6 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
                           const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "reduce_sum ", input->shape, " ", input->ldims, " ", axis);
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -175,7 +174,6 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
                            const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "reduce_mean ", input->shape, " ", input->ldims, " ", axis);
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -210,7 +208,6 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
                           const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "reduce_max ", input->shape, " ", input->ldims, " ", axis);
     OpPrecType pt;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -242,23 +239,7 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
 }
 
 const OpConfigMap ReduceEConfigMap = {
-    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
-         {8, 0, {{256, 128}, {256, 128}}, {{256, 128}}, true, false},
-         {8, 0, {{128, 128}, {128, 128}}, {{128, 128}}, true, false},
-         {4, 0, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
-         {2, 0, {{32, 64}, {32, 64}}, {{32, 64}}, true, false},
-         {1, 0, {{16, 64}, {16, 64}}, {{16, 64}}, true, false},
-         {1, 0, {{8, 64}, {8, 64}}, {{8, 64}}, true, false},
-         {1, 0, {{2, 128}, {2, 128}}, {{2, 128}}, true, false},
-         {1, 0, {{4, 64}, {4, 64}}, {{4, 64}}, true, false},
-         {1, 0, {{2, 64}, {2, 64}}, {{2, 64}}, true, false},
-         {1, 0, {{1, 64}, {1, 64}}, {{1, 64}}, true, false},
-         {1, 0, {{1, 32}, {1, 32}}, {{1, 32}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
@@ -277,43 +258,7 @@ const OpConfigMap ReduceEConfigMap = {
 };
 
 const OpConfigMap ReduceWConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_70, OP_PREC_FP32},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, 1}}, {{32, 1}}, true, false},
