@@ -27,8 +27,8 @@ class GpuCommSw
 
     void reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
                       bool is_recv);
-    void configure(std::vector<std::pair<int, size_t>> &export_sid_offs,
-                   std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
+    void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
+                   const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
 
     void import_buf(const int gid, GpuBuf *buf);
 
@@ -41,8 +41,6 @@ class GpuCommSw
     GpuMem *get_data_mem(const int gid);
 
     GpuPtr get_request_ref() const;
-
-    bool is_using_ib() const;
 
   protected:
     class Impl;

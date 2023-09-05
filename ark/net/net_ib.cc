@@ -371,13 +371,12 @@ NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size)
                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE |
                        IBV_ACCESS_REMOTE_READ | IBV_ACCESS_RELAXED_ORDERING);
     if (mr == nullptr) {
-        LOG(WARN, "ibv_reg_mr failed (errno ", errno, "). pd ", std::hex,
-            this->pd, " addr ", (void *)addr, std::dec, " size ", size,
-            " pages ", pages, " pageSize ", pageSize);
-        return nullptr;
+        LOG(ERROR, "ibv_reg_mr failed (errno ", errno,
+            "). num_registered_pages ", this->num_registered_pages, " pd ",
+            std::hex, this->pd, " addr ", (void *)addr, std::dec, " size ",
+            size, " pages ", pages, " pageSize ", pageSize);
     }
-    LOG(DEBUG, "MR addr ", (void *)addr, " buffer ", (void *)buffer, " size ",
-        pages * pageSize);
+    this->num_registered_pages += pages;
     this->mrs.emplace_back(new NetIbMr{mr, buffer});
     return this->mrs.back().get();
 }

@@ -21,9 +21,6 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
-    Dims shp_out = output->shape;
-    int ndims = shp_out.ndims();
-
     const OpTile &tile_out = cfg.output_tiles[0];
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
 
