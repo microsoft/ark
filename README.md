@@ -21,20 +21,30 @@ ARK provides a set of APIs for users to express their distributed deep learning 
 
 ARK is under active development and a part of its features will be added in a future release. The following describes key features of each version.
 
-### ARK v0.1 (Latest Release)
+### New in ARK v0.2 (Latest Release)
 
-* The default tile-based operator scheduler
-* A simple software communication stack
-* Transformer inference examples
+* Change the `Tensor` interface to expose the underlying buffer
+* Extend communication interfaces to support more communication operators
+* Add many new operators
+* Upgrade CUTLASS to v3.2.0
+* Change the Python `Runtime.run()` interface
+* Add a new parallel matmul example
+* Update the documentation
+* Improve unit tests
+* Add an Azure pipeline for unit tests
+* Add code coverage
+* Many bug fixes
 
-### ARK v0.2 (TBU, Sep. 2023)
+See details from https://github.com/microsoft/ark/issues/61.
+
+### ARK v0.3 (TBU, Oct. 2023)
 
 * A simple operator scheduler for debugging
-* Extended communication interfaces
+* Simpler communication interfaces
 * Support more operators
 * More inference examples
 
-### ARK v0.3 (TBU, Nov. 2023)
+### ARK v0.4 (TBU, Nov. 2023)
 
 * Full support for the operator profiler
 * High-performance collective communication

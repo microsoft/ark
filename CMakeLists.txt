@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 set(ARK_MAJOR "0")
-set(ARK_MINOR "1")
+set(ARK_MINOR "2")
 set(ARK_PATCH "0")
 
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
