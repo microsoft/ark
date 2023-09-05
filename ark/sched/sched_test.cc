@@ -363,6 +363,32 @@ ark::unittest::State test_sched_comp_baseline()
     return unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_many_comm_ops()
+{
+    constexpr int num_gpus = 4;
+    for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, num_gpus]() {
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m{gpu_id};
+
+            for (int i = 0; i < 100; ++i) {
+                ark::Tensor *data = m.tensor(ark::Dims(4096), ark::FP16);
+                m.all_gather(data, gpu_id, num_gpus);
+            }
+
+            ark::Executor exe{gpu_id, gpu_id, num_gpus, m,
+                              "test_sched_many_comm_ops"};
+            exe.compile();
+            exe.launch();
+            exe.run(3);
+            exe.stop();
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -370,5 +396,6 @@ int main()
     // UNITTEST(test_scheduler_simple_mm);
     // UNITTEST(test_sched_gpt3);
     // UNITTEST(test_sched_comp_baseline);
+    // UNITTEST(test_sched_many_comm_ops);
     return 0;
 }

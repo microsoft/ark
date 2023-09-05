@@ -9,6 +9,14 @@
 
 using namespace std;
 
+#define DEBUG_SCHEDULE 0
+#define SCHEDULE_DEBUG(...)                                                    \
+    do {                                                                       \
+        if (DEBUG_SCHEDULE) {                                                  \
+            LOG(DEBUG, __VA_ARGS__);                                           \
+        }                                                                      \
+    } while (0);
+
 namespace ark {
 
 /// Calculate the number of tiles for a given op and a tile.
@@ -323,12 +331,12 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
     this->comp_stream.back()->add_items(comp_items);
     this->comm_stream.back()->add_items(comm_items);
 
-    LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
+    SCHEDULE_DEBUG("scheduled ", nodes.size(), " nodes");
     for (auto &item : comp_items) {
-        LOG(DEBUG, "  comp: ", this->opseqs[item.opseq_id]->get_name());
+        SCHEDULE_DEBUG("  comp: ", this->opseqs[item.opseq_id]->get_name());
     }
     for (auto &item : comm_items) {
-        LOG(DEBUG, "  comm: ", this->opseqs[item.opseq_id]->get_name());
+        SCHEDULE_DEBUG("  comm: ", this->opseqs[item.opseq_id]->get_name());
     }
 
     recursive_schedule(next_nodes, seen_nodes);
@@ -468,8 +476,8 @@ void DefaultScheduler::configure_gpu_buf(
                 max_bytes = tns_bytes;
             }
             // TODO: more verficiations.
-            auto &sh = tns->shape;
-            auto &ld = tns->ldims;
+            // auto &sh = tns->shape;
+            // auto &ld = tns->ldims;
         }
         // Store the size.
         buf->bytes = max_bytes;

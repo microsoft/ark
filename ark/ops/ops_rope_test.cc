@@ -10,8 +10,7 @@
 using namespace std;
 
 template <typename T>
-void baseline_rope(std::vector<void *> &outputs,
-                   const std::vector<ark::Dims> &output_shapes,
+void baseline_rope(std::vector<void *> &outputs, const std::vector<ark::Dims> &,
                    const std::vector<void *> &inputs,
                    const std::vector<ark::Dims> &input_shapes)
 {
@@ -19,7 +18,6 @@ void baseline_rope(std::vector<void *> &outputs,
     T *input = static_cast<T *>(inputs[0]);
     T *other = static_cast<T *>(inputs[1]);
 
-    ark::Dims osh = output_shapes[0].dims4();
     ark::Dims ish = input_shapes[0].dims4();
     ark::Dims other_sh = input_shapes[1].dims4();
     assert(ish == other_sh);
