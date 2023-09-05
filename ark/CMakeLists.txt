@@ -28,7 +28,7 @@ target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
 
 # ARK unit tests
 foreach(ut_source IN ITEMS ${UT_SOURCES})
-    get_filename_component(exe_name ${ut_source} NAME)
+    get_filename_component(exe_name ${ut_source} NAME_WE)
     add_executable(${exe_name} ${ut_source} ${UT_COMMON_SOURCES})
     add_dependencies(${exe_name} build)
     set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)

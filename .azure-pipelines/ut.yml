@@ -74,7 +74,7 @@ jobs:
       targetType: 'inline'
       script: |
         mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=ON ..
         make -j ut
       workingDirectory: '$(System.DefaultWorkingDirectory)'
 
@@ -86,6 +86,30 @@ jobs:
       script: |
         cd build && ARK_ROOT=$PWD ctest --verbose
       workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+  - task: Bash@3
+    name: InstallLcov
+    displayName: Install lcov
+    inputs:
+      targetType: 'inline'
+      script: |
+        sudo apt-get update
+        sudo apt-get install -y lcov
+
+  - task: Bash@3
+    name: ReportCoverage
+    displayName: Report Coverage
+    env:
+      CODECOV_TOKEN: $(codecovToken)
+    inputs:
+      targetType: 'inline'
+      script: |
+        lcov --capture --directory . --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --remove coverage.info '*/third_party/*' --output-file coverage.info
+        lcov --list coverage.info
+        bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+      workingDirectory: '$(System.DefaultWorkingDirectory)/build'
 
   - task: Bash@3
     name: BuildPython

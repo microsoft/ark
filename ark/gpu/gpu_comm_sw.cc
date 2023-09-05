@@ -509,7 +509,7 @@ void GpuCommSw::Impl::request_loop()
                 this->gpu_id);
         }
         REQUEST_DEBUG("Request SRC: RANK ", this->rank, ", sid ", db.fields.sid,
-            ", ", (void *)src);
+                      ", ", (void *)src);
         GpuPtr dst = 0;
         // TODO: generalize converting rank to GPU ID.
         int nrph = get_env().num_ranks_per_host;
@@ -518,7 +518,7 @@ void GpuCommSw::Impl::request_loop()
             // This GPU is not in this machine.
             gid_dst = -1;
             REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                db.fields.sid, ", remote");
+                          db.fields.sid, ", remote");
         } else {
             dst = this->addr_table[gid_dst][db.fields.sid];
             if (dst == 0) {
@@ -526,7 +526,7 @@ void GpuCommSw::Impl::request_loop()
                     gid_dst);
             }
             REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                db.fields.sid, ", ", (void *)dst);
+                          db.fields.sid, ", ", (void *)dst);
         }
         REQUEST_DEBUG("Request LEN: ", db.fields.len);
 
