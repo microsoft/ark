@@ -134,7 +134,6 @@ vector<string> list_dir(const string &path)
     const char *path_c = path_str.c_str();
     DIR *d = opendir(path_c);
     size_t path_len = strlen(path_c);
-    int r = -1;
 
     vector<string> ret;
 

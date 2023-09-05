@@ -23,6 +23,7 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
     //     " smem_bytes ", cfg_->smem_bytes, " #inputs ",
     //     cfg_->input_tiles.size(), " #outputs ", cfg_->output_tiles.size(), "
     //     sync_pre ", cfg_->sync_pre, " sync_post ", cfg_->sync_post);
+
     // pad the tensor of the SchedOp
     for (unsigned int i = 0; i < this->op->inputs.size(); ++i) {
         if (i >= this->cfg->input_tiles.size()) {
