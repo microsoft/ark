@@ -1,0 +1,15 @@
+codecov:
+  require_ci_to_pass: yes
+
+flag_management:
+  default_rules:
+    carryforward: true
+    paths:
+      - ark/
+
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 1%
