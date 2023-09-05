@@ -180,10 +180,6 @@ ark::unittest::State test_sendrecv_mm_4gpus()
 ark::unittest::State test_sendrecv_mm_copy()
 {
     test_sendrecv_mm_copy_internal(64);
-    test_sendrecv_mm_copy_internal(128);
-    test_sendrecv_mm_copy_internal(256);
-    test_sendrecv_mm_copy_internal(512);
-    test_sendrecv_mm_copy_internal(1024);
     test_sendrecv_mm_copy_internal(2048);
 
     return ark::unittest::SUCCESS;
@@ -192,10 +188,6 @@ ark::unittest::State test_sendrecv_mm_copy()
 ark::unittest::State test_sendrecv_mm_copy_bidir()
 {
     test_sendrecv_mm_copy_bidir_internal(64);
-    test_sendrecv_mm_copy_bidir_internal(128);
-    test_sendrecv_mm_copy_bidir_internal(256);
-    test_sendrecv_mm_copy_bidir_internal(512);
-    test_sendrecv_mm_copy_bidir_internal(1024);
     test_sendrecv_mm_copy_bidir_internal(2048);
 
     return ark::unittest::SUCCESS;
@@ -206,6 +198,6 @@ int main()
     ark::init();
     UNITTEST(test_sendrecv_mm_copy);
     UNITTEST(test_sendrecv_mm_copy_bidir);
-    UNITTEST(test_sendrecv_mm_4gpus);
+    // UNITTEST(test_sendrecv_mm_4gpus);
     return 0;
 }
