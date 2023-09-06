@@ -4,7 +4,6 @@
 #ifndef ARK_GPU_MEM_H_
 #define ARK_GPU_MEM_H_
 
-#include "ipc/ipc_mem.h"
 #include <cuda.h>
 #include <memory>
 
@@ -12,57 +11,58 @@ namespace ark {
 
 typedef CUdeviceptr GpuPtr;
 
-struct GpuMemInfo
-{
-    CUipcMemHandle ipc_hdl;
-    uint64_t phys_addr;
-    uint64_t bytes;
-};
-
-// Information on GPU memory exposal to CPU.
-struct GpuMemExposalInfo
-{
-    // Physical address of GPU pointer.
-    uint64_t phys = 0;
-    // Number of mmapped 64KB pages.
-    uint64_t npage = 0;
-    // Base address of mmaped pages.
-    void *mmap = 0;
-};
-
 class GpuMem
 {
   public:
-    GpuMem(const std::string &name, size_t bytes, bool create,
-           bool try_create = false);
+    struct Info
+    {
+        // IPC handle.
+        CUipcMemHandle ipc_hdl;
+        // Physical address of GPU pointer.
+        uint64_t phys_addr;
+        // Data size.
+        uint64_t bytes;
+    };
+
+    GpuMem() = default;
+    GpuMem(size_t bytes);
+    GpuMem(const GpuMem::Info &info);
     ~GpuMem();
 
     // Allocate a GPU memory chunk.
-    void alloc(size_t bytes);
+    void init(size_t bytes);
+
+    // Access the remote GPU memory chunk.
+    void init(const GpuMem::Info &info);
+
     // GPU-side virtual address.
     GpuPtr ref(size_t offset = 0) const;
+
     // GPU-side physical address.
     uint64_t pref(size_t offset = 0) const;
+
     // Host-side mapped address.
     void *href(size_t offset = 0) const;
 
     // Return allocated number of bytes.
-    const uint64_t &get_bytes() const
-    {
-        return bytes;
-    }
+    uint64_t get_bytes() const;
+
+    // Return the information for exporting.
+    const Info &get_info() const;
 
   private:
-    //
-    std::unique_ptr<IpcMem> shm;
-    //
-    GpuPtr addr = 0;
-    //
-    GpuPtr raw_addr = 0;
-    //
-    uint64_t bytes = 0;
-    //
-    GpuMemExposalInfo exp_info;
+    // Aligned address.
+    GpuPtr addr_ = 0;
+    // The base address.
+    GpuPtr raw_addr_ = 0;
+    // Information for exporting.
+    Info info_;
+    // Number of mmapped 64KB pages.
+    uint64_t npage_ = 0;
+    // Base address of mmaped pages.
+    void *mmap_ = nullptr;
+    // True if this object is constructed from a `GpuMem::Info`.
+    bool is_remote_;
 };
 
 } // namespace ark
