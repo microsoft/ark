@@ -233,7 +233,6 @@ void GpuCommSw::Impl::configure(
         // Get comm_mem_info from other GPUs on the same machine.
         // Only from GPUs that this GPU imports.
         int gpu_id = p.first;
-        int remote_rank = my_host_id * num_ranks_per_host + gpu_id;
         int port = port_base + gpu_id;
 
         GpuCommMemInfo remote_comm_mem_info;
@@ -250,7 +249,7 @@ void GpuCommSw::Impl::configure(
         for (GpuBuf *buf : p.second) {
             int sid = buf->get_id();
             size_t off = remote_comm_mem_info.sid_offs[sid];
-            this->addr_table[remote_rank][sid] = mem->ref(off);
+            this->addr_table[gpu_id][sid] = mem->ref(off);
             buf->set_offset(off);
         }
     }
@@ -566,7 +565,7 @@ GpuMem *GpuCommSw::Impl::get_data_mem(const int gid)
     //
     while (this->addr_table.size() < this->data_mems.size()) {
         this->addr_table.emplace_back();
-        this->addr_table.back().resize(1024, 0);
+        this->addr_table.back().resize(16, 0);
     }
     return dm;
 }
