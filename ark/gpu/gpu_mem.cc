@@ -2,11 +2,10 @@
 // Licensed under the MIT license.
 
 #include <cassert>
-#include <fcntl.h>
 #include <fstream>
-#include <stdint.h>
-#include <string.h>
+#include <cstring>
 #include <string>
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -15,6 +14,11 @@
 
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mem.h"
+
+#define GPU_PAGE_SHIFT 16
+#define GPU_PAGE_SIZE (1ULL << GPU_PAGE_SHIFT)
+#define GPU_PAGE_OFFSET (GPU_PAGE_SIZE-1)
+#define GPU_PAGE_MASK (~GPU_PAGE_OFFSET)
 
 namespace ark {
 
@@ -61,8 +65,12 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
     if (ioctl(fd, IOCTL_GPUMEM_LOCK, &lock) < 0) {
         return errno;
     }
-    uint64_t npage = bytes >> 16;
-    assert(npage == lock.page_count);
+    uint64_t npage = bytes >> GPU_PAGE_SHIFT;
+    // +1 can happen as we alloc 64KB more for safe alignment.
+    if (npage != lock.page_count && npage + 1 != lock.page_count) {
+        LOG(ERROR, "Unexpected number of pages: ", npage, " vs ", lock.page_count);
+    }
+    npage = lock.page_count;
     int state_bytes = sizeof(gpudma_state_t) + npage * sizeof(uint64_t);
     gpudma_state_t *state = (gpudma_state_t *)malloc(state_bytes);
     if (state == 0) {
@@ -80,7 +88,7 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
     free(state);
     // Create mmap of all pages.
     info->mmap =
-        mmap(0, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, info->phys);
+        mmap(0, npage << GPU_PAGE_SHIFT, PROT_READ | PROT_WRITE, MAP_SHARED, fd, info->phys);
     if (info->mmap == MAP_FAILED) {
         return errno;
     }
@@ -140,7 +148,7 @@ void GpuMem::init(size_t bytes)
     }
 
     // Allocate more to align the bytes by 64KB.
-    CULOG(cuMemAlloc(&raw_addr_, bytes + 65536));
+    CULOG(cuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
 
     // Make sure it is a base pointer.
     GpuPtr base_ptr;
@@ -151,10 +159,10 @@ void GpuMem::init(size_t bytes)
     }
 
     // Aligned address.
-    addr_ = (CUdeviceptr)(((uint64_t)raw_addr_ + 65535) & ~65535);
+    addr_ = (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     ExposalInfo exp_info;
-    int err = mem_expose(&exp_info, addr_, bytes);
+    int err = mem_expose(&exp_info, addr_, bytes + GPU_PAGE_SIZE);
     if (err != 0) {
         LOG(ERROR, "mem_expose() failed with errno ", err);
     }
@@ -189,7 +197,7 @@ void GpuMem::init(const GpuMem::Info &info)
     }
 
     // Aligned address.
-    addr_ = (CUdeviceptr)(((uint64_t)raw_addr_ + 65535) & ~65535);
+    addr_ = (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
     if (mmap_ == nullptr) {
@@ -207,13 +215,19 @@ void GpuMem::init(const GpuMem::Info &info)
 // Destructor.
 GpuMem::~GpuMem()
 {
+    if (addr_ == 0) {
+        return;
+    }
+    size_t mapped_bytes;
     if (is_remote_) {
         CULOG(cuIpcCloseMemHandle(raw_addr_));
+        mapped_bytes = info_.bytes;
     } else {
         CULOG(cuMemFree(raw_addr_));
-        if (munmap(mmap_, npage_ << 16) != 0) {
-            LOG(ERROR, "munmap failed with errno ", errno);
-        }
+        mapped_bytes = npage_ << GPU_PAGE_SHIFT;
+    }
+    if (munmap(mmap_, mapped_bytes) != 0) {
+        LOG(ERROR, "munmap failed with errno ", errno);
     }
 }
 

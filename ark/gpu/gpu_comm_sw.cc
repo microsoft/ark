@@ -175,8 +175,8 @@ void GpuCommSw::Impl::reg_sendrecv(int sid, int remote_rank, size_t bytes,
 
 //
 void GpuCommSw::Impl::configure(
-    const vector<pair<int, size_t>> &export_sid_offs,
-    const map<int, vector<GpuBuf *>> &import_gid_bufs)
+    const std::vector<std::pair<int, size_t>> &export_sid_offs,
+    const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs)
 {
     //
     GpuMem *data_mem = this->get_data_mem(this->gpu_id);
@@ -328,35 +328,6 @@ void GpuCommSw::Impl::configure(
         if (state != IpcSocket::State::SUCCESS) {
             LOG(ERROR, "Failed to query comm_config_done");
         }
-    }
-}
-
-//
-void GpuCommSw::Impl::import_buf(const int gid, GpuBuf *buf)
-{
-    IpcMem *ie = this->get_info(gid);
-    if (ie->get_bytes() == 0) {
-        ie->alloc(sizeof(GpuCommInfo));
-    }
-
-    GpuMem *mem = this->get_data_mem(gid);
-    GpuCommInfo *info = (GpuCommInfo *)ie->get_addr();
-    assert(info != nullptr);
-
-    // Create a GPU memory mapping if it has not done yet.
-    if (mem->get_bytes() == 0) {
-        if (info->bytes == 0) {
-            LOG(ERROR, "unexpected error");
-        }
-        mem->alloc(info->bytes);
-    }
-    //
-    {
-        IpcLockGuard lg{ie->get_lock()};
-        int sid = buf->get_id();
-        size_t off = info->sid_offs[sid];
-        this->addr_table[gid][sid] = mem->ref(off);
-        buf->set_offset(off);
     }
 }
 
@@ -653,11 +624,6 @@ void GpuCommSw::configure(
     const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs)
 {
     this->impl->configure(export_sid_offs, import_gid_bufs);
-}
-
-void GpuCommSw::import_buf(const int gid, GpuBuf *buf)
-{
-    this->impl->import_buf(gid, buf);
 }
 
 void GpuCommSw::launch_request_loop()

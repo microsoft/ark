@@ -218,7 +218,7 @@ int test_net_ib_gpu_internal(std::size_t bytes, bool is_recv)
 
     ark::NetIbMgr mgr{dev};
 
-    ark::GpuMem mem{"gpu_mem_" + std::to_string(rank), bytes, true};
+    ark::GpuMem mem{bytes};
     void *buf = mem.href();
     ark::NetIbMr *mr = mgr.reg_mr((void *)mem.ref(), bytes);
     UNITTEST_NE(mr, (ark::NetIbMr *)nullptr);
@@ -304,8 +304,8 @@ int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv)
 
     numa_bind(mgr.get_numa_node());
 
-    ark::GpuMem mem{"gpu_mem_" + std::to_string(rank), bytes, true};
-    ark::GpuMem mem2{"gpu_mem2_" + std::to_string(rank), bytes, true};
+    ark::GpuMem mem{bytes};
+    ark::GpuMem mem2{bytes};
     ark::NetIbMr *mr = mgr.reg_mr((void *)mem.ref(), bytes);
     ark::NetIbMr *mr2 = mgr.reg_mr((void *)mem2.ref(), bytes);
     UNITTEST_NE(mr, (ark::NetIbMr *)nullptr);
