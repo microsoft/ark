@@ -44,7 +44,6 @@ torch_device = None
 total_execution_time = 1
 warmup_iter = 50
 
-world_size = 8
 input_numpy = None
 
 
@@ -54,7 +53,7 @@ def unittest(test_func):
     multiple processes to run the test function
     """
 
-    def _test_func():
+    def _test_func(local_rank: int, world_size: int):
         global torch_device
         # TODO: Their will be bug when we call torch.distributed.init_process_group("nccl") and
         # launch the ark runtime on multiple GPUs, so for multi-GPU test, we use gloo backend
@@ -71,10 +70,10 @@ def unittest(test_func):
             world_size
         )
         # Set seed as the rank of the process
-        torch.manual_seed(llama_ark.local_rank)
+        torch.manual_seed(local_rank)
 
         # Run the test function
-        test_func()
+        test_func(local_rank, world_size)
 
         # Add a barrier to make sure that all processes have finished the test
         if world_size > 1:
@@ -88,6 +87,7 @@ def unittest(test_func):
     ).astype(np_type)
 
     process = []
+    world_size = 8
     # Set up the environment variables for nccl backend or gloo backend
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29500"
@@ -96,11 +96,9 @@ def unittest(test_func):
     # spawn a new process for each rank
     for rank in range(world_size):
         # Set the rank and local_rank for each process
-        llama_ark.local_rank = rank
-        llama_ark.world_size = world_size
         os.environ["RANK"] = str(rank)
         os.environ["LOCAL_RANK"] = str(rank)
-        process.append(multiprocessing.Process(target=_test_func))
+        process.append(multiprocessing.Process(target=_test_func, args=(rank, world_size)))
         process[rank].start()
 
     # Wait for all processes to finish
@@ -188,9 +186,9 @@ def convert_state_dict(state_dict: dict, type="numpy"):
     return new_state_dict
 
 
-def test_rmsnorm():
+def test_rmsnorm(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     rmsnorm_pytorch = llama_pytorch.RMSNorm(dim)
     rmsnorm_ark = llama_ark.RMSNorm(dim)
     torch_input = torch.from_numpy(input_numpy)
@@ -232,10 +230,10 @@ def test_rmsnorm():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_row_parallel_linear():
+def test_row_parallel_linear(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
-    row_parallel_linear_ark = llama_ark.RowParallelLinear(dim, dim)
+    runtime = ark.Runtime(local_rank, world_size)
+    row_parallel_linear_ark = llama_ark.RowParallelLinear(dim, dim, local_rank, world_size)
     row_parallel_linear_pytorch = fairscale.nn.model_parallel.RowParallelLinear(
         dim,
         dim,
@@ -284,10 +282,10 @@ def test_row_parallel_linear():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_column_parallel_linear():
+def test_column_parallel_linear(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
-    column_parallel_linear_ark = llama_ark.ColumnParallelLinear(dim, dim)
+    runtime = ark.Runtime(local_rank, world_size)
+    column_parallel_linear_ark = llama_ark.ColumnParallelLinear(dim, dim, local_rank, world_size)
     column_parallel_linear_pytorch = (
         fairscale.nn.model_parallel.ColumnParallelLinear(
             dim,
@@ -340,12 +338,12 @@ def test_column_parallel_linear():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_attention():
+def test_attention(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     args = llama_ark.ModelArgs()
     attention_pytorch = llama_pytorch.Attention(args)
-    attention_ark = llama_ark.Attention(args)
+    attention_ark = llama_ark.Attention(args, local_rank, world_size)
     dim = args.dim
 
     torch_input = torch.from_numpy(input_numpy)
@@ -408,11 +406,11 @@ def test_attention():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_feedforward():
+def test_feedforward(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     feedforward_pytorch = llama_pytorch.FeedForward(dim, 16384, 256, None)
-    feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None)
+    feedforward_ark = llama_ark.FeedForward(dim, 16384, 256, None, local_rank, world_size)
 
     torch_input = torch.from_numpy(input_numpy)
     for param in feedforward_pytorch.parameters():
@@ -455,12 +453,12 @@ def test_feedforward():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_transformerblock():
+def test_transformerblock(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     args = llama_ark.ModelArgs()
     transformer_block_pytorch = llama_pytorch.TransformerBlock(0, args)
-    transformer_block_ark = llama_ark.TransformerBlock(0, args)
+    transformer_block_ark = llama_ark.TransformerBlock(0, args, local_rank, world_size)
     dim = args.dim
 
     torch_input = torch.from_numpy(input_numpy)
@@ -522,15 +520,15 @@ def test_transformerblock():
     performance_comparison(runtime, pytorch_func)
 
 
-def test_transformer():
+def test_transformer(local_rank: int, world_size: int):
     # Initialize the ARK runtime
-    runtime = ark.Runtime(llama_ark.local_rank, world_size)
+    runtime = ark.Runtime(local_rank, world_size)
     args = llama_ark.ModelArgs()
     # To make sure that we can run this test on a single GPU, we reduce the model layer number to 2
     args.n_layers = 2
     args.vocab_size = 1024
     transformer_pytorch = llama_pytorch.Transformer(args)
-    transformer_ark = llama_ark.Transformer(args)
+    transformer_ark = llama_ark.Transformer(args, local_rank, world_size)
     dim = args.dim
     input_tokens = np.random.randint(
         low=0, high=args.vocab_size, size=(batch_size, seq_len)
