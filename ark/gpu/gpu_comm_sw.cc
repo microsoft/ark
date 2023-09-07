@@ -213,7 +213,8 @@ void GpuCommSw::Impl::configure(
                 continue;
             }
             // Create an MR
-            NetIbMr *mr = this->net_ib_mgr->reg_mr((void *)addr, ib_sid_max_bytes[sid]);
+            NetIbMr *mr =
+                this->net_ib_mgr->reg_mr((void *)addr, ib_sid_max_bytes[sid]);
             this->sid_mrs[sid] = mr;
             comm_ib_info.sid_mris[sid] = mr->get_info();
         }
@@ -282,7 +283,7 @@ void GpuCommSw::Impl::configure(
 
         std::string item_name = "comm_ib_info_" + std::to_string(remote_rank);
         state = this->ipc_socket->add_item(item_name, &comm_ib_info,
-                                                sizeof(comm_ib_info));
+                                           sizeof(comm_ib_info));
         if (state != IpcSocket::State::SUCCESS) {
             LOG(ERROR, "Failed to post ", item_name);
         }
@@ -296,9 +297,9 @@ void GpuCommSw::Impl::configure(
 
         GpuCommIbInfo remote_comm_ib_info;
 
-        state = this->ipc_socket->query_item(
-            get_host(remote_host_id), port, item_name, &remote_comm_ib_info,
-            sizeof(remote_comm_ib_info), true);
+        state = this->ipc_socket->query_item(get_host(remote_host_id), port,
+                                             item_name, &remote_comm_ib_info,
+                                             sizeof(remote_comm_ib_info), true);
         if (state != IpcSocket::State::SUCCESS) {
             LOG(ERROR, "Failed to query ", item_name);
         }
@@ -309,7 +310,8 @@ void GpuCommSw::Impl::configure(
             LOG(ERROR, "NetIbQp::rtr failed");
         }
         LOG(DEBUG, "RANK ", this->rank, " QP ", qp->get_info().qpn,
-            " <--> RANK ", remote_rank, " QP ", remote_comm_ib_info.qp_info.qpn);
+            " <--> RANK ", remote_rank, " QP ",
+            remote_comm_ib_info.qp_info.qpn);
         ret = qp->rts();
         if (ret != 0) {
             LOG(ERROR, "NetIbQp::rts failed");
@@ -338,8 +340,9 @@ void GpuCommSw::Impl::configure(
 
         int dummy = 0;
         std::string item_name = "comm_ib_done_" + std::to_string(this->rank);
-        state = this->ipc_socket->query_item(
-            get_host(remote_host_id), port, item_name, &dummy, sizeof(dummy), true);
+        state = this->ipc_socket->query_item(get_host(remote_host_id), port,
+                                             item_name, &dummy, sizeof(dummy),
+                                             true);
         if (state != IpcSocket::State::SUCCESS) {
             LOG(ERROR, "Failed to query ", item_name);
         }
@@ -581,8 +584,8 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid)
     }
     GpuMem *sm = this->sc_rc_mems[gid];
     if (sm == nullptr) {
-        this->remote_sc_rc_mems_storage.emplace_back(std::make_unique<GpuMem>(
-            2 * MAX_NUM_SID * sizeof(int)));
+        this->remote_sc_rc_mems_storage.emplace_back(
+            std::make_unique<GpuMem>(2 * MAX_NUM_SID * sizeof(int)));
         sm = this->remote_sc_rc_mems_storage.back().get();
         this->sc_rc_mems[gid] = sm;
     }

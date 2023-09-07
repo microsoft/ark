@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 
 #include <cassert>
-#include <fstream>
 #include <cstring>
-#include <string>
 #include <fcntl.h>
+#include <fstream>
+#include <string>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -17,7 +17,7 @@
 
 #define GPU_PAGE_SHIFT 16
 #define GPU_PAGE_SIZE (1ULL << GPU_PAGE_SHIFT)
-#define GPU_PAGE_OFFSET (GPU_PAGE_SIZE-1)
+#define GPU_PAGE_OFFSET (GPU_PAGE_SIZE - 1)
 #define GPU_PAGE_MASK (~GPU_PAGE_OFFSET)
 
 namespace ark {
@@ -68,7 +68,8 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
     uint64_t npage = bytes >> GPU_PAGE_SHIFT;
     // +1 can happen as we alloc 64KB more for safe alignment.
     if (npage != lock.page_count && npage + 1 != lock.page_count) {
-        LOG(ERROR, "Unexpected number of pages: ", npage, " vs ", lock.page_count);
+        LOG(ERROR, "Unexpected number of pages: ", npage, " vs ",
+            lock.page_count);
     }
     npage = lock.page_count;
     int state_bytes = sizeof(gpudma_state_t) + npage * sizeof(uint64_t);
@@ -87,8 +88,8 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
     info->npage = npage;
     free(state);
     // Create mmap of all pages.
-    info->mmap =
-        mmap(0, npage << GPU_PAGE_SHIFT, PROT_READ | PROT_WRITE, MAP_SHARED, fd, info->phys);
+    info->mmap = mmap(0, npage << GPU_PAGE_SHIFT, PROT_READ | PROT_WRITE,
+                      MAP_SHARED, fd, info->phys);
     if (info->mmap == MAP_FAILED) {
         return errno;
     }
@@ -159,7 +160,8 @@ void GpuMem::init(size_t bytes)
     }
 
     // Aligned address.
-    addr_ = (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+    addr_ =
+        (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     ExposalInfo exp_info;
     int err = mem_expose(&exp_info, addr_, bytes + GPU_PAGE_SIZE);
@@ -197,7 +199,8 @@ void GpuMem::init(const GpuMem::Info &info)
     }
 
     // Aligned address.
-    addr_ = (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+    addr_ =
+        (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
     if (mmap_ == nullptr) {
