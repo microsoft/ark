@@ -3,7 +3,7 @@
 
 set(ARK_MAJOR "0")
 set(ARK_MINOR "2")
-set(ARK_PATCH "0")
+set(ARK_PATCH "1")
 
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
@@ -45,11 +45,11 @@ if(CUDAToolkit_FOUND)
     endif()
 
     if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
-        set(CMAKE_CUDA_ARCHITECTURES 70 80)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70 80)
     endif()
 
     if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
-        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 70 80 90)
+        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 90)
     endif()
 endif()
 
@@ -100,50 +100,21 @@ add_custom_target(ut)
 # Details
 add_subdirectory(ark)
 
-# Add header files to library targets
-file(GLOB_RECURSE ARK_HEADERS CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/ark/include/*.h)
-file(GLOB_RECURSE CUTLASS_HEADERS CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/third_party/cutlass/include/*.h
-    ${CMAKE_SOURCE_DIR}/third_party/cutlass/include/*.hpp
-    ${CMAKE_SOURCE_DIR}/third_party/cutlass/include/*.inl)
-target_sources(ark PUBLIC
-    FILE_SET install_headers
-    TYPE HEADERS
-    BASE_DIRS ${CMAKE_SOURCE_DIR}/ark/include
-    FILES ${ARK_HEADERS}
-)
-target_sources(ark_static PUBLIC
-    FILE_SET install_headers
-    TYPE HEADERS
-    BASE_DIRS ${CMAKE_SOURCE_DIR}/ark/include
-    FILES ${ARK_HEADERS}
-)
-target_sources(ark PUBLIC
-    FILE_SET install_cutlass_headers
-    TYPE HEADERS
-    BASE_DIRS ${CMAKE_SOURCE_DIR}/third_party/cutlass/include
-    FILES ${CUTLASS_HEADERS}
-)
-target_sources(ark_static PUBLIC
-    FILE_SET install_cutlass_headers
-    TYPE HEADERS
-    BASE_DIRS ${CMAKE_SOURCE_DIR}/third_party/cutlass/include
-    FILES ${CUTLASS_HEADERS}
-)
-
-# Install libraries
-install(TARGETS ark ark_static
-    LIBRARY DESTINATION ark/lib
-    ARCHIVE DESTINATION ark/lib
-    FILE_SET install_headers DESTINATION ark/include
-    FILE_SET install_cutlass_headers DESTINATION ark/include/kernels
-)
-
-# Install Python module
 if(BUILD_PYTHON)
+    # Install Python module
     add_subdirectory(python)
+    add_dependencies(ark_py build)
+    install(TARGETS ark_py LIBRARY DESTINATION ark)
+else()
+    # Install libraries
+    install(TARGETS ark ark_static
+        LIBRARY DESTINATION ark/lib
+        ARCHIVE DESTINATION ark/lib
+    )
 endif()
+
+# Install header files
+install(DIRECTORY ${BUILD_DIR}/include DESTINATION ark)
 
 # Utils
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)

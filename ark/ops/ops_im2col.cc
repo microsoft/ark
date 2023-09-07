@@ -85,7 +85,7 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
                       Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
-    DimType n, c, h, w;
+    DimType n = 1, c = 1, h = 1, w = 1;
     int input_ndims = input->ndims();
     if (input_ndims == 2) {
         n = 1;
@@ -107,7 +107,7 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
             "invalid # of input dimensions. Expected 2, 3, or 4, but given ",
             input_ndims);
     }
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {

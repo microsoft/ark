@@ -1,7 +1,13 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
+if(Python3_FOUND)
+  if(${Python3_VERSION} VERSION_LESS 3.8)
+    message(FATAL_ERROR "Python version must be at least 3.8")
+  endif()
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
     pybind11
@@ -13,7 +19,3 @@ FetchContent_MakeAvailable(pybind11)
 pybind11_add_module(ark_py ${CMAKE_CURRENT_SOURCE_DIR}/bindings.cpp)
 set_target_properties(ark_py PROPERTIES OUTPUT_NAME _ark_core)
 target_link_libraries(ark_py PRIVATE ark_static)
-
-if (SKBUILD)
-    install(TARGETS ark_py LIBRARY DESTINATION ark)
-endif()

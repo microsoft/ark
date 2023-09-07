@@ -19,8 +19,6 @@ void baseline_rope(std::vector<void *> &outputs, const std::vector<ark::Dims> &,
     T *other = static_cast<T *>(inputs[1]);
 
     ark::Dims ish = input_shapes[0].dims4();
-    ark::Dims other_sh = input_shapes[1].dims4();
-    assert(ish == other_sh);
 
     for (ark::DimType n = 0; n < ish[0]; ++n) {
         for (ark::DimType c = 0; c < ish[1]; ++c) {
