@@ -39,7 +39,8 @@ namespace ark {
 // For peer access between GPUs on the same machine.
 struct GpuCommMemInfo
 {
-    GpuMem::Info mem_info;
+    GpuMem::Info data_info;
+    GpuMem::Info sc_rc_info;
     uint64_t sid_offs[MAX_NUM_SID];
 };
 
@@ -191,12 +192,17 @@ void GpuCommSw::Impl::configure(
 
     //
     GpuMem *data_mem = this->get_data_mem(this->gpu_id);
+    GpuMem *sc_rc_mem = this->get_sc_rc_mem(this->gpu_id);
     GpuCommMemInfo comm_mem_info;
     GpuCommIbInfo comm_ib_info;
 
-    comm_mem_info.mem_info.ipc_hdl = data_mem->get_info().ipc_hdl;
-    comm_mem_info.mem_info.phys_addr = data_mem->get_info().phys_addr;
-    comm_mem_info.mem_info.bytes = data_mem->get_info().bytes;
+    comm_mem_info.data_info.ipc_hdl = data_mem->get_info().ipc_hdl;
+    comm_mem_info.data_info.phys_addr = data_mem->get_info().phys_addr;
+    comm_mem_info.data_info.bytes = data_mem->get_info().bytes;
+
+    comm_mem_info.sc_rc_info.ipc_hdl = sc_rc_mem->get_info().ipc_hdl;
+    comm_mem_info.sc_rc_info.phys_addr = sc_rc_mem->get_info().phys_addr;
+    comm_mem_info.sc_rc_info.bytes = sc_rc_mem->get_info().bytes;
 
     for (auto &p : export_sid_offs) {
         int sid = p.first;
@@ -245,13 +251,15 @@ void GpuCommSw::Impl::configure(
 
         // Initialize the remote GPU memory space.
         GpuMem *mem = this->get_data_mem(gpu_id);
-        mem->init(remote_comm_mem_info.mem_info);
+        mem->init(remote_comm_mem_info.data_info);
         for (GpuBuf *buf : p.second) {
             int sid = buf->get_id();
             size_t off = remote_comm_mem_info.sid_offs[sid];
             this->addr_table[gpu_id][sid] = mem->ref(off);
             buf->set_offset(off);
         }
+        mem = this->get_sc_rc_mem(gpu_id);
+        mem->init(remote_comm_mem_info.sc_rc_info);
     }
 
     if (!this->is_using_ib()) {
@@ -583,8 +591,7 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid)
     }
     GpuMem *sm = this->sc_rc_mems[gid];
     if (sm == nullptr) {
-        this->remote_sc_rc_mems_storage.emplace_back(
-            std::make_unique<GpuMem>(2 * MAX_NUM_SID * sizeof(int)));
+        this->remote_sc_rc_mems_storage.emplace_back(std::make_unique<GpuMem>());
         sm = this->remote_sc_rc_mems_storage.back().get();
         this->sc_rc_mems[gid] = sm;
     }
