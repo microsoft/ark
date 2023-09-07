@@ -386,7 +386,7 @@ void GpuCommSw::Impl::request_loop()
     for (int r = 0; r < (int)this->qps.size(); ++r) {
         NetIbQp *qp = this->qps[r];
         if (qp != nullptr) {
-            int ret = qp->post_recv(((uint64_t)r  * MAX_NUM_SID) + 1);
+            int ret = qp->post_recv(((uint64_t)r * MAX_NUM_SID) + 1);
             if (ret != 0) {
                 LOG(ERROR, "post_recv() returns ", ret);
             }
