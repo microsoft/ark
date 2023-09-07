@@ -4,14 +4,17 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "ark"
-version = "0.2.0"
+version = "0.2.1"
 
 [tool.scikit-build]
 cmake.minimum-version = "3.25"
 cmake.args = []
 cmake.verbose = false
 cmake.build-type = "Release"
+cmake.targets = ["ark_py"]
 wheel.packages = ["python/ark"]
+wheel.license-files = ["LICENSE", "CITATION.cff", "CODE_OF_CONDUCT.md", "SECURITY.md", "SUPPORT.md"]
+install.strip = true
 build-dir = "build/{wheel_tag}"
 
 [tool.scikit-build.cmake.define]
