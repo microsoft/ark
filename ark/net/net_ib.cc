@@ -377,7 +377,7 @@ NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size)
             size, " pages ", pages, " pageSize ", pageSize);
     }
     this->num_registered_pages += pages;
-    this->mrs.emplace_back(new NetIbMr{mr, buffer});
+    this->mrs.emplace_back(std::make_unique<NetIbMr>(mr, buffer));
     return this->mrs.back().get();
 }
 

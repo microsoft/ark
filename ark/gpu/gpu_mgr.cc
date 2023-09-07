@@ -340,6 +340,9 @@ void GpuMgrCtx::mem_free(GpuBuf *buf)
 //
 void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 {
+    if (sid >= MAX_NUM_SID) {
+        LOG(ERROR, "invalid SID ", sid);
+    }
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
 }
@@ -347,6 +350,9 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 //
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
+    if (sid >= MAX_NUM_SID) {
+        LOG(ERROR, "invalid SID ", sid);
+    }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
     GpuBuf *buf = this->bufs.back().get();
