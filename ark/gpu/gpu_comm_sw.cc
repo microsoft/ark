@@ -36,13 +36,18 @@ using namespace std;
 
 namespace ark {
 
-//
-struct GpuCommInfo
+// For peer access between GPUs on the same machine.
+struct GpuCommMemInfo
 {
     GpuMem::Info mem_info;
+    uint64_t sid_offs[MAX_NUM_SID];
+};
+
+// For IB connection between GPUs (either inter- or intra-node).
+struct GpuCommIbInfo
+{
     NetIbQp::Info qp_info;
     NetIbMr::Info sid_mris[MAX_NUM_SID];
-    uint64_t sid_offs[MAX_NUM_SID];
 };
 
 //
@@ -65,7 +70,6 @@ class GpuCommSw::Impl
                       bool is_recv);
     void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
                    const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
-    void import_buf(const int gid, GpuBuf *buf);
 
     void request_loop();
     void launch_request_loop();
@@ -178,157 +182,170 @@ void GpuCommSw::Impl::configure(
     const std::vector<std::pair<int, size_t>> &export_sid_offs,
     const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs)
 {
+    // Max requested bytes for each SID. Only for IB.
+    std::map<int, size_t> ib_sid_max_bytes;
+    for (auto &srinfo : this->send_recv_infos) {
+        ib_sid_max_bytes[srinfo.sid] =
+            max(ib_sid_max_bytes[srinfo.sid], srinfo.bytes);
+    }
+
     //
     GpuMem *data_mem = this->get_data_mem(this->gpu_id);
-    GpuCommInfo comm_info;
+    GpuCommMemInfo comm_mem_info;
+    GpuCommIbInfo comm_ib_info;
+
+    comm_mem_info.mem_info.ipc_hdl = data_mem->get_info().ipc_hdl;
+    comm_mem_info.mem_info.phys_addr = data_mem->get_info().phys_addr;
+    comm_mem_info.mem_info.bytes = data_mem->get_info().bytes;
+
     for (auto &p : export_sid_offs) {
         int sid = p.first;
         size_t off = p.second;
-        this->addr_table[this->gpu_id][sid] = data_mem->ref(off);
-        comm_info.sid_offs[sid] = off;
-    }
-    comm_info.mem_info.ipc_hdl = data_mem->get_info().ipc_hdl;
-    comm_info.mem_info.phys_addr = data_mem->get_info().phys_addr;
-    comm_info.mem_info.bytes = data_mem->get_info().bytes;
+        GpuPtr addr = data_mem->ref(off);
 
-    if (this->is_using_ib()) {
-        std::map<int, size_t> sid_max_bytes;
+        this->addr_table[this->gpu_id][sid] = addr;
+        comm_mem_info.sid_offs[sid] = off;
 
-        for (auto &srinfo : this->send_recv_infos) {
-            // Create a QP if it does not exist.
-            auto it = this->qps.find(srinfo.remote_rank);
-            if (it == this->qps.end()) {
-                NetIbQp *qp = this->net_ib_mgr->create_qp();
-                if (qp == nullptr) {
-                    LOG(ERROR, "create_qp failed");
-                }
-                this->qps[srinfo.remote_rank] = qp;
+        if (this->is_using_ib() && this->sid_mrs[sid] == nullptr) {
+            auto search = ib_sid_max_bytes.find(sid);
+            if (search == ib_sid_max_bytes.end()) {
+                // This SID is not used for IB.
+                continue;
             }
-
-            // Store the maximum bytes for each SID.
-            sid_max_bytes[srinfo.sid] =
-                max(sid_max_bytes[srinfo.sid], srinfo.bytes);
-        }
-
-        for (auto &srinfo : this->send_recv_infos) {
-            // Create MRs
-            if (this->sid_mrs[srinfo.sid] == nullptr) {
-                NetIbMr *mr = this->net_ib_mgr->reg_mr(
-                    (void *)this->addr_table[this->gpu_id][srinfo.sid],
-                    sid_max_bytes[srinfo.sid]);
-                this->sid_mrs[srinfo.sid] = mr;
-            }
-        }
-
-        for (size_t sid = 0; sid < this->sid_mrs.size(); ++sid) {
-            if (this->sid_mrs[sid] != nullptr) {
-                comm_info.sid_mris[sid] = this->sid_mrs[sid]->get_info();
-            }
+            // Create an MR
+            NetIbMr *mr = this->net_ib_mgr->reg_mr((void *)addr, ib_sid_max_bytes[sid]);
+            this->sid_mrs[sid] = mr;
+            comm_ib_info.sid_mris[sid] = mr->get_info();
         }
     }
 
-    // Post comm_info for each remote rank.
+    // Share comm_mem_info with other GPUs on the same machine.
+    auto state = this->ipc_socket->add_item("comm_mem_info", &comm_mem_info,
+                                            sizeof(comm_mem_info));
+    if (state != IpcSocket::State::SUCCESS) {
+        LOG(ERROR, "Failed to post comm_mem_info");
+    }
+    int num_ranks_per_host = get_env().num_ranks_per_host;
+    int my_host_id = this->rank / num_ranks_per_host;
+    int port_base = get_env().ipc_listen_port_base;
+    for (auto &p : import_gid_bufs) {
+        // Get comm_mem_info from other GPUs on the same machine.
+        // Only from GPUs that this GPU imports.
+        int gpu_id = p.first;
+        int remote_rank = my_host_id * num_ranks_per_host + gpu_id;
+        int port = port_base + gpu_id;
+
+        GpuCommMemInfo remote_comm_mem_info;
+        state = this->ipc_socket->query_item(
+            get_host(my_host_id), port, "comm_mem_info", &remote_comm_mem_info,
+            sizeof(remote_comm_mem_info), true);
+        if (state != IpcSocket::State::SUCCESS) {
+            LOG(ERROR, "Failed to query comm_mem_info from GPU ", gpu_id);
+        }
+
+        // Initialize the remote GPU memory space.
+        GpuMem *mem = this->get_data_mem(gpu_id);
+        mem->init(remote_comm_mem_info.mem_info);
+        for (GpuBuf *buf : p.second) {
+            int sid = buf->get_id();
+            size_t off = remote_comm_mem_info.sid_offs[sid];
+            this->addr_table[remote_rank][sid] = mem->ref(off);
+            buf->set_offset(off);
+        }
+    }
+
+    if (!this->is_using_ib()) {
+        return;
+    }
+
+    // Create QPs.
+    for (auto &srinfo : this->send_recv_infos) {
+        auto it = this->qps.find(srinfo.remote_rank);
+        if (it == this->qps.end()) {
+            NetIbQp *qp = this->net_ib_mgr->create_qp();
+            if (qp == nullptr) {
+                LOG(ERROR, "create_qp failed");
+            }
+            this->qps[srinfo.remote_rank] = qp;
+        }
+    }
+
+    // Share comm_ib_info with remote ranks.
 
     std::set<int> remote_ranks;
     for (auto &srinfo : this->send_recv_infos) {
         remote_ranks.insert(srinfo.remote_rank);
     }
-
     for (int remote_rank : remote_ranks) {
-        if (this->is_using_ib()) {
-            // Add QP info to comm_info.
-            comm_info.qp_info = this->qps[remote_rank]->get_info();
+        // Set the corresponding QP info.
+        comm_ib_info.qp_info = this->qps[remote_rank]->get_info();
+
+        std::string item_name = "comm_ib_info_" + std::to_string(remote_rank);
+        state = this->ipc_socket->add_item(item_name, &comm_ib_info,
+                                                sizeof(comm_ib_info));
+        if (state != IpcSocket::State::SUCCESS) {
+            LOG(ERROR, "Failed to post ", item_name);
+        }
+    }
+    for (int remote_rank : remote_ranks) {
+        int remote_gpu_id = remote_rank % num_ranks_per_host;
+        int remote_host_id = remote_rank / num_ranks_per_host;
+        int port = port_base + remote_gpu_id;
+
+        std::string item_name = "comm_ib_info_" + std::to_string(this->rank);
+
+        GpuCommIbInfo remote_comm_ib_info;
+
+        state = this->ipc_socket->query_item(
+            get_host(remote_host_id), port, item_name, &remote_comm_ib_info,
+            sizeof(remote_comm_ib_info), true);
+        if (state != IpcSocket::State::SUCCESS) {
+            LOG(ERROR, "Failed to query ", item_name);
         }
 
-        std::string item_name = "gpu_comm_info_" + std::to_string(remote_rank);
-        auto state = this->ipc_socket->add_item(item_name, &comm_info,
-                                                sizeof(comm_info));
-        if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to post " + item_name);
+        NetIbQp *qp = this->qps[remote_rank];
+        int ret = qp->rtr(&remote_comm_ib_info.qp_info);
+        if (ret != 0) {
+            LOG(ERROR, "NetIbQp::rtr failed");
+        }
+        LOG(DEBUG, "RANK ", this->rank, " QP ", qp->get_info().qpn,
+            " <--> RANK ", remote_rank, " QP ", remote_comm_ib_info.qp_info.qpn);
+        ret = qp->rts();
+        if (ret != 0) {
+            LOG(ERROR, "NetIbQp::rts failed");
+        }
+
+        auto &mri_vec = this->mris[remote_rank];
+        mri_vec.resize(MAX_NUM_SID);
+        for (size_t sid = 0; sid < mri_vec.size(); ++sid) {
+            mri_vec[sid] = remote_comm_ib_info.sid_mris[sid];
         }
     }
 
-    // Query comm_info from each remote rank.
-
-    int port_base = get_env().ipc_listen_port_base;
+    // Sync with remote ranks to make sure the QP is ready.
     for (int remote_rank : remote_ranks) {
-        int num_ranks_per_host = get_env().num_ranks_per_host;
+        int dummy = 0;
+        std::string item_name = "comm_ib_done_" + std::to_string(remote_rank);
+        state = this->ipc_socket->add_item(item_name, &dummy, sizeof(dummy));
+        if (state != IpcSocket::State::SUCCESS) {
+            LOG(ERROR, "Failed to add ", item_name);
+        }
+    }
+    for (int remote_rank : remote_ranks) {
         int remote_gpu_id = remote_rank % num_ranks_per_host;
         int remote_host_id = remote_rank / num_ranks_per_host;
-
         int port = port_base + remote_gpu_id;
 
-        std::string item_name = "gpu_comm_info_" + std::to_string(this->rank);
-
-        GpuCommInfo remote_comm_info;
-
-        auto state = this->ipc_socket->query_item(
-            get_host(remote_host_id), port, item_name, &remote_comm_info,
-            sizeof(remote_comm_info), true);
+        int dummy = 0;
+        std::string item_name = "comm_ib_done_" + std::to_string(this->rank);
+        state = this->ipc_socket->query_item(
+            get_host(remote_host_id), port, item_name, &dummy, sizeof(dummy), true);
         if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to query " + item_name);
-        }
-
-        int my_host_id = this->rank / num_ranks_per_host;
-        if (my_host_id == remote_host_id) {
-            auto search = import_gid_bufs.find(remote_gpu_id);
-            // Get direct access addresses to the remote GPU memory.
-            if (search != import_gid_bufs.end()) {
-                GpuMem *mem = this->get_data_mem(remote_gpu_id);
-                mem->init(remote_comm_info.mem_info);
-
-                for (GpuBuf *buf : search->second) {
-                    int sid = buf->get_id();
-                    size_t off = remote_comm_info.sid_offs[sid];
-                    this->addr_table[remote_gpu_id][sid] = mem->ref(off);
-                    buf->set_offset(off);
-                }
-            }
-        }
-
-        if (this->is_using_ib()) {
-            NetIbQp *qp = this->qps[remote_rank];
-            int ret = qp->rtr(&remote_comm_info.qp_info);
-            if (ret != 0) {
-                LOG(ERROR, "NetIbQp::rtr failed");
-            }
-            LOG(DEBUG, "RANK ", this->rank, " QP ", qp->get_info().qpn,
-                " <--> RANK ", remote_rank, " QP ", remote_comm_info.qp_info.qpn);
-            ret = qp->rts();
-            if (ret != 0) {
-                LOG(ERROR, "NetIbQp::rts failed");
-            }
-
-            auto &mri_vec = this->mris[remote_rank];
-            mri_vec.resize(MAX_NUM_SID);
-            for (size_t sid = 0; sid < mri_vec.size(); ++sid) {
-                mri_vec[sid] = remote_comm_info.sid_mris[sid];
-            }
+            LOG(ERROR, "Failed to query ", item_name);
         }
     }
 
     LOG(DEBUG, "RANK ", this->rank, " config done");
-
-    // Sync with remote ranks
-
-    int dummy;
-    auto state = this->ipc_socket->add_item("comm_config_done", &dummy, sizeof(dummy));
-    if (state != IpcSocket::State::SUCCESS) {
-        LOG(ERROR, "Failed to add comm_config_done to ipc_socket");
-    }
-    for (int remote_rank : remote_ranks) {
-        int num_ranks_per_host = get_env().num_ranks_per_host;
-        int remote_gpu_id = remote_rank % num_ranks_per_host;
-        int remote_host_id = remote_rank / num_ranks_per_host;
-
-        int port = port_base + remote_gpu_id;
-        auto state = this->ipc_socket->query_item(
-            get_host(remote_host_id), port, "comm_config_done", &dummy,
-            sizeof(dummy), true);
-        if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to query comm_config_done");
-        }
-    }
 }
 
 //

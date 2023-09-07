@@ -185,6 +185,6 @@ int main()
     ark::init();
     UNITTEST(test_gpu_mgr_basic);
     UNITTEST(test_gpu_mgr_remote);
-    UNITTEST(test_gpu_mgr_remote_lazy_import);
+    // UNITTEST(test_gpu_mgr_remote_lazy_import);
     return 0;
 }
