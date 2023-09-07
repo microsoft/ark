@@ -19,7 +19,6 @@
 #include "gpu/gpu_common.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mgr.h"
-#include "ipc/ipc_coll.h"
 #include "ipc/ipc_hosts.h"
 #include "ipc/ipc_socket.h"
 #include "net/net_ib.h"
@@ -80,7 +79,6 @@ class GpuCommSw::Impl
 
     GpuMem *get_data_mem(const int gid);
     GpuMem *get_sc_rc_mem(const int gid);
-    IpcMem *get_info(const int gid);
     GpuPtr get_request_ref() const;
     bool is_using_ib() const
     {
@@ -97,13 +95,10 @@ class GpuCommSw::Impl
     //
     std::list<std::unique_ptr<GpuMem>> remote_data_mems_storage;
     std::list<std::unique_ptr<GpuMem>> remote_sc_rc_mems_storage;
-    std::list<std::unique_ptr<IpcMem>> infos_storage;
     //
     std::vector<GpuMem *> data_mems;
     //
     std::vector<GpuMem *> sc_rc_mems;
-    //
-    std::vector<IpcMem *> infos;
     //
     std::vector<std::vector<GpuPtr>> addr_table;
     //
@@ -139,15 +134,10 @@ GpuCommSw::Impl::Impl(const string &name_, const int gpu_id_, const int rank_,
     }
     this->data_mems.resize(num_entries, nullptr);
     this->sc_rc_mems.resize(num_entries, nullptr);
-    this->infos.resize(num_entries, nullptr);
 
     // Create the local stack info.
     this->data_mems[gpu_id_] = data_mem;
     this->sc_rc_mems[gpu_id_] = sc_rc_mem;
-
-    this->infos_storage.emplace_back(std::make_unique<IpcMem>(
-        ARK_GPU_INFO_NAME + name_ + to_string(gpu_id_), true));
-    this->infos[gpu_id_] = this->infos_storage.back().get();
 
     int port = get_env().ipc_listen_port_base + gpu_id_;
     int host_id = rank_ / get_env().num_ranks_per_host;
@@ -591,32 +581,12 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid)
     }
     GpuMem *sm = this->sc_rc_mems[gid];
     if (sm == nullptr) {
-        this->remote_sc_rc_mems_storage.emplace_back(std::make_unique<GpuMem>());
+        this->remote_sc_rc_mems_storage.emplace_back(
+            std::make_unique<GpuMem>());
         sm = this->remote_sc_rc_mems_storage.back().get();
         this->sc_rc_mems[gid] = sm;
     }
     return sm;
-}
-
-//
-IpcMem *GpuCommSw::Impl::get_info(const int gid)
-{
-    int sz = (int)this->infos.size();
-    assert(sz == (int)this->infos.size());
-    if (sz <= gid) {
-        while (sz <= gid) {
-            sz *= 2;
-        }
-        this->infos.resize(sz, nullptr);
-    }
-    IpcMem *ie = this->infos[gid];
-    if (ie == nullptr) {
-        this->infos_storage.emplace_back(std::make_unique<IpcMem>(
-            ARK_GPU_INFO_NAME + this->name + to_string(gid), false));
-        ie = this->infos_storage.back().get();
-        this->infos[gid] = ie;
-    }
-    return ie;
 }
 
 //
