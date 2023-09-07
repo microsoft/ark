@@ -19,9 +19,9 @@ class GpuMem
         // IPC handle.
         CUipcMemHandle ipc_hdl;
         // Physical address of GPU pointer.
-        uint64_t phys_addr;
+        uint64_t phys_addr = 0;
         // Data size.
-        uint64_t bytes;
+        uint64_t bytes = 0;
     };
 
     GpuMem() = default;

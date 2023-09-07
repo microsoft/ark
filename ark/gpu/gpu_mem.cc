@@ -211,7 +211,7 @@ void GpuMem::init(const GpuMem::Info &info)
 
     is_remote_ = true;
 
-    LOG(DEBUG, "Imported GpuMem addr ", std::hex, addr_, " map ", mmap_,
+    LOG(DEBUG, "Imported GpuMem addr 0x", std::hex, addr_, " map ", mmap_,
         std::dec, " bytes ", info.bytes);
 }
 

@@ -374,7 +374,6 @@ void GpuCommSw::Impl::request_loop()
 {
     const size_t sc_offset = 0;
     const size_t rc_offset = MAX_NUM_SID * sizeof(int);
-    const int sid_shift = 8;
 
     // Get the local SC/RC host addresses.
     volatile int *sc_href =
@@ -387,7 +386,7 @@ void GpuCommSw::Impl::request_loop()
     for (int r = 0; r < (int)this->qps.size(); ++r) {
         NetIbQp *qp = this->qps[r];
         if (qp != nullptr) {
-            int ret = qp->post_recv(((uint64_t)r << sid_shift) + 1);
+            int ret = qp->post_recv(((uint64_t)r  * MAX_NUM_SID) + 1);
             if (ret != 0) {
                 LOG(ERROR, "post_recv() returns ", ret);
             }
@@ -423,7 +422,7 @@ void GpuCommSw::Impl::request_loop()
                     // recv complete
                     unsigned int sid_dst = this->net_ib_mgr->get_wc_imm_data(i);
                     rc_href[sid_dst] = 1;
-                    NetIbQp *qp = this->qps[wr_id >> sid_shift];
+                    NetIbQp *qp = this->qps[wr_id / MAX_NUM_SID];
                     if (qp == nullptr) {
                         LOG(ERROR, "Unexpected error");
                     }
@@ -434,7 +433,7 @@ void GpuCommSw::Impl::request_loop()
                     LOG(DEBUG, "RC DST: ", sid_dst);
                 } else {
                     // send complete
-                    unsigned int sid_src = wr_id >> sid_shift;
+                    unsigned int sid_src = wr_id / MAX_NUM_SID;
                     sc_href[sid_src] = 1;
                     LOG(DEBUG, "SC SRC: ", sid_src);
                 }
@@ -506,7 +505,7 @@ void GpuCommSw::Impl::request_loop()
             int ret = qp->stage_send(
                 this->sid_mrs[db.fields.sid],
                 &this->mris[db.fields.rank][db.fields.sid], db.fields.len,
-                (db.fields.sid << sid_shift), db.fields.sid);
+                (db.fields.sid * MAX_NUM_SID), db.fields.sid);
             if (ret != 1) {
                 LOG(ERROR, "stage_send() returns ", ret);
             }
