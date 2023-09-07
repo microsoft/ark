@@ -136,7 +136,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         LOG(ERROR, "inner dimensions mismatch: ", k, " and ", k2);
     }
 
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (mat_a->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (mat_a->type == FP32) {

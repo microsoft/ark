@@ -52,7 +52,7 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
 {
     CHECK(input != nullptr);
     CHECK(other != nullptr);
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {
