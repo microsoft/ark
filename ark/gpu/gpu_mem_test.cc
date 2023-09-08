@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mem.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
-#include "ipc/ipc_mem.h"
+#include "ipc/ipc_hosts.h"
+#include "ipc/ipc_socket.h"
 #include "unittest/unittest_utils.h"
 
 ark::unittest::State test_gpu_mem()
@@ -66,6 +68,9 @@ ark::unittest::State test_gpu_mem_ipc()
     int pid0 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{5};
 
+        int port_base = ark::get_env().ipc_listen_port_base;
+        ark::IpcSocket is{ark::get_host(0), port_base};
+
         // Create a CUDA context of GPU 0.
         CULOG(cuInit(0));
         CUdevice dev;
@@ -79,24 +84,13 @@ ark::unittest::State test_gpu_mem_ipc()
 
         // Write information of the local memory.
         const ark::GpuMem::Info &mem0_info = mem0.get_info();
-        ark::IpcMem im0{"gpu_mem_0", true};
-        ark::GpuMem::Info *ptr_mem0_info = static_cast<ark::GpuMem::Info *>(
-            im0.alloc(sizeof(ark::GpuMem::Info)));
-        ptr_mem0_info->bytes = mem0_info.bytes;
-        ptr_mem0_info->phys_addr = mem0_info.phys_addr;
-        ptr_mem0_info->ipc_hdl = mem0_info.ipc_hdl;
-        im0.unlock();
+        is.add_item("gpu_mem_0", &mem0_info, sizeof(mem0_info));
 
         // Get information of the remote memory.
         ark::GpuMem::Info mem1_info;
-        {
-            ark::IpcMem im1{"gpu_mem_1", false};
-            ark::GpuMem::Info *ptr_mem1_info = static_cast<ark::GpuMem::Info *>(
-                im1.alloc(sizeof(ark::GpuMem::Info)));
-            mem1_info.ipc_hdl = ptr_mem1_info->ipc_hdl;
-            mem1_info.phys_addr = ptr_mem1_info->phys_addr;
-            mem1_info.bytes = ptr_mem1_info->bytes;
-        }
+        auto s = is.query_item(ark::get_host(0), port_base + 1, "gpu_mem_1",
+                               &mem1_info, sizeof(mem1_info), true);
+        UNITTEST_TRUE(s == ark::IpcSocket::SUCCESS);
 
         // Remote memory in GPU 1.
         ark::GpuMem mem1{mem1_info};
@@ -118,6 +112,9 @@ ark::unittest::State test_gpu_mem_ipc()
     int pid1 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{5};
 
+        int port_base = ark::get_env().ipc_listen_port_base;
+        ark::IpcSocket is{ark::get_host(0), port_base + 1};
+
         // Create a CUDA context of GPU 1.
         CULOG(cuInit(0));
         CUdevice dev;
@@ -131,24 +128,13 @@ ark::unittest::State test_gpu_mem_ipc()
 
         // Write information of the local memory.
         const ark::GpuMem::Info &mem1_info = mem1.get_info();
-        ark::IpcMem im1{"gpu_mem_1", true};
-        ark::GpuMem::Info *ptr_mem1_info = static_cast<ark::GpuMem::Info *>(
-            im1.alloc(sizeof(ark::GpuMem::Info)));
-        ptr_mem1_info->bytes = mem1_info.bytes;
-        ptr_mem1_info->phys_addr = mem1_info.phys_addr;
-        ptr_mem1_info->ipc_hdl = mem1_info.ipc_hdl;
-        im1.unlock();
+        is.add_item("gpu_mem_1", &mem1_info, sizeof(mem1_info));
 
         // Get information of the remote memory.
         ark::GpuMem::Info mem0_info;
-        {
-            ark::IpcMem im0{"gpu_mem_0", false};
-            ark::GpuMem::Info *ptr_mem0_info = static_cast<ark::GpuMem::Info *>(
-                im0.alloc(sizeof(ark::GpuMem::Info)));
-            mem0_info.ipc_hdl = ptr_mem0_info->ipc_hdl;
-            mem0_info.phys_addr = ptr_mem0_info->phys_addr;
-            mem0_info.bytes = ptr_mem0_info->bytes;
-        }
+        auto s = is.query_item(ark::get_host(0), port_base, "gpu_mem_0",
+                               &mem0_info, sizeof(mem0_info), true);
+        UNITTEST_TRUE(s == ark::IpcSocket::SUCCESS);
 
         // Remote memory in GPU 0.
         ark::GpuMem mem0{mem0_info};

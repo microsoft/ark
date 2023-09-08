@@ -69,8 +69,8 @@ class IpcMem
     // Pointer to the mmapped memory space of the data file.
     void *addr_ = nullptr;
     // Size of the mmapped memory space of the data file.
-    std::size_t total_bytes_ = 0;
-    //
+    size_t total_bytes_ = 0;
+    // True if this object has locked the lock file.
     bool locked_ = false;
 };
 

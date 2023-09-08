@@ -89,17 +89,20 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
         if (r != 0) {
             LOG(ERROR, "ipc_lock_init failed (errno ", r, ")");
         }
+        // Release the lock immediately.
+        r = ipc_lock_release(lock_);
+        if (r != 0) {
+            LOG(ERROR, "ipc_lock_release failed (errno ", r, ")");
+        }
     } else {
         // Wait until the lock is initialized.
         // This must finish shortly, so we just wait polling.
         while (!lock_->is_init) {
             cpu_ntimer_sleep(1000);
         }
-        // Acquire the lock.
-        this->lock();
     }
     create_ = create;
-    locked_ = true;
+    locked_ = false;
 }
 
 // Destructor.

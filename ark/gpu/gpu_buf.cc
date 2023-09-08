@@ -12,7 +12,6 @@ namespace ark {
 GpuBuf::GpuBuf(const GpuMem *mem_, int id_, size_t offset_, size_t bytes_)
     : mem{mem_}, id{id_}, offset{offset_}, bytes{bytes_}
 {
-    assert(id_ < 65536);
     assert(mem_ != nullptr);
 }
 

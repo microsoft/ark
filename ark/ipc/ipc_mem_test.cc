@@ -14,7 +14,6 @@ unittest::State test_ipc_mem_lock_simple()
     function<int()> fc = [] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_lock_test", true};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(4);
         while (*ptr == 0) {
         }
@@ -26,7 +25,6 @@ unittest::State test_ipc_mem_lock_simple()
     function<int()> fn = [] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_lock_test", false};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(4);
         IpcLockGuard lg{im.get_lock()};
         *ptr += 1;
@@ -53,7 +51,6 @@ unittest::State test_ipc_mem_lock_many()
         unittest::Timeout timeout{3};
         // Elect the earliest starting worker as the creator.
         IpcMem im{"ipc_mem_lock_test_many", false, true};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(8);
         volatile int *data = &ptr[0];
         volatile int *counter = &ptr[1];
@@ -95,7 +92,6 @@ unittest::State test_ipc_mem_finishing()
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_finishing", true};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(4);
         ptr[0] = 7;
         // Wait until another process reads the results.
@@ -111,7 +107,6 @@ unittest::State test_ipc_mem_finishing()
     int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_finishing", false};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(4);
         while (ptr[0] != 7) {
         }
@@ -137,7 +132,6 @@ unittest::State test_ipc_mem_realloc()
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_realloc", true};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(4);
         ptr[0] = 7;
         ptr = (volatile int *)im.alloc(8);
@@ -152,7 +146,6 @@ unittest::State test_ipc_mem_realloc()
     int pid1 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_realloc", false};
-        im.unlock();
         volatile int *ptr = (volatile int *)im.alloc(4);
         while (ptr[0] != 7) {
         }
