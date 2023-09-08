@@ -559,7 +559,7 @@ GpuMem *GpuCommSw::Impl::get_data_mem(const int gid)
     //
     while (addr_table_.size() < data_mems_.size()) {
         addr_table_.emplace_back();
-        addr_table_.back().resize(16, 0);
+        addr_table_.back().resize(MAX_NUM_SID, 0);
     }
     return dm;
 }
