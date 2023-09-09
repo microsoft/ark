@@ -30,8 +30,6 @@ class GpuCommSw
     void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
                    const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
 
-    void import_buf(const int gid, GpuBuf *buf);
-
     void launch_request_loop();
 
     void stop_request_loop();
