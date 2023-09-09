@@ -89,7 +89,7 @@ IpcSocket::~IpcSocket()
     }
 }
 
-IpcSocket::State IpcSocket::add_item(const std::string &name, void *data,
+IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
                                      int size)
 {
     if (name.size() > MAX_ITEM_NAME_LEN) {

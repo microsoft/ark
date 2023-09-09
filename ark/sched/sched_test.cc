@@ -396,6 +396,6 @@ int main()
     // UNITTEST(test_scheduler_simple_mm);
     // UNITTEST(test_sched_gpt3);
     // UNITTEST(test_sched_comp_baseline);
-    // UNITTEST(test_sched_many_comm_ops);
+    UNITTEST(test_sched_many_comm_ops);
     return 0;
 }

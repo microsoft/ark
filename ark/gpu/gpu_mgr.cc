@@ -159,10 +159,7 @@ GpuState GpuMgr::set_current()
 GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
                      const std::string &name_)
     : gpu_mgr{gpu_mgr_}, rank{rank_}, world_size{world_size_}, name{name_},
-      data_mem{ARK_GPU_DATA_NAME + name_ + to_string(gpu_mgr_->gpu_id), 0,
-               true},
-      sc_rc_mem{ARK_GPU_SC_RC_NAME + name_ + to_string(gpu_mgr_->gpu_id),
-                2 * MAX_NUM_SID * sizeof(int), true}
+      data_mem{}, sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)}
 {
     // Initialize SCs to ones.
     int *href = (int *)this->sc_rc_mem.href();
@@ -343,6 +340,9 @@ void GpuMgrCtx::mem_free(GpuBuf *buf)
 //
 void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 {
+    if (sid >= MAX_NUM_SID) {
+        LOG(ERROR, "invalid SID ", sid);
+    }
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
 }
@@ -350,17 +350,16 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 //
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
+    if (sid >= MAX_NUM_SID) {
+        LOG(ERROR, "invalid SID ", sid);
+    }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
     GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 
     //
-    if (this->data_mem.get_bytes() > 0) {
-        // Configuration is already done,
-        // so we can import the buffer immediately.
-        this->comm_sw->import_buf(gid, buf);
-    }
+    assert(this->data_mem.get_bytes() == 0);
     return buf;
 }
 
@@ -378,7 +377,7 @@ void GpuMgrCtx::freeze()
 
     //
     if (total_bytes > 0) {
-        this->data_mem.alloc(total_bytes);
+        this->data_mem.init(total_bytes);
         // init the data mem
         CULOG(cuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
     }

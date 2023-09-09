@@ -33,7 +33,7 @@ class IpcSocket
     IpcSocket(const std::string &ip_, int port_, bool create_ = true);
     ~IpcSocket();
 
-    State add_item(const std::string &name, void *data, int size);
+    State add_item(const std::string &name, const void *data, int size);
     State remove_item(const std::string &name);
     State query_item(const std::string &ip, int port, const std::string &name,
                      void *data, int size, bool block = false);
