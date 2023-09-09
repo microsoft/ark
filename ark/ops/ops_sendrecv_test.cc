@@ -32,12 +32,10 @@ void test_sendrecv_internal()
             exe.run(1);
             exe.stop();
 
-            LOG(ark::INFO, "rank ", gpu_id, " done");
-
-            // int tmp[2];
-            // ark::IpcAllGather barrier{"test_sendrecv_barrier", gpu_id, 2, tmp,
-            //                           sizeof(int)};
-            // barrier.sync();
+            int tmp[2];
+            ark::IpcAllGather barrier{"test_sendrecv_barrier", gpu_id, 2, tmp,
+                                      sizeof(int)};
+            barrier.sync();
             return ark::unittest::SUCCESS;
         });
     }

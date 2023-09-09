@@ -17,7 +17,7 @@ jobs:
       run: sudo apt-get install -y clang-format
 
     - name: Run clang-format
-      run: clang-format -style=file --dry-run `find ark python examples -type f -name *.h -o -name *.hpp -o -name *.c -o -name *.cc -o -name *.cpp -o -name *.cu`
+      run: clang-format -style=file -Werror --dry-run `find ark python examples -type f -name *.h -o -name *.hpp -o -name *.c -o -name *.cc -o -name *.cpp -o -name *.cu`
 
     - name: Set up Python
       uses: actions/setup-python@v4

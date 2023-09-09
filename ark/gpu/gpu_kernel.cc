@@ -182,9 +182,8 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
       timer_end{ctx_->create_event(false, nullptr)}
 {
     ctx_->set_current();
-    this->flag = make_unique<GpuMem>("", sizeof(int), true);
-    this->clocks =
-        make_unique<GpuMem>("", CLKS_CNT * sizeof(long long int), true);
+    this->flag = make_unique<GpuMem>(sizeof(int));
+    this->clocks = make_unique<GpuMem>(CLKS_CNT * sizeof(long long int));
     this->flag_href = (volatile int *)this->flag->href(0);
 
     *(GpuPtr *)this->params[0] = this->flag->ref(0);

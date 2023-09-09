@@ -11,15 +11,10 @@ add_custom_target(tp-update
 )
 
 # Patch CUTLASS
-add_custom_target(tp-cutlass-patch
-    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && make cutlass
-)
-add_dependencies(tp-cutlass-patch tp-update)
-
-# Copy CUTLASS header files to the build directory
 add_custom_target(tp-cutlass
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include ${BUILD_DIR}/include/kernels
+    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && patch -sN -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
 )
+add_dependencies(tp-cutlass tp-update)
 
 # Build GPUDMA
 add_custom_target(tp-gpudma

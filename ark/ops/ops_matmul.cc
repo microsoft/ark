@@ -136,7 +136,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         LOG(ERROR, "inner dimensions mismatch: ", k, " and ", k2);
     }
 
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (mat_a->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (mat_a->type == FP32) {
@@ -307,7 +307,7 @@ const OpConfigMap MatmulConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 147456, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
-         {8, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {4, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
          {4, 49152, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
 };

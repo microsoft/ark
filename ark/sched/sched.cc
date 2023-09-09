@@ -75,7 +75,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
         return nullptr;
     }
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
-    OpArchType arch_type;
+    OpArchType arch_type = OP_ARCH_CUDA_60;
     if (gpu_info.arch == GPU_ARCH_CUDA_60) {
         arch_type = OP_ARCH_CUDA_60;
     } else if (gpu_info.arch == GPU_ARCH_CUDA_70) {

@@ -41,7 +41,8 @@ IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
     LOG(DEBUG, "listen ", ip_, ":", port_);
     ret = bind(this->sock_listen, (struct sockaddr *)&addr, sizeof(addr));
     if (ret != 0) {
-        LOG(ERROR, "bind: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "bind(", ip_, ":", port_, "): ", strerror(errno), " (",
+            errno, ")");
     }
     ret = listen(this->sock_listen, MAX_LISTEN_LEN);
     if (ret != 0) {
@@ -88,7 +89,7 @@ IpcSocket::~IpcSocket()
     }
 }
 
-IpcSocket::State IpcSocket::add_item(const std::string &name, void *data,
+IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
                                      int size)
 {
     if (name.size() > MAX_ITEM_NAME_LEN) {

@@ -20,8 +20,8 @@ import ark
 project = "ARK"
 copyright = "2023, ARK Team"
 author = "ARK Team"
-version = "0.1.0"
-release = "0.1.0"
+version = "0.2.1"
+release = "0.2.1"
 
 # -- General configuration ---------------------------------------------------
 

@@ -140,7 +140,7 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
                           const std::string &name)
 {
     assert(input != nullptr);
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {
@@ -174,7 +174,7 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
                            const std::string &name)
 {
     assert(input != nullptr);
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {
@@ -208,7 +208,7 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
                           const std::string &name)
 {
     assert(input != nullptr);
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {

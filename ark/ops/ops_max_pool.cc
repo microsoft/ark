@@ -20,7 +20,7 @@ Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
                         Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {
