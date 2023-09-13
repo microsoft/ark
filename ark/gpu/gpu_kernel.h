@@ -32,7 +32,7 @@ class GpuKernel
               const std::string &cubin);
     ~GpuKernel();
 
-    void compile(const GpuInfo &gpu_info, bool use_comm_sw = true);
+    void compile(const GpuInfo &gpu_info);
     GpuState launch(GpuStream stream);
 
     const std::string &get_name()
