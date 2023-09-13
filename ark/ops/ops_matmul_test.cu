@@ -21,112 +21,168 @@ cublasHandle_t get_cublas_handle()
 }
 
 void cublas_matmul_float_nn(int m, int n, int k, const float *a, int lda,
-                            const float *b, int ldb, float *c, int ldc)
+                            const float *b, int ldb, float *c, int ldc,
+                            int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
-    cublasStatus_t status =
-        cublasSgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasSgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasSgemmStridedBatched(
+            cublasH, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasSgemm");
     }
 }
 
 void cublas_matmul_float_nt(int m, int n, int k, const float *a, int lda,
-                            const float *b, int ldb, float *c, int ldc)
+                            const float *b, int ldb, float *c, int ldc,
+                            int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
-    cublasStatus_t status =
-        cublasSgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasSgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasSgemmStridedBatched(
+            cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasSgemm");
     }
 }
 
 void cublas_matmul_float_tn(int m, int n, int k, const float *a, int lda,
-                            const float *b, int ldb, float *c, int ldc)
+                            const float *b, int ldb, float *c, int ldc,
+                            int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
-    cublasStatus_t status =
-        cublasSgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasSgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasSgemmStridedBatched(
+            cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasSgemm");
     }
 }
 
 void cublas_matmul_float_tt(int m, int n, int k, const float *a, int lda,
-                            const float *b, int ldb, float *c, int ldc)
+                            const float *b, int ldb, float *c, int ldc,
+                            int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
-    cublasStatus_t status =
-        cublasSgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasSgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_T, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasSgemmStridedBatched(
+            cublasH, CUBLAS_OP_T, CUBLAS_OP_T, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasSgemm");
     }
 }
 
 void cublas_matmul_half_nn(int m, int n, int k, const half *a, int lda,
-                           const half *b, int ldb, half *c, int ldc)
+                           const half *b, int ldb, half *c, int ldc,
+                           int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
-    cublasStatus_t status =
-        cublasHgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasHgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasHgemmStridedBatched(
+            cublasH, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasHgemm");
     }
 }
 
 void cublas_matmul_half_nt(int m, int n, int k, const half *a, int lda,
-                           const half *b, int ldb, half *c, int ldc)
+                           const half *b, int ldb, half *c, int ldc,
+                           int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
-    cublasStatus_t status =
-        cublasHgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasHgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasHgemmStridedBatched(
+            cublasH, CUBLAS_OP_T, CUBLAS_OP_N, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasHgemm");
     }
 }
 
 void cublas_matmul_half_tn(int m, int n, int k, const half *a, int lda,
-                           const half *b, int ldb, half *c, int ldc)
+                           const half *b, int ldb, half *c, int ldc,
+                           int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
-    cublasStatus_t status =
-        cublasHgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasHgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasHgemmStridedBatched(
+            cublasH, CUBLAS_OP_N, CUBLAS_OP_T, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasHgemm");
     }
 }
 
 void cublas_matmul_half_tt(int m, int n, int k, const half *a, int lda,
-                           const half *b, int ldb, half *c, int ldc)
+                           const half *b, int ldb, half *c, int ldc,
+                           int batch_size = 1)
 {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
-    cublasStatus_t status =
-        cublasHgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_T, n, m, k, &alpha, b, ldb,
-                    a, lda, &beta, c, ldc);
+    cublasStatus_t status;
+    if (batch_size == 1) {
+        status = cublasHgemm(cublasH, CUBLAS_OP_T, CUBLAS_OP_T, n, m, k, &alpha,
+                             b, ldb, a, lda, &beta, c, ldc);
+    } else {
+        status = cublasHgemmStridedBatched(
+            cublasH, CUBLAS_OP_T, CUBLAS_OP_T, n, m, k, &alpha, b, ldb, n * m,
+            a, lda, k * m, &beta, c, ldc, n * m, batch_size);
+    }
     if (status != CUBLAS_STATUS_SUCCESS) {
         throw std::runtime_error("Failed to call cublasHgemm");
     }
@@ -138,13 +194,17 @@ void baseline_matmul_nn(std::vector<void *> &outputs,
                         const std::vector<void *> &inputs,
                         const std::vector<ark::Dims> &input_shapes)
 {
+    auto out_shape_dims4 = output_shapes[0].dims4();
+
     // baseline inputs & outputs have no padding
-    int m = output_shapes[0].dims4()[2];
-    int n = output_shapes[0].dims4()[3];
+    int m = out_shape_dims4[2];
+    int n = out_shape_dims4[3];
     int k = input_shapes[0].dims4()[3];
     int lda = k;
     int ldb = n;
     int ldc = n;
+
+    int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
     auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
     auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
@@ -156,9 +216,11 @@ void baseline_matmul_nn(std::vector<void *> &outputs,
 
     // matmul using cublas
     if constexpr (std::is_same_v<T, float>) {
-        cublas_matmul_float_nn(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_float_nn(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                               batch_size);
     } else if constexpr (std::is_same_v<T, half>) {
-        cublas_matmul_half_nn(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_half_nn(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                              batch_size);
     } else {
         throw std::runtime_error("Unsupported data type");
     }
@@ -174,13 +236,17 @@ void baseline_matmul_nt(std::vector<void *> &outputs,
                         const std::vector<void *> &inputs,
                         const std::vector<ark::Dims> &input_shapes)
 {
+    auto out_shape_dims4 = output_shapes[0].dims4();
+
     // baseline inputs & outputs have no padding
-    int m = output_shapes[0].dims4()[2];
-    int n = output_shapes[0].dims4()[3];
+    int m = out_shape_dims4[2];
+    int n = out_shape_dims4[3];
     int k = input_shapes[0].dims4()[3];
     int lda = k;
     int ldb = k;
     int ldc = n;
+
+    int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
     auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
     auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
@@ -192,9 +258,11 @@ void baseline_matmul_nt(std::vector<void *> &outputs,
 
     // matmul using cublas
     if constexpr (std::is_same_v<T, float>) {
-        cublas_matmul_float_nt(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_float_nt(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                               batch_size);
     } else if constexpr (std::is_same_v<T, half>) {
-        cublas_matmul_half_nt(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_half_nt(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                              batch_size);
     } else {
         throw std::runtime_error("Unsupported data type");
     }
@@ -210,13 +278,17 @@ void baseline_matmul_tn(std::vector<void *> &outputs,
                         const std::vector<void *> &inputs,
                         const std::vector<ark::Dims> &input_shapes)
 {
+    auto out_shape_dims4 = output_shapes[0].dims4();
+
     // baseline inputs & outputs have no padding
-    int m = output_shapes[0].dims4()[2];
-    int n = output_shapes[0].dims4()[3];
+    int m = out_shape_dims4[2];
+    int n = out_shape_dims4[3];
     int k = input_shapes[0].dims4()[2];
     int lda = m;
     int ldb = n;
     int ldc = n;
+
+    int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
     auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
     auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
@@ -228,9 +300,11 @@ void baseline_matmul_tn(std::vector<void *> &outputs,
 
     // matmul using cublas
     if constexpr (std::is_same_v<T, float>) {
-        cublas_matmul_float_tn(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_float_tn(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                               batch_size);
     } else if constexpr (std::is_same_v<T, half>) {
-        cublas_matmul_half_tn(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_half_tn(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                              batch_size);
     } else {
         throw std::runtime_error("Unsupported data type");
     }
@@ -246,13 +320,17 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
                         const std::vector<void *> &inputs,
                         const std::vector<ark::Dims> &input_shapes)
 {
+    auto out_shape_dims4 = output_shapes[0].dims4();
+
     // baseline inputs & outputs have no padding
-    int m = output_shapes[0].dims4()[2];
-    int n = output_shapes[0].dims4()[3];
+    int m = out_shape_dims4[2];
+    int n = out_shape_dims4[3];
     int k = input_shapes[0].dims4()[2];
     int lda = m;
     int ldb = k;
     int ldc = n;
+
+    int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
     auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
     auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
@@ -264,9 +342,11 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
 
     // matmul using cublas
     if constexpr (std::is_same_v<T, float>) {
-        cublas_matmul_float_tt(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_float_tt(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                               batch_size);
     } else if constexpr (std::is_same_v<T, half>) {
-        cublas_matmul_half_tt(m, n, k, devA, lda, devB, ldb, devC, ldc);
+        cublas_matmul_half_tt(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                              batch_size);
     } else {
         throw std::runtime_error("Unsupported data type");
     }
@@ -466,6 +546,19 @@ ark::unittest::State test_matmul_tt()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_matmul_batched()
+{
+    ark::Model m;
+    ark::Tensor *a = m.tensor(ark::Dims(2, 64, 64), ark::FP16);
+    ark::Tensor *b = m.tensor(ark::Dims(2, 64, 64), ark::FP16);
+    ark::Tensor *c = m.matmul(a, b);
+
+    auto result = ark::op_test("matmul_batched", m, {a, b}, {c},
+                               baseline_matmul_nn<half>, "ones", true);
+    ark::op_test_log(result);
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -477,6 +570,7 @@ int main()
     UNITTEST(test_matmul_nt);
     UNITTEST(test_matmul_tn);
     UNITTEST(test_matmul_tt);
+    UNITTEST(test_matmul_batched);
 
     cublasDestroy(get_cublas_handle());
     return ark::unittest::SUCCESS;
