@@ -141,8 +141,7 @@ const string link(const vector<string> &ptxs)
 #endif // (ARK_USE_NVRTC)
 
 const string gpu_compile(const vector<string> &codes,
-                         const GpuArchType &arch_type, unsigned int max_reg_cnt,
-                         bool use_comm_sw)
+                         const GpuArchType &arch_type, unsigned int max_reg_cnt)
 {
     const string &ark_root = get_env().path_root_dir;
     string arch;
@@ -191,9 +190,7 @@ const string gpu_compile(const vector<string> &codes,
     }
     assert(items.size() == 1);
     para_exec<pair<string, string>>(
-        items, 20,
-        [&arch, &ark_root, max_reg_cnt,
-         use_comm_sw](pair<string, string> &item) {
+        items, 20, [&arch, &ark_root, max_reg_cnt](pair<string, string> &item) {
             string cu_file_path = item.second + ".cu";
             // Write CUDA code file.
             {
@@ -215,7 +212,7 @@ const string gpu_compile(const vector<string> &codes,
                          << "-I" << ark_root << "/include/kernels ";
             exec_cmd << "-ccbin g++ -std c++17 -lcuda "
                 "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
-                "--define-macro=ARK_COMM_SW=" << (int)use_comm_sw << " " <<
+                "--define-macro=ARK_COMM_SW=1 " <<
                 include_args.str() <<
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "

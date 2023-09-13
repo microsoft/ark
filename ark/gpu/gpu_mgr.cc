@@ -214,20 +214,14 @@ void GpuMgrCtx::destroy_stream(const GpuStream &s)
 }
 
 //
-GpuEvent GpuMgrCtx::create_event(bool disable_timing, CUipcEventHandle *handle)
+GpuEvent GpuMgrCtx::create_event(bool disable_timing)
 {
     GpuEvent cuda_event;
     unsigned int flags = 0;
     if (disable_timing) {
         flags |= CU_EVENT_DISABLE_TIMING;
     }
-    if (handle != nullptr) {
-        flags |= CU_EVENT_INTERPROCESS;
-    }
     CULOG(cuEventCreate(&cuda_event, flags));
-    if (handle != nullptr) {
-        CULOG(cuIpcGetEventHandle(handle, cuda_event));
-    }
     return cuda_event;
 }
 
