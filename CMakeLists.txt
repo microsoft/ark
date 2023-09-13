@@ -8,7 +8,6 @@ set(ARK_PATCH "1")
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
-option(CODE_COVERAGE "Enable coverage reporting" OFF)
 option(USE_KAHYPAR "Use KaHyPar for scheduling" OFF)
 
 cmake_minimum_required(VERSION 3.25)
@@ -21,7 +20,7 @@ set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 # Code coverage from https://github.com/codecov/example-cpp11-cmake
 add_library(coverage_config INTERFACE)
-if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # Add required flags (GCC & LLVM/Clang)
     target_compile_options(coverage_config INTERFACE
         -O0        # no optimization
