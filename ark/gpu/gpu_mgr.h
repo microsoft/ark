@@ -105,8 +105,7 @@ class GpuMgrCtx
     GpuStream create_stream();
     GpuState sync_stream(const GpuStream &s);
     void destroy_stream(const GpuStream &s);
-    GpuEvent create_event(bool disable_timing,
-                          CUipcEventHandle *handle = nullptr);
+    GpuEvent create_event(bool disable_timing);
 
     //
     GpuBuf *mem_alloc(size_t bytes, int align = 1);
@@ -151,12 +150,6 @@ class GpuMgrCtx
     GpuPtr get_request_ref() const;
     //
     GpuCommSw *get_comm_sw() const;
-
-    //
-    bool is_comm_sw() const
-    {
-        return (this->comm_sw != nullptr);
-    }
 
   private:
     //
