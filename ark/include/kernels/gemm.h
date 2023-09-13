@@ -836,20 +836,20 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     DataTypeA *pA;
     DataTypeB *pB;
     DataTypeC *pC = &C[un * math::mul<CC, SizeC>::value + uc * SizeC];
-    if (NCA::D0 == 1 && NCA::D1 == 1) {
+    if constexpr (NCA::D0 == 1 && NCA::D1 == 1) {
         pA = A;
-    } else if (NCA::D0 == 1) {
+    } else if constexpr (NCA::D0 == 1) {
         pA = &A[uc * SizeA];
-    } else if (NCA::D1 == 1) {
+    } else if constexpr (NCA::D1 == 1) {
         pA = &A[un * SizeA];
     } else {
         pA = &A[un * math::mul<CC, SizeA>::value + uc * SizeA];
     }
-    if (NCB::D0 == 1 && NCB::D1 == 1) {
+    if constexpr (NCB::D0 == 1 && NCB::D1 == 1) {
         pB = B;
-    } else if (NCB::D0 == 1) {
+    } else if constexpr (NCB::D0 == 1) {
         pB = &B[uc * SizeB];
-    } else if (NCB::D1 == 1) {
+    } else if constexpr (NCB::D1 == 1) {
         pB = &B[un * SizeB];
     } else {
         pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
@@ -860,12 +860,12 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     gemm_cuda<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
               IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
               ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp, NumThreads,
-              SmemBytes>(C, A, B, uop_idx, smem_per_warp);
+              SmemBytes>(pC, pA, pB, uop_idx, smem_per_warp);
 #elif (ARK_TARGET_CUDA_ARCH == 90)
     gemm_cuda_90<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
                  IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
                  ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp,
-                 NumThreads, SmemBytes>(C, A, B, uop_idx, smem_per_warp);
+                 NumThreads, SmemBytes>(pC, pA, pB, uop_idx, smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif
