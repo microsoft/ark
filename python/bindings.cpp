@@ -107,6 +107,14 @@ PYBIND11_MODULE(_ark_core, m)
                                    }
                                    return shape_list;
                                })
+        .def_property_readonly("ldims",
+                               [](const ark::Tensor &t) {
+                                   py::list ldims_list;
+                                   for (int i = 0; i < t.ndims(); ++i) {
+                                       ldims_list.append((int)t.ldims[i]);
+                                   }
+                                   return ldims_list;
+                               })
         .def_property_readonly("type",
                                [](const ark::Tensor &t) { return t.type; })
         .def("write", &tensor_write, py::arg("buf"),
