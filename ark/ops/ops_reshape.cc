@@ -65,10 +65,8 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
         }
     }
 
-    // TODO: check if this reshape requires any copy
-
     if (output == nullptr) {
-        output = model->tensor(new_shape, input->type, input->buf, shape);
+        output = model->tensor(new_shape, input->type, input->buf);
     }
     return output;
 }
@@ -138,7 +136,7 @@ Tensor *Model::reshape(Tensor *input,
                 input->shape, " to ", Dims(shape_vec));
         }
         inferred_shape[neg_idx] = input->shape.size() / total_size;
-    } else if (input->shape.size() != total_size) {
+    } else if (!zero_exists && input->shape.size() != total_size) {
         LOG(ERROR, "number of elements mismatch: reshape from ", input->shape,
             " to ", Dims(shape_vec));
     }
