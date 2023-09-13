@@ -20,7 +20,8 @@ SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          {{id, gpu_dst, bytes}},
          name,
          &SendRecvMMConfigMap,
-         -1}
+         -1,
+         true}
 {
 }
 
@@ -81,7 +82,8 @@ RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          {{id, gpu_src, bytes}},
          name,
          &SendRecvMMConfigMap,
-         -1}
+         -1,
+         true}
 {
 }
 

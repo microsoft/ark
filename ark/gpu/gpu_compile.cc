@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_compile.h"
 #include "gpu/gpu_logging.h"
@@ -221,7 +222,8 @@ const string gpu_compile(const vector<string> &codes,
                 "-o " << item.second << ".cubin "
                 << cu_file_path << " 2>&1";
             // clang-format on
-            LOG(INFO, "Compiling ", cu_file_path);
+            double start = cpu_timer();
+            LOG(INFO, "Compiling: ", cu_file_path);
             LOG(DEBUG, exec_cmd.str());
             // Run the command.
             array<char, 4096> buffer;
@@ -238,6 +240,8 @@ const string gpu_compile(const vector<string> &codes,
             if (exec_print_str.size() > 0) {
                 LOG(ERROR, endl, exec_print_str, endl);
             }
+            LOG(INFO, "Compile succeed: ", cu_file_path, " (",
+                cpu_timer() - start, " seconds)");
         });
     string cu_file_path = items[0].second + ".cu";
     string cubin_file_path = items[0].second + ".cubin";
