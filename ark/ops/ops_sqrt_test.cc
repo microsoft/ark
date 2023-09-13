@@ -7,7 +7,6 @@
 #include "unittest/unittest_utils.h"
 #include <cmath>
 
-
 template <typename T>
 void baseline_sqrt(std::vector<void *> &outputs,
                    const std::vector<ark::Dims> &output_shapes,

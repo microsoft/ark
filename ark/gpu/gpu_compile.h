@@ -12,7 +12,8 @@
 namespace ark {
 
 const std::string gpu_compile(const std::vector<std::string> &codes,
-                              const GpuArchType &arch, unsigned int max_reg_cnt);
+                              const GpuArchType &arch,
+                              unsigned int max_reg_cnt);
 
 } // namespace ark
 

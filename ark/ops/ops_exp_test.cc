@@ -7,12 +7,11 @@
 #include "unittest/unittest_utils.h"
 #include <cmath>
 
-
 template <typename T>
 void baseline_exp(std::vector<void *> &outputs,
-                   const std::vector<ark::Dims> &output_shapes,
-                   const std::vector<void *> &inputs,
-                   const std::vector<ark::Dims> &)
+                  const std::vector<ark::Dims> &output_shapes,
+                  const std::vector<void *> &inputs,
+                  const std::vector<ark::Dims> &)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
@@ -28,8 +27,7 @@ ark::unittest::State test_exp_fp32()
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
     ark::Tensor *out = m.exp(t);
 
-    auto result =
-        ark::op_test("exp_fp32", m, {t}, {out}, baseline_exp<float>);
+    auto result = ark::op_test("exp_fp32", m, {t}, {out}, baseline_exp<float>);
     ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }

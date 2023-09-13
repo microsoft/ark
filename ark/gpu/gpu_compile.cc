@@ -189,8 +189,7 @@ const string gpu_compile(const vector<string> &codes,
     }
     assert(items.size() == 1);
     para_exec<pair<string, string>>(
-        items, 20,
-        [&arch, &ark_root, max_reg_cnt](pair<string, string> &item) {
+        items, 20, [&arch, &ark_root, max_reg_cnt](pair<string, string> &item) {
             string cu_file_path = item.second + ".cu";
             // Write CUDA code file.
             {

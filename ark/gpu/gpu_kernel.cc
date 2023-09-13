@@ -83,8 +83,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info)
     }
     //
     if (this->cubin.empty()) {
-        this->cubin =
-            gpu_compile(this->codes, gpu_info.arch, max_reg_cnt);
+        this->cubin = gpu_compile(this->codes, gpu_info.arch, max_reg_cnt);
     }
 
     //
@@ -178,8 +177,9 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                 {},
                 {{0, sizeof(GpuPtr)}, {0, sizeof(GpuPtr)}},
                 cubin_},
-      ctx{ctx_}, timer_begin{ctx_->create_event(false)},
-      timer_end{ctx_->create_event(false)}
+      ctx{ctx_}, timer_begin{ctx_->create_event(false)}, timer_end{
+                                                             ctx_->create_event(
+                                                                 false)}
 {
     ctx_->set_current();
     this->flag = make_unique<GpuMem>(sizeof(int));
@@ -299,8 +299,8 @@ void GpuLoopKernel::load()
         // only set the GPU remote data buf pointers of the GPUs on the same
         // node
         for (int i = nodes_id * nrph;
-                i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
-                i++) {
+             i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
+             i++) {
             GpuPtr data_buf_value = this->ctx->get_data_ref(i);
             if (data_buf_value == 0) {
                 continue;
@@ -315,10 +315,9 @@ void GpuLoopKernel::load()
                 continue;
             }
             // CULOG(_e);
-            LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex,
-                data_buf_ptr, " data_buf_value=", data_buf_value);
-            CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value,
-                                sizeof(GpuPtr)));
+            LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
+                " data_buf_value=", data_buf_value);
+            CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
     }
 }

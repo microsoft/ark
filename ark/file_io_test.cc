@@ -5,8 +5,8 @@
 #include "file_io.h"
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
-#include <fstream>
 #include <algorithm>
+#include <fstream>
 
 ark::unittest::State test_is_exist()
 {

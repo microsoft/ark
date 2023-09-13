@@ -9,9 +9,9 @@
 
 template <typename T>
 void baseline_softmax(std::vector<void *> &outputs,
-                               const std::vector<ark::Dims> &output_shapes,
-                               const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
+                      const std::vector<ark::Dims> &output_shapes,
+                      const std::vector<void *> &inputs,
+                      const std::vector<ark::Dims> &input_shapes)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
@@ -45,12 +45,11 @@ ark::unittest::State test_softmax_fp32()
     ark::Tensor *t = m.tensor(ark::Dims(2, 8192), ark::FP32);
     ark::Tensor *out = m.softmax(t);
 
-    auto result = ark::op_test("reduce_axis3", m, {t}, {out},
-                               baseline_softmax<float>);
+    auto result =
+        ark::op_test("reduce_axis3", m, {t}, {out}, baseline_softmax<float>);
     ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }
-
 
 int main()
 {
