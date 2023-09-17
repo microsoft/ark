@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 import numpy as np
-import logging
+from typing import List
 
 from ._ark_core import _Dims, _Tensor, _TensorBuf
 from .data_type import DataType
@@ -22,13 +22,13 @@ class Tensor:
         self._tensor = _tensor
         self.is_parameter = False
 
-    def shape(self) -> list[int]:
+    def shape(self) -> List[int]:
         """
         Returns the shape of the tensor.
         """
         return self._tensor.shape
 
-    def ldims(self) -> list[int]:
+    def ldims(self) -> List[int]:
         """
         Returns the ldims of the tensor.
         """
