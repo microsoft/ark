@@ -277,11 +277,52 @@ def test_attention(
         )
 
 
+def test_transformer_block(
+    args: ModelArgs,
+    batch_size: int,
+    seq_len: int,
+    dtype: np.dtype,
+    world_size: int = 1,
+):
+    ark.init()
+
+    #
+    freqs_cis = model_pt.precompute_freqs_cis(
+        args.dim // args.n_heads, args.max_seq_len * 2
+    )[0:seq_len].numpy()
+
+    freqs_cis_ark = freqs_cis.astype(np.complex64)
+    freqs_cis_ark = (
+        np.stack([freqs_cis_ark.real, freqs_cis_ark.imag], axis=-1)
+        .astype(dtype)
+        .reshape(1, seq_len, 1, args.dim // args.n_heads)
+    )
+
+    feature = np.random.uniform(
+        low=-1, high=1, size=(batch_size, seq_len, args.dim)
+    ).astype(dtype)
+
+    inputs = [feature, 0, freqs_cis, None]
+    ark_inputs = [feature, 0, freqs_cis_ark, None]
+
+    if world_size == 1:
+        test_module(
+            inputs,
+            dtype,
+            module_class_ark=model_ark.TransformerBlock,
+            module_args_ark=[0, args, ark.DataType.from_numpy(dtype), 0, 1],
+            module_class_pt=model_pt.TransformerBlock,
+            module_args_pt=[0, args],
+            ark_inputs=ark_inputs,
+        )
+
+
 def test():
     test_rmsnorm(args, batch_size, seq_len, dtype)
     test_row_parallel_linear(args, batch_size, seq_len, dtype, world_size)
     test_column_parallel_linear(args, batch_size, seq_len, dtype, world_size)
     test_attention(args, batch_size, seq_len, dtype, world_size)
+    test_transformer_block(args, batch_size, seq_len, dtype, world_size)
 
 
 if __name__ == "__main__":

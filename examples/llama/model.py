@@ -238,7 +238,7 @@ class Silu(ark.Module):
 
     def forward(self, x: ark.Tensor):
         # We need to specify output tensor so that the sigmoid op will not be an in-place operator
-        output = ark.tensor(x.shape(), x.type())
+        output = ark.tensor(x.shape(), x.dtype())
         x1 = ark.sigmoid(x, output)
         return ark.mul(x, x1)
 
