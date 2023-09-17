@@ -80,6 +80,14 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
     return this->impl->add_op(op)[0];
 }
 
+Tensor *Model::reshape(Tensor *input,
+                       const std::initializer_list<DimType> &shape,
+                       bool allowzero, Tensor *output, const std::string &name)
+{
+    std::vector<DimType> shape_vec{shape};
+    return this->reshape(input, shape_vec, allowzero, output, name);
+}
+
 // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
 // inferred from the `input`. If one dimension of `shape` is 0, by default
 // (`allowzero` is false), that dimension is unchanged from the corresponding
@@ -88,8 +96,7 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
 // be an empty tensor. If `allowzero` is true, `shape` should not include both
 // 0 and -1 at the same time. If `shape` is an empty vector, `input` will be
 // converted to a scalar.
-Tensor *Model::reshape(Tensor *input,
-                       const std::initializer_list<DimType> shape,
+Tensor *Model::reshape(Tensor *input, const std::vector<DimType> &shape,
                        bool allowzero, Tensor *output, const std::string &name)
 {
     if (input == nullptr) {

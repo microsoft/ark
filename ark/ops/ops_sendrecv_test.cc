@@ -25,7 +25,7 @@ void test_sendrecv_internal()
                 model.recv(tns_x, 0, 0);
             }
 
-            ark::Executor exe{gpu_id, gpu_id, 2, model, "test_sendrecv"};
+            ark::Executor exe{gpu_id, 2, model, "test_sendrecv"};
             exe.compile();
 
             exe.launch();

@@ -13,7 +13,7 @@ ark::unittest::State test_identity()
     ark::Tensor *tns1 = model.identity(tns0);
 
     // Create an executor
-    ark::Executor exe{0, 0, 1, model, "test_tensor_layout"};
+    ark::Executor exe{0, 1, model, "test_tensor_layout"};
     exe.compile();
 
     int num_elem = 2 * 3 * 4 * 5;

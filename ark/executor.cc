@@ -1,115 +1,117 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "executor.h"
 #include "env.h"
-#include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
-
 #include "logging.h"
 #include "sched/sched.h"
 #include <algorithm>
 #include <string>
 
-using namespace std;
-
 namespace ark {
 
-class Executor::Impl
-{
-  public:
-    GpuMgrCtx *ctx;
-    BaseScheduler *sched;
-    GpuLoopKernel *glk = nullptr;
-    GpuStream stream = nullptr;
-};
-
-// Constructor.
-Executor::Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
-                   const string &name, int num_warps_per_sm_)
-    : gpu_id{gpu_id_}, rank{rank_},
-      world_size{world_size_}, impl{make_unique<Impl>()}
+Executor::Impl::Impl(int rank, int world_size, Model &model,
+                     const std::string &name, int num_warps_per_sm)
+    : rank_{rank}, world_size_{world_size}
 {
     //
-    GpuMgr *mgr = get_gpu_mgr(gpu_id);
-    const GpuInfo &ginfo = mgr->get_gpu_info();
+    gpu_id_ = rank_ % get_env().num_ranks_per_host;
     if (get_env().scheduler == "Simple") {
-        this->impl->sched = new SimpleScheduler{model, gpu_id_, rank_,
-                                                world_size_, num_warps_per_sm_};
-    }
-    if (get_env().scheduler == "Default") {
-        this->impl->sched = new DefaultScheduler{
-            model, gpu_id_, rank_, world_size_, num_warps_per_sm_};
+        sched_.reset(static_cast<BaseScheduler *>(new SimpleScheduler{
+            model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
+    } else if (get_env().scheduler == "Default") {
+        sched_.reset(static_cast<BaseScheduler *>(new DefaultScheduler{
+            model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
     }
 #ifdef USE_KAHYPAR
     if (get_env().scheduler == "Kahypar") {
-        this->impl->sched = new KahyparScheduler{
-            model, gpu_id_, rank_, world_size_, num_warps_per_sm_};
+        sched_.reset(static_cast<BaseScheduler *>(new KahyparScheduler{
+            model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
     }
 #endif // USE_KAHYPAR
 
-    this->impl->sched->schedule();
-    this->impl->ctx = this->impl->sched->create_context(name);
-    this->impl->stream = this->impl->ctx->create_stream();
-    auto codes = this->impl->sched->gen_code();
-
-    this->impl->glk = new GpuLoopKernel{name,
-                                        codes,
-                                        (unsigned int)ginfo.num_sm,
-                                        (unsigned int)num_warps_per_sm_,
-                                        (unsigned int)ginfo.smem_block_total,
-                                        "",
-                                        this->impl->ctx};
+    const GpuInfo &ginfo = get_gpu_mgr(gpu_id_)->get_gpu_info();
+    sched_->schedule();
+    ctx_ = sched_->create_context(name);
+    stream_ = ctx_->create_stream();
+    glk_ = std::make_unique<GpuLoopKernel>(
+        name, sched_->gen_code(), (unsigned int)ginfo.num_sm,
+        (unsigned int)num_warps_per_sm, (unsigned int)ginfo.smem_block_total,
+        "", ctx_);
 }
 
-// Destructor.
-Executor::~Executor()
+Executor::Impl::~Impl()
 {
-    if (this->impl->glk != nullptr) {
-        delete this->impl->glk;
-    }
-    if (this->impl->ctx != nullptr) {
-        GpuMgr *mgr = get_gpu_mgr(this->gpu_id);
-        mgr->destroy_context(this->impl->ctx);
-        this->impl->ctx = nullptr;
-    }
+    // TODO: pass a shared pointer of GpuMgrCtx to GpuLoopKernel
+    // so that we don't need to call reset() here.
+    glk_.reset();
+    get_gpu_mgr(gpu_id_)->destroy_context(ctx_);
 }
 
-// Compile the model. This must be called before `launch()`.
-void Executor::compile()
+void Executor::Impl::compile()
 {
-    GpuMgr *mgr = get_gpu_mgr(gpu_id);
-    this->impl->glk->compile(mgr->get_gpu_info());
+    glk_->compile(get_gpu_mgr(gpu_id_)->get_gpu_info());
 }
 
-// Launch the model (not running yet). This must be called after `compile()`.
-void Executor::launch()
+void Executor::Impl::launch()
 {
-    this->impl->glk->load();
-    GpuState ret = this->impl->glk->launch(this->impl->stream, false);
+    glk_->load();
+    GpuState ret = glk_->launch(stream_, false);
     if (ret != 0) {
         LOG(ERROR, "failed to launch this executor.");
     }
 }
 
-// Run the model for `iter` iterations.
+void Executor::Impl::run(int iter)
+{
+    glk_->run(iter);
+}
+
+void Executor::Impl::wait()
+{
+    glk_->wait();
+}
+
+float Executor::Impl::stop()
+{
+    glk_->stop();
+    return glk_->get_elapsed_msec();
+}
+
+Executor::Executor(int rank, int world_size, Model &model,
+                   const std::string &name, int num_warps_per_sm)
+    : impl_{std::make_unique<Executor::Impl>(rank, world_size, model, name,
+                                             num_warps_per_sm)}
+{
+}
+
+Executor::~Executor() = default;
+
+void Executor::compile()
+{
+    impl_->compile();
+}
+
+void Executor::launch()
+{
+    impl_->launch();
+}
+
 void Executor::run(int iter)
 {
-    this->impl->glk->run(iter);
+    impl_->run(iter);
 }
 
-// Wait for the previous run to finish.
 void Executor::wait()
 {
-    this->impl->glk->wait();
+    impl_->wait();
 }
 
-// Stop the model and return the elapsed time in milliseconds.
-// Once this is called, we need to call `launch()` again to run the model again.
 float Executor::stop()
 {
-    this->impl->glk->stop();
-    return this->impl->glk->get_elapsed_msec();
+    return impl_->stop();
 }
 
 } // namespace ark

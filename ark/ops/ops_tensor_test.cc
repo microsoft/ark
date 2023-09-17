@@ -20,7 +20,7 @@ ark::unittest::State test_tensor_memcpy()
     ark::Tensor *tns = model.tensor(shape, ark::FP32, buffer->buf, ldims, offs);
 
     // Create an executor
-    ark::Executor exe{0, 0, 1, model, "test_tensor_memcpy"};
+    ark::Executor exe{0, 1, model, "test_tensor_memcpy"};
     exe.compile();
 
     // Fill buffer data: {1.0, 2.0, 3.0, ..., 3024.0}
@@ -105,7 +105,7 @@ ark::unittest::State test_tensor_layout()
     }
 
     // Create an executor
-    ark::Executor exe{0, 0, 1, model, "test_tensor_layout"};
+    ark::Executor exe{0, 1, model, "test_tensor_layout"};
     exe.compile();
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
