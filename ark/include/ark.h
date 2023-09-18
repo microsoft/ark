@@ -222,6 +222,10 @@ class Tensor
     DimType offset_bytes(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
                          DimType i3 = 0) const;
 
+    /// Checks if the tensor has the actually memory allocated.
+    /// @return True if the tensor has the memory allocated.
+    bool is_alloced() const;
+
     /// Checks if the tensor's data range is sequential in memory.
     /// @return True if the tensor is sequential in memory.
     bool is_sequential() const;
@@ -306,6 +310,9 @@ class Model
     Tensor *reshape(Tensor *input, const Dims &shape, bool allowzero = false,
                     Tensor *output = nullptr,
                     const std::string &name = "reshape");
+    Tensor *reshape(Tensor *input, const std::initializer_list<DimType> &shape,
+                    bool allowzero = false, Tensor *output = nullptr,
+                    const std::string &name = "reshape");
     // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
     // inferred from the `input`. If one dimension of `shape` is 0, by default
     // (`allowzero` is false), that dimension is unchanged from the
@@ -314,7 +321,7 @@ class Model
     // `input` should also be an empty tensor. If `allowzero` is true, `shape`
     // should not include both 0 and -1 at the same time. If `shape` is an empty
     // vector, `input` will be converted to a scalar.
-    Tensor *reshape(Tensor *input, std::initializer_list<DimType> shape,
+    Tensor *reshape(Tensor *input, const std::vector<DimType> &shape,
                     bool allowzero = false, Tensor *output = nullptr,
                     const std::string &name = "reshape");
     // Returns an identical tensor of `input` with execution dependencies
@@ -478,36 +485,31 @@ class Model
 
 class GpuBuf;
 
-// Convenience class for executing a model.
+/// Convenience class for executing a model.
 class Executor
 {
   public:
-    // Constructor.
-    Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
-             const std::string &name, int num_warps_per_sm_ = 16);
+    /// Constructor.
+    Executor(int rank, int world_size, Model &model, const std::string &name,
+             int num_warps_per_sm = 16);
     ~Executor();
-    // Compile the model. This must be called before `launch()`.
+    /// Compile the model. This must be called before `launch()`.
     void compile();
-    // Launch the model (not running yet). This must be called after
-    // `compile()`.
+    /// Launch the model (not running yet). This must be called after
+    /// `compile()`.
     void launch();
-    // Run the model for `iter` iterations.
+    /// Run the model for `iter` iterations.
     void run(int iter);
-    // Wait for the previous run to finish.
+    /// Wait for the previous run to finish.
     void wait();
-    // Stop the model and return the elapsed time in milliseconds.
-    // Once this is called, we need to call `launch()` again to run the model
-    // again.
+    /// Stop the model and return the elapsed time in milliseconds.
+    /// Once this is called, we need to call `launch()` again to run the model
+    /// again.
     float stop();
 
-  protected:
-    class Impl;
-
   private:
-    const int gpu_id;
-    const int rank;
-    const int world_size;
-    std::unique_ptr<Impl> impl;
+    class Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace ark

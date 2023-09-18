@@ -18,7 +18,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         ark::Tensor *data = m.tensor({mat_length, mat_length}, ark::FP16);
         m.send_mm(data, 0, 1, 0);
 
-        ark::Executor exe{0, 0, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{0, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
         data->write(send_data.get());
         exe.launch();
@@ -33,7 +33,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
         m.recv_mm(recvbuf, 0, 0, 0);
 
-        ark::Executor exe{1, 1, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{1, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
         exe.launch();
         exe.run(1);
@@ -74,7 +74,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
         ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
         m.recv_mm(recvbuf, 1, 1, 0);
 
-        ark::Executor exe{0, 0, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{0, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
         data->write(send_data_0.get());
         exe.launch();
@@ -103,7 +103,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
         ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
         m.recv_mm(recvbuf, 0, 0, 0);
 
-        ark::Executor exe{1, 1, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{1, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
         data->write(send_data_1.get());
         exe.launch();
@@ -149,8 +149,7 @@ ark::unittest::State test_sendrecv_mm_4gpus()
                 m.tensor({mat_length, mat_length}, ark::FP16);
             m.recv_mm(recvbuf, gpu_id, (gpu_id - 1 + gpu_num) % gpu_num);
 
-            ark::Executor exe{gpu_id, gpu_id, gpu_num, m,
-                              "test_sendrecv_mm_copy"};
+            ark::Executor exe{gpu_id, gpu_num, m, "test_sendrecv_mm_copy"};
             exe.compile();
             data->write(send_data[gpu_id].get());
             exe.launch();

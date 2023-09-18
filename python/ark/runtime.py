@@ -1,15 +1,18 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from .model import Model
-from .executor import Executor
 import logging
 from enum import Enum
 
-# Use a global variable to track the state of the ARK runtime
+from ._ark_core import _Executor
+from .model import Model
 
 
-class RuntimeState(Enum):
+class _RuntimeStateType(Enum):
+    """
+    Runtime state types.
+    """
+
     init = 0
     launch = 1
     run = 2
@@ -18,74 +21,63 @@ class RuntimeState(Enum):
 
 
 class Runtime:
-    global_runtime = None
+    """
+    Convenience class for running a model.
+    """
 
-    def __init__(self, rank=0, world_size=1):
-        self.rank = rank
-        self.world_size = world_size
-        self.ark_runtime_state = RuntimeState.init
-        Model.global_model = Model(rank)
+    def __init__(self):
+        self.executor: _Executor = None
+        self.state: _RuntimeStateType = _RuntimeStateType.init
 
     def __del__(self):
         """
         Destroy the ARK runtime and release all the resources.
         """
         if (
-            self.ark_runtime_state == RuntimeState.run
-            or self.ark_runtime_state == RuntimeState.launch
+            self.state == _RuntimeStateType.run
+            or self.state == _RuntimeStateType.launch
         ):
             self.stop()
-        self.ark_runtime_state = RuntimeState.destroy
-        Executor.global_executor = None
-        Model.global_model = None
+        self.executor = None
+        self.state = _RuntimeStateType.destroy
 
-    @staticmethod
-    def get_global_runtime():
-        """
-        Get the global ARK runtime.
-        """
-        if Runtime.global_runtime is None:
-            logging.error("ARK runtime is not initialized")
-            raise RuntimeError("ARK runtime is not initialized")
-        return Runtime.global_runtime
-
-    def launch(self):
+    def launch(self, num_warps_per_sm: int = 16):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
         the CUDA kernels. The GPU context and the connection between GPUs will be
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
         if (
-            self.ark_runtime_state != RuntimeState.init
-            and self.ark_runtime_state != RuntimeState.stop
+            self.state != _RuntimeStateType.init
+            and self.state != _RuntimeStateType.stop
         ):
             logging.warn(
-                "ARK runtime is not initialized or already launched, skip launching"
+                "Runtime is not initialized or already launched, skip launching"
             )
             return
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
-        if self.ark_runtime_state == RuntimeState.init:
-            Executor.global_executor = Executor(
-                self.rank,
-                self.rank,
-                self.world_size,
-                Model.get_global_model(),
-                "Executor",
+        if self.state == _RuntimeStateType.init:
+            self.executor = _Executor(
+                Model.get_rank(),
+                Model.get_world_size(),
+                Model.get_model(),
+                "DefaultRuntime",
+                num_warps_per_sm,
             )
-            Executor.get_global_executor().compile()
-        Executor.get_global_executor().launch()
-        self.ark_runtime_state = RuntimeState.launch
+            self.executor.compile()
+        self.executor.launch()
+        self.state = _RuntimeStateType.launch
 
     def run(self, iter=1, non_blocking=False):
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
-        if self.ark_runtime_state != RuntimeState.launch:
+        if self.state != _RuntimeStateType.launch:
             logging.error("ARK runtime is not launched")
             raise RuntimeError("ARK runtime is not launched")
-        self.ark_runtime_state = RuntimeState.run
-        Executor.get_global_executor().run(iter)
+        self.state = _RuntimeStateType.run
+        self.executor.run(iter)
         if not non_blocking:
             self.wait()
 
@@ -93,25 +85,25 @@ class Runtime:
         """
         Wait for the kernel to finish.
         """
-        if self.ark_runtime_state != RuntimeState.run:
+        if self.state != _RuntimeStateType.run:
             logging.warn("ARK runtime is not running, skip waiting")
             return
-        Executor.get_global_executor().wait()
-        self.ark_runtime_state = RuntimeState.launch
+        self.executor.wait()
+        self.state = _RuntimeStateType.launch
 
-    def stop(self):
+    def stop(self) -> float:
         """
         Stop the model and return the elapsed time in milliseconds.
         Once this is called, we need to call `launch()` again to run the model again.
         """
         if (
-            self.ark_runtime_state != RuntimeState.run
-            and self.ark_runtime_state != RuntimeState.launch
+            self.state != _RuntimeStateType.run
+            and self.state != _RuntimeStateType.launch
         ):
             logging.warn(
                 "ARK runtime is not running or launched, skip stopping"
             )
             return
-        elapsed = Executor.get_global_executor().stop()
-        self.ark_runtime_state = RuntimeState.stop
+        elapsed = self.executor.stop()
+        self.state = _RuntimeStateType.stop
         return elapsed
