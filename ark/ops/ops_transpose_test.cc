@@ -17,8 +17,7 @@ void test_transpose_internal(ark::TensorType type, ark::DimType n,
     ark::Tensor *tns_in = model.tensor({n, c, h, w}, type);
     ark::Tensor *tns_out = model.transpose(tns_in, {pn, pc, ph, pw});
 
-    ark::Executor exe{/*gpu_id=*/0, /*rank=*/0, /*world_size=*/1, model,
-                      "test_transpose"};
+    ark::Executor exe{/*rank=*/0, /*world_size=*/1, model, "test_transpose"};
     exe.compile();
 
     // Set data.

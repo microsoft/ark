@@ -376,8 +376,7 @@ ark::unittest::State test_sched_many_comm_ops()
                 m.all_gather(data, gpu_id, num_gpus);
             }
 
-            ark::Executor exe{gpu_id, gpu_id, num_gpus, m,
-                              "test_sched_many_comm_ops"};
+            ark::Executor exe{gpu_id, num_gpus, m, "test_sched_many_comm_ops"};
             exe.compile();
             exe.launch();
             exe.run(3);

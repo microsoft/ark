@@ -179,6 +179,14 @@ DimType Tensor::offset_bytes(DimType i0, DimType i1, DimType i2,
     return this->offset(i0, i1, i2, i3) * this->type_bytes();
 }
 
+bool Tensor::is_alloced() const
+{
+    if (this->buf == nullptr) {
+        return false;
+    }
+    return this->buf->buf != nullptr;
+}
+
 bool Tensor::is_sequential() const
 {
     return (this->shape == this->ldims) || (this->shape.ndims() == 1);

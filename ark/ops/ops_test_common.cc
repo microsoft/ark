@@ -175,10 +175,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       bool print_on_error, int rank, int world_size,
                       int num_warps_per_sm)
 {
-    int gpu_id = rank % get_env().num_ranks_per_host;
-    Executor exe{
-        gpu_id,          rank, world_size, model, "op_test_" + rand_anum(4),
-        num_warps_per_sm};
+    Executor exe{rank, world_size, model, "op_test_" + rand_anum(4),
+                 num_warps_per_sm};
     exe.compile();
 
     // Set random data.
