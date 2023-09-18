@@ -16,6 +16,8 @@ from typing import Any, Dict, List
 from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 
 
+pth_path: str = "/mnt/7B/consolidated.00.pth"
+
 numpy_dtype_to_torch_dtype: dict = {
     np.float16: torch.float16,
     np.float32: torch.float32,
@@ -98,16 +100,28 @@ def test_module(
     module_class_pt: torch.nn.Module,
     module_args_pt: list,
     ark_inputs: List[np.ndarray] = [],  # used when ARK needs different inputs
+    module_name_prefix: str = "",
 ):
     # ARK module
     module_ark: ark.Module = module_class_ark(*module_args_ark)
 
-    # Create a random state_dict
-    state_dict = module_ark.state_dict()
-    state_dict = {
-        k: np.random.uniform(low=-0.1, high=0.1, size=v.shape).astype(dtype)
-        for k, v in state_dict.items()
-    }
+    param_names = set(module_ark.params_dict().keys())
+
+    if os.path.exists(pth_path):
+        prefix = module_name_prefix + "." if module_name_prefix else ""
+        # Load the state_dict from the given path
+        state_dict = torch.load(pth_path)
+        state_dict = {
+            k[len(prefix) :]: v.float().numpy().astype(dtype)
+            for k, v in state_dict.items()
+            if k in param_names and k.startswith(prefix)
+        }
+    else:
+        # Create a random state_dict
+        state_dict = {
+            k: np.random.uniform(low=-0.1, high=0.1, size=v.shape).astype(dtype)
+            for k, v in module_ark.params_dict().items()
+        }
 
     # Run the ARK module
     output_ark = run_ark(
@@ -167,9 +181,14 @@ def test_rmsnorm(
         inputs,
         dtype,
         module_class_ark=model_ark.RMSNorm,
-        module_args_ark=[args.dim, 1e-6, ark.DataType.from_numpy(dtype)],
+        module_args_ark=[
+            args.dim,
+            args.norm_eps,
+            ark.DataType.from_numpy(dtype),
+        ],
         module_class_pt=model_pt.RMSNorm,
         module_args_pt=[args.dim],
+        module_name_prefix="norm",
     )
 
 
@@ -185,7 +204,9 @@ def test_row_parallel_linear(
     # Create random input data
     inputs = [
         np.random.uniform(
-            low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
+            low=-0.1,
+            high=0.1,
+            size=(batch_size, seq_len, args.dim // args.n_heads * args.n_heads),
         ).astype(dtype)
     ]
 
@@ -195,14 +216,20 @@ def test_row_parallel_linear(
             dtype,
             module_class_ark=model_ark.RowParallelLinear,
             module_args_ark=[
-                args.dim,
+                args.dim // args.n_heads * args.n_heads,
                 args.dim,
                 ark.DataType.from_numpy(dtype),
                 0,
                 1,
             ],
             module_class_pt=fairscale.nn.model_parallel.RowParallelLinear,
-            module_args_pt=[args.dim, args.dim, False, lambda x: x],
+            module_args_pt=[
+                args.dim // args.n_heads * args.n_heads,
+                args.dim,
+                False,
+                lambda x: x,
+            ],
+            module_name_prefix="layers.0.attention.wo",
         )
 
 
@@ -229,13 +256,19 @@ def test_column_parallel_linear(
             module_class_ark=model_ark.ColumnParallelLinear,
             module_args_ark=[
                 args.dim,
-                args.dim,
+                args.dim // args.n_heads * args.n_heads,
                 ark.DataType.from_numpy(dtype),
                 0,
                 1,
             ],
             module_class_pt=fairscale.nn.model_parallel.ColumnParallelLinear,
-            module_args_pt=[args.dim, args.dim, False, lambda x: x],
+            module_args_pt=[
+                args.dim,
+                args.dim // args.n_heads * args.n_heads,
+                False,
+                lambda x: x,
+            ],
+            module_name_prefix="layers.0.attention.wq",
         )
 
 
@@ -286,6 +319,7 @@ def test_attention(
             module_class_pt=model_pt.Attention,
             module_args_pt=[args],
             ark_inputs=ark_inputs,
+            module_name_prefix="layers.0.attention",
         )
 
 
@@ -326,6 +360,7 @@ def test_transformer_block(
             module_class_pt=model_pt.TransformerBlock,
             module_args_pt=[0, args],
             ark_inputs=ark_inputs,
+            module_name_prefix="layers.0",
         )
 
 
@@ -401,6 +436,9 @@ if __name__ == "__main__":
 
     # Default from HuggingFace
     args.vocab_size = 32000
+
+    # For debugging
+    # args.n_layers = 8
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size

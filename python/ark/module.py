@@ -48,31 +48,43 @@ class Module:
             raise TypeError("param must be a Tensor")
         self.parameters[name] = param
 
-    def load_state_dict(self, state_dict, prefix=""):
+    def params_dict(self, prefix=""):
+        params_dict = {}
+        for name, module in self.sub_modules.items():
+            if module is not None:
+                params_dict.update(
+                    module.params_dict(prefix=prefix + name + ".")
+                )
+        for name, param in self.parameters.items():
+            params_dict[prefix + name] = param
+        return params_dict
+
+    def load_state_dict(
+        self, state_dict: Dict[str, np.ndarray], prefix: str = ""
+    ):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
         Must be called after the executor is launched.
         """
         logging.info("Loading model from state_dict")
-        for name, module in self.sub_modules.items():
-            if module is not None:
-                module.load_state_dict(state_dict, prefix=prefix + name + ".")
-        for name, param in self.parameters.items():
-            param.from_numpy(state_dict[prefix + name])
 
-    def state_dict(self, prefix="") -> Dict[str, np.ndarray]:
+        all_keys = set(state_dict.keys())
+        pd = self.params_dict(prefix)
+        for name, param in pd.items():
+            param.from_numpy(state_dict[name])
+            all_keys.remove(name)
+        if all_keys:
+            logging.warning(
+                f"{len(all_keys)} unused parameter(s) in state_dict"
+            )
+
+    def state_dict(self, prefix: str = "") -> Dict[str, np.ndarray]:
         """
-        Copies the parameters from the device GPU to the host and saves the model to a state_dict.
+        Copies the parameters from the device GPU to the host and saves the
+        model to a state_dict.
         Must be called after the executor is launched.
         """
-        state_dict = {}
-        for name, module in self.sub_modules.items():
-            if module is not None:
-                state_dict.update(module.state_dict(prefix=prefix + name + "."))
-        for name, param in self.parameters.items():
-            param_np = param.to_numpy()
-            state_dict[prefix + name] = param_np
-        return state_dict
+        return {k: v.to_numpy() for k, v in self.params_dict(prefix).items()}
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         ...
