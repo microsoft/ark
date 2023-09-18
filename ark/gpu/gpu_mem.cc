@@ -142,7 +142,7 @@ GpuMem::GpuMem(const GpuMem::Info &info)
 }
 
 //
-void GpuMem::init(size_t bytes)
+void GpuMem::init(size_t bytes, bool expose)
 {
     if (bytes == 0) {
         LOG(ERROR, "Tried to allocate zero byte.");
@@ -164,9 +164,15 @@ void GpuMem::init(size_t bytes)
         (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     ExposalInfo exp_info;
-    int err = mem_expose(&exp_info, addr_, bytes + GPU_PAGE_SIZE);
-    if (err != 0) {
-        LOG(ERROR, "mem_expose() failed with errno ", err);
+    if (expose) {
+        int err = mem_expose(&exp_info, addr_, bytes + GPU_PAGE_SIZE);
+        if (err != 0) {
+            LOG(ERROR, "mem_expose() failed with errno ", err);
+        }
+    } else {
+        exp_info.npage = 0;
+        exp_info.mmap = nullptr;
+        exp_info.phys = 0;
     }
     npage_ = exp_info.npage;
     mmap_ = exp_info.mmap;
@@ -202,9 +208,13 @@ void GpuMem::init(const GpuMem::Info &info)
     addr_ =
         (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
-    mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
-    if (mmap_ == nullptr) {
-        LOG(ERROR, "map_pa_to_va failed");
+    if (info.phys_addr != 0) {
+        mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
+        if (mmap_ == nullptr) {
+            LOG(ERROR, "map_pa_to_va failed");
+        }
+    } else {
+        mmap_ = nullptr;
     }
 
     // TODO: set npage_
@@ -229,8 +239,10 @@ GpuMem::~GpuMem()
         CULOG(cuMemFree(raw_addr_));
         mapped_bytes = npage_ << GPU_PAGE_SHIFT;
     }
-    if (munmap(mmap_, mapped_bytes) != 0) {
-        LOG(ERROR, "munmap failed with errno ", errno);
+    if (mmap_ != nullptr) {
+        if (munmap(mmap_, mapped_bytes) != 0) {
+            LOG(ERROR, "munmap failed with errno ", errno);
+        }
     }
 }
 
