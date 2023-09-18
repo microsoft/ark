@@ -354,7 +354,11 @@ PYBIND11_MODULE(_ark_core, m)
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
-             py::arg("name") = "all_reduce");
+             py::arg("name") = "all_reduce")
+        .def("embedding", &ark::Model::embedding, "Embedding layer.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("weight"), py::arg("output") = nullptr,
+             py::arg("name") = "embedding");
 
     py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")

@@ -86,7 +86,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
                       const std::vector<Tensor *> &outputs,
                       OpsTestBaseline baseline,
-                      const std::string &init_method = "random",
+                      const std::vector<void *> &inputs_data = {},
                       bool print_on_error = false, int rank = 0,
                       int world_size = 1, int num_warps_per_sm = 8);
 
@@ -94,7 +94,7 @@ OpsTestResult op_test_8(const std::string &test_name_prefix, Model &model,
                         const std::vector<Tensor *> &inputs,
                         const std::vector<Tensor *> &outputs,
                         OpsTestBaseline baseline,
-                        const std::string &init_method = "random",
+                        const std::vector<void *> &inputs_data = {},
                         bool print_on_error = false, int rank = 0,
                         int world_size = 1);
 
@@ -102,7 +102,7 @@ OpsTestResult op_test_16(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &inputs,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
-                         const std::string &init_method = "random",
+                         const std::vector<void *> &inputs_data = {},
                          bool print_on_error = false, int rank = 0,
                          int world_size = 1);
 
@@ -110,7 +110,7 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &inputs,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
-                         const std::string &init_method = "random",
+                         const std::vector<void *> &inputs_data = {},
                          bool print_on_error = false, int rank = 0,
                          int world_size = 1);
 

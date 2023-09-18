@@ -468,6 +468,9 @@ class Model
     std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
                                      const std::vector<Tensor *> &output = {},
                                      const std::string &name = "all_gather");
+    /// Embedding layer.
+    Tensor *embedding(Tensor *input, Tensor *weight, Tensor *output = nullptr,
+                      const std::string &name = "embedding");
 
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.

@@ -128,6 +128,7 @@ typedef enum
     OP_RECV,
     OP_SEND_MM,
     OP_RECV_MM,
+    OP_EMBEDDING,
 } OpType;
 
 /// Type of precision of @ref Op.
@@ -545,6 +546,14 @@ class TransposeOp : public Op
   public:
     TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                 int tp_type, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class EmbeddingOp : public Op
+{
+  public:
+    EmbeddingOp(OpPrecType prec_type, Tensor *input, Tensor *weight,
+                Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
