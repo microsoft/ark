@@ -23,7 +23,6 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
 
     Dims shp_out = output->shape;
     int ndims = shp_out.ndims();
-    CHECK(ndims < 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};

@@ -337,9 +337,12 @@ class Model
                        const std::string &name = "reduce_max");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
-
     Tensor *layernorm(Tensor *input, Tensor *output = nullptr,
                       const std::string &name = "layernorm");
+    // Applies RMS (Root Mean Square Layer Normalization) normalization to the
+    // `input` tensor and returns the normalized tensor as `output`.
+    Tensor *rmsnorm(Tensor *input, Tensor *output = nullptr,
+                    const std::string &name = "rmsnorm");
     // Applies softmax activation to the `input` tensor, with the softmax
     // operator
     // being performed on the last dimension of the input tensor.
@@ -392,6 +395,9 @@ class Model
     // Sigmoid activation
     Tensor *sigmoid(Tensor *input, Tensor *output = nullptr,
                     const std::string &name = "sigmoid");
+    // Performs rotary position embedding (RoPE) on the `input` tensor
+    Tensor *rope(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                 const std::string &name = "rope");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
