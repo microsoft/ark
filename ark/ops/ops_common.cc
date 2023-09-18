@@ -118,6 +118,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_EXP:           os << "OP_EXP";           break;
     case OP_SQRT:          os << "OP_SQRT";          break;
     case OP_ROPE:          os << "OP_ROPE";          break;
+    case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
     }
     // clang-format on
     return os;
@@ -505,6 +506,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const SqrtOp *>(this)->function_name(cfg);
     case OP_ROPE:
         return static_cast<const RopeOp *>(this)->function_name(cfg);
+    case OP_EMBEDDING:
+        return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
     default:
         return "";
     }
