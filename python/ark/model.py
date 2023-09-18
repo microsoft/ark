@@ -796,6 +796,7 @@ def all_reduce(
     )
     return Tensor(_tensor)
 
+
 def embedding(
     input: Tensor,
     weight: Tensor,

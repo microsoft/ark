@@ -19,7 +19,7 @@ from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 numpy_dtype_to_torch_dtype: dict = {
     np.float16: torch.float16,
     np.float32: torch.float32,
-    np.int32: torch.int32
+    np.int32: torch.int32,
 }
 
 
@@ -104,9 +104,10 @@ def test_module(
 
     # Create a random state_dict
     state_dict = module_ark.state_dict()
-    state_dict = {k: np.random.uniform(
-        low=-0.1, high=0.1, size=v.shape
-    ).astype(dtype) for k, v in state_dict.items()}
+    state_dict = {
+        k: np.random.uniform(low=-0.1, high=0.1, size=v.shape).astype(dtype)
+        for k, v in state_dict.items()
+    }
 
     # Run the ARK module
     output_ark = run_ark(
@@ -239,7 +240,9 @@ def test_column_parallel_linear(
 
 
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
-    freqs = 1.0 / (theta ** (np.arange(0, dim, 2)[: (dim // 2)].astype(np.float32) / dim))
+    freqs = 1.0 / (
+        theta ** (np.arange(0, dim, 2)[: (dim // 2)].astype(np.float32) / dim)
+    )
     t = np.arange(end, dtype=np.float32)
     freqs = np.outer(t, freqs).astype(np.float32)
     freqs_cis = np.exp(1j * freqs)
