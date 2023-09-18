@@ -75,8 +75,8 @@ template <typename _DataType> struct Assign
 template <typename InDims, typename InShape, typename WeightDims,
           typename WeightShape, typename OutDims, typename OutShape,
           int EmbeddingDim, int NumThreads>
-DEVICE void embedding(float *output, int *input, float *weight,
-                      int uop_idx, int)
+DEVICE void embedding(float *output, int *input, float *weight, int uop_idx,
+                      int)
 {
     // InShape:     Vec<D0, D1, D2, 1>
     // WeightShape: Vec< 1,  1,  ?, EmbeddingDim> (?: # of embeddings)
@@ -102,8 +102,7 @@ DEVICE void embedding(float *output, int *input, float *weight,
 template <typename InDims, typename InShape, typename WeightDims,
           typename WeightShape, typename OutDims, typename OutShape,
           int EmbeddingDim, int NumThreads>
-DEVICE void embedding(half *output, int *input, half *weight,
-                      int uop_idx, int)
+DEVICE void embedding(half *output, int *input, half *weight, int uop_idx, int)
 {
     // InShape:     Vec<D0, D1, D2, 1>
     // WeightShape: Vec< 1,  1,  ?, EmbeddingDim> (?: # of embeddings)
