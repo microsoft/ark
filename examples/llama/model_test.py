@@ -19,6 +19,7 @@ from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 numpy_dtype_to_torch_dtype: dict = {
     np.float16: torch.float16,
     np.float32: torch.float32,
+    np.int32: torch.int32
 }
 
 
@@ -237,6 +238,14 @@ def test_column_parallel_linear(
         )
 
 
+def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+    freqs = 1.0 / (theta ** (np.arange(0, dim, 2)[: (dim // 2)].astype(np.float32) / dim))
+    t = np.arange(end, dtype=np.float32)
+    freqs = np.outer(t, freqs).astype(np.float32)
+    freqs_cis = np.exp(1j * freqs)
+    return freqs_cis
+
+
 def test_attention(
     args: ModelArgs,
     batch_size: int,
@@ -247,9 +256,9 @@ def test_attention(
     ark.init()
 
     #
-    freqs_cis = model_pt.precompute_freqs_cis(
+    freqs_cis = precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
-    )[0:seq_len].numpy()
+    )[0:seq_len]
 
     freqs_cis_ark = freqs_cis.astype(np.complex64)
     freqs_cis_ark = (
@@ -287,9 +296,9 @@ def test_transformer_block(
     ark.init()
 
     #
-    freqs_cis = model_pt.precompute_freqs_cis(
+    freqs_cis = precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
-    )[0:seq_len].numpy()
+    )[0:seq_len]
 
     freqs_cis_ark = freqs_cis.astype(np.complex64)
     freqs_cis_ark = (
@@ -317,12 +326,66 @@ def test_transformer_block(
         )
 
 
-def test():
-    test_rmsnorm(args, batch_size, seq_len, dtype)
-    test_row_parallel_linear(args, batch_size, seq_len, dtype, world_size)
-    test_column_parallel_linear(args, batch_size, seq_len, dtype, world_size)
-    test_attention(args, batch_size, seq_len, dtype, world_size)
-    test_transformer_block(args, batch_size, seq_len, dtype, world_size)
+def test_transformer(
+    args: ModelArgs,
+    batch_size: int,
+    seq_len: int,
+    dtype: np.dtype,
+    world_size: int = 1,
+):
+    ark.init()
+
+    # Random input tokens
+
+    tokens = np.random.randint(
+        low=0, high=args.vocab_size, size=(batch_size, seq_len)
+    ).astype(np.int32)
+
+    start_pos = 0
+
+    # Pre-calculated freqs_cis
+
+    freqs_cis = precompute_freqs_cis(
+        args.dim // args.n_heads, args.max_seq_len * 2
+    )[0:seq_len]
+
+    freqs_cis_ark = freqs_cis.astype(np.complex64)
+    freqs_cis_ark = (
+        np.stack([freqs_cis_ark.real, freqs_cis_ark.imag], axis=-1)
+        .astype(dtype)
+        .reshape(1, seq_len, 1, args.dim // args.n_heads)
+    )
+
+    # Pre-calculated mask
+
+    if seq_len == 1:
+        mask = None
+    else:
+        mask = np.full((1, 1, seq_len, seq_len), -np.inf, dtype=dtype)
+        mask = np.triu(mask, k=start_pos + 1)
+
+    inputs = [tokens, start_pos]
+    ark_inputs = [tokens, start_pos, freqs_cis_ark, mask]
+
+    if world_size == 1:
+        test_module(
+            inputs,
+            dtype,
+            module_class_ark=model_ark.Transformer,
+            module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
+            module_class_pt=model_pt.Transformer,
+            module_args_pt=[args],
+            ark_inputs=ark_inputs,
+        )
+
+
+def test(args, batch_size, seq_len, dtype, world_size):
+    # test_rmsnorm(args, batch_size, seq_len, dtype)
+    # test_row_parallel_linear(args, batch_size, seq_len, dtype, world_size)
+    # test_column_parallel_linear(args, batch_size, seq_len, dtype, world_size)
+    # test_attention(args, batch_size, seq_len, dtype, world_size)
+    # test_transformer_block(args, batch_size, seq_len, dtype, world_size)
+    test_transformer(args, batch_size, seq_len, dtype, world_size)
 
 
 if __name__ == "__main__":
@@ -332,6 +395,9 @@ if __name__ == "__main__":
     seq_len = 2048
     dtype = np.float16
     world_size = 1
+
+    # Default from HuggingFace
+    args.vocab_size = 32000
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
@@ -353,4 +419,4 @@ if __name__ == "__main__":
             world_size
         )
 
-    test()
+    test(args, batch_size, seq_len, dtype, world_size)

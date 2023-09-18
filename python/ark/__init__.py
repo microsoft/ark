@@ -54,6 +54,7 @@ from .model import (
     recv_mm,
     all_gather,
     all_reduce,
+    embedding,
 )
 
 

@@ -60,6 +60,72 @@ DEVICE void rope(half *c, half *a, half *b, int uop_idx, int)
                                                                     uop_idx);
 }
 
+// Embedding
+
+template <typename _DataType> struct Assign
+{
+    using DataType = _DataType;
+    static const int NelemPerThread = 1;
+    static DEVICE void compute(DataType *c, const DataType *a)
+    {
+        *c = *a;
+    }
+};
+
+template <typename InDims, typename InShape, typename WeightDims,
+          typename WeightShape, typename OutDims, typename OutShape,
+          int EmbeddingDim, int NumThreads>
+DEVICE void embedding(float *output, int *input, float *weight,
+                      int uop_idx, int)
+{
+    // InShape:     Vec<D0, D1, D2, 1>
+    // WeightShape: Vec< 1,  1,  ?, EmbeddingDim> (?: # of embeddings)
+    // OutShape:    Vec<D0, D1, D2, EmbeddingDim>
+
+    static_assert(InShape::W == 1, "");
+
+    using UnitOutDims = Vec<1, 1, 1, OutDims::W>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, 0>;
+    int un = UnitOp::uop_idx_n(uop_idx);
+    int uc = UnitOp::uop_idx_c(uop_idx);
+    int uh = UnitOp::uop_idx_h(uop_idx);
+
+    // pWeight: Vec<1, 1, 1, EmbeddingDim>
+    int emb_idx = input[un * InDims::CH + uc * InDims::H + uh];
+    float *pWeight = &weight[emb_idx * WeightDims::W];
+
+    Broadcast1<Vec<1, 1, 1, WeightDims::W>, Vec<1, 1, 1, EmbeddingDim>, OutDims,
+               OutShape, UnitOutDims, NumThreads, 0,
+               Assign<float>>::run(output, pWeight, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename WeightDims,
+          typename WeightShape, typename OutDims, typename OutShape,
+          int EmbeddingDim, int NumThreads>
+DEVICE void embedding(half *output, int *input, half *weight,
+                      int uop_idx, int)
+{
+    // InShape:     Vec<D0, D1, D2, 1>
+    // WeightShape: Vec< 1,  1,  ?, EmbeddingDim> (?: # of embeddings)
+    // OutShape:    Vec<D0, D1, D2, EmbeddingDim>
+
+    static_assert(InShape::W == 1, "");
+
+    using UnitOutDims = Vec<1, 1, 1, OutDims::W>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, 0>;
+    int un = UnitOp::uop_idx_n(uop_idx);
+    int uc = UnitOp::uop_idx_c(uop_idx);
+    int uh = UnitOp::uop_idx_h(uop_idx);
+
+    // pWeight: Vec<1, 1, 1, EmbeddingDim>
+    int emb_idx = input[un * InDims::CH + uc * InDims::H + uh];
+    half *pWeight = &weight[emb_idx * WeightDims::W];
+
+    Broadcast1<Vec<1, 1, 1, WeightDims::W>, Vec<1, 1, 1, EmbeddingDim>, OutDims,
+               OutShape, UnitOutDims, NumThreads, 0,
+               Assign<half>>::run(output, pWeight, uop_idx);
+}
+
 } // namespace ark
 
 #endif // ARK_KERNELS_EMBEDDING_H_

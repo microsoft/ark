@@ -795,3 +795,20 @@ def all_reduce(
         name,
     )
     return Tensor(_tensor)
+
+def embedding(
+    input: Tensor,
+    weight: Tensor,
+    output: Tensor = None,
+    name: str = "embedding",
+) -> Tensor:
+    """Embedding layer."""
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().embedding(
+        input._tensor,
+        weight._tensor,
+        output,
+        name,
+    )
+    return Tensor(_tensor)

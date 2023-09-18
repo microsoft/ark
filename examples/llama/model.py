@@ -212,6 +212,20 @@ class RowParallelLinear(ark.Module):
         return output
 
 
+class ParallelEmbedding(ark.Module):
+    """Embedding layer."""
+
+    # TODO: support parallelism
+    def __init__(self, vocab_size: int, dim: int, dtype: ark.DataType):
+        super().__init__()
+        self.vocab_size = vocab_size
+        self.dim = dim
+        self.weight = ark.Parameter(ark.tensor([vocab_size, dim], dtype))
+
+    def forward(self, x):
+        return ark.embedding(x, self.weight)
+
+
 class Linear(ark.Module):
     """
     Linear layer module with weights and no bias.
@@ -442,10 +456,9 @@ class Transformer(ark.Module):
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
 
-        # TODO: implement the token embedding layer later
-        # self.tok_embeddings = Linear(
-        #     params.vocab_size, params.dim, init_method=lambda x: x
-        # )
+        self.tok_embeddings = ParallelEmbedding(
+            params.vocab_size, params.dim, dtype
+        )
 
         self.layers = []
         for layer_id in range(self.n_layers):
@@ -462,11 +475,13 @@ class Transformer(ark.Module):
 
     def forward(
         self,
-        h: ark.Tensor,
+        tokens: ark.Tensor,
         start_pos: int,
         freqs_cis: ark.Tensor,
         mask: Optional[ark.Tensor],
     ):
+        h = self.tok_embeddings(tokens)
+
         for layer in self.layers:
             h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)

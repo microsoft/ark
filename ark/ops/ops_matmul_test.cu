@@ -504,8 +504,11 @@ ark::unittest::State test_matmul_tn()
         ark::Tensor *b = m.tensor(ark::Dims(64, 256), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, false, "matmul", 0);
 
-        auto result = ark::op_test("matmul_tn", m, {a, b}, {c},
-                                   baseline_matmul_tn<half>, "ones", true);
+        auto ones_a = ark::utils::ones<ark::half_t>(a->shape.size());
+        auto ones_b = ark::utils::ones<ark::half_t>(b->shape.size());
+        auto result =
+            ark::op_test("matmul_tn", m, {a, b}, {c}, baseline_matmul_tn<half>,
+                         {ones_a.get(), ones_b.get()}, true);
         ark::op_test_log(result);
     }
     {
@@ -553,8 +556,11 @@ ark::unittest::State test_matmul_batched()
     ark::Tensor *b = m.tensor(ark::Dims(2, 64, 64), ark::FP16);
     ark::Tensor *c = m.matmul(a, b);
 
-    auto result = ark::op_test("matmul_batched", m, {a, b}, {c},
-                               baseline_matmul_nn<half>, "ones", true);
+    auto ones_a = ark::utils::ones<ark::half_t>(a->shape.size());
+    auto ones_b = ark::utils::ones<ark::half_t>(b->shape.size());
+    auto result =
+        ark::op_test("matmul_batched", m, {a, b}, {c}, baseline_matmul_nn<half>,
+                     {ones_a.get(), ones_b.get()}, true);
     ark::op_test_log(result);
     return ark::unittest::SUCCESS;
 }
