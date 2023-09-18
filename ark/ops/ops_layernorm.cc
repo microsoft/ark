@@ -12,7 +12,7 @@ extern const OpConfigMap LayernormConfigMap;
 LayernormOp::LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                          const std::string &name)
     : Op{OP_LAYERNORM, prec_type,           {input}, {output}, {},
-         name,         &LayernormConfigMap, -1}
+         name,         &LayernormConfigMap, -1,      true}
 {
 }
 
