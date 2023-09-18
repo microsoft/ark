@@ -30,7 +30,7 @@ class GpuMem
     ~GpuMem();
 
     // Allocate a GPU memory chunk.
-    void init(size_t bytes);
+    void init(size_t bytes, bool expose = true);
 
     // Access the remote GPU memory chunk.
     void init(const GpuMem::Info &info);
