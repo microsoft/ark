@@ -537,15 +537,14 @@ ark::unittest::State test_sched_opgraph_all_reduce()
               });
 
     UNITTEST_EQ(users[0]->get_name(), "add;");
-    UNITTEST_EQ(users[0]->producers.size(), 1UL);
-    UNITTEST_EQ(users[0]->users.size(), 2UL);
+    UNITTEST_EQ(users[0]->users.size(), 1UL);
+    UNITTEST_EQ((*(users[0]->users.begin()))->get_name(), "add_1;");
 
-    UNITTEST_EQ(users[1]->get_name(), "add;");
+    UNITTEST_EQ(users[1]->get_name(), "send_1;send_done_1;recv_1;");
     UNITTEST_EQ(users[1]->producers.size(), 1UL);
-    UNITTEST_EQ(users[1]->users.size(), 1UL);
-    UNITTEST_EQ((*(users[1]->users.begin()))->get_name(), "add_1;");
+    UNITTEST_EQ(users[1]->users.size(), 2UL);
 
-    node = users[0];
+    node = users[1];
     users.clear();
     for (auto &user : node->users) {
         users.push_back(user);

@@ -23,7 +23,6 @@
 #include "ipc/ipc_socket.h"
 #include "net/net_ib.h"
 
-
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
@@ -402,7 +401,7 @@ void GpuCommSw::Impl::configure(
     if (get_env().use_mscclpp && data_mem->get_bytes() > 0) {
         // need to setup registered memory for the communicator
         int num_ranks_per_node = get_env().num_ranks_per_host;
-        const int thisNode = rank / num_ranks_per_node;
+        const int thisNode = rank_ / num_ranks_per_node;
         auto rankToNode = [&](int rank) { return rank / num_ranks_per_node; };
 
         mscclpp::Transport IBs[] = {
@@ -411,7 +410,7 @@ void GpuCommSw::Impl::configure(
             mscclpp::Transport::IB4, mscclpp::Transport::IB5,
             mscclpp::Transport::IB6, mscclpp::Transport::IB7};
 
-        const mscclpp::Transport ibTransport = IBs[gpu_id];
+        const mscclpp::Transport ibTransport = IBs[gpu_id_];
         std::vector<
             mscclpp::NonblockingFuture<std::shared_ptr<mscclpp::Connection>>>
             connections;
@@ -421,8 +420,8 @@ void GpuCommSw::Impl::configure(
             (void *)(data_mem->ref()), data_mem->get_bytes(), all_transports);
         std::vector<mscclpp::NonblockingFuture<mscclpp::RegisteredMemory>>
             remote_reg_memories;
-        for (int r = 0; r < this->world_size; ++r) {
-            if (r == rank) {
+        for (int r = 0; r < this->world_size_; ++r) {
+            if (r == rank_) {
                 continue;
             }
             mscclpp::Transport transport;
@@ -438,7 +437,7 @@ void GpuCommSw::Impl::configure(
         }
         this->comm->setup();
         for (size_t i = 0; i < connections.size(); ++i) {
-            LOG(INFO, "Rank ", rank, " connected to rank ", i);
+            LOG(INFO, "Rank ", rank_, " connected to rank ", i);
             this->proxy_channels.push_back(
                 mscclpp::deviceHandle(mscclpp::SimpleProxyChannel(
                     this->proxy_service->proxyChannel(

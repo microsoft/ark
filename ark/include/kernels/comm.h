@@ -81,6 +81,7 @@ DEVICE void send_done(int, int)
         return;
     }
     volatile unsigned int *done = &(_ARK_SC[Sid]);
+    uint64_t spin_cnt = 0;
     while (!(*done)) {
         if (spin_cnt++ == 1000000) {
             __assert_fail("send_done is stuck", __FILE__, __LINE__, __PRETTY_FUNCTION__);
@@ -98,6 +99,7 @@ DEVICE void recv(int, int)
         return;
     }
     volatile unsigned int *len = &(_ARK_RC[Sid]);
+    uint64_t spin_cnt = 0;
     while (!(*len)) {
         if (spin_cnt++ == 10000000) {
             __assert_fail("recv is stuck", __FILE__, __LINE__, __PRETTY_FUNCTION__);

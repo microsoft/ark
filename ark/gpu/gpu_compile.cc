@@ -210,7 +210,7 @@ const string gpu_compile(const vector<string> &codes,
             stringstream include_args;
             // clang-format off
             define_args << "-DARK_TARGET_CUDA_ARCH=" << arch << " "
-                        << "-DARK_COMM_SW=" << (int)use_comm_sw << " ";
+                        << "-DARK_COMM_SW=1" << " ";
             include_args << "-I" << ark_root << "/include "
                          << "-I" << ark_root << "/include/kernels ";
             if (get_env().use_mscclpp) {
@@ -218,9 +218,7 @@ const string gpu_compile(const vector<string> &codes,
                 include_args << "-I" << get_env().mscclpp_include_dir << " ";
             }
             exec_cmd << "-ccbin g++ -std c++17 -lcuda "
-                "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
-                "--define-macro=ARK_COMM_SW=1 " <<
-                include_args.str() <<
+                << define_args.str() << include_args.str() <<
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "
                 "-o " << item.second << ".cubin "
