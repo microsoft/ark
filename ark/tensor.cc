@@ -179,17 +179,17 @@ DimType Tensor::offset_bytes(DimType i0, DimType i1, DimType i2,
     return this->offset(i0, i1, i2, i3) * this->type_bytes();
 }
 
+bool Tensor::is_alloced() const
+{
+    if (this->buf == nullptr) {
+        return false;
+    }
+    return this->buf->buf != nullptr;
+}
+
 bool Tensor::is_sequential() const
 {
-    // if a tensor's last (ndims-1) shape is the same as its ldims, the tensor
-    // is sequential
-    int ndims = this->shape.ndims();
-    for (int i = 1; i < ndims; ++i) {
-        if (this->shape[i] != this->ldims[i]) {
-            return false;
-        }
-    }
-    return true;
+    return (this->shape == this->ldims) || (this->shape.ndims() == 1);
 }
 
 void Tensor::write(const void *buf)

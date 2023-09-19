@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "ops_test_common.h"
+#include "env.h"
 #include "gpu/gpu_kernel.h"
 #include "logging.h"
 #include "random.h"
@@ -157,23 +158,38 @@ TensorCompareResult tensor_compare(uint8_t *ground_truth, uint8_t *res,
     return tensor_compare<uint8_t>(ground_truth, res, shape, print);
 }
 
+#define CUDA_CHECK(status)                                                     \
+    do {                                                                       \
+        cudaError_t error = status;                                            \
+        if (error != cudaSuccess) {                                            \
+            std::ostringstream oss;                                            \
+            oss << "Got bad cuda status: " << cudaGetErrorString(error)        \
+                << " at line: " << __LINE__;                                   \
+            throw std::runtime_error(oss.str());                               \
+        }                                                                      \
+    } while (0);
+
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
                       const std::vector<Tensor *> &outputs,
-                      OpsTestBaseline baseline, const std::string &init_method,
-                      bool print_on_error, int rank, int world_size, int num_warps_per_sm)
+                      OpsTestBaseline baseline,
+                      const std::vector<void *> &inputs_data,
+                      bool print_on_error, int rank, int world_size,
+                      int num_warps_per_sm)
 {
-    int gpu_id = rank % get_env().num_ranks_per_host;
-    Executor exe{gpu_id, rank, world_size, model, "op_test_" + rand_anum(4), num_warps_per_sm};
+    Executor exe{rank, world_size, model, "op_test_" + rand_anum(4),
+                 num_warps_per_sm};
     exe.compile();
 
-    // Set random data.
-    std::vector<void *> input_data;
-    for (auto t : inputs) {
-        void *buf = ::malloc(t->shape_bytes());
-        UNITTEST_NE(buf, (void *)nullptr);
+    std::vector<void *> inputs_data_storages;
+    std::vector<void *> inputs_data_refs;
 
-        if (init_method == "random") {
+    if (inputs_data.empty()) {
+        // Set random data.
+        for (auto t : inputs) {
+            void *buf = ::malloc(t->shape_bytes());
+            UNITTEST_NE(buf, (void *)nullptr);
+
             if (t->type == FP32) {
                 ::memcpy(buf, utils::rand_floats(t->shape.size(), 0.1).get(),
                          t->shape_bytes());
@@ -190,27 +206,17 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
             } else {
                 LOG(ERROR, "Unsupported data type: ", t->type);
             }
-        } else if (init_method == "ones") {
-            if (t->type == FP32) {
-                ::memcpy(buf, utils::ones<float>(t->shape.size()).get(),
-                         t->shape_bytes());
-            } else if (t->type == FP16) {
-                ::memcpy(buf, utils::ones<ark::half_t>(t->shape.size()).get(),
-                         t->shape_bytes());
-            } else if (t->type == INT32) {
-                ::memcpy(buf, utils::ones<int>(t->shape.size()).get(),
-                         t->shape_bytes());
-            } else if (t->type == BYTE) {
-                ::memcpy(buf, utils::ones<char>(t->shape.size()).get(),
-                         t->shape_bytes());
-            } else {
-                LOG(ERROR, "Unsupported data type: ", t->type);
-            }
-        } else {
-            LOG(ERROR, "Unsupported init method: ", init_method);
+            t->write(buf);
+            inputs_data_storages.push_back(buf);
+            inputs_data_refs.push_back(buf);
         }
-        t->write(buf);
-        input_data.push_back(buf);
+    } else {
+        // Copy input data
+        UNITTEST_EQ(inputs_data.size(), inputs.size());
+        for (size_t i = 0; i < inputs.size(); i++) {
+            inputs[i]->write(inputs_data[i]);
+            inputs_data_refs.emplace_back(inputs_data[i]);
+        }
     }
 
     exe.launch();
@@ -246,7 +252,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     }
 
     // Calculate ground truth.
-    baseline(gt, output_shapes, input_data, input_shapes);
+    baseline(gt, output_shapes, inputs_data_refs, input_shapes);
 
     std::stringstream test_name;
     test_name << test_name_prefix;
@@ -289,13 +295,14 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         result.max_err_rate.push_back(comp.max_error_rate);
     }
 
+    CUDA_CHECK(cudaDeviceSynchronize());
+
     // Throughput test.
-    return result;
     if (world_size > 1) {
         // For multi-GPU, we need to make sure that all GPUs run the same
         // number of iterations. Rather than doing allgather, we just
         // use a magic number here.
-        int iter = 10000;
+        int iter = 100;
         exe.launch();
         exe.run(iter);
         float msec = exe.stop();
@@ -321,7 +328,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     }
 
     // Free resources
-    for (auto ptr : input_data) {
+    for (auto ptr : inputs_data_storages) {
         ::free(ptr);
     }
     for (auto ptr : res) {
@@ -338,47 +345,39 @@ OpsTestResult op_test_8(const std::string &test_name_prefix, Model &model,
                         const std::vector<Tensor *> &inputs,
                         const std::vector<Tensor *> &outputs,
                         OpsTestBaseline baseline,
-                        const std::string &init_method, bool print_on_error, int rank, int world_size)
+                        const std::vector<void *> &inputs_data,
+                        bool print_on_error, int rank, int world_size)
 {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   init_method, print_on_error, rank, world_size, 8);
+                   inputs_data, print_on_error, rank, world_size, 8);
 }
 
 OpsTestResult op_test_16(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &inputs,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
-                         const std::string &init_method, bool print_on_error, int rank, int world_size)
+                         const std::vector<void *> &inputs_data,
+                         bool print_on_error, int rank, int world_size)
 {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   init_method, print_on_error, rank, world_size, 16);
+                   inputs_data, print_on_error, rank, world_size, 16);
 }
 
 OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &inputs,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
-                         const std::string &init_method, bool print_on_error, int rank, int world_size)
+                         const std::vector<void *> &inputs_data,
+                         bool print_on_error, int rank, int world_size)
 {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   init_method, print_on_error, rank, world_size, 32);
+                   inputs_data, print_on_error, rank, world_size, 32);
 }
 
 void op_test_log(const OpsTestResult &result)
 {
     LOG(INFO, result);
 }
-
-#define CUDA_CHECK(status)                                                     \
-    do {                                                                       \
-        cudaError_t error = status;                                            \
-        if (error != cudaSuccess) {                                            \
-            std::ostringstream oss;                                            \
-            oss << "Got bad cuda status: " << cudaGetErrorString(error)        \
-                << " at line: " << __LINE__;                                   \
-            throw std::runtime_error(oss.str());                               \
-        }                                                                      \
-    } while (0);
 
 OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size)
 {

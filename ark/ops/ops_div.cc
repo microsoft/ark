@@ -51,10 +51,9 @@ std::string DivOp::function_name(const OpConfig &cfg) const
 Tensor *Model::div(Tensor *input, Tensor *other, Tensor *output,
                    const string &name)
 {
-    LOG(DEBUG, "div ", input->shape, " ", other->shape);
     assert(input != nullptr);
     assert(other != nullptr);
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {

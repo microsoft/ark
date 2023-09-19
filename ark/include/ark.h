@@ -10,8 +10,8 @@
 #include <vector>
 
 #define ARK_MAJOR 0
-#define ARK_MINOR 1
-#define ARK_PATCH 0
+#define ARK_MINOR 2
+#define ARK_PATCH 1
 #define ARK_VERSION (ARK_MAJOR * 10000 + ARK_MINOR * 100 + ARK_PATCH)
 
 namespace ark {
@@ -222,6 +222,10 @@ class Tensor
     DimType offset_bytes(DimType i0 = 0, DimType i1 = 0, DimType i2 = 0,
                          DimType i3 = 0) const;
 
+    /// Checks if the tensor has the actually memory allocated.
+    /// @return True if the tensor has the memory allocated.
+    bool is_alloced() const;
+
     /// Checks if the tensor's data range is sequential in memory.
     /// @return True if the tensor is sequential in memory.
     bool is_sequential() const;
@@ -306,6 +310,9 @@ class Model
     Tensor *reshape(Tensor *input, const Dims &shape, bool allowzero = false,
                     Tensor *output = nullptr,
                     const std::string &name = "reshape");
+    Tensor *reshape(Tensor *input, const std::initializer_list<DimType> &shape,
+                    bool allowzero = false, Tensor *output = nullptr,
+                    const std::string &name = "reshape");
     // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
     // inferred from the `input`. If one dimension of `shape` is 0, by default
     // (`allowzero` is false), that dimension is unchanged from the
@@ -314,7 +321,7 @@ class Model
     // `input` should also be an empty tensor. If `allowzero` is true, `shape`
     // should not include both 0 and -1 at the same time. If `shape` is an empty
     // vector, `input` will be converted to a scalar.
-    Tensor *reshape(Tensor *input, std::initializer_list<DimType> shape,
+    Tensor *reshape(Tensor *input, const std::vector<DimType> &shape,
                     bool allowzero = false, Tensor *output = nullptr,
                     const std::string &name = "reshape");
     // Returns an identical tensor of `input` with execution dependencies
@@ -337,9 +344,12 @@ class Model
                        const std::string &name = "reduce_max");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
-
     Tensor *layernorm(Tensor *input, Tensor *output = nullptr,
                       const std::string &name = "layernorm");
+    // Applies RMS (Root Mean Square Layer Normalization) normalization to the
+    // `input` tensor and returns the normalized tensor as `output`.
+    Tensor *rmsnorm(Tensor *input, Tensor *output = nullptr,
+                    const std::string &name = "rmsnorm");
     // Applies softmax activation to the `input` tensor, with the softmax
     // operator
     // being performed on the last dimension of the input tensor.
@@ -392,6 +402,9 @@ class Model
     // Sigmoid activation
     Tensor *sigmoid(Tensor *input, Tensor *output = nullptr,
                     const std::string &name = "sigmoid");
+    // Performs rotary position embedding (RoPE) on the `input` tensor
+    Tensor *rope(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                 const std::string &name = "rope");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
@@ -463,8 +476,11 @@ class Model
     // total number of GPUs `gpu_num`. Returns a vector of tensors, each
     // containing the aggregated data from all GPUs.
     std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
-                                     std::vector<Tensor *> output,
-                                     const std::string &name);
+                                     const std::vector<Tensor *> &output = {},
+                                     const std::string &name = "all_gather");
+    /// Embedding layer.
+    Tensor *embedding(Tensor *input, Tensor *weight, Tensor *output = nullptr,
+                      const std::string &name = "embedding");
 
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
@@ -482,36 +498,31 @@ class Model
 
 class GpuBuf;
 
-// Convenience class for executing a model.
+/// Convenience class for executing a model.
 class Executor
 {
   public:
-    // Constructor.
-    Executor(const int gpu_id_, int rank_, int world_size_, Model &model,
-             const std::string &name, int num_warps_per_sm_ = 16);
+    /// Constructor.
+    Executor(int rank, int world_size, Model &model, const std::string &name,
+             int num_warps_per_sm = 16);
     ~Executor();
-    // Compile the model. This must be called before `launch()`.
+    /// Compile the model. This must be called before `launch()`.
     void compile();
-    // Launch the model (not running yet). This must be called after
-    // `compile()`.
+    /// Launch the model (not running yet). This must be called after
+    /// `compile()`.
     void launch();
-    // Run the model for `iter` iterations.
+    /// Run the model for `iter` iterations.
     void run(int iter);
-    // Wait for the previous run to finish.
+    /// Wait for the previous run to finish.
     void wait();
-    // Stop the model and return the elapsed time in milliseconds.
-    // Once this is called, we need to call `launch()` again to run the model
-    // again.
+    /// Stop the model and return the elapsed time in milliseconds.
+    /// Once this is called, we need to call `launch()` again to run the model
+    /// again.
     float stop();
 
-  protected:
-    class Impl;
-
   private:
-    const int gpu_id;
-    const int rank;
-    const int world_size;
-    std::unique_ptr<Impl> impl;
+    class Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace ark

@@ -21,7 +21,6 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
     if (input == nullptr) {
         LOG(ERROR, "input is null");
     }
-    LOG(DEBUG, "reshape ", input->shape, " ", shape);
     // Infer the actual shape
     std::vector<DimType> inferred_shape;
     if (shape.ndims() == 0) {
@@ -66,10 +65,8 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
         }
     }
 
-    // TODO: check if this reshape requires any copy
-
     if (output == nullptr) {
-        output = model->tensor(new_shape, input->type, input->buf, shape);
+        output = model->tensor(new_shape, input->type, input->buf);
     }
     return output;
 }
@@ -83,6 +80,14 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
     return this->impl->add_op(op)[0];
 }
 
+Tensor *Model::reshape(Tensor *input,
+                       const std::initializer_list<DimType> &shape,
+                       bool allowzero, Tensor *output, const std::string &name)
+{
+    std::vector<DimType> shape_vec{shape};
+    return this->reshape(input, shape_vec, allowzero, output, name);
+}
+
 // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
 // inferred from the `input`. If one dimension of `shape` is 0, by default
 // (`allowzero` is false), that dimension is unchanged from the corresponding
@@ -91,8 +96,7 @@ Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
 // be an empty tensor. If `allowzero` is true, `shape` should not include both
 // 0 and -1 at the same time. If `shape` is an empty vector, `input` will be
 // converted to a scalar.
-Tensor *Model::reshape(Tensor *input,
-                       const std::initializer_list<DimType> shape,
+Tensor *Model::reshape(Tensor *input, const std::vector<DimType> &shape,
                        bool allowzero, Tensor *output, const std::string &name)
 {
     if (input == nullptr) {
@@ -139,7 +143,7 @@ Tensor *Model::reshape(Tensor *input,
                 input->shape, " to ", Dims(shape_vec));
         }
         inferred_shape[neg_idx] = input->shape.size() / total_size;
-    } else if (input->shape.size() != total_size) {
+    } else if (!zero_exists && input->shape.size() != total_size) {
         LOG(ERROR, "number of elements mismatch: reshape from ", input->shape,
             " to ", Dims(shape_vec));
     }

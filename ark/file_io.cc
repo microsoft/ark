@@ -69,6 +69,14 @@ int create_dir(const string &path)
     return 0;
 }
 
+int remove_dir(const string &path)
+{
+    if (rmdir(path.c_str()) == -1) {
+        return errno;
+    }
+    return 0;
+}
+
 // Helper function to remove all files in a directory given a file descriptor.
 int clear_dirat_helper(int dir_fd, const char *name)
 {
@@ -134,7 +142,6 @@ vector<string> list_dir(const string &path)
     const char *path_c = path_str.c_str();
     DIR *d = opendir(path_c);
     size_t path_len = strlen(path_c);
-    int r = -1;
 
     vector<string> ret;
 

@@ -14,7 +14,6 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
                                       const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "sharding ", input->shape, " ", axis, " ", dim_per_shard);
     if (axis >= DIMS_LEN) {
         LOG(ERROR, "invlaid axis value: ", axis);
     }

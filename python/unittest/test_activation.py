@@ -32,15 +32,12 @@ def test_activation_internal(
     # Launch the ARK runtime
     runtime.launch()
 
-    # Initialize the input and other tensor with random values between 1 and 2
-    # (to avoid sigmoidision by 0)
-    input_tensor_host = (
-        np.random.rand(batch_size, m, n).astype(numpy_data_type) + 1
-    )
+    # Initialize the input and other tensor with random values
+    input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
     input_tensor.from_numpy(input_tensor_host)
 
     # Run the ARK program
-    runtime.run(iter=iter, async_run=True)
+    runtime.run(iter=iter)
     elapsed = runtime.stop()
 
     output_tensor_host = output_tensor.to_numpy()

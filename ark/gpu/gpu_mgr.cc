@@ -68,10 +68,10 @@ void GpuInfo::init(const int gpu_id)
         this->arch = GPU_ARCH_CUDA_60;
     } else if (this->arch_str == "70") {
         this->arch = GPU_ARCH_CUDA_70;
-    } else if (this->arch_str == "75") {
-        this->arch = GPU_ARCH_CUDA_75;
     } else if (this->arch_str == "80") {
         this->arch = GPU_ARCH_CUDA_80;
+    } else if (this->arch_str == "90") {
+        this->arch = GPU_ARCH_CUDA_90;
     } else {
         this->arch = GPU_ARCH_UNKNOWN;
     }
@@ -161,10 +161,7 @@ GpuState GpuMgr::set_current()
 GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
                      const std::string &name_)
     : gpu_mgr{gpu_mgr_}, rank{rank_}, world_size{world_size_}, name{name_},
-      data_mem{ARK_GPU_DATA_NAME + name_ + to_string(gpu_mgr_->gpu_id), 0,
-               true},
-      sc_rc_mem{ARK_GPU_SC_RC_NAME + name_ + to_string(gpu_mgr_->gpu_id),
-                2 * MAX_NUM_SID * sizeof(int), true}
+      data_mem{}, sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)}
 {
     // Use the CPU-side software communication stack.
     this->comm_sw = std::make_unique<GpuCommSw>(
@@ -210,20 +207,14 @@ void GpuMgrCtx::destroy_stream(const GpuStream &s)
 }
 
 //
-GpuEvent GpuMgrCtx::create_event(bool disable_timing, CUipcEventHandle *handle)
+GpuEvent GpuMgrCtx::create_event(bool disable_timing)
 {
     GpuEvent cuda_event;
     unsigned int flags = 0;
     if (disable_timing) {
         flags |= CU_EVENT_DISABLE_TIMING;
     }
-    if (handle != nullptr) {
-        flags |= CU_EVENT_INTERPROCESS;
-    }
     CULOG(cuEventCreate(&cuda_event, flags));
-    if (handle != nullptr) {
-        CULOG(cuIpcGetEventHandle(handle, cuda_event));
-    }
     return cuda_event;
 }
 
@@ -290,8 +281,6 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
     }
     this->bufs.emplace_back(
         std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
-    LOG(DEBUG, "GPU Buffer ", this->name, " rank ", this->rank, " ID ", id,
-        " off 0x", hex, off, dec, " bytes ", bytes);
     return this->bufs.back().get();
 }
 
@@ -338,28 +327,26 @@ void GpuMgrCtx::mem_free(GpuBuf *buf)
 //
 void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 {
+    if (sid >= MAX_NUM_SID) {
+        LOG(ERROR, "invalid SID ", sid);
+    }
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
-    LOG(DEBUG, "Exported GPU Buffer sid ", sid, " offset ",
-        buf->get_offset() + offset, " rank ", this->rank);
 }
 
 //
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 {
+    if (sid >= MAX_NUM_SID) {
+        LOG(ERROR, "invalid SID ", sid);
+    }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
-    LOG(DEBUG, "Imported GPU Buffer from GPU ", gid, " sid ", sid, " bytes ",
-        bytes);
     GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 
     //
-    if (this->data_mem.get_bytes() > 0) {
-        // Configuration is already done,
-        // so we can import the buffer immediately.
-        this->comm_sw->import_buf(gid, buf);
-    }
+    assert(this->data_mem.get_bytes() == 0);
     return buf;
 }
 
@@ -377,32 +364,14 @@ void GpuMgrCtx::freeze()
 
     //
     if (total_bytes > 0) {
-        this->data_mem.alloc(total_bytes);
+        LOG(INFO, "Allocating ", total_bytes, " bytes of GPU memory");
+        this->data_mem.init(total_bytes, false);
         // init the data mem
         CULOG(cuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
     }
 
     //
     this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
-}
-
-// Write a request.
-void GpuMgrCtx::send(int src, int dst, int rank, size_t bytes)
-{
-    // Wait for the send completion.
-    volatile int *sc = this->get_sc_href(src);
-    while (*sc == 0) {
-    }
-    *sc = 0;
-
-    Request db;
-    db.fields.req = 0;
-    db.fields.dst = dst;
-    db.fields.src = src;
-    db.fields.rank = rank;
-    db.fields.len = bytes;
-    db.fields.rsv = 0;
-    this->comm_sw->set_request(db);
 }
 
 //

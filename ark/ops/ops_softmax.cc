@@ -11,8 +11,8 @@ extern const OpConfigMap SoftmaxConfigMap;
 
 SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const std::string &name)
-    : Op{OP_SOFTMAX, prec_type, {input},           {output},
-         {},         name,      &SoftmaxConfigMap, -1}
+    : Op{OP_SOFTMAX, prec_type,         {input}, {output}, {},
+         name,       &SoftmaxConfigMap, -1,      true}
 {
 }
 
@@ -20,10 +20,6 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
 {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
-
-    Dims shp_out = output->shape;
-    int ndims = shp_out.ndims();
-    CHECK(ndims < 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
@@ -43,8 +39,7 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
 Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name)
 {
     assert(input != nullptr);
-    LOG(DEBUG, "softmax ", input->shape, " ", input->ldims, " ");
-    OpPrecType pt;
+    OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     } else if (input->type == FP32) {
@@ -65,43 +60,7 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name)
 }
 
 const OpConfigMap SoftmaxConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
-         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
-         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
-         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
-         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
-         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
-         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
-         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
-         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
-         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
-         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
-         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
-         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
-         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
-         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_70, OP_PREC_FP32},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
-         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
-         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
-         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
-         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
-         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
-         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
-         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, -1}}, {{32, -1}}, true, false},

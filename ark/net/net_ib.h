@@ -144,6 +144,7 @@ class NetIbMgr
     std::vector<int> ports;
     std::list<std::unique_ptr<NetIbQp>> qps;
     std::list<std::unique_ptr<NetIbMr>> mrs;
+    size_t num_registered_pages = 0;
 };
 
 NetIbMgr *get_net_ib_mgr(int ib_dev_id);

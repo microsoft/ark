@@ -21,13 +21,13 @@ struct ReqType
 
 /// Constructs a 64-bit Request to be sent to the proxy.
 /// @tparam ReqType Request type.
-template <unsigned int ReqType, unsigned int DstSid, unsigned int SrcSid,
-          unsigned int DstRank, unsigned long long int Length>
+template <unsigned int ReqType, unsigned int Sid, unsigned int DstRank,
+          unsigned long long int Length>
 struct Request
 {
     static const unsigned long long int value =
         ((Length & 0x3ffffffff) << 25) + ((DstRank & 0x7f) << 18) +
-        ((SrcSid & 0xff) << 10) + ((DstSid & 0xff) << 2) + (ReqType & 0x3);
+        ((Sid & 0xffff) << 2) + (ReqType & 0x3);
 };
 
 #if (ARK_COMM_SW != 0)
@@ -35,8 +35,8 @@ __device__ int _ARK_COMM_SW_SEND_LOCK = 0;
 #endif // (ARK_COMM_SW != 0)
 
 // Send a Request to the proxy.
-template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid,
-          unsigned int DstSid, unsigned long long int Length>
+template <unsigned int Rank, unsigned int DstRank, unsigned int Sid,
+          unsigned long long int Length>
 DEVICE void send(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
@@ -44,7 +44,7 @@ DEVICE void send(int, int)
         return;
     }
     constexpr unsigned long long int dbval =
-        Request<ReqType::Send, DstSid, SrcSid, DstRank, Length>::value;
+        Request<ReqType::Send, Sid, DstRank, Length>::value;
 #if (ARK_COMM_SW != 0)
 #if 1
     constexpr unsigned long long int invalid = (unsigned long long int)-1;
@@ -73,15 +73,14 @@ DEVICE void send(int, int)
 }
 
 // Poll SC and reset.
-template <unsigned int Rank, unsigned int DstRank, unsigned int SrcSid>
+template <unsigned int Rank, unsigned int DstRank, unsigned int Sid>
 DEVICE void send_done(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
-    volatile unsigned int *done = &(_ARK_SC[SrcSid]);
-    uint64_t spin_cnt = 0;
+    volatile unsigned int *done = &(_ARK_SC[Sid]);
     while (!(*done)) {
         if (spin_cnt++ == 1000000) {
             __assert_fail("send_done is stuck", __FILE__, __LINE__, __PRETTY_FUNCTION__);
@@ -91,15 +90,14 @@ DEVICE void send_done(int, int)
 }
 
 //
-template <unsigned int Rank, unsigned int SrcRank, unsigned int DstSid>
+template <unsigned int Rank, unsigned int SrcRank, unsigned int Sid>
 DEVICE void recv(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
-    volatile unsigned int *len = &(_ARK_RC[DstSid]);
-    uint64_t spin_cnt = 0;
+    volatile unsigned int *len = &(_ARK_RC[Sid]);
     while (!(*len)) {
         if (spin_cnt++ == 10000000) {
             __assert_fail("recv is stuck", __FILE__, __LINE__, __PRETTY_FUNCTION__);

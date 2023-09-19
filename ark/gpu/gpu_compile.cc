@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_compile.h"
 #include "gpu/gpu_logging.h"
@@ -140,8 +141,7 @@ const string link(const vector<string> &ptxs)
 #endif // (ARK_USE_NVRTC)
 
 const string gpu_compile(const vector<string> &codes,
-                         const GpuArchType &arch_type, unsigned int max_reg_cnt,
-                         bool use_comm_sw)
+                         const GpuArchType &arch_type, unsigned int max_reg_cnt)
 {
     const string &ark_root = get_env().path_root_dir;
     string arch;
@@ -149,10 +149,10 @@ const string gpu_compile(const vector<string> &codes,
         arch = "60";
     } else if (arch_type == GPU_ARCH_CUDA_70) {
         arch = "70";
-    } else if (arch_type == GPU_ARCH_CUDA_75) {
-        arch = "75";
     } else if (arch_type == GPU_ARCH_CUDA_80) {
         arch = "80";
+    } else if (arch_type == GPU_ARCH_CUDA_90) {
+        arch = "90";
     } else {
         arch = "";
     }
@@ -190,9 +190,7 @@ const string gpu_compile(const vector<string> &codes,
     }
     assert(items.size() == 1);
     para_exec<pair<string, string>>(
-        items, 20,
-        [&arch, &ark_root, max_reg_cnt,
-         use_comm_sw](pair<string, string> &item) {
+        items, 20, [&arch, &ark_root, max_reg_cnt](pair<string, string> &item) {
             string cu_file_path = item.second + ".cu";
             // Write CUDA code file.
             {
@@ -219,14 +217,17 @@ const string gpu_compile(const vector<string> &codes,
                 define_args << "-DARK_USE_MSCCLPP=1 ";
                 include_args << "-I" << get_env().mscclpp_include_dir << " ";
             }
-            exec_cmd << "-ccbin g++ -std c++17 -lcuda " <<
-                define_args.str() << include_args.str() <<
+            exec_cmd << "-ccbin g++ -std c++17 -lcuda "
+                "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
+                "--define-macro=ARK_COMM_SW=1 " <<
+                include_args.str() <<
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "
                 "-o " << item.second << ".cubin "
                 << cu_file_path << " 2>&1";
             // clang-format on
-            LOG(INFO, "Compiling ", cu_file_path);
+            double start = cpu_timer();
+            LOG(INFO, "Compiling: ", cu_file_path);
             LOG(DEBUG, exec_cmd.str());
             // Run the command.
             array<char, 4096> buffer;
@@ -243,6 +244,8 @@ const string gpu_compile(const vector<string> &codes,
             if (exec_print_str.size() > 0) {
                 LOG(ERROR, endl, exec_cmd.str(), endl, exec_print_str, endl);
             }
+            LOG(INFO, "Compile succeed: ", cu_file_path, " (",
+                cpu_timer() - start, " seconds)");
         });
     string cu_file_path = items[0].second + ".cu";
     string cubin_file_path = items[0].second + ".cubin";

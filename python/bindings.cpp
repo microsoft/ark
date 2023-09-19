@@ -41,7 +41,7 @@ PYBIND11_MODULE(_ark_core, m)
     m.attr("DIMS_LEN") = py::int_(static_cast<int>(ark::DIMS_LEN));
     m.attr("NO_DIM") = py::int_(static_cast<int>(ark::NO_DIM));
 
-    py::class_<ark::Dims>(m, "Dims", "Up-to-`DIMS_LEN`-dimensional vector.")
+    py::class_<ark::Dims>(m, "_Dims", "Up-to-`DIMS_LEN`-dimensional vector.")
         .def(py::init([](ark::DimType d0, ark::DimType d1, ark::DimType d2,
                          ark::DimType d3) {
                  return std::make_unique<ark::Dims>(d0, d1, d2, d3);
@@ -75,14 +75,14 @@ PYBIND11_MODULE(_ark_core, m)
         });
 
     py::enum_<ark::TensorType>(
-        m, "TensorType", "Type of tensor data. FP16, FP32, INT32, or BYTE")
+        m, "_TensorType", "Type of tensor data. FP16, FP32, INT32, or BYTE")
         .value("FP16", ark::TensorType::FP16)
         .value("FP32", ark::TensorType::FP32)
         .value("INT32", ark::TensorType::INT32)
         .value("BYTE", ark::TensorType::BYTE)
         .export_values();
 
-    py::class_<ark::TensorBuf>(m, "TensorBuf",
+    py::class_<ark::TensorBuf>(m, "_TensorBuf",
                                "TensorBuf refers to a data array that can be "
                                "shared by multiple tensors.")
         .def(py::init<const ark::DimType &, int>(), py::arg("bytes") = 0,
@@ -107,6 +107,14 @@ PYBIND11_MODULE(_ark_core, m)
                                    }
                                    return shape_list;
                                })
+        .def_property_readonly("ldims",
+                               [](const ark::Tensor &t) {
+                                   py::list ldims_list;
+                                   for (int i = 0; i < t.ndims(); ++i) {
+                                       ldims_list.append((int)t.ldims[i]);
+                                   }
+                                   return ldims_list;
+                               })
         .def_property_readonly("type",
                                [](const ark::Tensor &t) { return t.type; })
         .def("write", &tensor_write, py::arg("buf"),
@@ -129,7 +137,9 @@ PYBIND11_MODULE(_ark_core, m)
         .def("ldims_bytes", &ark::Tensor::ldims_bytes,
              "Should be the same as the number of bytes of the TensorBuf.")
         .def("offset_bytes", &ark::Tensor::offset_bytes, py::arg("i0") = 0,
-             py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0);
+             py::arg("i1") = 0, py::arg("i2") = 0, py::arg("i3") = 0)
+        .def("is_alloced", &ark::Tensor::is_alloced)
+        .def("is_sequential", &ark::Tensor::is_sequential);
 
     py::class_<ark::Model>(m, "_Model")
         .def(py::init<int>(), py::arg("rank") = 0)
@@ -143,27 +153,9 @@ PYBIND11_MODULE(_ark_core, m)
              py::arg("exported") = false, py::arg("imported_rank") = -1,
              py::arg("name") = "tensor")
         .def("reshape",
-             (ark::Tensor * (ark::Model::*)(ark::Tensor *, const ark::Dims &,
-                                            bool, ark::Tensor *,
-                                            const std::string &)) &
-                 ark::Model::reshape,
-             "Reshape `input` to `shape`. If one dimension of `shape` is -1, "
-             "it will be inferred from the `input`. If one dimension of "
-             "`shape` is 0, by default (`allowzero` is false), that dimension "
-             "is unchanged from the corresponding one of `input`. If "
-             "`allowzero` is true, that dimension is set to 0, which means "
-             "that the reshaped tensor is an empty tensor, i.e., `input` "
-             "should also be an empty tensor. If `allowzero` is true, `shape` "
-             "should not include both 0 and -1 at the same time. If `shape` is "
-             "an empty vector, `input` will be converted to a scalar.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("shape"), py::arg("allowzero") = false,
-             py::arg("output") = nullptr, py::arg("name") = "reshape")
-        .def("reshape",
-             (ark::Tensor * (ark::Model::*)(ark::Tensor *,
-                                            std::initializer_list<ark::DimType>,
-                                            bool, ark::Tensor *,
-                                            const std::string &)) &
+             (ark::Tensor *
+              (ark::Model::*)(ark::Tensor *, const std::vector<ark::DimType> &,
+                              bool, ark::Tensor *, const std::string &)) &
                  ark::Model::reshape,
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("shape"), py::arg("allowzero") = false,
@@ -203,6 +195,12 @@ PYBIND11_MODULE(_ark_core, m)
              "the normalized tensor as `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "layernorm")
+        .def("rmsnorm", &ark::Model::rmsnorm,
+             "Applies RMS (Root Mean Square Layer Normalization) normalization "
+             "to the `input` tensor and returns "
+             "the normalized tensor as `output`.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "rmsnorm")
         .def("softmax", &ark::Model::softmax,
              "Applies softmax activation to the `input` tensor, with the "
              "softmax operator being performed on the last dimension of the "
@@ -262,6 +260,12 @@ PYBIND11_MODULE(_ark_core, m)
              "Calculates the square root of the `input` tensor, element-wise.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "sqrt")
+        .def("rope", &ark::Model::rope,
+             "Performs rotary position embedding (RoPE) on the `input` "
+             "tensor",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("other"), py::arg("output") = nullptr,
+             py::arg("name") = "rope")
         .def("relu", &ark::Model::relu, "ReLU activation",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "relu")
@@ -370,15 +374,17 @@ PYBIND11_MODULE(_ark_core, m)
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
-             py::arg("name") = "all_reduce");
+             py::arg("name") = "all_reduce")
+        .def("embedding", &ark::Model::embedding, "Embedding layer.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("weight"), py::arg("output") = nullptr,
+             py::arg("name") = "embedding");
 
     py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")
-        .def(py::init<const int, int, int, ark::Model &, const std::string &,
-                      int>(),
-             py::arg("gpu_id"), py::arg("rank"), py::arg("world_size"),
-             py::arg("model"), py::arg("name"),
-             py::arg("num_warps_per_sm") = 16)
+        .def(py::init<int, int, ark::Model &, const std::string &, int>(),
+             py::arg("rank"), py::arg("world_size"), py::arg("model"),
+             py::arg("name"), py::arg("num_warps_per_sm") = 16)
         .def("compile", &ark::Executor::compile,
              "Compile the model. This must be called before `launch()`.")
         .def("launch", &ark::Executor::launch,

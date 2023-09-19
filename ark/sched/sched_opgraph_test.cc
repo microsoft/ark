@@ -5,6 +5,7 @@
 #include "logging.h"
 #include "sched_opgraph.h"
 #include "unittest/unittest_utils.h"
+#include <algorithm>
 
 ark::unittest::State test_sched_opgraph()
 {
@@ -530,7 +531,12 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     for (auto &user : node->users) {
         users.push_back(user);
     }
-    UNITTEST_EQ(users[0]->get_name(), "send_1;send_done_1;recv_1;");
+    std::sort(users.begin(), users.end(),
+              [](const ark::OpNode *a, const ark::OpNode *b) {
+                  return a->get_name() < b->get_name();
+              });
+
+    UNITTEST_EQ(users[0]->get_name(), "add;");
     UNITTEST_EQ(users[0]->producers.size(), 1UL);
     UNITTEST_EQ(users[0]->users.size(), 2UL);
 
@@ -544,6 +550,11 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     for (auto &user : node->users) {
         users.push_back(user);
     }
+    std::sort(users.begin(), users.end(),
+              [](const ark::OpNode *a, const ark::OpNode *b) {
+                  return a->get_name() < b->get_name();
+              });
+
     UNITTEST_EQ(users[0]->get_name(), "add_1;");
     UNITTEST_EQ(users[0]->producers.size(), 2UL);
     UNITTEST_EQ(users[0]->users.size(), 1UL);

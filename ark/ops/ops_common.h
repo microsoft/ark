@@ -106,6 +106,7 @@ typedef enum
     OP_REDUCE_W_MEAN,
     OP_REDUCE_W_MAX,
     OP_LAYERNORM,
+    OP_RMSNORM,
     OP_SOFTMAX,
     OP_SCALE,
     OP_RELU,
@@ -119,6 +120,7 @@ typedef enum
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    OP_ROPE,
     OP_IM2COL,
     OP_TRANSPOSE,
     OP_SEND,
@@ -129,12 +131,14 @@ typedef enum
     OP_SEND_MSCCLPP,
     OP_SEND_DONE_MSCCLPP,
     OP_RECV_MSCCLPP,
+    OP_EMBEDDING,
 } OpType;
 
 /// Type of precision of @ref Op.
 typedef enum
 {
     OP_PREC_NONE,
+    OP_PREC_ANY,
     OP_PREC_FP16,
     OP_PREC_FP32,
 } OpPrecType;
@@ -142,8 +146,11 @@ typedef enum
 /// Type of hardware architecture support.
 typedef enum
 {
+    OP_ARCH_CUDA_ANY,
+    OP_ARCH_CUDA_60,
     OP_ARCH_CUDA_70,
     OP_ARCH_CUDA_80,
+    OP_ARCH_CUDA_90,
 } OpArchType;
 
 struct Tensor;
@@ -178,7 +185,19 @@ bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
 bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
 /// Map from OpConfigKey to a list of OpConfigs.
-using OpConfigMap = std::map<OpConfigKey, std::vector<OpConfig>>;
+class OpConfigMap
+{
+  public:
+    OpConfigMap(std::initializer_list<
+                std::pair<const OpConfigKey, const std::vector<OpConfig>>>
+                    ilist);
+    ~OpConfigMap(){};
+
+    const std::vector<OpConfig> &get(const OpConfigKey &key) const;
+
+  private:
+    const std::map<OpConfigKey, const std::vector<OpConfig>> cfg_map;
+};
 
 /// Operator.
 class Op
@@ -319,6 +338,14 @@ class SqrtOp : public Op
     std::string function_name(const OpConfig &cfg) const;
 };
 
+class RopeOp : public Op
+{
+  public:
+    RopeOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
+           const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
 class Im2colOp : public Op
 {
   public:
@@ -334,6 +361,14 @@ class LayernormOp : public Op
   public:
     LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                 const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class RMSnormOp : public Op
+{
+  public:
+    RMSnormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+              const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
@@ -543,6 +578,14 @@ class TransposeOp : public Op
   public:
     TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                 int tp_type, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class EmbeddingOp : public Op
+{
+  public:
+    EmbeddingOp(OpPrecType prec_type, Tensor *input, Tensor *weight,
+                Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 

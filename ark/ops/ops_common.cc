@@ -48,6 +48,38 @@ bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2)
     return ops1.arch_type == ops2.arch_type && ops1.prec_type == ops2.prec_type;
 }
 
+OpConfigMap::OpConfigMap(
+    std::initializer_list<
+        std::pair<const OpConfigKey, const std::vector<OpConfig>>>
+        ilist)
+    : cfg_map{ilist}
+{
+}
+
+// A dummy OpConfig vector to return when no config is found
+static const std::vector<OpConfig> NoneConfigs;
+
+const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const
+{
+    auto search = this->cfg_map.find(key);
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({key.arch_type, OP_PREC_ANY});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, OP_PREC_ANY});
+    if (search == this->cfg_map.end()) {
+        return NoneConfigs;
+    }
+    return search->second;
+}
+
 ostream &operator<<(ostream &os, const OpType &s)
 {
     // clang-format off
@@ -78,6 +110,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_RECV:          os << "OP_RECV";          break;
     case OP_RECV_MM:       os << "OP_RECV_MM";       break;
     case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
+    case OP_RMSNORM:       os << "OP_RMSNORM";       break;
     case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
     case OP_RELU:          os << "OP_RELU";          break;
     case OP_SIGMOID:       os << "OP_SIGMOID";       break;
@@ -87,6 +120,8 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_SEND_MSCCLPP:      os << "OP_SEND_MSCCLPP";  break;
     case OP_SEND_DONE_MSCCLPP: os << "OP_SEND_DONE_MSCCLPP"; break;
     case OP_RECV_MSCCLPP:      os << "OP_RECV_MSCCLPP";  break;
+    case OP_ROPE:          os << "OP_ROPE";          break;
+    case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
     }
     // clang-format on
     return os;
@@ -464,6 +499,8 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const MscclppRecvOp *>(this)->function_name(cfg);
     case OP_LAYERNORM:
         return static_cast<const LayernormOp *>(this)->function_name(cfg);
+    case OP_RMSNORM:
+        return static_cast<const RMSnormOp *>(this)->function_name(cfg);
     case OP_SOFTMAX:
         return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
     case OP_RELU:
@@ -476,6 +513,10 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const ExpOp *>(this)->function_name(cfg);
     case OP_SQRT:
         return static_cast<const SqrtOp *>(this)->function_name(cfg);
+    case OP_ROPE:
+        return static_cast<const RopeOp *>(this)->function_name(cfg);
+    case OP_EMBEDDING:
+        return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
     default:
         return "";
     }

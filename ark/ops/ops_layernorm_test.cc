@@ -29,7 +29,7 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
     /* ark::Tensor *tns_y = */ model.layernorm(tns_x);
 
     //
-    ark::Executor exe{0, 0, 1, model, "test_layernorm"};
+    ark::Executor exe{0, 1, model, "test_layernorm"};
     exe.compile();
 
     // Set data.

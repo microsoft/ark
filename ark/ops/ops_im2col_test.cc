@@ -27,7 +27,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     UNITTEST_EQ(tns_y->ndims(), 3);
 
     //
-    ark::Executor exe{0, 0, 1, model, "test_im2col"};
+    ark::Executor exe{0, 1, model, "test_im2col"};
     exe.compile();
 
     // Set data.

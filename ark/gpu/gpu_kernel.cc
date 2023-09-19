@@ -71,7 +71,7 @@ GpuKernel::~GpuKernel()
 }
 
 //
-void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
+void GpuKernel::compile(const GpuInfo &gpu_info)
 {
     if (this->is_compiled()) {
         return;
@@ -83,8 +83,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
     }
     //
     if (this->cubin.empty()) {
-        this->cubin =
-            gpu_compile(this->codes, gpu_info.arch, max_reg_cnt, use_comm_sw);
+        this->cubin = gpu_compile(this->codes, gpu_info.arch, max_reg_cnt);
     }
 
     //
@@ -178,13 +177,13 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                 {},
                 {{0, sizeof(GpuPtr)}, {0, sizeof(GpuPtr)}},
                 cubin_},
-      ctx{ctx_}, timer_begin{ctx_->create_event(false, nullptr)},
-      timer_end{ctx_->create_event(false, nullptr)}
+      ctx{ctx_}, timer_begin{ctx_->create_event(false)}, timer_end{
+                                                             ctx_->create_event(
+                                                                 false)}
 {
     ctx_->set_current();
-    this->flag = make_unique<GpuMem>("", sizeof(int), true);
-    this->clocks =
-        make_unique<GpuMem>("", CLKS_CNT * sizeof(long long int), true);
+    this->flag = make_unique<GpuMem>(sizeof(int));
+    this->clocks = make_unique<GpuMem>(CLKS_CNT * sizeof(long long int));
     this->flag_href = (volatile int *)this->flag->href(0);
 
     *(GpuPtr *)this->params[0] = this->flag->ref(0);
@@ -251,7 +250,7 @@ void GpuLoopKernel::compile(const GpuInfo &gpu_info)
         return;
     }
     // Compile the code.
-    GpuKernel::compile(gpu_info, this->ctx->is_comm_sw());
+    GpuKernel::compile(gpu_info);
 }
 
 void GpuLoopKernel::load()
@@ -294,32 +293,26 @@ void GpuLoopKernel::load()
             cuModuleGetGlobal(&clks_ptr_addr, 0, this->module, ARK_CLKS_NAME));
         CULOG(cuMemcpyHtoD(clks_ptr_addr, &clks_ptr_val, sizeof(GpuPtr)));
         // set the data buffer pointers of remote gpus
-        if (this->ctx->is_comm_sw()) {
-            int nrph = get_env().num_ranks_per_host;
-            int nodes_id = this->ctx->get_gpu_id() / nrph;
-            // only set the GPU remote data buf pointers of the GPUs on the same
-            // node
-            for (int i = nodes_id * nrph;
-                 i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
-                 i++) {
-                GpuPtr data_buf_value = this->ctx->get_data_ref(i);
-                if (data_buf_value == 0) {
-                    continue;
-                }
-                GpuPtr data_buf_ptr;
-                string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-                CUresult _e = cuModuleGetGlobal(&data_buf_ptr, 0, this->module,
-                                                data_buf_name.c_str());
-                // in some test code the symbol _ARK_BUF_0 is not defined
-                if (_e == CUDA_ERROR_NOT_FOUND) {
-                    LOG(DEBUG, "global variable ", data_buf_name, " not found");
-                    continue;
-                }
-                // CULOG(_e);
-                LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex,
-                    data_buf_ptr, " data_buf_value=", data_buf_value);
-                CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value,
-                                   sizeof(GpuPtr)));
+
+        int nrph = get_env().num_ranks_per_host;
+        int nodes_id = this->ctx->get_gpu_id() / nrph;
+        // only set the GPU remote data buf pointers of the GPUs on the same
+        // node
+        for (int i = nodes_id * nrph;
+             i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
+             i++) {
+            GpuPtr data_buf_value = this->ctx->get_data_ref(i);
+            if (data_buf_value == 0) {
+                continue;
+            }
+            GpuPtr data_buf_ptr;
+            string data_buf_name = ARK_BUF_NAME + std::to_string(i);
+            CUresult _e = cuModuleGetGlobal(&data_buf_ptr, 0, this->module,
+                                            data_buf_name.c_str());
+            // in some test code the symbol _ARK_BUF_0 is not defined
+            if (_e == CUDA_ERROR_NOT_FOUND) {
+                LOG(DEBUG, "global variable ", data_buf_name, " not found");
+                continue;
             }
 #ifdef ARK_USE_MSCCLPP
             GpuCommSw *comm = this->ctx->get_comm_sw();
@@ -332,6 +325,10 @@ void GpuLoopKernel::load()
                 CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
             }
 #endif // ARK_USE_MSCCLPP
+            // CULOG(_e);
+            LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
+                " data_buf_value=", data_buf_value);
+            CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
     }
 }

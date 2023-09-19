@@ -40,3 +40,24 @@ add_custom_target(gpumem
     COMMAND chmod 666 /dev/gpumem
 )
 add_dependencies(gpumem tp-gpudma)
+
+# lcov
+find_program(LCOV lcov)
+if(LCOV)
+    message(STATUS "Found lcov: ${LCOV}")
+    add_custom_target(lcov
+        COMMAND ${LCOV} --directory . --capture --output-file coverage.info
+        COMMAND ${LCOV} --remove coverage.info
+            '/usr/*'
+            '/tmp/*'
+            '*/third_party/*'
+            '*/ark/*_test.*'
+            '*/examples/*'
+            '*/python/*'
+            '*/ark/unittest/unittest_utils.cc'
+            --output-file coverage.info
+        COMMAND ${LCOV} --list coverage.info
+    )
+else()
+    message(STATUS "lcov not found.")
+endif()

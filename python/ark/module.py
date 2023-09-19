@@ -1,10 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from .tensor import Tensor
 import logging
 import numpy as np
-from typing import Dict, Callable, Any
+from typing import Any, Dict
+from .tensor import Tensor
 
 
 class Module:
@@ -12,28 +12,11 @@ class Module:
     Base class for all neural network modules.
     """
 
-    # The submodules of the module.
-    sub_modules: Dict[str, "Module"]
-    # The parameters of the module.
-    parameters: Dict[str, Tensor]
-
     def __init__(self):
-        self.sub_modules = dict()
-        self.parameters = dict()
-
-    # Adds a child module to the current module.
-    def register_module(self, name: str, module: "Module") -> None:
-        if not isinstance(module, Module):
-            logging.error("module must be a Module")
-            raise TypeError("module must be a Module")
-        self.sub_modules[name] = module
-
-    # Adds a parameter to the module.
-    def register_parameter(self, name: str, param: Tensor) -> None:
-        if not isinstance(param, Tensor):
-            logging.error("param must be a Tensor")
-            raise TypeError("param must be a Tensor")
-        self.parameters[name] = param
+        # The submodules of the module.
+        self.sub_modules: dict[str, "Module"] = dict()
+        # The parameters of the module.
+        self.parameters: dict[str, Tensor] = dict()
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
@@ -48,6 +31,23 @@ class Module:
                 self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
+    def __call__(self, *args: Any, **kwargs: Any):
+        return self.forward(*args, **kwargs)
+
+    def register_module(self, name: str, module: "Module") -> None:
+        """Adds a child module to the current module."""
+        if not isinstance(module, Module):
+            logging.error("module must be a Module")
+            raise TypeError("module must be a Module")
+        self.sub_modules[name] = module
+
+    def register_parameter(self, name: str, param: Tensor) -> None:
+        """Adds a parameter to the module."""
+        if not isinstance(param, Tensor):
+            logging.error("param must be a Tensor")
+            raise TypeError("param must be a Tensor")
+        self.parameters[name] = param
+
     def load_state_dict(self, state_dict, prefix=""):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
@@ -60,7 +60,7 @@ class Module:
         for name, param in self.parameters.items():
             param.from_numpy(state_dict[prefix + name])
 
-    def state_dict(self, prefix=""):
+    def state_dict(self, prefix="") -> Dict[str, np.ndarray]:
         """
         Copies the parameters from the device GPU to the host and saves the model to a state_dict.
         Must be called after the executor is launched.
@@ -74,8 +74,8 @@ class Module:
             state_dict[prefix + name] = param_np
         return state_dict
 
-    forward: Callable[..., Any] = NotImplemented
-    backward: Callable[..., Any] = NotImplemented
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
+        ...
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.forward(*args, **kwds)
+    def backward(self, *args: Any, **kwargs: Any) -> Any:
+        ...

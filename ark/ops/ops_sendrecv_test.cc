@@ -4,6 +4,7 @@
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
+#include "ipc/ipc_coll.h"
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
@@ -24,12 +25,17 @@ void test_sendrecv_internal()
                 model.recv(tns_x, 0, 0);
             }
 
-            ark::Executor exe{gpu_id, gpu_id, 2, model, "test_sendrecv"};
+            ark::Executor exe{gpu_id, 2, model, "test_sendrecv"};
             exe.compile();
 
             exe.launch();
             exe.run(1);
             exe.stop();
+
+            int tmp[2];
+            ark::IpcAllGather barrier{"test_sendrecv_barrier", gpu_id, 2, tmp,
+                                      sizeof(int)};
+            barrier.sync();
             return ark::unittest::SUCCESS;
         });
     }

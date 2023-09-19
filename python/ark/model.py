@@ -1,15 +1,83 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ._ark_core import _Model, TensorBuf, TensorType, Dims
-from .tensor import Tensor
 import logging
-from typing import List
+from typing import List, Iterable
+
+from ._ark_core import _Model
+from .tensor import Dims, Tensor, TensorBuf
+from .data_type import DataType, fp32
+
+
+class _ModelState:
+    """
+    The _ModelState class is used to store the state of the model.
+    """
+
+    model: _Model = None
+    rank: int = 0
+    world_size: int = 1
+
+
+class Model:
+    """
+    Defines static methods to handle _ModelState.
+    """
+
+    @staticmethod
+    def get_model():
+        """
+        Get the underlying model.
+        """
+        if _ModelState.model is None:
+            _ModelState.model = _Model(_ModelState.rank)
+        return _ModelState.model
+
+    @staticmethod
+    def get_rank():
+        """
+        Get the rank of the model.
+        """
+        return _ModelState.rank
+
+    @staticmethod
+    def get_world_size():
+        """
+        Get the world size of the model.
+        """
+        return _ModelState.world_size
+
+    @staticmethod
+    def set_rank(rank: int):
+        """
+        Set the rank of the model.
+        """
+        _ModelState.rank = rank
+
+    @staticmethod
+    def set_world_size(world_size: int):
+        """
+        Set the world size of the model.
+        """
+        _ModelState.world_size = world_size
+
+    @staticmethod
+    def reset():
+        """
+        Reset the model state.
+        """
+        _ModelState.model = None
+        _ModelState.rank = 0
+        _ModelState.world_size = 1
+
+
+def _is_list_or_tuple(obj):
+    return isinstance(obj, list) or isinstance(obj, tuple)
 
 
 def tensor(
-    shape,
-    dtype: TensorType = TensorType.FP32,
+    shape: Iterable[int],
+    dtype: DataType = fp32,
     buf: TensorBuf = None,
     ldims: Dims = Dims(),
     offs: Dims = Dims(),
@@ -22,19 +90,17 @@ def tensor(
     """
     Construct a tensor with given shape and data type.
     Usage:
-    tensor = ark.tensor([1, 2, 3, 4], dtype=TensorType.FP32)
-    tensor = ark.tensor(ark.Dims(1, 2), dtype=TensorType.FP16)
+    tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
+    tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
-    # if shape is a list of integers, convert it to a Dims object
-    if isinstance(shape, list):
-        # only support tensors with up to 4 dimensions
-        if len(shape) > 4:
-            logging.error("Only support tensors with up to 4 dimensions")
-            raise ValueError("Only support tensors with up to 4 dimensions")
-        shape = Dims(*shape)
-    _tensor = Model.get_global_model().tensor(
-        shape,
-        dtype,
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if len(shape) > 4:
+        raise ValueError("Only support tensors with up to 4 dimensions")
+    _tensor = Model.get_model().tensor(
+        Dims(*shape),
+        dtype.ttype(),
         buf,
         ldims,
         offs,
@@ -49,7 +115,7 @@ def tensor(
 
 def reshape(
     input: Tensor,
-    shape: list,
+    shape: Iterable[int],
     allowzero: bool = False,
     output: Tensor = None,
     name: str = "reshape",
@@ -67,18 +133,15 @@ def reshape(
     # tensors shape is [128, 64]
     tensor = ark.reshape(tensor, [2, 64, 64])
     """
-    if isinstance(shape, list):
-        # only support tensors with up to 4 dimensions
-        if len(shape) > 4:
-            logging.error("Only support tensors with up to 4 dimensions")
-            raise ValueError("Only support tensors with up to 4 dimensions")
-        shape = Dims(*shape)
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if len(shape) > 4:
+        raise ValueError("Only support tensors with up to 4 dimensions")
     if output is not None:
         output = output._tensor
     input = input._tensor
-    _tensor = Model.get_global_model().reshape(
-        input, shape, allowzero, output, name
-    )
+    _tensor = Model.get_model().reshape(input, shape, allowzero, output, name)
     return Tensor(_tensor)
 
 
@@ -95,10 +158,9 @@ def identity(
     dep_tensor = []
     for dep in deps:
         if not isinstance(dep, Tensor):
-            logging.error("All dependencies should be tensors")
-            raise TypeError("All dependencies should be tensors")
+            raise TypeError("All dependencies should be a tensor")
         dep_tensor.append(dep._tensor)
-    _tensor = Model.get_global_model().identity(input._tensor, dep_tensor, name)
+    _tensor = Model.get_model().identity(input._tensor, dep_tensor, name)
     return Tensor(_tensor)
 
 
@@ -117,7 +179,7 @@ def sharding(
     # The first tensor's buffer is the same as the first 64 columns of tensor
     # The second tensor's buffer is the same as the last 64 columns of tensor
     """
-    _tensor_list = Model.get_global_model().sharding(
+    _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
     tensor_list = []
@@ -142,9 +204,7 @@ def reduce_sum(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().reduce_sum(
-        input._tensor, axis, output, name
-    )
+    _tensor = Model.get_model().reduce_sum(input._tensor, axis, output, name)
     return Tensor(_tensor)
 
 
@@ -162,9 +222,7 @@ def reduce_mean(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().reduce_mean(
-        input._tensor, axis, output, name
-    )
+    _tensor = Model.get_model().reduce_mean(input._tensor, axis, output, name)
     return Tensor(_tensor)
 
 
@@ -182,9 +240,7 @@ def reduce_max(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().reduce_max(
-        input._tensor, axis, output, name
-    )
+    _tensor = Model.get_model().reduce_max(input._tensor, axis, output, name)
     return Tensor(_tensor)
 
 
@@ -201,7 +257,24 @@ def layernorm(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().layernorm(input._tensor, output, name)
+    _tensor = Model.get_model().layernorm(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
+def rmsnorm(
+    input: Tensor,
+    output: Tensor = None,
+    name: str = "rmsnorm",
+) -> Tensor:
+    """
+    Applies RMS (Root Mean Square Layer Normalization) normalization
+    to the `input` tensor and returns the normalized tensor as `output`.
+    Usage:
+    tensor_rmsnorm = ark.rmsnorm(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().rmsnorm(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -217,7 +290,7 @@ def softmax(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().softmax(input._tensor, output, name)
+    _tensor = Model.get_model().softmax(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -238,8 +311,13 @@ def transpose(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().transpose(
-        input._tensor, perm, output, name
+    if not _is_list_or_tuple(perm):
+        raise ValueError("perm should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if len(perm) > 4:
+        raise ValueError("Only support perm up to 4 dimensions")
+    _tensor = Model.get_model().transpose(
+        input._tensor, Dims(*perm), output, name
     )
     return Tensor(_tensor)
 
@@ -249,8 +327,8 @@ def matmul(
     other: Tensor,
     output: Tensor = None,
     splitk: int = 1,
-    transpose_a: bool = False,
-    transpose_b: bool = False,
+    transpose_input: bool = False,
+    transpose_other: bool = False,
     name: str = "matmul",
     gran_lev: int = -1,
 ) -> Tensor:
@@ -265,13 +343,13 @@ def matmul(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().matmul(
+    _tensor = Model.get_model().matmul(
         input._tensor,
         other._tensor,
         output,
         splitk,
-        transpose_a,
-        transpose_b,
+        transpose_input,
+        transpose_other,
         name,
         gran_lev,
     )
@@ -299,7 +377,7 @@ def im2col(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().im2col(
+    _tensor = Model.get_model().im2col(
         input._tensor,
         kernel_height,
         kernel_width,
@@ -309,63 +387,6 @@ def im2col(
         pad_width,
         dilation_height,
         dilation_width,
-        output,
-        name,
-    )
-    return Tensor(_tensor)
-
-
-def conv2d(
-    input: Tensor,
-    in_channels: int,
-    out_channels: int,
-    kernel_size: list,
-    stride: list,
-    padding: list,
-    bias: bool = False,
-    output: Tensor = None,
-    name: str = "conv2d",
-) -> Tensor:
-    """
-    Implements a 2D convolution layer using the 'im2col' method.
-    """
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_global_model().conv2d(
-        input._tensor,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-        bias,
-        output,
-        name,
-    )
-    return Tensor(_tensor)
-
-
-def max_pool(
-    input: Tensor,
-    kernel_size: int,
-    stride: int,
-    output: Tensor = None,
-    name: str = "max_pool",
-) -> Tensor:
-    """
-    Applies max-pooling on the `input` tensor using `kernel_size`
-    and `stride`, reducing its spatial size. The output shape is
-    calculated based on the input tensor's shape and the stride
-    value as follows: {is[0], (is[1] + stride - 1) / stride, (is[2]
-    + stride - 1) / stride, is[3]}, where 'is' represents the input
-    tensor's shape.
-    """
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_global_model().max_pool(
-        input._tensor,
-        kernel_size,
-        stride,
         output,
         name,
     )
@@ -385,7 +406,7 @@ def scale(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().scale(
+    _tensor = Model.get_model().scale(
         input._tensor,
         val,
         output,
@@ -406,7 +427,7 @@ def exp(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().exp(input._tensor, output, name)
+    _tensor = Model.get_model().exp(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -422,7 +443,24 @@ def sqrt(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().sqrt(input._tensor, output, name)
+    _tensor = Model.get_model().sqrt(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
+def rope(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = None,
+    name: str = "rope",
+) -> Tensor:
+    """
+    Performs rotary position embedding (RoPE) on the `input` tensor
+    Usage:
+    tensor_mul = ark.rope(tensor1, tensor2)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().rope(input._tensor, other._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -439,7 +477,7 @@ def relu(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().relu(input._tensor, output, name)
+    _tensor = Model.get_model().relu(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -458,7 +496,7 @@ def gelu(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().gelu(input._tensor, output, name)
+    _tensor = Model.get_model().gelu(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -475,7 +513,7 @@ def sigmoid(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().sigmoid(input._tensor, output, name)
+    _tensor = Model.get_model().sigmoid(input._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -493,9 +531,7 @@ def add(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().add(
-        input._tensor, other._tensor, output, name
-    )
+    _tensor = Model.get_model().add(input._tensor, other._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -513,9 +549,7 @@ def sub(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().sub(
-        input._tensor, other._tensor, output, name
-    )
+    _tensor = Model.get_model().sub(input._tensor, other._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -533,9 +567,7 @@ def mul(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().mul(
-        input._tensor, other._tensor, output, name
-    )
+    _tensor = Model.get_model().mul(input._tensor, other._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -553,9 +585,7 @@ def div(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().div(
-        input._tensor, other._tensor, output, name
-    )
+    _tensor = Model.get_model().div(input._tensor, other._tensor, output, name)
     return Tensor(_tensor)
 
 
@@ -579,7 +609,9 @@ def send(
     # on GPU1:
     ark.recv(tensor, 1, 0)
     """
-    _tensor = Model.get_global_model().send(
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().send(
         input._tensor,
         id,
         dst_rank,
@@ -602,7 +634,7 @@ def send_done(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().send_done(
+    _tensor = Model.get_model().send_done(
         input._tensor,
         id,
         dst_rank,
@@ -627,7 +659,7 @@ def recv(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().recv(
+    _tensor = Model.get_model().recv(
         input._tensor,
         id,
         src_rank,
@@ -658,7 +690,7 @@ def send_mm(
     if output is not None:
         output = output._tensor
 
-    _tensor = Model.get_global_model().send_mm(
+    _tensor = Model.get_model().send_mm(
         input._tensor,
         id,
         gpu_dst,
@@ -683,7 +715,7 @@ def recv_mm(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().recv_mm(
+    _tensor = Model.get_model().recv_mm(
         input._tensor,
         id,
         gpu_src,
@@ -773,8 +805,8 @@ def recv_mscclpp(
 
 def all_gather(
     input: Tensor,
-    gpu_id: int,
-    gpu_num: int,
+    rank: int,
+    world_size: int,
     output: List[Tensor] = [],
     name: str = "all_gather",
 ) -> List[Tensor]:
@@ -783,7 +815,7 @@ def all_gather(
     Usage:
     # all-gather
     ark.init(rank, world_size)
-    input_tensor = ark.tensor([tensor_len], ark.TensorType.FP16)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
     # The all_gather operation will create the recv tensor shards and return
     them as a list. The allgather_result[rank] is the same as input_tensor
     allgather_result = ark.all_gather(input_tensor, rank, world_size)
@@ -791,7 +823,7 @@ def all_gather(
     # in-place all-gather
     ark.init(rank, world_size)
     output_tensor = ark.tensor(
-        [tensor_len * world_size], ark.TensorType.FP16
+        [tensor_len * world_size], ark.fp16
     )
     # Shard the output tensor into world_size shards
     output_shard = ark.sharding(output_tensor, 0, tensor_len)
@@ -802,10 +834,10 @@ def all_gather(
     )
     """
     output = [output_shard._tensor for output_shard in output]
-    tensor_shards = Model.get_global_model().all_gather(
+    tensor_shards = Model.get_model().all_gather(
         input._tensor,
-        gpu_id,
-        gpu_num,
+        rank,
+        world_size,
         output,
         name,
     )
@@ -814,44 +846,45 @@ def all_gather(
 
 def all_reduce(
     input: Tensor,
-    gpu_id: int,
-    gpu_num: int,
+    rank: int,
+    world_size: int,
     output: Tensor = None,
     name: str = "all_reduce",
 ) -> Tensor:
     """
     Performs an all-reduce operator across all GPUs, aggregating the
     input tensors. Takes the `input` tensor, the current GPU's
-    `gpu_id`, and the total number of GPUs `gpu_num`.
+    `rank`, and the total number of GPUs `world_size`.
     Usage:
     ark.init(rank, world_size)
-    input_tensor = ark.tensor([tensor_len], ark.TensorType.FP16)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
     allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().all_reduce(
+    _tensor = Model.get_model().all_reduce(
         input._tensor,
-        gpu_id,
-        gpu_num,
+        rank,
+        world_size,
         output,
         name,
     )
     return Tensor(_tensor)
 
 
-class Model(_Model):
-    """
-    The Model class will record the all operators and tensors defined
-    by the user.
-    """
-
-    # A global model object
-    global_model = None
-
-    @staticmethod
-    def get_global_model():
-        if Model.global_model is None:
-            logging.error("Model is not initialized")
-            raise RuntimeError("Model is not initialized")
-        return Model.global_model
+def embedding(
+    input: Tensor,
+    weight: Tensor,
+    output: Tensor = None,
+    name: str = "embedding",
+) -> Tensor:
+    """Embedding layer."""
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().embedding(
+        input._tensor,
+        weight._tensor,
+        output,
+        name,
+    )
+    return Tensor(_tensor)
