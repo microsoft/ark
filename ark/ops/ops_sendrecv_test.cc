@@ -8,7 +8,6 @@
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
-
 void test_sendrecv_internal()
 {
     for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
