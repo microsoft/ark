@@ -82,7 +82,7 @@ class RMSNorm(ark.Module):
         super().__init__()
         self.eps = eps
         self.dtype = dtype
-        self.weight = ark.Parameter(ark.tensor([dim], dtype))
+        self.weight = ark.parameter([dim], dtype)
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
@@ -118,9 +118,7 @@ class ColumnParallelLinear(ark.Module):
         self.local_rank = local_rank
         self.world_size = world_size
 
-        self.weight = ark.Parameter(
-            ark.tensor([out_dim // world_size, in_dim], dtype)
-        )
+        self.weight = ark.parameter([out_dim // world_size, in_dim], dtype)
 
     def forward(self, x):
         if self.world_size == 1:
@@ -182,9 +180,7 @@ class RowParallelLinear(ark.Module):
         self.local_rank = local_rank
         self.world_size = world_size
 
-        self.weight = ark.Parameter(
-            ark.tensor([out_dim, in_dim // world_size], dtype)
-        )
+        self.weight = ark.parameter([out_dim, in_dim // world_size], dtype)
 
     def forward(self, x):
         if self.world_size == 1:
@@ -220,7 +216,7 @@ class ParallelEmbedding(ark.Module):
         super().__init__()
         self.vocab_size = vocab_size
         self.dim = dim
-        self.weight = ark.Parameter(ark.tensor([vocab_size, dim], dtype))
+        self.weight = ark.parameter([vocab_size, dim], dtype)
 
     def forward(self, x):
         return ark.embedding(x, self.weight)
@@ -236,7 +232,7 @@ class Linear(ark.Module):
     ):
         super().__init__()
         self.dtype = dtype
-        self.weight = ark.Parameter(ark.tensor([out_dim, in_dim], dtype))
+        self.weight = ark.parameter([out_dim, in_dim], dtype)
 
     def forward(self, x):
         return ark.matmul(x, self.weight, transpose_other=True)

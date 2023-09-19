@@ -114,7 +114,7 @@ def test_module(
         state_dict = {
             k[len(prefix) :]: v.float().numpy().astype(dtype)
             for k, v in state_dict.items()
-            if k in param_names and k.startswith(prefix)
+            if k[len(prefix) :] in param_names and k.startswith(prefix)
         }
     else:
         # Create a random state_dict
