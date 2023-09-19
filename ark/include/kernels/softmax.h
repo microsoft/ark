@@ -4,6 +4,7 @@
 #ifndef ARK_KERNELS_SOFTMAX_H_
 #define ARK_KERNELS_SOFTMAX_H_
 
+#include "math_functions.h"
 #include "reduce.h"
 
 namespace ark {
@@ -24,7 +25,7 @@ template <typename InShape, typename OutShape> struct SoftmaxShapeChecker
 // Perform layer normalization on input and write the result on output.
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType, int NelemPerThread>
+          int SmemBytes, typename DataType, typename CompType, int NelemPerThread>
 struct Softmax
 {
     using UnitOp =
@@ -39,8 +40,8 @@ struct Softmax
                            int smem_per_warp)
     {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
-        using ReduceTypeMax = ReduceTypeMax<DataType, NelemPerThread>;
-        using ReduceTypeSum = ReduceTypeSum<DataType, NelemPerThread>;
+        using ReduceTypeMax = ReduceTypeMax<DataType, CompType, NelemPerThread>;
+        using ReduceTypeSum = ReduceTypeSum<DataType, CompType, NelemPerThread>;
 
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         // The reduction dimension of the final stage.
@@ -69,40 +70,36 @@ struct Softmax
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
         // get the max input.
-        DataType max_input;
-        ReduceTypeMax::singleIdentity(&max_input);
+        CompType max_input = ReduceTypeMax::singleIdentity();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            ReduceTypeMax::singleReduce(&max_input, &max_input, &in[idx_in]);
+            ReduceTypeMax::singleReduce(max_input, in[idx_in_base + idx_in_w]);
         }
         UnitOp::sync_threads();
 
         // final reduction on shared memory using warp shuffle.
         max_input = warpsReduce<ReduceTypeMax, UnitOp, ThreadsPerRow>(
             max_input, tid, smem_per_warp);
-        // get the max input.
-        ReduceTypeMax::singlePostReduce(&max_input, &max_input, UnitOutDims::W);
 
         // get the exp input sum, use float to avoid overflow.
-        DataType exp_sum_input;
-        ReduceTypeSum::singleIdentity(&exp_sum_input);
+        CompType exp_sum_input = ReduceTypeSum::singleIdentity();
         UnitOp::sync_threads();
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            exp_sum_input = exp_sum_input + expf(in[idx_in] - max_input);
+            CompType data = static_cast<CompType>(in[idx_in]);
+            exp_sum_input += Exp::compute(data - max_input);
         }
         UnitOp::sync_threads();
         exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
             exp_sum_input, tid, smem_per_warp);
-        ReduceTypeSum::singlePostReduce(&exp_sum_input, &exp_sum_input);
         UnitOp::sync_threads();
         // the output is
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = expf(in[idx_in] - max_input) / exp_sum_input;
+            CompType data = static_cast<CompType>(in[idx_in]);
+            out[idx_in] = Exp::compute(data - max_input) / exp_sum_input;
         }
     }
 };
@@ -114,7 +111,7 @@ DEVICE void softmax(float *out, float *in, int uop_idx, int smem_per_warp)
 {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
+            SmemBytes, float, float, NelemPerThread>::run(out, in, uop_idx,
                                                    smem_per_warp);
 }
 
@@ -126,7 +123,7 @@ DEVICE void softmax(ark::half *out, ark::half *in, int uop_idx,
 {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
+            SmemBytes, ark::half, float, NelemPerThread>::run(out, in, uop_idx,
                                                        smem_per_warp);
 }
 
