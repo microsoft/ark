@@ -24,6 +24,7 @@
 #include "ipc/ipc_socket.h"
 #include "net/net_ib.h"
 
+
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
@@ -420,7 +421,9 @@ void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
             mscclpp::Transport::IB6, mscclpp::Transport::IB7};
 
         const mscclpp::Transport ibTransport = IBs[gpu_id];
-        std::vector<std::shared_ptr<mscclpp::Connection>> connections;
+        std::vector<
+            mscclpp::NonblockingFuture<std::shared_ptr<mscclpp::Connection>>>
+            connections;
         const mscclpp::TransportFlags all_transports =
             mscclpp::Transport::CudaIpc | ibTransport;
         mscclpp::RegisteredMemory local_reg_memory = this->comm->registerMemory(
@@ -449,7 +452,7 @@ void GpuCommSw::Impl::configure(vector<pair<int, size_t>> &export_sid_offs,
                 mscclpp::deviceHandle(mscclpp::SimpleProxyChannel(
                     this->proxy_service->proxyChannel(
                         this->proxy_service->buildAndAddSemaphore(
-                            *(this->comm), connections[i])),
+                            *(this->comm), connections[i].get())),
                     this->proxy_service->addMemory(
                         remote_reg_memories[i].get()),
                     this->proxy_service->addMemory(local_reg_memory))));
