@@ -144,7 +144,7 @@ unittest::State test_gpu_mgr_remote()
         GpuBuf *gpu1_eid5 = ctx->mem_import(sizeof(int), 5, 1);
         GpuBuf *gpu1_eid6 = ctx->mem_import(sizeof(int), 6, 1);
 
-        ctx->freeze();
+        ctx->freeze(true);
 
         volatile int *ptr = (volatile int *)gpu0_eid3->href();
         while (*ptr != 7890) {
@@ -176,7 +176,7 @@ unittest::State test_gpu_mgr_remote()
         GpuBuf *gpu0_eid3 = ctx->mem_import(sizeof(int), 3, 0);
         GpuBuf *gpu0_eid4 = ctx->mem_import(sizeof(int), 4, 0);
 
-        ctx->freeze();
+        ctx->freeze(true);
 
         gpu_memset(gpu0_eid3, 7890, 1);
 

@@ -364,7 +364,7 @@ void GpuMgrCtx::reg_sendrecv(int sid, int remote_gpu_id, size_t bytes,
 }
 
 //
-void GpuMgrCtx::freeze()
+void GpuMgrCtx::freeze(bool expose)
 {
     //
     this->gpu_mgr->validate_total_bytes();
@@ -372,7 +372,7 @@ void GpuMgrCtx::freeze()
     //
     if (total_bytes > 0) {
         LOG(INFO, "Allocating ", total_bytes, " bytes of GPU memory");
-        this->data_mem.init(total_bytes, false);
+        this->data_mem.init(total_bytes, expose);
         // init the data mem
         CULOG(cuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
     }
