@@ -5,7 +5,7 @@ import logging
 from typing import List, Iterable
 
 from ._ark_core import _Model
-from .tensor import Dims, Tensor, TensorBuf
+from .tensor import Dims, Tensor, TensorBuf, Parameter
 from .data_type import DataType, fp32
 
 
@@ -111,6 +111,41 @@ def tensor(
         name,
     )
     return Tensor(_tensor)
+
+
+def parameter(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    buf: TensorBuf = None,
+    ldims: Dims = Dims(),
+    offs: Dims = Dims(),
+    pads: Dims = Dims(),
+    deps: list = [],
+    exported: bool = False,
+    imported_rank: int = -1,
+    name: str = "parameter",
+) -> Parameter:
+    """
+    Construct a parameter with given shape and data type.
+    """
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if len(shape) > 4:
+        raise ValueError("Only support tensors with up to 4 dimensions")
+    _tensor = Model.get_model().tensor(
+        Dims(*shape),
+        dtype.ttype(),
+        buf,
+        ldims,
+        offs,
+        pads,
+        deps,
+        exported,
+        imported_rank,
+        name,
+    )
+    return Parameter(_tensor)
 
 
 def reshape(

@@ -20,7 +20,6 @@ class Tensor:
             _tensor (_ark_core._Tensor): The underlying _Tensor object.
         """
         self._tensor = _tensor
-        self.is_parameter = False
 
     def shape(self) -> List[int]:
         """
@@ -121,17 +120,13 @@ class Tensor:
         return self
 
 
-def Parameter(
-    tensor: Tensor,
-) -> Tensor:
+class Parameter(Tensor):
     """
-    Set the tensor as a parameter.
-
-    Args:
-        tensor (Tensor): The tensor to set as a parameter.
-
-    Returns:
-        Tensor: The input tensor marked as a parameter.
+    A tensor as a parameter.
     """
-    tensor.is_parameter = True
-    return tensor
+
+    def __init__(self, _tensor: _Tensor):
+        """
+        Initializes a new instance of the Parameter class.
+        """
+        super().__init__(_tensor)
