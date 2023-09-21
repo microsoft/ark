@@ -536,6 +536,7 @@ class MscclppSendOp : public Op
                   int sid, int rank, int dst_rank, size_t bytes,
                   const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
+    // The args determined by the scheduler.
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 

@@ -430,8 +430,9 @@ void GpuCommSw::Impl::configure(
             } else {
                 transport = ibTransport;
             }
-            this->comm->sendMemoryOnSetup(local_reg_memory, r, 0);
+            // order is matter, we need to connect first and then send memory
             connections.push_back(this->comm->connectOnSetup(r, 0, transport));
+            this->comm->sendMemoryOnSetup(local_reg_memory, r, 0);
             auto remote_memory = this->comm->recvMemoryOnSetup(r, 0);
             remote_reg_memories.push_back(remote_memory);
         }

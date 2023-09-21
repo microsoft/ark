@@ -364,7 +364,7 @@ void GpuMgrCtx::freeze()
 
     //
     if (total_bytes > 0) {
-        LOG(INFO, "Allocating ", total_bytes, " bytes of GPU memory");
+        LOG(INFO, " Rank: ", this->rank, " allocating ", total_bytes, " bytes of GPU memory");
         this->data_mem.init(total_bytes, false);
         // init the data mem
         CULOG(cuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));

@@ -314,22 +314,22 @@ void GpuLoopKernel::load()
                 LOG(DEBUG, "global variable ", data_buf_name, " not found");
                 continue;
             }
-#ifdef ARK_USE_MSCCLPP
-            GpuCommSw *comm = this->ctx->get_comm_sw();
-            if (get_env().use_mscclpp && comm->get_proxy_channels_num() > 0) {
-                GpuPtr channel_addr;
-                CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
-                                        "_ARK_PROXY_CHANS"));
-                const void *chans_ref = comm->get_proxy_channels_ref();
-                size_t chans_bytes = comm->get_proxy_channels_bytes();
-                CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
-            }
-#endif // ARK_USE_MSCCLPP
             // CULOG(_e);
             LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
                 " data_buf_value=", data_buf_value);
             CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
+#ifdef ARK_USE_MSCCLPP
+        GpuCommSw *comm = this->ctx->get_comm_sw();
+        if (get_env().use_mscclpp && comm->get_proxy_channels_num() > 0) {
+            GpuPtr channel_addr;
+            CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
+                                    "_ARK_PROXY_CHANS"));
+            const void *chans_ref = comm->get_proxy_channels_ref();
+            size_t chans_bytes = comm->get_proxy_channels_bytes();
+            CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
+        }
+#endif // ARK_USE_MSCCLPP
     }
 }
 

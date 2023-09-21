@@ -18,7 +18,7 @@ void test_sendrecv_internal()
             ark::Model model{gpu_id};
             ark::Tensor *tns_x = model.tensor({1024}, ark::FP16);
             if (gpu_id == 0) {
-                tns_x = model.send(tns_x, 0, 1, 1024);
+                tns_x = model.send(tns_x, 0, 1, tns_x->shape_bytes());
                 model.send_done(tns_x, 0, 1);
             }
             if (gpu_id == 1) {
@@ -27,6 +27,13 @@ void test_sendrecv_internal()
 
             ark::Executor exe{gpu_id, 2, model, "test_sendrecv"};
             exe.compile();
+            if (gpu_id == 0) {
+                std::vector<ark::half_t> data(1024);
+                for (int i = 0; i < 1024; ++i) {
+                    data[i] = ark::half_t(i + 1);
+                }
+                tns_x->write(data.data());
+            }
 
             exe.launch();
             exe.run(1);
@@ -36,6 +43,14 @@ void test_sendrecv_internal()
             ark::IpcAllGather barrier{"test_sendrecv_barrier", gpu_id, 2, tmp,
                                       sizeof(int)};
             barrier.sync();
+
+            if (gpu_id == 1) {
+                std::vector<ark::half_t> data(1024);
+                tns_x->read(data.data());
+                for (int i = 0; i < 1024; ++i) {
+                    UNITTEST_EQ(data[i], ark::half_t(i + 1));
+                }
+            }
             return ark::unittest::SUCCESS;
         });
     }

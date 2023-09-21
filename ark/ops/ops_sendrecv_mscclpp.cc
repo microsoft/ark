@@ -54,8 +54,9 @@ OpArgs MscclppSendOp::function_call_args(const OpConfig &) const
     CHECK(recvbuf->buf != nullptr);
 
     OpArgs opargs;
-    opargs.put((int)(input->buf->get_buf_offset() + recvbuf->offset_bytes()));
-    opargs.put((int)(recvbuf->buf->get_buf_offset() + input->offset_bytes()));
+    // send_mscclpp(dst_offset, src_offset...)
+    opargs.put((int)(recvbuf->buf->get_buf_offset() + recvbuf->offset_bytes()));
+    opargs.put((int)(input->buf->get_buf_offset() + input->offset_bytes()));
     return opargs;
 }
 
@@ -175,7 +176,7 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "recv ", input->shape, " ", src_rank, " ", bytes);
+    LOG(DEBUG, "recv_mscclpp ", input->shape, " ", src_rank, " ", bytes);
     input->exported = true;
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
@@ -186,15 +187,10 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
 }
 
 const OpConfigMap MscclppConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 1}, {1, 1}}, {{1, 1}}, true, true},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_NONE},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 1}, {1, 1}}, {{1, 1}}, true, true},
+         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, true, true},
      }},
 };
 
