@@ -209,8 +209,8 @@ const string gpu_compile(const vector<string> &codes,
             stringstream define_args;
             stringstream include_args;
             // clang-format off
-            define_args << "-DARK_TARGET_CUDA_ARCH=" << arch << " "
-                        << "-DARK_COMM_SW=1" << " ";
+            define_args << "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
+                        << "--define-macro=ARK_COMM_SW=1 ";
             include_args << "-I" << ark_root << "/include "
                          << "-I" << ark_root << "/include/kernels ";
             if (get_env().use_mscclpp) {

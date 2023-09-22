@@ -24,6 +24,7 @@ from .serialize import save, load
 from .model import (
     Model,
     tensor,
+    parameter,
     reshape,
     identity,
     sharding,

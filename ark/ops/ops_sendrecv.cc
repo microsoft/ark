@@ -149,7 +149,6 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
                          const std::string &name)
 {
-    LOG(DEBUG, "send_done ", input->shape, " ", id);
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
