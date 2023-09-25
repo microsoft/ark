@@ -13,13 +13,13 @@ tensor_size = tensor_len * 2
 
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
-    # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
 
     # Define the behavior for rank 0
     if rank == 0:
-        send_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
+        send_tensor = ark.tensor([tensor_len], ark.fp16)
+        recv_tensor = ark.tensor([tensor_len], ark.fp16)
 
         # send the tensor to rank 1
         send_id, dst_rank = 0, 1
@@ -36,7 +36,7 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
     # Define the behavior for rank 1
     if rank == 1:
         # recv the tensor from rank 0
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
+        recv_tensor = ark.tensor([tensor_len], ark.fp16)
         recv_id, recv_rank = 0, 0
         recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
 
@@ -52,6 +52,9 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
         ark.send_done(
             ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
         )
+
+    # Initialize the ARK runtime
+    runtime = ark.Runtime()
 
     # Launch the ARK runtime
     runtime.launch()

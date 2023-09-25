@@ -13,16 +13,16 @@ TensorOp::TensorOp(const std::vector<Tensor *> &deps, Tensor *output,
 {
 }
 
-Tensor *Model::tensor(const Dims &shape, TensorType type, TensorBuf *buf,
-                      const Dims &ldims, const Dims &offs, const Dims &pads,
-                      const std::vector<Tensor *> &deps, bool exported,
-                      int imported_rank, const std::string &name)
+Tensor *Model::tensor(const Dims &shape, const TensorType &ttype,
+                      TensorBuf *buf, const Dims &ldims, const Dims &offs,
+                      const Dims &pads, const std::vector<Tensor *> &deps,
+                      bool exported, int imported_rank, const std::string &name)
 {
     if (buf == nullptr) {
         buf = this->impl->create_tensor_buf();
     }
     Tensor *ret =
-        new Tensor{shape,    type,          buf,
+        new Tensor{shape,    ttype,         buf,
                    ldims,    offs,          pads,
                    exported, imported_rank, (int)this->impl->tns_storage.size(),
                    name};

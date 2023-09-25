@@ -32,8 +32,8 @@ def convert_state_dict(state_dict: dict, type="numpy"):
 class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
-        self.weight_1 = ark.parameter(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
-        self.weight_2 = ark.parameter(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
+        self.weight_1 = ark.parameter([d_model, d_ff], ark.fp16)
+        self.weight_2 = ark.parameter([d_ff, d_model], ark.fp16)
 
     def forward(self, inputs):
         output = ark.matmul(inputs, self.weight_1)

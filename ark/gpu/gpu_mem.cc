@@ -51,8 +51,6 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
         LOG(ERROR, "gpumem driver is not loaded");
     }
 
-    int flag = 1;
-    CULOG(cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr));
     // Convert virtual into physical address.
     int fd = open(GPUMEM_DRIVER_PATH, O_RDWR, 0);
     if (fd < 0) {
@@ -162,6 +160,9 @@ void GpuMem::init(size_t bytes, bool expose)
     // Aligned address.
     addr_ =
         (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+
+    int one = 1;
+    CULOG(cuPointerSetAttribute(&one, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr_));
 
     ExposalInfo exp_info;
     if (expose) {

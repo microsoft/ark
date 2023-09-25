@@ -92,11 +92,12 @@ template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape,
           typename _DataType, int _NelemPerThread>
 struct Arithmetic
 {
-    using DataType = _DataType;
+    using InputType = _DataType;
+    using OutputType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
-    static DEVICE void compute(DataType *c, const DataType *a,
-                               const DataType *b)
+    static DEVICE void compute(_DataType *c, const _DataType *a,
+                               const _DataType *b)
     {
         *c = *a + *b;
         if (_In0Shape::W == 1) {
@@ -121,7 +122,8 @@ struct Arithmetic
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
 struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 2>
 {
-    using DataType = float;
+    using InputType = float;
+    using OutputType = float;
     static const int NelemPerThread = 2;
 
     static DEVICE void compute(float *c, const float *a, const float *b)
@@ -147,7 +149,8 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 2>
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
 struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
 {
-    using DataType = float;
+    using InputType = float;
+    using OutputType = float;
     static const int NelemPerThread = 4;
 
     static DEVICE void compute(float *c, const float *a, const float *b)
@@ -218,7 +221,8 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
 struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 2>
 {
-    using DataType = half;
+    using InputType = half;
+    using OutputType = half;
     static const int NelemPerThread = 2;
 
     static DEVICE void compute(half *c, const half *a, const half *b)
@@ -243,7 +247,8 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 2>
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
 struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 4>
 {
-    using DataType = half;
+    using InputType = half;
+    using OutputType = half;
     static const int NelemPerThread = 4;
 
     static DEVICE void compute(half *c, const half *a, const half *b)
@@ -283,7 +288,8 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 4>
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
 struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
 {
-    using DataType = half;
+    using InputType = half;
+    using OutputType = half;
     static const int NelemPerThread = 8;
 
     static DEVICE void compute(half *c, const half *a, const half *b)

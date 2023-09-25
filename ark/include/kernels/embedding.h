@@ -14,7 +14,8 @@ template <typename DataType> struct RoPE;
 
 template <> struct RoPE<float>
 {
-    using DataType = float;
+    using InputType = float;
+    using OutputType = float;
     static const int NelemPerThread = 2;
     static DEVICE void compute(float *c, const float *a, const float *b)
     {
@@ -28,7 +29,8 @@ template <> struct RoPE<float>
 
 template <> struct RoPE<half>
 {
-    using DataType = half;
+    using InputType = half;
+    using OutputType = half;
     static const int NelemPerThread = 2;
     static DEVICE void compute(half *c, const half *a, const half *b)
     {
@@ -64,9 +66,10 @@ DEVICE void rope(half *c, half *a, half *b, int uop_idx, int)
 
 template <typename _DataType> struct Assign
 {
-    using DataType = _DataType;
+    using InputType = _DataType;
+    using OutputType = _DataType;
     static const int NelemPerThread = 1;
-    static DEVICE void compute(DataType *c, const DataType *a)
+    static DEVICE void compute(_DataType *c, const _DataType *a)
     {
         *c = *a;
     }

@@ -73,7 +73,8 @@ struct Broadcast1
 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
-    using DataType = typename CompType::DataType;
+    using InputType = typename CompType::InputType;
+    using OutputType = typename CompType::OutputType;
     static const int NelemPerThread = CompType::NelemPerThread;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
@@ -84,7 +85,7 @@ struct Broadcast1
     /// @param out Output data.
     /// @param in1 Input data.
     /// @param uop_idx Index of the unit operator.
-    static DEVICE void run(DataType *out, const DataType *in, int uop_idx)
+    static DEVICE void run(OutputType *out, const InputType *in, int uop_idx)
     {
         using InOutChk = BroadcastShapeChecker1<InShape, OutShape>;
 
@@ -141,7 +142,8 @@ struct Broadcast2
 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
-    using DataType = typename CompType::DataType;
+    using InputType = typename CompType::InputType;
+    using OutputType = typename CompType::OutputType;
     static const int NelemPerThread = CompType::NelemPerThread;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
@@ -153,8 +155,8 @@ struct Broadcast2
     /// @param in0 Input data 0.
     /// @param in1 Input data 1.
     /// @param uop_idx Index of the unit operator.
-    static DEVICE void run(DataType *out, const DataType *in0,
-                           const DataType *in1, int uop_idx)
+    static DEVICE void run(OutputType *out, const InputType *in0,
+                           const InputType *in1, int uop_idx)
     {
         using InOutChk = BroadcastShapeChecker2<In0Shape, In1Shape, OutShape>;
 
