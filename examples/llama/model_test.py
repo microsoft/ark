@@ -119,7 +119,9 @@ def test_module(
     else:
         # Create a random state_dict
         state_dict = {
-            k: np.random.uniform(low=-0.1, high=0.1, size=v.size()).astype(dtype)
+            k: np.random.uniform(low=-0.1, high=0.1, size=v.size()).astype(
+                dtype
+            )
             for k, v in module_ark.params_dict().items()
         }
 
