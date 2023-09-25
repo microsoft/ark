@@ -77,7 +77,8 @@ struct Activation;
 template <typename _ActivationType, typename _InShape>
 struct Activation<_ActivationType, _InShape, half, 2>
 {
-    using DataType = half;
+    using InputType = half;
+    using OutputType = half;
     static const int NelemPerThread = 2;
 
     static DEVICE void compute(half *output, const half *input)
@@ -96,7 +97,8 @@ struct Activation<_ActivationType, _InShape, half, 2>
 template <typename _ActivationType, typename _InShape>
 struct Activation<_ActivationType, _InShape, float, 1>
 {
-    using DataType = float;
+    using InputType = float;
+    using OutputType = float;
     static const int NelemPerThread = 1;
 
     static DEVICE void compute(float *output, const float *input)

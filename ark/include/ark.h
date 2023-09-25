@@ -471,6 +471,9 @@ class Model
     /// Embedding layer.
     Tensor *embedding(Tensor *input, Tensor *weight, Tensor *output = nullptr,
                       const std::string &name = "embedding");
+    /// Tensor type casting.
+    Tensor *cast(Tensor *input, TensorType ttype, Tensor *output = nullptr,
+                 const std::string &name = "cast");
 
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.

@@ -848,3 +848,21 @@ def embedding(
         name,
     )
     return Tensor(_tensor)
+
+
+def cast(
+    input: Tensor,
+    dtype: DataType,
+    output: Tensor = None,
+    name: str = "cast",
+) -> Tensor:
+    """Type casting."""
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().cast(
+        input._tensor,
+        dtype.ttype(),
+        output,
+        name,
+    )
+    return Tensor(_tensor)

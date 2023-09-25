@@ -358,7 +358,11 @@ PYBIND11_MODULE(_ark_core, m)
         .def("embedding", &ark::Model::embedding, "Embedding layer.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("weight"), py::arg("output") = nullptr,
-             py::arg("name") = "embedding");
+             py::arg("name") = "embedding")
+        .def("cast", &ark::Model::cast, "Tensor type casting.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("ttype"), py::arg("output") = nullptr,
+             py::arg("name") = "cast");
 
     py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")
