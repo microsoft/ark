@@ -80,8 +80,8 @@ template <typename _InShape> struct Cast<_InShape, int, half, 2>
         } else {
             __half2 *pout = (__half2 *)output;
             int2 *pin = (int2 *)input;
-            *pout = __halves2half2(__int2half_rn(pin->x),
-                                   __int2half_rn(pin->y));
+            *pout =
+                __halves2half2(__int2half_rn(pin->x), __int2half_rn(pin->y));
         }
     }
 };

@@ -44,9 +44,9 @@ ark::unittest::State test_cast_fp16_to_int32()
         input_data[i] = ark::half_t((i + 1) % 1000);
     }
 
-    auto result = ark::op_test("cast_fp16_to_int32", m, {t}, {out},
-                               baseline_cast<ark::half_t, int>,
-                               {input_data.data()});
+    auto result =
+        ark::op_test("cast_fp16_to_int32", m, {t}, {out},
+                     baseline_cast<ark::half_t, int>, {input_data.data()});
     ark::op_test_log(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
@@ -77,8 +77,7 @@ ark::unittest::State test_cast_fp32_to_int32()
     }
 
     auto result = ark::op_test("cast_fp32_to_int32", m, {t}, {out},
-                               baseline_cast<float, int>,
-                               {input_data.data()});
+                               baseline_cast<float, int>, {input_data.data()});
     ark::op_test_log(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
@@ -96,8 +95,7 @@ ark::unittest::State test_cast_int32_to_fp32()
     }
 
     auto result = ark::op_test("cast_int32_to_fp32", m, {t}, {out},
-                               baseline_cast<int, float>,
-                               {input_data.data()});
+                               baseline_cast<int, float>, {input_data.data()});
     ark::op_test_log(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
@@ -114,9 +112,9 @@ ark::unittest::State test_cast_int32_to_fp16()
         input_data[i] = (i + 1) % 1000;
     }
 
-    auto result = ark::op_test("cast_int32_to_fp16", m, {t}, {out},
-                               baseline_cast<int, ark::half_t>,
-                               {input_data.data()});
+    auto result =
+        ark::op_test("cast_int32_to_fp16", m, {t}, {out},
+                     baseline_cast<int, ark::half_t>, {input_data.data()});
     ark::op_test_log(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
