@@ -56,6 +56,7 @@ from .model import (
     all_gather,
     all_reduce,
     embedding,
+    cast,
 )
 
 

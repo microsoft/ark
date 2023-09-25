@@ -74,13 +74,29 @@ PYBIND11_MODULE(_ark_core, m)
             return os.str();
         });
 
-    py::enum_<ark::TensorType>(
-        m, "_TensorType", "Type of tensor data. FP16, FP32, INT32, or BYTE")
-        .value("FP16", ark::TensorType::FP16)
-        .value("FP32", ark::TensorType::FP32)
-        .value("INT32", ark::TensorType::INT32)
-        .value("BYTE", ark::TensorType::BYTE)
-        .export_values();
+    py::class_<ark::TensorType>(m, "_TensorType", "Type of tensor data.")
+        .def(pybind11::self == pybind11::self)
+        .def(pybind11::self != pybind11::self)
+        .def("bytes", &ark::TensorType::bytes, "Number of bytes of this type.")
+        .def("name", &ark::TensorType::name, "Name of this type.");
+
+    py::class_<ark::Fp16, ark::TensorType>(m, "_Fp16", "16-bit floating point.")
+        .def(py::init<>());
+
+    py::class_<ark::Fp32, ark::TensorType>(m, "_Fp32", "32-bit floating point.")
+        .def(py::init<>());
+
+    py::class_<ark::Int32, ark::TensorType>(m, "_Int32", "32-bit integer.")
+        .def(py::init<>());
+
+    py::class_<ark::Byte, ark::TensorType>(m, "_Byte", "8-bit integer.")
+        .def(py::init<>());
+
+    m.attr("_FP16") = py::cast(&ark::FP16, py::return_value_policy::reference);
+    m.attr("_FP32") = py::cast(&ark::FP32, py::return_value_policy::reference);
+    m.attr("_INT32") =
+        py::cast(&ark::INT32, py::return_value_policy::reference);
+    m.attr("_BYTE") = py::cast(&ark::BYTE, py::return_value_policy::reference);
 
     py::class_<ark::TensorBuf>(m, "_TensorBuf",
                                "TensorBuf refers to a data array that can be "
@@ -92,9 +108,9 @@ PYBIND11_MODULE(_ark_core, m)
         .def_readwrite("immutable", &ark::TensorBuf::immutable);
 
     py::class_<ark::Tensor>(m, "_Tensor")
-        .def(py::init<const ark::Dims &, ark::TensorType, ark::TensorBuf *,
-                      const ark::Dims &, const ark::Dims &, const ark::Dims &,
-                      bool, int, int, const std::string &>(),
+        .def(py::init<const ark::Dims &, const ark::TensorType &,
+                      ark::TensorBuf *, const ark::Dims &, const ark::Dims &,
+                      const ark::Dims &, bool, int, int, const std::string &>(),
              py::arg("shape"), py::arg("type"), py::arg("buf"),
              py::arg("ldims"), py::arg("offs"), py::arg("pads"),
              py::arg("exported"), py::arg("imported_rank"), py::arg("id"),
@@ -146,7 +162,7 @@ PYBIND11_MODULE(_ark_core, m)
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
              py::return_value_policy::reference_internal, py::arg("shape"),
-             py::arg("dtype"), py::arg("buf") = nullptr,
+             py::arg("ttype"), py::arg("buf") = nullptr,
              py::arg("ldims") = ark::Dims(), py::arg("offs") = ark::Dims(),
              py::arg("pads") = ark::Dims(),
              py::arg("deps") = std::vector<ark::Tensor *>(),
@@ -358,7 +374,11 @@ PYBIND11_MODULE(_ark_core, m)
         .def("embedding", &ark::Model::embedding, "Embedding layer.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("weight"), py::arg("output") = nullptr,
-             py::arg("name") = "embedding");
+             py::arg("name") = "embedding")
+        .def("cast", &ark::Model::cast, "Tensor type casting.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("ttype"), py::arg("output") = nullptr,
+             py::arg("name") = "cast");
 
     py::class_<ark::Executor>(m, "_Executor",
                               "Convenience class for executing a model.")

@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 import numpy as np
-from ._ark_core import _TensorType
+from ._ark_core import _TensorType, _FP32, _FP16, _INT32, _BYTE
 
 
 class DataType:
@@ -21,13 +21,13 @@ class DataType:
 
     @staticmethod
     def from_ttype(ttype: _TensorType) -> "DataType":
-        if ttype == _TensorType.FP32:
+        if ttype == _FP32:
             return fp32
-        elif ttype == _TensorType.FP16:
+        elif ttype == _FP16:
             return fp16
-        elif ttype == _TensorType.INT32:
+        elif ttype == _INT32:
             return int32
-        elif ttype == _TensorType.BYTE:
+        elif ttype == _BYTE:
             return byte
         else:
             raise NotImplementedError
@@ -61,7 +61,7 @@ class fp32(DataType):
 
     @staticmethod
     def ttype() -> _TensorType:
-        return _TensorType.FP32
+        return _FP32
 
 
 class fp16(DataType):
@@ -71,7 +71,7 @@ class fp16(DataType):
 
     @staticmethod
     def ttype() -> _TensorType:
-        return _TensorType.FP16
+        return _FP16
 
 
 class int32(DataType):
@@ -81,7 +81,7 @@ class int32(DataType):
 
     @staticmethod
     def ttype() -> _TensorType:
-        return _TensorType.INT32
+        return _INT32
 
 
 class byte(DataType):
@@ -91,4 +91,4 @@ class byte(DataType):
 
     @staticmethod
     def ttype() -> _TensorType:
-        return _TensorType.BYTE
+        return _BYTE

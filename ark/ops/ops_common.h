@@ -129,6 +129,7 @@ typedef enum
     OP_SEND_MM,
     OP_RECV_MM,
     OP_EMBEDDING,
+    OP_CAST,
 } OpType;
 
 /// Type of precision of @ref Op.
@@ -554,6 +555,13 @@ class EmbeddingOp : public Op
   public:
     EmbeddingOp(OpPrecType prec_type, Tensor *input, Tensor *weight,
                 Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class CastOp : public Op
+{
+  public:
+    CastOp(Tensor *input, Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
