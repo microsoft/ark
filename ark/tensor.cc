@@ -22,8 +22,66 @@ size_t TensorBuf::get_buf_offset() const
     return static_cast<GpuBuf *>(this->buf)->get_offset();
 }
 
+TensorType::TensorType(int id, int bytes, const std::string &name,
+                       const std::string &pointer_name)
+    : id_{id}, bytes_{bytes}, name_{name}, pointer_name_{pointer_name}
+{
+}
+
+bool TensorType::operator==(const TensorType &other) const
+{
+    return id_ == other.id();
+}
+
+bool TensorType::operator!=(const TensorType &other) const
+{
+    return id_ != other.id();
+}
+
+int TensorType::id() const
+{
+    return id_;
+}
+
+int TensorType::bytes() const
+{
+    return bytes_;
+}
+
+const std::string &TensorType::name() const
+{
+    return name_;
+}
+
+const std::string &TensorType::pointer_name() const
+{
+    return pointer_name_;
+}
+
+std::ostream &operator<<(std::ostream &os, const TensorType &type)
+{
+    os << type.name();
+    return os;
+}
+
+Fp16::Fp16() : TensorType{0, 2, "fp16", "ark::half *"}
+{
+}
+
+Fp32::Fp32() : TensorType{1, 4, "fp32", "float *"}
+{
+}
+
+Int32::Int32() : TensorType{2, 4, "int32", "int *"}
+{
+}
+
+Byte::Byte() : TensorType{3, 1, "byte", "char *"}
+{
+}
+
 // Tensor constructor
-Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
+Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
                const Dims &ldims_, const Dims &offs_, const Dims &pads_,
                bool exported_, int imported_rank_, int id_,
                const std::string &name_)
@@ -148,16 +206,7 @@ int Tensor::ndims() const
 // Number of bytes of each element in the tensor.
 int Tensor::type_bytes() const
 {
-    if (this->type == FP16) {
-        return 2;
-    } else if (this->type == FP32) {
-        return 4;
-    } else if (this->type == INT32) {
-        return 4;
-    } else if (this->type == BYTE) {
-        return 1;
-    }
-    return 0;
+    return this->type.bytes();
 }
 
 // Number of bytes of the tensor.
@@ -390,28 +439,6 @@ void Tensor::clear()
     }
     assert(rem == 0);
     assert(done == num);
-}
-
-std::ostream &operator<<(std::ostream &os, TensorType type)
-{
-    switch (type) {
-    case BYTE:
-        os << "byte";
-        break;
-    case INT32:
-        os << "int32";
-        break;
-    case FP16:
-        os << "fp16";
-        break;
-    case FP32:
-        os << "fp32";
-        break;
-    default:
-        os << "none";
-        break;
-    }
-    return os;
 }
 
 } // namespace ark

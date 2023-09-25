@@ -1,10 +1,10 @@
 {
     "configurations": [
     {
-        "name": "ops_matmul_test",
+        "name": "ops_cast_test",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/build/ark/ops_matmul_test.cu",
+        "program": "${workspaceFolder}/build/ark/ops_cast_test",
         "args": [],
         "stopAtEntry": false,
         "cwd": "${fileDirname}",
@@ -12,6 +12,10 @@
             {
                 "name": "ARK_ROOT",
                 "value": "${workspaceFolder}/build"
+            },
+            {
+                "name": "ARK_LOG_LEVEL",
+                "value": "DEBUG"
             }
         ],
         "externalConsole": false,

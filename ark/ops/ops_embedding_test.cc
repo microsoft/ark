@@ -43,16 +43,16 @@ template <typename T> ark::unittest::State test_embedding()
     const int num_emb = 1000;
     const int emb_dim = 8192;
 
-    ark::TensorType weight_type;
+    const ark::TensorType *weight_type;
     if (std::is_same<T, float>::value) {
-        weight_type = ark::FP32;
+        weight_type = &ark::FP32;
     } else {
-        weight_type = ark::FP16;
+        weight_type = &ark::FP16;
     }
 
     ark::Model m;
     ark::Tensor *ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
-    ark::Tensor *tw = m.tensor(ark::Dims(num_emb, emb_dim), weight_type);
+    ark::Tensor *tw = m.tensor(ark::Dims(num_emb, emb_dim), *weight_type);
     ark::Tensor *to = m.embedding(ti, tw);
 
     ark::srand();

@@ -107,16 +107,59 @@ class TensorBuf
     friend class BaseScheduler;
 };
 
-// Type of tensor data.
-typedef enum
+/// Type of tensor data.
+class TensorType
 {
-    FP16,
-    FP32,
-    INT32,
-    BYTE,
-} TensorType;
+  private:
+    const int id_;
+    const int bytes_;
+    const std::string name_;
+    const std::string pointer_name_;
 
-std::ostream &operator<<(std::ostream &os, TensorType type);
+  public:
+    TensorType(int id = -1, int bytes = 0, const std::string &name = "none",
+               const std::string &pointer_name = "void *");
+
+    bool operator==(const TensorType &other) const;
+    bool operator!=(const TensorType &other) const;
+
+    int id() const;
+    int bytes() const;
+    const std::string &name() const;
+    const std::string &pointer_name() const;
+};
+
+class Fp16 : public TensorType
+{
+  public:
+    Fp16();
+};
+
+class Fp32 : public TensorType
+{
+  public:
+    Fp32();
+};
+
+class Int32 : public TensorType
+{
+  public:
+    Int32();
+};
+
+class Byte : public TensorType
+{
+  public:
+    Byte();
+};
+
+const TensorType NONE;
+const Fp16 FP16;
+const Fp32 FP32;
+const Int32 INT32;
+const Byte BYTE;
+
+std::ostream &operator<<(std::ostream &os, const TensorType &type);
 
 /// Tensor is a view of a TensorBuf.
 ///
@@ -134,7 +177,7 @@ class Tensor
 {
   public:
     /// Tensor constructor.
-    Tensor(const Dims &shape, TensorType type, TensorBuf *buf,
+    Tensor(const Dims &shape, const TensorType &type, TensorBuf *buf,
            const Dims &ldims, const Dims &offs, const Dims &pads, bool exported,
            int imported_rank, int id, const std::string &name);
     Tensor(const Tensor &) = default;
@@ -273,7 +316,7 @@ class Model
     /// Returns a tensor object.
     ///
     /// @param shape Shape of the tensor, where the data of interest is.
-    /// @param type Type of the tensor data.
+    /// @param ttype Type of the tensor data.
     /// @param buf The @ref TensorBuf that holds the entire data including the
     /// padding.
     /// @param ldims Leading dimensions (ldim) of the tensor, which may be
@@ -300,7 +343,7 @@ class Model
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
-    Tensor *tensor(const Dims &shape, TensorType dtype,
+    Tensor *tensor(const Dims &shape, const TensorType &ttype,
                    TensorBuf *buf = nullptr, const Dims &ldims = {},
                    const Dims &offs = {}, const Dims &pads = {},
                    const std::vector<Tensor *> &deps = {},
@@ -472,8 +515,8 @@ class Model
     Tensor *embedding(Tensor *input, Tensor *weight, Tensor *output = nullptr,
                       const std::string &name = "embedding");
     /// Tensor type casting.
-    Tensor *cast(Tensor *input, TensorType ttype, Tensor *output = nullptr,
-                 const std::string &name = "cast");
+    Tensor *cast(Tensor *input, const TensorType &ttype,
+                 Tensor *output = nullptr, const std::string &name = "cast");
 
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.

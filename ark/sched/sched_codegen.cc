@@ -75,17 +75,7 @@ std::ostream &CodeGenerator::sync_stream(std::ostream &os, int stream_id,
 ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const
 {
     size_t off = this->get_tensor_offset(tensor);
-    if (tensor->type == FP16) {
-        os << "(ark::half *)";
-    } else if (tensor->type == FP32) {
-        os << "(float *)";
-    } else if (tensor->type == INT32) {
-        os << "(int *)";
-    } else if (tensor->type == BYTE) {
-        os << "(void *)";
-    } else {
-        LOG(ERROR, "unknown tensor type");
-    }
+    os << "(" << tensor->type.pointer_name() << ")";
     std::string buf_name = ARK_BUF_NAME;
     if (tensor->imported_rank >= 0) {
         buf_name += std::to_string(tensor->imported_rank);
@@ -100,23 +90,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
     if (arg.type == OP_ARG_TENSOR) {
         Tensor *tns;
         arg.get(&tns);
-        switch (tns->type) {
-        case FP16:
-            os << "ark::half *" << name;
-            break;
-        case FP32:
-            os << "float *" << name;
-            break;
-        case INT32:
-            os << "int *" << name;
-            break;
-        case BYTE:
-            os << "void *" << name;
-            break;
-        default:
-            LOG(ERROR, "Not implemented");
-            break;
-        }
+        os << tns->type.pointer_name() << name;
     } else if (arg.type == OP_ARG_FLOAT) {
         os << "float " << name;
     } else if (arg.type == OP_ARG_INT) {
