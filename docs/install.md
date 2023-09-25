@@ -16,11 +16,6 @@
 
     - Compute capability 9.0 support will be added in the future.
 
-* To run ARK in a Docker container, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Add the following options in the `docker run` command:
-    ```
-    --privileged -v /dev:/dev -v /lib/modules:/lib/modules
-    ```
-
 * Mellanox OFED
 
 ## Docker Images
@@ -34,9 +29,25 @@ docker pull ghcr.io/microsoft/ark/ark:base-cuda12.1
 
 Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
+To run ARK in a Docker container, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Specifically, add `--privileged -v /dev:/dev -v /lib/modules:/lib/modules` in the `docker run` command. The following is an example.
+```
+docker run \
+    --privileged \
+    --cap-add=ALL \
+    --shm-size=1g \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    --net=host \
+    --ipc=host \
+    --gpus all \
+    -v /dev:/dev \
+    -v /lib/modules:/lib/modules \
+    -it --name [Container Name] [Image Name] bash
+```
+
 ## Install `gpudma`
 
-*NOTE: if you are using a Docker container, the following steps should be done on the host.*
+**NOTE: if you are using a Docker container, the steps in this section should be done on the host.**
 
 1. Pull submodules.
 
@@ -55,7 +66,7 @@ Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark
 3. Load `gpumem` driver.
 
     ```bash
-    sudo insmod third_party/gpudma/module/gpumem.ko
+    sudo insmod gpudma/module/gpumem.ko
     sudo chmod 666 /dev/gpumem
     ```
 
@@ -83,7 +94,7 @@ Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark
 
     ```bash
     cd examples/tutorial
-    python3 tutorial.py
+    python3 quickstart_tutorial.py
     ```
 
 ## (Optional) Install ARK C++ and Run Unit Tests
