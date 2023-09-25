@@ -8,7 +8,7 @@ Please refer to the [ARK Install Instructions](./install.md) to install ARK for 
 
 ## Quick Start Tutorial
 
-You can run a tutorial example at [tutorial.py](../examples/tutorial/quickstart_tutorial.py) to see how ARK works.
+You can run a tutorial example at [quickstart_tutorial.py](../examples/tutorial/quickstart_tutorial.py) to see how ARK works.
 
 ```bash
 python examples/tutorial/quickstart_tutorial.py
