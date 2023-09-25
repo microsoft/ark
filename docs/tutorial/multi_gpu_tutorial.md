@@ -43,15 +43,15 @@ for process in processes:
     process.join()
 ```
 
-The following is the main function for the two processes. We first use `ark.Runtime(rank, world_size)` to create the ARK runtime. The `rank` parameter is the rank of the process, and the `world_size` parameter is the number of processes. In ARK, we assume that one process corresponds to one GPU. 
+The following is the main function for the two processes. We first set the `rank` and `world_size` of the current process. In ARK, we assume that one process corresponds to one GPU. 
 
 
 
 ```python
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
-    # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
 ```
 
 
@@ -62,8 +62,8 @@ For more information about the `send` and `recv` operator, please refer to the [
 ```python
     # Define the behavior for rank 0
     if rank == 0:
-        send_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
+        send_tensor = ark.tensor([tensor_len], ark.fp16)
+        recv_tensor = ark.tensor([tensor_len], ark.fp16)
 
         # send the tensor to rank 1
         send_id, dst_rank = 0, 1
@@ -84,7 +84,7 @@ The following is the model definition for GPU1. Here, GPU1 receives the tensor f
     # Define the behavior for rank 1
     if rank == 1:
         # recv the tensor from rank 0
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
+        recv_tensor = ark.tensor([tensor_len], ark.fp16)
         recv_id, recv_rank = 0, 0
         recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
 
@@ -110,11 +110,14 @@ send_tensor = model.identity(recv_tensor, [recv_dep])
 
 This is because the send operation must be executed after the recv operation. In the current scheduler, if this dependency is not specified, the send operation may be executed before the recv operation, causing an error. We will improve the scheduler in the future to automatically handle this situation.
     
-Finally, we can use `runtime.launch()` to compile the kernel code and create contexts for each GPU. The connection between the two GPUs will be established automatically.
+Finally, we can launch the runtime to compile the kernel code and create contexts for each GPU. The connection between the two GPUs will be established automatically.
 
 After we lauch the ARK model, we need to copy the send tensor to GPU0 to initialize the send tensor. Then we can run the ARK program.
 
 ```python
+    # Construct the ARK runtime
+    runtime = ark.Runtime()
+
     # Launch the ARK runtime
     runtime.launch()
 

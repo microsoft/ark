@@ -45,8 +45,6 @@ class TestModelARK(ark.Module):
 Here, we can create this model and then launch it.
 
 ```python
-# Initialize the ARK runtime
-runtime = ark.Runtime()
 # Create an input tensor
 input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.fp16)
 
@@ -56,11 +54,14 @@ ark_model = TestModelARK()
 # Perform the forward pass
 output_tensor = ark_model(input_tensor)
 
+# Construct the ARK runtime
+runtime = ark.Runtime()
+
 # Launch the ARK runtime
 runtime.launch()
 ```
 
-The initialization of the model can be done using a state_dict. Note that the parameters of this model in the state_dict must have the same name as the parameters defined in the module. Then, we can use `load_state_dict` to import the parameters of this model.
+The initialization of the model can be done using a `state_dict`. Note that the parameters of this model in the `state_dict` must have the same name as the parameters defined in the module. Then, we can use `load_state_dict` to import the parameters of this model.
 
 ```python
 # Initialize the input tensor
@@ -69,7 +70,7 @@ input_tensor_host = (
 ).astype(np.float16)
 input_tensor.from_numpy(input_tensor_host)
     
-# Initialize the parameters of the ARK module using numpy state_dict
+# Initialize the parameters of the ARK module using numpy `state_dict`
 weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
     np.float16
 )
@@ -85,7 +86,7 @@ state_dict = {
 ark_model.load_state_dict(state_dict)
 ```
 
-If needed, we can save this state_dict using `save`. We provide a set of modules for saving and loading this model's parameters using Python's `pickle` library.
+If needed, we can save this `state_dict` using `save`. We provide a set of modules for saving and loading this model's parameters using Python's `pickle` library.
 
 ```python
 ark.save(ark_model.state_dict(), "test_model.pt")
@@ -144,9 +145,9 @@ torch_input = torch.from_numpy(input_tensor_host_float32)
 torch_model = TestModelPytorch()
 ```
 
-We can also convert ARK's state_dict into a PyTorch state_dict. This way, we can directly import the parameters of this model into the corresponding PyTorch model.
+We can also convert ARK's `state_dict` into a PyTorch `state_dict`. This way, we can directly import the parameters of this model into the corresponding PyTorch model.
 
-ARK state_dict's format is
+ARK `state_dict`'s format is
 ```
 {
     "weight_1": weight_1_numpy,

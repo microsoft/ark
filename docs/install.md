@@ -97,7 +97,7 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     ```bash
     mkdir build
     cd build
-    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local ..
     ```
 
 2. Build ARK.
