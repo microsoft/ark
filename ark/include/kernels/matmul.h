@@ -22,19 +22,22 @@ namespace ark {
 /// (m, n, k).
 /// @tparam LeadingDims (ark::Vec) The leading dimensions of matrix inputs
 /// and outputs. (lda, ldc, ldc, ldb).
+/// @tparam InnerLdimA (int) The leading dimension of the inner dimension of A.
+/// @tparam InnerLdimB (int) The leading dimension of the inner dimension of B.
 /// @tparam IsColumnA (bool) Whether matrix A is column-major.
 /// @tparam IsColumnB (bool) Whether matrix B is column-major.
 /// @tparam NumThreads (int) The number of threads per uop.
 /// @tparam SmemBytes (int) The size of shared memory per uop.
 ///
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
-          typename ProblemSize, typename LeadingDims, bool IsColumnA,
-          bool IsColumnB, int NumThreads, int SmemBytes>
+          typename ProblemSize, typename LeadingDims, int InnerLdimA,
+          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
+          int SmemBytes>
 DEVICE void matmul(float *C, float *A, float *B, int uop_idx, int smem_per_warp)
 {
-    gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, IsColumnA,
-         IsColumnB, NumThreads, SmemBytes, float, float, float, float>(
-        C, A, B, uop_idx, smem_per_warp);
+    gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
+         InnerLdimB, IsColumnA, IsColumnB, NumThreads, SmemBytes, float, float,
+         float, float>(C, A, B, uop_idx, smem_per_warp);
 }
 
 /// Matrix multiplication.
@@ -51,19 +54,22 @@ DEVICE void matmul(float *C, float *A, float *B, int uop_idx, int smem_per_warp)
 /// (m, n, k).
 /// @tparam LeadingDims (ark::Vec) The leading dimensions of matrix inputs
 /// and outputs. (lda, ldc, ldc, ldb).
+/// @tparam InnerLdimA (int) The leading dimension of the inner dimension of A.
+/// @tparam InnerLdimB (int) The leading dimension of the inner dimension of B.
 /// @tparam IsColumnA (bool) Whether matrix A is column-major.
 /// @tparam IsColumnB (bool) Whether matrix B is column-major.
 /// @tparam NumThreads (int) The number of threads per uop.
 /// @tparam SmemBytes (int) The size of shared memory per uop.
 ///
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
-          typename ProblemSize, typename LeadingDims, bool IsColumnA,
-          bool IsColumnB, int NumThreads, int SmemBytes>
+          typename ProblemSize, typename LeadingDims, int InnerLdimA,
+          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
+          int SmemBytes>
 DEVICE void matmul(half *C, half *A, half *B, int uop_idx, int smem_per_warp)
 {
-    gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, IsColumnA,
-         IsColumnB, NumThreads, SmemBytes, half, half, half, half>(
-        C, A, B, uop_idx, smem_per_warp);
+    gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
+         InnerLdimB, IsColumnA, IsColumnB, NumThreads, SmemBytes, half, half,
+         half, half>(C, A, B, uop_idx, smem_per_warp);
 }
 
 } // namespace ark

@@ -67,6 +67,9 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
     leading_dims[2] = ldims_y[ldims_y.ndims() - 1];
     leading_dims[3] = ldims_b[ndims_b - 1];
 
+    DimType in_ldim_a = ldims_a[ndims_a - 2];
+    DimType in_ldim_b = ldims_b[ndims_b - 2];
+
     // TODO: verify `leading_dims`
 
     const OpTile &tile_in0 = cfg.input_tiles[0];
@@ -82,6 +85,8 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
                                  shape,                // Shape
                                  problem_size,         // ProblemSize
                                  leading_dims,         // LeadingDims
+                                 in_ldim_a,            // InnerLdimA
+                                 in_ldim_b,            // InnerLdimB
                                  is_column_a,          // IsColumnA
                                  is_column_b,          // IsColumnB
                                  cfg.num_warps * 32,   // NumThreads
