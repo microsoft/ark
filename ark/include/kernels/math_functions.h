@@ -10,11 +10,15 @@ namespace ark {
 
 struct Exp
 {
-    static DEVICE float compute(float input)
+    static DEVICE float compute(const float &input)
     {
         return expf(input);
     }
-    static DEVICE __half2 compute(__half2 input)
+    static DEVICE __half compute(const __half &input)
+    {
+        return hexp(input);
+    }
+    static DEVICE __half2 compute(const __half2 &input)
     {
         return h2exp(input);
     }
@@ -22,13 +26,33 @@ struct Exp
 
 struct Sqrt
 {
-    static DEVICE float compute(float input)
+    static DEVICE float compute(const float &input)
     {
         return sqrtf(input);
     }
-    static DEVICE __half2 compute(__half2 input)
+    static DEVICE __half compute(const __half &input)
+    {
+        return hsqrt(input);
+    }
+    static DEVICE __half2 compute(const __half2 &input)
     {
         return h2sqrt(input);
+    }
+};
+
+struct Rsqrt
+{
+    static DEVICE float compute(const float &input)
+    {
+        return rsqrtf(input);
+    }
+    static DEVICE __half compute(const __half &input)
+    {
+        return hrsqrt(input);
+    }
+    static DEVICE __half2 compute(const __half2 &input)
+    {
+        return h2rsqrt(input);
     }
 };
 
