@@ -100,7 +100,9 @@ struct Arithmetic
                                const _DataType *b)
     {
         *c = *a + *b;
-        if (_In0Shape::W == 1) {
+        if (_In0Shape::W == 1 && _In1Shape::W == 1) {
+            // do nothing
+        } else if (_In0Shape::W == 1) {
 #pragma unroll
             for (int i = 1; i < NelemPerThread; ++i) {
                 c[i] = _ArithmeticType::compute(*a, b[i]);
@@ -128,18 +130,22 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 2>
 
     static DEVICE void compute(float *c, const float *a, const float *b)
     {
-        float2 *pc = (float2 *)c;
-        if (_In0Shape::W == 1) {
+        if (_In0Shape::W == 1 && _In1Shape::W == 1) {
+            *c = _ArithmeticType::compute(*a, *b);
+        } else if (_In0Shape::W == 1) {
             float2 *pb = (float2 *)b;
+            float2 *pc = (float2 *)c;
             pc->x = _ArithmeticType::compute(*a, pb->x);
             pc->y = _ArithmeticType::compute(*a, pb->y);
         } else if (_In1Shape::W == 1) {
             float2 *pa = (float2 *)a;
+            float2 *pc = (float2 *)c;
             pc->x = _ArithmeticType::compute(pa->x, *b);
             pc->y = _ArithmeticType::compute(pa->y, *b);
         } else {
             float2 *pa = (float2 *)a;
             float2 *pb = (float2 *)b;
+            float2 *pc = (float2 *)c;
             pc->x = _ArithmeticType::compute(pa->x, pb->x);
             pc->y = _ArithmeticType::compute(pa->y, pb->y);
         }
@@ -155,7 +161,9 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
 
     static DEVICE void compute(float *c, const float *a, const float *b)
     {
-        if (_In0Shape::W == 1) {
+        if (_In0Shape::W == 1 && _In1Shape::W == 1) {
+            *c = _ArithmeticType::compute(*a, *b);
+        } else if (_In0Shape::W == 1) {
             longlong2 reg_b;
             longlong2 reg_c;
             asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
@@ -227,19 +235,20 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 2>
 
     static DEVICE void compute(half *c, const half *a, const half *b)
     {
-        __half2 *pc = (__half2 *)c;
-        if (_In0Shape::W == 1) {
+        if (_In0Shape::W == 1 && _In1Shape::W == 1) {
+            *c = _ArithmeticType::compute(*a, *b);
+        } else if (_In0Shape::W == 1) {
             __half2 *pb = (__half2 *)b;
-            *pc =
+            *(__half2 *)c =
                 _ArithmeticType::compute(__half2half2(*(const __half *)a), *pb);
         } else if (_In1Shape::W == 1) {
             __half2 *pa = (__half2 *)a;
-            *pc =
+            *(__half2 *)c =
                 _ArithmeticType::compute(*pa, __half2half2(*(const __half *)b));
         } else {
             __half2 *pa = (__half2 *)a;
             __half2 *pb = (__half2 *)b;
-            *pc = _ArithmeticType::compute(*pa, *pb);
+            *(__half2 *)c = _ArithmeticType::compute(*pa, *pb);
         }
     }
 };
@@ -253,7 +262,9 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 4>
 
     static DEVICE void compute(half *c, const half *a, const half *b)
     {
-        if (_In0Shape::W == 1) {
+        if (_In0Shape::W == 1 && _In1Shape::W == 1) {
+            *c = _ArithmeticType::compute(*a, *b);
+        } else if (_In0Shape::W == 1) {
             uint64_t reg_b = *(uint64_t *)b;
             uint64_t reg_c;
             __half2 *pb = (__half2 *)&reg_b;
@@ -294,7 +305,9 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
 
     static DEVICE void compute(half *c, const half *a, const half *b)
     {
-        if (_In0Shape::W == 1) {
+        if (_In0Shape::W == 1 && _In1Shape::W == 1) {
+            *c = _ArithmeticType::compute(*a, *b);
+        } else if (_In0Shape::W == 1) {
             longlong2 reg_b;
             longlong2 reg_c;
             asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
