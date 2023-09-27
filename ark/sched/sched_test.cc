@@ -388,6 +388,24 @@ ark::unittest::State test_sched_many_comm_ops()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_mixed_precision()
+{
+    ark::Model m;
+    ark::Tensor *x0 = m.tensor({2, 128, 128}, ark::FP16);
+    ark::Tensor *x1 = m.scale(x0, 0.7);
+    ark::Tensor *x2 = m.cast(x1, ark::FP32);
+    ark::Tensor *x3 = m.tensor({2, 128, 128}, ark::FP32);
+    m.matmul(x2, x3);
+
+    ark::Executor exe{0, 1, m, "sched_mixed_precision"};
+    exe.compile();
+    exe.launch();
+    exe.run(3);
+    exe.stop();
+
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -396,5 +414,6 @@ int main()
     // UNITTEST(test_sched_gpt3);
     // UNITTEST(test_sched_comp_baseline);
     UNITTEST(test_sched_many_comm_ops);
+    UNITTEST(test_sched_mixed_precision);
     return 0;
 }

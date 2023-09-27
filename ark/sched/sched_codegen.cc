@@ -314,7 +314,7 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
         }
         --idx;
         os << "  ";
-        auto uop_map_it = uop_map.find(sop.function_name());
+        auto uop_map_it = uop_map.find(sop.serialize());
         if (uop_map_it != uop_map.end()) {
             this->uop(os, uop_map_it->second);
         } else {
