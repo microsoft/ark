@@ -64,6 +64,9 @@ struct Softmax
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
 
+        int idx_out_base = (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                           (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                           (tid_n + un * UnitOutDims::N) * OutDims::CHW;
         int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
@@ -76,7 +79,6 @@ struct Softmax
             int idx_in = idx_in_base + idx_in_w;
             ReduceTypeMax::singleReduce(&max_input, &max_input, &in[idx_in]);
         }
-        UnitOp::sync_threads();
 
         // final reduction on shared memory using warp shuffle.
         max_input = warpsReduce<ReduceTypeMax, UnitOp, ThreadsPerRow>(
@@ -86,23 +88,26 @@ struct Softmax
 
         // get the exp input sum, use float to avoid overflow.
         DataType exp_sum_input;
+        DataType cmp;
         ReduceTypeSum::singleIdentity(&exp_sum_input);
-        UnitOp::sync_threads();
+        ReduceTypeSum::singleIdentity(&cmp);
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            exp_sum_input = exp_sum_input + expf(in[idx_in] - max_input);
+            DataType val(expf(in[idx_in] - max_input) - cmp);
+            DataType tmp = exp_sum_input + val;
+            cmp = (tmp - exp_sum_input) - val;
+            exp_sum_input = tmp;
         }
-        UnitOp::sync_threads();
         exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
             exp_sum_input, tid, smem_per_warp);
         ReduceTypeSum::singlePostReduce(&exp_sum_input, &exp_sum_input);
-        UnitOp::sync_threads();
+
         // the output is
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = expf(in[idx_in] - max_input) / exp_sum_input;
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            int idx_out = idx_out_base + idx_w;
+            out[idx_out] = expf(in[idx_in] - max_input) / exp_sum_input;
         }
     }
 };
