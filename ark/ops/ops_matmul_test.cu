@@ -565,6 +565,22 @@ ark::unittest::State test_matmul_batched()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_matmul_batched_padded()
+{
+    ark::Model m;
+    ark::Tensor *a = m.tensor(ark::Dims(2, 1, 128), ark::FP16);
+    ark::Tensor *b = m.tensor(ark::Dims(2, 128, 1), ark::FP16);
+    ark::Tensor *c = m.matmul(a, b);
+
+    auto ones_a = ark::utils::ones<ark::half_t>(a->shape.size());
+    auto ones_b = ark::utils::ones<ark::half_t>(b->shape.size());
+    auto result = ark::op_test("matmul_batched_padded", m, {a, b}, {c},
+                               baseline_matmul_nn<half>,
+                               {ones_a.get(), ones_b.get()}, true);
+    ark::op_test_log(result);
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -577,6 +593,7 @@ int main()
     UNITTEST(test_matmul_tn);
     UNITTEST(test_matmul_tt);
     UNITTEST(test_matmul_batched);
+    UNITTEST(test_matmul_batched_padded);
 
     cublasDestroy(get_cublas_handle());
     return ark::unittest::SUCCESS;

@@ -791,9 +791,10 @@ DEVICE void gemm_cuda_90(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
 
 /// Row-major GeMM.
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
-          typename ProblemSize, typename LeadingDims, bool IsColumnA,
-          bool IsColumnB, int NumThreads, int SmemBytes, typename DataTypeA,
-          typename DataTypeB, typename DataTypeC, typename AccumulateType>
+          typename ProblemSize, typename LeadingDims, int InnerLdimA,
+          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
+          int SmemBytes, typename DataTypeA, typename DataTypeB,
+          typename DataTypeC, typename AccumulateType>
 DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                  int smem_per_warp)
 {
@@ -825,9 +826,9 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     constexpr int TileSizeN = Shape::D1;
     constexpr int TileSizeK = Shape::D2;
 
-    constexpr int SizeA = math::mul<ProblemSizeM, ProblemSizeK>::value;
-    constexpr int SizeB = math::mul<ProblemSizeN, ProblemSizeK>::value;
-    constexpr int SizeC = math::mul<ProblemSizeM, ProblemSizeN>::value;
+    constexpr int SizeA = math::mul<OutDims::H, InnerLdimA>::value;
+    constexpr int SizeB = math::mul<OutDims::W, InnerLdimB>::value;
+    constexpr int SizeC = math::mul<OutDims::H, OutDims::W>::value;
 
     int un = UnitOp::uop_idx_n(uop_idx);
     int uc = UnitOp::uop_idx_c(uop_idx);
