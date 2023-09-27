@@ -67,7 +67,7 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
     leading_dims[2] = ldims_y[ldims_y.ndims() - 1];
     leading_dims[3] = ldims_b[ndims_b - 1];
 
-    DimType in_ldim_a = ldims_a[ndims_a - 2];
+    DimType in_ldim_a = ldims_a[ndims_a - 1];
     DimType in_ldim_b = ldims_b[ndims_b - 2];
 
     // TODO: verify `leading_dims`
