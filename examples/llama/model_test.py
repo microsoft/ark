@@ -12,7 +12,7 @@ sys.path.append("llama")
 import llama.model as model_pt
 import model as model_ark
 import numpy as np
-from typing import Any, Dict, List
+from typing import Dict, List
 from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 
 
