@@ -22,21 +22,56 @@ void baseline_scale(std::vector<void *> &outputs,
     }
 };
 
+ark::unittest::State test_scale_fp32()
+{
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1), ark::FP32);
+        ark::Tensor *out = m.scale(t, SCALE_FACTOR);
+
+        auto result = ark::op_test("scale_fp32_small", m, {t}, {out},
+                                   baseline_scale<float>);
+        ark::op_test_log(result);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+        ark::Tensor *out = m.scale(t, SCALE_FACTOR);
+
+        auto result =
+            ark::op_test("scale_fp32", m, {t}, {out}, baseline_scale<float>);
+        ark::op_test_log(result);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_scale_fp16()
 {
-    ark::Model m;
-    ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
-    ark::Tensor *out = m.scale(t, SCALE_FACTOR);
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
+        ark::Tensor *out = m.scale(t, SCALE_FACTOR);
 
-    auto result =
-        ark::op_test("scale_fp16", m, {t}, {out}, baseline_scale<ark::half_t>);
-    ark::op_test_log(result);
+        auto result = ark::op_test("scale_fp16_small", m, {t}, {out},
+                                   baseline_scale<ark::half_t>);
+        ark::op_test_log(result);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+        ark::Tensor *out = m.scale(t, SCALE_FACTOR);
+
+        auto result = ark::op_test("scale_fp16", m, {t}, {out},
+                                   baseline_scale<ark::half_t>);
+        ark::op_test_log(result);
+    }
     return ark::unittest::SUCCESS;
 }
 
 int main()
 {
     ark::init();
+    UNITTEST(test_scale_fp32);
     UNITTEST(test_scale_fp16);
     return ark::unittest::SUCCESS;
 }
