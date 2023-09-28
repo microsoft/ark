@@ -382,7 +382,7 @@ def test_transformer(
 
     # Random input tokens
 
-    seed = 1695878986 #int(time.time())
+    seed = 1695878986  # int(time.time())
     print(f"seed: {seed}")
     np.random.seed(seed)
 
