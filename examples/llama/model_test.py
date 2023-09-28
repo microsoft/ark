@@ -120,8 +120,7 @@ def test_module(
             k: v.float().numpy().astype(dtype) for k, v in state_dict_pt.items()
         }
     else:
-        # Create a random state_dict
-        raise NotImplementedError
+        raise ValueError(f"Cannot find the given path: {pth_path}")
 
     # Run the ARK module
     output_ark = run_ark(
@@ -137,26 +136,38 @@ def test_module(
     # Compare the outputs
     eps = np.finfo(np.float64).eps
     for i, (o_ark, o_pt) in enumerate(zip(output_ark, output_pt)):
+        shape = o_ark.shape
         o_ark = o_ark.flatten().astype(np.float64)
         o_pt = o_pt.flatten().astype(np.float64)
+
+        max_value_idx = np.argmax(o_pt)
+        min_value_idx = np.argmin(o_pt)
 
         abs_diff = np.abs(o_ark - o_pt)
         max_abs_diff_idx = np.argmax(abs_diff)
         max_abs_diff = abs_diff[max_abs_diff_idx]
 
-        rel_diff = abs_diff / (np.abs(o_pt) + eps)
+        abs_pt = np.abs(o_pt)
+        rel_diff = abs_diff / (abs_pt + eps)
         max_rel_diff_idx = np.argmax(rel_diff)
         max_rel_diff = rel_diff[max_rel_diff_idx]
+
+        # max rel_diff where abs_pt is larger than 1e-3
+        max_rel_diff_3_idx = np.argmax(rel_diff * (abs_pt > 1e-3))
+        max_rel_diff_3 = rel_diff[max_rel_diff_3_idx]
 
         mean_square_error = np.mean(np.square(o_ark - o_pt))
 
         # Test info as string
-        test_info = f"{module_class_ark.__name__}: output {i}"
+        test_info = f"{module_class_ark.__name__}: output {i}, shape {shape}"
 
         print(
             test_info + "\n"
-            f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]})\n"
-            f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]})\n"
+            f"  max_pt: {o_pt[max_value_idx]} vs {o_ark[max_value_idx]} at index {max_value_idx}\n"
+            f"  min_pt: {o_pt[min_value_idx]} vs {o_ark[min_value_idx]} at index {min_value_idx}\n"
+            f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]} at index {max_abs_diff_idx})\n"
+            f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]} at index {max_rel_diff_idx})\n"
+            f"  max_rel_diff_3: {max_rel_diff_3:.4e} ({o_pt[max_rel_diff_3_idx]} vs {o_ark[max_rel_diff_3_idx]} at index {max_rel_diff_3_idx})\n"
             f"  mean_square_error: {mean_square_error:.4e}\n"
         )
 
@@ -371,6 +382,10 @@ def test_transformer(
 
     # Random input tokens
 
+    seed = 1695878986 #int(time.time())
+    print(f"seed: {seed}")
+    np.random.seed(seed)
+
     tokens = np.random.randint(
         low=0, high=args.vocab_size, size=(batch_size, seq_len)
     ).astype(np.int32)
@@ -433,8 +448,8 @@ if __name__ == "__main__":
     # Default from HuggingFace
     args.vocab_size = 32000
 
-    # For debugging
-    # args.n_layers = 8
+    # PyTorch model cannot run all layers due to OOM
+    args.n_layers = 24
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size

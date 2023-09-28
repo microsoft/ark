@@ -1,6 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""LLaMA 2 Transformer model.
+   Correspond to https://github.com/facebookresearch/llama/blob/main/llama/model.py
+"""
+
 import ark
 import math
 from dataclasses import dataclass
@@ -317,6 +321,7 @@ class Attention(ark.Module):
             args.n_heads if args.n_kv_heads is None else args.n_kv_heads
         )
         model_parallel_size = 1
+        self.dtype = dtype
         self.n_local_heads = args.n_heads // model_parallel_size
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
@@ -385,7 +390,11 @@ class Attention(ark.Module):
 
         if mask is not None:
             scores = ark.add(scores, mask)
+        if self.dtype == ark.fp16:
+            scores = ark.cast(scores, ark.fp32)
         scores = ark.softmax(scores)
+        if self.dtype == ark.fp16:
+            scores = ark.cast(scores, ark.fp16)
 
         output = ark.matmul(
             scores, values
