@@ -525,9 +525,9 @@ std::vector<std::string> DefaultScheduler::gen_code()
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
             int uop_id = (int)uop_map.size();
-            std::string sop_func_str = sop.function_name();
+            std::string sop_serial = sop.serialize();
             // Insert only if it does not exist
-            auto p = uop_map.emplace(sop_func_str, uop_id);
+            auto p = uop_map.emplace(sop_serial, uop_id);
             if (p.second) {
                 // If this is a new function, define it.
                 this->codegen->def_uop(code, sop, uop_id);

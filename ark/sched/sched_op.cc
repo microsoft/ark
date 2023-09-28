@@ -110,6 +110,36 @@ const string SchedOp::function_name() const
     return this->op->function_name(*this->cfg);
 }
 
+const string SchedOp::serialize() const
+{
+    // Serialize sop definition as a string.
+    std::stringstream ss;
+    ss << this->function_name() << ",";
+
+    OpArgs call_args = this->get_op()->function_call_args(*(this->get_cfg()));
+    for (const OpArg &arg : call_args.get_args()) {
+        if (arg.type == OP_ARG_TENSOR) {
+            Tensor *tns;
+            arg.get(&tns);
+            ss << tns->type.pointer_name();
+        } else if (arg.type == OP_ARG_FLOAT) {
+            ss << "float";
+        } else if (arg.type == OP_ARG_INT) {
+            ss << "int";
+        } else if (arg.type == OP_ARG_BOOL) {
+            ss << "bool";
+        } else if (arg.type == OP_ARG_INT64) {
+            ss << "long long int";
+        } else if (arg.type == OP_ARG_UINT64) {
+            ss << "uint64_t";
+        } else {
+            LOG(ERROR, "Not implemented");
+        }
+        ss << ",";
+    }
+    return ss.str();
+}
+
 bool SchedOp::is_virtual() const
 {
     return this->cfg == nullptr;

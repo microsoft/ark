@@ -26,10 +26,9 @@ void baseline_rmsnorm(std::vector<void *> &outputs,
             for (ark::DimType h = 0; h < ish[2]; ++h) {
                 float square_sum = 0;
                 for (ark::DimType w = 0; w < ish[3]; ++w) {
-
                     float val =
-                        (float)input[n * ish[1] * ish[2] * ish[3] +
-                                     c * ish[2] * ish[3] + h * ish[3] + w];
+                        float(input[n * ish[1] * ish[2] * ish[3] +
+                                    c * ish[2] * ish[3] + h * ish[3] + w]);
                     square_sum += val * val;
                 }
                 float eps = 1e-5;
@@ -37,8 +36,8 @@ void baseline_rmsnorm(std::vector<void *> &outputs,
                 for (ark::DimType w = 0; w < ish[3]; ++w) {
                     out[n * osh[1] * osh[2] * osh[3] + c * osh[2] * osh[3] +
                         h * osh[3] + w] =
-                        T(input[n * osh[1] * osh[2] * osh[3] +
-                                c * osh[2] * osh[3] + h * osh[3] + w] /
+                        T(float(input[n * osh[1] * osh[2] * osh[3] +
+                                      c * osh[2] * osh[3] + h * osh[3] + w]) /
                           rms);
                 }
             }

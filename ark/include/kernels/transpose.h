@@ -73,12 +73,12 @@ struct Transpose0231
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_n * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
-              idx_c;
+        in += idx_n * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -98,12 +98,12 @@ struct Transpose0312
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_n * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
-              idx_h;
+        in += idx_n * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
+            out[i] = in[i * InDims::W];
         }
     }
 };
@@ -198,7 +198,7 @@ struct Transpose1203
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
+        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_c * InDims::W +
               idx_w;
         *out = *in;
 #pragma unroll
@@ -223,12 +223,12 @@ struct Transpose1230
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
-              idx_n;
+        in += idx_w * InDims::CHW + idx_n * InDims::HW + idx_c * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -248,12 +248,12 @@ struct Transpose1302
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
-              idx_h;
+        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_w * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
+            out[i] = in[i * InDims::W];
         }
     }
 };
@@ -273,12 +273,12 @@ struct Transpose1320
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_h * InDims::W +
-              idx_n;
+        in += idx_w * InDims::CHW + idx_n * InDims::HW + idx_h * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -298,7 +298,7 @@ struct Transpose2013
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_c * InDims::W +
+        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
               idx_w;
         *out = *in;
 #pragma unroll
@@ -323,12 +323,12 @@ struct Transpose2031
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_w * InDims::W +
-              idx_c;
+        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -373,12 +373,12 @@ struct Transpose2130
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_w * InDims::W +
-              idx_n;
+        in += idx_w * InDims::CHW + idx_c * InDims::HW + idx_n * InDims::W +
+              idx_h;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -423,12 +423,12 @@ struct Transpose2310
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
-              idx_n;
+        in += idx_w * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
+            out[i] = in[i * InDims::CHW];
         }
     }
 };
@@ -448,12 +448,12 @@ struct Transpose3012
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_w * InDims::CHW + idx_n * InDims::HW + idx_c * InDims::W +
-              idx_h;
+        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::CHW];
+            out[i] = in[i * InDims::W];
         }
     }
 };
@@ -473,12 +473,12 @@ struct Transpose3021
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_w * InDims::CHW + idx_n * InDims::HW + idx_h * InDims::W +
-              idx_c;
+        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_h * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::CHW];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
@@ -498,12 +498,12 @@ struct Transpose3102
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_w * InDims::CHW + idx_c * InDims::HW + idx_n * InDims::W +
-              idx_h;
+        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_w * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::CHW];
+            out[i] = in[i * InDims::W];
         }
     }
 };
@@ -548,12 +548,12 @@ struct Transpose3201
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_w * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
-              idx_c;
+        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
+              idx_n;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::CHW];
+            out[i] = in[i * InDims::HW];
         }
     }
 };

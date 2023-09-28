@@ -59,6 +59,9 @@ struct LayerNorm
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
 
+        int idx_out_base = (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                           (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                           (tid_n + un * UnitOutDims::N) * OutDims::CHW;
         int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
@@ -70,7 +73,6 @@ struct LayerNorm
             int idx_in = idx_in_base + idx_in_w;
             ReduceTypeMean::singleReduce(&reduced, &reduced, &in[idx_in]);
         }
-        UnitOp::sync_threads();
         // final reduction on shared memory using warp shuffle.
         reduced = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             reduced, tid, smem_per_warp);
@@ -79,22 +81,20 @@ struct LayerNorm
         DataType variance;
         ReduceTypeMean::singleIdentity(&variance);
         // get the variance
-        UnitOp::sync_threads();
+        // TODO: Kahan sum
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
-        UnitOp::sync_threads();
         variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             variance, tid, smem_per_warp);
         ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutDims::W);
-        UnitOp::sync_threads();
         // the output is (input - mean) / sqrt(variance)
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            int idx_out = idx_out_base + idx_w;
+            out[idx_out] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
         }
     }
 };
@@ -162,29 +162,37 @@ struct RMSNorm
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
 
+        int idx_out_base = (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                           (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                           (tid_n + un * UnitOutDims::N) * OutDims::CHW;
         int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
-        DataType variance;
-        ReduceTypeMean::singleIdentity(&variance);
-        // get the variance
-        UnitOp::sync_threads();
+        // calculate mean square
+        DataType mean_square;
+        DataType cmp;
+        ReduceTypeMean::singleIdentity(&mean_square);
+        ReduceTypeMean::singleIdentity(&cmp);
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            variance += (in[idx_in]) * (in[idx_in]);
+            DataType in_val = in[idx_in];
+            DataType val = in_val * in_val - cmp;
+            DataType tmp = mean_square + val;
+            cmp = (tmp - mean_square) - val;
+            mean_square = tmp;
         }
-        UnitOp::sync_threads();
-        variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
-            variance, tid, smem_per_warp);
-        ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutDims::W);
-        UnitOp::sync_threads();
-        // the output is (input - mean) / sqrt(variance)
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = (in[idx_in]) * rsqrtf(variance + 1e-5f);
+        mean_square = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
+            mean_square, tid, smem_per_warp);
+        ReduceTypeMean::singlePostReduce(&mean_square, &mean_square,
+                                         UnitOutDims::W);
+        // the output is (input - mean) / sqrt(mean_square)
+        DataType rrms(rsqrtf(mean_square + 1e-5f));
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            int idx_out = idx_out_base + idx_w;
+            out[idx_out] = (in[idx_in]) * rrms;
         }
     }
 };
