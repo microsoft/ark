@@ -234,32 +234,12 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     }
 
     // Split the inner dimension.
-    Tensor *output_buffer;
-    vector<Tensor *> mat_y_shards;
-    if (mat_y->shape.ndims() == 4) {
-        output_buffer =
-            this->tensor({ncc[0] * split_k, ncc[1], m, n}, mat_y->type);
-        mat_y_shards =
-            this->sharding(output_buffer, 0, ncc[0], name + "/sharding_mat_y");
-    } else {
-        output_buffer = this->tensor({ncc[1] * split_k, m, n}, mat_y->type);
-        mat_y_shards =
-            this->sharding(output_buffer, 0, ncc[1], name + "/sharding_mat_y");
-    }
-    for (size_t i = 0; i < mat_y_shards.size(); ++i) {
-        Tensor *t = mat_y_shards[i];
-        // If the output dimension is not matching, drop the leading 1s.
-        if (t->shape.ndims() != output_shape.ndims()) {
-            Dims new_shape = t->shape;
-            while (new_shape.ndims() != output_shape.ndims()) {
-                if (new_shape[0] != 1) {
-                    LOG(ERROR, "invalid shard shape: ", t->shape);
-                }
-                new_shape.erase(0);
-            }
-            mat_y_shards[i] = this->reshape(t, new_shape);
-        }
-    }
+    Dims split_output_shape = output_shape;
+    split_output_shape[0] *= split_k;
+    Tensor *output_buffer = this->tensor(split_output_shape, mat_y->type);
+    vector<Tensor *> mat_y_shards =
+        this->sharding(output_buffer, 0, output_shape[0],
+                       name + "/sharding_mat_y");
 
     int axis_a;
     int axis_b;
@@ -273,6 +253,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     } else {
         axis_b = (ndims_b == 1) ? (ndims_b - 1) : (ndims_b - 2);
     }
+
     vector<Tensor *> mat_a_shards =
         this->sharding(mat_a, axis_a, spu, name + "/sharding_mat_a");
     vector<Tensor *> mat_b_shards =
@@ -290,9 +271,16 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
+    Dims reduce_input_shape{split_k, ncc[0] * ncc[1], m, n};
     Tensor *ref =
         this->identity(output_buffer, shard_outputs, name + "/identity");
-    return this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
+    ref = this->reshape(ref, reduce_input_shape);
+    mat_y = this->reshape(mat_y, Dims{ncc[0] * ncc[1], m, n});
+    Tensor *red = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
+    if (red->shape != output_shape) {
+        return this->reshape(red, output_shape);
+    }
+    return red;
 }
 
 const OpConfigMap MatmulConfigMap = {

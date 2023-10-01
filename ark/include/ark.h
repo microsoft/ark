@@ -379,6 +379,9 @@ class Model
     // Performs reduction along the `axis` of the `input` tensor and stores the
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
+    template <typename ReduceOpType>
+    Tensor *reduce(Tensor *input, int axis, Tensor *output = nullptr,
+                   const std::string &name = "reduce");
     Tensor *reduce_sum(Tensor *input, int axis, Tensor *output = nullptr,
                        const std::string &name = "reduce_sum");
     Tensor *reduce_mean(Tensor *input, int axis, Tensor *output = nullptr,

@@ -137,6 +137,13 @@ void Model::Impl::delete_op(Op *op)
         }
         search->second.erase(op);
     }
+    for (auto &tns : op->output_refs) {
+        auto search = this->tns_to_users.find(tns);
+        if (search == this->tns_to_users.end()) {
+            LOG(ERROR, "Not an existing tensor.");
+        }
+        search->second.erase(op);
+    }
     // Remove the operator from the set of operators that have the given tensor
     // as its output.
     for (auto &tns : op->outputs) {

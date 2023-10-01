@@ -121,11 +121,11 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
         // No optimization is needed.
         return;
     }
-    LOG(DEBUG, "Optimize matmul %s with split_k=%d.", matmul_op.name, split_k);
+    LOG(DEBUG, "Optimize matmul ", matmul_op.name, " with split_k=", split_k);
 
     Tensor *input_a = matmul_op.inputs[0];
     Tensor *input_b = matmul_op.inputs[1];
-    Tensor *output = matmul_op.outputs[0];
+    Tensor *output = matmul_op.output_refs[0];
     bool is_column_a;
     bool is_column_b;
     matmul_op.args.get(&is_column_a, 4);
@@ -289,6 +289,13 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         item.num_uops = opseq->get_tdims_size();
         item.num_warps_per_uop = opseq->get_num_warps();
         item.smem_bytes_per_uop = aligned_smem_bytes;
+        if (item.num_uops <= 0) {
+            LOG(ERROR, "unexpected error: num_uops <= 0");
+        } else if (item.num_warps_per_uop <= 0) {
+            LOG(ERROR, "unexpected error: num_warps_per_uop <= 0");
+        } else if (item.smem_bytes_per_uop < 0) {
+            LOG(ERROR, "unexpected error: smem_bytes_per_uop < 0");
+        }
         if (op->is_comm()) {
             comm_items.emplace_back(item);
         } else {

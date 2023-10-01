@@ -22,7 +22,7 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter)
 {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+        ark::unittest::spawn_process([gpu_id, nelem, iter]() {
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m{gpu_id};
             ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
