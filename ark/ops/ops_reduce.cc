@@ -136,8 +136,9 @@ std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const
     return ReduceOp::function_name(cfg, "e_mean");
 }
 
-Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
-                          const std::string &name)
+template <typename ReduceOpType>
+Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
+                      const std::string &name)
 {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
@@ -151,91 +152,53 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
+    Dims reduced_shape{input->shape};
+    reduced_shape[axis] = 1;
     if (output == nullptr) {
-        Dims reduced_shape{input->shape};
-        reduced_shape[axis] = 1;
         output = this->tensor(reduced_shape, input->type);
-    } else if (output == input) {
-        LOG(ERROR, "output tensor cannot be the same as input tensor for "
-                   "reduce_sum op");
-    }
-    Tensor *ret;
-    if (axis == input->shape.ndims() - 1) {
-        ReduceWSumOp op{pt, input, output, axis, name};
-        ret = this->impl->add_op(op)[0];
     } else {
-        ReduceESumOp op{pt, input, output, axis, name};
-        ret = this->impl->add_op(op)[0];
+        if (output->shape != reduced_shape) {
+            LOG(ERROR, "invalid output shape ", output->shape,
+                " with input shape ", input->shape, " and reduction axis ",
+                axis);
+        }
+        if (output == input) {
+            LOG(ERROR, "output tensor cannot be the same as input tensor for "
+                       "reduce_sum op");
+        }
     }
-    return ret;
+    ReduceOpType op{pt, input, output, axis, name};
+    return this->impl->add_op(op)[0];
+}
+
+Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
+                          const std::string &name)
+{
+    if (axis == input->shape.ndims() - 1) {
+        return reduce<ReduceWSumOp>(input, axis, output, name);
+    } else {
+        return reduce<ReduceESumOp>(input, axis, output, name);
+    }
 }
 
 Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
                            const std::string &name)
 {
-    assert(input != nullptr);
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
-    if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
-    }
-    if (output == nullptr) {
-        Dims reduced_shape{input->shape};
-        reduced_shape[axis] = 1;
-        output = this->tensor(reduced_shape, input->type);
-    } else if (output == input) {
-        LOG(ERROR, "output tensor cannot be the same as input tensor for "
-                   "reduce_mean op");
-    }
-    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
-        ReduceWMeanOp op{pt, input, output, axis, name};
-        ret = this->impl->add_op(op)[0];
+        return reduce<ReduceWMeanOp>(input, axis, output, name);
     } else {
-        ReduceEMeanOp op{pt, input, output, axis, name};
-        ret = this->impl->add_op(op)[0];
+        return reduce<ReduceEMeanOp>(input, axis, output, name);
     }
-    return ret;
 }
 
 Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
                           const std::string &name)
 {
-    assert(input != nullptr);
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
-    if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
-    }
-    if (output == nullptr) {
-        Dims reduced_shape{input->shape};
-        reduced_shape[axis] = 1;
-        output = this->tensor(reduced_shape, input->type);
-    } else if (output == input) {
-        LOG(ERROR, "output tensor cannot be the same as input tensor for "
-                   "reduce_max op");
-    }
-    Tensor *ret;
     if (axis == input->shape.ndims() - 1) {
-        ReduceWMaxOp op{pt, input, output, axis, name};
-        ret = this->impl->add_op(op)[0];
+        return reduce<ReduceWMaxOp>(input, axis, output, name);
     } else {
-        ReduceEMaxOp op{pt, input, output, axis, name};
-        ret = this->impl->add_op(op)[0];
+        return reduce<ReduceEMaxOp>(input, axis, output, name);
     }
-    return ret;
 }
 
 const OpConfigMap ReduceEConfigMap = {

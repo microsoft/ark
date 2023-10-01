@@ -64,7 +64,7 @@ ark::unittest::State test_transpose_0132_fp32()
 
     auto result = ark::op_test("transpose_0132_fp32", m, {t}, {out},
                                baseline_transpose_0132<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
@@ -77,7 +77,7 @@ ark::unittest::State test_transpose_0132_fp16()
 
     auto result = ark::op_test("transpose_0132_fp32", m, {t}, {out},
                                baseline_transpose_0132<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
@@ -90,7 +90,7 @@ ark::unittest::State test_transpose_0231_fp32()
 
     auto result = ark::op_test("transpose_0231_fp32", m, {t}, {out},
                                baseline_transpose_0231<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
@@ -103,7 +103,7 @@ ark::unittest::State test_transpose_0231_fp16()
 
     auto result = ark::op_test("transpose_0231_fp16", m, {t}, {out},
                                baseline_transpose_0231<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }

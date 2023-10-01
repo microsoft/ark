@@ -47,7 +47,8 @@ ark::unittest::State test_div_fp32()
 
     auto result =
         ark::op_test("div_fp32", m, {t0, t1}, {out}, baseline_div<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 

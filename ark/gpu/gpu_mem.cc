@@ -234,16 +234,14 @@ GpuMem::~GpuMem()
     }
     size_t mapped_bytes;
     if (is_remote_) {
-        CULOG(cuIpcCloseMemHandle(raw_addr_));
+        cuIpcCloseMemHandle(raw_addr_);
         mapped_bytes = info_.bytes;
     } else {
-        CULOG(cuMemFree(raw_addr_));
+        cuMemFree(raw_addr_);
         mapped_bytes = npage_ << GPU_PAGE_SHIFT;
     }
     if (mmap_ != nullptr) {
-        if (munmap(mmap_, mapped_bytes) != 0) {
-            LOG(ERROR, "munmap failed with errno ", errno);
-        }
+        munmap(mmap_, mapped_bytes);
     }
 }
 

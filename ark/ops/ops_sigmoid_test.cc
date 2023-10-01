@@ -34,7 +34,8 @@ ark::unittest::State test_sigmoid_fp32()
 
     auto result =
         ark::op_test("sigmoid_fp32", m, {t}, {out}, baseline_sigmoid<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;
 }
 

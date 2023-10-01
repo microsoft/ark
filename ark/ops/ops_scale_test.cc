@@ -31,7 +31,7 @@ ark::unittest::State test_scale_fp32()
 
         auto result = ark::op_test("scale_fp32_small", m, {t}, {out},
                                    baseline_scale<float>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
     }
     {
         ark::Model m;
@@ -40,7 +40,8 @@ ark::unittest::State test_scale_fp32()
 
         auto result =
             ark::op_test("scale_fp32", m, {t}, {out}, baseline_scale<float>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -54,7 +55,8 @@ ark::unittest::State test_scale_fp16()
 
         auto result = ark::op_test("scale_fp16_small", m, {t}, {out},
                                    baseline_scale<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -63,7 +65,8 @@ ark::unittest::State test_scale_fp16()
 
         auto result = ark::op_test("scale_fp16", m, {t}, {out},
                                    baseline_scale<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }

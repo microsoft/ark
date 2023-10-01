@@ -52,7 +52,7 @@ ark::unittest::State test_rmsnorm_fp32()
     ark::Tensor *out = m.rmsnorm(t);
     auto result =
         ark::op_test("rmsnorm_fp32", m, {t}, {out}, baseline_rmsnorm<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
     return ark::unittest::SUCCESS;
 }
 
@@ -63,7 +63,7 @@ ark::unittest::State test_rmsnorm_fp16()
     ark::Tensor *output = model.rmsnorm(input);
     auto result = ark::op_test("rmsnorm_fp16", model, {input}, {output},
                                baseline_rmsnorm<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
     return ark::unittest::SUCCESS;
 }
 

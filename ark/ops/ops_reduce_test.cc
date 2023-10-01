@@ -129,7 +129,8 @@ ark::unittest::State test_reduce_axis0()
 
     auto result = ark::op_test("reduce_axis0", m, {t}, {out},
                                baseline_reduce_sum_axis0<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
@@ -141,7 +142,8 @@ ark::unittest::State test_reduce_axis1()
 
     auto result = ark::op_test("reduce_axis1", m, {t}, {out},
                                baseline_reduce_sum_axis1<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
@@ -153,7 +155,8 @@ ark::unittest::State test_reduce_axis2()
 
     auto result = ark::op_test("reduce_axis2", m, {t}, {out},
                                baseline_reduce_sum_axis2<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
@@ -165,7 +168,8 @@ ark::unittest::State test_reduce_axis3()
 
     auto result = ark::op_test("reduce_axis3", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
     return ark::unittest::SUCCESS;
 }
 
@@ -179,7 +183,8 @@ ark::unittest::State test_reduce_axis3_padded()
 
     auto result = ark::op_test("reduce_axis3_padded", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
     return ark::unittest::SUCCESS;
 }
 
@@ -192,7 +197,8 @@ ark::unittest::State test_reduce_fp16()
 
         auto result = ark::op_test("reduce_fp16_axis0", m, {t}, {out},
                                    baseline_reduce_sum_axis0<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -201,7 +207,7 @@ ark::unittest::State test_reduce_fp16()
 
         auto result = ark::op_test("reduce_fp16_axis3", m, {t}, {out},
                                    baseline_reduce_sum_axis3<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
     }
     return ark::unittest::SUCCESS;
 }

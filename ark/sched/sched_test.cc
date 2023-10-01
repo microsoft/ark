@@ -51,9 +51,10 @@ ark::unittest::State test_sched_mm_add()
         glk.run(iter);
         glk.stop();
 
-        LOG(INFO, "test_sched_mm_add: batch_size ", batch_size, " dim_input ",
-            dim_input, " dim_hidden ", dim_hidden, " dtype ", dtype,
-            " elapsed ", glk.get_elapsed_msec() / (float)iter, " ms/iter");
+        UNITTEST_LOG("test_sched_mm_add: batch_size ", batch_size,
+                     " dim_input ", dim_input, " dim_hidden ", dim_hidden,
+                     " dtype ", dtype, " elapsed ",
+                     glk.get_elapsed_msec() / (float)iter, " ms/iter");
 
         return unittest::SUCCESS;
     });
@@ -101,7 +102,7 @@ ark::unittest::State test_scheduler_simple_mm()
         UNITTEST_EQ(ret, 0);
         glk.run(100);
         glk.stop();
-        LOG(INFO, glk.get_elapsed_msec());
+        UNITTEST_LOG(glk.get_elapsed_msec());
     }
 
     return unittest::SUCCESS;
@@ -227,9 +228,10 @@ ark::unittest::State test_sched_gpt3()
         glk.run(iter);
         glk.stop();
 
-        LOG(INFO, "test_sched_gpt3: batch_size ", batch_size, " seq_len ",
-            seq_len, " embed_dim ", embed_dim, " dtype ", dtype, " elapsed ",
-            glk.get_elapsed_msec() / (float)iter, " ms/iter");
+        UNITTEST_LOG("test_sched_gpt3: batch_size ", batch_size, " seq_len ",
+                     seq_len, " embed_dim ", embed_dim, " dtype ", dtype,
+                     " elapsed ", glk.get_elapsed_msec() / (float)iter,
+                     " ms/iter");
 
         return unittest::SUCCESS;
     });
@@ -357,9 +359,9 @@ ark::unittest::State test_sched_comp_baseline()
     //  run the test on the same process
     auto comp = tensor_compare(output_data1, output_data2,
                                ark::Dims(batch_size, units, units));
-    LOG(ark::INFO, " scheduler compare test: ", " total_bytes: ", bytes,
-        " iter: ", 1, setprecision(4), " mse: ", comp.mse,
-        " max_err: ", comp.max_error_rate * 100, "%");
+    UNITTEST_LOG(" scheduler compare test: ", " total_bytes: ", bytes,
+                 " iter: ", 1, setprecision(4), " mse: ", comp.mse,
+                 " max_err: ", comp.max_error_rate * 100, "%");
     return unittest::SUCCESS;
 }
 

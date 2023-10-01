@@ -46,7 +46,8 @@ ark::unittest::State test_rope_fp32()
     ark::Tensor *out = model.rope(input, other);
     auto result = ark::op_test("rope", model, {input, other}, {out},
                                baseline_rope<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-6f);
     return ark::unittest::SUCCESS;
 }
 
@@ -58,7 +59,8 @@ ark::unittest::State test_rope_fp16()
     ark::Tensor *out = model.rope(input, other);
     auto result = ark::op_test("rope", model, {input, other}, {out},
                                baseline_rope<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
     return ark::unittest::SUCCESS;
 }
 

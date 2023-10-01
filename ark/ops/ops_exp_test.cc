@@ -28,7 +28,8 @@ ark::unittest::State test_exp_fp32()
     ark::Tensor *out = m.exp(t);
 
     auto result = ark::op_test("exp_fp32", m, {t}, {out}, baseline_exp<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;
 }
 

@@ -66,7 +66,8 @@ template <typename T> ark::unittest::State test_embedding()
     auto result =
         ark::op_test("embedding_fp32", m, {ti, tw}, {to}, baseline_embedding<T>,
                      {ti_data.data(), tw_data.get()});
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 

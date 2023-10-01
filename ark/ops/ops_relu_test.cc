@@ -34,7 +34,8 @@ ark::unittest::State test_relu_fp32()
 
     auto result =
         ark::op_test("relu_fp32", m, {t}, {out}, baseline_relu<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
