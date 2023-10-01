@@ -117,4 +117,7 @@ std::string get_kernel_code(const std::string &name);
                        ") == `" #exp1 "` (value: ", _v1, ")");                 \
     } while (0)
 
+// Log a message.
+#define UNITTEST_LOG(...) LOG(ark::INFO, __VA_ARGS__)
+
 #endif // ARK_UNITTEST_UNITTEST_UTILS_H_

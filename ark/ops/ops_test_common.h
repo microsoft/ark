@@ -114,8 +114,6 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                          bool print_on_error = false, int rank = 0,
                          int world_size = 1);
 
-void op_test_log(const OpsTestResult &result);
-
 OpsTestGpuMem to_gpu(const void *host_ptr, size_t size);
 
 void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr = nullptr);

@@ -16,7 +16,7 @@ using namespace std;
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
 #define DEFAULT_ARK_SCHEDULER "Default"
-#define DEFAULT_ARK_DISABLE_GRAPH_OPT true
+#define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 
 namespace ark {

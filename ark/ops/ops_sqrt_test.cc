@@ -29,7 +29,8 @@ ark::unittest::State test_sqrt_fp32()
 
     auto result =
         ark::op_test("sqrt_fp32", m, {t}, {out}, baseline_sqrt<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-6f);
     return ark::unittest::SUCCESS;
 }
 

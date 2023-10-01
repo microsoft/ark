@@ -22,7 +22,7 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter)
 {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+        ark::unittest::spawn_process([gpu_id, nelem, iter]() {
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m{gpu_id};
             ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
@@ -34,7 +34,8 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter)
                 ark::op_test("all_gather", m, {ones}, outputs,
                              baseline_all_gather<ark::half_t, num_gpus>,
                              {ones_data.get()}, true, gpu_id, num_gpus);
-            ark::op_test_log(result);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });
     }

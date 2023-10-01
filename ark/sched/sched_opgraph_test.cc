@@ -446,8 +446,7 @@ ark::unittest::State test_sched_opgraph_split_matmul()
     ark::Model model;
     ark::Tensor *t0 = model.tensor({64, 128}, ark::FP16);
     ark::Tensor *t1 = model.tensor({128, 64}, ark::FP16);
-    ark::Tensor *m0 =
-        model.matmul(t0, t1, nullptr, 2, false, false, "matmul", 3);
+    model.matmul(t0, t1, nullptr, 2, false, false, "matmul", 3);
     UNITTEST_TRUE(model.verify());
 
     ark::OpGraph graph(model);
@@ -455,15 +454,17 @@ ark::unittest::State test_sched_opgraph_split_matmul()
 
     auto nodes_iter = graph.get_nodes().begin();
     auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->name, "matmul/matmul_shard_0");
     UNITTEST_EQ(node->producers.size(), 0UL);
     UNITTEST_EQ(node->users.size(), 1UL);
 
     node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->name, "matmul/matmul_shard_1");
     UNITTEST_EQ(node->producers.size(), 0UL);
     UNITTEST_EQ(node->users.size(), 1UL);
 
     node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->outputs[0], m0);
+    UNITTEST_EQ(node->ops[0]->name, "matmul/reduce_sum");
     UNITTEST_EQ(node->producers.size(), 2UL);
     UNITTEST_EQ(node->users.size(), 0UL);
 

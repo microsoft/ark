@@ -57,7 +57,8 @@ ark::unittest::State test_softmax_fp32()
 
     auto result =
         ark::op_test("softmax_fp32", m, {t}, {out}, baseline_softmax<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-7f);
     return ark::unittest::SUCCESS;
 }
 
@@ -70,7 +71,8 @@ ark::unittest::State test_softmax_fp16()
 
         auto result = ark::op_test("softmax_fp16", m, {t}, {out},
                                    baseline_softmax<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
     }
     {
         ark::Model m;
@@ -79,7 +81,8 @@ ark::unittest::State test_softmax_fp16()
 
         auto result = ark::op_test("softmax_fp16", m, {t}, {out},
                                    baseline_softmax<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -93,7 +96,8 @@ ark::unittest::State test_softmax_fp16_padded()
 
     auto result = ark::op_test("softmax_fp16_padded", m, {t}, {out},
                                baseline_softmax<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
     return ark::unittest::SUCCESS;
 }
 
@@ -112,7 +116,8 @@ ark::unittest::State test_softmax_fp16_big_magnitude()
 
     auto result = ark::op_test("softmax_fp16_big_magnitude", model, {input},
                                {output}, baseline_softmax<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;
 }
 
@@ -131,7 +136,8 @@ ark::unittest::State test_softmax_fp16_small_magnitude()
 
     auto result = ark::op_test("softmax_fp16_small_magnitude", model, {input},
                                {output}, baseline_softmax<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;
 }
 

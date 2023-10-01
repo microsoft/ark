@@ -12,7 +12,7 @@ add_custom_target(tp-update
 
 # Patch CUTLASS
 add_custom_target(tp-cutlass
-    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && patch -sN -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
+    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
 )
 add_dependencies(tp-cutlass tp-update)
 
