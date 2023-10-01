@@ -7,6 +7,8 @@ import torch
 import os
 import time
 import fairscale
+import argparse
+
 
 sys.path.append("llama")
 import llama.model as model_pt
@@ -17,7 +19,7 @@ from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 from generator import precompute_freqs_cis
 
 
-pth_path: str = "/mnt/7B/consolidated.00.pth"
+pth_path: str = ""
 
 numpy_dtype_to_torch_dtype: dict = {
     np.float16: torch.float16,
@@ -429,6 +431,11 @@ def test(args, batch_size, seq_len, dtype, world_size):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--pth_path', type=str, required=True)
+
+    pth_path = parser.parse_args().pth_path
+
     # Configurations
     args = ModelArgs7B()
     batch_size = 1
