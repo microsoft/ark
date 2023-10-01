@@ -74,9 +74,24 @@ bool SchedOpSeq::is_recv() const
     return true;
 }
 
+bool SchedOpSeq::is_sync() const
+{
+    for (auto &sop : this->seq) {
+        if (sop.is_virtual()) {
+            continue;
+        }
+        const OpType &ot = sop.get_op()->type;
+        if (ot == OP_DEVICE_SYNC_MSCCLPP) {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
 bool SchedOpSeq::is_comm() const
 {
-    return this->is_send() || this->is_send_done() || this->is_recv();
+    return this->is_send() || this->is_send_done() || this->is_recv() || this->is_sync();
 }
 
 bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)

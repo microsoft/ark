@@ -122,6 +122,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_RECV_MSCCLPP:      os << "OP_RECV_MSCCLPP";  break;
     case OP_ROPE:          os << "OP_ROPE";          break;
     case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
+    case OP_DEVICE_SYNC_MSCCLPP: os << "OP_DEVICE_SYNC_MSCCLPP"; break;
     }
     // clang-format on
     return os;
@@ -615,7 +616,9 @@ bool Op::is_comm() const
     // they run over GPU threads.
     return this->type == OP_SEND || this->type == OP_SEND_DONE ||
            this->type == OP_RECV || this->type == OP_SEND_MSCCLPP ||
-           this->type == OP_SEND_DONE_MSCCLPP || this->type == OP_RECV_MSCCLPP;
+           this->type == OP_SEND_DONE_MSCCLPP ||
+           this->type == OP_RECV_MSCCLPP ||
+           this->type == OP_DEVICE_SYNC_MSCCLPP;
 }
 
 bool operator<(const Op &op1, const Op &op2)

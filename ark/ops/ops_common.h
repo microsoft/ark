@@ -132,6 +132,7 @@ typedef enum
     OP_SEND_DONE_MSCCLPP,
     OP_RECV_MSCCLPP,
     OP_EMBEDDING,
+    OP_DEVICE_SYNC_MSCCLPP,
 } OpType;
 
 /// Type of precision of @ref Op.
@@ -555,6 +556,14 @@ class MscclppSendDoneOp : public Op
   public:
     MscclppSendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                       int rank, int dst_rank, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppDeviceSyncOp : public Op
+{
+  public:
+    MscclppDeviceSyncOp(OpPrecType prec_type, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

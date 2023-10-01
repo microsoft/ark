@@ -9,6 +9,7 @@
 namespace ark {
 
 extern const OpConfigMap MscclppConfigMap;
+extern const OpConfigMap MscclppSyncConfigMap;
 
 MscclppSendOp::MscclppSendOp(OpPrecType prec_type, Tensor *input,
                              Tensor *recvbuf, int sid, int rank,
@@ -133,6 +134,32 @@ OpArgs MscclppRecvOp::function_call_args(const OpConfig &) const
     return {};
 }
 
+MscclppDeviceSyncOp::MscclppDeviceSyncOp(OpPrecType prec_type,
+                                         const std::string &name)
+    : Op{OP_DEVICE_SYNC_MSCCLPP,
+         prec_type,
+         {},
+         {},
+         {},
+         name,
+         &MscclppSyncConfigMap,
+         -1,
+         true}
+{
+}
+
+std::string MscclppDeviceSyncOp::function_name(const OpConfig &) const
+{
+    int nPeers;
+    this->args.get(&nPeers, 0);
+    return Op::function_name("ark::comm::device_sync_mscclpp", {{nPeers}});
+}
+
+OpArgs MscclppDeviceSyncOp::function_call_args(const OpConfig &) const
+{
+    return {};
+}
+
 Tensor *Model::send_mscclpp(Tensor *input, int sid, int dst_rank,
                             std::size_t bytes, const std::string &name)
 {
@@ -186,11 +213,26 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
     return this->impl->add_op(op)[0];
 }
 
+Tensor *Model::device_sync_mscclpp(int nPeers, const std::string &name)
+{
+    MscclppDeviceSyncOp op{OP_PREC_NONE, name};
+    op.args.put(nPeers);
+    return this->impl->add_op(op)[0];
+}
+
 const OpConfigMap MscclppConfigMap = {
     {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, true, true},
+     }},
+};
+
+const OpConfigMap MscclppSyncConfigMap = {
+    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, false, true},
      }},
 };
 
