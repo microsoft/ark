@@ -138,7 +138,7 @@ std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const
 
 template <typename ReduceOpType>
 Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
-               const std::string &name)
+                      const std::string &name)
 {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
@@ -158,12 +158,13 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
         output = this->tensor(reduced_shape, input->type);
     } else {
         if (output->shape != reduced_shape) {
-            LOG(ERROR, "invalid output shape ", output->shape, " with input "
-                       "shape ", input->shape, " and reduction axis ", axis);
+            LOG(ERROR, "invalid output shape ", output->shape,
+                " with input shape ", input->shape, " and reduction axis ",
+                axis);
         }
         if (output == input) {
             LOG(ERROR, "output tensor cannot be the same as input tensor for "
-                    "reduce_sum op");
+                       "reduce_sum op");
         }
     }
     ReduceOpType op{pt, input, output, axis, name};

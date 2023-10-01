@@ -237,9 +237,8 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     Dims split_output_shape = output_shape;
     split_output_shape[0] *= split_k;
     Tensor *output_buffer = this->tensor(split_output_shape, mat_y->type);
-    vector<Tensor *> mat_y_shards =
-        this->sharding(output_buffer, 0, output_shape[0],
-                       name + "/sharding_mat_y");
+    vector<Tensor *> mat_y_shards = this->sharding(
+        output_buffer, 0, output_shape[0], name + "/sharding_mat_y");
 
     int axis_a;
     int axis_b;
