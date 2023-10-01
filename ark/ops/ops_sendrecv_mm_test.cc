@@ -44,9 +44,9 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data[i]) {
-                LOG(ark::INFO, "error at ", i,
-                    ": recv_data=", float(recv_data[i]),
-                    "send_data=", float(send_data[i]));
+                UNITTEST_LOG("error at ", i,
+                             ": recv_data=", float(recv_data[i]),
+                             "send_data=", float(send_data[i]));
                 return ark::unittest::FAILURE;
             }
         }
@@ -86,9 +86,9 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data_1[i]) {
-                LOG(ark::INFO, "error at ", i,
-                    ": recv_data=", float(recv_data[i]),
-                    "send_data=", float(send_data_1[i]));
+                UNITTEST_LOG("error at ", i,
+                             ": recv_data=", float(recv_data[i]),
+                             "send_data=", float(send_data_1[i]));
                 return ark::unittest::FAILURE;
             }
         }
@@ -115,9 +115,9 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data_0[i]) {
-                LOG(ark::INFO, "error at ", i,
-                    ": recv_data=", float(recv_data[i]),
-                    "send_data=", float(send_data_0[i]));
+                UNITTEST_LOG("error at ", i,
+                             ": recv_data=", float(recv_data[i]),
+                             "send_data=", float(send_data_0[i]));
                 return ark::unittest::FAILURE;
             }
         }
@@ -162,9 +162,9 @@ ark::unittest::State test_sendrecv_mm_4gpus()
             auto &gt = send_data[(gpu_id - 1 + gpu_num) % gpu_num];
             for (int i = 0; i < mat_size; i++) {
                 if (recv_data[i] != gt[i]) {
-                    LOG(ark::INFO, "error at ", i,
-                        ": recv_data=", float(recv_data[i]),
-                        "send_data=", float(gt[i]));
+                    UNITTEST_LOG("error at ", i,
+                                 ": recv_data=", float(recv_data[i]),
+                                 "send_data=", float(gt[i]));
                     return ark::unittest::FAILURE;
                 }
             }

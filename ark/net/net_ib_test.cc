@@ -194,10 +194,10 @@ int test_net_ib_cpu_bw_internal(std::size_t bytes, bool is_recv)
     double elapsed;
     elapsed = sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv,
                       false);
-    LOG(ark::INFO, "Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     elapsed =
         sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv, true);
-    LOG(ark::INFO, "Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     return 0;
 }
 
@@ -344,10 +344,10 @@ int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv)
     double elapsed;
     elapsed = sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv,
                       false);
-    LOG(ark::INFO, "Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     elapsed =
         sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv, true);
-    LOG(ark::INFO, "Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     return 0;
 }
 
@@ -446,7 +446,7 @@ int main()
     ark::init();
 
     if (ark::get_env().disable_ib) {
-        LOG(ark::WARN, "IB is disabled by the environment variable. Skip");
+        UNITTEST_LOG("IB is disabled by the environment variable. Skip");
         return 0;
     }
 

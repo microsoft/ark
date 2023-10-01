@@ -373,11 +373,6 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                    inputs_data, print_on_error, rank, world_size, 32);
 }
 
-void op_test_log(const OpsTestResult &result)
-{
-    LOG(INFO, result);
-}
-
 OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size)
 {
     CUDA_CHECK(cudaMalloc(&this->gpu_ptr_, size));

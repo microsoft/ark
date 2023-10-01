@@ -98,7 +98,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
        << ",dh=" << dilation_height << ",dw=" << dilation_width
        << setprecision(4) << " mse " << comp.mse << " max_err " << max_err * 100
        << "%";
-    LOG(ark::INFO, ss.str());
+    UNITTEST_LOG(ss.str());
 
     free(res);
     free(gt);

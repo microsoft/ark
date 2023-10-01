@@ -34,7 +34,8 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter)
                 ark::op_test("all_gather", m, {ones}, outputs,
                              baseline_all_gather<ark::half_t, num_gpus>,
                              {ones_data.get()}, true, gpu_id, num_gpus);
-            ark::op_test_log(result);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });
     }

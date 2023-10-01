@@ -39,7 +39,7 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter)
                 ark::op_test("all_reduce", m, {ones}, {output},
                              baseline_all_reduce<ark::half_t, num_gpus>,
                              {ones_data.get()}, false, gpu_id, num_gpus);
-            ark::op_test_log(result);
+            UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });

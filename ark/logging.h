@@ -134,23 +134,19 @@ const LogLevel &get_log_level();
 #define SSTREAM(...) SSTREAM_(NARGS(__VA_ARGS__), __VA_ARGS__)
 
 // Logging.
-#define LOG_(level, ...)                                                       \
+#define LOG(level, ...)                                                        \
     do {                                                                       \
-        if (level < ark::get_logging().get_level()) {                          \
-            break;                                                             \
+        if (level >= ark::get_logging().get_level()) {                         \
+            std::stringstream _ss;                                             \
+            ark::log_header(_ss, level, __FILE__, __LINE__);                   \
+            SSTREAM(__VA_ARGS__);                                              \
+            _ss << '\n';                                                       \
+            std::clog << _ss.str();                                            \
         }                                                                      \
-        std::stringstream _ss;                                                 \
-        ark::log_header(_ss, level, __FILE__, __LINE__);                       \
-        SSTREAM(__VA_ARGS__);                                                  \
-        _ss << '\n';                                                           \
-        std::clog << _ss.str();                                                \
         if (level == ark::ERROR) {                                             \
             throw std::runtime_error("ARK runtime error");                     \
         }                                                                      \
     } while (0)
-
-//
-#define LOG(level, ...) LOG_(level, __VA_ARGS__)
 
 #define CHECK(cond)                                                            \
     do {                                                                       \

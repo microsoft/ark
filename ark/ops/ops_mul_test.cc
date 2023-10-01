@@ -47,7 +47,8 @@ ark::unittest::State test_mul_fp32()
 
     auto result =
         ark::op_test("mul_fp32", m, {t0, t1}, {out}, baseline_mul<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
@@ -60,7 +61,8 @@ ark::unittest::State test_mul_fp16()
 
     auto result =
         ark::op_test("mul_fp16", m, {t0, t1}, {out}, baseline_mul<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
@@ -73,7 +75,8 @@ ark::unittest::State test_mul_overwrite()
 
     auto result = ark::op_test("mul_overwrite", m, {t0, t1}, {out},
                                baseline_mul<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
@@ -87,7 +90,8 @@ ark::unittest::State test_mul_broadcast()
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -97,7 +101,8 @@ ark::unittest::State test_mul_broadcast()
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -107,7 +112,8 @@ ark::unittest::State test_mul_broadcast()
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
