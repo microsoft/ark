@@ -14,6 +14,7 @@ import model as model_ark
 import numpy as np
 from typing import Dict, List
 from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
+from generator import precompute_freqs_cis
 
 
 pth_path: str = "/mnt/7B/consolidated.00.pth"
@@ -277,16 +278,6 @@ def test_column_parallel_linear(
             ],
             module_name_prefix="layers.0.attention.wq",
         )
-
-
-def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
-    freqs = 1.0 / (
-        theta ** (np.arange(0, dim, 2)[: (dim // 2)].astype(np.float32) / dim)
-    )
-    t = np.arange(end, dtype=np.float32)
-    freqs = np.outer(t, freqs).astype(np.float32)
-    freqs_cis = np.exp(1j * freqs)
-    return freqs_cis
 
 
 def test_attention(
