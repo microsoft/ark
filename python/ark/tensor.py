@@ -101,6 +101,8 @@ class Tensor:
             raise ValueError("ndarray shape does not match the tensor")
         elif ndarray.dtype != np_type:
             raise ValueError("ndarray dtype does not match the tensor")
+        elif ndarray.nbytes != self._tensor.shape_bytes():
+            raise ValueError("ndarray size does not match the tensor")
         self._tensor.read(ndarray)
         return ndarray
 
@@ -116,6 +118,8 @@ class Tensor:
         ndarray = ndarray.astype(self.dtype().to_numpy())
         if not ndarray.flags["C_CONTIGUOUS"]:
             ndarray = np.ascontiguousarray(ndarray)
+        if ndarray.nbytes != self._tensor.shape_bytes():
+            raise ValueError("ndarray size does not match the tensor")
         self._tensor.write(ndarray)
         return self
 

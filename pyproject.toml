@@ -24,4 +24,4 @@ BUILD_PYTHON = "ON"
 line-length = 80
 target-version = ['py38']
 include = '\.pyi?$'
-exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|third_party|docs)/'
+exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|third_party|docs|examples/llama/llama)/'
