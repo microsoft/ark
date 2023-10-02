@@ -127,9 +127,7 @@ def test_module(
         raise ValueError(f"Cannot find the given path: {pth_path}")
 
     # Run the ARK module
-    output_ark = run_ark(
-        module_ark, state_dict_ark, inputs_ark
-    )
+    output_ark = run_ark(module_ark, state_dict_ark, inputs_ark)
 
     # PyTorch module
     module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
