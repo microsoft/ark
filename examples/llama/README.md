@@ -33,3 +33,7 @@ Llama2 examples over ARK.
     ```bash
     python3 generator.py --pth_path=/path/to/model/weights.pth --tok_dir=/path/to/tokenizer/weights
     ```
+
+## Multi-GPU Inference
+
+Multi-GPU version will be added in a future release.
