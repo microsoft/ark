@@ -518,7 +518,11 @@ std::string Op::function_name(const OpConfig &cfg) const
         return static_cast<const RopeOp *>(this)->function_name(cfg);
     case OP_EMBEDDING:
         return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
+    case OP_DEVICE_SYNC_MSCCLPP:
+        return static_cast<const MscclppDeviceSyncOp *>(this)->function_name(
+            cfg);
     default:
+        LOG(ERROR, "invalid op type ", this->type);
         return "";
     }
     // Never reach here.
@@ -549,6 +553,9 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const
     case OP_RECV_MSCCLPP:
         return static_cast<const MscclppRecvOp *>(this)->function_call_args(
             cfg);
+    case OP_DEVICE_SYNC_MSCCLPP:
+        return static_cast<const MscclppDeviceSyncOp *>(this)
+            ->function_call_args(cfg);
     default:
         OpArgs opargs;
         std::vector<Tensor *> deps = this->outputs;

@@ -483,7 +483,9 @@ class Model
                       const std::string &name = "embedding");
 
     // sync across multi devices
-    Tensor *device_sync_mscclpp(int nPeers, const std::string &name);
+    Tensor *device_sync_mscclpp(
+        int npeers, Tensor *output = nullptr,
+        const std::string &name = "device_sync_mscclpp");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
     bool verify() const;
