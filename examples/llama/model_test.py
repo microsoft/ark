@@ -96,19 +96,19 @@ def run_pt(
 
 
 def test_module(
-    inputs: List[np.ndarray],
-    dtype: np.dtype,
     module_class_ark: ark.Module,
     module_args_ark: list,
+    inputs_ark: List[np.ndarray],
     module_class_pt: torch.nn.Module,
     module_args_pt: list,
-    ark_inputs: List[np.ndarray] = [],  # used when ARK needs different inputs
+    inputs_pt: List[np.ndarray],
     module_name_prefix: str = "",
 ):
     # ARK module
     module_ark: ark.Module = module_class_ark(*module_args_ark)
 
-    param_names = set(module_ark.params_dict().keys())
+    params_dict = module_ark.params_dict()
+    param_names = set(params_dict.keys())
 
     if os.path.exists(pth_path):
         prefix = module_name_prefix + "." if module_name_prefix else ""
@@ -120,21 +120,22 @@ def test_module(
             if k[len(prefix) :] in param_names and k.startswith(prefix)
         }
         state_dict_ark = {
-            k: v.float().numpy().astype(dtype) for k, v in state_dict_pt.items()
+            k: v.float().numpy().astype(params_dict[k].dtype().to_numpy())
+            for k, v in state_dict_pt.items()
         }
     else:
         raise ValueError(f"Cannot find the given path: {pth_path}")
 
     # Run the ARK module
     output_ark = run_ark(
-        module_ark, state_dict_ark, ark_inputs if ark_inputs else inputs
+        module_ark, state_dict_ark, inputs_ark
     )
 
     # PyTorch module
     module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
 
     # Run the PyTorch module
-    output_pt = run_pt(module_pt, state_dict_pt, inputs)
+    output_pt = run_pt(module_pt, state_dict_pt, inputs_pt)
 
     # Compare the outputs
     eps = np.finfo(np.float64).eps
@@ -181,23 +182,24 @@ def test_rmsnorm(
     ark.init()
 
     # Create random input data
-    inputs = [
+    inputs_ark = [
         np.random.uniform(
             low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
         ).astype(dtype)
     ]
+    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
 
     test_module(
-        inputs,
-        dtype,
         module_class_ark=model_ark.RMSNorm,
         module_args_ark=[
             args.dim,
             args.norm_eps,
             ark.DataType.from_numpy(dtype),
         ],
+        inputs_ark=inputs_ark,
         module_class_pt=model_pt.RMSNorm,
         module_args_pt=[args.dim],
+        inputs_pt=inputs_pt,
         module_name_prefix="norm",
     )
 
@@ -212,18 +214,17 @@ def test_row_parallel_linear(
     ark.init()
 
     # Create random input data
-    inputs = [
+    inputs_ark = [
         np.random.uniform(
             low=-0.1,
             high=0.1,
             size=(batch_size, seq_len, args.dim // args.n_heads * args.n_heads),
         ).astype(dtype)
     ]
+    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
 
     if world_size == 1:
         test_module(
-            inputs,
-            dtype,
             module_class_ark=model_ark.RowParallelLinear,
             module_args_ark=[
                 args.dim // args.n_heads * args.n_heads,
@@ -232,6 +233,7 @@ def test_row_parallel_linear(
                 0,
                 1,
             ],
+            inputs_ark=inputs_ark,
             module_class_pt=fairscale.nn.model_parallel.RowParallelLinear,
             module_args_pt=[
                 args.dim // args.n_heads * args.n_heads,
@@ -239,6 +241,7 @@ def test_row_parallel_linear(
                 False,
                 lambda x: x,
             ],
+            inputs_pt=inputs_pt,
             module_name_prefix="layers.0.attention.wo",
         )
 
@@ -253,16 +256,15 @@ def test_column_parallel_linear(
     ark.init()
 
     # Create random input data
-    inputs = [
+    inputs_ark = [
         np.random.uniform(
             low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
         ).astype(dtype)
     ]
+    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
 
     if world_size == 1:
         test_module(
-            inputs,
-            dtype,
             module_class_ark=model_ark.ColumnParallelLinear,
             module_args_ark=[
                 args.dim,
@@ -271,6 +273,7 @@ def test_column_parallel_linear(
                 0,
                 1,
             ],
+            inputs_ark=inputs_ark,
             module_class_pt=fairscale.nn.model_parallel.ColumnParallelLinear,
             module_args_pt=[
                 args.dim,
@@ -278,6 +281,7 @@ def test_column_parallel_linear(
                 False,
                 lambda x: x,
             ],
+            inputs_pt=inputs_pt,
             module_name_prefix="layers.0.attention.wq",
         )
 
@@ -307,18 +311,14 @@ def test_attention(
         low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
 
-    inputs = [feature, 0, freqs_cis, None]
-    ark_inputs = [feature, 0, freqs_cis_ark, None]
-
     if world_size == 1:
         test_module(
-            inputs,
-            dtype,
             module_class_ark=model_ark.Attention,
             module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
+            inputs_ark=[feature, 0, freqs_cis_ark, None],
             module_class_pt=model_pt.Attention,
             module_args_pt=[args],
-            ark_inputs=ark_inputs,
+            inputs_pt=[feature.astype(np.float32), 0, freqs_cis, None],
             module_name_prefix="layers.0.attention",
         )
 
@@ -348,18 +348,14 @@ def test_transformer_block(
         low=-1, high=1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
 
-    inputs = [feature, 0, freqs_cis, None]
-    ark_inputs = [feature, 0, freqs_cis_ark, None]
-
     if world_size == 1:
         test_module(
-            inputs,
-            dtype,
             module_class_ark=model_ark.TransformerBlock,
             module_args_ark=[0, args, ark.DataType.from_numpy(dtype), 0, 1],
+            inputs_ark=[feature, 0, freqs_cis_ark, None],
             module_class_pt=model_pt.TransformerBlock,
             module_args_pt=[0, args],
-            ark_inputs=ark_inputs,
+            inputs_pt=[feature.astype(np.float32), 0, freqs_cis, None],
             module_name_prefix="layers.0",
         )
 
@@ -406,18 +402,14 @@ def test_transformer(
         mask = np.full((1, 1, seq_len, seq_len), -np.inf, dtype=dtype)
         mask = np.triu(mask, k=start_pos + 1)
 
-    inputs = [tokens, start_pos]
-    ark_inputs = [tokens, start_pos, freqs_cis_ark, mask]
-
     if world_size == 1:
         test_module(
-            inputs,
-            dtype,
             module_class_ark=model_ark.Transformer,
             module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
+            inputs_ark=[tokens, start_pos, freqs_cis_ark, mask],
             module_class_pt=model_pt.Transformer,
             module_args_pt=[args],
-            ark_inputs=ark_inputs,
+            inputs_pt=[tokens, start_pos],
         )
 
 
@@ -432,7 +424,7 @@ def test(args, batch_size, seq_len, dtype, world_size):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pth_path', type=str, required=True)
+    parser.add_argument("--pth_path", type=str, required=True)
 
     pth_path = parser.parse_args().pth_path
 

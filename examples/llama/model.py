@@ -390,11 +390,11 @@ class Attention(ark.Module):
 
         if mask is not None:
             scores = ark.add(scores, mask)
-        if self.dtype == ark.fp16:
-            scores = ark.cast(scores, ark.fp32)
+        # if self.dtype == ark.fp16:
+        #     scores = ark.cast(scores, ark.fp32)
         scores = ark.softmax(scores)
-        if self.dtype == ark.fp16:
-            scores = ark.cast(scores, ark.fp16)
+        # if self.dtype == ark.fp16:
+        #     scores = ark.cast(scores, ark.fp16)
 
         output = ark.matmul(
             scores, values

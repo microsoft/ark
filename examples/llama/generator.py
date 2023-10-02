@@ -3,9 +3,10 @@
 
 import ark
 import torch
+import argparse
 import numpy as np
 from model import ModelArgs, ModelArgs7B, Transformer
-from transformers import AutoTokenizer, LlamaTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
@@ -22,20 +23,33 @@ class Generator:
     def __init__(
         self,
         args: ModelArgs,
-        batch_size: int = 1,
         dtype: np.dtype = np.float16,
+        seq_len: int = -1,
+        temperature: float = 1.0,
+        repetition_penalty: float = 1.0,
+        top_p: float = 1.0,
+        top_k: int = -1,
+        stop_token_ids: list = None,
         world_size: int = 1,
     ):
         self.args = args
-        self.batch_size = batch_size
         self.dtype = dtype
+        self.seq_len = seq_len
+        self.temperature = temperature
+        self.repetition_penalty = repetition_penalty
+        self.top_p = top_p
+        self.top_k = top_k
+        self.stop_token_ids = stop_token_ids
 
-        assert self.batch_size <= args.max_batch_size
+        if self.seq_len <= 0 or self.seq_len > self.args.max_seq_len:
+            self.seq_len = self.args.max_seq_len
+        if self.stop_token_ids is None:
+            self.stop_token_ids = []
 
         # TODO: support multi-GPU
         assert world_size == 1
 
-        self.tokenizer = None
+        self.tokenizer: PreTrainedTokenizer = None
 
         self.tokens: ark.Tensor = None
         self.freqs_cis: ark.Tensor = None
@@ -44,20 +58,24 @@ class Generator:
 
         self.runtime: ark.Runtime = None
 
-    def launch(self, pth_path: str, tok_path: str):
+    def launch(
+        self,
+        pth_path: str,
+        tok_dir: str,
+    ):
         # Load a pretrained tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tok_path, use_fast=True, revision="main"
+            tok_dir, use_fast=True, revision="main"
         )
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        if self.tokenizer.eos_token_id not in self.stop_token_ids:
+            self.stop_token_ids.append(self.tokenizer.eos_token_id)
+        self.args.vocab_size = self.tokenizer.vocab_size
 
         # Initiate ARK
         ark.init()
 
         dtype_ark = ark.DataType.from_numpy(self.dtype)
-
-        # Can make it smaller
-        seq_len = self.args.max_seq_len
-        assert seq_len <= self.args.max_seq_len
 
         # May need to change
         start_pos = 0
@@ -65,25 +83,25 @@ class Generator:
         # Pre-calculated freqs_cis
         freqs_cis_np = precompute_freqs_cis(
             self.args.dim // self.args.n_heads, self.args.max_seq_len * 2
-        )[0:seq_len]
+        )[0:self.seq_len]
         freqs_cis_np = freqs_cis_np.astype(np.complex64)
         freqs_cis_np = (
             np.stack([freqs_cis_np.real, freqs_cis_np.imag], axis=-1)
             .astype(self.dtype)
-            .reshape(1, seq_len, 1, self.args.dim // self.args.n_heads)
+            .reshape(1, self.seq_len, 1, self.args.dim // self.args.n_heads)
         )
         self.freqs_cis = ark.tensor(list(freqs_cis_np.shape), dtype_ark)
 
         # Pre-calculated mask
-        if seq_len > 1:
+        if self.seq_len > 1:
             mask_np = np.full(
-                (1, 1, seq_len, seq_len), -np.inf, dtype=self.dtype
+                (1, 1, self.seq_len, self.seq_len), -np.inf, dtype=self.dtype
             )
             mask_np = np.triu(mask_np, k=start_pos + 1)
             self.mask = ark.tensor(list(mask_np.shape), dtype_ark)
 
         # User inputs
-        self.tokens = ark.tensor([self.batch_size, seq_len], dtype_ark)
+        self.tokens = ark.tensor([1, self.seq_len], ark.int32)
 
         # Transformer
         ark.set_rank(0)
@@ -112,14 +130,57 @@ class Generator:
         if self.mask:
             self.mask.from_numpy(mask_np)
 
-    def run(self, tokens: np.ndarray):
-        pass
+    @torch.inference_mode()
+    def run(self, prompt: str):
+        enc = self.tokenizer(
+            prompt,
+            return_tensors="np",
+            padding="max_length",
+            max_length=self.seq_len,
+        )
+        input_ids = enc.input_ids[0]
+        output_ids = list(input_ids)
+
+        self.tokens.from_numpy(input_ids)
+
+        self.runtime.run()
+        logits = self.logits.to_numpy()
+
+        last_token_logits = logits[0, -1, :]
+
+        probs = torch.softmax(
+            torch.tensor(last_token_logits, dtype=torch.float32), dim=-1
+        )
+        indices = torch.multinomial(probs, num_samples=2)
+        tokens = [int(token) for token in indices.tolist()]
+
+        token = tokens[0]
+        output_ids.append(token)
+
+        output = self.tokenizer.decode(
+            output_ids,
+            skip_special_tokens=True,
+            spaces_between_special_tokens=False,
+            clean_up_tokenization_spaces=True,
+        )
+        return output
 
 
 if __name__ == "__main__":
-    pth_path = "/mnt/changhohwang/llama-2-7b/consolidated.00.pth"
-    tok_path = 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pth_path", type=str, required=True)
+    parser.add_argument("--tok_dir", type=str, required=True)
 
-    gen = Generator()
-    gen.launch()
+    args = parser.parse_args()
 
+    gen = Generator(ModelArgs7B())
+    gen.launch(args.pth_path, args.tok_dir)
+
+    prompt_list = [
+        "The capital of France is",
+        "The square root of nine is",
+        "King minus man plus woman is",
+    ]
+    for i, prompt in enumerate(prompt_list):
+        output = gen.run(prompt)
+        print(f"---\nPrompt[{i}]: {prompt}\nOutput[{i}]: {output}")
