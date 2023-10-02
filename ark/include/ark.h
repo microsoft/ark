@@ -10,8 +10,8 @@
 #include <vector>
 
 #define ARK_MAJOR 0
-#define ARK_MINOR 2
-#define ARK_PATCH 1
+#define ARK_MINOR 3
+#define ARK_PATCH 0
 #define ARK_VERSION (ARK_MAJOR * 10000 + ARK_MINOR * 100 + ARK_PATCH)
 
 namespace ark {
