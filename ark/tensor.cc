@@ -238,7 +238,13 @@ bool Tensor::is_alloced() const
 
 bool Tensor::is_sequential() const
 {
-    return (this->shape == this->ldims) || (this->shape.ndims() == 1);
+    // Shape and ldims should be the same except for the first dimension.
+    for (int i = 1; i < this->shape.ndims(); ++i) {
+        if (this->shape[i] != this->ldims[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void Tensor::write(const void *buf)
