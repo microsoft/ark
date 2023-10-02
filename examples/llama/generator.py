@@ -83,7 +83,7 @@ class Generator:
         # Pre-calculated freqs_cis
         freqs_cis_np = precompute_freqs_cis(
             self.args.dim // self.args.n_heads, self.args.max_seq_len * 2
-        )[0:self.seq_len]
+        )[0 : self.seq_len]
         freqs_cis_np = freqs_cis_np.astype(np.complex64)
         freqs_cis_np = (
             np.stack([freqs_cis_np.real, freqs_cis_np.imag], axis=-1)
