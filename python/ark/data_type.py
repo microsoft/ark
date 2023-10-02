@@ -63,6 +63,10 @@ class fp32(DataType):
     def ttype() -> _TensorType:
         return _FP32
 
+    @staticmethod
+    def element_size() -> int:
+        return 4
+
 
 class fp16(DataType):
     @staticmethod
@@ -72,6 +76,10 @@ class fp16(DataType):
     @staticmethod
     def ttype() -> _TensorType:
         return _FP16
+
+    @staticmethod
+    def element_size() -> int:
+        return 2
 
 
 class int32(DataType):
@@ -83,6 +91,10 @@ class int32(DataType):
     def ttype() -> _TensorType:
         return _INT32
 
+    @staticmethod
+    def element_size() -> int:
+        return 4
+
 
 class byte(DataType):
     @staticmethod
@@ -92,3 +104,7 @@ class byte(DataType):
     @staticmethod
     def ttype() -> _TensorType:
         return _BYTE
+
+    @staticmethod
+    def element_size() -> int:
+        return 1

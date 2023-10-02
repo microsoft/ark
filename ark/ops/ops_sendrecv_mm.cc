@@ -159,6 +159,7 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
     }
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
+    CHECK(ndims == 2);
     recvbuf_shape[ndims - 2] *= 2 * input->type_bytes();
     Tensor *recvbuf = this->tensor(recvbuf_shape, ark::BYTE);
     recvbuf->imported_rank = gpu_dst;
@@ -199,6 +200,7 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     // recvbuf is twice of the input
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
+    CHECK(ndims == 2);
     recvbuf_shape[ndims - 2] *= 2 * input->type_bytes();
     Tensor *recvbuf = this->tensor(recvbuf_shape, ark::BYTE);
     recvbuf->exported = true;

@@ -14,13 +14,14 @@ void test_sendrecv_internal()
         ark::unittest::spawn_process([gpu_id]() {
             //
             ark::Model model{gpu_id};
-            ark::Tensor *tns_x = model.tensor({1024}, ark::FP16);
+            ark::Tensor *tns_x;
             if (gpu_id == 0) {
-                model.send(tns_x, 0, 1, tns_x->shape_bytes());
+                tns_x = model.tensor({1024}, ark::FP16);
+                tns_x = model.send(tns_x, 0, 1, tns_x->shape_bytes());
                 model.send_done(tns_x, 0, 1);
             }
             if (gpu_id == 1) {
-                model.recv(tns_x, 0, 0);
+                tns_x = model.recv(0, 0, /*bytes=*/2048);
             }
 
             ark::Executor exe{gpu_id, 2, model, "test_sendrecv"};

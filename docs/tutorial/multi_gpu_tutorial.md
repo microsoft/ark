@@ -57,25 +57,20 @@ def sendrecv_test_ping_pong_function(rank, np_inputs):
 
 The first Model on process 0 will send send_tensor from GPU 0 to GPU 1. Since multiple tensors can be sent to the same GPU, an identifier `id` is required to distinguish the tensor. Here, we set the first `id` to 0. Then, the first process will receive recv_tensor from GPU 1. The received `id` will be 1.
 
-For more information about the `send` and `recv` operator, please refer to the [API documentation](../docs/api.md).
-
 ```python
     # Define the behavior for rank 0
     if rank == 0:
+        # send a tensor to rank 1
         send_tensor = ark.tensor([tensor_len], ark.fp16)
-        recv_tensor = ark.tensor([tensor_len], ark.fp16)
-
-        # send the tensor to rank 1
         send_id, dst_rank = 0, 1
-        send_dep_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
-        # A identity operation is used to add an execution dependency and
-        # make sure execution order correct
-        ark.send_done(
-            ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
-        )
+        send_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
+        # wait until the send is done
+        ark.send_done(send_tensor, send_id, dst_rank)
         # recv the tensor from rank 1
         recv_id, recv_rank = 1, 1
-        ark.recv(recv_tensor, recv_id, recv_rank)
+        recv_tensor = ark.recv(recv_id, recv_rank, bytes=tensor_size)
+        # cast received bytes to fp16
+        recv_tensor = ark.cast(recv_tensor, ark.fp16)
 ```
 
 The following is the model definition for GPU1. Here, GPU1 receives the tensor from GPU0 and sends it back to GPU0.
@@ -84,22 +79,16 @@ The following is the model definition for GPU1. Here, GPU1 receives the tensor f
     # Define the behavior for rank 1
     if rank == 1:
         # recv the tensor from rank 0
-        recv_tensor = ark.tensor([tensor_len], ark.fp16)
         recv_id, recv_rank = 0, 0
-        recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
-
-        # The send must be executed after the recv, identity is used to
-        # add an execution dependency between the two operations
-        send_tensor = ark.identity(recv_tensor, [recv_dep])
-
-        # Send the received tensor back to rank 0
+        recv_tensor = ark.recv(recv_id, recv_rank, bytes=tensor_size)
+        # cast received bytes to fp16
+        recv_tensor = ark.cast(recv_tensor, ark.fp16)
+        # send the received tensor back to rank 0
+        send_tensor = recv_tensor
         send_id, dst_rank = 1, 0
-        send_dep_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
-        # A identity operation is used to add an execution dependency and
-        # make sure execution order correct
-        ark.send_done(
-            ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
-        )
+        send_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
+        # wait until the send is done
+        ark.send_done(send_tensor, send_id, dst_rank)
 ```
 
 Note that there is a line that describes the dependency between the send and recv operation:
