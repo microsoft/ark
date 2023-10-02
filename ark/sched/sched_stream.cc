@@ -69,7 +69,7 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
         }
     }
 
-    auto &branch_info = this->branch_infos.back();
+    BranchInfo *branch_info = this->branch_infos.back().get();
 
     // Sort items in decreasing order of smem_bytes_per_uop / num_warps_per_uop.
     std::vector<SchedItem> sorted_items(items);
@@ -104,10 +104,10 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
 
     // Cache the last scheduled uop_idx for each opseq_id.
     // opseq_id -> uop_idx
-    std::map<int, int> uop_idx_cache;
+    std::map<int, int> cache_scheduled_uop_idx;
 
     while (!remaining_items.empty()) {
-        std::vector<int> remaining_warps(num_sms, this->num_warps_per_sm);
+        std::vector<int> n_remaining_warps(num_sms, this->num_warps_per_sm);
         std::vector<int> done_items;
         bool no_progress = true;
 
@@ -115,12 +115,12 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
             auto &item = p.second;
             int current_sm_idx = this->sm_id_begin;
             int current_warp_idx = 0;
-            int uop_idx = uop_idx_cache[item.opseq_id];
+            int uop_idx = cache_scheduled_uop_idx[item.opseq_id];
 
             while (uop_idx < item.num_uops &&
                    current_sm_idx < this->sm_id_end) {
                 int rem_warp =
-                    remaining_warps[current_sm_idx - this->sm_id_begin];
+                    n_remaining_warps[current_sm_idx - this->sm_id_begin];
                 if (rem_warp < item.num_warps_per_uop) {
                     // No room on this SM for this uop, move to next SM
                     current_sm_idx++;
@@ -168,7 +168,7 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
                     this->num_warps_per_sm) {
                     LOG(ERROR, "unexpected error");
                 }
-                remaining_warps[current_sm_idx - this->sm_id_begin] -=
+                n_remaining_warps[current_sm_idx - this->sm_id_begin] -=
                     item.num_warps_per_uop;
                 current_warp_idx += item.num_warps_per_uop;
                 uop_idx++;
@@ -177,20 +177,18 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items)
             if (uop_idx == item.num_uops) {
                 done_items.push_back(item.opseq_id);
             }
-            uop_idx_cache[item.opseq_id] = uop_idx;
+            cache_scheduled_uop_idx[item.opseq_id] = uop_idx;
         }
 
         if (no_progress) {
-            auto &item = remaining_items.begin()->second;
-            LOG(ERROR,
-                "Unable to schedule any items (given resources: "
-                "num_warps_per_sm=",
-                this->num_warps_per_sm,
-                " smem_bytes_per_sm=", this->smem_bytes_per_sm,
-                "). For example: opseq_id=", item.opseq_id,
-                " num_uops=", item.num_uops,
-                " num_warps_per_uop=", item.num_warps_per_uop,
-                " smem_bytes_per_uop=", item.smem_bytes_per_uop);
+            // No progress can be made, which means that the current
+            // smem_per_warp is too small. Create a new SchedBranch and
+            // try again.
+            // TODO: upon this case, we need to force __syncthreads() on
+            // all SMs of this stream for safety.
+            this->sync();
+            branch_info = this->branch_infos.back().get();
+            continue;
         }
 
         // Remove items that are done

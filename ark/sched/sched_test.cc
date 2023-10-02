@@ -408,6 +408,25 @@ ark::unittest::State test_sched_mixed_precision()
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_parallel_matmul()
+{
+    ark::Model m;
+    ark::Tensor *t0 = m.tensor({256, 8192}, ark::FP16);
+    ark::Tensor *t1 = m.tensor({8192, 8192}, ark::FP16);
+    auto shards = m.sharding(t0, 0, 128);
+
+    m.matmul(t0, t1);
+    m.matmul(shards[0], t1);
+
+    ark::Executor exe{0, 1, m, "sched_parallel_matmul"};
+    exe.compile();
+    exe.launch();
+    exe.run(3);
+    exe.stop();
+
+    return ark::unittest::SUCCESS;
+}
+
 int main()
 {
     ark::init();
@@ -417,5 +436,6 @@ int main()
     // UNITTEST(test_sched_comp_baseline);
     UNITTEST(test_sched_many_comm_ops);
     UNITTEST(test_sched_mixed_precision);
+    UNITTEST(test_sched_parallel_matmul);
     return 0;
 }
