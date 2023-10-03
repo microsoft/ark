@@ -12,7 +12,7 @@ namespace ark {
 
 extern const OpConfigMap MathConfigMap;
 
-ExpOp::ExpOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+ExpOp::ExpOp(const std::string &prec_type, Tensor *input, Tensor *output,
              const string &name)
     : Op{OP_EXP, prec_type,      {input}, {output}, {},
          name,   &MathConfigMap, -1,      true} {}
@@ -44,14 +44,6 @@ std::string ExpOp::function_name(const OpConfig &cfg) const {
 
 Tensor *Model::exp(Tensor *input, Tensor *output, const string &name) {
     assert(input != nullptr);
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
@@ -60,7 +52,7 @@ Tensor *Model::exp(Tensor *input, Tensor *output, const string &name) {
     } else if (output->shape != input->shape) {
         LOG(ERROR, "invalid output shape: ", output->shape);
     }
-    ExpOp op{pt, input, output, name};
+    ExpOp op{output->type.name(), input, output, name};
     return this->impl->add_op(op)[0];
 }
 

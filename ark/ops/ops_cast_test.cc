@@ -231,6 +231,30 @@ ark::unittest::State test_cast_int32_to_byte() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_cast_bf16_to_float() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+    ark::Tensor *out = m.cast(t, ark::FP32);
+
+    auto result = ark::op_test("cast_bf16_to_float", m, {t}, {out},
+                               baseline_cast<ark::bfloat16_t, float>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_cast_float_to_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+    ark::Tensor *out = m.cast(t, ark::BF16);
+
+    auto result = ark::op_test("cast_float_to_bf16", m, {t}, {out},
+                               baseline_cast<float, ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_cast_fp16_to_fp32);
@@ -245,5 +269,7 @@ int main() {
     UNITTEST(test_cast_fp32_to_byte);
     UNITTEST(test_cast_fp16_to_byte);
     UNITTEST(test_cast_int32_to_byte);
+    UNITTEST(test_cast_bf16_to_float);
+    UNITTEST(test_cast_float_to_bf16);
     return ark::unittest::SUCCESS;
 }

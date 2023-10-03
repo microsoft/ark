@@ -11,7 +11,7 @@ namespace ark {
 extern const OpConfigMap CastConfigMap;
 
 CastOp::CastOp(Tensor *input, Tensor *output, const std::string &name)
-    : Op{OP_CAST, OP_PREC_NONE,   {input}, {output}, {},
+    : Op{OP_CAST, "none",         {input}, {output}, {},
          name,    &CastConfigMap, -1,      true} {}
 
 std::string CastOp::function_name(const OpConfig &cfg) const {
@@ -153,7 +153,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
 }
 
 const OpConfigMap CastConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},

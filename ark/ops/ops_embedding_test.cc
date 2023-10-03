@@ -77,9 +77,14 @@ ark::unittest::State test_embedding_fp16() {
     return test_embedding<ark::half_t>();
 }
 
+ark::unittest::State test_embedding_bf16() {
+    return test_embedding<ark::bfloat16_t>();
+}
+
 int main() {
     ark::init();
     UNITTEST(test_embedding_fp32);
     UNITTEST(test_embedding_fp16);
+    UNITTEST(test_embedding_bf16);
     return ark::unittest::SUCCESS;
 }

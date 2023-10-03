@@ -9,6 +9,15 @@ from .tensor import Dims, Tensor, TensorBuf, Parameter
 from .data_type import DataType, fp32
 
 
+_REGISTRY_OPERATOR = {}
+
+
+# Decorator for registering operators.
+def register_op(func):
+    _REGISTRY_OPERATOR[func.__name__] = func
+    return func
+
+
 class _ModelState:
     """
     The _ModelState class is used to store the state of the model.
@@ -75,6 +84,7 @@ def _is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
 
 
+@register_op
 def tensor(
     shape: Iterable[int],
     dtype: DataType = fp32,
@@ -113,6 +123,7 @@ def tensor(
     return Tensor(_tensor)
 
 
+@register_op
 def parameter(
     shape: Iterable[int],
     dtype: DataType = fp32,
@@ -148,6 +159,7 @@ def parameter(
     return Parameter(_tensor)
 
 
+@register_op
 def reshape(
     input: Tensor,
     shape: Iterable[int],
@@ -180,6 +192,7 @@ def reshape(
     return Tensor(_tensor)
 
 
+@register_op
 def identity(
     input: Tensor,
     deps: List[Tensor] = [],
@@ -199,6 +212,7 @@ def identity(
     return Tensor(_tensor)
 
 
+@register_op
 def sharding(
     input: Tensor,
     axis: int,
@@ -223,6 +237,7 @@ def sharding(
     return tensor_list
 
 
+@register_op
 def reduce_sum(
     input: Tensor,
     axis: int,
@@ -243,6 +258,7 @@ def reduce_sum(
     return Tensor(_tensor)
 
 
+@register_op
 def reduce_mean(
     input: Tensor,
     axis: int,
@@ -261,6 +277,7 @@ def reduce_mean(
     return Tensor(_tensor)
 
 
+@register_op
 def reduce_max(
     input: Tensor,
     axis: int,
@@ -279,6 +296,7 @@ def reduce_max(
     return Tensor(_tensor)
 
 
+@register_op
 def layernorm(
     input: Tensor,
     output: Tensor = None,
@@ -296,6 +314,7 @@ def layernorm(
     return Tensor(_tensor)
 
 
+@register_op
 def rmsnorm(
     input: Tensor,
     output: Tensor = None,
@@ -313,6 +332,7 @@ def rmsnorm(
     return Tensor(_tensor)
 
 
+@register_op
 def softmax(
     input: Tensor,
     output: Tensor = None,
@@ -329,6 +349,7 @@ def softmax(
     return Tensor(_tensor)
 
 
+@register_op
 def transpose(
     input: Tensor,
     perm: list,
@@ -357,6 +378,7 @@ def transpose(
     return Tensor(_tensor)
 
 
+@register_op
 def matmul(
     input: Tensor,
     other: Tensor,
@@ -391,6 +413,7 @@ def matmul(
     return Tensor(_tensor)
 
 
+@register_op
 def im2col(
     input: Tensor,
     kernel_height: int,
@@ -428,6 +451,7 @@ def im2col(
     return Tensor(_tensor)
 
 
+@register_op
 def scale(
     input: Tensor,
     val: float,
@@ -450,6 +474,7 @@ def scale(
     return Tensor(_tensor)
 
 
+@register_op
 def exp(
     input: Tensor,
     output: Tensor = None,
@@ -466,6 +491,7 @@ def exp(
     return Tensor(_tensor)
 
 
+@register_op
 def sqrt(
     input: Tensor,
     output: Tensor = None,
@@ -482,6 +508,7 @@ def sqrt(
     return Tensor(_tensor)
 
 
+@register_op
 def rope(
     input: Tensor,
     other: Tensor,
@@ -499,6 +526,7 @@ def rope(
     return Tensor(_tensor)
 
 
+@register_op
 def relu(
     input: Tensor,
     output: Tensor = None,
@@ -516,6 +544,7 @@ def relu(
     return Tensor(_tensor)
 
 
+@register_op
 def gelu(
     input: Tensor,
     output: Tensor = None,
@@ -535,6 +564,7 @@ def gelu(
     return Tensor(_tensor)
 
 
+@register_op
 def sigmoid(
     input: Tensor,
     output: Tensor = None,
@@ -552,6 +582,7 @@ def sigmoid(
     return Tensor(_tensor)
 
 
+@register_op
 def add(
     input: Tensor,
     other: Tensor,
@@ -570,6 +601,7 @@ def add(
     return Tensor(_tensor)
 
 
+@register_op
 def sub(
     input: Tensor,
     other: Tensor,
@@ -588,6 +620,7 @@ def sub(
     return Tensor(_tensor)
 
 
+@register_op
 def mul(
     input: Tensor,
     other: Tensor,
@@ -606,6 +639,7 @@ def mul(
     return Tensor(_tensor)
 
 
+@register_op
 def div(
     input: Tensor,
     other: Tensor,
@@ -624,6 +658,7 @@ def div(
     return Tensor(_tensor)
 
 
+@register_op
 def send(
     input: Tensor,
     id: int,
@@ -658,6 +693,7 @@ def send(
     return Tensor(_tensor)
 
 
+@register_op
 def send_done(
     input: Tensor,
     id: int,
@@ -681,6 +717,7 @@ def send_done(
     return Tensor(_tensor)
 
 
+@register_op
 def recv(
     input: Tensor,
     id: int,
@@ -707,6 +744,7 @@ def recv(
     return Tensor(_tensor)
 
 
+@register_op
 def send_mm(
     input: Tensor,
     id: int,
@@ -738,6 +776,7 @@ def send_mm(
     return Tensor(_tensor)
 
 
+@register_op
 def recv_mm(
     input: Tensor,
     id: int,
@@ -763,6 +802,7 @@ def recv_mm(
     return Tensor(_tensor)
 
 
+@register_op
 def all_gather(
     input: Tensor,
     rank: int,
@@ -804,6 +844,7 @@ def all_gather(
     return [Tensor(_tensor) for _tensor in tensor_shards]
 
 
+@register_op
 def all_reduce(
     input: Tensor,
     rank: int,
@@ -832,6 +873,7 @@ def all_reduce(
     return Tensor(_tensor)
 
 
+@register_op
 def embedding(
     input: Tensor,
     weight: Tensor,
@@ -850,6 +892,7 @@ def embedding(
     return Tensor(_tensor)
 
 
+@register_op
 def cast(
     input: Tensor,
     dtype: DataType,

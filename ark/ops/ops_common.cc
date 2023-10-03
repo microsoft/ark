@@ -61,7 +61,7 @@ const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
     if (search != this->cfg_map.end()) {
         return search->second;
     }
-    search = this->cfg_map.find({key.arch_type, OP_PREC_ANY});
+    search = this->cfg_map.find({key.arch_type, "any"});
     if (search != this->cfg_map.end()) {
         return search->second;
     }
@@ -69,7 +69,7 @@ const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
     if (search != this->cfg_map.end()) {
         return search->second;
     }
-    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, OP_PREC_ANY});
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, "any"});
     if (search == this->cfg_map.end()) {
         return NoneConfigs;
     }
@@ -384,7 +384,7 @@ bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2) {
     return !(opargs1 == opargs2);
 }
 
-Op::Op(const OpType &type_, const OpPrecType &prec_type_,
+Op::Op(const OpType &type_, const std::string &prec_type_,
        const vector<Tensor *> &inputs_, const vector<Tensor *> &output_refs_,
        const OpArgs &args_, const string &name_, const OpConfigMap *cfg_map_,
        int gran_lev_, bool force_inline_)

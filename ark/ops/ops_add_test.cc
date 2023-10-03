@@ -63,6 +63,19 @@ ark::unittest::State test_add_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_add_bf16() {
+    ark::Model m;
+    ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::BF16);
+    ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::BF16);
+    ark::Tensor *out = m.add(t0, t1);
+
+    auto result = ark::op_test("add_bf16", m, {t0, t1}, {out},
+                               baseline_add<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_add_overwrite() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP16);
@@ -117,6 +130,7 @@ int main() {
     ark::init();
     UNITTEST(test_add_fp32);
     UNITTEST(test_add_fp16);
+    UNITTEST(test_add_bf16);
     UNITTEST(test_add_overwrite);
     UNITTEST(test_add_broadcast);
     return ark::unittest::SUCCESS;

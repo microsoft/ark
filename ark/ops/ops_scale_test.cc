@@ -68,9 +68,34 @@ ark::unittest::State test_scale_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_scale_bf16() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1), ark::BF16);
+        ark::Tensor *out = m.scale(t, SCALE_FACTOR);
+
+        auto result = ark::op_test("scale_bf16_small", m, {t}, {out},
+                                   baseline_scale<ark::bfloat16_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+        ark::Tensor *out = m.scale(t, SCALE_FACTOR);
+
+        auto result = ark::op_test("scale_bf16", m, {t}, {out},
+                                   baseline_scale<ark::bfloat16_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_scale_fp32);
     UNITTEST(test_scale_fp16);
+    UNITTEST(test_scale_bf16);
     return ark::unittest::SUCCESS;
 }

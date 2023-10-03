@@ -71,7 +71,7 @@ std::ostream &CodeGenerator::sync_stream(std::ostream &os, int stream_id,
 
 ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const {
     size_t off = this->get_tensor_offset(tensor);
-    os << "(" << tensor->type.pointer_name() << ")";
+    os << "(" << tensor->type.type_str() << " *)";
     std::string buf_name = ARK_BUF_NAME;
     if (tensor->imported_rank >= 0) {
         buf_name += std::to_string(tensor->imported_rank);
@@ -85,7 +85,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
     if (arg.type == OP_ARG_TENSOR) {
         Tensor *tns;
         arg.get(&tns);
-        os << tns->type.pointer_name() << name;
+        os << tns->type.type_str() << " *" << name;
     } else if (arg.type == OP_ARG_FLOAT) {
         os << "float " << name;
     } else if (arg.type == OP_ARG_INT) {

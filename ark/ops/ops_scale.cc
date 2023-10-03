@@ -10,8 +10,8 @@ namespace ark {
 
 extern const OpConfigMap ScaleConfigMap;
 
-ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
-                 const std::string &name)
+ScaleOp::ScaleOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                 float val, const std::string &name)
     : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
          name,     &ScaleConfigMap, -1,      true} {}
 
@@ -58,14 +58,6 @@ OpArgs ScaleOp::function_call_args(const OpConfig &) const {
 Tensor *Model::scale(Tensor *input, float val, Tensor *output,
                      const std::string &name) {
     assert(input != nullptr);
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
@@ -74,12 +66,12 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
     } else if (output->shape != input->shape) {
         LOG(ERROR, "invalid output shape: ", output->shape);
     }
-    ScaleOp op{pt, input, output, val, name};
+    ScaleOp op{output->type.name(), input, output, val, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap ScaleConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_ANY, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},
@@ -96,7 +88,22 @@ const OpConfigMap ScaleConfigMap = {
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
          {1, 0, {{1, 32}}, {{1, 32}}, false, false},
      }},
-    {{OP_ARCH_CUDA_ANY, OP_PREC_FP16},
+    {{OP_ARCH_CUDA_ANY, "fp16"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{128, 256}}, {{128, 256}}, false, false},
+         {8, 0, {{256, 128}}, {{256, 128}}, false, false},
+         {8, 0, {{128, 128}}, {{128, 128}}, false, false},
+         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
+         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
+         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
+         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
+         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
+         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
+         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
+         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
+     }},
+    {{OP_ARCH_CUDA_ANY, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},
