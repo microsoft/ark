@@ -87,8 +87,8 @@ RecvOp::RecvOp(OpPrecType prec_type, Tensor *output, int sid, int rank,
          true} {}
 
 std::string RecvOp::function_name(const OpConfig &) const {
-    Tensor *input = this->inputs[0];
-    CHECK(input->is_sequential());
+    Tensor *output = this->outputs[0];
+    CHECK(output->is_sequential());
 
     int sid;
     int rank;
