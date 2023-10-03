@@ -36,15 +36,10 @@ typedef long long int DimType;
 
 // DIMS_LEN is the maximum number of dimensions of a tensor. If a tensor
 // has less than DIMS_LEN dimensions, the remaining dimensions will be NO_DIM.
-enum
-{
-    DIMS_LEN = 4,
-    NO_DIM = -1
-};
+enum { DIMS_LEN = 4, NO_DIM = -1 };
 
 // Up-to-`DIMS_LEN`-dimensional vector.
-struct Dims
-{
+struct Dims {
     // Construct with given four dimensions.
     Dims(DimType d0 = NO_DIM, DimType d1 = NO_DIM, DimType d2 = NO_DIM,
          DimType d3 = NO_DIM);
@@ -87,10 +82,49 @@ class CodeGenerator;
 class BaseScheduler;
 class SchedOp;
 
+/// Type of tensor data.
+class TensorType {
+   private:
+    const std::string name_;
+    const int bytes_;
+    const std::string type_str_;
+
+   public:
+    TensorType(const std::string &name = "none", int bytes = 0,
+               const std::string &type_str = "void *");
+
+    bool operator==(const TensorType &other) const;
+    bool operator!=(const TensorType &other) const;
+
+    int bytes() const;
+    const std::string &name() const;
+    const std::string &type_str() const;
+};
+
+const TensorType NONE;
+
+std::ostream &operator<<(std::ostream &os, const TensorType &type);
+
+#define REGISTER_TENSOR_TYPE(_type_name, _bytes, _type_str) \
+    class TensorType_##_type_name : public TensorType {     \
+       public:                                              \
+        TensorType_##_type_name()                           \
+            : TensorType{#_type_name, _bytes, _type_str} {} \
+    };                                                      \
+    const TensorType_##_type_name _type_name;
+
+REGISTER_TENSOR_TYPE(FP32, 4, "float")
+REGISTER_TENSOR_TYPE(FP16, 2, "ark::half")
+REGISTER_TENSOR_TYPE(BF16, 2, "ark::bfloat16")
+REGISTER_TENSOR_TYPE(INT32, 4, "int32_t")
+REGISTER_TENSOR_TYPE(UINT32, 4, "uint32_t")
+REGISTER_TENSOR_TYPE(INT8, 1, "int8_t")
+REGISTER_TENSOR_TYPE(UINT8, 1, "uint8_t")
+REGISTER_TENSOR_TYPE(BYTE, 1, "unsigned char")
+
 // TensorBuf refers to a data array that can be shared by multiple tensors.
-class TensorBuf
-{
-  public:
+class TensorBuf {
+   public:
     TensorBuf(const DimType &bytes = 0, int id = -1);
     TensorBuf(const TensorBuf &) = default;
 
@@ -100,66 +134,12 @@ class TensorBuf
     int id;
     bool immutable = false;
 
-  protected:
+   protected:
     void *buf = nullptr;
 
     friend class Tensor;
     friend class BaseScheduler;
 };
-
-/// Type of tensor data.
-class TensorType
-{
-  private:
-    const int id_;
-    const int bytes_;
-    const std::string name_;
-    const std::string pointer_name_;
-
-  public:
-    TensorType(int id = -1, int bytes = 0, const std::string &name = "none",
-               const std::string &pointer_name = "void *");
-
-    bool operator==(const TensorType &other) const;
-    bool operator!=(const TensorType &other) const;
-
-    int id() const;
-    int bytes() const;
-    const std::string &name() const;
-    const std::string &pointer_name() const;
-};
-
-class Fp16 : public TensorType
-{
-  public:
-    Fp16();
-};
-
-class Fp32 : public TensorType
-{
-  public:
-    Fp32();
-};
-
-class Int32 : public TensorType
-{
-  public:
-    Int32();
-};
-
-class Byte : public TensorType
-{
-  public:
-    Byte();
-};
-
-const TensorType NONE;
-const Fp16 FP16;
-const Fp32 FP32;
-const Int32 INT32;
-const Byte BYTE;
-
-std::ostream &operator<<(std::ostream &os, const TensorType &type);
 
 /// Tensor is a view of a TensorBuf.
 ///
@@ -173,9 +153,8 @@ std::ostream &operator<<(std::ostream &os, const TensorType &type);
 ///                                                  |
 ///                                        We call these "padding".
 ///
-class Tensor
-{
-  public:
+class Tensor {
+   public:
     /// Tensor constructor.
     Tensor(const Dims &shape, const TensorType &type, TensorBuf *buf,
            const Dims &ldims, const Dims &offs, const Dims &pads, bool exported,
@@ -296,16 +275,15 @@ class Tensor
     /// Name of this tensor
     const std::string name;
 
-  protected:
+   protected:
     void update_pads(const std::vector<DimType> &pads);
 
     friend class DefaultScheduler;
     friend class SchedOp;
 };
 
-class Model
-{
-  public:
+class Model {
+   public:
     // Constructors.
     Model(int rank_ = 0);
     Model(const Model &) = delete;
@@ -525,22 +503,21 @@ class Model
     /// @return true if the model is valid, false otherwise.
     bool verify() const;
 
-  protected:
+   protected:
     class Impl;
     friend class OpGraph;
     friend class SimpleScheduler;
     friend class DefaultScheduler;
 
-  private:
+   private:
     std::unique_ptr<Impl> impl;
 };
 
 class GpuBuf;
 
 /// Convenience class for executing a model.
-class Executor
-{
-  public:
+class Executor {
+   public:
     /// Constructor.
     Executor(int rank, int world_size, Model &model, const std::string &name,
              int num_warps_per_sm = 16);
@@ -559,11 +536,11 @@ class Executor
     /// again.
     float stop();
 
-  private:
+   private:
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_H
+#endif  // ARK_H

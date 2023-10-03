@@ -2,18 +2,20 @@
 // Licensed under the MIT license.
 
 #include "ops_test_common.h"
+
+#include <cuda_runtime.h>
+
+#include <cstring>
+
 #include "env.h"
 #include "gpu/gpu_kernel.h"
 #include "logging.h"
 #include "random.h"
 #include "unittest/unittest_utils.h"
-#include <cstring>
-#include <cuda_runtime.h>
 
 namespace ark {
 
-std::ostream &operator<<(std::ostream &os, const OpsTestResult &result)
-{
+std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     os << "op test: " << result.test_name << " #warp/sm "
        << result.num_warps_per_sm << ", msec/iter " << result.msec_per_iter;
     os << std::setprecision(4);
@@ -30,8 +32,8 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result)
 /// @param a First value
 /// @param b Second value
 /// @return The error rate
-template <typename T> float error_rate(T a, T b)
-{
+template <typename T>
+float error_rate(T a, T b) {
     T diff = abs(a - b);
     T max = std::max(abs(a), abs(b));
     if (max == 0) {
@@ -44,19 +46,13 @@ template <typename T> float error_rate(T a, T b)
 /// @param a First value
 /// @param b Second value
 /// @return The error rate
-float error_rate(half_t a, half_t b)
-{
-    return error_rate<half_t>(a, b);
-}
+float error_rate(half_t a, half_t b) { return error_rate<half_t>(a, b); }
 
 /// Calculate the error rate between two floats.
 /// @param a First value
 /// @param b Second value
 /// @return The error rate
-float error_rate(float a, float b)
-{
-    return error_rate<float>(a, b);
-}
+float error_rate(float a, float b) { return error_rate<float>(a, b); }
 
 /// Return mean squared error and max error rate between two tensors.
 /// @tparam T data type of the tensors.
@@ -67,8 +63,7 @@ float error_rate(float a, float b)
 /// @return a pair of mean squared error and max error rate.
 template <typename T>
 TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
-                                   bool print = false)
-{
+                                   bool print = false) {
     DimType nelem = shape.size();
     int ndims = shape.ndims();
     float l2_loss = 0;
@@ -116,8 +111,7 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
 /// @param print whether to print wrong values.
 /// @return a pair of mean squared error and max error rate.
 TensorCompareResult tensor_compare(half_t *ground_truth, half_t *res,
-                                   Dims shape, bool print)
-{
+                                   Dims shape, bool print) {
     return tensor_compare<half_t>(ground_truth, res, shape, print);
 }
 
@@ -128,8 +122,7 @@ TensorCompareResult tensor_compare(half_t *ground_truth, half_t *res,
 /// @param print whether to print wrong values.
 /// @return a pair of mean squared error and max error rate.
 TensorCompareResult tensor_compare(float *ground_truth, float *res, Dims shape,
-                                   bool print)
-{
+                                   bool print) {
     return tensor_compare<float>(ground_truth, res, shape, print);
 }
 
@@ -140,8 +133,7 @@ TensorCompareResult tensor_compare(float *ground_truth, float *res, Dims shape,
 /// @param print whether to print wrong values.
 /// @return a pair of mean squared error and max error rate.
 TensorCompareResult tensor_compare(int *ground_truth, int *res, Dims shape,
-                                   bool print)
-{
+                                   bool print) {
     return tensor_compare<int>(ground_truth, res, shape, print);
 }
 
@@ -152,20 +144,19 @@ TensorCompareResult tensor_compare(int *ground_truth, int *res, Dims shape,
 /// @param print whether to print wrong values.
 /// @return a pair of mean squared error and max error rate.
 TensorCompareResult tensor_compare(uint8_t *ground_truth, uint8_t *res,
-                                   Dims shape, bool print)
-{
+                                   Dims shape, bool print) {
     return tensor_compare<uint8_t>(ground_truth, res, shape, print);
 }
 
-#define CUDA_CHECK(status)                                                     \
-    do {                                                                       \
-        cudaError_t error = status;                                            \
-        if (error != cudaSuccess) {                                            \
-            std::ostringstream oss;                                            \
-            oss << "Got bad cuda status: " << cudaGetErrorString(error)        \
-                << " at line: " << __LINE__;                                   \
-            throw std::runtime_error(oss.str());                               \
-        }                                                                      \
+#define CUDA_CHECK(status)                                              \
+    do {                                                                \
+        cudaError_t error = status;                                     \
+        if (error != cudaSuccess) {                                     \
+            std::ostringstream oss;                                     \
+            oss << "Got bad cuda status: " << cudaGetErrorString(error) \
+                << " at line: " << __LINE__;                            \
+            throw std::runtime_error(oss.str());                        \
+        }                                                               \
     } while (0);
 
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
@@ -174,8 +165,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data,
                       bool print_on_error, int rank, int world_size,
-                      int num_warps_per_sm)
-{
+                      int num_warps_per_sm) {
     Executor exe{rank, world_size, model, "op_test_" + rand_anum(4),
                  num_warps_per_sm};
     exe.compile();
@@ -195,6 +185,11 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
             } else if (t->type == FP16) {
                 ::memcpy(buf, utils::rand_halfs(t->shape.size(), 0.1).get(),
                          t->shape_bytes());
+            } else if (t->type == BF16) {
+                ::memcpy(
+                    buf,
+                    utils::rand_array<bfloat16_t>(t->shape.size(), 0.1).get(),
+                    t->shape_bytes());
             } else if (t->type == INT32) {
                 ::memcpy(buf,
                          utils::rand_array<int>(t->shape.size(), 10000).get(),
@@ -278,6 +273,10 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
             comp = tensor_compare(static_cast<ark::half_t *>(gt[i]),
                                   static_cast<ark::half_t *>(res[i]),
                                   outputs[i]->shape.dims4(), print_on_error);
+        } else if (outputs[i]->type == BF16) {
+            comp = tensor_compare(static_cast<ark::bfloat16_t *>(gt[i]),
+                                  static_cast<ark::bfloat16_t *>(res[i]),
+                                  outputs[i]->shape.dims4(), print_on_error);
         } else if (outputs[i]->type == INT32) {
             comp = tensor_compare(static_cast<int *>(gt[i]),
                                   static_cast<int *>(res[i]),
@@ -345,8 +344,7 @@ OpsTestResult op_test_8(const std::string &test_name_prefix, Model &model,
                         const std::vector<Tensor *> &outputs,
                         OpsTestBaseline baseline,
                         const std::vector<void *> &inputs_data,
-                        bool print_on_error, int rank, int world_size)
-{
+                        bool print_on_error, int rank, int world_size) {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
                    inputs_data, print_on_error, rank, world_size, 8);
 }
@@ -356,8 +354,7 @@ OpsTestResult op_test_16(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
                          const std::vector<void *> &inputs_data,
-                         bool print_on_error, int rank, int world_size)
-{
+                         bool print_on_error, int rank, int world_size) {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
                    inputs_data, print_on_error, rank, world_size, 16);
 }
@@ -367,42 +364,29 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                          const std::vector<Tensor *> &outputs,
                          OpsTestBaseline baseline,
                          const std::vector<void *> &inputs_data,
-                         bool print_on_error, int rank, int world_size)
-{
+                         bool print_on_error, int rank, int world_size) {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
                    inputs_data, print_on_error, rank, world_size, 32);
 }
 
-OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size)
-{
+OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size) {
     CUDA_CHECK(cudaMalloc(&this->gpu_ptr_, size));
 }
 
-OpsTestGpuMem::~OpsTestGpuMem()
-{
-    cudaFree(this->gpu_ptr_);
-}
+OpsTestGpuMem::~OpsTestGpuMem() { cudaFree(this->gpu_ptr_); }
 
-void *OpsTestGpuMem::get() const
-{
-    return this->gpu_ptr_;
-}
+void *OpsTestGpuMem::get() const { return this->gpu_ptr_; }
 
-size_t OpsTestGpuMem::size() const
-{
-    return this->size_;
-}
+size_t OpsTestGpuMem::size() const { return this->size_; }
 
-OpsTestGpuMem to_gpu(const void *host_ptr, size_t size)
-{
+OpsTestGpuMem to_gpu(const void *host_ptr, size_t size) {
     OpsTestGpuMem gpu_mem(size);
     CUDA_CHECK(
         cudaMemcpy(gpu_mem.get(), host_ptr, size, cudaMemcpyHostToDevice));
     return gpu_mem;
 }
 
-void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr)
-{
+void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr) {
     if (host_ptr == nullptr) {
         host_ptr = ::malloc(test_gpu_mem.size());
     }
@@ -411,9 +395,6 @@ void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr)
     return host_ptr;
 }
 
-void sync_gpu()
-{
-    CUDA_CHECK(cudaDeviceSynchronize());
-}
+void sync_gpu() { CUDA_CHECK(cudaDeviceSynchronize()); }
 
-} // namespace ark
+}  // namespace ark

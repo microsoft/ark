@@ -11,8 +11,7 @@
 namespace ark {
 
 /// Information of an operator that runs on a branch.
-struct BranchOp
-{
+struct BranchOp {
     /// The opseq ID.
     int opseq_id;
     /// The uop ID that runs on the first warp among the entire @ref Branch.
@@ -27,8 +26,7 @@ struct BranchOp
 };
 
 /// A branch of execution that runs on a SM.
-struct WarpBranch
-{
+struct WarpBranch {
     /// The warp ID range of this branch [warp_id_begin, warp_id_end).
     int warp_id_begin;
     /// The warp ID range of this branch [warp_id_begin, warp_id_end).
@@ -38,8 +36,7 @@ struct WarpBranch
 };
 
 /// A branch of execution that runs over multiple SMs.
-struct Branch
-{
+struct Branch {
     /// The SM ID range of this branch [sm_id_begin, sm_id_end).
     int sm_id_begin;
     /// The SM ID range of this branch [sm_id_begin, sm_id_end).
@@ -51,9 +48,8 @@ struct Branch
 };
 
 /// A class that records the branches of execution.
-class SchedBranch
-{
-  public:
+class SchedBranch {
+   public:
     /// Construct a @ref SchedBranch.
     SchedBranch();
 
@@ -78,11 +74,11 @@ class SchedBranch
     std::vector<Branch> get_branches(
         const std::map<int, int> &sm_id_to_smem_per_warp);
 
-  private:
+   private:
     class Impl;
     std::unique_ptr<Impl> impl;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_SCHED_BRANCH_H_
+#endif  // ARK_SCHED_BRANCH_H_

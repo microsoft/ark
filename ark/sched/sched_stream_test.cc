@@ -5,8 +5,7 @@
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
-int main()
-{
+int main() {
     ark::init();
     return 0;
 }

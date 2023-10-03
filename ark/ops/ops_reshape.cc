@@ -1,23 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
-ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const std::string &name)
-    : Op{OP_RESHAPE, prec_type, {input}, {output}, {}, name, nullptr, -1, true}
-{
-}
+ReshapeOp::ReshapeOp(const std::string &prec_type, Tensor *input,
+                     Tensor *output, const std::string &name)
+    : Op{OP_RESHAPE, prec_type, {input}, {output}, {},
+         name,       nullptr,   -1,      true} {}
 
 // Reshape `input` to `shape`. This interface does not support -1 as a dimension
 // of `shape`, because Dims does not allow -1 as a valid dimension.
 static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
-                        bool allowzero, Tensor *output, const std::string &)
-{
+                        bool allowzero, Tensor *output, const std::string &) {
     if (input == nullptr) {
         LOG(ERROR, "input is null");
     }
@@ -73,17 +72,16 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
 
 //
 Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     output = _reshape(this, input, shape, allowzero, output, name);
-    ReshapeOp op{OP_PREC_NONE, input, output, name};
+    ReshapeOp op{"none", input, output, name};
     return this->impl->add_op(op)[0];
 }
 
 Tensor *Model::reshape(Tensor *input,
                        const std::initializer_list<DimType> &shape,
-                       bool allowzero, Tensor *output, const std::string &name)
-{
+                       bool allowzero, Tensor *output,
+                       const std::string &name) {
     std::vector<DimType> shape_vec{shape};
     return this->reshape(input, shape_vec, allowzero, output, name);
 }
@@ -97,8 +95,8 @@ Tensor *Model::reshape(Tensor *input,
 // 0 and -1 at the same time. If `shape` is an empty vector, `input` will be
 // converted to a scalar.
 Tensor *Model::reshape(Tensor *input, const std::vector<DimType> &shape,
-                       bool allowzero, Tensor *output, const std::string &name)
-{
+                       bool allowzero, Tensor *output,
+                       const std::string &name) {
     if (input == nullptr) {
         LOG(ERROR, "input is null");
     }
@@ -149,8 +147,8 @@ Tensor *Model::reshape(Tensor *input, const std::vector<DimType> &shape,
     }
     output =
         _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
-    ReshapeOp op{OP_PREC_NONE, input, output, name};
+    ReshapeOp op{"none", input, output, name};
     return this->impl->add_op(op)[0];
 }
 
-} // namespace ark
+}  // namespace ark

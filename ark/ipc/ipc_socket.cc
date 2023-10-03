@@ -1,14 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_socket.h"
+
 #include <arpa/inet.h>
-#include <cstring>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "ipc/ipc_socket.h"
+#include <cstring>
+
 #include "logging.h"
 
 #define MAX_LISTEN_LEN 4096
@@ -17,8 +19,7 @@
 namespace ark {
 
 IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
-    : ip{ip_}, port{port_}, create{create_}
-{
+    : ip{ip_}, port{port_}, create{create_} {
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port_);
@@ -75,8 +76,7 @@ IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
     });
 }
 
-IpcSocket::~IpcSocket()
-{
+IpcSocket::~IpcSocket() {
     this->run_server = false;
     if (this->server.joinable()) {
         this->server.join();
@@ -90,8 +90,7 @@ IpcSocket::~IpcSocket()
 }
 
 IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
-                                     int size)
-{
+                                     int size) {
     if (name.size() > MAX_ITEM_NAME_LEN) {
         LOG(ERROR, "name too long");
     }
@@ -110,8 +109,7 @@ IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
     return SUCCESS;
 }
 
-IpcSocket::State IpcSocket::remove_item(const std::string &name)
-{
+IpcSocket::State IpcSocket::remove_item(const std::string &name) {
     auto it = this->items.find(name);
     if (it == this->items.end()) {
         return ITEM_NOT_FOUND;
@@ -126,8 +124,7 @@ IpcSocket::State IpcSocket::remove_item(const std::string &name)
 IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
                                                 const std::string &name,
                                                 void *data, int size,
-                                                bool block)
-{
+                                                bool block) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -174,8 +171,7 @@ IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
 
 IpcSocket::State IpcSocket::query_item(const std::string &ip, int port,
                                        const std::string &name, void *data,
-                                       int size, bool block)
-{
+                                       int size, bool block) {
     State s;
     for (;;) {
         s = query_item_internal(ip, port, name, data, size, block);
@@ -187,8 +183,7 @@ IpcSocket::State IpcSocket::query_item(const std::string &ip, int port,
     return s;
 }
 
-IpcSocket::State IpcSocket::serve_item()
-{
+IpcSocket::State IpcSocket::serve_item() {
     int sock = accept(this->sock_listen, NULL, NULL);
     if (sock < 0) {
         return ACCEPT_FAILED;
@@ -221,8 +216,7 @@ IpcSocket::State IpcSocket::serve_item()
     return SUCCESS;
 }
 
-const IpcSocket::Item *IpcSocket::get_item(const std::string &name) const
-{
+const IpcSocket::Item *IpcSocket::get_item(const std::string &name) const {
     auto it = this->items.find(name);
     if (it != this->items.end()) {
         return &it->second;
@@ -232,8 +226,7 @@ const IpcSocket::Item *IpcSocket::get_item(const std::string &name) const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int IpcSocket::send_all(int sock, const void *buf, int size)
-{
+int IpcSocket::send_all(int sock, const void *buf, int size) {
     int sent = 0;
     const char *ptr = (const char *)buf;
     while (sent < size) {
@@ -249,8 +242,7 @@ int IpcSocket::send_all(int sock, const void *buf, int size)
     return 0;
 }
 
-int IpcSocket::recv_try(int sock, void *buf, int size)
-{
+int IpcSocket::recv_try(int sock, void *buf, int size) {
     int cnt = 0;
     int received = 0;
     char *ptr = (char *)buf;
@@ -274,8 +266,7 @@ int IpcSocket::recv_try(int sock, void *buf, int size)
     return received;
 }
 
-int IpcSocket::recv_all(int sock, void *buf, int size)
-{
+int IpcSocket::recv_all(int sock, void *buf, int size) {
     int cnt = 0;
     int received = 0;
     char *ptr = (char *)buf;
@@ -298,4 +289,4 @@ int IpcSocket::recv_all(int sock, void *buf, int size)
     return received;
 }
 
-} // namespace ark
+}  // namespace ark

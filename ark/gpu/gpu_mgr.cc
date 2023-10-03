@@ -1,20 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <cassert>
-#include <cstring>
+#include "gpu/gpu_mgr.h"
+
 #include <fcntl.h>
-#include <fstream>
-#include <iomanip>
-#include <memory>
+#include <nvml.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <nvml.h>
+#include <cassert>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <memory>
 
 #include "env.h"
 #include "gpu/gpu_logging.h"
-#include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "math.h"
 
@@ -23,8 +24,7 @@ using namespace std;
 namespace ark {
 
 // Initialize APIs.
-static void gpu_init()
-{
+static void gpu_init() {
     // Initialize CUDA driver APIs.
     CULOG(cuInit(0));
     // Initialize NVML APIs.
@@ -32,16 +32,14 @@ static void gpu_init()
 }
 
 // Return the number of GPUs in the system.
-static int gpu_num()
-{
+static int gpu_num() {
     int n;
     CULOG(cuDeviceGetCount(&n));
     return n;
 }
 
 //
-void GpuInfo::init(const int gpu_id)
-{
+void GpuInfo::init(const int gpu_id) {
     CUdevice dev;
     CULOG(cuDeviceGet(&dev, gpu_id));
     //
@@ -93,8 +91,7 @@ void GpuInfo::init(const int gpu_id)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_}
-{
+GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
     // Create a CUDA context.
     CUdevice dev;
     CULOG(cuDeviceGet(&dev, gpu_id_));
@@ -104,14 +101,11 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_}
 }
 
 //
-GpuMgr::~GpuMgr()
-{
-}
+GpuMgr::~GpuMgr() {}
 
 //
 GpuMgrCtx *GpuMgr::create_context(const std::string &name, int rank,
-                                  int world_size)
-{
+                                  int world_size) {
     for (auto &ctx : this->mgr_ctxs) {
         if (ctx->get_name() == name) {
             LOG(ERROR, "GpuMgrCtx ", name, " already exists.");
@@ -123,8 +117,7 @@ GpuMgrCtx *GpuMgr::create_context(const std::string &name, int rank,
 }
 
 //
-void GpuMgr::destroy_context(GpuMgrCtx *ctx)
-{
+void GpuMgr::destroy_context(GpuMgrCtx *ctx) {
     auto it = this->mgr_ctxs.begin();
     for (; it != this->mgr_ctxs.end(); ++it) {
         if (it->get() == ctx) {
@@ -135,8 +128,7 @@ void GpuMgr::destroy_context(GpuMgrCtx *ctx)
 }
 
 //
-void GpuMgr::validate_total_bytes()
-{
+void GpuMgr::validate_total_bytes() {
     size_t total_bytes = 0;
     for (auto &mgr_ctx : this->mgr_ctxs) {
         total_bytes += mgr_ctx->get_total_bytes();
@@ -148,19 +140,19 @@ void GpuMgr::validate_total_bytes()
 }
 
 //
-GpuState GpuMgr::set_current()
-{
-    return cuCtxSetCurrent(this->cuda_ctx);
-}
+GpuState GpuMgr::set_current() { return cuCtxSetCurrent(this->cuda_ctx); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
                      const std::string &name_)
-    : gpu_mgr{gpu_mgr_}, rank{rank_}, world_size{world_size_}, name{name_},
-      data_mem{}, sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)}
-{
+    : gpu_mgr{gpu_mgr_},
+      rank{rank_},
+      world_size{world_size_},
+      name{name_},
+      data_mem{},
+      sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)} {
     // Initialize SCs to ones.
     int *href = (int *)this->sc_rc_mem.href();
     for (int i = 0; i < MAX_NUM_SID; ++i) {
@@ -176,8 +168,7 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
 }
 
 //
-GpuMgrCtx::~GpuMgrCtx()
-{
+GpuMgrCtx::~GpuMgrCtx() {
     //
     for (GpuStream s : this->streams) {
         cuStreamDestroy(s);
@@ -185,8 +176,7 @@ GpuMgrCtx::~GpuMgrCtx()
 }
 
 //
-GpuStream GpuMgrCtx::create_stream()
-{
+GpuStream GpuMgrCtx::create_stream() {
     GpuStream s;
     this->gpu_mgr->set_current();
     CULOG(cuStreamCreate(&s, CU_STREAM_NON_BLOCKING));
@@ -195,14 +185,12 @@ GpuStream GpuMgrCtx::create_stream()
 }
 
 //
-GpuState GpuMgrCtx::sync_stream(const GpuStream &s)
-{
+GpuState GpuMgrCtx::sync_stream(const GpuStream &s) {
     return cuStreamSynchronize(s);
 }
 
 //
-void GpuMgrCtx::destroy_stream(const GpuStream &s)
-{
+void GpuMgrCtx::destroy_stream(const GpuStream &s) {
     auto it = this->streams.begin();
     for (; it != this->streams.end(); ++it) {
         if (*it == s) {
@@ -214,8 +202,7 @@ void GpuMgrCtx::destroy_stream(const GpuStream &s)
 }
 
 //
-GpuEvent GpuMgrCtx::create_event(bool disable_timing)
-{
+GpuEvent GpuMgrCtx::create_event(bool disable_timing) {
     GpuEvent cuda_event;
     unsigned int flags = 0;
     if (disable_timing) {
@@ -226,8 +213,7 @@ GpuEvent GpuMgrCtx::create_event(bool disable_timing)
 }
 
 //
-GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
-{
+GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align) {
     if (bytes == 0) {
         return nullptr;
     }
@@ -292,8 +278,7 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
 }
 
 //
-void GpuMgrCtx::mem_free(GpuBuf *buf)
-{
+void GpuMgrCtx::mem_free(GpuBuf *buf) {
     int id = buf->get_id();
     if ((size_t)id >= this->usage.size()) {
         LOG(ERROR, "GpuBuf ID ", id, " has never been allocated");
@@ -332,8 +317,7 @@ void GpuMgrCtx::mem_free(GpuBuf *buf)
 }
 
 //
-void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
-{
+void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid) {
     if (sid >= MAX_NUM_SID) {
         LOG(ERROR, "invalid SID ", sid);
     }
@@ -342,8 +326,7 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid)
 }
 
 //
-GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
-{
+GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid) {
     if (sid >= MAX_NUM_SID) {
         LOG(ERROR, "invalid SID ", sid);
     }
@@ -358,14 +341,12 @@ GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid)
 }
 
 void GpuMgrCtx::reg_sendrecv(int sid, int remote_gpu_id, size_t bytes,
-                             bool is_recv)
-{
+                             bool is_recv) {
     this->comm_sw->reg_sendrecv(sid, remote_gpu_id, bytes, is_recv);
 }
 
 //
-void GpuMgrCtx::freeze(bool expose)
-{
+void GpuMgrCtx::freeze(bool expose) {
     //
     this->gpu_mgr->validate_total_bytes();
 
@@ -383,55 +364,42 @@ void GpuMgrCtx::freeze(bool expose)
 }
 
 //
-GpuState GpuMgrCtx::set_current()
-{
-    return this->gpu_mgr->set_current();
-}
+GpuState GpuMgrCtx::set_current() { return this->gpu_mgr->set_current(); }
 
 // Get the host memory address of an SC flag.
-volatile int *GpuMgrCtx::get_sc_href(int sid) const
-{
+volatile int *GpuMgrCtx::get_sc_href(int sid) const {
     return (volatile int *)this->sc_rc_mem.href(sid * sizeof(int));
 }
 
 // Get the host memory address of an RC flag.
-volatile int *GpuMgrCtx::get_rc_href(int sid) const
-{
+volatile int *GpuMgrCtx::get_rc_href(int sid) const {
     return (volatile int *)this->sc_rc_mem.href((MAX_NUM_SID + sid) *
                                                 sizeof(int));
 }
 
 //
-GpuPtr GpuMgrCtx::get_data_ref(int gid) const
-{
-    if (gid == -1)
-        return this->data_mem.ref();
+GpuPtr GpuMgrCtx::get_data_ref(int gid) const {
+    if (gid == -1) return this->data_mem.ref();
     return this->comm_sw->get_data_mem(gid)->ref();
 }
 
 // Get the GPU memory address of an SC flag.
-GpuPtr GpuMgrCtx::get_sc_ref(int sid) const
-{
+GpuPtr GpuMgrCtx::get_sc_ref(int sid) const {
     return this->sc_rc_mem.ref(sid * sizeof(int));
 }
 
 // Get the GPU memory address of an RC flag.
-GpuPtr GpuMgrCtx::get_rc_ref(int sid) const
-{
+GpuPtr GpuMgrCtx::get_rc_ref(int sid) const {
     return this->sc_rc_mem.ref((MAX_NUM_SID + sid) * sizeof(int));
 }
 
 //
-GpuPtr GpuMgrCtx::get_request_ref() const
-{
+GpuPtr GpuMgrCtx::get_request_ref() const {
     return this->comm_sw->get_request_ref();
 }
 
 //
-GpuCommSw *GpuMgrCtx::get_comm_sw() const
-{
-    return this->comm_sw.get();
-}
+GpuCommSw *GpuMgrCtx::get_comm_sw() const { return this->comm_sw.get(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -439,8 +407,7 @@ GpuCommSw *GpuMgrCtx::get_comm_sw() const
 vector<unique_ptr<GpuMgr>> ARK_GPU_MGR_GLOBAL;
 
 // Return a pointer to a global GpuMgr.
-GpuMgr *get_gpu_mgr(const int gpu_id)
-{
+GpuMgr *get_gpu_mgr(const int gpu_id) {
     if (gpu_id < 0) {
         LOG(ERROR, "invalid GPU ID ", gpu_id);
     }
@@ -464,20 +431,16 @@ GpuMgr *get_gpu_mgr(const int gpu_id)
     return mgr;
 }
 
-void gpu_memset(GpuPtr buf, int val, size_t num)
-{
+void gpu_memset(GpuPtr buf, int val, size_t num) {
     CULOG(cuMemsetD32(buf, val, num));
 }
-void gpu_memcpy(GpuPtr dst, const void *src, size_t bytes)
-{
+void gpu_memcpy(GpuPtr dst, const void *src, size_t bytes) {
     CULOG(cuMemcpyHtoD(dst, src, bytes));
 }
-void gpu_memcpy(void *dst, const GpuPtr src, size_t bytes)
-{
+void gpu_memcpy(void *dst, const GpuPtr src, size_t bytes) {
     CULOG(cuMemcpyDtoH(dst, src, bytes));
 }
-void gpu_memset(GpuBuf *buf, int val, size_t num)
-{
+void gpu_memset(GpuBuf *buf, int val, size_t num) {
     const size_t &bytes = buf->get_bytes();
     assert(bytes >= 4);
     if ((bytes >> 2) < num) {
@@ -497,16 +460,13 @@ void gpu_memset(GpuBuf *buf, int val, size_t num)
         }
     }
 }
-void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes)
-{
+void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes) {
     CULOG(cuMemcpyHtoD(dst->ref(), src, bytes));
 }
-void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes)
-{
+void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes) {
     CULOG(cuMemcpyDtoH(dst, src->ref(), bytes));
 }
-void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes)
-{
+void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes) {
     GpuPtr rd = dst->ref();
     GpuPtr rs = src->ref();
     if ((rd != 0) && (rs != 0)) {
@@ -521,4 +481,4 @@ void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes)
     }
 }
 
-} // namespace ark
+}  // namespace ark

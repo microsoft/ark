@@ -1,23 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap TransposeConfigMap;
 
-TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                         int tp_type, const std::string &name)
+TransposeOp::TransposeOp(const std::string &prec_type, Tensor *input,
+                         Tensor *output, int tp_type, const std::string &name)
     : Op{OP_TRANSPOSE, prec_type,           {input}, {output}, {{tp_type}},
-         name,         &TransposeConfigMap, -1,      true}
-{
-}
+         name,         &TransposeConfigMap, -1,      true} {}
 
-std::string TransposeOp::function_name(const OpConfig &cfg) const
-{
+std::string TransposeOp::function_name(const OpConfig &cfg) const {
     int tp_type;
     this->args.get(&tp_type, 0);
 
@@ -36,26 +34,17 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::transpose" + tp_type_str,
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
+                                 input->ldims.dims4(),   // InDims
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
                              }});
 }
 
 Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
-                         const std::string &name)
-{
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
+                         const std::string &name) {
     int input_ndims = input->ndims();
     Dims in_shape{1, 1, 1, 1};
     if (input_ndims < 2 || input_ndims > 4) {
@@ -99,12 +88,12 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     } else {
         assert(output->shape == out_shape);
     }
-    TransposeOp op{pt, input, output, tp_type, name};
+    TransposeOp op{output->type.name(), input, output, tp_type, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap TransposeConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_ANY, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},
@@ -113,7 +102,19 @@ const OpConfigMap TransposeConfigMap = {
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
          {2, 0, {{1, 1}}, {{32, 32}}, true, false},
      }},
-    {{OP_ARCH_CUDA_ANY, OP_PREC_FP16},
+    {{OP_ARCH_CUDA_ANY, "fp16"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 0, {{1, 1}}, {{128, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 128}}, true, false},
+         {4, 0, {{1, 1}}, {{128, 64}}, true, false},
+         {4, 0, {{1, 1}}, {{64, 64}}, true, false},
+         {2, 0, {{1, 1}}, {{32, 32}}, true, false},
+         {1, 0, {{1, 1}}, {{16, 16}}, true, false},
+         {1, 0, {{1, 1}}, {{8, 16}}, true, false},
+         {1, 0, {{1, 1}}, {{4, 8}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_ANY, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},
@@ -127,4 +128,4 @@ const OpConfigMap TransposeConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

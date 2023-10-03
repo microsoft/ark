@@ -1,19 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+#include <type_traits>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <cassert>
-#include <type_traits>
 
 template <typename T>
 void baseline_embedding(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes)
-{
+                        const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     int *in = static_cast<int *>(inputs[0]);
     T *weight = static_cast<T *>(inputs[1]);
@@ -38,8 +38,8 @@ void baseline_embedding(std::vector<void *> &outputs,
     }
 };
 
-template <typename T> ark::unittest::State test_embedding()
-{
+template <typename T>
+ark::unittest::State test_embedding() {
     const int num_emb = 1000;
     const int emb_dim = 8192;
 
@@ -71,20 +71,20 @@ template <typename T> ark::unittest::State test_embedding()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_embedding_fp32()
-{
-    return test_embedding<float>();
-}
+ark::unittest::State test_embedding_fp32() { return test_embedding<float>(); }
 
-ark::unittest::State test_embedding_fp16()
-{
+ark::unittest::State test_embedding_fp16() {
     return test_embedding<ark::half_t>();
 }
 
-int main()
-{
+ark::unittest::State test_embedding_bf16() {
+    return test_embedding<ark::bfloat16_t>();
+}
+
+int main() {
     ark::init();
     UNITTEST(test_embedding_fp32);
     UNITTEST(test_embedding_fp16);
+    UNITTEST(test_embedding_bf16);
     return ark::unittest::SUCCESS;
 }

@@ -4,106 +4,38 @@
 #ifndef ARK_KERNELS_MATH_FUNCTIONS_H_
 #define ARK_KERNELS_MATH_FUNCTIONS_H_
 
-#include "broadcast.h"
+#include "common.h"
 
 namespace ark {
 
-struct Exp
-{
-    static DEVICE float compute(float input)
-    {
-        return expf(input);
-    }
-    static DEVICE __half2 compute(__half2 input)
-    {
-        return h2exp(input);
-    }
-};
-
-struct Sqrt
-{
-    static DEVICE float compute(float input)
-    {
-        return sqrtf(input);
-    }
-    static DEVICE __half2 compute(__half2 input)
-    {
-        return h2sqrt(input);
-    }
-};
-
-template <typename _MathType, typename _InShape, typename _DataType,
-          int _NelemPerThread>
-struct Math;
-
-template <typename _MathType, typename _InShape>
-struct Math<_MathType, _InShape, half, 2>
-{
-    using InputType = half;
-    using OutputType = half;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(half *output, const half *input)
-    {
-        __half2 *pout = (__half2 *)output;
-        if (_InShape::W == 1) {
-            *pout = _MathType::compute(__half2half2(*(const __half *)input));
-        } else {
-            __half2 *pin = (__half2 *)input;
-            *pout = _MathType::compute(*pin);
-        }
-    }
-};
-
-template <typename _MathType, typename _InShape>
-struct Math<_MathType, _InShape, float, 1>
-{
-    using InputType = float;
-    using OutputType = float;
-    static const int NelemPerThread = 1;
-
-    static DEVICE void compute(float *output, const float *input)
-    {
-        *output = _MathType::compute(*input);
-    }
-};
-
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void exp(half *out, half *in, int uop_idx, int)
-{
+          int SmemBytes, typename InDataType, typename OutDataType>
+DEVICE void exp(OutDataType *out, const InDataType *in, int uop_idx, int) {
+    constexpr int NelemPerThread =
+        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
+            ? 8
+            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-               SmemBytes, Math<Exp, InShape, half, 2>>::run(out, in, uop_idx);
+               SmemBytes,
+               Broadcast1Intrinsic<type::Exp, InShape, InDataType, OutDataType,
+                                   NelemPerThread>>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void exp(float *out, float *in, int uop_idx, int)
-{
+          int SmemBytes, typename InDataType, typename OutDataType>
+DEVICE void sqrt(OutDataType *out, const InDataType *in, int uop_idx, int) {
+    constexpr int NelemPerThread =
+        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
+            ? 8
+            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-               SmemBytes, Math<Exp, InShape, float, 1>>::run(out, in, uop_idx);
+               SmemBytes,
+               Broadcast1Intrinsic<type::Sqrt, InShape, InDataType, OutDataType,
+                                   NelemPerThread>>::run(out, in, uop_idx);
 }
 
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void sqrt(half *out, half *in, int uop_idx, int)
-{
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-               SmemBytes, Math<Sqrt, InShape, half, 2>>::run(out, in, uop_idx);
-}
+}  // namespace ark
 
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void sqrt(float *out, float *in, int uop_idx, int)
-{
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-               SmemBytes, Math<Sqrt, InShape, float, 1>>::run(out, in, uop_idx);
-}
-
-} // namespace ark
-
-#endif // ARK_KERNELS_MATH_FUNCTIONS_H_
+#endif  // ARK_KERNELS_MATH_FUNCTIONS_H_

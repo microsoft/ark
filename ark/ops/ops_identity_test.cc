@@ -5,8 +5,7 @@
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_identity()
-{
+ark::unittest::State test_identity() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor *tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
@@ -32,8 +31,7 @@ ark::unittest::State test_identity()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_identity);
     return ark::unittest::SUCCESS;

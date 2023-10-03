@@ -1,16 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <cassert>
-#include <cstring>
+#include "ipc/ipc_mem.h"
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cassert>
+#include <cstring>
+
 #include "cpu_timer.h"
 #include "env.h"
-#include "ipc/ipc_mem.h"
 #include "ipc/ipc_shm.h"
 #include "logging.h"
 
@@ -34,8 +36,7 @@ namespace ark {
 // does not already exist, otherwise it will cause a deadlock.
 //
 IpcMem::IpcMem(const string &name, bool create, bool try_create)
-    : name_{name}, create_{create}
-{
+    : name_{name}, create_{create} {
     assert(name_.size() > 0);
     string lock_name_str =
         get_env().shm_name_prefix + name_ + NAME_LOCK_POSTFIX;
@@ -106,8 +107,7 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
 }
 
 // Destructor.
-IpcMem::~IpcMem()
-{
+IpcMem::~IpcMem() {
     if (lock_ != nullptr) {
         if (locked_) {
             this->unlock();
@@ -129,8 +129,7 @@ IpcMem::~IpcMem()
     }
 }
 
-void IpcMem::lock()
-{
+void IpcMem::lock() {
     assert(lock_ != nullptr);
     assert(!locked_);
     int r = ipc_lock_acquire(lock_);
@@ -140,8 +139,7 @@ void IpcMem::lock()
     locked_ = true;
 }
 
-void IpcMem::unlock()
-{
+void IpcMem::unlock() {
     assert(lock_ != nullptr);
     assert(locked_);
     int r = ipc_lock_release(lock_);
@@ -151,16 +149,12 @@ void IpcMem::unlock()
     locked_ = false;
 }
 
-bool IpcMem::is_locked() const
-{
-    return locked_;
-}
+bool IpcMem::is_locked() const { return locked_; }
 
 // Allocate/re-allocate the shared memory space of the data file.
 // Return the current mmapped address if the given `bytes`
 // is equal to or less than `total_bytes`.
-void *IpcMem::alloc(size_t bytes)
-{
+void *IpcMem::alloc(size_t bytes) {
     assert((bytes != 0) || !create_);
     if ((bytes != 0) && (bytes <= total_bytes_)) {
         // If `total_bytes` is zero, nullptr is returned.
@@ -236,4 +230,4 @@ void *IpcMem::alloc(size_t bytes)
     return addr_;
 }
 
-} // namespace ark
+}  // namespace ark

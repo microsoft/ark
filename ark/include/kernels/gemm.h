@@ -25,25 +25,18 @@
 namespace ark {
 
 /// Custom ThreadblockSwizzle for ARK.
-template <typename UnitOp> struct GemmThreadblockSwizzle
-{
-    DEVICE GemmThreadblockSwizzle()
-    {
-    }
+template <typename UnitOp>
+struct GemmThreadblockSwizzle {
+    DEVICE GemmThreadblockSwizzle() {}
 
-    DEVICE cutlass::gemm::GemmCoord get_tiled_shape() const
-    {
+    DEVICE cutlass::gemm::GemmCoord get_tiled_shape() const {
         return cutlass::gemm::GemmCoord(UnitOp::UnitOpDims::H,
                                         UnitOp::UnitOpDims::W, 1);
     }
 
-    DEVICE int get_log_tile(cutlass::gemm::GemmCoord) const
-    {
-        return 0;
-    }
+    DEVICE int get_log_tile(cutlass::gemm::GemmCoord) const { return 0; }
 
-    DEVICE cutlass::gemm::GemmCoord get_tile_offset(int log_tile) const
-    {
+    DEVICE cutlass::gemm::GemmCoord get_tile_offset(int log_tile) const {
         // log_tile is actually uop_idx here.
         int uh = UnitOp::uop_idx_h(log_tile);
         int uw = UnitOp::uop_idx_w(log_tile);
@@ -64,8 +57,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm70, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 256, 32>>
-{
+                         cutlass::gemm::GemmShape<128, 256, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -88,8 +80,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 256, 64>>
-{
+                         cutlass::gemm::GemmShape<128, 256, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -109,8 +100,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<256, 128, 64>>
-{
+                         cutlass::gemm::GemmShape<256, 128, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -130,8 +120,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 128, 64>>
-{
+                         cutlass::gemm::GemmShape<128, 128, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -151,8 +140,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<256, 64, 64>>
-{
+                         cutlass::gemm::GemmShape<256, 64, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -172,8 +160,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<64, 256, 64>>
-{
+                         cutlass::gemm::GemmShape<64, 256, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -193,8 +180,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<64, 128, 64>>
-{
+                         cutlass::gemm::GemmShape<64, 128, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -214,8 +200,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 64, 64>>
-{
+                         cutlass::gemm::GemmShape<128, 64, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -235,8 +220,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<64, 64, 64>>
-{
+                         cutlass::gemm::GemmShape<64, 64, 64>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -256,8 +240,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 256, 32>>
-{
+                         cutlass::gemm::GemmShape<128, 256, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -277,8 +260,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<256, 128, 32>>
-{
+                         cutlass::gemm::GemmShape<256, 128, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -298,8 +280,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 128, 32>>
-{
+                         cutlass::gemm::GemmShape<128, 128, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -319,8 +300,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<256, 64, 32>>
-{
+                         cutlass::gemm::GemmShape<256, 64, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -340,8 +320,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<64, 256, 32>>
-{
+                         cutlass::gemm::GemmShape<64, 256, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -361,8 +340,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<64, 128, 32>>
-{
+                         cutlass::gemm::GemmShape<64, 128, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -382,8 +360,7 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<128, 64, 32>>
-{
+                         cutlass::gemm::GemmShape<128, 64, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
 
@@ -403,10 +380,348 @@ template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, cutlass::half_t, LayoutA,
                          cutlass::half_t, LayoutB, cutlass::half_t, LayoutC,
-                         cutlass::gemm::GemmShape<64, 64, 32>>
-{
+                         cutlass::gemm::GemmShape<64, 64, 32>> {
     using ElementOutput = cutlass::half_t;
     using ElementAccumulator = cutlass::half_t;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::half_t, LayoutA, cutlass::half_t, LayoutB, ElementOutput,
+        LayoutC, ElementAccumulator, cutlass::arch::OpClassTensorOp,
+        cutlass::arch::Sm80, cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<32, 32, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 10>;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// SM80 BF16
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<128, 256, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<128, 256, 64>,
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<256, 128, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<256, 128, 64>,
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<128, 128, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<128, 128, 64>,
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<256, 64, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<256, 64, 64>,
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<64, 256, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<64, 256, 64>,
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<64, 128, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<64, 128, 64>,
+        cutlass::gemm::GemmShape<32, 64, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 4>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<128, 64, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<128, 64, 64>,
+        cutlass::gemm::GemmShape<64, 32, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 4>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<64, 64, 64>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<32, 32, 64>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 6>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<128, 256, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<128, 256, 32>,
+        cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<256, 128, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<256, 128, 32>,
+        cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<128, 128, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<128, 128, 32>,
+        cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 4>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<256, 64, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<256, 64, 32>,
+        cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 4>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<64, 256, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<64, 256, 32>,
+        cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 4>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<64, 128, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<64, 128, 32>,
+        cutlass::gemm::GemmShape<32, 64, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 6>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<128, 64, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        cutlass::bfloat16_t, LayoutA, cutlass::bfloat16_t, LayoutB,
+        ElementOutput, LayoutC, ElementAccumulator,
+        cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+        cutlass::gemm::GemmShape<128, 64, 32>,
+        cutlass::gemm::GemmShape<64, 32, 32>,
+        cutlass::gemm::GemmShape<16, 8, 16>,
+        cutlass::epilogue::thread::LinearCombination<
+            ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 6>;
+};
+
+template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
+struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
+                         cutlass::arch::Sm80, cutlass::bfloat16_t, LayoutA,
+                         cutlass::bfloat16_t, LayoutB, cutlass::bfloat16_t,
+                         LayoutC, cutlass::gemm::GemmShape<64, 64, 32>> {
+    using ElementOutput = cutlass::bfloat16_t;
+    using ElementAccumulator = float;
 
     using Gemm = cutlass::gemm::device::Gemm<
         cutlass::half_t, LayoutA, cutlass::half_t, LayoutB, ElementOutput,
@@ -425,10 +740,9 @@ struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
-struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
-                         cutlass::arch::Sm80, float, LayoutA, float, LayoutB,
-                         float, LayoutC, cutlass::gemm::GemmShape<128, 256, 32>>
-{
+struct GemmConfiguration<
+    UnitOp, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80, float, LayoutA,
+    float, LayoutB, float, LayoutC, cutlass::gemm::GemmShape<128, 256, 32>> {
     using ElementOutput = float;
     using ElementAccumulator = float;
 
@@ -445,10 +759,9 @@ struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
 };
 
 template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
-struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
-                         cutlass::arch::Sm80, float, LayoutA, float, LayoutB,
-                         float, LayoutC, cutlass::gemm::GemmShape<128, 128, 32>>
-{
+struct GemmConfiguration<
+    UnitOp, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80, float, LayoutA,
+    float, LayoutB, float, LayoutC, cutlass::gemm::GemmShape<128, 128, 32>> {
     using ElementOutput = float;
     using ElementAccumulator = float;
 
@@ -467,8 +780,7 @@ struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
 template <typename UnitOp, typename LayoutA, typename LayoutB, typename LayoutC>
 struct GemmConfiguration<UnitOp, cutlass::arch::OpClassTensorOp,
                          cutlass::arch::Sm80, float, LayoutA, float, LayoutB,
-                         float, LayoutC, cutlass::gemm::GemmShape<64, 64, 32>>
-{
+                         float, LayoutC, cutlass::gemm::GemmShape<64, 64, 32>> {
     using ElementOutput = float;
     using ElementAccumulator = float;
 
@@ -590,8 +902,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
           int TileSizeK, typename UnitOp, int NumThreads, int SmemBytes>
 DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
-                      int smem_per_warp)
-{
+                      int smem_per_warp) {
 #if (ARK_TARGET_CUDA_ARCH == 60)
     using ArchTag = cutlass::arch::Sm60;
 #elif (ARK_TARGET_CUDA_ARCH == 70)
@@ -659,14 +970,13 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
           int TileSizeK, typename UnitOp, int NumThreads, int SmemBytes>
 DEVICE void gemm_cuda_90(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
-                         int smem_per_warp)
-{
+                         int smem_per_warp) {
 #if 1
     static_assert(false, "Not implemented yet.");
 #else
 #if (ARK_TARGET_CUDA_ARCH == 90)
     using ArchTag = cutlass::arch::Sm90;
-#elif (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 ||             \
+#elif (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
        ARK_TARGET_CUDA_ARCH == 80)
     static_assert(false, "Use gemm_cuda instead.");
 #else
@@ -796,8 +1106,7 @@ template <typename OutDims, typename NCA, typename NCB, typename Shape,
           int SmemBytes, typename DataTypeA, typename DataTypeB,
           typename DataTypeC, typename AccumulateType>
 DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
-                 int smem_per_warp)
-{
+                 int smem_per_warp) {
     static_assert(NCA::D2 == 1 && NCA::D3 == 1,
                   "NCA should be two dimensional.");
     static_assert(NCB::D2 == 1 && NCB::D3 == 1,
@@ -856,7 +1165,7 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
     }
 
-#if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 ||               \
+#if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
      ARK_TARGET_CUDA_ARCH == 80)
     gemm_cuda<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
               IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
@@ -872,6 +1181,6 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
 #endif
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_GEMM_H_
+#endif  // ARK_KERNELS_GEMM_H_

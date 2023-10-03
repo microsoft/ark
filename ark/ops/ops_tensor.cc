@@ -1,23 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 TensorOp::TensorOp(const std::vector<Tensor *> &deps, Tensor *output,
                    const std::string &name)
-    : Op{OP_TENSOR, OP_PREC_NONE, deps, {output}, {}, name, nullptr, -1}
-{
-}
+    : Op{OP_TENSOR, "none", deps, {output}, {}, name, nullptr, -1} {}
 
 Tensor *Model::tensor(const Dims &shape, const TensorType &ttype,
                       TensorBuf *buf, const Dims &ldims, const Dims &offs,
                       const Dims &pads, const std::vector<Tensor *> &deps,
-                      bool exported, int imported_rank, const std::string &name)
-{
+                      bool exported, int imported_rank,
+                      const std::string &name) {
     if (buf == nullptr) {
         buf = this->impl->create_tensor_buf();
     }
@@ -40,4 +39,4 @@ Tensor *Model::tensor(const Dims &shape, const TensorType &ttype,
     return this->impl->add_op(op)[0];
 }
 
-} // namespace ark
+}  // namespace ark

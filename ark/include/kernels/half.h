@@ -11,6 +11,6 @@
 
 namespace ark {
 using half = cutlass::half_t;
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_HALF_H_
+#endif  // ARK_KERNELS_HALF_H_

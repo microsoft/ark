@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "model.h"
+
 #include <stack>
 
 #include "logging.h"
-#include "model.h"
 
 using namespace std;
 
@@ -13,16 +14,14 @@ namespace ark {
 // Create a new TensorBuf object with `bytes` bytes.
 // A common usage is setting `bytes` to 0 during declaring a model and let the
 // scheduler determine the value after the model is completely defined.
-TensorBuf *Model::Impl::create_tensor_buf(const DimType bytes)
-{
+TensorBuf *Model::Impl::create_tensor_buf(const DimType bytes) {
     this->tns_bufs_storage.emplace_back(
         make_unique<TensorBuf>(bytes, (int)this->tns_bufs_storage.size()));
     return this->tns_bufs_storage.back().get();
 }
 
 // Remove a TensorBuf object from the model.
-void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
-{
+void Model::Impl::destroy_tensor_buf(const TensorBuf *buf) {
     for (auto &tns : this->tns_storage) {
         if (tns->buf == buf) {
             LOG(ERROR, "dangling tensor detected");
@@ -43,17 +42,15 @@ void Model::Impl::destroy_tensor_buf(const TensorBuf *buf)
 }
 
 std::vector<Tensor *> Model::Impl::add_op(
-    const OpType type, const OpPrecType prec_type,
+    const OpType type, const std::string &prec_type,
     const vector<Tensor *> &inputs, const vector<Tensor *> &outputs,
     const OpArgs &args, const string &name, const OpConfigMap *cfg_map,
-    int gran_lev)
-{
+    int gran_lev) {
     Op op{type, prec_type, inputs, outputs, args, name, cfg_map, gran_lev};
     return this->add_op(op);
 }
 
-std::string Model::Impl::append_name_postfix(const std::string &name)
-{
+std::string Model::Impl::append_name_postfix(const std::string &name) {
     string suffix_str;
     auto p = this->name_cnts.emplace(name, 1);
     if (!p.second) {
@@ -66,8 +63,7 @@ std::string Model::Impl::append_name_postfix(const std::string &name)
     return name + suffix_str;
 }
 
-std::vector<Tensor *> Model::Impl::add_op(Op &op)
-{
+std::vector<Tensor *> Model::Impl::add_op(Op &op) {
     op.name = append_name_postfix(op.name);
     this->ops_storage.emplace_back(make_unique<Op>(op));
 
@@ -126,8 +122,7 @@ std::vector<Tensor *> Model::Impl::add_op(Op &op)
 
 /// Delete an existing operator from the model.
 /// @param op the existing op to be deleted.
-void Model::Impl::delete_op(Op *op)
-{
+void Model::Impl::delete_op(Op *op) {
     // Remove the operator from the set of operators that have the given tensor
     // as one of their inputs.
     for (auto &tns : op->inputs) {
@@ -177,8 +172,7 @@ void Model::Impl::delete_op(Op *op)
     }
 }
 
-std::list<TensorBuf *> Model::Impl::get_tensor_bufs() const
-{
+std::list<TensorBuf *> Model::Impl::get_tensor_bufs() const {
     std::list<TensorBuf *> tns_buf_list;
     for (auto &tns_buf : this->tns_bufs_storage) {
         tns_buf_list.emplace_back(tns_buf.get());
@@ -186,8 +180,7 @@ std::list<TensorBuf *> Model::Impl::get_tensor_bufs() const
     return tns_buf_list;
 };
 
-std::list<Tensor *> Model::Impl::get_tensors() const
-{
+std::list<Tensor *> Model::Impl::get_tensors() const {
     std::list<Tensor *> tns_list;
     for (auto &tns : this->tns_storage) {
         tns_list.emplace_back(tns.get());
@@ -195,8 +188,7 @@ std::list<Tensor *> Model::Impl::get_tensors() const
     return tns_list;
 };
 
-std::list<Op *> Model::Impl::get_ops() const
-{
+std::list<Op *> Model::Impl::get_ops() const {
     std::list<Op *> ops;
     for (auto &op : this->ops_storage) {
         ops.emplace_back(op.get());
@@ -205,8 +197,7 @@ std::list<Op *> Model::Impl::get_ops() const
 };
 
 // Returns the latest-declared operator that has the given tensor as its output.
-const Op *Model::Impl::get_producer(Tensor *tns) const
-{
+const Op *Model::Impl::get_producer(Tensor *tns) const {
     auto search = this->tns_to_producer.find(tns);
     if (search == this->tns_to_producer.end()) {
         return nullptr;
@@ -216,8 +207,7 @@ const Op *Model::Impl::get_producer(Tensor *tns) const
 
 // Returns the set of operators that have the given tensor as one of their
 // inputs.
-const std::set<Op *> &Model::Impl::get_users(Tensor *tns) const
-{
+const std::set<Op *> &Model::Impl::get_users(Tensor *tns) const {
     auto search = this->tns_to_users.find(tns);
     if (search == this->tns_to_users.end()) {
         LOG(ERROR, "Not an existing tensor.");
@@ -226,8 +216,7 @@ const std::set<Op *> &Model::Impl::get_users(Tensor *tns) const
 }
 
 // Returns true if the given tensor is not an input of any operator.
-bool Model::Impl::is_no_user(Tensor *tns) const
-{
+bool Model::Impl::is_no_user(Tensor *tns) const {
     auto search = this->tns_to_users.find(tns);
     if (search == this->tns_to_users.end()) {
         return true;
@@ -235,8 +224,7 @@ bool Model::Impl::is_no_user(Tensor *tns) const
     return false;
 }
 
-std::list<const Op *> Model::Impl::get_leaf_ops() const
-{
+std::list<const Op *> Model::Impl::get_leaf_ops() const {
     std::list<const Op *> leaf_ops;
     for (auto &op : this->ops_storage) {
         bool is_leaf = true;
@@ -253,8 +241,7 @@ std::list<const Op *> Model::Impl::get_leaf_ops() const
     return leaf_ops;
 }
 
-std::list<const Op *> Model::Impl::get_producer_ops(const Op *op) const
-{
+std::list<const Op *> Model::Impl::get_producer_ops(const Op *op) const {
     // Input tensors and output reference tensors are all producer tensors.
     std::vector<Tensor *> producer_tensors = op->inputs;
     for (auto &tns : op->output_refs) {
@@ -272,8 +259,7 @@ std::list<const Op *> Model::Impl::get_producer_ops(const Op *op) const
 }
 
 /// Returns the set of Ops that are user of the given Op's output.
-std::list<const Op *> Model::Impl::get_user_ops(const Op *op) const
-{
+std::list<const Op *> Model::Impl::get_user_ops(const Op *op) const {
     std::list<const Op *> user_ops;
     for (auto &tns : op->outputs) {
         const std::set<Op *> &user_op_set = this->get_users(tns);
@@ -284,8 +270,7 @@ std::list<const Op *> Model::Impl::get_user_ops(const Op *op) const
     return user_ops;
 }
 
-const Op *Model::Impl::get_cyclic_op() const
-{
+const Op *Model::Impl::get_cyclic_op() const {
     std::list<const Op *> leaf_ops = this->get_leaf_ops();
     std::set<const Op *> visited_ops;
     std::stack<const Op *> op_stack;
@@ -308,15 +293,13 @@ const Op *Model::Impl::get_cyclic_op() const
 }
 
 //
-Model::Model(int rank_) : impl{make_unique<Model::Impl>()}
-{
+Model::Model(int rank_) : impl{make_unique<Model::Impl>()} {
     this->impl->rank = rank_;
 }
 
 Model::~Model() = default;
 
-bool Model::verify() const
-{
+bool Model::verify() const {
     const Op *cyclic_op = this->impl->get_cyclic_op();
     if (cyclic_op != nullptr) {
         LOG(WARN, "Cyclic dependency detected around Op ",
@@ -326,4 +309,4 @@ bool Model::verify() const
     return true;
 }
 
-} // namespace ark
+}  // namespace ark

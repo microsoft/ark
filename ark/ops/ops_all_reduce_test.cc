@@ -8,8 +8,7 @@ template <typename T, int NumGpus>
 void baseline_all_reduce(std::vector<void *> &outputs,
                          const std::vector<ark::Dims> &output_shapes,
                          const std::vector<void *> &,
-                         const std::vector<ark::Dims> &)
-{
+                         const std::vector<ark::Dims> &) {
     // Calculate sum from 1 to NumGpus.
     T expected = 0;
     for (int i = 1; i <= NumGpus; ++i) {
@@ -23,8 +22,7 @@ void baseline_all_reduce(std::vector<void *> &outputs,
     }
 }
 
-void test_all_reduce_4gpus_internal(size_t nelem, int iter)
-{
+void test_all_reduce_4gpus_internal(size_t nelem, int iter) {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem, iter]() {
@@ -47,15 +45,13 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter)
     ark::unittest::wait_all_processes();
 }
 
-ark::unittest::State test_all_reduce_4gpus()
-{
+ark::unittest::State test_all_reduce_4gpus() {
     test_all_reduce_4gpus_internal(8, 1);
     test_all_reduce_4gpus_internal(8192, 1);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_all_reduce_4gpus);
     return ark::unittest::SUCCESS;

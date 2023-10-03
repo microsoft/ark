@@ -1,23 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap SoftmaxConfigMap;
 
-SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const std::string &name)
+SoftmaxOp::SoftmaxOp(const std::string &prec_type, Tensor *input,
+                     Tensor *output, const std::string &name)
     : Op{OP_SOFTMAX, prec_type,         {input}, {output}, {},
-         name,       &SoftmaxConfigMap, -1,      true}
-{
-}
+         name,       &SoftmaxConfigMap, -1,      true} {}
 
-std::string SoftmaxOp::function_name(const OpConfig &cfg) const
-{
+std::string SoftmaxOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -26,27 +24,18 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::softmax",
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
                              }});
 }
 
-Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name)
-{
+Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name) {
     assert(input != nullptr);
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
@@ -55,12 +44,12 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name)
     } else if (output == input) {
         output = this->identity(output);
     }
-    SoftmaxOp op{pt, input, output, name};
+    SoftmaxOp op{output->type.name(), input, output, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap SoftmaxConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
+    {{OP_ARCH_CUDA_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, -1}}, {{32, -1}}, true, false},
@@ -74,4 +63,4 @@ const OpConfigMap SoftmaxConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

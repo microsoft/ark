@@ -13,8 +13,7 @@ union alignas(16) DataPacketLL {
     // on 64bits machine, the access to the 64bits data is atomic, so we combine
     // the 32bits data and flag into one 64bits data to insure the GPU receive
     // complete data
-    struct
-    {
+    struct {
         uint32_t data1;
         uint32_t flag1;
         uint32_t data2;
@@ -28,8 +27,8 @@ union alignas(16) DataPacketLL {
 // sizeof(float16). the data is stored in column major, and LDM is the
 // major dimension. The TN is the thread number, TDM and TDN is the tile
 // size.
-template <int FLAG> DEVICE uint64_t readLL(DataPacketLL *recv_buf)
-{
+template <int FLAG>
+DEVICE uint64_t readLL(DataPacketLL *recv_buf) {
     uint32_t data1, flag1, data2, flag2;
     do {
         asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];"
@@ -39,16 +38,15 @@ template <int FLAG> DEVICE uint64_t readLL(DataPacketLL *recv_buf)
     uint64_t val64 = data1 + (((uint64_t)data2) << 32);
     return val64;
 }
-template <int FLAG> DEVICE void storeLL(DataPacketLL *data_dst, uint64_t val)
-{
+template <int FLAG>
+DEVICE void storeLL(DataPacketLL *data_dst, uint64_t val) {
     asm volatile(
         "st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" ::"l"(&data_dst->i4),
         "r"((uint32_t)val), "r"(FLAG), "r"((uint32_t)(val >> 32)), "r"(FLAG));
 }
 
 template <int TN>
-DEVICE void pre_send_mm_op(volatile int *send_ready_flag, int uop_idx)
-{
+DEVICE void pre_send_mm_op(volatile int *send_ready_flag, int uop_idx) {
     if (threadIdx.x % TN == 0) {
         while (send_ready_flag[uop_idx] != 0) {
         }
@@ -58,8 +56,7 @@ DEVICE void pre_send_mm_op(volatile int *send_ready_flag, int uop_idx)
 }
 
 template <int TN>
-DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int uop_idx)
-{
+DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int uop_idx) {
     sync_warps<TN>();
     if (threadIdx.x % TN == 0) {
         // reset the send_ready_flag to 0
@@ -72,8 +69,7 @@ template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 // send a tile of the tensor from data_src to recv_buff
 DEVICE void sendLL(void *recv_buff, ark::half *data_src,
-                   volatile int *send_ready_flag, int uop_idx, int)
-{
+                   volatile int *send_ready_flag, int uop_idx, int) {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
 
@@ -111,8 +107,7 @@ DEVICE void sendLL(void *recv_buff, ark::half *data_src,
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
-                   volatile int *send_ready_flag, int uop_idx, int)
-{
+                   volatile int *send_ready_flag, int uop_idx, int) {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
 
@@ -147,7 +142,7 @@ DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
     post_recv_mm_op<TN>(send_ready_flag, uop_idx);
 }
 
-} // namespace comm
-} // namespace ark
+}  // namespace comm
+}  // namespace ark
 
-#endif // ARK_COMM_MM_H_
+#endif  // ARK_COMM_MM_H_

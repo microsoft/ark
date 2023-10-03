@@ -1,23 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark.h"
-#include "ark_utils.h"
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <cassert>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <vector>
+
+#include "ark.h"
+#include "ark_utils.h"
 
 using namespace std;
 using namespace ark;
 
-void print_tensor(Tensor *tensor, Executor *exe)
-{
+void print_tensor(Tensor *tensor, Executor *exe) {
     if (tensor == nullptr) {
         return;
     }
@@ -32,20 +33,17 @@ void print_tensor(Tensor *tensor, Executor *exe)
     delete[] data;
 }
 
-class FullyConnectedLayer
-{
-  public:
+class FullyConnectedLayer {
+   public:
     FullyConnectedLayer(int dim_input, int dim_output, TensorType dtype,
                         Model &model)
-        : model{model}
-    {
+        : model{model} {
         Tensor *weight = model.tensor({dim_input, dim_output}, dtype);
         Tensor *bias = model.tensor({1, dim_output}, dtype);
         params = {weight, bias};
     }
 
-    Tensor *forward(Tensor *input)
-    {
+    Tensor *forward(Tensor *input) {
         this->input = input;
         Tensor *weight = params[0];
         Tensor *output1 = model.matmul(input, weight);
@@ -54,9 +52,7 @@ class FullyConnectedLayer
         return output2;
     }
 
-    Tensor *backward(Tensor *grad)
-    {
-
+    Tensor *backward(Tensor *grad) {
         Tensor *weight = params[0];
         Tensor *bias = params[1];
         Tensor *grad_output2 = grad;
@@ -74,8 +70,7 @@ class FullyConnectedLayer
         return grad_input;
     }
 
-    void apply_grads()
-    {
+    void apply_grads() {
         for (auto &param : params) {
             Tensor *grad = grads[param];
             // the learning rate
@@ -85,8 +80,7 @@ class FullyConnectedLayer
         }
     }
 
-    void print_tensors(Executor *exe)
-    {
+    void print_tensors(Executor *exe) {
         print_tensor(input, exe);
         // print the parameters.
         for (size_t i = 0; i < params.size(); ++i) {
@@ -100,28 +94,22 @@ class FullyConnectedLayer
     Model &model;
 };
 
-class FFN_Model
-{
-  public:
+class FFN_Model {
+   public:
     //
     FFN_Model(int dim_model, TensorType dtype, Model &model, int layer_num,
               int num_gpus, int gpu_id)
-        : model{model}, num_gpus{num_gpus}, gpu_id{gpu_id}
-    {
+        : model{model}, num_gpus{num_gpus}, gpu_id{gpu_id} {
         for (int i = 0; i < layer_num; ++i) {
             FullyConnectedLayer layer{dim_model, dim_model, dtype, model};
             layers.push_back(layer);
         }
     }
 
-    Model &get_model()
-    {
-        return model;
-    }
+    Model &get_model() { return model; }
 
     //
-    Tensor *forward(Tensor *input = nullptr)
-    {
+    Tensor *forward(Tensor *input = nullptr) {
         for (size_t i = 0; i < layers.size(); ++i) {
             printf("forward layer: %d\n", i);
             input = layers[i].forward(input);
@@ -130,8 +118,7 @@ class FFN_Model
     }
 
     //
-    void backward(Tensor *grad)
-    {
+    void backward(Tensor *grad) {
         for (int i = layers.size() - 1; i >= 0; --i) {
             printf("backward layer: %d\n", i);
             grad = layers[i].backward(grad);
@@ -155,8 +142,7 @@ class FFN_Model
         }
     }
 
-    void print_tensors(Executor *exe)
-    {
+    void print_tensors(Executor *exe) {
         for (size_t i = 0; i < layers.size(); ++i) {
             printf("layer: %d\n", i);
             layers[i].print_tensors(exe);
@@ -171,15 +157,11 @@ class FFN_Model
     int gpu_id;
 };
 
-class LossFn
-{
-  public:
-    LossFn(Model &model) : model{model}
-    {
-    }
+class LossFn {
+   public:
+    LossFn(Model &model) : model{model} {}
 
-    Tensor *forward(Tensor *output, Tensor *ground_truth)
-    {
+    Tensor *forward(Tensor *output, Tensor *ground_truth) {
         this->output = output;
         printf("loss forward");
         neg_ground_truth =
@@ -194,16 +176,14 @@ class LossFn
         return loss_tensor;
     }
 
-    Tensor *backward(Tensor *loss_tensor)
-    {
+    Tensor *backward(Tensor *loss_tensor) {
         printf("loss backward");
         grad_diff = model.tensor(diff->shape, diff->type);
         model.mul(loss_tensor, diff, grad_diff);
         return grad_diff;
     }
 
-    void print_tensors(Executor *exe)
-    {
+    void print_tensors(Executor *exe) {
         printf("loss_fn.output: ");
         print_tensor(this->output, exe);
         printf("loss_fn.neg_ground_truth: ");
@@ -228,15 +208,16 @@ class LossFn
     Model &model;
 };
 
-class Trainer
-{
-  public:
+class Trainer {
+   public:
     Trainer(Model &model, int dim_input, int batch_size, int gpu_id,
             int num_gpus)
-        : model{model}, ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id},
+        : model{model},
+          ffn_model{dim_input, FP16, model, 2, num_gpus, gpu_id},
           loss_fn{model},
-          batch_size{batch_size}, num_gpus{num_gpus}, gpu_id{gpu_id}
-    {
+          batch_size{batch_size},
+          num_gpus{num_gpus},
+          gpu_id{gpu_id} {
         input = model.tensor({batch_size, dim_input}, FP16);
         ground_truth = model.tensor({batch_size, dim_input}, FP16);
         output = ffn_model.forward(input);
@@ -251,8 +232,7 @@ class Trainer
         exe->compile();
     }
 
-    void init_data()
-    {
+    void init_data() {
         // init the input and ground_truth.
         auto data_input =
             ark::utils::range_halfs(this->input->shape_bytes(), 1, 0);
@@ -276,8 +256,7 @@ class Trainer
         }
     }
 
-    void train(int iter, int print_interval = 1)
-    {
+    void train(int iter, int print_interval = 1) {
         exe->launch();
         if (print_interval == 0) {
             // don't print the loss for debug.
@@ -297,8 +276,7 @@ class Trainer
         cout << "Elapsed: " << elapsed_msec / iter << " ms/iter\n";
     }
 
-    float get_loss()
-    {
+    float get_loss() {
         size_t tensor_size = this->loss_tensor->shape_bytes();
         half_t *loss = (half_t *)malloc(tensor_size);
         exe->tensor_memcpy(loss, this->loss_tensor, tensor_size);
@@ -310,15 +288,13 @@ class Trainer
         return loss_sum;
     }
 
-    void apply_grad()
-    {
+    void apply_grad() {
         for (auto &layer : ffn_model.layers) {
             layer.apply_grads();
         }
     }
 
-    void print_tensors(Executor *exe)
-    {
+    void print_tensors(Executor *exe) {
         printf("loss_tensor: ");
         print_tensor(this->loss_tensor, exe);
         printf("input: ");
@@ -345,8 +321,7 @@ class Trainer
     int gpu_id;
 };
 
-struct Args
-{
+struct Args {
     int batch_size;
     int dims;
     int num_gpus;
@@ -356,8 +331,7 @@ struct Args
     bool verbose;
 };
 
-Args parse_args(int argc, const char **argv)
-{
+Args parse_args(int argc, const char **argv) {
     string prog = argv[0];
     vector<string> args(argv + 1, argv + argc);
 
@@ -436,8 +410,7 @@ Args parse_args(int argc, const char **argv)
     return ret;
 }
 
-int main(int argc, const char **argv)
-{
+int main(int argc, const char **argv) {
     Args args = parse_args(argc, argv);
 
     cout << "--" << endl
