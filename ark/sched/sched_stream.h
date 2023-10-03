@@ -4,32 +4,30 @@
 #ifndef ARK_SCHED_STREAM_H_
 #define ARK_SCHED_STREAM_H_
 
-#include "sched_branch.h"
 #include <map>
 #include <memory>
 #include <vector>
 
+#include "sched_branch.h"
+
 namespace ark {
 
-struct SchedItem
-{
+struct SchedItem {
     int opseq_id;
     int num_uops;
     int num_warps_per_uop;
     int smem_bytes_per_uop;
 };
 
-struct Stream
-{
+struct Stream {
     /// Ordered list of branches in the stream
     std::vector<Branch> branches;
     /// sm_id -> assigned smem bytes per warp
     std::map<int, int> sm_id_to_smem_per_warp;
 };
 
-class SchedStream
-{
-  public:
+class SchedStream {
+   public:
     SchedStream(int sm_id_begin, int sm_id_end, int num_warps_per_sm,
                 int smem_bytes_per_sm);
     ~SchedStream();
@@ -41,11 +39,11 @@ class SchedStream
 
     int get_num_sm() const;
 
-  private:
+   private:
     class Impl;
     std::unique_ptr<Impl> impl;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_SCHED_STREAM_H_
+#endif  // ARK_SCHED_STREAM_H_

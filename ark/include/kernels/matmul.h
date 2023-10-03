@@ -33,8 +33,8 @@ template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, int InnerLdimA,
           int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
           int SmemBytes>
-DEVICE void matmul(float *C, float *A, float *B, int uop_idx, int smem_per_warp)
-{
+DEVICE void matmul(float *C, float *A, float *B, int uop_idx,
+                   int smem_per_warp) {
     gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
          InnerLdimB, IsColumnA, IsColumnB, NumThreads, SmemBytes, float, float,
          float, float>(C, A, B, uop_idx, smem_per_warp);
@@ -65,13 +65,12 @@ template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, int InnerLdimA,
           int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
           int SmemBytes>
-DEVICE void matmul(half *C, half *A, half *B, int uop_idx, int smem_per_warp)
-{
+DEVICE void matmul(half *C, half *A, half *B, int uop_idx, int smem_per_warp) {
     gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
          InnerLdimB, IsColumnA, IsColumnB, NumThreads, SmemBytes, half, half,
          half, half>(C, A, B, uop_idx, smem_per_warp);
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_MATMUL_H_
+#endif  // ARK_KERNELS_MATMUL_H_

@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,12 +13,9 @@ extern const OpConfigMap TransposeConfigMap;
 TransposeOp::TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                          int tp_type, const std::string &name)
     : Op{OP_TRANSPOSE, prec_type,           {input}, {output}, {{tp_type}},
-         name,         &TransposeConfigMap, -1,      true}
-{
-}
+         name,         &TransposeConfigMap, -1,      true} {}
 
-std::string TransposeOp::function_name(const OpConfig &cfg) const
-{
+std::string TransposeOp::function_name(const OpConfig &cfg) const {
     int tp_type;
     this->args.get(&tp_type, 0);
 
@@ -36,18 +34,17 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::transpose" + tp_type_str,
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
+                                 input->ldims.dims4(),   // InDims
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
                              }});
 }
 
 Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
-                         const std::string &name)
-{
+                         const std::string &name) {
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -127,4 +124,4 @@ const OpConfigMap TransposeConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

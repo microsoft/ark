@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "gpu/gpu_mem.h"
+
 #include "env.h"
 #include "gpu/gpu_logging.h"
-#include "gpu/gpu_mem.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ipc/ipc_hosts.h"
 #include "ipc/ipc_socket.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_gpu_mem()
-{
+ark::unittest::State test_gpu_mem() {
     int pid = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{5};
 
@@ -63,8 +63,7 @@ ark::unittest::State test_gpu_mem()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_gpu_mem_ipc()
-{
+ark::unittest::State test_gpu_mem_ipc() {
     int pid0 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{5};
 
@@ -158,8 +157,7 @@ ark::unittest::State test_gpu_mem_ipc()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_gpu_mem);
     UNITTEST(test_gpu_mem_ipc);

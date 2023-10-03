@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 using namespace std;
 
@@ -14,12 +15,9 @@ extern const OpConfigMap MathConfigMap;
 ExpOp::ExpOp(OpPrecType prec_type, Tensor *input, Tensor *output,
              const string &name)
     : Op{OP_EXP, prec_type,      {input}, {output}, {},
-         name,   &MathConfigMap, -1,      true}
-{
-}
+         name,   &MathConfigMap, -1,      true} {}
 
-std::string ExpOp::function_name(const OpConfig &cfg) const
-{
+std::string ExpOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -34,18 +32,17 @@ std::string ExpOp::function_name(const OpConfig &cfg) const
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::exp", {{
-                                             input->ldims.dims4(),  // InDims
-                                             input->shape.dims4(),  // InShape
-                                             output->ldims.dims4(), // OutDims
-                                             output->shape.dims4(), // OutShape
-                                             unit_out_dims,      // UnitOutDims
-                                             cfg.num_warps * 32, // NumThreads
-                                             cfg.smem_bytes,     // SmemBytes
+                                             input->ldims.dims4(),   // InDims
+                                             input->shape.dims4(),   // InShape
+                                             output->ldims.dims4(),  // OutDims
+                                             output->shape.dims4(),  // OutShape
+                                             unit_out_dims,       // UnitOutDims
+                                             cfg.num_warps * 32,  // NumThreads
+                                             cfg.smem_bytes,      // SmemBytes
                                          }});
 }
 
-Tensor *Model::exp(Tensor *input, Tensor *output, const string &name)
-{
+Tensor *Model::exp(Tensor *input, Tensor *output, const string &name) {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
@@ -67,4 +64,4 @@ Tensor *Model::exp(Tensor *input, Tensor *output, const string &name)
     return this->impl->add_op(op)[0];
 }
 
-} // namespace ark
+}  // namespace ark

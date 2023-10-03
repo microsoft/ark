@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "include/ark.h"
 #include "ops_common.h"
+
+#include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_oparg()
-{
+ark::unittest::State test_oparg() {
     {
         int data = 7;
         auto arg = ark::OpArg(data);
@@ -132,8 +132,7 @@ ark::unittest::State test_oparg()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_opargs()
-{
+ark::unittest::State test_opargs() {
     ark::OpArgs args;
     UNITTEST_EQ(args.get_args().size(), 0UL);
 
@@ -182,8 +181,7 @@ ark::unittest::State test_opargs()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_oparg);
     UNITTEST(test_opargs);

@@ -4,16 +4,16 @@
 #ifndef ARK_UTILS_H
 #define ARK_UTILS_H
 
-#include "ark.h"
 #include <functional>
 #include <memory>
 #include <vector>
 
+#include "ark.h"
+
 namespace ark {
 
 // 16-bit floating point type.
-struct alignas(2) half_t
-{
+struct alignas(2) half_t {
     uint16_t storage;
     half_t() = default;
     // Constructor with float parameter
@@ -22,7 +22,7 @@ struct alignas(2) half_t
     operator float() const;
 };
 
-} // namespace ark
+}  // namespace ark
 
 ark::half_t operator+(ark::half_t const &lhs, ark::half_t const &rhs);
 ark::half_t operator-(ark::half_t const &lhs, ark::half_t const &rhs);
@@ -37,8 +37,8 @@ namespace ark {
 namespace utils {
 
 // Return a random value array.
-template <typename T> std::unique_ptr<T[]> rand_array(size_t num, float max_val)
-{
+template <typename T>
+std::unique_ptr<T[]> rand_array(size_t num, float max_val) {
     int mid = RAND_MAX / 2;
     T *ret = new T[num];
     for (size_t i = 0; i < num; ++i) {
@@ -62,8 +62,8 @@ std::unique_ptr<float[]> range_floats(size_t num, float begin = 1.0f,
                                       float diff = 1.0f);
 
 // Return an array where each element is 0.
-template <typename T> std::unique_ptr<T[]> zeros(size_t num)
-{
+template <typename T>
+std::unique_ptr<T[]> zeros(size_t num) {
     T *ret = new T[num];
     for (size_t i = 0; i < num; ++i) {
         ret[i] = T(0);
@@ -72,8 +72,8 @@ template <typename T> std::unique_ptr<T[]> zeros(size_t num)
 }
 
 // Return an array where each element is 1.
-template <typename T> std::unique_ptr<T[]> ones(size_t num)
-{
+template <typename T>
+std::unique_ptr<T[]> ones(size_t num) {
     T *ret = new T[num];
     for (size_t i = 0; i < num; ++i) {
         ret[i] = T(1);
@@ -91,7 +91,7 @@ int proc_wait(int pid);
 // non-zero exit status.
 int proc_wait(const std::vector<int> &pids);
 
-} // namespace utils
-} // namespace ark
+}  // namespace utils
+}  // namespace ark
 
 #endif

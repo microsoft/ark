@@ -1,19 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "sched/sched.h"
+
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "logging.h"
 #include "ops/ops_test_common.h"
-#include "sched/sched.h"
 #include "unittest/unittest_utils.h"
 
 using namespace std;
 using namespace ark;
 
-ark::unittest::State test_sched_mm_add()
-{
+ark::unittest::State test_sched_mm_add() {
     unittest::spawn_process([&]() {
         DimType batch_size = 1;
         DimType dim_input = 2048;
@@ -62,8 +62,7 @@ ark::unittest::State test_sched_mm_add()
     return unittest::SUCCESS;
 }
 
-ark::unittest::State test_scheduler_simple_mm()
-{
+ark::unittest::State test_scheduler_simple_mm() {
     // Hidden dimension of the dense layer.
     unsigned int units = 2048;
     // Input dimension of the dense layer.
@@ -109,8 +108,7 @@ ark::unittest::State test_scheduler_simple_mm()
 }
 
 Tensor *MultiheadAttention(Model *model, Tensor *input, DimType embed_dim,
-                           DimType num_heads, float dropout, TensorType dtype)
-{
+                           DimType num_heads, float dropout, TensorType dtype) {
     // input: (batch_size, seq_len, embed_dim)
     // output: (batch_size, seq_len, embed_dim)
     Tensor *w_q_proj = model->tensor({embed_dim, embed_dim}, dtype);
@@ -121,27 +119,27 @@ Tensor *MultiheadAttention(Model *model, Tensor *input, DimType embed_dim,
     Tensor *q_proj = model->matmul(input, w_q_proj);
     Tensor *k_proj = model->matmul(input, w_k_proj);
     Tensor *v_proj = model->matmul(input, w_v_proj);
-    Tensor *q_proj_r_t =
-        model->reshape(q_proj, {input->shape[0], input->shape[1], num_heads,
-                                embed_dim / num_heads});
-    Tensor *k_proj_r_t =
-        model->reshape(k_proj, {input->shape[0], input->shape[1], num_heads,
-                                embed_dim / num_heads});
-    Tensor *v_proj_r_t =
-        model->reshape(v_proj, {input->shape[0], input->shape[1], num_heads,
-                                embed_dim / num_heads});
+    Tensor *q_proj_r_t = model->reshape(
+        q_proj,
+        {input->shape[0], input->shape[1], num_heads, embed_dim / num_heads});
+    Tensor *k_proj_r_t = model->reshape(
+        k_proj,
+        {input->shape[0], input->shape[1], num_heads, embed_dim / num_heads});
+    Tensor *v_proj_r_t = model->reshape(
+        v_proj,
+        {input->shape[0], input->shape[1], num_heads, embed_dim / num_heads});
     // Tensor *q_proj_r_t = model->transpose(q_proj_r, {0, 2, 1, 3});
     // Tensor *k_proj_r_t = model->transpose(k_proj_r, {0, 2, 1, 3});
     // Tensor *v_proj_r_t = model->transpose(v_proj_r, {0, 2, 1, 3});
-    q_proj_r_t =
-        model->reshape(q_proj_r_t, {input->shape[0] * num_heads,
-                                    input->shape[1], embed_dim / num_heads});
-    k_proj_r_t =
-        model->reshape(k_proj_r_t, {input->shape[0] * num_heads,
-                                    input->shape[1], embed_dim / num_heads});
-    v_proj_r_t =
-        model->reshape(v_proj_r_t, {input->shape[0] * num_heads,
-                                    input->shape[1], embed_dim / num_heads});
+    q_proj_r_t = model->reshape(
+        q_proj_r_t,
+        {input->shape[0] * num_heads, input->shape[1], embed_dim / num_heads});
+    k_proj_r_t = model->reshape(
+        k_proj_r_t,
+        {input->shape[0] * num_heads, input->shape[1], embed_dim / num_heads});
+    v_proj_r_t = model->reshape(
+        v_proj_r_t,
+        {input->shape[0] * num_heads, input->shape[1], embed_dim / num_heads});
 
     // scaled dot product
     Tensor *attn_logits =
@@ -168,8 +166,7 @@ Tensor *MultiheadAttention(Model *model, Tensor *input, DimType embed_dim,
 
 Tensor *TransformerLayerForward(Model *model, Tensor *input, DimType embed_dim,
                                 DimType num_heads, DimType dim_ff,
-                                float dropout, TensorType dtype)
-{
+                                float dropout, TensorType dtype) {
     Tensor *attn_out =
         MultiheadAttention(model, input, embed_dim, num_heads, dropout, dtype);
     Tensor *res = model->add(input, attn_out);
@@ -185,8 +182,7 @@ Tensor *TransformerLayerForward(Model *model, Tensor *input, DimType embed_dim,
     return ret;
 }
 
-Tensor *GPT3LayerForward(Model *model, Tensor *input, TensorType dtype)
-{
+Tensor *GPT3LayerForward(Model *model, Tensor *input, TensorType dtype) {
     return TransformerLayerForward(model, input,
                                    /*embed_dim=*/12288,
                                    /*num_heads=*/96,
@@ -194,8 +190,7 @@ Tensor *GPT3LayerForward(Model *model, Tensor *input, TensorType dtype)
                                    /*dropout=*/0.0, dtype);
 }
 
-ark::unittest::State test_sched_gpt3()
-{
+ark::unittest::State test_sched_gpt3() {
     Model model;
     DimType batch_size = 1;
     DimType seq_len = 2048;
@@ -239,8 +234,7 @@ ark::unittest::State test_sched_gpt3()
     return unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_comp_baseline()
-{
+ark::unittest::State test_sched_comp_baseline() {
     // Hidden dimension of the dense layer.
     unsigned int units = 512;
     // Input dimension of the dense layer.
@@ -365,8 +359,7 @@ ark::unittest::State test_sched_comp_baseline()
     return unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_many_comm_ops()
-{
+ark::unittest::State test_sched_many_comm_ops() {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, num_gpus]() {
@@ -390,8 +383,7 @@ ark::unittest::State test_sched_many_comm_ops()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_mixed_precision()
-{
+ark::unittest::State test_sched_mixed_precision() {
     ark::Model m;
     ark::Tensor *x0 = m.tensor({2, 128, 128}, ark::FP16);
     ark::Tensor *x1 = m.scale(x0, 0.7);
@@ -408,8 +400,7 @@ ark::unittest::State test_sched_mixed_precision()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_parallel_matmul()
-{
+ark::unittest::State test_sched_parallel_matmul() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor({256, 8192}, ark::FP16);
     ark::Tensor *t1 = m.tensor({8192, 8192}, ark::FP16);
@@ -427,8 +418,7 @@ ark::unittest::State test_sched_parallel_matmul()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     // UNITTEST(test_sched_mm_add);
     // UNITTEST(test_scheduler_simple_mm);

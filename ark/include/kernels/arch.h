@@ -9,8 +9,7 @@
 
 namespace ark {
 
-struct Arch
-{
+struct Arch {
 #if (ARK_TARGET_CUDA_ARCH == 60)
     static const int ThreadsPerWarp = 32;
     static const int MaxRegistersPerBlock = 65536;
@@ -37,11 +36,10 @@ struct Arch
         MaxRegistersPerBlock / MaxRegistersPerThread;
 };
 
-DEVICE int warp_id()
-{
+DEVICE int warp_id() {
     return threadIdx.x >> math::log2_up<Arch::ThreadsPerWarp>::value;
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_ARCH_H_
+#endif  // ARK_KERNELS_ARCH_H_

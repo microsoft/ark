@@ -1,34 +1,32 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "env.h"
 #include "file_io.h"
-#include "include/ark.h"
-#include "unittest/unittest_utils.h"
+
 #include <algorithm>
 #include <fstream>
 
-ark::unittest::State test_is_exist()
-{
+#include "env.h"
+#include "include/ark.h"
+#include "unittest/unittest_utils.h"
+
+ark::unittest::State test_is_exist() {
     UNITTEST_EQ(ark::is_exist("/"), true);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_is_dir()
-{
+ark::unittest::State test_is_dir() {
     UNITTEST_EQ(ark::is_dir("/"), true);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_is_file()
-{
+ark::unittest::State test_is_file() {
     UNITTEST_EQ(ark::is_file("/"), false);
     UNITTEST_EQ(ark::is_file(__FILE__), true);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_create_remove_dir()
-{
+ark::unittest::State test_create_remove_dir() {
     std::string tmp_dir = ark::get_env().path_tmp_dir;
     if (!ark::is_exist(tmp_dir)) {
         UNITTEST_EQ(ark::create_dir(tmp_dir), 0);
@@ -46,8 +44,7 @@ ark::unittest::State test_create_remove_dir()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_list_get_clear_dir()
-{
+ark::unittest::State test_list_get_clear_dir() {
     std::string tmp_dir = ark::get_env().path_tmp_dir;
     if (!ark::is_exist(tmp_dir)) {
         UNITTEST_EQ(ark::create_dir(tmp_dir), 0);
@@ -88,8 +85,7 @@ ark::unittest::State test_list_get_clear_dir()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_read_write_file()
-{
+ark::unittest::State test_read_write_file() {
     std::string tmp_dir = ark::get_env().path_tmp_dir;
     if (!ark::is_exist(tmp_dir)) {
         UNITTEST_EQ(ark::create_dir(tmp_dir), 0);
@@ -112,8 +108,7 @@ ark::unittest::State test_read_write_file()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_is_exist);
     UNITTEST(test_is_dir);

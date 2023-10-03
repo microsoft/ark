@@ -21,6 +21,6 @@ int ipc_shm_destroy(const char *name);
 // Return zero if we can open the shm file.
 int ipc_shm_exist(const char *name);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_IPC_SHM_H_
+#endif  // ARK_IPC_SHM_H_

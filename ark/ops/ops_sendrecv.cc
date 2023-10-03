@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -19,12 +20,9 @@ SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
          name,
          &CommConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string SendOp::function_name(const OpConfig &) const
-{
+std::string SendOp::function_name(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     CHECK(input->is_sequential());
 
@@ -38,17 +36,14 @@ std::string SendOp::function_name(const OpConfig &) const
     this->args.get(&bytes, 3);
 
     return Op::function_name("ark::comm::send", {{
-                                                    rank,     // Rank
-                                                    dst_rank, // DstRank
-                                                    sid,      // Sid
-                                                    bytes,    // Length
+                                                    rank,      // Rank
+                                                    dst_rank,  // DstRank
+                                                    sid,       // Sid
+                                                    bytes,     // Length
                                                 }});
 }
 
-OpArgs SendOp::function_call_args(const OpConfig &) const
-{
-    return {};
-}
+OpArgs SendOp::function_call_args(const OpConfig &) const { return {}; }
 
 SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                        int sid, int rank, int dst_rank, const std::string &name)
@@ -60,12 +55,9 @@ SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
          name,
          &CommConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string SendDoneOp::function_name(const OpConfig &) const
-{
+std::string SendDoneOp::function_name(const OpConfig &) const {
     int sid;
     int rank;
     int dst_rank;
@@ -74,16 +66,13 @@ std::string SendDoneOp::function_name(const OpConfig &) const
     this->args.get(&dst_rank, 2);
 
     return Op::function_name("ark::comm::send_done", {{
-                                                         rank,     // Rank
-                                                         dst_rank, // DstRank
-                                                         sid,      // Sid
+                                                         rank,      // Rank
+                                                         dst_rank,  // DstRank
+                                                         sid,       // Sid
                                                      }});
 }
 
-OpArgs SendDoneOp::function_call_args(const OpConfig &) const
-{
-    return {};
-}
+OpArgs SendDoneOp::function_call_args(const OpConfig &) const { return {}; }
 
 RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
                int rank, int src_rank, size_t bytes, const std::string &name)
@@ -95,12 +84,9 @@ RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
          name,
          &CommConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string RecvOp::function_name(const OpConfig &) const
-{
+std::string RecvOp::function_name(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     CHECK(input->is_sequential());
 
@@ -112,21 +98,17 @@ std::string RecvOp::function_name(const OpConfig &) const
     this->args.get(&src_rank, 2);
 
     return Op::function_name("ark::comm::recv", {{
-                                                    rank,     // Rank
-                                                    src_rank, // DstRank
-                                                    sid,      // Sid
+                                                    rank,      // Rank
+                                                    src_rank,  // DstRank
+                                                    sid,       // Sid
                                                 }});
 }
 
-OpArgs RecvOp::function_call_args(const OpConfig &) const
-{
-    return {};
-}
+OpArgs RecvOp::function_call_args(const OpConfig &) const { return {}; }
 
 //
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
-                    Tensor *output, const std::string &name)
-{
+                    Tensor *output, const std::string &name) {
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
         LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
@@ -145,8 +127,7 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 
 //
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
-                         const std::string &name)
-{
+                         const std::string &name) {
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
@@ -157,8 +138,7 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
 
 //
 Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
-                    Tensor *output, const std::string &name)
-{
+                    Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
@@ -184,4 +164,4 @@ const OpConfigMap CommConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

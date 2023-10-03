@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "sched/sched.h"
+
 #include "logging.h"
 #include "math.h"
 
@@ -11,9 +12,11 @@ namespace ark {
 
 BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
                              int world_size_, int num_warps_per_sm_)
-    : model{&model}, gpu_mgr{get_gpu_mgr(gpu_id)}, rank{rank_},
-      world_size{world_size_}, num_warps_per_sm{num_warps_per_sm_}
-{
+    : model{&model},
+      gpu_mgr{get_gpu_mgr(gpu_id)},
+      rank{rank_},
+      world_size{world_size_},
+      num_warps_per_sm{num_warps_per_sm_} {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     int max_warps_per_sm =
         (int)(gpu_info.max_threads_per_block / gpu_info.threads_per_warp);
@@ -23,8 +26,7 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
 }
 
 // create context on gpu for the model
-GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
-{
+GpuMgrCtx *BaseScheduler::create_context(const std::string &name) {
     GpuMgrCtx *ctx =
         this->gpu_mgr->create_context(name, this->rank, this->world_size);
     for (BufInfo &bi : this->buf_infos) {
@@ -65,8 +67,7 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name)
     return ctx;
 }
 
-const OpConfig *BaseScheduler::sched_op_config(const Op *op)
-{
+const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     if (op == nullptr || op->outputs.size() == 0) {
         LOG(ERROR, "unexpected error");
     }
@@ -176,4 +177,4 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op)
     return cfg_new;
 }
 
-} // namespace ark
+}  // namespace ark

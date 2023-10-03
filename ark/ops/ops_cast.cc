@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -11,12 +12,9 @@ extern const OpConfigMap CastConfigMap;
 
 CastOp::CastOp(Tensor *input, Tensor *output, const std::string &name)
     : Op{OP_CAST, OP_PREC_NONE,   {input}, {output}, {},
-         name,    &CastConfigMap, -1,      true}
-{
-}
+         name,    &CastConfigMap, -1,      true} {}
 
-std::string CastOp::function_name(const OpConfig &cfg) const
-{
+std::string CastOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -32,18 +30,17 @@ std::string CastOp::function_name(const OpConfig &cfg) const
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::cast",
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
                              }});
 }
 
 Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
-                    const std::string &name)
-{
+                    const std::string &name) {
     assert(input != nullptr);
     if (output == nullptr) {
         if (input->type == ttype) {
@@ -146,8 +143,9 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
             LOG(ERROR, "casting to the same type: ", ttype);
         }
         if (ttype == BYTE) {
-            LOG(ERROR, "casting to BYTE with a specified output tensor is not "
-                       "supported as it implies a memory copy.");
+            LOG(ERROR,
+                "casting to BYTE with a specified output tensor is not "
+                "supported as it implies a memory copy.");
         }
     }
     CastOp op{input, output, name};
@@ -174,4 +172,4 @@ const OpConfigMap CastConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

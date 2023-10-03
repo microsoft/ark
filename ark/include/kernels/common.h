@@ -15,4 +15,4 @@
 #include "unit_op.h"
 #include "vec.h"
 
-#endif // ARK_KERNELS_COMMON_H_
+#endif  // ARK_KERNELS_COMMON_H_

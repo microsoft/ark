@@ -10,16 +10,14 @@ namespace ark {
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose0132
-{
+struct Transpose0132 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -35,16 +33,14 @@ struct Transpose0132
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose0213
-{
+struct Transpose0213 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -60,16 +56,14 @@ struct Transpose0213
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose0231
-{
+struct Transpose0231 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -85,16 +79,14 @@ struct Transpose0231
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose0312
-{
+struct Transpose0312 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -110,16 +102,14 @@ struct Transpose0312
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose0321
-{
+struct Transpose0321 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -135,16 +125,14 @@ struct Transpose0321
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose1023
-{
+struct Transpose1023 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -160,16 +148,14 @@ struct Transpose1023
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose1032
-{
+struct Transpose1032 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -185,16 +171,14 @@ struct Transpose1032
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose1203
-{
+struct Transpose1203 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -210,16 +194,14 @@ struct Transpose1203
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose1230
-{
+struct Transpose1230 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -235,16 +217,14 @@ struct Transpose1230
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose1302
-{
+struct Transpose1302 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -260,16 +240,14 @@ struct Transpose1302
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose1320
-{
+struct Transpose1320 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -285,16 +263,14 @@ struct Transpose1320
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose2013
-{
+struct Transpose2013 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -310,16 +286,14 @@ struct Transpose2013
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose2031
-{
+struct Transpose2031 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -335,16 +309,14 @@ struct Transpose2031
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose2103
-{
+struct Transpose2103 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -360,16 +332,14 @@ struct Transpose2103
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose2130
-{
+struct Transpose2130 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -385,16 +355,14 @@ struct Transpose2130
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose2301
-{
+struct Transpose2301 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -410,16 +378,14 @@ struct Transpose2301
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose2310
-{
+struct Transpose2310 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -435,16 +401,14 @@ struct Transpose2310
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose3012
-{
+struct Transpose3012 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -460,16 +424,14 @@ struct Transpose3012
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose3021
-{
+struct Transpose3021 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -485,16 +447,14 @@ struct Transpose3021
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose3102
-{
+struct Transpose3102 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -510,16 +470,14 @@ struct Transpose3102
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose3120
-{
+struct Transpose3120 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -535,16 +493,14 @@ struct Transpose3120
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose3201
-{
+struct Transpose3201 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -560,16 +516,14 @@ struct Transpose3201
 
 template <typename _InDims, typename _OutDims, typename _DataType,
           int _NelemPerThread>
-struct Transpose3210
-{
+struct Transpose3210 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -588,8 +542,7 @@ struct Transpose3210
 template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes,
           typename Transpose>
-DEVICE void _transpose(float *out, float *in, int uop_idx)
-{
+DEVICE void _transpose(float *out, float *in, int uop_idx) {
     Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Transpose>::run(out, in, uop_idx);
 }
@@ -600,8 +553,7 @@ DEVICE void _transpose(float *out, float *in, int uop_idx)
 template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes,
           typename Transpose>
-DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx)
-{
+DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx) {
     Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Transpose>::run(out, in, uop_idx);
 }
@@ -611,8 +563,7 @@ DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx)
               typename UnitOutDims, int NumThreads, int SmemBytes,             \
               typename DataType>                                               \
     DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx,   \
-                                   int)                                        \
-    {                                                                          \
+                                   int) {                                      \
         _transpose<InDims, OutDims, OutShape, UnitOutDims, NumThreads,         \
                    SmemBytes,                                                  \
                    Transpose##tp_type<InDims, OutDims, DataType, 1>>(out, in,  \
@@ -643,6 +594,6 @@ _DEC_TRANSPOSE(3120)
 _DEC_TRANSPOSE(3201)
 _DEC_TRANSPOSE(3210)
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_TRANSPOSE_H_
+#endif  // ARK_KERNELS_TRANSPOSE_H_

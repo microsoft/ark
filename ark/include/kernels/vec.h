@@ -11,8 +11,7 @@ namespace ark {
 using DimType = int;
 
 template <DimType _D0 = 1, DimType _D1 = 1, DimType _D2 = 1, DimType _D3 = 1>
-struct Vec
-{
+struct Vec {
     static_assert(_D0 >= 0, "");
     static_assert(_D1 >= 0, "");
     static_assert(_D2 >= 0, "");
@@ -48,15 +47,14 @@ struct Vec
     static const DimType HW = math::mul<H, W>::value;
 };
 
-template <typename Vec1, typename Vec2> struct VecIsEq
-{
-    enum
-    {
+template <typename Vec1, typename Vec2>
+struct VecIsEq {
+    enum {
         value = (Vec1::D0 == Vec2::D0 && Vec1::D1 == Vec2::D1 &&
                  Vec1::D2 == Vec2::D2 && Vec1::D3 == Vec2::D3)
     };
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_VEC_H_
+#endif  // ARK_KERNELS_VEC_H_

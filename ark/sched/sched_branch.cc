@@ -2,19 +2,21 @@
 // Licensed under the MIT license.
 
 #include "sched_branch.h"
-#include "logging.h"
+
 #include <algorithm>
 #include <map>
 #include <set>
 #include <unordered_set>
 #include <vector>
 
+#include "logging.h"
+
 #define DEBUG_BRANCH 0
-#define BRANCH_DEBUG(...)                                                      \
-    do {                                                                       \
-        if (DEBUG_BRANCH) {                                                    \
-            LOG(DEBUG, __VA_ARGS__);                                           \
-        }                                                                      \
+#define BRANCH_DEBUG(...)            \
+    do {                             \
+        if (DEBUG_BRANCH) {          \
+            LOG(DEBUG, __VA_ARGS__); \
+        }                            \
     } while (0);
 
 namespace ark {
@@ -33,8 +35,7 @@ namespace ark {
 ///                          sm_idx) + uop_id_begin;
 ///   }
 /// ```
-struct OpBranchInfo
-{
+struct OpBranchInfo {
     /// The opseq ID.
     int opseq_id;
     /// The SM ID range [sm_id_begin, sm_id_end).
@@ -57,19 +58,16 @@ struct OpBranchInfo
     /// Bytes of shared memory allowed per warp.
     int smem_bytes_per_warp;
 
-    int get_num_uops() const
-    {
+    int get_num_uops() const {
         int uops_per_sm = (warp_id_end - warp_id_begin) / num_warps_per_uop;
         int num_sms = sm_id_end - sm_id_begin;
         return uops_per_sm * num_sms;
     }
 };
 
-class SchedBranch::Impl
-{
-  private:
-    struct UnitOp
-    {
+class SchedBranch::Impl {
+   private:
+    struct UnitOp {
         int opseq_id;
         int uop_id;
         int sm_id;
@@ -84,11 +82,11 @@ class SchedBranch::Impl
     std::vector<UnitOp> uops;
     std::map<int, std::set<int>> opseq_to_uop_ids;
 
-  public:
+   public:
     Impl();
     ~Impl();
 
-  protected:
+   protected:
     void add(int opseq_id, int uop_id, int sm_id, int warp_id_begin,
              int warp_id_end);
     void clear();
@@ -98,17 +96,12 @@ class SchedBranch::Impl
     friend class SchedBranch;
 };
 
-SchedBranch::Impl::Impl()
-{
-}
+SchedBranch::Impl::Impl() {}
 
-SchedBranch::Impl::~Impl()
-{
-}
+SchedBranch::Impl::~Impl() {}
 
 void SchedBranch::Impl::add(int opseq_id, int uop_id, int sm_id,
-                            int warp_id_begin, int warp_id_end)
-{
+                            int warp_id_begin, int warp_id_end) {
     if (uop_id < 0) {
         LOG(ERROR, "uop_id ", uop_id, " out of range [0, inf)");
     }
@@ -131,13 +124,9 @@ void SchedBranch::Impl::add(int opseq_id, int uop_id, int sm_id,
     this->uops.emplace_back(uop);
 }
 
-void SchedBranch::Impl::clear()
-{
-    this->uops.clear();
-}
+void SchedBranch::Impl::clear() { this->uops.clear(); }
 
-bool SchedBranch::Impl::cmp_uop(const UnitOp &a, const UnitOp &b)
-{
+bool SchedBranch::Impl::cmp_uop(const UnitOp &a, const UnitOp &b) {
     if (a.opseq_id != b.opseq_id) {
         return a.opseq_id < b.opseq_id;
     } else if (a.sm_id != b.sm_id) {
@@ -152,8 +141,7 @@ bool SchedBranch::Impl::cmp_uop(const UnitOp &a, const UnitOp &b)
 }
 
 std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
-    const std::map<int, int> &sm_id_to_smem_per_warp)
-{
+    const std::map<int, int> &sm_id_to_smem_per_warp) {
     std::vector<OpBranchInfo> infos;
 
     std::sort(this->uops.begin(), this->uops.end(), cmp_uop);
@@ -375,8 +363,7 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
 }
 
 std::vector<Branch> SchedBranch::Impl::get_branches(
-    const std::map<int, int> &sm_id_to_smem_per_warp)
-{
+    const std::map<int, int> &sm_id_to_smem_per_warp) {
     std::vector<OpBranchInfo> op_branch_info =
         this->get_op_branch_info(sm_id_to_smem_per_warp);
     std::vector<Branch> branches;
@@ -443,30 +430,20 @@ std::vector<Branch> SchedBranch::Impl::get_branches(
     return branches;
 }
 
-SchedBranch::SchedBranch()
-{
-    this->impl = std::make_unique<Impl>();
-}
+SchedBranch::SchedBranch() { this->impl = std::make_unique<Impl>(); }
 
-SchedBranch::~SchedBranch()
-{
-}
+SchedBranch::~SchedBranch() {}
 
 void SchedBranch::add(int opseq_id, int uop_id, int sm_id, int warp_id_begin,
-                      int warp_id_end)
-{
+                      int warp_id_end) {
     this->impl->add(opseq_id, uop_id, sm_id, warp_id_begin, warp_id_end);
 }
 
-void SchedBranch::clear()
-{
-    this->impl->clear();
-}
+void SchedBranch::clear() { this->impl->clear(); }
 
 std::vector<Branch> SchedBranch::get_branches(
-    const std::map<int, int> &sm_id_to_smem_per_warp)
-{
+    const std::map<int, int> &sm_id_to_smem_per_warp) {
     return this->impl->get_branches(sm_id_to_smem_per_warp);
 }
 
-} // namespace ark
+}  // namespace ark

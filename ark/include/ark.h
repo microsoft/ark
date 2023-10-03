@@ -36,15 +36,10 @@ typedef long long int DimType;
 
 // DIMS_LEN is the maximum number of dimensions of a tensor. If a tensor
 // has less than DIMS_LEN dimensions, the remaining dimensions will be NO_DIM.
-enum
-{
-    DIMS_LEN = 4,
-    NO_DIM = -1
-};
+enum { DIMS_LEN = 4, NO_DIM = -1 };
 
 // Up-to-`DIMS_LEN`-dimensional vector.
-struct Dims
-{
+struct Dims {
     // Construct with given four dimensions.
     Dims(DimType d0 = NO_DIM, DimType d1 = NO_DIM, DimType d2 = NO_DIM,
          DimType d3 = NO_DIM);
@@ -88,9 +83,8 @@ class BaseScheduler;
 class SchedOp;
 
 // TensorBuf refers to a data array that can be shared by multiple tensors.
-class TensorBuf
-{
-  public:
+class TensorBuf {
+   public:
     TensorBuf(const DimType &bytes = 0, int id = -1);
     TensorBuf(const TensorBuf &) = default;
 
@@ -100,7 +94,7 @@ class TensorBuf
     int id;
     bool immutable = false;
 
-  protected:
+   protected:
     void *buf = nullptr;
 
     friend class Tensor;
@@ -108,15 +102,14 @@ class TensorBuf
 };
 
 /// Type of tensor data.
-class TensorType
-{
-  private:
+class TensorType {
+   private:
     const int id_;
     const int bytes_;
     const std::string name_;
     const std::string pointer_name_;
 
-  public:
+   public:
     TensorType(int id = -1, int bytes = 0, const std::string &name = "none",
                const std::string &pointer_name = "void *");
 
@@ -129,27 +122,23 @@ class TensorType
     const std::string &pointer_name() const;
 };
 
-class Fp16 : public TensorType
-{
-  public:
+class Fp16 : public TensorType {
+   public:
     Fp16();
 };
 
-class Fp32 : public TensorType
-{
-  public:
+class Fp32 : public TensorType {
+   public:
     Fp32();
 };
 
-class Int32 : public TensorType
-{
-  public:
+class Int32 : public TensorType {
+   public:
     Int32();
 };
 
-class Byte : public TensorType
-{
-  public:
+class Byte : public TensorType {
+   public:
     Byte();
 };
 
@@ -173,9 +162,8 @@ std::ostream &operator<<(std::ostream &os, const TensorType &type);
 ///                                                  |
 ///                                        We call these "padding".
 ///
-class Tensor
-{
-  public:
+class Tensor {
+   public:
     /// Tensor constructor.
     Tensor(const Dims &shape, const TensorType &type, TensorBuf *buf,
            const Dims &ldims, const Dims &offs, const Dims &pads, bool exported,
@@ -296,16 +284,15 @@ class Tensor
     /// Name of this tensor
     const std::string name;
 
-  protected:
+   protected:
     void update_pads(const std::vector<DimType> &pads);
 
     friend class DefaultScheduler;
     friend class SchedOp;
 };
 
-class Model
-{
-  public:
+class Model {
+   public:
     // Constructors.
     Model(int rank_ = 0);
     Model(const Model &) = delete;
@@ -525,22 +512,21 @@ class Model
     /// @return true if the model is valid, false otherwise.
     bool verify() const;
 
-  protected:
+   protected:
     class Impl;
     friend class OpGraph;
     friend class SimpleScheduler;
     friend class DefaultScheduler;
 
-  private:
+   private:
     std::unique_ptr<Impl> impl;
 };
 
 class GpuBuf;
 
 /// Convenience class for executing a model.
-class Executor
-{
-  public:
+class Executor {
+   public:
     /// Constructor.
     Executor(int rank, int world_size, Model &model, const std::string &name,
              int num_warps_per_sm = 16);
@@ -559,11 +545,11 @@ class Executor
     /// again.
     float stop();
 
-  private:
+   private:
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_H
+#endif  // ARK_H

@@ -10,8 +10,7 @@
 using namespace std;
 
 //
-void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
-{
+void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k) {
     size_t buf_x_sz = (size_t)m * (size_t)n * (size_t)k * sizeof(ark::half_t);
     size_t buf_y_sz = (size_t)m * (size_t)n * sizeof(ark::half_t);
 
@@ -40,14 +39,12 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
     exe.stop();
 }
 
-ark::unittest::State test_layernorm()
-{
+ark::unittest::State test_layernorm() {
     test_layernorm_internal(1, 64, 4);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_layernorm);
     return ark::unittest::SUCCESS;

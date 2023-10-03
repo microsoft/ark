@@ -1,52 +1,43 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "net/net_ib.h"
+
+#include <infiniband/verbs.h>
+#include <malloc.h>
+#include <unistd.h>
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <infiniband/verbs.h>
-#include <malloc.h>
 #include <map>
-#include <unistd.h>
 
 #include "file_io.h"
 #include "logging.h"
-#include "net/net_ib.h"
 
 namespace ark {
 
 // IB memory region
-NetIbMr::NetIbMr(void *mr_, void *buffer_) : mr{mr_}, buffer{buffer_}
-{
+NetIbMr::NetIbMr(void *mr_, void *buffer_) : mr{mr_}, buffer{buffer_} {
     this->info.addr = (uint64_t)this->get_buf();
     this->info.rkey = this->get_rkey();
 }
-NetIbMr::~NetIbMr()
-{
+NetIbMr::~NetIbMr() {
     // IB resources should be freed by NetIbMgr.
 }
-void *NetIbMr::get_addr() const
-{
-    return ((struct ibv_mr *)this->mr)->addr;
-}
-uint32_t NetIbMr::get_lkey() const
-{
-    return ((struct ibv_mr *)this->mr)->lkey;
-}
-uint32_t NetIbMr::get_rkey() const
-{
-    return ((struct ibv_mr *)this->mr)->rkey;
-}
-size_t NetIbMr::get_length() const
-{
+void *NetIbMr::get_addr() const { return ((struct ibv_mr *)this->mr)->addr; }
+uint32_t NetIbMr::get_lkey() const { return ((struct ibv_mr *)this->mr)->lkey; }
+uint32_t NetIbMr::get_rkey() const { return ((struct ibv_mr *)this->mr)->rkey; }
+size_t NetIbMr::get_length() const {
     return ((struct ibv_mr *)this->mr)->length;
 }
 
 // IB queue pair
 NetIbQp::NetIbQp(void *qp_, int port_)
-    : qp{qp_}, wrs{new struct ibv_send_wr[ARK_NET_IB_MAX_SENDS]},
-      sges{new struct ibv_sge[ARK_NET_IB_MAX_SENDS]}, wrn{0}
-{
+    : qp{qp_},
+      wrs{new struct ibv_send_wr[ARK_NET_IB_MAX_SENDS]},
+      sges{new struct ibv_sge[ARK_NET_IB_MAX_SENDS]},
+      wrn{0} {
     assert(qp_ != nullptr);
     struct ibv_context *ctx = ((struct ibv_qp *)qp_)->context;
     struct ibv_port_attr port_attr;
@@ -76,15 +67,13 @@ NetIbQp::NetIbQp(void *qp_, int port_)
     std::memset(this->sges, 0, sizeof(struct ibv_sge) * ARK_NET_IB_MAX_SENDS);
 }
 
-NetIbQp::~NetIbQp()
-{
+NetIbQp::~NetIbQp() {
     // IB resources should be freed by NetIbMgr.
     delete reinterpret_cast<struct ibv_send_wr *>(this->wrs);
     delete reinterpret_cast<struct ibv_sge *>(this->sges);
 }
 
-int NetIbQp::init()
-{
+int NetIbQp::init() {
     struct ibv_qp_attr qp_attr;
     std::memset(&qp_attr, 0, sizeof(struct ibv_qp_attr));
     qp_attr.qp_state = IBV_QPS_INIT;
@@ -100,8 +89,7 @@ int NetIbQp::init()
     return 0;
 }
 
-int NetIbQp::rtr(const NetIbQp::Info *info)
-{
+int NetIbQp::rtr(const NetIbQp::Info *info) {
     struct ibv_qp_attr qp_attr;
     std::memset(&qp_attr, 0, sizeof(struct ibv_qp_attr));
     qp_attr.qp_state = IBV_QPS_RTR;
@@ -136,8 +124,7 @@ int NetIbQp::rtr(const NetIbQp::Info *info)
     return 0;
 }
 
-int NetIbQp::rts()
-{
+int NetIbQp::rts() {
     struct ibv_qp_attr qp_attr;
     std::memset(&qp_attr, 0, sizeof(struct ibv_qp_attr));
     qp_attr.qp_state = IBV_QPS_RTS;
@@ -157,8 +144,7 @@ int NetIbQp::rts()
 }
 
 int NetIbQp::stage_send(void *mr, const NetIbMr::Info *info, int size,
-                        uint64_t wr_id, unsigned int imm_data, int offset)
-{
+                        uint64_t wr_id, unsigned int imm_data, int offset) {
     if (this->wrn >= ARK_NET_IB_MAX_SENDS) {
         LOG(WARN, "wrn=", this->wrn);
         return -1;
@@ -189,8 +175,7 @@ int NetIbQp::stage_send(void *mr, const NetIbMr::Info *info, int size,
     return this->wrn;
 }
 
-int NetIbQp::post_send()
-{
+int NetIbQp::post_send() {
     if (this->wrn == 0) {
         return 0;
     }
@@ -207,8 +192,7 @@ int NetIbQp::post_send()
     return 0;
 }
 
-int NetIbQp::post_recv(uint64_t wr_id)
-{
+int NetIbQp::post_recv(uint64_t wr_id) {
     struct ibv_recv_wr wr, *bad_wr;
     wr.wr_id = wr_id;
     wr.sg_list = nullptr;
@@ -225,8 +209,7 @@ int NetIbQp::post_recv(uint64_t wr_id)
 
 // Holds resources of a single IB device.
 NetIbMgr::NetIbMgr(int ib_dev_id, bool sep_sc_rc_)
-    : wcs{new struct ibv_wc[ARK_NET_IB_CQ_POLL_NUM]}, sep_sc_rc{sep_sc_rc_}
-{
+    : wcs{new struct ibv_wc[ARK_NET_IB_CQ_POLL_NUM]}, sep_sc_rc{sep_sc_rc_} {
     int num;
     struct ibv_device **devices = ibv_get_device_list(&num);
     if (ib_dev_id >= num) {
@@ -289,8 +272,7 @@ NetIbMgr::NetIbMgr(int ib_dev_id, bool sep_sc_rc_)
     this->pd = ibv_alloc_pd(ctx_);
 }
 
-NetIbMgr::~NetIbMgr()
-{
+NetIbMgr::~NetIbMgr() {
     for (auto &mr : this->mrs) {
         ibv_dereg_mr((struct ibv_mr *)mr->get_mr());
     }
@@ -308,8 +290,7 @@ NetIbMgr::~NetIbMgr()
     delete reinterpret_cast<struct ibv_wc *>(this->wcs);
 }
 
-NetIbQp *NetIbMgr::create_qp(int port)
-{
+NetIbQp *NetIbMgr::create_qp(int port) {
     if (port < 0) {
         if (this->ports.empty()) {
             LOG(WARN, "no active IB ports");
@@ -355,8 +336,7 @@ NetIbQp *NetIbMgr::create_qp(int port)
 }
 
 // Register a memory region for remote write.
-NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size)
-{
+NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size) {
     if (size == 0) {
         return nullptr;
     }
@@ -381,8 +361,7 @@ NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size)
     return this->mrs.back().get();
 }
 
-int NetIbMgr::poll_cq()
-{
+int NetIbMgr::poll_cq() {
     if (this->sep_sc_rc) {
         LOG(ERROR, "poll_cq not supported for separate send/recv CQs");
     }
@@ -396,8 +375,7 @@ int NetIbMgr::poll_cq()
     return ret;
 }
 
-int NetIbMgr::poll_scq()
-{
+int NetIbMgr::poll_scq() {
     if (!this->sep_sc_rc) {
         LOG(ERROR, "poll_scq not supported for single send/recv CQ");
     }
@@ -411,8 +389,7 @@ int NetIbMgr::poll_scq()
     return ret;
 }
 
-int NetIbMgr::poll_rcq()
-{
+int NetIbMgr::poll_rcq() {
     if (!this->sep_sc_rc) {
         LOG(ERROR, "poll_rcq not supported for single send/recv CQ");
     }
@@ -426,8 +403,7 @@ int NetIbMgr::poll_rcq()
     return ret;
 }
 
-int NetIbMgr::get_wc_status(int i) const
-{
+int NetIbMgr::get_wc_status(int i) const {
     if (i < 0 || i >= this->wcn) {
         return -1;
     }
@@ -435,8 +411,7 @@ int NetIbMgr::get_wc_status(int i) const
     return wc->status;
 }
 
-const char *NetIbMgr::get_wc_status_str(int i) const
-{
+const char *NetIbMgr::get_wc_status_str(int i) const {
     if (i < 0 || i >= this->wcn) {
         return nullptr;
     }
@@ -444,8 +419,7 @@ const char *NetIbMgr::get_wc_status_str(int i) const
     return ibv_wc_status_str(wc->status);
 }
 
-uint64_t NetIbMgr::get_wc_wr_id(int i) const
-{
+uint64_t NetIbMgr::get_wc_wr_id(int i) const {
     if (i < 0 || i >= this->wcn) {
         return -1;
     }
@@ -453,8 +427,7 @@ uint64_t NetIbMgr::get_wc_wr_id(int i) const
     return wc->wr_id;
 }
 
-unsigned int NetIbMgr::get_wc_imm_data(int i) const
-{
+unsigned int NetIbMgr::get_wc_imm_data(int i) const {
     if (i < 0 || i >= this->wcn) {
         return -1;
     }
@@ -467,8 +440,7 @@ unsigned int NetIbMgr::get_wc_imm_data(int i) const
 std::map<int, NetIbMgr *> ARK_NET_IB_MGR_GLOBAL;
 
 // Get a NetIbMgr instance
-NetIbMgr *get_net_ib_mgr(int ib_dev_id)
-{
+NetIbMgr *get_net_ib_mgr(int ib_dev_id) {
     auto it = ARK_NET_IB_MGR_GLOBAL.find(ib_dev_id);
     if (it == ARK_NET_IB_MGR_GLOBAL.end()) {
         ARK_NET_IB_MGR_GLOBAL[ib_dev_id] = new NetIbMgr{ib_dev_id};
@@ -478,8 +450,7 @@ NetIbMgr *get_net_ib_mgr(int ib_dev_id)
 }
 
 // Get the number of IB devices
-int get_net_ib_device_num()
-{
+int get_net_ib_device_num() {
     int num;
     struct ibv_device **devices = ibv_get_device_list(&num);
     ibv_free_device_list(devices);
@@ -489,8 +460,7 @@ int get_net_ib_device_num()
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
 #define ROUNDUP(x, y) (DIVUP((x), (y)) * (y))
 
-void *page_memalign(std::size_t size)
-{
+void *page_memalign(std::size_t size) {
     std::size_t page_size = sysconf(_SC_PAGESIZE);
     void *p;
     int size_aligned = ROUNDUP(size, page_size);
@@ -502,4 +472,4 @@ void *page_memalign(std::size_t size)
     return p;
 }
 
-} // namespace ark
+}  // namespace ark

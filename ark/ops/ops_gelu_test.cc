@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cmath>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <cmath>
 
-float gelu(float x)
-{
+float gelu(float x) {
     return 0.5 * x * (1 + tanh(sqrt(2 / M_PI) * (x + 0.044715 * pow(x, 3))));
 }
 
@@ -16,8 +16,7 @@ template <typename T>
 void baseline_gelu(std::vector<void *> &outputs,
                    const std::vector<ark::Dims> &output_shapes,
                    const std::vector<void *> &inputs,
-                   const std::vector<ark::Dims> &)
-{
+                   const std::vector<ark::Dims> &) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
@@ -26,8 +25,7 @@ void baseline_gelu(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_gelu_fp32()
-{
+ark::unittest::State test_gelu_fp32() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
     ark::Tensor *out = m.gelu(t);
@@ -39,8 +37,7 @@ ark::unittest::State test_gelu_fp32()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_gelu_fp32);
     return ark::unittest::SUCCESS;

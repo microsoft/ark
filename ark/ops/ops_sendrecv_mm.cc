@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "env.h"
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -21,12 +22,9 @@ SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          name,
          &SendRecvMMConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string SendMMOp::function_name(const OpConfig &cfg) const
-{
+std::string SendMMOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
     Tensor *output = this->outputs[0];
@@ -53,18 +51,17 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::comm::sendLL",
                              {{
-                                 m,                  // LDM
-                                 n,                  // LDN
-                                 cfg.num_warps * 32, // TN
-                                 cfg.smem_bytes,     // SmemBytes
-                                 tile_in.y,          // TDM
-                                 tile_in.x,          // TDN
-                                 1,                  // FLAG
+                                 m,                   // LDM
+                                 n,                   // LDN
+                                 cfg.num_warps * 32,  // TN
+                                 cfg.smem_bytes,      // SmemBytes
+                                 tile_in.y,           // TDM
+                                 tile_in.x,           // TDN
+                                 1,                   // FLAG
                              }});
 }
 
-OpArgs SendMMOp::function_call_args(const OpConfig &) const
-{
+OpArgs SendMMOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     opargs.put(this->inputs[1]);
     opargs.put(this->inputs[0]);
@@ -83,12 +80,9 @@ RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          name,
          &SendRecvMMConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string RecvMMOp::function_name(const OpConfig &cfg) const
-{
+std::string RecvMMOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
     Tensor *output = this->outputs[0];
@@ -115,18 +109,17 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::comm::recvLL",
                              {{
-                                 m,                  // LDM
-                                 n,                  // LDN
-                                 cfg.num_warps * 32, // TN
-                                 cfg.smem_bytes,     // SmemBytes
-                                 tile_in.y,          // TDM
-                                 tile_in.x,          // TDN
-                                 1,                  // FLAG
+                                 m,                   // LDM
+                                 n,                   // LDN
+                                 cfg.num_warps * 32,  // TN
+                                 cfg.smem_bytes,      // SmemBytes
+                                 tile_in.y,           // TDM
+                                 tile_in.x,           // TDN
+                                 1,                   // FLAG
                              }});
 }
 
-OpArgs RecvMMOp::function_call_args(const OpConfig &) const
-{
+OpArgs RecvMMOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     opargs.put(this->inputs[1]);
     opargs.put(this->inputs[0]);
@@ -139,8 +132,7 @@ const int max_tile_num = 2048;
 
 // send data from src to dst of id
 Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
@@ -175,8 +167,7 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
 
 //
 Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
@@ -227,4 +218,4 @@ const OpConfigMap SendRecvMMConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

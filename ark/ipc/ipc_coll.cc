@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_coll.h"
+
 #include <cstring>
 
 #include "cpu_timer.h"
-#include "ipc/ipc_coll.h"
 #include "logging.h"
 
 namespace ark {
@@ -12,8 +13,7 @@ namespace ark {
 // Constructor.
 IpcAllGather::IpcAllGather(const std::string &name_, int rank_, int size_,
                            const void *addr_, std::size_t bytes_)
-    : rank{rank_}, size{size_}, bytes{bytes_}
-{
+    : rank{rank_}, size{size_}, bytes{bytes_} {
     this->mem = new IpcMem{name_, false, true};
     char *ptr = (char *)this->mem->alloc(bytes_ * size_ + 8);
     if (addr_ != nullptr) {
@@ -23,13 +23,9 @@ IpcAllGather::IpcAllGather(const std::string &name_, int rank_, int size_,
 }
 
 // Desctructor.
-IpcAllGather::~IpcAllGather()
-{
-    delete this->mem;
-}
+IpcAllGather::~IpcAllGather() { delete this->mem; }
 
-void IpcAllGather::sync()
-{
+void IpcAllGather::sync() {
     char *ptr = (char *)this->mem->get_addr();
     volatile int *cnt = (volatile int *)(ptr + this->bytes * this->size);
     volatile int *flag = cnt + 1;
@@ -61,9 +57,8 @@ void IpcAllGather::sync()
     }
 }
 
-void *IpcAllGather::get_data(int rank_) const
-{
+void *IpcAllGather::get_data(int rank_) const {
     return (char *)this->mem->get_addr() + rank_ * this->bytes;
 }
 
-} // namespace ark
+}  // namespace ark

@@ -1,18 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <cassert>
 
 template <typename T>
 void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
-{
+                               const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -39,8 +39,7 @@ template <typename T>
 void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
-{
+                               const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -67,8 +66,7 @@ template <typename T>
 void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
-{
+                               const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -96,8 +94,7 @@ template <typename T>
 void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
-{
+                               const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -121,8 +118,7 @@ void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_reduce_axis0()
-{
+ark::unittest::State test_reduce_axis0() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP32);
     ark::Tensor *out = m.reduce_sum(t, /*axis=*/0);
@@ -134,8 +130,7 @@ ark::unittest::State test_reduce_axis0()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reduce_axis1()
-{
+ark::unittest::State test_reduce_axis1() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
     ark::Tensor *out = m.reduce_sum(t, /*axis=*/1);
@@ -147,8 +142,7 @@ ark::unittest::State test_reduce_axis1()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reduce_axis2()
-{
+ark::unittest::State test_reduce_axis2() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(1, 1, 7, 8192), ark::FP32);
     ark::Tensor *out = m.reduce_sum(t, /*axis=*/2);
@@ -160,8 +154,7 @@ ark::unittest::State test_reduce_axis2()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reduce_axis3()
-{
+ark::unittest::State test_reduce_axis3() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(1, 1, 2, 8192), ark::FP32);
     ark::Tensor *out = m.reduce_sum(t, /*axis=*/3);
@@ -173,8 +166,7 @@ ark::unittest::State test_reduce_axis3()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reduce_axis3_padded()
-{
+ark::unittest::State test_reduce_axis3_padded() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(1, 1, 2, 8192), ark::FP32);
     ark::Tensor *out = m.tensor(ark::Dims(1, 1, 2, 1), ark::FP32, nullptr,
@@ -188,8 +180,7 @@ ark::unittest::State test_reduce_axis3_padded()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reduce_fp16()
-{
+ark::unittest::State test_reduce_fp16() {
     {
         ark::Model m;
         ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
@@ -212,8 +203,7 @@ ark::unittest::State test_reduce_fp16()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_reduce_axis0);
     UNITTEST(test_reduce_axis1);

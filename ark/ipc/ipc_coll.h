@@ -9,9 +9,8 @@
 namespace ark {
 
 //
-class IpcAllGather
-{
-  public:
+class IpcAllGather {
+   public:
     // Constructor.
     IpcAllGather(const std::string &name, int rank, int size, const void *addr,
                  std::size_t bytes);
@@ -22,7 +21,7 @@ class IpcAllGather
     // Get data of the given rank.
     void *get_data(int rank_) const;
 
-  private:
+   private:
     IpcMem *mem;
     int rank;
     int size;
@@ -30,6 +29,6 @@ class IpcAllGather
     std::size_t bytes;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_IPC_COLL_H_
+#endif  // ARK_IPC_COLL_H_

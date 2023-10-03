@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "sched/sched_op.h"
+
 #include "logging.h"
 #include "math.h"
 
@@ -10,8 +11,7 @@ using namespace std;
 namespace ark {
 
 SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
-    : op{op_}, cfg{cfg_}, name{name}, tnums{}
-{
+    : op{op_}, cfg{cfg_}, name{name}, tnums{} {
     if (op_ == nullptr) {
         return;
     }
@@ -102,16 +102,14 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
     }
 }
 
-const string SchedOp::function_name() const
-{
+const string SchedOp::function_name() const {
     if (this->cfg == nullptr) {
         return "";
     }
     return this->op->function_name(*this->cfg);
 }
 
-const string SchedOp::serialize() const
-{
+const string SchedOp::serialize() const {
     // Serialize sop definition as a string.
     std::stringstream ss;
     ss << this->function_name() << ",";
@@ -140,9 +138,6 @@ const string SchedOp::serialize() const
     return ss.str();
 }
 
-bool SchedOp::is_virtual() const
-{
-    return this->cfg == nullptr;
-}
+bool SchedOp::is_virtual() const { return this->cfg == nullptr; }
 
-} // namespace ark
+}  // namespace ark

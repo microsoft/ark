@@ -1,21 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "unittest/unittest_utils.h"
+
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
 #include <vector>
 
 #include "file_io.h"
 #include "logging.h"
-#include "unittest/unittest_utils.h"
 
 using namespace std;
 
 // Grep SIGALRM and exit.
-static void sigalrm_timeout_handler(int)
-{
+static void sigalrm_timeout_handler(int) {
     signal(SIGALRM, SIG_IGN);
     UNITTEST_FEXIT("timeout");
 }
@@ -24,8 +25,7 @@ namespace ark {
 namespace unittest {
 
 // Temporal unittest states.
-struct TempStates
-{
+struct TempStates {
     vector<int> pids;
     vector<thread *> threads;
 };
@@ -33,30 +33,26 @@ struct TempStates
 TempStates GLOBAL_TEMP_STATES_;
 
 // Set a timeout of the current process.
-Timeout::Timeout(int timeout)
-{
+Timeout::Timeout(int timeout) {
     signal(SIGALRM, sigalrm_timeout_handler);
     alarm(timeout);
 }
 
 // Remove the timeout.
-Timeout::~Timeout()
-{
+Timeout::~Timeout() {
     alarm(0);
     signal(SIGALRM, SIG_DFL);
 }
 
 // Spawn a thread that runs the given function.
-thread *spawn_thread(function<State()> func)
-{
+thread *spawn_thread(function<State()> func) {
     thread *t = new thread(func);
     GLOBAL_TEMP_STATES_.threads.emplace_back(t);
     return t;
 }
 
 // Wait for all threads to finish.
-void wait_all_threads()
-{
+void wait_all_threads() {
     for (thread *t : GLOBAL_TEMP_STATES_.threads) {
         if (t->joinable()) {
             t->join();
@@ -67,8 +63,7 @@ void wait_all_threads()
 }
 
 // Spawn a process that runs the given function.
-int spawn_process(function<State()> func)
-{
+int spawn_process(function<State()> func) {
     pid_t pid = fork();
     if (pid < 0) {
         UNITTEST_UEXIT("fork() failed");
@@ -81,8 +76,7 @@ int spawn_process(function<State()> func)
 }
 
 // Wait for all processes to finish.
-void wait_all_processes()
-{
+void wait_all_processes() {
     size_t nproc = GLOBAL_TEMP_STATES_.pids.size();
     for (size_t i = 0; i < nproc; ++i) {
         pid_t pid;
@@ -102,17 +96,13 @@ void wait_all_processes()
 }
 
 // Run the given test function.
-State test(function<State()> test_func)
-{
-    return test_func();
-}
+State test(function<State()> test_func) { return test_func(); }
 
 //
-string get_kernel_code(const string &name)
-{
+string get_kernel_code(const string &name) {
     return ark::read_file(ark::get_dir(string{__FILE__}) + "/../ops/kernels/" +
                           name + ".h");
 }
 
-} // namespace unittest
-} // namespace ark
+}  // namespace unittest
+}  // namespace ark
