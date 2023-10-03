@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include <algorithm>
+
 #include "ark.h"
 
 static std::string to_lowercase(const std::string &str) {

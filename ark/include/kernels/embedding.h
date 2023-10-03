@@ -5,6 +5,7 @@
 #define ARK_KERNELS_EMBEDDING_H_
 
 #include <type_traits>
+
 #include "common.h"
 
 namespace ark {
