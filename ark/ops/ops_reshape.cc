@@ -8,8 +8,8 @@
 
 namespace ark {
 
-ReshapeOp::ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     const std::string &name)
+ReshapeOp::ReshapeOp(const std::string &prec_type, Tensor *input,
+                     Tensor *output, const std::string &name)
     : Op{OP_RESHAPE, prec_type, {input}, {output}, {},
          name,       nullptr,   -1,      true} {}
 
@@ -74,7 +74,7 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
 Tensor *Model::reshape(Tensor *input, const Dims &shape, bool allowzero,
                        Tensor *output, const std::string &name) {
     output = _reshape(this, input, shape, allowzero, output, name);
-    ReshapeOp op{OP_PREC_NONE, input, output, name};
+    ReshapeOp op{"none", input, output, name};
     return this->impl->add_op(op)[0];
 }
 
@@ -147,7 +147,7 @@ Tensor *Model::reshape(Tensor *input, const std::vector<DimType> &shape,
     }
     output =
         _reshape(this, input, Dims{inferred_shape}, allowzero, output, name);
-    ReshapeOp op{OP_PREC_NONE, input, output, name};
+    ReshapeOp op{"none", input, output, name};
     return this->impl->add_op(op)[0];
 }
 

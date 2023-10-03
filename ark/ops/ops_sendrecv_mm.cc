@@ -11,7 +11,7 @@ namespace ark {
 
 extern const OpConfigMap SendRecvMMConfigMap;
 
-SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+SendMMOp::SendMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
                    size_t bytes, const std::string &name)
     : Op{OP_SEND_MM,
@@ -69,7 +69,7 @@ OpArgs SendMMOp::function_call_args(const OpConfig &) const {
     return opargs;
 }
 
-RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+RecvMMOp::RecvMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
                    size_t bytes, const std::string &name)
     : Op{OP_RECV_MM,
@@ -161,8 +161,8 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
         },
         INT32);
     send_ready_flag->exported = true;
-    SendMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
-                gpu_dst,      bytes, name};
+    SendMMOp op{"none",  input, recvbuf, send_ready_flag, output, id,
+                gpu_dst, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
@@ -201,13 +201,13 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
         },
         INT32);
     send_ready_flag->imported_rank = gpu_src;
-    RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
-                gpu_src,      bytes, name};
+    RecvMMOp op{"none",  input, recvbuf, send_ready_flag, output, id,
+                gpu_src, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap SendRecvMMConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},

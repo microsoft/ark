@@ -10,7 +10,7 @@ namespace ark {
 
 extern const OpConfigMap CommConfigMap;
 
-SendOp::SendOp(OpPrecType prec_type, Tensor *input, int sid, int rank,
+SendOp::SendOp(const std::string &prec_type, Tensor *input, int sid, int rank,
                int dst_rank, size_t bytes, const std::string &name)
     : Op{OP_SEND,
          prec_type,
@@ -45,7 +45,7 @@ std::string SendOp::function_name(const OpConfig &) const {
 
 OpArgs SendOp::function_call_args(const OpConfig &) const { return {}; }
 
-SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, int sid, int rank,
+SendDoneOp::SendDoneOp(const std::string &prec_type, Tensor *input, int sid, int rank,
                        int dst_rank, const std::string &name)
     : Op{OP_SEND_DONE,
          prec_type,
@@ -74,7 +74,7 @@ std::string SendDoneOp::function_name(const OpConfig &) const {
 
 OpArgs SendDoneOp::function_call_args(const OpConfig &) const { return {}; }
 
-RecvOp::RecvOp(OpPrecType prec_type, Tensor *output, int sid, int rank,
+RecvOp::RecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
                int src_rank, size_t bytes, const std::string &name)
     : Op{OP_RECV,
          prec_type,
@@ -117,14 +117,14 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
         bytes = max_bytes;
     }
     input->exported = true;
-    SendOp op{OP_PREC_NONE, input, id, this->impl->rank, dst_rank, bytes, name};
+    SendOp op{"none", input, id, this->impl->rank, dst_rank, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 //
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank,
                          const std::string &name) {
-    SendDoneOp op{OP_PREC_NONE, input, id, this->impl->rank, dst_rank, name};
+    SendDoneOp op{"none", input, id, this->impl->rank, dst_rank, name};
     return this->impl->add_op(op)[0];
 }
 
@@ -145,13 +145,13 @@ Tensor *Model::recv(int id, int src_rank, size_t bytes, Tensor *output,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    RecvOp op{OP_PREC_NONE, output, id,  this->impl->rank,
+    RecvOp op{"none", output, id,  this->impl->rank,
               src_rank,     bytes,  name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap CommConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{-1, -1}}, {{-1, -1}}, true, true},

@@ -1,110 +1,104 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import numpy as np
-from ._ark_core import _TensorType, _FP32, _FP16, _INT32, _BYTE
+import numpy
+import string
+from . import _ark_core
+
+
+_REGISTRY_DATA_TYPE = {
+    "fp32": {
+        "np": numpy.float32,
+        "doc": """32-bit floating point.""",
+    },
+    "fp16": {
+        "np": numpy.float16,
+        "doc": """16-bit floating point.""",
+    },
+    "bf16": {
+        "np": None,
+        "doc": """bfloat16 floating point.""",
+    },
+    "int32": {
+        "np": numpy.int32,
+        "doc": """32-bit signed integer.""",
+    },
+    "uint32": {
+        "np": numpy.uint32,
+        "doc": """32-bit unsigned integer.""",
+    },
+    "int8": {
+        "np": numpy.int8,
+        "doc": """8-bit signed integer.""",
+    },
+    "uint8": {
+        "np": numpy.uint8,
+        "doc": """8-bit unsigned integer.""",
+    },
+    "byte": {
+        "np": numpy.ubyte,
+        "doc": """
+Represent the data as bytes, supposed to be untyped binary.
+
+Unlike other data types, casting to/from `byte` from/to another data type
+is considered as reinterpretation of the data, instead of conversion.
+""",
+    },
+}
 
 
 class DataType:
     @staticmethod
-    def from_numpy(np_type: np.dtype) -> "DataType":
-        if np_type == np.float32:
-            return fp32
-        elif np_type == np.float16:
-            return fp16
-        elif np_type == np.int32:
-            return int32
-        elif np_type == np.uint8:
-            return byte
-        else:
-            raise NotImplementedError
+    def from_numpy(np_type: numpy.dtype) -> "DataType":
+        for type_name, reg in _REGISTRY_DATA_TYPE.items():
+            if reg["np"] == np_type:
+                return DataType.from_name(type_name)
+        raise ValueError(
+            f"Undefined conversion from numpy data type {np_type}"
+            f" to ark data type."
+        )
 
     @staticmethod
-    def from_ttype(ttype: _TensorType) -> "DataType":
-        if ttype == _FP32:
-            return fp32
-        elif ttype == _FP16:
-            return fp16
-        elif ttype == _INT32:
-            return int32
-        elif ttype == _BYTE:
-            return byte
-        else:
-            raise NotImplementedError
+    def from_name(type_name: str) -> "DataType":
+        return globals()[type_name]
 
     @staticmethod
-    def from_str(type_str: str) -> "DataType":
-        if type_str == "fp32":
-            return fp32
-        elif type_str == "fp16":
-            return fp16
-        elif type_str == "int32":
-            return int32
-        elif type_str == "byte":
-            return byte
-        else:
-            raise NotImplementedError
+    def from_ttype(ttype: _ark_core._TensorType) -> "DataType":
+        return DataType.from_name(ttype.name())
 
     @staticmethod
-    def to_numpy() -> np.dtype:
+    def to_numpy() -> numpy.dtype:
+        """Return the corresponding numpy data type."""
         ...
 
     @staticmethod
-    def ttype() -> _TensorType:
+    def ttype() -> _ark_core._TensorType:
+        """Return the corresponding tensor type."""
+        ...
+
+    @staticmethod
+    def element_size() -> int:
+        """Return the size of the data type in bytes."""
         ...
 
 
-class fp32(DataType):
+_DATA_TYPE_TEMPLATE = string.Template(
+    """
+class $type_name(DataType):
     @staticmethod
-    def to_numpy() -> np.float32:
-        return np.float32
+    def to_numpy() -> numpy.dtype:
+        return _REGISTRY_DATA_TYPE[__class__.__name__]["np"]
 
     @staticmethod
-    def ttype() -> _TensorType:
-        return _FP32
-
-    @staticmethod
-    def element_size() -> int:
-        return 4
-
-
-class fp16(DataType):
-    @staticmethod
-    def to_numpy() -> np.float16:
-        return np.float16
-
-    @staticmethod
-    def ttype() -> _TensorType:
-        return _FP16
+    def ttype() -> _ark_core._TensorType:
+        return getattr(_ark_core, "_" + __class__.__name__.upper())
 
     @staticmethod
     def element_size() -> int:
-        return 2
+        return __class__.ttype().bytes()
+"""
+)
 
-
-class int32(DataType):
-    @staticmethod
-    def to_numpy() -> np.int32:
-        return np.int32
-
-    @staticmethod
-    def ttype() -> _TensorType:
-        return _INT32
-
-    @staticmethod
-    def element_size() -> int:
-        return 4
-
-
-class byte(DataType):
-    @staticmethod
-    def to_numpy() -> np.uint8:
-        return np.uint8
-
-    @staticmethod
-    def ttype() -> _TensorType:
-        return _BYTE
-
-    @staticmethod
-    def element_size() -> int:
-        return 1
+for type_name, reg in _REGISTRY_DATA_TYPE.items():
+    exec(_DATA_TYPE_TEMPLATE.substitute(type_name=type_name))
+    globals()[type_name].__doc__ = reg["doc"]

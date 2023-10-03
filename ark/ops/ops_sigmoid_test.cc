@@ -35,8 +35,21 @@ ark::unittest::State test_sigmoid_fp32() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sigmoid_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+    ark::Tensor *out = m.sigmoid(t);
+
+    auto result = ark::op_test("sigmoid_bf16", m, {t}, {out},
+                               baseline_sigmoid<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_sigmoid_fp32);
+    UNITTEST(test_sigmoid_bf16);
     return ark::unittest::SUCCESS;
 }

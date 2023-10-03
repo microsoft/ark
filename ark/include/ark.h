@@ -82,6 +82,46 @@ class CodeGenerator;
 class BaseScheduler;
 class SchedOp;
 
+/// Type of tensor data.
+class TensorType {
+   private:
+    const std::string name_;
+    const int bytes_;
+    const std::string type_str_;
+
+   public:
+    TensorType(const std::string &name = "none", int bytes = 0,
+               const std::string &type_str = "void *");
+
+    bool operator==(const TensorType &other) const;
+    bool operator!=(const TensorType &other) const;
+
+    int bytes() const;
+    const std::string &name() const;
+    const std::string &type_str() const;
+};
+
+const TensorType NONE;
+
+std::ostream &operator<<(std::ostream &os, const TensorType &type);
+
+#define REGISTER_TENSOR_TYPE(_type_name, _bytes, _type_str) \
+    class TensorType_##_type_name : public TensorType {     \
+       public:                                              \
+        TensorType_##_type_name()                           \
+            : TensorType{#_type_name, _bytes, _type_str} {} \
+    };                                                      \
+    const TensorType_##_type_name _type_name;
+
+REGISTER_TENSOR_TYPE(FP32, 4, "float")
+REGISTER_TENSOR_TYPE(FP16, 2, "ark::half")
+REGISTER_TENSOR_TYPE(BF16, 2, "ark::bfloat16")
+REGISTER_TENSOR_TYPE(INT32, 4, "int32_t")
+REGISTER_TENSOR_TYPE(UINT32, 4, "uint32_t")
+REGISTER_TENSOR_TYPE(INT8, 1, "int8_t")
+REGISTER_TENSOR_TYPE(UINT8, 1, "uint8_t")
+REGISTER_TENSOR_TYPE(BYTE, 1, "unsigned char")
+
 // TensorBuf refers to a data array that can be shared by multiple tensors.
 class TensorBuf {
    public:
@@ -100,55 +140,6 @@ class TensorBuf {
     friend class Tensor;
     friend class BaseScheduler;
 };
-
-/// Type of tensor data.
-class TensorType {
-   private:
-    const int id_;
-    const int bytes_;
-    const std::string name_;
-    const std::string pointer_name_;
-
-   public:
-    TensorType(int id = -1, int bytes = 0, const std::string &name = "none",
-               const std::string &pointer_name = "void *");
-
-    bool operator==(const TensorType &other) const;
-    bool operator!=(const TensorType &other) const;
-
-    int id() const;
-    int bytes() const;
-    const std::string &name() const;
-    const std::string &pointer_name() const;
-};
-
-class Fp16 : public TensorType {
-   public:
-    Fp16();
-};
-
-class Fp32 : public TensorType {
-   public:
-    Fp32();
-};
-
-class Int32 : public TensorType {
-   public:
-    Int32();
-};
-
-class Byte : public TensorType {
-   public:
-    Byte();
-};
-
-const TensorType NONE;
-const Fp16 FP16;
-const Fp32 FP32;
-const Int32 INT32;
-const Byte BYTE;
-
-std::ostream &operator<<(std::ostream &os, const TensorType &type);
 
 /// Tensor is a view of a TensorBuf.
 ///

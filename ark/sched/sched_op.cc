@@ -119,7 +119,7 @@ const string SchedOp::serialize() const {
         if (arg.type == OP_ARG_TENSOR) {
             Tensor *tns;
             arg.get(&tns);
-            ss << tns->type.pointer_name();
+            ss << tns->type.type_str() << " *";
         } else if (arg.type == OP_ARG_FLOAT) {
             ss << "float";
         } else if (arg.type == OP_ARG_INT) {

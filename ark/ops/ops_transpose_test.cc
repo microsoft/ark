@@ -78,6 +78,18 @@ ark::unittest::State test_transpose_0132_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_transpose_0132_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::BF16);
+    ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
+
+    auto result = ark::op_test("transpose_0132_bf32", m, {t}, {out},
+                               baseline_transpose_0132<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_transpose_0231_fp32() {
     ark::Model m;
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP32);
@@ -102,11 +114,25 @@ ark::unittest::State test_transpose_0231_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_transpose_0231_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::BF16);
+    ark::Tensor *out = m.transpose(t, {0, 2, 3, 1});
+
+    auto result = ark::op_test("transpose_0231_bf16", m, {t}, {out},
+                               baseline_transpose_0231<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_transpose_0132_fp32);
     UNITTEST(test_transpose_0132_fp16);
+    UNITTEST(test_transpose_0132_bf16);
     UNITTEST(test_transpose_0231_fp32);
     UNITTEST(test_transpose_0231_fp16);
+    UNITTEST(test_transpose_0231_bf16);
     return ark::unittest::SUCCESS;
 }

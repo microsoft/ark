@@ -136,6 +136,30 @@ ark::unittest::State test_softmax_fp16_small_magnitude() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_softmax_bf16() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(64, 8192), ark::BF16);
+        ark::Tensor *out = m.softmax(t);
+
+        auto result = ark::op_test("softmax_bf16", m, {t}, {out},
+                                   baseline_softmax<ark::bfloat16_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(1, 32, 64, 64), ark::BF16);
+        ark::Tensor *out = m.softmax(t);
+
+        auto result = ark::op_test("softmax_bf16", m, {t}, {out},
+                                   baseline_softmax<ark::bfloat16_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_softmax_fp32);
@@ -143,5 +167,6 @@ int main() {
     UNITTEST(test_softmax_fp16_padded);
     UNITTEST(test_softmax_fp16_big_magnitude);
     UNITTEST(test_softmax_fp16_small_magnitude);
+    UNITTEST(test_softmax_bf16);
     return ark::unittest::SUCCESS;
 }

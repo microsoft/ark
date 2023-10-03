@@ -22,6 +22,16 @@ struct alignas(2) half_t {
     operator float() const;
 };
 
+// bfloat16 type.
+struct alignas(2) bfloat16_t {
+    uint16_t storage;
+    bfloat16_t() = default;
+    // Constructor with float parameter
+    bfloat16_t(float f);
+    // Conversion operator from bfloat16 to float
+    operator float() const;
+};
+
 }  // namespace ark
 
 ark::half_t operator+(ark::half_t const &lhs, ark::half_t const &rhs);
@@ -31,6 +41,15 @@ ark::half_t &operator+=(ark::half_t &lhs, ark::half_t const &rhs);
 ark::half_t &operator-=(ark::half_t &lhs, ark::half_t const &rhs);
 
 ark::half_t abs(ark::half_t const &val);
+
+ark::bfloat16_t operator+(ark::bfloat16_t const &lhs,
+                          ark::bfloat16_t const &rhs);
+ark::bfloat16_t operator-(ark::bfloat16_t const &lhs,
+                          ark::bfloat16_t const &rhs);
+ark::bfloat16_t operator*(ark::bfloat16_t const &lhs,
+                          ark::bfloat16_t const &rhs);
+ark::bfloat16_t &operator+=(ark::bfloat16_t &lhs, ark::bfloat16_t const &rhs);
+ark::bfloat16_t &operator-=(ark::bfloat16_t &lhs, ark::bfloat16_t const &rhs);
 
 // A set of utility functions
 namespace ark {

@@ -44,7 +44,8 @@ class Model::Impl {
     /// should indicate finer-grained Ops. If it is -1, the granularity level
     /// will be automatically determined by the scheduler.
     /// @return the output tensors of the @ref Op.
-    std::vector<Tensor *> add_op(const OpType type, const OpPrecType prec_type,
+    std::vector<Tensor *> add_op(const OpType type,
+                                 const std::string &prec_type,
                                  const std::vector<Tensor *> &inputs,
                                  const std::vector<Tensor *> &output_refs,
                                  const OpArgs &args, const std::string &name,

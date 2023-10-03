@@ -539,21 +539,11 @@ struct Transpose3210 {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO: support NelemPerThread > 1
 template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Transpose>
-DEVICE void _transpose(float *out, float *in, int uop_idx) {
-    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
-           Transpose>::run(out, in, uop_idx);
-}
-
-// TODO: we need to use NelemPerThread=2 for half in the future, if out is a
-// __half pointer, this can cause a memory bug, because GPU DRAM access should
-// be always 4-byte aligned
-template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Transpose>
-DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx) {
+          typename Transpose, typename DataType>
+DEVICE void _transpose(DataType *out, DataType *in, int uop_idx) {
     Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Transpose>::run(out, in, uop_idx);
 }

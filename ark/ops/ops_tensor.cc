@@ -10,7 +10,7 @@ namespace ark {
 
 TensorOp::TensorOp(const std::vector<Tensor *> &deps, Tensor *output,
                    const std::string &name)
-    : Op{OP_TENSOR, OP_PREC_NONE, deps, {output}, {}, name, nullptr, -1} {}
+    : Op{OP_TENSOR, "none", deps, {output}, {}, name, nullptr, -1} {}
 
 Tensor *Model::tensor(const Dims &shape, const TensorType &ttype,
                       TensorBuf *buf, const Dims &ldims, const Dims &offs,
