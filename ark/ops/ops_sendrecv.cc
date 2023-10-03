@@ -45,8 +45,8 @@ std::string SendOp::function_name(const OpConfig &) const {
 
 OpArgs SendOp::function_call_args(const OpConfig &) const { return {}; }
 
-SendDoneOp::SendDoneOp(const std::string &prec_type, Tensor *input, int sid, int rank,
-                       int dst_rank, const std::string &name)
+SendDoneOp::SendDoneOp(const std::string &prec_type, Tensor *input, int sid,
+                       int rank, int dst_rank, const std::string &name)
     : Op{OP_SEND_DONE,
          prec_type,
          {input},
@@ -76,15 +76,8 @@ OpArgs SendDoneOp::function_call_args(const OpConfig &) const { return {}; }
 
 RecvOp::RecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
                int src_rank, size_t bytes, const std::string &name)
-    : Op{OP_RECV,
-         prec_type,
-         {},
-         {output},
-         {{sid, rank, src_rank, bytes}},
-         name,
-         &CommConfigMap,
-         -1,
-         true} {}
+    : Op{OP_RECV, prec_type,      {}, {output}, {{sid, rank, src_rank, bytes}},
+         name,    &CommConfigMap, -1, true} {}
 
 std::string RecvOp::function_name(const OpConfig &) const {
     Tensor *output = this->outputs[0];
@@ -145,8 +138,7 @@ Tensor *Model::recv(int id, int src_rank, size_t bytes, Tensor *output,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    RecvOp op{"none", output, id,  this->impl->rank,
-              src_rank,     bytes,  name};
+    RecvOp op{"none", output, id, this->impl->rank, src_rank, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
