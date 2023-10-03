@@ -4,20 +4,20 @@
 #ifndef _ARK_SCHED_OPGRAPH_H_
 #define _ARK_SCHED_OPGRAPH_H_
 
-#include "ops/ops_common.h"
 #include <list>
 #include <memory>
 #include <set>
 #include <vector>
+
+#include "ops/ops_common.h"
 
 namespace ark {
 
 class Model;
 
 /// A node in the @ref OpGraph.
-class OpNode
-{
-  public:
+class OpNode {
+   public:
     /// Construct an empty @ref OpNode.
     OpNode(){};
 
@@ -46,9 +46,8 @@ class OpNode
 /// The @ref OpGraph is a DAG of operators, where each @ref OpNode is a
 /// node. The edges are the dependencies between @ref OpNode.
 ///
-class OpGraph
-{
-  public:
+class OpGraph {
+   public:
     /// Construct an @ref OpGraph from a @ref Model.
     ///
     /// The @ref OpGraph is a DAG of operators, where each @ref OpNode is a
@@ -71,8 +70,7 @@ class OpGraph
 
     /// Get the @ref OpNode list.
     /// @return The @ref OpNode list.
-    const std::list<std::unique_ptr<OpNode>> &get_nodes() const
-    {
+    const std::list<std::unique_ptr<OpNode>> &get_nodes() const {
         return this->nodes_storage;
     }
 
@@ -86,7 +84,7 @@ class OpGraph
     /// @return The new @ref OpNode.
     OpNode *break_node(OpNode *node, int op_idx);
 
-  private:
+   private:
     std::list<std::unique_ptr<OpNode>> nodes_storage;
 
     void create_nodes(const Model &model);
@@ -98,6 +96,6 @@ class OpGraph
                                 const std::list<OpNode *> &boundary_nodes);
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // _ARK_SCHED_OPGRAPH_H_
+#endif  // _ARK_SCHED_OPGRAPH_H_

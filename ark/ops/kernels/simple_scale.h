@@ -4,8 +4,7 @@
 #include "ark_kernels.h"
 // CAUTION: len should be even.
 extern "C" __global__ void simple_scale(ark::half *y, ark::half *x, float val,
-                                        unsigned int len)
-{
+                                        unsigned int len) {
     unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int num = len / 2;
     __half2 val2 = __float2half2_rn(val);

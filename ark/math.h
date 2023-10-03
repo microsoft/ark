@@ -16,7 +16,7 @@ unsigned int ilog2(unsigned int x);
 size_t gcd(size_t a, size_t b);
 size_t lcm(size_t a, size_t b);
 
-} // namespace math
-} // namespace ark
+}  // namespace math
+}  // namespace ark
 
-#endif // ARK_MATH_H_
+#endif  // ARK_MATH_H_

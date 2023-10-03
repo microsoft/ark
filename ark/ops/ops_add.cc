@@ -14,12 +14,9 @@ AddOp::AddOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
              const string &name)
     : Op{OP_ADD, prec_type, {input, other},       {output},
          {},     name,      &ArithmeticConfigMap, -1,
-         true}
-{
-}
+         true} {}
 
-std::string AddOp::function_name(const OpConfig &cfg) const
-{
+std::string AddOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *other = this->inputs[1];
     Tensor *output = this->outputs[0];
@@ -35,21 +32,20 @@ std::string AddOp::function_name(const OpConfig &cfg) const
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::add", {{
-                                             input->ldims.dims4(),  // In0Dims
-                                             input->shape.dims4(),  // In0Shape
-                                             other->ldims.dims4(),  // In1Dims
-                                             other->shape.dims4(),  // In1Shape
-                                             output->ldims.dims4(), // OutDims
-                                             output->shape.dims4(), // OutShape
-                                             unit_out_dims,      // UnitOutDims
-                                             cfg.num_warps * 32, // NumThreads
-                                             cfg.smem_bytes,     // SmemBytes
+                                             input->ldims.dims4(),   // In0Dims
+                                             input->shape.dims4(),   // In0Shape
+                                             other->ldims.dims4(),   // In1Dims
+                                             other->shape.dims4(),   // In1Shape
+                                             output->ldims.dims4(),  // OutDims
+                                             output->shape.dims4(),  // OutShape
+                                             unit_out_dims,       // UnitOutDims
+                                             cfg.num_warps * 32,  // NumThreads
+                                             cfg.smem_bytes,      // SmemBytes
                                          }});
 }
 
 Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
-                   const string &name)
-{
+                   const string &name) {
     CHECK(input != nullptr);
     CHECK(other != nullptr);
     OpPrecType pt = OP_PREC_NONE;
@@ -116,4 +112,4 @@ const OpConfigMap ArithmeticConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

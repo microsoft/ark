@@ -15,6 +15,6 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
                               const GpuArchType &arch,
                               unsigned int max_reg_cnt);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_COMPILE_H_
+#endif  // ARK_GPU_COMPILE_H_

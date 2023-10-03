@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc_lock.h"
+
 #include <cassert>
 
-#include "ipc_lock.h"
 #include "logging.h"
 
 namespace ark {
 
 // Initialize the lock.
-int ipc_lock_init(IpcLock *lock)
-{
+int ipc_lock_init(IpcLock *lock) {
     assert(lock != nullptr);
     int ret;
     pthread_mutexattr_t attr;
@@ -40,8 +40,7 @@ int ipc_lock_init(IpcLock *lock)
 }
 
 // Destroy the lock.
-int ipc_lock_destroy(IpcLock *lock)
-{
+int ipc_lock_destroy(IpcLock *lock) {
     assert(lock != nullptr);
     // Regardless of whether the destruction successes or not,
     // do not reuse this lock.
@@ -50,15 +49,13 @@ int ipc_lock_destroy(IpcLock *lock)
 }
 
 // Acquire the lock.
-int ipc_lock_acquire(IpcLock *lock)
-{
+int ipc_lock_acquire(IpcLock *lock) {
     assert(lock != nullptr);
     return pthread_mutex_lock(&(lock->mtx));
 }
 
 // Release the lock.
-int ipc_lock_release(IpcLock *lock)
-{
+int ipc_lock_release(IpcLock *lock) {
     assert(lock != nullptr);
     return pthread_mutex_unlock(&(lock->mtx));
 }
@@ -66,8 +63,7 @@ int ipc_lock_release(IpcLock *lock)
 ////////////////////////////////////////////////////////////////////////////////
 
 // Constructor.
-IpcLockGuard::IpcLockGuard(IpcLock *lock_) : lock{lock_}
-{
+IpcLockGuard::IpcLockGuard(IpcLock *lock_) : lock{lock_} {
     assert(lock_ != nullptr);
     assert(lock->is_init == true);
     int r = ipc_lock_acquire(lock_);
@@ -77,9 +73,6 @@ IpcLockGuard::IpcLockGuard(IpcLock *lock_) : lock{lock_}
 }
 
 // Desctructor.
-IpcLockGuard::~IpcLockGuard()
-{
-    ipc_lock_release(this->lock);
-}
+IpcLockGuard::~IpcLockGuard() { ipc_lock_release(this->lock); }
 
-} // namespace ark
+}  // namespace ark

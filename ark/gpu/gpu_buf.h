@@ -11,9 +11,8 @@
 namespace ark {
 
 //
-class GpuBuf
-{
-  public:
+class GpuBuf {
+   public:
     GpuBuf(const GpuMem *mem, int id, size_t offset, size_t bytes);
 
     GpuPtr ref(size_t off = 0) const;
@@ -21,32 +20,17 @@ class GpuBuf
     uint64_t pref(size_t off = 0) const;
     void *href(size_t off = 0) const;
 
-    size_t get_offset() const
-    {
-        return offset;
-    }
+    size_t get_offset() const { return offset; }
 
-    void set_offset(size_t off)
-    {
-        offset = off;
-    }
+    void set_offset(size_t off) { offset = off; }
 
-    const GpuMem *get_mem() const
-    {
-        return mem;
-    }
+    const GpuMem *get_mem() const { return mem; }
 
-    int get_id() const
-    {
-        return id;
-    }
+    int get_id() const { return id; }
 
-    size_t get_bytes() const
-    {
-        return bytes;
-    }
+    size_t get_bytes() const { return bytes; }
 
-  private:
+   private:
     const GpuMem *mem;
     // ID of a local buffer or SID of a remote buffer.
     const int id;
@@ -54,6 +38,6 @@ class GpuBuf
     size_t bytes;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_BUF_H_
+#endif  // ARK_GPU_BUF_H_

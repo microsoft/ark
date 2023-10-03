@@ -1,16 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "sched/sched_codegen.h"
+
+#include <unistd.h>
+
 #include <cassert>
 #include <fstream>
 #include <initializer_list>
 #include <ostream>
-#include <unistd.h>
 
 #include "env.h"
 #include "logging.h"
 #include "math.h"
-#include "sched/sched_codegen.h"
 
 using namespace std;
 
@@ -21,41 +23,36 @@ using namespace std;
 namespace ark {
 
 CodeGenerator::CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_)
-    : gpu_info{gpu_info_}, sm_num{gpu_info_.num_sm},
-      num_warps_per_sm{num_warps_per_sm_}, num_indent{0}
-{
-}
+    : gpu_info{gpu_info_},
+      sm_num{gpu_info_.num_sm},
+      num_warps_per_sm{num_warps_per_sm_},
+      num_indent{0} {}
 
-size_t CodeGenerator::get_tensor_offset(const Tensor *tensor) const
-{
+size_t CodeGenerator::get_tensor_offset(const Tensor *tensor) const {
     size_t off = tensor->buf->get_buf_offset();
     assert(off % 8 == 0);
     return off + tensor->offset_bytes();
 }
 
 std::ostream &CodeGenerator::def_remote_buf(std::ostream &os,
-                                            int remote_rank) const
-{
+                                            int remote_rank) const {
     os << "__device__ char *" ARK_BUF_NAME << remote_rank << ";\n";
     return os;
 }
 
-std::ostream &CodeGenerator::sync_gpu(std::ostream &os) const
-{
+std::ostream &CodeGenerator::sync_gpu(std::ostream &os) const {
     os << "ark::sync_gpu<" << this->sm_num << ">(" ARK_LSS_NAME ");\n";
     return os;
 }
 
 std::ostream &CodeGenerator::def_sync_stream(std::ostream &os,
-                                             int stream_id) const
-{
+                                             int stream_id) const {
     os << "__device__ ark::sync::State " ARK_LSS_NAME "_" << stream_id << ";\n";
     return os;
 }
 
 std::ostream &CodeGenerator::sync_stream(std::ostream &os, int stream_id,
-                                         int sm_id_begin, int sm_id_end) const
-{
+                                         int sm_id_begin, int sm_id_end) const {
     if (sm_id_begin >= sm_id_end) {
         LOG(ERROR, "invalid SM range");
     }
@@ -72,8 +69,7 @@ std::ostream &CodeGenerator::sync_stream(std::ostream &os, int stream_id,
     return os;
 }
 
-ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const
-{
+ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const {
     size_t off = this->get_tensor_offset(tensor);
     os << "(" << tensor->type.pointer_name() << ")";
     std::string buf_name = ARK_BUF_NAME;
@@ -85,8 +81,7 @@ ostream &CodeGenerator::tensor(ostream &os, const Tensor *tensor) const
 }
 
 std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
-                                       const std::string &name) const
-{
+                                       const std::string &name) const {
     if (arg.type == OP_ARG_TENSOR) {
         Tensor *tns;
         arg.get(&tns);
@@ -107,8 +102,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
     return os;
 }
 
-std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const
-{
+std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const {
     if (arg.type == OP_ARG_TENSOR) {
         Tensor *tns;
         arg.get(&tns);
@@ -140,8 +134,7 @@ std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const
 }
 
 std::ostream &CodeGenerator::branch(std::ostream &os, const Branch &br,
-                                    int prev_sm_id_end) const
-{
+                                    int prev_sm_id_end) const {
     if (br.warp_branches.empty()) {
         return os;
     }
@@ -258,8 +251,7 @@ std::ostream &CodeGenerator::branch(std::ostream &os, const Branch &br,
 }
 
 ostream &CodeGenerator::def_uop(ostream &os, const SchedOp &sop,
-                                int uop_id) const
-{
+                                int uop_id) const {
     std::string uop_name = UNIT_OP_PREFIX + std::to_string(uop_id);
     std::string func_name = sop.function_name();
     assert(!func_name.empty());
@@ -289,8 +281,7 @@ ostream &CodeGenerator::def_uop(ostream &os, const SchedOp &sop,
     return os;
 }
 
-std::ostream &CodeGenerator::uop(std::ostream &os, int uop_id) const
-{
+std::ostream &CodeGenerator::uop(std::ostream &os, int uop_id) const {
     os << UNIT_OP_PREFIX << uop_id;
     return os;
 }
@@ -298,8 +289,7 @@ std::ostream &CodeGenerator::uop(std::ostream &os, int uop_id) const
 //
 ostream &CodeGenerator::opseq(ostream &os, const string &name,
                               const SchedOpSeq &opseq,
-                              map<string, int> &uop_map) const
-{
+                              map<string, int> &uop_map) const {
     auto &sched_ops = opseq.get_sched_ops();
     unsigned int idx = sched_ops.size();
     for (auto &sop : sched_ops) {
@@ -335,15 +325,12 @@ ostream &CodeGenerator::opseq(ostream &os, const string &name,
     return os;
 }
 
-std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const
-{
+std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const {
     os << "if(";
-    if (sched.sm_b > 0)
-        os << "blockIdx.x >= " << sched.sm_b << "&& ";
+    if (sched.sm_b > 0) os << "blockIdx.x >= " << sched.sm_b << "&& ";
     os << "blockIdx.x < " << sched.sm_e << "){\n";
     os << "  if(";
-    if (sched.th_b > 0)
-        os << "threadIdx.x >= " << sched.th_b << " && ";
+    if (sched.th_b > 0) os << "threadIdx.x >= " << sched.th_b << " && ";
     os << "threadIdx.x<" << sched.th_e << "){\n";
     SchedOpSeq *opseq = sched.opseq;
     os << "    opseq_" << opseq->get_id() << "_tile_task"
@@ -357,4 +344,4 @@ std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const
     return os;
 }
 
-} // namespace ark
+}  // namespace ark

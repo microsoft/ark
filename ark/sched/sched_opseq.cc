@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "sched/sched_opseq.h"
+
 #include "env.h"
 #include "logging.h"
 #include "math.h"
@@ -10,18 +11,15 @@ using namespace std;
 
 namespace ark {
 
-SchedOpSeq::SchedOpSeq(int id_) : id{id_}
-{
+SchedOpSeq::SchedOpSeq(int id_) : id{id_} {
     LOG(DEBUG, "create SchedOpSeq", id);
 }
 
-SchedOpSeq::SchedOpSeq(int id_, const Op *op, const OpConfig *cfg) : id{id_}
-{
+SchedOpSeq::SchedOpSeq(int id_, const Op *op, const OpConfig *cfg) : id{id_} {
     this->append(op, cfg);
 }
 
-bool SchedOpSeq::is_send() const
-{
+bool SchedOpSeq::is_send() const {
     for (auto &sop : this->seq) {
         if (sop.is_virtual()) {
             continue;
@@ -35,8 +33,7 @@ bool SchedOpSeq::is_send() const
     return true;
 }
 
-bool SchedOpSeq::is_send_done() const
-{
+bool SchedOpSeq::is_send_done() const {
     for (auto &sop : this->seq) {
         if (sop.is_virtual()) {
             continue;
@@ -50,8 +47,7 @@ bool SchedOpSeq::is_send_done() const
     return true;
 }
 
-bool SchedOpSeq::is_recv() const
-{
+bool SchedOpSeq::is_recv() const {
     for (auto &sop : this->seq) {
         if (sop.is_virtual()) {
             continue;
@@ -65,13 +61,11 @@ bool SchedOpSeq::is_recv() const
     return true;
 }
 
-bool SchedOpSeq::is_comm() const
-{
+bool SchedOpSeq::is_comm() const {
     return this->is_send() || this->is_send_done() || this->is_recv();
 }
 
-bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
-{
+bool SchedOpSeq::append(const Op *op, const OpConfig *cfg) {
     assert(op != nullptr);
     int dx = 0;
     int dy = 0;
@@ -119,8 +113,7 @@ bool SchedOpSeq::append(const Op *op, const OpConfig *cfg)
     this->seq.emplace_back(op, cfg, "");
     return true;
 }
-bool operator<(const SchedOpSeq &ops1, const SchedOpSeq &ops2)
-{
+bool operator<(const SchedOpSeq &ops1, const SchedOpSeq &ops2) {
     auto &seq1 = ops1.get_sched_ops();
     auto &seq2 = ops2.get_sched_ops();
     for (size_t i = 0; i < seq1.size(); ++i) {
@@ -139,8 +132,7 @@ bool operator<(const SchedOpSeq &ops1, const SchedOpSeq &ops2)
     }
     return false;
 }
-bool operator==(const SchedOpSeq &ops1, const SchedOpSeq &ops2)
-{
+bool operator==(const SchedOpSeq &ops1, const SchedOpSeq &ops2) {
     auto &seq1 = ops1.get_sched_ops();
     auto &seq2 = ops2.get_sched_ops();
     if (seq1.size() != seq2.size()) {
@@ -163,4 +155,4 @@ bool operator==(const SchedOpSeq &ops1, const SchedOpSeq &ops2)
     return true;
 }
 
-} // namespace ark
+}  // namespace ark

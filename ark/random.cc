@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <sys/syscall.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <ctime>
 #include <random>
-#include <sys/syscall.h>
-#include <unistd.h>
 #define gettid() syscall(SYS_gettid)
 
 #include "include/ark.h"
@@ -13,8 +14,7 @@
 namespace ark {
 
 // Initialize the random number generator.
-void srand(int seed)
-{
+void srand(int seed) {
     if (seed == -1) {
         ::srand(time(0) + getpid() + gettid());
     } else {
@@ -23,18 +23,15 @@ void srand(int seed)
 }
 
 // Generate a random integer.
-int rand()
-{
-    return ::rand();
-}
+int rand() { return ::rand(); }
 
 // Generate a random alpha-numeric string.
-std::string rand_anum(size_t len)
-{
+std::string rand_anum(size_t len) {
     auto randchar = []() -> char {
-        const char charset[] = "0123456789"
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                               "abcdefghijklmnopqrstuvwxyz";
+        const char charset[] =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
         const size_t max_index = sizeof(charset) - 1;
         return charset[rand() % max_index];
     };
@@ -43,4 +40,4 @@ std::string rand_anum(size_t len)
     return str;
 }
 
-} // namespace ark
+}  // namespace ark

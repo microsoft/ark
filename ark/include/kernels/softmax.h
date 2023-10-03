@@ -9,8 +9,8 @@
 namespace ark {
 
 // Static checkers if InShape can be reduced into OutShape.
-template <typename InShape, typename OutShape> struct SoftmaxShapeChecker
-{
+template <typename InShape, typename OutShape>
+struct SoftmaxShapeChecker {
     static_assert(InShape::N == OutShape::N,
                   "Dimension N of input and output do not match");
     static_assert(InShape::C == OutShape::C,
@@ -25,8 +25,7 @@ template <typename InShape, typename OutShape> struct SoftmaxShapeChecker
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, typename DataType, int NelemPerThread>
-struct Softmax
-{
+struct Softmax {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
@@ -36,8 +35,7 @@ struct Softmax
     static_assert(NelemPerThread == 1, "Unimplemented");
 
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
-                           int smem_per_warp)
-    {
+                           int smem_per_warp) {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
         using ReduceTypeMax = ReduceTypeMax<DataType, NelemPerThread>;
         using ReduceTypeSum = ReduceTypeSum<DataType, NelemPerThread>;
@@ -115,8 +113,7 @@ struct Softmax
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void softmax(float *out, float *in, int uop_idx, int smem_per_warp)
-{
+DEVICE void softmax(float *out, float *in, int uop_idx, int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
             SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
@@ -127,14 +124,13 @@ template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
 DEVICE void softmax(ark::half *out, ark::half *in, int uop_idx,
-                    int smem_per_warp)
-{
+                    int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
             SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
                                                        smem_per_warp);
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_SOFTMAX_H_
+#endif  // ARK_KERNELS_SOFTMAX_H_

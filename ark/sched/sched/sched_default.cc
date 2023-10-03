@@ -10,11 +10,11 @@
 using namespace std;
 
 #define DEBUG_SCHEDULE 0
-#define SCHEDULE_DEBUG(...)                                                    \
-    do {                                                                       \
-        if (DEBUG_SCHEDULE) {                                                  \
-            LOG(DEBUG, __VA_ARGS__);                                           \
-        }                                                                      \
+#define SCHEDULE_DEBUG(...)          \
+    do {                             \
+        if (DEBUG_SCHEDULE) {        \
+            LOG(DEBUG, __VA_ARGS__); \
+        }                            \
     } while (0);
 
 namespace ark {
@@ -23,8 +23,7 @@ namespace ark {
 /// @param op input op
 /// @param tile input tile
 /// @return number of tiles
-static int calc_num_tiles(const Op &op, const OpTile &tile)
-{
+static int calc_num_tiles(const Op &op, const OpTile &tile) {
     if (op.outputs.size() == 0) {
         // This op has no output.
         return 0;
@@ -64,8 +63,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                                                  Model::Impl *model_impl,
                                                  Op &matmul_op,
                                                  const GpuInfo &gpu_info,
-                                                 int num_sm)
-{
+                                                 int num_sm) {
     if (matmul_op.type != OP_MATMUL) {
         LOG(ERROR, "This is not a matmul op.");
     }
@@ -149,8 +147,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 void DefaultScheduler::heuristic_optimize_model(Model &model,
                                                 Model::Impl *model_impl,
                                                 const GpuInfo &gpu_info,
-                                                int num_sm)
-{
+                                                int num_sm) {
     if (get_env().disable_graph_opt) {
         LOG(INFO, "Graph optimization is disabled.");
         return;
@@ -169,8 +166,7 @@ void DefaultScheduler::heuristic_optimize_model(Model &model,
 
 DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
                                    int world_size_, int num_warps_per_sm_)
-    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
-{
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_) {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
 
     // Number of SMs to use for computation. The last SM is preserved for
@@ -182,8 +178,7 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
     this->op_graph = make_unique<OpGraph>(model);
 }
 
-void DefaultScheduler::schedule()
-{
+void DefaultScheduler::schedule() {
     LOG(DEBUG, "DefaultScheduler start scheduling");
 
     auto &nodes = this->op_graph->get_nodes();
@@ -207,8 +202,7 @@ void DefaultScheduler::schedule()
 
 ///
 void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
-                                          std::set<OpNode *> &seen_nodes)
-{
+                                          std::set<OpNode *> &seen_nodes) {
     if (nodes.empty()) {
         return;
     }
@@ -350,8 +344,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 }
 
 void DefaultScheduler::configure_gpu_buf(
-    const std::list<Tensor *> &model_tensors)
-{
+    const std::list<Tensor *> &model_tensors) {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other
     // GPUs. If it is on a remote GPU (the gid is not equal to this rank), it
@@ -511,8 +504,7 @@ void DefaultScheduler::configure_gpu_buf(
     }
 }
 
-std::vector<std::string> DefaultScheduler::gen_code()
-{
+std::vector<std::string> DefaultScheduler::gen_code() {
     std::stringstream code;
 
     std::set<int> imported_ranks;
@@ -584,4 +576,4 @@ std::vector<std::string> DefaultScheduler::gen_code()
     return {code.str()};
 }
 
-} // namespace ark
+}  // namespace ark

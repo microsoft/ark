@@ -8,8 +8,7 @@
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
-void test_sendrecv_internal()
-{
+void test_sendrecv_internal() {
     for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id]() {
             //
@@ -58,14 +57,12 @@ void test_sendrecv_internal()
     ark::unittest::wait_all_processes();
 }
 
-ark::unittest::State test_sendrecv()
-{
+ark::unittest::State test_sendrecv() {
     test_sendrecv_internal();
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sendrecv);
     return ark::unittest::SUCCESS;

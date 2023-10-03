@@ -9,8 +9,8 @@
 namespace ark {
 
 // Static checkers if InShape can be reduced into OutShape.
-template <typename InShape, typename OutShape> struct LayerNormShapeChecker
-{
+template <typename InShape, typename OutShape>
+struct LayerNormShapeChecker {
     static_assert(InShape::N == OutShape::N,
                   "Dimension N of input and output do not match");
     static_assert(InShape::C == OutShape::C,
@@ -25,15 +25,13 @@ template <typename InShape, typename OutShape> struct LayerNormShapeChecker
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, typename DataType, int NelemPerThread>
-struct LayerNorm
-{
+struct LayerNorm {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
-                           int smem_per_warp)
-    {
+                           int smem_per_warp) {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
         using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
 
@@ -103,8 +101,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
 DEVICE void layernorm(float *out, const float *in, int uop_idx,
-                      int smem_per_warp)
-{
+                      int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
               SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
@@ -115,8 +112,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
 DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx,
-                      int smem_per_warp)
-{
+                      int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
               SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
@@ -128,15 +124,13 @@ DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx,
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, typename DataType, int NelemPerThread>
-struct RMSNorm
-{
+struct RMSNorm {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
-                           int smem_per_warp)
-    {
+                           int smem_per_warp) {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
         using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
 
@@ -200,8 +194,8 @@ struct RMSNorm
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void rmsnorm(float *out, const float *in, int uop_idx, int smem_per_warp)
-{
+DEVICE void rmsnorm(float *out, const float *in, int uop_idx,
+                    int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     RMSNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
             SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
@@ -212,14 +206,13 @@ template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
 DEVICE void rmsnorm(ark::half *out, const ark::half *in, int uop_idx,
-                    int smem_per_warp)
-{
+                    int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     RMSNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
             SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
                                                        smem_per_warp);
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_LAYERNORM_H_
+#endif  // ARK_KERNELS_LAYERNORM_H_

@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,12 +13,9 @@ extern const OpConfigMap ScaleConfigMap;
 ScaleOp::ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
                  const std::string &name)
     : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
-         name,     &ScaleConfigMap, -1,      true}
-{
-}
+         name,     &ScaleConfigMap, -1,      true} {}
 
-std::string ScaleOp::function_name(const OpConfig &cfg) const
-{
+std::string ScaleOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -33,18 +31,17 @@ std::string ScaleOp::function_name(const OpConfig &cfg) const
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::scale",
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
                              }});
 }
 
-OpArgs ScaleOp::function_call_args(const OpConfig &) const
-{
+OpArgs ScaleOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     std::vector<Tensor *> deps = this->outputs;
     deps.insert(deps.end(), this->inputs.begin(), this->inputs.end());
@@ -59,8 +56,7 @@ OpArgs ScaleOp::function_call_args(const OpConfig &) const
 
 // Multiply `input` by `val`.
 Tensor *Model::scale(Tensor *input, float val, Tensor *output,
-                     const std::string &name)
-{
+                     const std::string &name) {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
@@ -117,4 +113,4 @@ const OpConfigMap ScaleConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

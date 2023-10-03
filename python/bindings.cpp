@@ -1,29 +1,28 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark.h"
-#include <iostream>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+
+#include <iostream>
 #include <sstream>
+
+#include "ark.h"
 
 namespace py = pybind11;
 
-void tensor_write(ark::Tensor *tns, py::buffer host_buffer)
-{
+void tensor_write(ark::Tensor *tns, py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
     tns->write(info.ptr);
 }
 
-void tensor_read(ark::Tensor *tns, py::buffer host_buffer)
-{
+void tensor_read(ark::Tensor *tns, py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
     tns->read(info.ptr);
 }
 
-PYBIND11_MODULE(_ark_core, m)
-{
+PYBIND11_MODULE(_ark_core, m) {
     m.doc() = "ARK python module interface";
 
     m.def("version", &ark::version, "Return a version string.");

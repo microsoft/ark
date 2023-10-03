@@ -18,9 +18,8 @@ namespace ark {
 class GpuBuf;
 
 //
-class GpuCommSw
-{
-  public:
+class GpuCommSw {
+   public:
     GpuCommSw(const std::string &name, const int gpu_id_, const int rank_,
               const int world_size_, GpuMem *data_mem, GpuMem *sc_rc_mem);
     ~GpuCommSw();
@@ -40,11 +39,11 @@ class GpuCommSw
 
     GpuPtr get_request_ref() const;
 
-  protected:
+   protected:
     class Impl;
     std::unique_ptr<Impl> impl;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_COMM_SW_H_
+#endif  // ARK_GPU_COMM_SW_H_

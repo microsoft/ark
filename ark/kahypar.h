@@ -21,12 +21,11 @@
 
 namespace ark {
 
-template <typename ItemType> class KahyparGraph
-{
-  public:
+template <typename ItemType>
+class KahyparGraph {
+   public:
     // Constructor.
-    KahyparGraph()
-    {
+    KahyparGraph() {
         // Get the context file path.
         ctx_file_path =
             get_env().path_root_dir + "/cut_kKaHyPar_dissertation.ini";
@@ -37,8 +36,7 @@ template <typename ItemType> class KahyparGraph
     KahyparGraph &operator=(const KahyparGraph &) = delete;
 
     // Add nodes from an initializer list.
-    void add_nodes(int weight, std::initializer_list<ItemType *> init)
-    {
+    void add_nodes(int weight, std::initializer_list<ItemType *> init) {
         for (ItemType *item : init) {
             add_node(weight, item);
         }
@@ -46,8 +44,7 @@ template <typename ItemType> class KahyparGraph
     }
 
     // Add nodes from a generator.
-    void add_nodes(int weight, std::function<ItemType *()> gen)
-    {
+    void add_nodes(int weight, std::function<ItemType *()> gen) {
         ItemType *item;
         while ((item = gen()) != nullptr) {
             add_node(weight, item);
@@ -56,8 +53,7 @@ template <typename ItemType> class KahyparGraph
     }
 
     // Add an edge which consists of nodes from an initializer list.
-    void add_edge(int weight, std::initializer_list<ItemType *> init)
-    {
+    void add_edge(int weight, std::initializer_list<ItemType *> init) {
         std::vector<size_t> nodes;
         for (ItemType *item : init) {
             nodes.push_back(item2node.at(*item));
@@ -68,8 +64,7 @@ template <typename ItemType> class KahyparGraph
     }
 
     // Add an edge which consists of nodes from a generator.
-    void add_edge(int weight, std::function<ItemType *()> gen)
-    {
+    void add_edge(int weight, std::function<ItemType *()> gen) {
         std::vector<size_t> nodes;
         ItemType *item;
         while ((item = gen()) != nullptr) {
@@ -82,8 +77,7 @@ template <typename ItemType> class KahyparGraph
 
     // Finalize the graph and partition it into `num_part` parts.
     std::vector<std::vector<std::pair<ItemType *, ItemType *>>> &partition(
-        int num_part)
-    {
+        int num_part) {
         // Verify the graph.
         size_t num_nodes = nws.size();
         if (num_nodes != items.size() || num_nodes != wm.size()) {
@@ -189,23 +183,18 @@ template <typename ItemType> class KahyparGraph
         return parts;
     }
 
-    int get_num_nodes()
-    {
-        return nws.size();
-    }
+    int get_num_nodes() { return nws.size(); }
 
-  private:
+   private:
     // Add a new node for `item`.
-    void add_node(int weight, ItemType *item)
-    {
+    void add_node(int weight, ItemType *item) {
         item2node[*item] = nws.size();
         items.push_back(std::unique_ptr<ItemType>(item));
         nws.push_back(weight);
     }
 
     // Add `nodes` as a new edge.
-    void add_nodes_into_edge(int weight, std::vector<size_t> &nodes)
-    {
+    void add_nodes_into_edge(int weight, std::vector<size_t> &nodes) {
         eis.push_back(edges.size());
         ews.push_back(weight);
         edges.insert(edges.end(), nodes.begin(), nodes.end());
@@ -219,8 +208,7 @@ template <typename ItemType> class KahyparGraph
     }
 
     // Resize the weight matrix when the number of nodes is changed.
-    void resize_wm()
-    {
+    void resize_wm() {
         for (auto &wv : wm) {
             wv.resize(nws.size(), 0);
         }
@@ -248,6 +236,6 @@ template <typename ItemType> class KahyparGraph
     std::vector<std::vector<std::pair<ItemType *, ItemType *>>> parts;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KAHYPAR_H_
+#endif  // ARK_KAHYPAR_H_

@@ -12,9 +12,8 @@ namespace ark {
 
 // A single IpcMem consists of a data file and a lock file
 // to ensure atomic read/write on the data file.
-class IpcMem
-{
-  public:
+class IpcMem {
+   public:
     // Constructor.
     IpcMem(const std::string &name, bool create, bool try_create = false);
     // Destructor.
@@ -32,32 +31,20 @@ class IpcMem
     void *alloc(std::size_t bytes);
 
     // Return the lock file mmap address.
-    IpcLock *get_lock() const
-    {
-        return lock_;
-    }
+    IpcLock *get_lock() const { return lock_; }
 
     // Return the current mmap address.
-    void *get_addr() const
-    {
-        return addr_;
-    }
+    void *get_addr() const { return addr_; }
 
     // Get the bytes of the mmapped memory space of the data file.
-    std::size_t get_bytes() const
-    {
-        return total_bytes_;
-    }
+    std::size_t get_bytes() const { return total_bytes_; }
 
     // Return true if object is the data creator.
-    bool is_create() const
-    {
-        return create_;
-    }
+    bool is_create() const { return create_; }
 
     bool is_locked() const;
 
-  private:
+   private:
     const std::string name_;
     // If true, this object will create shared object files and
     // may change their sizes or destroy them.
@@ -74,6 +61,6 @@ class IpcMem
     bool locked_ = false;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_IPC_ENTRY_H_
+#endif  // ARK_IPC_ENTRY_H_

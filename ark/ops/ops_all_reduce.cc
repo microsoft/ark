@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "math.h"
 #include "model.h"
 #include "ops_common.h"
-#include <cassert>
 
 namespace ark {
 
 Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
-                          Tensor *output, const std::string &)
-{
+                          Tensor *output, const std::string &) {
     assert(input != nullptr);
     if (output != nullptr) {
         LOG(ERROR, "all_reduce output is not supported");
@@ -20,8 +20,9 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
         LOG(ERROR, "supports only 1D input");
     }
     if (!input->is_sequential()) {
-        LOG(WARN, "all_reduce may not work correctly if the input tensor is "
-                  "not contiguous");
+        LOG(WARN,
+            "all_reduce may not work correctly if the input tensor is "
+            "not contiguous");
     }
     if (math::pad(input->shape[0], input->pads[0]) < (size_t)input->ldims[0]) {
         LOG(ERROR, "all_reduce of a split tensor is not supported");
@@ -52,4 +53,4 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
     return cumulate;
 }
 
-} // namespace ark
+}  // namespace ark

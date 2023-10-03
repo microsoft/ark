@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -23,12 +24,9 @@ Im2colOp::Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
          name,
          &Im2colConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string Im2colOp::function_name(const OpConfig &cfg) const
-{
+std::string Im2colOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -61,29 +59,28 @@ std::string Im2colOp::function_name(const OpConfig &cfg) const
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::im2col",
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
-                                 kernel_height,         // KernelHeight
-                                 kernel_width,          // KernelWidth
-                                 stride_height,         // StrideHeight
-                                 stride_width,          // StrideWidth
-                                 pad_height,            // PadHeight
-                                 pad_width,             // PadWidth
-                                 dilation_height,       // DilationHeight
-                                 dilation_width,        // DilationWidth
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
+                                 kernel_height,          // KernelHeight
+                                 kernel_width,           // KernelWidth
+                                 stride_height,          // StrideHeight
+                                 stride_width,           // StrideWidth
+                                 pad_height,             // PadHeight
+                                 pad_width,              // PadWidth
+                                 dilation_height,        // DilationHeight
+                                 dilation_width,         // DilationWidth
                              }});
 }
 
 Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
                       int stride_height, int stride_width, int pad_height,
                       int pad_width, int dilation_height, int dilation_width,
-                      Tensor *output, const std::string &name)
-{
+                      Tensor *output, const std::string &name) {
     assert(input != nullptr);
     DimType n = 1, c = 1, h = 1, w = 1;
     int input_ndims = input->ndims();
@@ -148,4 +145,4 @@ const OpConfigMap Im2colConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

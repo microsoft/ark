@@ -12,8 +12,7 @@ template <typename T>
 void baseline_scale(std::vector<void *> &outputs,
                     const std::vector<ark::Dims> &output_shapes,
                     const std::vector<void *> &inputs,
-                    const std::vector<ark::Dims> &)
-{
+                    const std::vector<ark::Dims> &) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
@@ -22,8 +21,7 @@ void baseline_scale(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_scale_fp32()
-{
+ark::unittest::State test_scale_fp32() {
     {
         ark::Model m;
         ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1), ark::FP32);
@@ -46,8 +44,7 @@ ark::unittest::State test_scale_fp32()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_scale_fp16()
-{
+ark::unittest::State test_scale_fp16() {
     {
         ark::Model m;
         ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
@@ -71,8 +68,7 @@ ark::unittest::State test_scale_fp16()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_scale_fp32);
     UNITTEST(test_scale_fp16);

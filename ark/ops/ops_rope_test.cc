@@ -1,19 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <assert.h>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <assert.h>
 
 using namespace std;
 
 template <typename T>
 void baseline_rope(std::vector<void *> &outputs, const std::vector<ark::Dims> &,
                    const std::vector<void *> &inputs,
-                   const std::vector<ark::Dims> &input_shapes)
-{
+                   const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     T *other = static_cast<T *>(inputs[1]);
@@ -38,8 +38,7 @@ void baseline_rope(std::vector<void *> &outputs, const std::vector<ark::Dims> &,
     }
 }
 
-ark::unittest::State test_rope_fp32()
-{
+ark::unittest::State test_rope_fp32() {
     ark::Model model;
     ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
     ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
@@ -51,8 +50,7 @@ ark::unittest::State test_rope_fp32()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_rope_fp16()
-{
+ark::unittest::State test_rope_fp16() {
     ark::Model model;
     ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP16);
     ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP16);
@@ -64,8 +62,7 @@ ark::unittest::State test_rope_fp16()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_rope_fp32);
     UNITTEST(test_rope_fp16);
