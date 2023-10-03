@@ -48,6 +48,12 @@ class GpuCommSw
 
     int get_proxy_channels_num() const;
 
+    int get_sm_channels_num() const;
+
+    const void *get_sm_channels_ref() const;
+
+    int get_sm_channels_bytes() const;
+
   protected:
     class Impl;
     std::unique_ptr<Impl> impl;

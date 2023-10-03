@@ -396,4 +396,17 @@ std::ostream &CodeGenerator::def_proxy_channels(std::ostream &os,
     return os;
 }
 
+std::ostream &CodeGenerator::def_sm_channels(std::ostream &os,
+                                                     size_t num_channels) const
+{
+    if (num_channels == 0) {
+        return os;
+    }
+    os << "#include <mscclpp/sm_channel_device.hpp>\n"
+          "__constant__ mscclpp::SmChannelDeviceHandle "
+          "_ARK_SM_CHANS["
+       << num_channels << "];\n";
+    return os;
+}
+
 } // namespace ark

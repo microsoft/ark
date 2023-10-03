@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <algorithm>
 #include <cassert>
 #include <cerrno>
 #include <list>
@@ -12,6 +13,7 @@
 #include <sys/mman.h>
 #include <thread>
 #include <vector>
+#include <unordered_map>
 
 #include "cpu_timer.h"
 #include "env.h"
@@ -26,6 +28,7 @@
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
+#include <mscclpp/sm_channel.hpp>
 #endif // ARK_USE_MSCCLPP
 
 
@@ -119,6 +122,34 @@ class GpuCommSw::Impl
 #endif // ARK_USE_MSCCLPP
     }
 
+    int get_sm_channels_num() const
+    {
+#ifdef ARK_USE_MSCCLPP
+        return this->sm_channel_handles.size();
+#else
+        return 0;
+#endif // ARK_USE_MSCCLPP
+    }
+
+    const void *get_sm_channels_ref() const
+    {
+#ifdef ARK_USE_MSCCLPP
+        return this->sm_channel_handles.data();
+#else
+        return nullptr;
+#endif // ARK_USE_MSCCLPP
+    }
+
+    int get_sm_channels_bytes() const
+    {
+#ifdef ARK_USE_MSCCLPP
+        return this->sm_channel_handles.size() *
+               sizeof(mscclpp::DeviceHandle<mscclpp::SmChannel>);
+#else
+        return 0;
+#endif // ARK_USE_MSCCLPP
+    }
+
   private:
     //
     const std::string name_;
@@ -153,6 +184,8 @@ class GpuCommSw::Impl
     std::shared_ptr<mscclpp::ProxyService> proxy_service;
     std::vector<mscclpp::DeviceHandle<mscclpp::SimpleProxyChannel>>
         proxy_channels;
+    std::vector<mscclpp::SmChannel> sm_channels;
+    std::vector<mscclpp::DeviceHandle<mscclpp::SmChannel>> sm_channel_handles;
 #endif // ARK_USE_MSCCLPP
 };
 
@@ -413,7 +446,7 @@ void GpuCommSw::Impl::configure(
         const mscclpp::Transport ibTransport = IBs[gpu_id_];
         std::vector<
             mscclpp::NonblockingFuture<std::shared_ptr<mscclpp::Connection>>>
-            connections;
+            connectionFutures;
         const mscclpp::TransportFlags all_transports =
             mscclpp::Transport::CudaIpc | ibTransport;
         mscclpp::RegisteredMemory local_reg_memory = this->comm->registerMemory(
@@ -431,24 +464,63 @@ void GpuCommSw::Impl::configure(
                 transport = ibTransport;
             }
             // order is matter, we need to connect first and then send memory
-            connections.push_back(this->comm->connectOnSetup(r, 0, transport));
+            connectionFutures.push_back(this->comm->connectOnSetup(r, 0, transport));
             this->comm->sendMemoryOnSetup(local_reg_memory, r, 0);
             auto remote_memory = this->comm->recvMemoryOnSetup(r, 0);
             remote_reg_memories.push_back(remote_memory);
         }
         this->comm->setup();
+        std::vector<std::shared_ptr<mscclpp::Connection>> connections;
+        std::transform(connectionFutures.begin(), connectionFutures.end(),
+                       std::back_inserter(connections),
+                       [](const mscclpp::NonblockingFuture<
+                           std::shared_ptr<mscclpp::Connection>> &future) {
+                           return future.get();
+                       });
         for (size_t i = 0; i < connections.size(); ++i) {
             LOG(INFO, "Rank ", rank_, " connected to rank ", i);
             this->proxy_channels.push_back(
                 mscclpp::deviceHandle(mscclpp::SimpleProxyChannel(
                     this->proxy_service->proxyChannel(
                         this->proxy_service->buildAndAddSemaphore(
-                            *(this->comm), connections[i].get())),
+                            *(this->comm), connections[i])),
                     this->proxy_service->addMemory(
                         remote_reg_memories[i].get()),
                     this->proxy_service->addMemory(local_reg_memory))));
         }
         this->comm->setup();
+
+        // setup for sm channel
+        std::unordered_map<size_t,
+                           std::shared_ptr<mscclpp::SmDevice2DeviceSemaphore>>
+            sm_semaphores;
+        for (size_t cid = 0; cid < connections.size(); ++cid) {
+            if (connections[cid]->transport() == mscclpp::Transport::CudaIpc) {
+                sm_semaphores.emplace(
+                    cid, std::make_shared<mscclpp::SmDevice2DeviceSemaphore>(
+                             *this->comm, connections[cid]));
+            }
+        }
+        this->comm->setup();
+
+        for (size_t cid = 0; cid < connections.size(); ++cid) {
+            if (connections[cid]->transport() == mscclpp::Transport::CudaIpc) {
+                this->sm_channels.emplace_back(
+                    sm_semaphores[cid], remote_reg_memories[cid].get(),
+                    local_reg_memory.data(), nullptr);
+            }
+        }
+        auto getChannelDeviceHandle =
+            [](const std::vector<mscclpp::SmChannel> &in,
+               std::vector<mscclpp::DeviceHandle<mscclpp::SmChannel>> &out) {
+                return std::transform(in.begin(), in.end(), out.begin(),
+                                      [](const mscclpp::SmChannel &smChannel) {
+                                          return mscclpp::deviceHandle(
+                                              smChannel);
+                                      });
+            };
+        this->sm_channel_handles.resize(this->sm_channels.size());
+        getChannelDeviceHandle(this->sm_channels, this->sm_channel_handles);
     }
 #endif // ARK_USE_MSCCLPP
 
@@ -782,4 +854,20 @@ int GpuCommSw::get_proxy_channels_num() const
     return this->impl->get_proxy_channels_num();
 }
 
-} // namespace ark
+const void *GpuCommSw::get_sm_channels_ref() const
+{
+    return this->impl->get_sm_channels_ref();
+}
+
+
+int GpuCommSw::get_sm_channels_num() const
+{
+    return this->impl->get_sm_channels_num();
+
+}
+
+int GpuCommSw::get_sm_channels_bytes() const
+{
+    return this->impl->get_sm_channels_bytes();
+}
+}// namespace ark
