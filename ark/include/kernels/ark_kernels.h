@@ -23,5 +23,5 @@
 #include "softmax.h"
 #include "transpose.h"
 
-#endif // ARK_KERNELS_H_
-#endif // __CUDACC__
+#endif  // ARK_KERNELS_H_
+#endif  // __CUDACC__

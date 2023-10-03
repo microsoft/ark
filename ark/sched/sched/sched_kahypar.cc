@@ -15,12 +15,9 @@ namespace ark {
 KahyparScheduler::KahyparScheduler(const int gpu_id, int rank_, int world_size_,
                                    const Model &model, unsigned int wps_)
     : DefaultScheduler(gpu_id, rank_, world_size_, model, wps_),
-      profiler{get_gpu_mgr(gpu_id), wps_}
-{
-}
+      profiler{get_gpu_mgr(gpu_id), wps_} {}
 
-vector<Sched> KahyparScheduler::simplify_sched(vector<Sched> &original_scheds)
-{
+vector<Sched> KahyparScheduler::simplify_sched(vector<Sched> &original_scheds) {
     vector<Sched> merged_scheds;
     SchedOpSeq *opseq = NULL;
     int sm_b = 0;
@@ -65,8 +62,7 @@ vector<Sched> KahyparScheduler::simplify_sched(vector<Sched> &original_scheds)
 
 function<SchedTile *()> gen_tile_nodes(const SchedOpSeq *opseq, int xz_min = -1,
                                        int xz_max = -1, int y_min = -1,
-                                       int y_max = -1)
-{
+                                       int y_max = -1) {
     int xz_b = (xz_min == -1) ? 0 : xz_min;
     int xz_e = (xz_max == -1) ? opseq->get_tdim_xz() : xz_max + 1;
     int y_b = (y_min == -1) ? 0 : y_min;
@@ -93,8 +89,7 @@ function<SchedTile *()> gen_tile_nodes(const SchedOpSeq *opseq, int xz_min = -1,
 }
 
 function<SchedTile *()> gen_tile_nodes(const SchedOpSeq *opseq0,
-                                       const SchedOpSeq *opseq1)
-{
+                                       const SchedOpSeq *opseq1) {
     return [=] {
         SchedOpSeq *opseq = (SchedOpSeq *)opseq0;
         int max_id = opseq0->get_tdims_size();
@@ -116,8 +111,7 @@ function<SchedTile *()> gen_tile_nodes(const SchedOpSeq *opseq0,
 }
 
 int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
-                                             vector<Sched> &scheds)
-{
+                                             vector<Sched> &scheds) {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
 #ifdef PRESERVE_WARP_FOR_COMM
     // Number of SMs to use for computation. The last SM is preserved for
@@ -211,14 +205,12 @@ int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
         for (int i = 0; i < num_sm_calc; ++i) {
             auto &sm = tile_depth->sms[i];
             auto &part = parts[i];
-            if (part.size() > 0)
-                sm.emplace_back();
+            if (part.size() > 0) sm.emplace_back();
             for (auto &p : part) {
                 if (sm.back().get_num_warps() >= this->num_warps_per_sm)
                     sm.emplace_back();
                 sm.back().tiles.emplace_back(move(*p.first));
-                if (p.second == nullptr)
-                    continue;
+                if (p.second == nullptr) continue;
                 if (sm.back().get_num_warps() >= this->num_warps_per_sm)
                     sm.emplace_back();
                 sm.back().tiles.emplace_back(move(*p.second));
@@ -246,8 +238,7 @@ int KahyparScheduler::kahypar_schedule_depth(vector<SchedOpSeq *> &depth,
     }
 }
 
-vector<string> KahyparScheduler::schedule()
-{
+vector<string> KahyparScheduler::schedule() {
     LOG(DEBUG, "KahyparScheduler start scheduling");
 
     LOG(DEBUG, "profiling the ops ...");
@@ -285,4 +276,4 @@ vector<string> KahyparScheduler::schedule()
     return this->scg.codegen_codes_body(scheds);
 }
 
-} // namespace ark
+}  // namespace ark

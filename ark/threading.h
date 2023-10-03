@@ -13,8 +13,7 @@ namespace ark {
 
 template <typename ItemType>
 void para_exec(std::vector<ItemType> &items, int max_num_threads,
-               const std::function<void(ItemType &)> &func)
-{
+               const std::function<void(ItemType &)> &func) {
     size_t nthread = (size_t)max_num_threads;
     if (nthread > items.size()) {
         nthread = items.size();
@@ -31,8 +30,7 @@ void para_exec(std::vector<ItemType> &items, int max_num_threads,
                     const std::lock_guard<std::mutex> lock(mtx);
                     local_idx = idx++;
                 }
-                if (local_idx >= items.size())
-                    break;
+                if (local_idx >= items.size()) break;
                 func(items[local_idx]);
             }
         });
@@ -42,6 +40,6 @@ void para_exec(std::vector<ItemType> &items, int max_num_threads,
     }
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_THREADING_H_
+#endif  // ARK_THREADING_H_

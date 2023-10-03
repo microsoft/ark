@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "gpu/gpu_kernel.h"
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
@@ -22,8 +23,7 @@ const string test_kernel_loop_void =
     "}\n";
 
 //
-unittest::State test_gpu_kernel_loop_void()
-{
+unittest::State test_gpu_kernel_loop_void() {
     GpuMgr *mgr = get_gpu_mgr(0);
     GpuMgrCtx *ctx = mgr->create_context("test_loop_void", 0, 1);
     ctx->freeze();
@@ -48,8 +48,7 @@ unittest::State test_gpu_kernel_loop_void()
     return unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_gpu_kernel_loop_void);
     return 0;

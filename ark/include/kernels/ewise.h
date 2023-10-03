@@ -11,8 +11,7 @@ namespace ark {
 /// Element-wise computation operator with a single input.
 template <typename OutDims, typename OutShape, typename UnitOutDims,
           int NumThreads, int SmemBytes, typename CompType>
-struct Ewise1
-{
+struct Ewise1 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using DataType = typename CompType::DataType;
@@ -27,8 +26,7 @@ struct Ewise1
     /// @param out Output data.
     /// @param in Input data.
     /// @param uop_idx Index of the unit operator.
-    static DEVICE void run(DataType *out, DataType *in, int uop_idx)
-    {
+    static DEVICE void run(DataType *out, DataType *in, int uop_idx) {
         int un = UnitOp::uop_idx_n(uop_idx);
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
@@ -54,6 +52,6 @@ struct Ewise1
     }
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_EWISE_H_
+#endif  // ARK_KERNELS_EWISE_H_

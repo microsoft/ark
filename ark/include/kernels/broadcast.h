@@ -9,8 +9,8 @@
 namespace ark {
 
 // Static checker if InShape can be broadcasted into OutShape.
-template <typename InShape, typename OutShape> struct BroadcastShapeChecker1
-{
+template <typename InShape, typename OutShape>
+struct BroadcastShapeChecker1 {
     static_assert(InShape::N == 1 || OutShape::N == 1 ||
                       InShape::N == OutShape::N,
                   "Cannot broadcast dimension N of the input");
@@ -30,8 +30,7 @@ template <typename InShape, typename OutShape> struct BroadcastShapeChecker1
 
 // Static checker if In0Shape and In1Shape can be broadcasted into OutShape.
 template <typename In0Shape, typename In1Shape, typename OutShape>
-struct BroadcastShapeChecker2
-{
+struct BroadcastShapeChecker2 {
     static_assert(In0Shape::N == 1 || In1Shape::N == 1 ||
                       In0Shape::N == In1Shape::N,
                   "Cannot broadcast dimension N of inputs");
@@ -69,8 +68,7 @@ struct BroadcastShapeChecker2
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, typename CompType>
-struct Broadcast1
-{
+struct Broadcast1 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using InputType = typename CompType::InputType;
@@ -85,8 +83,7 @@ struct Broadcast1
     /// @param out Output data.
     /// @param in1 Input data.
     /// @param uop_idx Index of the unit operator.
-    static DEVICE void run(OutputType *out, const InputType *in, int uop_idx)
-    {
+    static DEVICE void run(OutputType *out, const InputType *in, int uop_idx) {
         using InOutChk = BroadcastShapeChecker1<InShape, OutShape>;
 
         int un = UnitOp::uop_idx_n(uop_idx);
@@ -138,8 +135,7 @@ template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes,
           typename CompType>
-struct Broadcast2
-{
+struct Broadcast2 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using InputType = typename CompType::InputType;
@@ -156,8 +152,7 @@ struct Broadcast2
     /// @param in1 Input data 1.
     /// @param uop_idx Index of the unit operator.
     static DEVICE void run(OutputType *out, const InputType *in0,
-                           const InputType *in1, int uop_idx)
-    {
+                           const InputType *in1, int uop_idx) {
         using InOutChk = BroadcastShapeChecker2<In0Shape, In1Shape, OutShape>;
 
         int un = UnitOp::uop_idx_n(uop_idx);
@@ -221,6 +216,6 @@ struct Broadcast2
     }
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_BROADCAST_H_
+#endif  // ARK_KERNELS_BROADCAST_H_

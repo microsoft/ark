@@ -2,24 +2,25 @@
 // Licensed under the MIT license.
 
 #include "sched/sched_opgraph.h"
+
+#include <algorithm>
+
 #include "logging.h"
 #include "model.h"
-#include <algorithm>
 
 using namespace std;
 
 #define DEBUG_OPGRAPH 0
-#define OPGRAPH_DEBUG(...)                                                     \
-    do {                                                                       \
-        if (DEBUG_OPGRAPH) {                                                   \
-            LOG(DEBUG, __VA_ARGS__);                                           \
-        }                                                                      \
+#define OPGRAPH_DEBUG(...)           \
+    do {                             \
+        if (DEBUG_OPGRAPH) {         \
+            LOG(DEBUG, __VA_ARGS__); \
+        }                            \
     } while (0);
 
 namespace ark {
 
-void OpNode::remove_self()
-{
+void OpNode::remove_self() {
     // Remove self from users and producers.
     for (auto &user : this->users) {
         user->producers.erase(this);
@@ -36,8 +37,7 @@ void OpNode::remove_self()
     }
 }
 
-std::string OpNode::get_name() const
-{
+std::string OpNode::get_name() const {
     std::stringstream name;
     for (auto &op : this->ops) {
         name << op->name << ";";
@@ -45,22 +45,19 @@ std::string OpNode::get_name() const
     return name.str();
 }
 
-OpGraph::OpGraph(const Model &model)
-{
+OpGraph::OpGraph(const Model &model) {
     if (!model.verify()) {
         LOG(ERROR, "Model verification failed");
     }
     this->create_nodes(model);
 }
 
-OpGraph::OpGraph(OpGraph &graph)
-{
+OpGraph::OpGraph(OpGraph &graph) {
     // Copy nodes_storage
     *this = graph;
 }
 
-OpGraph &OpGraph::operator=(const OpGraph &graph)
-{
+OpGraph &OpGraph::operator=(const OpGraph &graph) {
     // Copy nodes_storage
     this->nodes_storage.clear();
     for (auto &node : graph.nodes_storage) {
@@ -77,8 +74,7 @@ OpGraph &OpGraph::operator=(const OpGraph &graph)
 ///
 /// @param model The @ref Model.
 ///
-void OpGraph::create_nodes(const Model &model)
-{
+void OpGraph::create_nodes(const Model &model) {
     std::list<OpNode *> leaf_nodes;
     std::map<const Op *, OpNode *> op2node;
     // Initialize OpNode.
@@ -132,8 +128,7 @@ void OpGraph::create_nodes(const Model &model)
 ///
 void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
                                 std::set<OpNode *> &seen_nodes,
-                                const std::list<OpNode *> &boundary_nodes)
-{
+                                const std::list<OpNode *> &boundary_nodes) {
     if (boundary_nodes.size() == 0) {
         return;
     }
@@ -201,8 +196,7 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
 ///
 void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
                               std::set<OpNode *> &seen_nodes,
-                              const std::list<OpNode *> &boundary_nodes)
-{
+                              const std::list<OpNode *> &boundary_nodes) {
     if (boundary_nodes.size() == 0) {
         return;
     }
@@ -288,8 +282,7 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
     recursive_merge(nodes, seen_nodes, new_boundary_nodes);
 }
 
-OpNode *OpGraph::break_node(OpNode *node, int op_idx)
-{
+OpNode *OpGraph::break_node(OpNode *node, int op_idx) {
     if (op_idx == 0) {
         return node;
     }
@@ -312,4 +305,4 @@ OpNode *OpGraph::break_node(OpNode *node, int op_idx)
     return new_node;
 }
 
-} // namespace ark
+}  // namespace ark

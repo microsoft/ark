@@ -16,8 +16,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
                           ark::DimType kernel_width, ark::DimType stride_height,
                           ark::DimType stride_width, ark::DimType pad_height,
                           ark::DimType pad_width, ark::DimType dilation_height,
-                          ark::DimType dilation_width)
-{
+                          ark::DimType dilation_width) {
     //
     ark::Model model;
     ark::Tensor *tns_x = model.tensor({n, c, h, w}, ark::FP16);
@@ -106,8 +105,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     UNITTEST_EQ(max_err, 0.0);
 }
 
-ark::unittest::State test_im2col()
-{
+ark::unittest::State test_im2col() {
     test_im2col_internal(1, 2, 2, 2, 2, 2, 1, 1, 0, 0, 1, 1);
     test_im2col_internal(1, 4, 4, 3, 2, 2, 1, 1, 0, 0, 1, 1);
     test_im2col_internal(1, 4, 4, 15, 2, 2, 1, 1, 0, 0, 1, 1);
@@ -137,8 +135,7 @@ ark::unittest::State test_im2col()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_im2col);
     return ark::unittest::SUCCESS;

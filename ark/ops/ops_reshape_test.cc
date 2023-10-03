@@ -7,8 +7,7 @@
 
 using namespace std;
 
-ark::unittest::State test_reshape()
-{
+ark::unittest::State test_reshape() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor *tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
@@ -36,8 +35,7 @@ ark::unittest::State test_reshape()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reshape_infer()
-{
+ark::unittest::State test_reshape_infer() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor *tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
@@ -65,8 +63,7 @@ ark::unittest::State test_reshape_infer()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_reshape_allowzero()
-{
+ark::unittest::State test_reshape_allowzero() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor *tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
@@ -94,8 +91,7 @@ ark::unittest::State test_reshape_allowzero()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_reshape);
     UNITTEST(test_reshape_infer);

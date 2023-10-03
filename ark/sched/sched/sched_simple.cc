@@ -13,13 +13,10 @@ namespace ark {
 
 SimpleScheduler::SimpleScheduler(Model &model, int gpu_id, int rank_,
                                  int world_size_, int num_warps_per_sm_)
-    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
-{
-}
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_) {}
 
 //
-void SimpleScheduler::schedule()
-{
+void SimpleScheduler::schedule() {
     LOG(DEBUG, "SimpleScheduler start scheduling");
 
     int op_idx = 0;
@@ -104,8 +101,7 @@ void SimpleScheduler::schedule()
 
 void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
                                            int max_sm_num,
-                                           vector<Sched> &scheds)
-{
+                                           vector<Sched> &scheds) {
     int seq_tile_num = seq.get_tdims_size();
     LOG(DEBUG, "opseq", seq.get_id(), " seq_tile_num: ", seq_tile_num);
     int warps_per_tile = seq.get_num_warps();
@@ -205,8 +201,7 @@ void SimpleScheduler::schedule_sched_opseq(SchedOpSeq &seq, int max_wps,
     }
 }
 
-vector<string> SimpleScheduler::gen_code()
-{
+vector<string> SimpleScheduler::gen_code() {
     LOG(DEBUG, "SimpleScheduler start scheduling");
     int num_sm = this->gpu_mgr->get_gpu_info().num_sm;
     vector<Sched> scheds;
@@ -235,8 +230,7 @@ vector<string> SimpleScheduler::gen_code()
                                  "opseq_" + to_string(opseq->get_id()), *opseq,
                                  uop_map);
         }
-        if (virt_opseq)
-            continue;
+        if (virt_opseq) continue;
         this->codegen->sched(loop_body_code, sched);
         loop_body_code << "  ";
         this->codegen->sync_gpu(loop_body_code);
@@ -248,8 +242,7 @@ vector<string> SimpleScheduler::gen_code()
     return ret;
 }
 
-void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
-{
+void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &) {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other
     // GPUs. If it is on a remote GPU (the gid is not equal to this rank), it
@@ -333,13 +326,11 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
         }
         for (auto &tns : sop.get_op()->inputs) {
             // if the tensor is not imported, it should be allocated on this GPU
-            if (tns->imported_rank < 0)
-                bufs[tns->buf].emplace_back(tns);
+            if (tns->imported_rank < 0) bufs[tns->buf].emplace_back(tns);
         }
         // TODO: print warning if the tensor is not used by any real computation
         for (auto &tns : sop.get_op()->outputs) {
-            if (tns->imported_rank < 0)
-                bufs[tns->buf].emplace_back(tns);
+            if (tns->imported_rank < 0) bufs[tns->buf].emplace_back(tns);
         }
     }
     // Fix TensorBuf size. The size of the TensorBuf is the max size of its
@@ -406,4 +397,4 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &)
     }
 }
 
-} // namespace ark
+}  // namespace ark

@@ -10,8 +10,7 @@ namespace ark {
 namespace comm {
 
 /// Request types.
-struct ReqType
-{
+struct ReqType {
     static const unsigned int Send = 0;
     static const unsigned int Recv = 1;
 };
@@ -20,8 +19,7 @@ struct ReqType
 /// @tparam ReqType Request type.
 template <unsigned int ReqType, unsigned int Sid, unsigned int DstRank,
           unsigned long long int Length>
-struct Request
-{
+struct Request {
     static const unsigned long long int value =
         ((Length & 0x3ffffffff) << 25) + ((DstRank & 0x7f) << 18) +
         ((Sid & 0xffff) << 2) + (ReqType & 0x3);
@@ -29,13 +27,12 @@ struct Request
 
 #if (ARK_COMM_SW != 0)
 __device__ int _ARK_COMM_SW_SEND_LOCK = 0;
-#endif // (ARK_COMM_SW != 0)
+#endif  // (ARK_COMM_SW != 0)
 
 // Send a Request to the proxy.
 template <unsigned int Rank, unsigned int DstRank, unsigned int Sid,
           unsigned long long int Length>
-DEVICE void send(int, int)
-{
+DEVICE void send(int, int) {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
@@ -63,16 +60,15 @@ DEVICE void send(int, int)
             break;
         }
     }
-#endif // 1
+#endif  // 1
 #else
     *_ARK_REQUEST = dbval;
-#endif // (ARK_COMM_SW != 0)
+#endif  // (ARK_COMM_SW != 0)
 }
 
 // Poll SC and reset.
 template <unsigned int Rank, unsigned int DstRank, unsigned int Sid>
-DEVICE void send_done(int, int)
-{
+DEVICE void send_done(int, int) {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
@@ -85,8 +81,7 @@ DEVICE void send_done(int, int)
 
 //
 template <unsigned int Rank, unsigned int SrcRank, unsigned int Sid>
-DEVICE void recv(int, int)
-{
+DEVICE void recv(int, int) {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
@@ -97,7 +92,7 @@ DEVICE void recv(int, int)
     *len = 0;
 }
 
-} // namespace comm
-} // namespace ark
+}  // namespace comm
+}  // namespace ark
 
-#endif // ARK_KERNELS_COMM_H_
+#endif  // ARK_KERNELS_COMM_H_

@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,12 +13,9 @@ extern const OpConfigMap ActivationConfigMap;
 SigmoidOp::SigmoidOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const std::string &name)
     : Op{OP_SIGMOID,           prec_type, {input}, {output}, {}, name,
-         &ActivationConfigMap, -1,        true}
-{
-}
+         &ActivationConfigMap, -1,        true} {}
 
-std::string SigmoidOp::function_name(const OpConfig &cfg) const
-{
+std::string SigmoidOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -33,18 +31,17 @@ std::string SigmoidOp::function_name(const OpConfig &cfg) const
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::sigmoid",
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
                              }});
 }
 
-Tensor *Model::sigmoid(Tensor *input, Tensor *output, const std::string &name)
-{
+Tensor *Model::sigmoid(Tensor *input, Tensor *output, const std::string &name) {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
@@ -66,4 +63,4 @@ Tensor *Model::sigmoid(Tensor *input, Tensor *output, const std::string &name)
     return this->impl->add_op(op)[0];
 }
 
-} // namespace ark
+}  // namespace ark

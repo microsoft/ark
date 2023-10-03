@@ -1,16 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cublas_v2.h>
+
+#include <cassert>
+#include <type_traits>
+
 #include "ark_utils.h"
 #include "ops_test_common.h"
-#include <cassert>
-#include <cublas_v2.h>
-#include <type_traits>
 
 cublasHandle_t globalCublasHandle = nullptr;
 
-cublasHandle_t get_cublas_handle()
-{
+cublasHandle_t get_cublas_handle() {
     if (globalCublasHandle == nullptr) {
         cublasStatus_t status = cublasCreate(&globalCublasHandle);
         if (status != CUBLAS_STATUS_SUCCESS) {
@@ -22,8 +23,7 @@ cublasHandle_t get_cublas_handle()
 
 void cublas_matmul_float_nn(int m, int n, int k, const float *a, int lda,
                             const float *b, int ldb, float *c, int ldc,
-                            int batch_size = 1)
-{
+                            int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
@@ -43,8 +43,7 @@ void cublas_matmul_float_nn(int m, int n, int k, const float *a, int lda,
 
 void cublas_matmul_float_nt(int m, int n, int k, const float *a, int lda,
                             const float *b, int ldb, float *c, int ldc,
-                            int batch_size = 1)
-{
+                            int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
@@ -64,8 +63,7 @@ void cublas_matmul_float_nt(int m, int n, int k, const float *a, int lda,
 
 void cublas_matmul_float_tn(int m, int n, int k, const float *a, int lda,
                             const float *b, int ldb, float *c, int ldc,
-                            int batch_size = 1)
-{
+                            int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
@@ -85,8 +83,7 @@ void cublas_matmul_float_tn(int m, int n, int k, const float *a, int lda,
 
 void cublas_matmul_float_tt(int m, int n, int k, const float *a, int lda,
                             const float *b, int ldb, float *c, int ldc,
-                            int batch_size = 1)
-{
+                            int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     float alpha = 1;
     float beta = 0;
@@ -106,8 +103,7 @@ void cublas_matmul_float_tt(int m, int n, int k, const float *a, int lda,
 
 void cublas_matmul_half_nn(int m, int n, int k, const half *a, int lda,
                            const half *b, int ldb, half *c, int ldc,
-                           int batch_size = 1)
-{
+                           int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
@@ -127,8 +123,7 @@ void cublas_matmul_half_nn(int m, int n, int k, const half *a, int lda,
 
 void cublas_matmul_half_nt(int m, int n, int k, const half *a, int lda,
                            const half *b, int ldb, half *c, int ldc,
-                           int batch_size = 1)
-{
+                           int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
@@ -148,8 +143,7 @@ void cublas_matmul_half_nt(int m, int n, int k, const half *a, int lda,
 
 void cublas_matmul_half_tn(int m, int n, int k, const half *a, int lda,
                            const half *b, int ldb, half *c, int ldc,
-                           int batch_size = 1)
-{
+                           int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
@@ -169,8 +163,7 @@ void cublas_matmul_half_tn(int m, int n, int k, const half *a, int lda,
 
 void cublas_matmul_half_tt(int m, int n, int k, const half *a, int lda,
                            const half *b, int ldb, half *c, int ldc,
-                           int batch_size = 1)
-{
+                           int batch_size = 1) {
     auto cublasH = get_cublas_handle();
     half alpha = half(ark::half_t(1));
     half beta = half(ark::half_t(0));
@@ -192,8 +185,7 @@ template <typename T>
 void baseline_matmul_nn(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes)
-{
+                        const std::vector<ark::Dims> &input_shapes) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -234,8 +226,7 @@ template <typename T>
 void baseline_matmul_nt(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes)
-{
+                        const std::vector<ark::Dims> &input_shapes) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -276,8 +267,7 @@ template <typename T>
 void baseline_matmul_tn(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes)
-{
+                        const std::vector<ark::Dims> &input_shapes) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -318,8 +308,7 @@ template <typename T>
 void baseline_matmul_tt(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes)
-{
+                        const std::vector<ark::Dims> &input_shapes) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -356,8 +345,7 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
     ark::from_gpu(memC, outputs[0]);
 }
 
-ark::unittest::State test_matmul_gran0()
-{
+ark::unittest::State test_matmul_gran0() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(128, 64), ark::FP16);
@@ -383,8 +371,7 @@ ark::unittest::State test_matmul_gran0()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_gran1()
-{
+ark::unittest::State test_matmul_gran1() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(128, 64), ark::FP16);
@@ -410,8 +397,7 @@ ark::unittest::State test_matmul_gran1()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_gran2()
-{
+ark::unittest::State test_matmul_gran2() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(128, 64), ark::FP16);
@@ -437,8 +423,7 @@ ark::unittest::State test_matmul_gran2()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_split()
-{
+ark::unittest::State test_matmul_split() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(4096, 8192), ark::FP32);
@@ -452,8 +437,7 @@ ark::unittest::State test_matmul_split()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_fp32()
-{
+ark::unittest::State test_matmul_fp32() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(128, 64), ark::FP32);
@@ -477,8 +461,7 @@ ark::unittest::State test_matmul_fp32()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_nt()
-{
+ark::unittest::State test_matmul_nt() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(128, 64), ark::FP16);
@@ -504,8 +487,7 @@ ark::unittest::State test_matmul_nt()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_tn()
-{
+ark::unittest::State test_matmul_tn() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(64, 128), ark::FP16);
@@ -534,8 +516,7 @@ ark::unittest::State test_matmul_tn()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_tt()
-{
+ark::unittest::State test_matmul_tt() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(64, 128), ark::FP16);
@@ -561,8 +542,7 @@ ark::unittest::State test_matmul_tt()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_batched()
-{
+ark::unittest::State test_matmul_batched() {
     ark::Model m;
     ark::Tensor *a = m.tensor(ark::Dims(3, 7, 64, 128), ark::FP16);
     ark::Tensor *b = m.tensor(ark::Dims(3, 7, 128, 256), ark::FP16);
@@ -574,8 +554,7 @@ ark::unittest::State test_matmul_batched()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_batched_padded()
-{
+ark::unittest::State test_matmul_batched_padded() {
     ark::Model m;
     ark::Tensor *a = m.tensor(ark::Dims(3, 7, 2, 9), ark::FP16);
     ark::Tensor *b = m.tensor(ark::Dims(3, 7, 9, 2), ark::FP16);
@@ -587,8 +566,7 @@ ark::unittest::State test_matmul_batched_padded()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_matmul_gran0);
     UNITTEST(test_matmul_gran1);

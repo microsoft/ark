@@ -6,8 +6,7 @@
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
-{
+ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length) {
     ark::srand();
 
     ark::DimType mat_size = mat_length * mat_length;
@@ -57,8 +56,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 }
 
 ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
-    ark::DimType mat_length)
-{
+    ark::DimType mat_length) {
     ark::srand();
 
     ark::DimType mat_size = mat_length * mat_length;
@@ -127,8 +125,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_4gpus()
-{
+ark::unittest::State test_sendrecv_mm_4gpus() {
     // the four gpus send recv data in a ring, gpu0->gpu1->gpu2->gpu3->gpu0
     const int gpu_num = 4;
     ark::DimType mat_length = 64;
@@ -176,24 +173,21 @@ ark::unittest::State test_sendrecv_mm_4gpus()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_copy()
-{
+ark::unittest::State test_sendrecv_mm_copy() {
     test_sendrecv_mm_copy_internal(64);
     test_sendrecv_mm_copy_internal(2048);
 
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_copy_bidir()
-{
+ark::unittest::State test_sendrecv_mm_copy_bidir() {
     test_sendrecv_mm_copy_bidir_internal(64);
     test_sendrecv_mm_copy_bidir_internal(2048);
 
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sendrecv_mm_copy);
     UNITTEST(test_sendrecv_mm_copy_bidir);

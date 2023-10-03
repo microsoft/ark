@@ -5,29 +5,23 @@
 // Environment variable `ARK_ROOT` should be set to run.
 // `LD_LIBRARY_PATH` should include `$ARK_ROOT/lib` directory.
 
-#include "include/ark.h"
 #include "kahypar.h"
+
+#include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
 #define ITERATION 3
 
 using namespace std;
 
-struct TestObj
-{
-    TestObj(int id_) : id(id_)
-    {
-    }
+struct TestObj {
+    TestObj(int id_) : id(id_) {}
     int id;
 
-    bool operator<(const TestObj &rhs) const
-    {
-        return id < rhs.id;
-    }
+    bool operator<(const TestObj &rhs) const { return id < rhs.id; }
 };
 
-function<TestObj *()> gen(initializer_list<int> seq)
-{
+function<TestObj *()> gen(initializer_list<int> seq) {
     return [&] {
         const vector<int> seq_(seq);
         size_t cnt = 0;
@@ -37,8 +31,7 @@ function<TestObj *()> gen(initializer_list<int> seq)
     }();
 }
 
-ark::unittest::State test_simple()
-{
+ark::unittest::State test_simple() {
     ark::KahyparGraph<TestObj> kg;
     kg.add_nodes(1, gen({0, 1, 2, 3, 4, 5, 6}));
 
@@ -56,8 +49,7 @@ ark::unittest::State test_simple()
     for (int idx = 0; idx < 2; ++idx) {
         for (auto &p : parts[idx]) {
             res[idx].push_back(p.first);
-            if (p.second)
-                res[idx].push_back(p.second);
+            if (p.second) res[idx].push_back(p.second);
         }
     }
 
@@ -83,8 +75,7 @@ ark::unittest::State test_simple()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     for (int i = 0; i < ITERATION; ++i) {
         UNITTEST(test_simple);

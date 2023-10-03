@@ -4,8 +4,7 @@
 #include "ark_kernels.h"
 // CAUTION: len should be even.
 extern "C" __global__ void simple_dot(float *c, ark::half *a, ark::half *b,
-                                      unsigned int len)
-{
+                                      unsigned int len) {
     unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid == 0) {
         unsigned int num = len / 2;

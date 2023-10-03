@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -13,12 +14,9 @@ EmbeddingOp::EmbeddingOp(OpPrecType prec_type, Tensor *input, Tensor *weight,
                          Tensor *output, const std::string &name)
     : Op{OP_EMBEDDING, prec_type, {input, weight},     {output},
          {},           name,      &EmbeddingConfigMap, -1,
-         true}
-{
-}
+         true} {}
 
-std::string EmbeddingOp::function_name(const OpConfig &cfg) const
-{
+std::string EmbeddingOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *weight = this->inputs[1];
     Tensor *output = this->outputs[0];
@@ -35,20 +33,19 @@ std::string EmbeddingOp::function_name(const OpConfig &cfg) const
     int emb_dim = weight->shape[-1];
     return Op::function_name("ark::embedding",
                              {{
-                                 new_in_dims,           // InDims
-                                 new_in_shape,          // InShape
-                                 weight->ldims.dims4(), // WeightDims
-                                 weight->shape.dims4(), // WeightShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 emb_dim,               // EmbeddingDim
-                                 cfg.num_warps * 32,    // NumThreads
+                                 new_in_dims,            // InDims
+                                 new_in_shape,           // InShape
+                                 weight->ldims.dims4(),  // WeightDims
+                                 weight->shape.dims4(),  // WeightShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 emb_dim,                // EmbeddingDim
+                                 cfg.num_warps * 32,     // NumThreads
                              }});
 }
 
 Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
-                         const std::string &name)
-{
+                         const std::string &name) {
     assert(input != nullptr);
     assert(weight != nullptr);
     if (input->shape.ndims() > 3) {
@@ -91,4 +88,4 @@ const OpConfigMap EmbeddingConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

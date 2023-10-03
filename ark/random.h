@@ -9,6 +9,6 @@ namespace ark {
 // Generate a random alpha-numeric string.
 std::string rand_anum(size_t len);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_RANDOM_H_
+#endif  // ARK_RANDOM_H_

@@ -10,8 +10,7 @@ template <typename T>
 void baseline_transpose_0132(std::vector<void *> &outputs,
                              const std::vector<ark::Dims> &output_shapes,
                              const std::vector<void *> &inputs,
-                             const std::vector<ark::Dims> &input_shapes)
-{
+                             const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *in = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0].dims4();
@@ -35,8 +34,7 @@ template <typename T>
 void baseline_transpose_0231(std::vector<void *> &outputs,
                              const std::vector<ark::Dims> &output_shapes,
                              const std::vector<void *> &inputs,
-                             const std::vector<ark::Dims> &input_shapes)
-{
+                             const std::vector<ark::Dims> &input_shapes) {
     T *out = static_cast<T *>(outputs[0]);
     T *in = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0].dims4();
@@ -56,8 +54,7 @@ void baseline_transpose_0231(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_transpose_0132_fp32()
-{
+ark::unittest::State test_transpose_0132_fp32() {
     ark::Model m;
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP32);
     ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
@@ -69,8 +66,7 @@ ark::unittest::State test_transpose_0132_fp32()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_transpose_0132_fp16()
-{
+ark::unittest::State test_transpose_0132_fp16() {
     ark::Model m;
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP16);
     ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
@@ -82,8 +78,7 @@ ark::unittest::State test_transpose_0132_fp16()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_transpose_0231_fp32()
-{
+ark::unittest::State test_transpose_0231_fp32() {
     ark::Model m;
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP32);
     ark::Tensor *out = m.transpose(t, {0, 2, 3, 1});
@@ -95,8 +90,7 @@ ark::unittest::State test_transpose_0231_fp32()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_transpose_0231_fp16()
-{
+ark::unittest::State test_transpose_0231_fp16() {
     ark::Model m;
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP16);
     ark::Tensor *out = m.transpose(t, {0, 2, 3, 1});
@@ -108,8 +102,7 @@ ark::unittest::State test_transpose_0231_fp16()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_transpose_0132_fp32);
     UNITTEST(test_transpose_0132_fp16);

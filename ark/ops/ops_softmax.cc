@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,12 +13,9 @@ extern const OpConfigMap SoftmaxConfigMap;
 SoftmaxOp::SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                      const std::string &name)
     : Op{OP_SOFTMAX, prec_type,         {input}, {output}, {},
-         name,       &SoftmaxConfigMap, -1,      true}
-{
-}
+         name,       &SoftmaxConfigMap, -1,      true} {}
 
-std::string SoftmaxOp::function_name(const OpConfig &cfg) const
-{
+std::string SoftmaxOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -26,18 +24,17 @@ std::string SoftmaxOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::softmax",
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
                              }});
 }
 
-Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name)
-{
+Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name) {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
@@ -74,4 +71,4 @@ const OpConfigMap SoftmaxConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

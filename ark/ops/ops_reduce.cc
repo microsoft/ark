@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,17 +13,15 @@ ReduceOp::ReduceOp(const OpType &type, const OpPrecType &prec_type,
                    const std::vector<Tensor *> &outputs, const OpArgs &args,
                    const std::string &name, const OpConfigMap *cfg_map,
                    int gran_lev)
-    : Op{type, prec_type, inputs, outputs, args, name, cfg_map, gran_lev, true}
-{
-}
+    : Op{type, prec_type, inputs,   outputs, args,
+         name, cfg_map,   gran_lev, true} {}
 
 ///
 /// @param cfg
 /// @param type "[w|e]_[sum|max|mean]"
 /// @return
 std::string ReduceOp::function_name(const OpConfig &cfg,
-                                    const std::string &type) const
-{
+                                    const std::string &type) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -50,14 +49,14 @@ std::string ReduceOp::function_name(const OpConfig &cfg,
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::reduce_" + type,
                              {{
-                                 input->ldims.dims4(),  // InDims
-                                 input->shape.dims4(),  // InShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
-                                 cfg.smem_bytes,        // SmemBytes
-                                 axis,                  // Axis
+                                 input->ldims.dims4(),   // InDims
+                                 input->shape.dims4(),   // InShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.smem_bytes,         // SmemBytes
+                                 axis,                   // Axis
                              }});
 }
 
@@ -67,79 +66,60 @@ extern const OpConfigMap ReduceEConfigMap;
 ReduceWSumOp::ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceWConfigMap, -1}
-{
-}
+               {{axis}},        name,      &ReduceWConfigMap, -1} {}
 
-std::string ReduceWSumOp::function_name(const OpConfig &cfg) const
-{
+std::string ReduceWSumOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "w_sum");
 }
 
 ReduceESumOp::ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceEConfigMap, -1}
-{
-}
+               {{axis}},        name,      &ReduceEConfigMap, -1} {}
 
-std::string ReduceESumOp::function_name(const OpConfig &cfg) const
-{
+std::string ReduceESumOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_sum");
 }
 
 ReduceWMaxOp::ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceWConfigMap, -1}
-{
-}
+               {{axis}},        name,      &ReduceWConfigMap, -1} {}
 
-std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const
-{
+std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "w_max");
 }
 
 ReduceEMaxOp::ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
                            int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceEConfigMap, -1}
-{
-}
+               {{axis}},        name,      &ReduceEConfigMap, -1} {}
 
-std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const
-{
+std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_max");
 }
 
 ReduceWMeanOp::ReduceWMeanOp(OpPrecType prec_type, Tensor *input,
                              Tensor *output, int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input},           {output},
-               {{axis}},         name,      &ReduceWConfigMap, -1}
-{
-}
+               {{axis}},         name,      &ReduceWConfigMap, -1} {}
 
-std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const
-{
+std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "w_mean");
 }
 
 ReduceEMeanOp::ReduceEMeanOp(OpPrecType prec_type, Tensor *input,
                              Tensor *output, int axis, const std::string &name)
     : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input},           {output},
-               {{axis}},         name,      &ReduceEConfigMap, -1}
-{
-}
+               {{axis}},         name,      &ReduceEConfigMap, -1} {}
 
-std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const
-{
+std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_mean");
 }
 
 template <typename ReduceOpType>
 Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
-                      const std::string &name)
-{
+                      const std::string &name) {
     assert(input != nullptr);
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
@@ -163,8 +143,9 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
                 axis);
         }
         if (output == input) {
-            LOG(ERROR, "output tensor cannot be the same as input tensor for "
-                       "reduce_sum op");
+            LOG(ERROR,
+                "output tensor cannot be the same as input tensor for "
+                "reduce_sum op");
         }
     }
     ReduceOpType op{pt, input, output, axis, name};
@@ -172,8 +153,7 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
 }
 
 Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
-                          const std::string &name)
-{
+                          const std::string &name) {
     if (axis == input->shape.ndims() - 1) {
         return reduce<ReduceWSumOp>(input, axis, output, name);
     } else {
@@ -182,8 +162,7 @@ Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
 }
 
 Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
-                           const std::string &name)
-{
+                           const std::string &name) {
     if (axis == input->shape.ndims() - 1) {
         return reduce<ReduceWMeanOp>(input, axis, output, name);
     } else {
@@ -192,8 +171,7 @@ Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
 }
 
 Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
-                          const std::string &name)
-{
+                          const std::string &name) {
     if (axis == input->shape.ndims() - 1) {
         return reduce<ReduceWMaxOp>(input, axis, output, name);
     } else {
@@ -235,4 +213,4 @@ const OpConfigMap ReduceWConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

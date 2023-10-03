@@ -8,97 +8,51 @@
 
 namespace ark {
 
-struct Add
-{
-    static DEVICE float compute(float a, float b)
-    {
-        return a + b;
-    }
-    static DEVICE half compute(half a, half b)
-    {
-        return a + b;
-    }
-    static DEVICE __half compute(__half a, __half b)
-    {
-        return __hadd(a, b);
-    }
-    static DEVICE __half2 compute(__half2 a, __half2 b)
-    {
+struct Add {
+    static DEVICE float compute(float a, float b) { return a + b; }
+    static DEVICE half compute(half a, half b) { return a + b; }
+    static DEVICE __half compute(__half a, __half b) { return __hadd(a, b); }
+    static DEVICE __half2 compute(__half2 a, __half2 b) {
         return __hadd2(a, b);
     }
 };
 
-struct Sub
-{
-    static DEVICE float compute(float a, float b)
-    {
-        return a - b;
-    }
-    static DEVICE half compute(half a, half b)
-    {
-        return a - b;
-    }
-    static DEVICE __half compute(__half a, __half b)
-    {
-        return __hsub(a, b);
-    }
-    static DEVICE __half2 compute(__half2 a, __half2 b)
-    {
+struct Sub {
+    static DEVICE float compute(float a, float b) { return a - b; }
+    static DEVICE half compute(half a, half b) { return a - b; }
+    static DEVICE __half compute(__half a, __half b) { return __hsub(a, b); }
+    static DEVICE __half2 compute(__half2 a, __half2 b) {
         return __hsub2(a, b);
     }
 };
 
-struct Mul
-{
-    static DEVICE float compute(float a, float b)
-    {
-        return a * b;
-    }
-    static DEVICE half compute(half a, half b)
-    {
-        return a * b;
-    }
-    static DEVICE __half compute(__half a, __half b)
-    {
-        return __hmul(a, b);
-    }
-    static DEVICE __half2 compute(__half2 a, __half2 b)
-    {
+struct Mul {
+    static DEVICE float compute(float a, float b) { return a * b; }
+    static DEVICE half compute(half a, half b) { return a * b; }
+    static DEVICE __half compute(__half a, __half b) { return __hmul(a, b); }
+    static DEVICE __half2 compute(__half2 a, __half2 b) {
         return __hmul2(a, b);
     }
 };
 
-struct Div
-{
-    static DEVICE float compute(float a, float b)
-    {
-        return a / b;
-    }
-    static DEVICE half compute(half a, half b)
-    {
-        return a / b;
-    }
-    static DEVICE __half compute(__half a, __half b)
-    {
-        return __hdiv(a, b);
-    }
-    static DEVICE __half2 compute(__half2 a, __half2 b)
-    {
+struct Div {
+    static DEVICE float compute(float a, float b) { return a / b; }
+    static DEVICE half compute(half a, half b) { return a / b; }
+    static DEVICE __half compute(__half a, __half b) { return __hdiv(a, b); }
+    static DEVICE __half2 compute(__half2 a, __half2 b) {
         return __h2div(a, b);
     }
 };
 
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape,
           typename _DataType, int _NelemPerThread>
-struct Arithmetic
-{
+struct Arithmetic {
     using InputType = _DataType;
     using OutputType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(_DataType *c, const _DataType *a,
-                               const _DataType *b)
-    {
+                               const _DataType *b) {
         *c = *a + *b;
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             // do nothing
@@ -122,14 +76,12 @@ struct Arithmetic
 };
 
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
-struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 2>
-{
+struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 2> {
     using InputType = float;
     using OutputType = float;
     static const int NelemPerThread = 2;
 
-    static DEVICE void compute(float *c, const float *a, const float *b)
-    {
+    static DEVICE void compute(float *c, const float *a, const float *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _ArithmeticType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
@@ -153,14 +105,12 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 2>
 };
 
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
-struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
-{
+struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4> {
     using InputType = float;
     using OutputType = float;
     static const int NelemPerThread = 4;
 
-    static DEVICE void compute(float *c, const float *a, const float *b)
-    {
+    static DEVICE void compute(float *c, const float *a, const float *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _ArithmeticType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
@@ -227,14 +177,12 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, float, 4>
 };
 
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
-struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 2>
-{
+struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 2> {
     using InputType = half;
     using OutputType = half;
     static const int NelemPerThread = 2;
 
-    static DEVICE void compute(half *c, const half *a, const half *b)
-    {
+    static DEVICE void compute(half *c, const half *a, const half *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _ArithmeticType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
@@ -254,14 +202,12 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 2>
 };
 
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
-struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 4>
-{
+struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 4> {
     using InputType = half;
     using OutputType = half;
     static const int NelemPerThread = 4;
 
-    static DEVICE void compute(half *c, const half *a, const half *b)
-    {
+    static DEVICE void compute(half *c, const half *a, const half *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _ArithmeticType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
@@ -297,14 +243,12 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 4>
 };
 
 template <typename _ArithmeticType, typename _In0Shape, typename _In1Shape>
-struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
-{
+struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8> {
     using InputType = half;
     using OutputType = half;
     static const int NelemPerThread = 8;
 
-    static DEVICE void compute(half *c, const half *a, const half *b)
-    {
+    static DEVICE void compute(half *c, const half *a, const half *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _ArithmeticType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
@@ -373,8 +317,7 @@ struct Arithmetic<_ArithmeticType, _In0Shape, _In1Shape, half, 8>
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void add(float *c, const float *a, const float *b, int uop_idx, int)
-{
+DEVICE void add(float *c, const float *a, const float *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
@@ -386,8 +329,7 @@ DEVICE void add(float *c, const float *a, const float *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void add(half *c, const half *a, const half *b, int uop_idx, int)
-{
+DEVICE void add(half *c, const half *a, const half *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 8 == 0)
             ? 8
@@ -401,8 +343,7 @@ DEVICE void add(half *c, const half *a, const half *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void sub(float *c, const float *a, const float *b, int uop_idx, int)
-{
+DEVICE void sub(float *c, const float *a, const float *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
@@ -414,8 +355,7 @@ DEVICE void sub(float *c, const float *a, const float *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void sub(half *c, const half *a, const half *b, int uop_idx, int)
-{
+DEVICE void sub(half *c, const half *a, const half *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 8 == 0)
             ? 8
@@ -429,8 +369,7 @@ DEVICE void sub(half *c, const half *a, const half *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void mul(float *c, float *a, float *b, int uop_idx, int)
-{
+DEVICE void mul(float *c, float *a, float *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
@@ -442,8 +381,7 @@ DEVICE void mul(float *c, float *a, float *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void mul(half *c, half *a, half *b, int uop_idx, int)
-{
+DEVICE void mul(half *c, half *a, half *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 8 == 0)
             ? 8
@@ -457,8 +395,7 @@ DEVICE void mul(half *c, half *a, half *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void div(float *c, float *a, float *b, int uop_idx, int)
-{
+DEVICE void div(float *c, float *a, float *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
@@ -470,8 +407,7 @@ DEVICE void div(float *c, float *a, float *b, int uop_idx, int)
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes>
-DEVICE void div(half *c, half *a, half *b, int uop_idx, int)
-{
+DEVICE void div(half *c, half *a, half *b, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 8 == 0)
             ? 8
@@ -485,8 +421,7 @@ DEVICE void div(half *c, half *a, half *b, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void scale(half *y, half *x, float val, int uop_idx, int)
-{
+DEVICE void scale(half *y, half *x, float val, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 8 == 0)
             ? 8
@@ -505,8 +440,7 @@ DEVICE void scale(half *y, half *x, float val, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void scale(float *y, float *x, float val, int uop_idx, int)
-{
+DEVICE void scale(float *y, float *x, float val, int uop_idx, int) {
     constexpr int NelemPerThread =
         (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     using ValDims = Vec<1, 1, 1, 1>;
@@ -517,6 +451,6 @@ DEVICE void scale(float *y, float *x, float val, int uop_idx, int)
                           NelemPerThread>>::run(y, x, &val, uop_idx);
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_ARITHMETIC_H_
+#endif  // ARK_KERNELS_ARITHMETIC_H_

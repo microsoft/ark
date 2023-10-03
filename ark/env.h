@@ -9,8 +9,7 @@
 namespace ark {
 
 // Environment variables.
-struct Env
-{
+struct Env {
     Env();
     // Log level.
     const char *log_level;
@@ -43,6 +42,6 @@ struct Env
 // Get the global Env.
 const Env &get_env();
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_ENV_H_
+#endif  // ARK_ENV_H_

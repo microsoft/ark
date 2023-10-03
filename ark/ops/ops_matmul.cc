@@ -22,12 +22,9 @@ MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
          {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b}},
          name,
          &MatmulConfigMap,
-         gran_lev}
-{
-}
+         gran_lev} {}
 
-std::string MatmulOp::function_name(const OpConfig &cfg) const
-{
+std::string MatmulOp::function_name(const OpConfig &cfg) const {
     Tensor *mat_a = this->inputs[0];
     Tensor *mat_b = this->inputs[1];
     Tensor *mat_y = this->outputs[0];
@@ -79,25 +76,24 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::matmul",
                              {{
-                                 mat_y->ldims.dims4(), // OutDims
-                                 nca,                  // NCA
-                                 ncb,                  // NCB
-                                 shape,                // Shape
-                                 problem_size,         // ProblemSize
-                                 leading_dims,         // LeadingDims
-                                 in_ldim_a,            // InnerLdimA
-                                 in_ldim_b,            // InnerLdimB
-                                 is_column_a,          // IsColumnA
-                                 is_column_b,          // IsColumnB
-                                 cfg.num_warps * 32,   // NumThreads
-                                 cfg.smem_bytes,       // SmemBytes
+                                 mat_y->ldims.dims4(),  // OutDims
+                                 nca,                   // NCA
+                                 ncb,                   // NCB
+                                 shape,                 // Shape
+                                 problem_size,          // ProblemSize
+                                 leading_dims,          // LeadingDims
+                                 in_ldim_a,             // InnerLdimA
+                                 in_ldim_b,             // InnerLdimB
+                                 is_column_a,           // IsColumnA
+                                 is_column_b,           // IsColumnB
+                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.smem_bytes,        // SmemBytes
                              }});
 }
 
 Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
                       DimType split_k, bool trans_a, bool trans_b,
-                      const string &name, int gran_lev)
-{
+                      const string &name, int gran_lev) {
     CHECK(mat_a != nullptr);
     CHECK(mat_b != nullptr);
     CHECK(split_k >= 1);
@@ -305,4 +301,4 @@ const OpConfigMap MatmulConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

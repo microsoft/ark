@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-
-#include "env.h"
 
 using namespace std;
 
@@ -21,8 +21,7 @@ using namespace std;
 
 namespace ark {
 
-Env::Env()
-{
+Env::Env() {
     // Get log level.
     this->log_level = getenv("ARK_LOG_LEVEL");
     // Check if ARK_ROOT is set.
@@ -117,8 +116,7 @@ Env::Env()
 Env *_ARK_ENV_GLOBAL = nullptr;
 
 // Get the global Env.
-const Env &get_env()
-{
+const Env &get_env() {
     if (_ARK_ENV_GLOBAL == nullptr) {
         _ARK_ENV_GLOBAL = new Env;
         assert(_ARK_ENV_GLOBAL != nullptr);
@@ -126,4 +124,4 @@ const Env &get_env()
     return *_ARK_ENV_GLOBAL;
 }
 
-} // namespace ark
+}  // namespace ark

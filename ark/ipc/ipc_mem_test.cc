@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_mem.h"
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
-#include "ipc/ipc_mem.h"
 #include "unittest/unittest_utils.h"
 
 using namespace ark;
 using namespace std;
 
-unittest::State test_ipc_mem_lock_simple()
-{
+unittest::State test_ipc_mem_lock_simple() {
     function<int()> fc = [] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_lock_test", true};
@@ -45,8 +45,7 @@ unittest::State test_ipc_mem_lock_simple()
     return unittest::SUCCESS;
 }
 
-unittest::State test_ipc_mem_lock_many()
-{
+unittest::State test_ipc_mem_lock_many() {
     function<int()> worker = [] {
         unittest::Timeout timeout{3};
         // Elect the earliest starting worker as the creator.
@@ -87,8 +86,7 @@ unittest::State test_ipc_mem_lock_many()
     return unittest::SUCCESS;
 }
 
-unittest::State test_ipc_mem_finishing()
-{
+unittest::State test_ipc_mem_finishing() {
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_finishing", true};
@@ -127,8 +125,7 @@ unittest::State test_ipc_mem_finishing()
     return unittest::SUCCESS;
 }
 
-unittest::State test_ipc_mem_realloc()
-{
+unittest::State test_ipc_mem_realloc() {
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{3};
         IpcMem im{"ipc_mem_realloc", true};
@@ -165,8 +162,7 @@ unittest::State test_ipc_mem_realloc()
     return unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_ipc_mem_lock_simple);
     UNITTEST(test_ipc_mem_lock_many);

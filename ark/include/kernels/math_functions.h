@@ -8,28 +8,14 @@
 
 namespace ark {
 
-struct Exp
-{
-    static DEVICE float compute(float input)
-    {
-        return expf(input);
-    }
-    static DEVICE __half2 compute(__half2 input)
-    {
-        return h2exp(input);
-    }
+struct Exp {
+    static DEVICE float compute(float input) { return expf(input); }
+    static DEVICE __half2 compute(__half2 input) { return h2exp(input); }
 };
 
-struct Sqrt
-{
-    static DEVICE float compute(float input)
-    {
-        return sqrtf(input);
-    }
-    static DEVICE __half2 compute(__half2 input)
-    {
-        return h2sqrt(input);
-    }
+struct Sqrt {
+    static DEVICE float compute(float input) { return sqrtf(input); }
+    static DEVICE __half2 compute(__half2 input) { return h2sqrt(input); }
 };
 
 template <typename _MathType, typename _InShape, typename _DataType,
@@ -37,14 +23,12 @@ template <typename _MathType, typename _InShape, typename _DataType,
 struct Math;
 
 template <typename _MathType, typename _InShape>
-struct Math<_MathType, _InShape, half, 2>
-{
+struct Math<_MathType, _InShape, half, 2> {
     using InputType = half;
     using OutputType = half;
     static const int NelemPerThread = 2;
 
-    static DEVICE void compute(half *output, const half *input)
-    {
+    static DEVICE void compute(half *output, const half *input) {
         __half2 *pout = (__half2 *)output;
         if (_InShape::W == 1) {
             *pout = _MathType::compute(__half2half2(*(const __half *)input));
@@ -56,14 +40,12 @@ struct Math<_MathType, _InShape, half, 2>
 };
 
 template <typename _MathType, typename _InShape>
-struct Math<_MathType, _InShape, float, 1>
-{
+struct Math<_MathType, _InShape, float, 1> {
     using InputType = float;
     using OutputType = float;
     static const int NelemPerThread = 1;
 
-    static DEVICE void compute(float *output, const float *input)
-    {
+    static DEVICE void compute(float *output, const float *input) {
         *output = _MathType::compute(*input);
     }
 };
@@ -71,8 +53,7 @@ struct Math<_MathType, _InShape, float, 1>
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void exp(half *out, half *in, int uop_idx, int)
-{
+DEVICE void exp(half *out, half *in, int uop_idx, int) {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Math<Exp, InShape, half, 2>>::run(out, in, uop_idx);
 }
@@ -80,8 +61,7 @@ DEVICE void exp(half *out, half *in, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void exp(float *out, float *in, int uop_idx, int)
-{
+DEVICE void exp(float *out, float *in, int uop_idx, int) {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Math<Exp, InShape, float, 1>>::run(out, in, uop_idx);
 }
@@ -89,8 +69,7 @@ DEVICE void exp(float *out, float *in, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void sqrt(half *out, half *in, int uop_idx, int)
-{
+DEVICE void sqrt(half *out, half *in, int uop_idx, int) {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Math<Sqrt, InShape, half, 2>>::run(out, in, uop_idx);
 }
@@ -98,12 +77,11 @@ DEVICE void sqrt(half *out, half *in, int uop_idx, int)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes>
-DEVICE void sqrt(float *out, float *in, int uop_idx, int)
-{
+DEVICE void sqrt(float *out, float *in, int uop_idx, int) {
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
                SmemBytes, Math<Sqrt, InShape, float, 1>>::run(out, in, uop_idx);
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_MATH_FUNCTIONS_H_
+#endif  // ARK_KERNELS_MATH_FUNCTIONS_H_

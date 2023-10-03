@@ -23,6 +23,6 @@ void write_file(const std::string &path, const std::string &data);
 int remove_file(const std::string &path);
 std::string get_dir(const std::string &path);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_FILE_IO_H_
+#endif  // ARK_FILE_IO_H_
