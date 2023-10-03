@@ -71,7 +71,7 @@ ark::unittest::State test_transpose_0132_fp16() {
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP16);
     ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
 
-    auto result = ark::op_test("transpose_0132_fp32", m, {t}, {out},
+    auto result = ark::op_test("transpose_0132_fp16", m, {t}, {out},
                                baseline_transpose_0132<ark::half_t>);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
@@ -83,7 +83,7 @@ ark::unittest::State test_transpose_0132_bf16() {
     ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::BF16);
     ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
 
-    auto result = ark::op_test("transpose_0132_bf32", m, {t}, {out},
+    auto result = ark::op_test("transpose_0132_bf16", m, {t}, {out},
                                baseline_transpose_0132<ark::bfloat16_t>);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
