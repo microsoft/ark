@@ -23,13 +23,22 @@ ARK is under active development and a part of its features will be added in a fu
 
 ### New in ARK v0.3 (Latest Release)
 
-* TBU
+* Enable heuristic model graph optimization
+* Revise Python interfaces
+* Add more operators & support mixed-precision models & support `bfloat16`
+* Add a Llama2-7B example
+* Fix connection setup bugs for large & distributed models
+* Fix correctness bugs from a few operators
+* Minor scheduler improvements
 
 See details from https://github.com/microsoft/ark/issues/113.
 
 ### ARK v0.4 (TBU, Nov. 2023)
 
-* TBU
+* Support AMD GPUs
+* Add high-performance AllReduce & AllGather algorithms
+* Add multi-GPU LLM examples
+* Improve Python unit tests & code coverage
 
 ## Contributing
 
