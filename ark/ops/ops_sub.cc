@@ -12,8 +12,8 @@ namespace ark {
 
 extern const OpConfigMap ArithmeticConfigMap;
 
-SubOp::SubOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const string &name)
+SubOp::SubOp(const std::string &prec_type, Tensor *input, Tensor *other,
+             Tensor *output, const string &name)
     : Op{OP_SUB, prec_type, {input, other},       {output},
          {},     name,      &ArithmeticConfigMap, -1,
          true} {}
@@ -50,14 +50,6 @@ Tensor *Model::sub(Tensor *input, Tensor *other, Tensor *output,
                    const string &name) {
     assert(input != nullptr);
     assert(other != nullptr);
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
     if (input->type != other->type) {
         LOG(ERROR, "input data types mismatch: ", input->type, ", ",
             other->type);
@@ -73,7 +65,7 @@ Tensor *Model::sub(Tensor *input, Tensor *other, Tensor *output,
     } else if (output == input) {
         output = this->identity(output);
     }
-    SubOp op{pt, input, other, output, name};
+    SubOp op{output->type.name(), input, other, output, name};
     return this->impl->add_op(op)[0];
 }
 

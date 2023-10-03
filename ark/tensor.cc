@@ -20,39 +20,6 @@ size_t TensorBuf::get_buf_offset() const {
     return static_cast<GpuBuf *>(this->buf)->get_offset();
 }
 
-TensorType::TensorType(int id, int bytes, const std::string &name,
-                       const std::string &pointer_name)
-    : id_{id}, bytes_{bytes}, name_{name}, pointer_name_{pointer_name} {}
-
-bool TensorType::operator==(const TensorType &other) const {
-    return id_ == other.id();
-}
-
-bool TensorType::operator!=(const TensorType &other) const {
-    return id_ != other.id();
-}
-
-int TensorType::id() const { return id_; }
-
-int TensorType::bytes() const { return bytes_; }
-
-const std::string &TensorType::name() const { return name_; }
-
-const std::string &TensorType::pointer_name() const { return pointer_name_; }
-
-std::ostream &operator<<(std::ostream &os, const TensorType &type) {
-    os << type.name();
-    return os;
-}
-
-Fp16::Fp16() : TensorType{0, 2, "fp16", "ark::half *"} {}
-
-Fp32::Fp32() : TensorType{1, 4, "fp32", "float *"} {}
-
-Int32::Int32() : TensorType{2, 4, "int32", "int *"} {}
-
-Byte::Byte() : TensorType{3, 1, "byte", "char *"} {}
-
 // Tensor constructor
 Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
                const Dims &ldims_, const Dims &offs_, const Dims &pads_,

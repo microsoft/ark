@@ -16,6 +16,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-pybind11_add_module(ark_py ${CMAKE_CURRENT_SOURCE_DIR}/bindings.cpp)
+file(GLOB_RECURSE BIND_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+pybind11_add_module(ark_py ${BIND_SOURCES})
 set_target_properties(ark_py PROPERTIES OUTPUT_NAME _ark_core)
 target_link_libraries(ark_py PRIVATE ark_static)

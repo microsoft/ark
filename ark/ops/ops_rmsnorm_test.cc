@@ -65,9 +65,20 @@ ark::unittest::State test_rmsnorm_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_rmsnorm_bf16() {
+    ark::Model model;
+    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 8192), ark::BF16);
+    ark::Tensor *output = model.rmsnorm(input);
+    auto result = ark::op_test("rmsnorm_bf16", model, {input}, {output},
+                               baseline_rmsnorm<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_rmsnorm_fp32);
     UNITTEST(test_rmsnorm_fp16);
+    UNITTEST(test_rmsnorm_bf16);
     return ark::unittest::SUCCESS;
 }

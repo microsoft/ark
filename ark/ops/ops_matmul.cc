@@ -11,7 +11,7 @@ namespace ark {
 
 extern const OpConfigMap MatmulConfigMap;
 
-MatmulOp::MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b,
+MatmulOp::MatmulOp(const std::string &prec_type, Tensor *mat_a, Tensor *mat_b,
                    Tensor *mat_y, Dims nca, Dims ncb, Dims problem_size,
                    Dims leading_dims, bool is_column_a, bool is_column_b,
                    const string &name, int gran_lev)
@@ -137,14 +137,6 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         LOG(ERROR, "inner dimensions mismatch: ", k, " and ", k2);
     }
 
-    OpPrecType pt = OP_PREC_NONE;
-    if (mat_a->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (mat_a->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", mat_a->type);
-    }
     if (mat_a->type != mat_b->type) {
         LOG(ERROR, "input data types mismatch: ", mat_a->type, ", ",
             mat_b->type);
@@ -221,9 +213,9 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
             ldims_y[ldims_y.ndims() - 1], ldims_y[ldims_y.ndims() - 1],
             trans_b ? ldims_b[ndims_b - 2] : ldims_b[ndims_b - 1]};
         Dims problem_size{m, n, k};
-        MatmulOp op{pt,      mat_a,   mat_b,        mat_y,
-                    nca,     ncb,     problem_size, leading_dims,
-                    trans_a, trans_b, name,         gran_lev};
+        MatmulOp op{
+            mat_y->type.name(), mat_a,        mat_b,   mat_y,   nca,  ncb,
+            problem_size,       leading_dims, trans_a, trans_b, name, gran_lev};
         return this->impl->add_op(op)[0];
     } else if (split_k > k) {
         LOG(ERROR, "Split-K given larger than the K dimension size.");
@@ -280,19 +272,26 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
 }
 
 const OpConfigMap MatmulConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_FP16},
+    {{OP_ARCH_CUDA_70, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 49152, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
      }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP16},
+    {{OP_ARCH_CUDA_80, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 147456, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
          {4, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
          {4, 98304, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
      }},
-    {{OP_ARCH_CUDA_80, OP_PREC_FP32},
+    {{OP_ARCH_CUDA_80, "fp16"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {8, 147456, {{128, 64}, {64, 256}}, {{128, 256}}, true, false},
+         {4, 98304, {{128, 64}, {64, 128}}, {{128, 128}}, true, false},
+         {4, 98304, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_CUDA_80, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 147456, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},

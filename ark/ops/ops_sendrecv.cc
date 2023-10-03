@@ -10,8 +10,9 @@ namespace ark {
 
 extern const OpConfigMap CommConfigMap;
 
-SendOp::SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-               int rank, int dst_rank, size_t bytes, const std::string &name)
+SendOp::SendOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               int sid, int rank, int dst_rank, size_t bytes,
+               const std::string &name)
     : Op{OP_SEND,
          prec_type,
          {input},
@@ -45,8 +46,9 @@ std::string SendOp::function_name(const OpConfig &) const {
 
 OpArgs SendOp::function_call_args(const OpConfig &) const { return {}; }
 
-SendDoneOp::SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                       int sid, int rank, int dst_rank, const std::string &name)
+SendDoneOp::SendDoneOp(const std::string &prec_type, Tensor *input,
+                       Tensor *output, int sid, int rank, int dst_rank,
+                       const std::string &name)
     : Op{OP_SEND_DONE,
          prec_type,
          {input},
@@ -74,8 +76,9 @@ std::string SendDoneOp::function_name(const OpConfig &) const {
 
 OpArgs SendDoneOp::function_call_args(const OpConfig &) const { return {}; }
 
-RecvOp::RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-               int rank, int src_rank, size_t bytes, const std::string &name)
+RecvOp::RecvOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               int sid, int rank, int src_rank, size_t bytes,
+               const std::string &name)
     : Op{OP_RECV,
          prec_type,
          {input},
@@ -120,7 +123,7 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    SendOp op{OP_PREC_NONE,     input,    output, id,
+    SendOp op{"none",           input,    output, id,
               this->impl->rank, dst_rank, bytes,  name};
     return this->impl->add_op(op)[0];
 }
@@ -131,8 +134,7 @@ Tensor *Model::send_done(Tensor *input, int id, int dst_rank, Tensor *output,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    SendDoneOp op{OP_PREC_NONE,     input,    output, id,
-                  this->impl->rank, dst_rank, name};
+    SendDoneOp op{"none", input, output, id, this->impl->rank, dst_rank, name};
     return this->impl->add_op(op)[0];
 }
 
@@ -151,13 +153,13 @@ Tensor *Model::recv(Tensor *input, int id, int src_rank, size_t bytes,
     if (output == nullptr) {
         output = this->tensor({1, 1, 1, 1}, INT32);
     }
-    RecvOp op{OP_PREC_NONE,     input,    output, id,
+    RecvOp op{"none",           input,    output, id,
               this->impl->rank, src_rank, bytes,  name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap CommConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{1, 1}}, {{1, 1}}, true, true},

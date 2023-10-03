@@ -185,6 +185,11 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
             } else if (t->type == FP16) {
                 ::memcpy(buf, utils::rand_halfs(t->shape.size(), 0.1).get(),
                          t->shape_bytes());
+            } else if (t->type == BF16) {
+                ::memcpy(
+                    buf,
+                    utils::rand_array<bfloat16_t>(t->shape.size(), 0.1).get(),
+                    t->shape_bytes());
             } else if (t->type == INT32) {
                 ::memcpy(buf,
                          utils::rand_array<int>(t->shape.size(), 10000).get(),
@@ -267,6 +272,10 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         } else if (outputs[i]->type == FP16) {
             comp = tensor_compare(static_cast<ark::half_t *>(gt[i]),
                                   static_cast<ark::half_t *>(res[i]),
+                                  outputs[i]->shape.dims4(), print_on_error);
+        } else if (outputs[i]->type == BF16) {
+            comp = tensor_compare(static_cast<ark::bfloat16_t *>(gt[i]),
+                                  static_cast<ark::bfloat16_t *>(res[i]),
                                   outputs[i]->shape.dims4(), print_on_error);
         } else if (outputs[i]->type == INT32) {
             comp = tensor_compare(static_cast<int *>(gt[i]),

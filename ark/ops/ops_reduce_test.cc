@@ -24,12 +24,12 @@ void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
     for (ark::DimType c = 0; c < ish[1]; ++c) {
         for (ark::DimType h = 0; h < ish[2]; ++h) {
             for (ark::DimType w = 0; w < ish[3]; ++w) {
-                T sum = 0;
+                float sum = 0;
                 for (ark::DimType n = 0; n < ish[0]; ++n) {
-                    sum += input[n * ish[1] * ish[2] * ish[3] +
-                                 c * ish[2] * ish[3] + h * ish[3] + w];
+                    sum += float(input[n * ish[1] * ish[2] * ish[3] +
+                                       c * ish[2] * ish[3] + h * ish[3] + w]);
                 }
-                out[c * osh[2] * osh[3] + h * osh[3] + w] = sum;
+                out[c * osh[2] * osh[3] + h * osh[3] + w] = T(sum);
             }
         }
     }
@@ -51,12 +51,12 @@ void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
     for (ark::DimType n = 0; n < ish[0]; ++n) {
         for (ark::DimType h = 0; h < ish[2]; ++h) {
             for (ark::DimType w = 0; w < ish[3]; ++w) {
-                T sum = 0;
+                float sum = 0;
                 for (ark::DimType c = 0; c < ish[1]; ++c) {
-                    sum += input[n * ish[1] * ish[2] * ish[3] +
-                                 c * ish[2] * ish[3] + h * ish[3] + w];
+                    sum += float(input[n * ish[1] * ish[2] * ish[3] +
+                                       c * ish[2] * ish[3] + h * ish[3] + w]);
                 }
-                out[n * osh[1] * osh[2] * osh[3] + h * osh[3] + w] = sum;
+                out[n * osh[1] * osh[2] * osh[3] + h * osh[3] + w] = T(sum);
             }
         }
     }
@@ -78,13 +78,13 @@ void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
     for (ark::DimType n = 0; n < ish[0]; ++n) {
         for (ark::DimType c = 0; c < ish[1]; ++c) {
             for (ark::DimType w = 0; w < ish[3]; ++w) {
-                T sum = 0;
+                float sum = 0;
                 for (ark::DimType h = 0; h < ish[2]; ++h) {
-                    sum += input[n * ish[1] * ish[2] * ish[3] +
-                                 c * ish[2] * ish[3] + h * ish[3] + w];
+                    sum += float(input[n * ish[1] * ish[2] * ish[3] +
+                                       c * ish[2] * ish[3] + h * ish[3] + w]);
                 }
                 out[n * osh[1] * osh[2] * osh[3] + c * osh[2] * osh[3] + w] =
-                    sum;
+                    T(sum);
             }
         }
     }
@@ -106,13 +106,13 @@ void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
     for (ark::DimType n = 0; n < ish[0]; ++n) {
         for (ark::DimType c = 0; c < ish[1]; ++c) {
             for (ark::DimType h = 0; h < ish[2]; ++h) {
-                T sum = 0;
+                float sum = 0;
                 for (ark::DimType w = 0; w < ish[3]; ++w) {
-                    sum += input[n * ish[1] * ish[2] * ish[3] +
-                                 c * ish[2] * ish[3] + h * ish[3] + w];
+                    sum += float(input[n * ish[1] * ish[2] * ish[3] +
+                                       c * ish[2] * ish[3] + h * ish[3] + w]);
                 }
                 out[n * osh[1] * osh[2] * osh[3] + c * osh[2] * osh[3] +
-                    h * osh[3]] = sum;
+                    h * osh[3]] = T(sum);
             }
         }
     }
@@ -189,7 +189,7 @@ ark::unittest::State test_reduce_fp16() {
         auto result = ark::op_test("reduce_fp16_axis0", m, {t}, {out},
                                    baseline_reduce_sum_axis0<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
     }
     {
         ark::Model m;
@@ -203,6 +203,29 @@ ark::unittest::State test_reduce_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_reduce_bf16() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.reduce_sum(t, /*axis=*/0);
+
+        auto result = ark::op_test("reduce_bf16_axis0", m, {t}, {out},
+                                   baseline_reduce_sum_axis0<ark::bfloat16_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.reduce_sum(t, /*axis=*/3);
+
+        auto result = ark::op_test("reduce_bf16_axis3", m, {t}, {out},
+                                   baseline_reduce_sum_axis3<ark::bfloat16_t>);
+        UNITTEST_LOG(result);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_reduce_axis0);
@@ -211,5 +234,6 @@ int main() {
     UNITTEST(test_reduce_axis3);
     UNITTEST(test_reduce_axis3_padded);
     UNITTEST(test_reduce_fp16);
+    UNITTEST(test_reduce_bf16);
     return ark::unittest::SUCCESS;
 }

@@ -10,7 +10,7 @@ namespace ark {
 
 extern const OpConfigMap Im2colConfigMap;
 
-Im2colOp::Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+Im2colOp::Im2colOp(const std::string &prec_type, Tensor *input, Tensor *output,
                    int kernel_height, int kernel_width, int stride_height,
                    int stride_width, int pad_height, int pad_width,
                    int dilation_height, int dilation_width,
@@ -104,14 +104,6 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
             "invalid # of input dimensions. Expected 2, 3, or 4, but given ",
             input_ndims);
     }
-    OpPrecType pt = OP_PREC_NONE;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported input data type: ", input->type);
-    }
     DimType out_h = (h + 2 * pad_height - kernel_height) / stride_height + 1;
     DimType out_w = (w + 2 * pad_width - kernel_width) / stride_width + 1;
     assert((out_h > 0) && (out_w > 0));
@@ -128,14 +120,15 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
     } else {
         assert(output->shape == out_shape);
     }
-    Im2colOp op{pt,           input,           output,         kernel_height,
-                kernel_width, stride_height,   stride_width,   pad_height,
-                pad_width,    dilation_height, dilation_width, name};
+    Im2colOp op{output->type.name(), input,          output,
+                kernel_height,       kernel_width,   stride_height,
+                stride_width,        pad_height,     pad_width,
+                dilation_height,     dilation_width, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap Im2colConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_FP16},
+    {{OP_ARCH_CUDA_ANY, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},

@@ -62,9 +62,22 @@ ark::unittest::State test_rope_fp16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_rope_bf16() {
+    ark::Model model;
+    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::BF16);
+    ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::BF16);
+    ark::Tensor *out = model.rope(input, other);
+    auto result = ark::op_test("rope", model, {input, other}, {out},
+                               baseline_rope<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_rope_fp32);
     UNITTEST(test_rope_fp16);
+    UNITTEST(test_rope_bf16);
     return ark::unittest::SUCCESS;
 }
