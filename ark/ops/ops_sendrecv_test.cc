@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
@@ -58,9 +59,30 @@ void test_sendrecv_internal()
     ark::unittest::wait_all_processes();
 }
 
+void test_device_sync() {
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id]() {
+            ark::Model model{gpu_id};
+            model.device_sync_mscclpp(1);
+            ark::Executor exe{gpu_id, 2, model, "test_device_sync"};
+            exe.compile();
+
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
+}
+
 ark::unittest::State test_sendrecv()
 {
     test_sendrecv_internal();
+    if (ark::get_env().use_mscclpp) {
+        test_device_sync();
+    }
     return ark::unittest::SUCCESS;
 }
 
