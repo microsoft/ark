@@ -44,10 +44,17 @@ struct Ewise1 {
                 break;
             }
 
-            CompType::compute(out, in, tid_n + un * UnitOutDims::N,
-                              tid_c + uc * UnitOutDims::C,
-                              tid_h + uh * UnitOutDims::H,
-                              tid_w + uw * UnitOutDims::W);
+            int idx_n = tid_n + un * UnitOutDims::N;
+            int idx_c = tid_c + uc * UnitOutDims::C;
+            int idx_h = tid_h + uh * UnitOutDims::H;
+            int idx_w = tid_w + uw * UnitOutDims::W;
+
+            if (idx_n >= OutShape::N || idx_c >= OutShape::C ||
+                idx_h >= OutShape::H || idx_w >= OutShape::W) {
+                continue;
+            }
+
+            CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w);
         }
     }
 };
