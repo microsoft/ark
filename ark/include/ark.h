@@ -454,20 +454,18 @@ class Model {
     /// @param id
     /// @param dst_rank Rank of the GPU to send to.
     /// @param bytes
-    /// @param output
     /// @param name
     /// @return
     Tensor *send(Tensor *input, int id, int dst_rank, std::size_t bytes = 0,
-                 Tensor *output = nullptr, const std::string &name = "send");
+                 const std::string &name = "send");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
     Tensor *send_done(Tensor *input, int id, int dst_rank,
-                      Tensor *output = nullptr,
                       const std::string &name = "send_done");
     // Receives a tensor from a source GPU (@p src_rank), identified by the `id`
     // parameter. Blocks the execution until the corresponding 'recv' operator
     // is completed.
-    Tensor *recv(Tensor *input, int id, int src_rank, std::size_t bytes = 0,
+    Tensor *recv(int id, int src_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
     // Similar to the 'send_done' function, but implemented using CUDA in-stream
     // RDMA copy and Low Latency (LL) protocol.

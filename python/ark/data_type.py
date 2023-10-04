@@ -76,6 +76,11 @@ class DataType:
         """Return the corresponding tensor type."""
         ...
 
+    @staticmethod
+    def element_size() -> int:
+        """Return the size of the data type in bytes."""
+        ...
+
 
 _DATA_TYPE_TEMPLATE = string.Template(
     """
@@ -87,6 +92,10 @@ class $type_name(DataType):
     @staticmethod
     def ttype() -> _ark_core._TensorType:
         return getattr(_ark_core, "_" + __class__.__name__.upper())
+
+    @staticmethod
+    def element_size() -> int:
+        return __class__.ttype().bytes()
 """
 )
 

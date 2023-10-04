@@ -664,7 +664,6 @@ def send(
     id: int,
     dst_rank: int,
     bytes: int = 0,
-    output: Tensor = None,
     name: str = "send",
 ) -> Tensor:
     """
@@ -675,19 +674,16 @@ def send(
     another GPU's model.
     Usage:
     # on GPU0:
-    ark.send(tensor_send, 1, 1)
-    ark.send_done(tensor_send, 1, 1)
+    tns = ark.send(tns, 1, 1)
+    ark.send_done(tns, 1, 1)
     # on GPU1:
-    ark.recv(tensor, 1, 0)
+    tns = ark.recv(1, 0, bytes)
     """
-    if output is not None:
-        output = output._tensor
     _tensor = Model.get_model().send(
         input._tensor,
         id,
         dst_rank,
         bytes,
-        output,
         name,
     )
     return Tensor(_tensor)
@@ -698,20 +694,16 @@ def send_done(
     input: Tensor,
     id: int,
     dst_rank: int,
-    output: Tensor = None,
     name: str = "send_done",
 ) -> Tensor:
     """
     Blocks the execution until the corresponding 'send' operator
     with the specified `id` is completed.
     """
-    if output is not None:
-        output = output._tensor
     _tensor = Model.get_model().send_done(
         input._tensor,
         id,
         dst_rank,
-        output,
         name,
     )
     return Tensor(_tensor)
@@ -719,7 +711,6 @@ def send_done(
 
 @register_op
 def recv(
-    input: Tensor,
     id: int,
     src_rank: int,
     bytes: int = 0,
@@ -734,7 +725,6 @@ def recv(
     if output is not None:
         output = output._tensor
     _tensor = Model.get_model().recv(
-        input._tensor,
         id,
         src_rank,
         bytes,

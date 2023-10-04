@@ -101,78 +101,73 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     }
     std::vector<const OpConfig *> feasible_configs;
     for (auto &cfg : configs) {
-        if (cfg.num_warps <= this->num_warps_per_sm) {
+        if (cfg.num_warps <= this->num_warps_per_sm &&
+            cfg.smem_bytes <= gpu_info.smem_block_total) {
             feasible_configs.push_back(&cfg);
         }
     }
     // Heuristic auto-selection of granularity level
-    int gran_lev = 0;
-    int ndims = output->shape.ndims();
     unsigned int min_wps =
         gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
+    Dims shape4 = output->shape.dims4();
+    Dims ldims4 = output->ldims.dims4();
+    std::vector<const OpConfig *> config_candidates;
+    std::vector<const OpConfig *> high_priority_candidates;
     for (auto &cfg : feasible_configs) {
         assert(cfg->output_tiles.size() > 0);
         const OpTile &ot = cfg->output_tiles[0];
-        DimType ot_x = (ot.x == -1) ? output->ldims[ndims - 2] : ot.x;
-        DimType ot_y = (ot.y == -1) ? output->ldims[ndims - 1] : ot.y;
-        DimType num_tiles;
-        DimType dim_0;
-        DimType dim_1;
-        if (ndims == 1) {
-            if (ot_x != 1) {
-                ++gran_lev;
-                continue;
-            }
-            dim_0 = output->shape[0];
-            dim_1 = 1;
-            num_tiles = math::div_up(dim_0, ot_y);
-        } else {
-            num_tiles = 1;
-            for (int i = 0; i < ndims - 2; ++i) {
-                num_tiles *= output->shape[i];
-            }
-            dim_0 = output->shape[ndims - 1];
-            dim_1 = output->shape[ndims - 2];
-            num_tiles *= math::div_up(dim_0, ot_y);
-            num_tiles *= math::div_up(dim_1, ot_x);
+        DimType ot_x = (ot.x == -1) ? ldims4[2] : ot.x;
+        DimType ot_y = (ot.y == -1) ? ldims4[3] : ot.y;
+        DimType shape_x = shape4[2];
+        DimType shape_y = shape4[3];
+        if (output->shape.ndims() == 1 && ot_x != 1) {
+            // Output is 1D, but tile is 2D. Cannot use this tile shape.
+            continue;
         }
-        if (gran_lev == (int)feasible_configs.size() - 1) {
-            // no more option, just use the finest-grained config
-            break;
-        }
+        DimType num_tiles = shape4[0] * shape4[1];
+        num_tiles *= math::div_up(shape_x, ot_x);
+        num_tiles *= math::div_up(shape_y, ot_y);
+
+        // This config is OK to use
+        config_candidates.push_back(cfg);
+
         // magic condition
-        if ((dim_0 * 2 > ot_y) && (dim_1 * 2 > ot_x) &&
+        if ((shape_y * 2 > ot_y) && (shape_x * 2 > ot_x) &&
             ((num_tiles * cfg->num_warps) >= (min_wps * gpu_info.num_sm / 2))) {
-            break;
+            high_priority_candidates.push_back(cfg);
         }
-        ++gran_lev;
     }
-    if (gran_lev == (int)feasible_configs.size()) {
+    if (config_candidates.empty()) {
         stringstream configs_str;
         if (feasible_configs.size() > 0) {
             const OpTile &ot = feasible_configs[0]->output_tiles[0];
-            DimType ot_x = (ot.x == -1) ? output->ldims[ndims - 2] : ot.x;
-            DimType ot_y = (ot.y == -1) ? output->ldims[ndims - 1] : ot.y;
+            DimType ot_x = (ot.x == -1) ? ldims4[2] : ot.x;
+            DimType ot_y = (ot.y == -1) ? ldims4[3] : ot.y;
             configs_str << "{ " << ot_x << ", " << ot_y << " }";
         }
         for (int i = 1; i < (int)feasible_configs.size(); ++i) {
             const OpTile &ot = feasible_configs[i]->output_tiles[0];
-            DimType ot_x = (ot.x == -1) ? output->ldims[ndims - 2] : ot.x;
-            DimType ot_y = (ot.y == -1) ? output->ldims[ndims - 1] : ot.y;
+            DimType ot_x = (ot.x == -1) ? ldims4[2] : ot.x;
+            DimType ot_y = (ot.y == -1) ? ldims4[3] : ot.y;
             configs_str << ", { " << ot_x << ", " << ot_y << " }";
         }
         configs_str << ".";
         LOG(ERROR, "no valid tile configuration found. Output shape ",
             output->shape, ", available tiles: ", configs_str.str());
     }
-    const OpConfig *cfg = feasible_configs[gran_lev];
+    const OpConfig *cfg;
+    if (high_priority_candidates.empty()) {
+        cfg = config_candidates[0];
+    } else {
+        cfg = high_priority_candidates[0];
+    }
     OpConfig *cfg_new = new OpConfig(*cfg);
     OpTile &op_tile = cfg_new->output_tiles[0];
     if (op_tile.x == -1) {
-        op_tile.x = output->ldims[ndims - 2];
+        op_tile.x = ldims4[2];
     }
     if (op_tile.y == -1) {
-        op_tile.y = output->ldims[ndims - 1];
+        op_tile.y = ldims4[3];
     }
     return cfg_new;
 }

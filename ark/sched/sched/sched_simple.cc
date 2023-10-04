@@ -318,10 +318,10 @@ void SimpleScheduler::configure_gpu_buf(const std::list<Tensor *> &) {
             export_tns_sids[in->buf].emplace_back(in, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         } else if (sop.get_op()->type == OP_RECV) {
-            Tensor *in = sop.get_op()->inputs[0];
+            Tensor *output = sop.get_op()->outputs[0];
             int sid;
             sop.get_op()->args.get(&sid, 0);
-            export_tns_sids[in->buf].emplace_back(in, sid);
+            export_tns_sids[output->buf].emplace_back(output, sid);
             this->send_recv_ops.emplace_back(sop.get_op());
         }
         for (auto &tns : sop.get_op()->inputs) {

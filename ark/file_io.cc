@@ -107,17 +107,13 @@ int clear_dir(const string &path) {
         struct dirent *p;
         int dir_fd = dirfd(d);
 
-        r = 0;
-        while (!r && (p = readdir(d))) {
-            int r2 = -1;
-
+        while ((p = readdir(d))) {
             // Skip the names "." and ".." as we don't want to recurse on
             // them.
             if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
                 continue;
             }
-            r2 = clear_dirat_helper(dir_fd, p->d_name);
-            r = r2;
+            r = clear_dirat_helper(dir_fd, p->d_name);
         }
         closedir(d);
     }

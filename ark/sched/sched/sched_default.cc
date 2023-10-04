@@ -414,10 +414,10 @@ void DefaultScheduler::configure_gpu_buf(
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_RECV) {
                 //
-                Tensor *in = op->inputs[0];
+                Tensor *output = op->outputs[0];
                 int sid;
                 op->args.get(&sid, 0);
-                export_tns_sids[in->buf].emplace_back(in, sid);
+                export_tns_sids[output->buf].emplace_back(output, sid);
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_SEND_MM) {
                 int sid;
