@@ -49,11 +49,6 @@ struct Ewise1 {
             int idx_h = tid_h + uh * UnitOutDims::H;
             int idx_w = tid_w + uw * UnitOutDims::W;
 
-            if (idx_n >= OutShape::N || idx_c >= OutShape::C ||
-                idx_h >= OutShape::H || idx_w >= OutShape::W) {
-                continue;
-            }
-
             CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w);
         }
     }
