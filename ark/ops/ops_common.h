@@ -458,24 +458,24 @@ class RecvMMOp : public Op {
 
 class SendOp : public Op {
    public:
-    SendOp(const std::string &prec_type, Tensor *input, Tensor *output, int sid,
-           int rank, int dst_rank, size_t bytes, const std::string &name);
+    SendOp(const std::string &prec_type, Tensor *input, int sid, int rank,
+           int dst_rank, size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
 class SendDoneOp : public Op {
    public:
-    SendDoneOp(const std::string &prec_type, Tensor *input, Tensor *output,
-               int sid, int rank, int dst_rank, const std::string &name);
+    SendDoneOp(const std::string &prec_type, Tensor *input, int sid, int rank,
+               int dst_rank, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
 class RecvOp : public Op {
    public:
-    RecvOp(const std::string &prec_type, Tensor *input, Tensor *output, int sid,
-           int rank, int src_rank, size_t bytes, const std::string &name);
+    RecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
+           int src_rank, size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

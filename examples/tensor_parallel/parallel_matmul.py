@@ -10,24 +10,25 @@ C_DIM = 8192
 
 
 def main(rank, mat_b_data):
-    rt = ark.Runtime(rank=rank, world_size=2)
+    ark.set_rank(rank)
+    ark.set_world_size(2)
 
     if rank == 0:
-        mat_a = ark.tensor([256, C_DIM], ark.FP16)
-        mat_b = ark.tensor([C_DIM, C_DIM], ark.FP16)
+        mat_a = ark.tensor([256, C_DIM], ark.fp16)
+        mat_b = ark.tensor([C_DIM, C_DIM], ark.fp16)
 
         mat_a_part0, mat_a_part1 = ark.sharding(
             mat_a, axis=0, dim_per_shard=128
         )
-        assert mat_a_part0.shape == [128, C_DIM]
-        assert mat_a_part1.shape == [128, C_DIM]
+        assert mat_a_part0.shape() == [128, C_DIM]
+        assert mat_a_part1.shape() == [128, C_DIM]
 
         send_tensor = ark.send(
             mat_a_part1, id=0, dst_rank=1, bytes=mat_a_part1.shape_bytes()
         )
         mat_a_part0 = ark.identity(mat_a_part0, [send_tensor])
 
-        output = ark.tensor([256, C_DIM], ark.FP16)
+        output = ark.tensor([256, C_DIM], ark.fp16)
         output_part0, output_part1 = ark.sharding(
             output, axis=0, dim_per_shard=128
         )
@@ -35,21 +36,16 @@ def main(rank, mat_b_data):
         matmul_part0 = ark.matmul(mat_a_part0, mat_b, output=output_part0)
         output_part1 = ark.identity(output_part1, [matmul_part0])
 
-        recv_tensor = ark.recv(
-            output_part1, id=1, src_rank=1, bytes=output_part1.shape_bytes()
-        )
+        recv_tensor = ark.recv(id=1, src_rank=1, output=output_part1)
         send_tensor = ark.identity(send_tensor, [recv_tensor])
         send_done_tensor = ark.send_done(send_tensor, id=0, dst_rank=1)
 
         mat_c = ark.matmul(mat_a, mat_b)
     else:
-        mat_a_part1 = ark.tensor([128, C_DIM], ark.FP16)
-        mat_b = ark.tensor([C_DIM, C_DIM], ark.FP16)
+        mat_a_part1 = ark.tensor([128, C_DIM], ark.fp16)
+        mat_b = ark.tensor([C_DIM, C_DIM], ark.fp16)
 
-        recv_tensor = ark.recv(
-            mat_a_part1, id=0, src_rank=0, bytes=mat_a_part1.shape_bytes()
-        )
-        mat_a_part1 = ark.identity(mat_a_part1, [recv_tensor])
+        mat_a_part1 = ark.recv(id=0, src_rank=0, output=mat_a_part1)
         matmul_part1 = ark.matmul(mat_a_part1, mat_b)
 
         send_tensor = ark.send(
@@ -57,6 +53,7 @@ def main(rank, mat_b_data):
         )
         send_done_tensor = ark.send_done(send_tensor, id=1, dst_rank=0)
 
+    rt = ark.Runtime()
     rt.launch()
 
     if rank == 0:

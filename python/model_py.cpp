@@ -181,21 +181,20 @@ void register_model(py::module &m) {
              "another GPU's model.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("dst_rank"), py::arg("bytes") = 0,
-             py::arg("output") = nullptr, py::arg("name") = "send")
+             py::arg("name") = "send")
         .def("send_done", &ark::Model::send_done,
              "Blocks the execution until the corresponding 'send' operator "
              "with the specified `id` is completed.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("dst_rank"), py::arg("output") = nullptr,
-             py::arg("name") = "send_done")
+             py::arg("id"), py::arg("dst_rank"), py::arg("name") = "send_done")
         .def("recv", &ark::Model::recv,
              "Receives a tensor from a source GPU (`src_rank`), identified "
              "by "
              "the `id` parameter. Blocks the execution until the "
              "corresponding "
              "'recv' operator is completed.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("src_rank"), py::arg("bytes") = 0,
+             py::return_value_policy::reference_internal, py::arg("id"),
+             py::arg("src_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv")
         .def("send_mm", &ark::Model::send_mm,
              "Similar to the 'send_done' function, but implemented using "
