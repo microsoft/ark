@@ -133,6 +133,7 @@ typedef enum
     OP_RECV_MSCCLPP,
     OP_EMBEDDING,
     OP_DEVICE_SYNC_MSCCLPP,
+    OP_READ_AND_REDUCE_MSCCLPP,
 } OpType;
 
 /// Type of precision of @ref Op.
@@ -565,6 +566,16 @@ class MscclppDeviceSyncOp : public Op
   public:
     MscclppDeviceSyncOp(OpPrecType prec_type, Tensor *output, int npeers,
                         const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppReadAndReduceOp : public Op
+{
+  public:
+    MscclppReadAndReduceOp(OpPrecType prec_type, Tensor *local_buf,
+                           Tensor *remote_buf, int sid, int rank, int src_rank,
+                           const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

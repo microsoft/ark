@@ -484,10 +484,18 @@ class Model
 
     // sync across multi devices
     Tensor *device_sync_mscclpp(
-        int npeers, Tensor *output = nullptr,
-        const std::string &name = "device_sync_mscclpp");
+        int npeers, const std::string &name = "device_sync_mscclpp");
+
+    // local reduce scatter
+    Tensor *local_reduce_scatter_mscclpp(
+        Tensor *input, int gpu_id, int sid, int ngpus_per_node,
+        const std::string &name = "local_reduce_scatter_mscclpp");
+
+    // read data from remote and reduce to current buffer
+    Tensor *read_and_reduce_mscclpp(Tensor *input, int sid, int src_rank,
+                                    const std::string &name);
     /// Verify if this model is valid.
-    /// @return true if the model is valid, false otherwise.
+    /// @return true if the model is valid, false otherwise.data fr
     bool verify() const;
 
   protected:

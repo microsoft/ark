@@ -206,12 +206,9 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
     return this->impl->add_op(op)[0];
 }
 
-Tensor *Model::device_sync_mscclpp(int npeers, Tensor *output,
-                                   const std::string &name)
+Tensor *Model::device_sync_mscclpp(int npeers, const std::string &name)
 {
-    if (output == nullptr) {
-        output = this->tensor({1, 1, 1, 1}, INT32);
-    }
+    Tensor* output = this->tensor({1, 1, 1, 1}, INT32);
     MscclppDeviceSyncOp op{OP_PREC_NONE, output, npeers, name};
     return this->impl->add_op(op)[0];
 }

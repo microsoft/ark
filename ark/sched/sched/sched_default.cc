@@ -471,6 +471,17 @@ void DefaultScheduler::configure_gpu_buf(
                 int sid;
                 op->args.get(&sid, 3);
                 export_tns_sids[in->buf].emplace_back(in, sid);
+            } else if (op->type == OP_READ_AND_REDUCE_MSCCLPP) {
+                Tensor *local_buff = op->inputs[0];
+                Tensor *remote_buff = op->inputs[1];
+                int peer_rank;
+                int sid;
+                op->args.get(&peer_rank, 1);
+                op->args.get(&sid, 2);
+                export_tns_sids[local_buff->buf].emplace_back(local_buff, sid);
+                this->buf_infos.emplace_back(peer_rank,
+                                             remote_buff->shape_bytes(),
+                                             remote_buff->buf, sid, 0);
             }
         }
     }

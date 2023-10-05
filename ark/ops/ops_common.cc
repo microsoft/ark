@@ -521,6 +521,9 @@ std::string Op::function_name(const OpConfig &cfg) const
     case OP_DEVICE_SYNC_MSCCLPP:
         return static_cast<const MscclppDeviceSyncOp *>(this)->function_name(
             cfg);
+    case OP_READ_AND_REDUCE_MSCCLPP:
+        return static_cast<const MscclppReadAndReduceOp *>(this)
+            ->function_name(cfg);
     default:
         LOG(ERROR, "invalid op type ", this->type);
         return "";
@@ -555,6 +558,9 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const
             cfg);
     case OP_DEVICE_SYNC_MSCCLPP:
         return static_cast<const MscclppDeviceSyncOp *>(this)
+            ->function_call_args(cfg);
+    case OP_READ_AND_REDUCE_MSCCLPP:
+        return static_cast<const MscclppReadAndReduceOp *>(this)
             ->function_call_args(cfg);
     default:
         OpArgs opargs;

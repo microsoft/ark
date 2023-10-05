@@ -72,17 +72,20 @@ DEVICE void device_sync_mscclpp(int, int)
     }
 }
 
+// Do reduce scatter in a single node
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          unsigned int Rank, unsigned int DstRank>
-DEVICE void read_and_redcue_mscclpp(size_t dst_offset, size_t src_offset, int,
-                                    int)
+          unsigned int PeerRank>
+DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset,
+                                    int uop_idx, int)
 {
-    // here we need to sync first
-    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, 0>;
-    UnitOp::sync_threads();
-
+    // treat channel dst as src since we read from it, and reduce to local
+    // memory
+    void *src = (uint8_t*)_ARK_SM_CHANS[PeerRank].dst_ + src_offset;
+    void *dst = (uint8_t*)_ARK_SM_CHANS[PeerRank].src_ + dst_offset;
     // run reduce_e_sum to reduce the value
+    reduce_e_sum<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads, 0, 0>(
+        (half *)dst, (half *)src, uop_idx, 0);
 }
 
 } // namespace comm
