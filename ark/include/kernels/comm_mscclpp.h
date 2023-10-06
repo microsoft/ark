@@ -57,17 +57,17 @@ DEVICE void recv_mscclpp(int, int)
     proxy_chan.wait();
 }
 
-template <unsigned int NPeers>
+template <unsigned int NRanks>
 DEVICE void device_sync_mscclpp(int, int)
 {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
-    for (int i = 0; i < NPeers; ++i) {
+    for (int i = 0; i < NRanks - 1; ++i) {
         _ARK_SM_CHANS[i].signal();
     }
-    for (int i = 0; i < NPeers; ++i) {
+    for (int i = 0; i < NRanks - 1; ++i) {
         _ARK_SM_CHANS[i].wait();
     }
 }
@@ -75,14 +75,15 @@ DEVICE void device_sync_mscclpp(int, int)
 // Do reduce scatter in a single node
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          unsigned int PeerRank>
+          unsigned int PeerRank, unsigned int Rank>
 DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset,
                                     int uop_idx, int)
 {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
-    void *src = (uint8_t*)_ARK_SM_CHANS[PeerRank].dst_ + src_offset;
-    void *dst = (uint8_t*)_ARK_SM_CHANS[PeerRank].src_ + dst_offset;
+    int channel_id = PeerRank < Rank ? PeerRank : PeerRank - 1;
+    void *src = (uint8_t*)_ARK_SM_CHANS[channel_id].dst_ + src_offset;
+    void *dst = (uint8_t*)_ARK_SM_CHANS[channel_id].src_ + dst_offset;
     // run reduce_e_sum to reduce the value
     reduce_e_sum<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads, 0, 0>(
         (half *)dst, (half *)src, uop_idx, 0);

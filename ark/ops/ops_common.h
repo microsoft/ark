@@ -564,7 +564,7 @@ class MscclppSendDoneOp : public Op
 class MscclppDeviceSyncOp : public Op
 {
   public:
-    MscclppDeviceSyncOp(OpPrecType prec_type, Tensor *output, int npeers,
+    MscclppDeviceSyncOp(OpPrecType prec_type, Tensor *output, int nranks,
                         const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;

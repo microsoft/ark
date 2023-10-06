@@ -123,6 +123,7 @@ ostream &operator<<(ostream &os, const OpType &s)
     case OP_ROPE:          os << "OP_ROPE";          break;
     case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
     case OP_DEVICE_SYNC_MSCCLPP: os << "OP_DEVICE_SYNC_MSCCLPP"; break;
+    case OP_READ_AND_REDUCE_MSCCLPP: os << "OP_READ_AND_REDUCE_MSCCLPP"; break;
     }
     // clang-format on
     return os;

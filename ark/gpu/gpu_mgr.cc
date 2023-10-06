@@ -281,6 +281,8 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align)
     }
     this->bufs.emplace_back(
         std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
+    LOG(DEBUG, "Allocated ", bytes, " bytes of GPU memory at offset ", off,
+        " rank ", rank);
     return this->bufs.back().get();
 }
 

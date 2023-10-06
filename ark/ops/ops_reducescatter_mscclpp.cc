@@ -42,7 +42,8 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
                                dst_buff->shape.dims4(), // OutShape
                                unit_out_dims,           // UnitOutDims
                                cfg.num_warps * 32,      // NumThreads
-                               peer_rank}});
+                               peer_rank,
+                               rank}});
 }
 
 OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
