@@ -73,20 +73,22 @@ DEVICE void device_sync_mscclpp(int, int)
 }
 
 // Do reduce scatter in a single node
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          unsigned int PeerRank, unsigned int Rank>
+template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+          unsigned int PeerRank, unsigned int Rank, unsigned long long Offset>
 DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset,
                                     int uop_idx, int)
 {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
     int channel_id = PeerRank < Rank ? PeerRank : PeerRank - 1;
-    void *src = (uint8_t*)_ARK_SM_CHANS[channel_id].dst_ + src_offset;
-    void *dst = (uint8_t*)_ARK_SM_CHANS[channel_id].src_ + dst_offset;
-    // run reduce_e_sum to reduce the value
-    reduce_e_sum<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads, 0, 0>(
-        (half *)dst, (half *)src, uop_idx, 0);
+    void *src = (uint8_t *)_ARK_SM_CHANS[channel_id].dst_ + src_offset + Offset;
+    void *dst = (uint8_t *)_ARK_SM_CHANS[channel_id].src_ + dst_offset + Offset;
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    __half2 *dst2 = reinterpret_cast<__half2 *>(dst);
+    __half2 *src2 = reinterpret_cast<__half2 *>(src);
+    for (int tid = UnitOp::thread_id(); tid < 32; tid += NumThreads) {
+        dst2[tid] = __hadd2(dst2[tid], src2[tid]);
+    }
 }
 
 } // namespace comm

@@ -493,6 +493,7 @@ class Model
 
     // read data from remote and reduce to current buffer
     Tensor *read_and_reduce_mscclpp(Tensor *input, int sid, int src_rank,
+                                    size_t offset, size_t bytes,
                                     const std::string &name);
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.data fr
