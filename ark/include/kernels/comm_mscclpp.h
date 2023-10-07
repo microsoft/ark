@@ -5,7 +5,7 @@
 #define ARK_KERNELS_COMM_MSCCLPP_H_
 
 #include "common.h"
-#include "reduce.h"
+#include "ewise.h"
 #include "unit_op.h"
 #include <cstdlib>
 #include <mscclpp/proxy_channel_device.hpp>
@@ -16,6 +16,28 @@ extern __constant__ mscclpp::SmChannelDeviceHandle _ARK_SM_CHANS[];
 
 namespace ark {
 namespace comm {
+
+template<typename OutDims, typename DataType>
+struct MscclppEwiseSumCompType
+{
+};
+
+template <typename OutDims> struct MscclppEwiseSumCompType<OutDims, half>
+{
+    using DataType = half;
+    static const int NelemPerThread = 2;
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w)
+    {
+        __half2 *dst = reinterpret_cast<__half2 *>(out);
+        __half2 *src = reinterpret_cast<__half2 *>(in);
+        int idx = idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W + idx_w;
+        if (threadIdx.x == 2) {
+            printf("idx is %d\n", idx);
+        }
+        dst[idx/2] = __hadd2(dst[idx/2], src[idx/2]);
+    }
+};
 
 // Send a trigger to proxy to request transaction.
 template <unsigned int Rank, unsigned int DstRank,
@@ -76,19 +98,18 @@ DEVICE void device_sync_mscclpp(int, int)
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
           unsigned int PeerRank, unsigned int Rank, unsigned long long Offset>
 DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset,
-                                    int uop_idx, int)
+                                    ark::half *, int uop_idx, int)
 {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
     int channel_id = PeerRank < Rank ? PeerRank : PeerRank - 1;
-    void *src = (uint8_t *)_ARK_SM_CHANS[channel_id].dst_ + src_offset + Offset;
-    void *dst = (uint8_t *)_ARK_SM_CHANS[channel_id].src_ + dst_offset + Offset;
+    half *src = reinterpret_cast<half *>(
+        (uint8_t *)_ARK_SM_CHANS[channel_id].dst_ + src_offset + Offset);
+    half *dst = reinterpret_cast<half *>(
+        (uint8_t *)_ARK_SM_CHANS[channel_id].src_ + dst_offset + Offset);
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
-    __half2 *dst2 = reinterpret_cast<__half2 *>(dst);
-    __half2 *src2 = reinterpret_cast<__half2 *>(src);
-    for (int tid = UnitOp::thread_id(); tid < 32; tid += NumThreads) {
-        dst2[tid] = __hadd2(dst2[tid], src2[tid]);
-    }
+    Ewise1<Dims, Shape, UnitOutDims, NumThreads, 0,
+           MscclppEwiseSumCompType<Dims, half>>::run(dst, src, uop_idx);
 }
 
 } // namespace comm

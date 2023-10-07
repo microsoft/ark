@@ -16,7 +16,7 @@ MscclppReadAndReduceOp::MscclppReadAndReduceOp(OpPrecType prec_type,
                                                int rank, int src_rank,
                                                size_t offset, size_t bytes,
                                                const std::string &name)
-    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {local_buf, remote_buf},
+    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {remote_buf},
          {local_buf}, {{rank, src_rank, sid, offset, bytes}}, name,
          &MscclppReadAndReduceConfigMap, -1, true)
 {
@@ -24,8 +24,7 @@ MscclppReadAndReduceOp::MscclppReadAndReduceOp(OpPrecType prec_type,
 
 std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
 {
-    Tensor *dst_buff = this->inputs[0];
-    Tensor *src_buf = this->inputs[1];
+    Tensor *dst_buff = this->outputs[0];
     CHECK(dst_buff->is_sequential());
 
     int rank;
@@ -38,9 +37,14 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
     this->args.get(&bytes, 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
-    Dims unit_out_dims{1, 1, 1, static_cast<long long>(bytes) / src_buf->type_bytes()};
-    Dims shape_dims = {1, 1, 1, static_cast<long long>(bytes) / src_buf->type_bytes()};
-    Dims dims = src_buf->ldims.dims4();
+    size_t nelems_out_shape = dst_buff->shape.size() / dst_buff->type_bytes();
+    size_t ntitle_eles = tile_out.x * tile_out.y > nelems_out_shape
+                             ? nelems_out_shape
+                             : tile_out.x * tile_out.y;
+    Dims unit_out_dims{1, 1, 1, ntitle_eles};
+    Dims shape_dims = {1, 1, 1,
+                       static_cast<long long>(bytes) / dst_buff->type_bytes()};
+    Dims dims = dst_buff->ldims.dims4();
 
     return Op::function_name("ark::comm::read_and_reduce_mscclpp",
                              {{dims,               // Dims
@@ -52,11 +56,11 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
 
 OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
 {
-    Tensor *local_buff = this->inputs[0];
-    Tensor *remote_buff = this->inputs[1];
+    Tensor *remote_buff = this->inputs[0];
+    Tensor *local_buff = this->outputs[0];
 
-    CHECK(local_buff->buf != nullptr);
     CHECK(remote_buff->buf != nullptr);
+    CHECK(local_buff->buf != nullptr);
 
     int rank;
     int peer_rank;
@@ -66,9 +70,10 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
     OpArgs opargs;
     // read_and_redcue_mscclpp(dst_offset, src_offset...)
     opargs.put(
-        (int)(local_buff->buf->get_buf_offset() + local_buff->offset_bytes()));
-    opargs.put((int)(remote_buff->buf->get_buf_offset() +
+        (size_t)(local_buff->buf->get_buf_offset() + local_buff->offset_bytes()));
+    opargs.put((size_t)(remote_buff->buf->get_buf_offset() +
                      remote_buff->offset_bytes()));
+    opargs.put(remote_buff);
     return opargs;
 }
 
@@ -81,9 +86,13 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int src_rank,
 
     Tensor *remote_buf = this->tensor(input->shape, input->type);
     remote_buf->imported_rank = src_rank;
+    OpPrecType pt = OP_PREC_NONE;
+    if (input->type == FP16) {
+        pt = OP_PREC_FP16;
+    }
     MscclppReadAndReduceOp op{
-        OP_PREC_NONE, input,  remote_buf, sid, this->impl->rank,
-        src_rank,     offset, bytes,      name};
+        pt,       input,  remote_buf, sid, this->impl->rank,
+        src_rank, offset, bytes,      name};
     return this->impl->add_op(op)[0];
 }
 
@@ -117,10 +126,10 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
 }
 
 const OpConfigMap MscclppReadAndReduceConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {16, 0, {{-1, 1024}, {-1, 1024}}, {{-1, 1024}}, false, true},
+         {16, 0, {{-1, 1024}}, {{-1, 1024}}, false, true},
      }},
 };
 }; // namespace ark
