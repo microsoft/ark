@@ -8,6 +8,7 @@
 #include "ewise.h"
 #include "unit_op.h"
 #include <cstdlib>
+#include <cuda_runtime.h>
 #include <mscclpp/proxy_channel_device.hpp>
 #include <mscclpp/sm_channel_device.hpp>
 
@@ -22,19 +23,40 @@ struct MscclppEwiseSumCompType
 {
 };
 
+union BytesPack {
+    uint32_t u16[8];
+    uint32_t u32[4];
+    uint64_t u64[2];
+};
+
 template <typename OutDims> struct MscclppEwiseSumCompType<OutDims, half>
 {
     using DataType = half;
-    static const int NelemPerThread = 2;
+    static const int NelemPerThread = 8;
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        __half2 *dst = reinterpret_cast<__half2 *>(out);
-        __half2 *src = reinterpret_cast<__half2 *>(in);
+        BytesPack vs;
+        BytesPack vd;
         int idx = (idx_n * OutDims::CHW + idx_c * OutDims::HW +
                    idx_h * OutDims::W + idx_w) /
                   NelemPerThread;
-        dst[idx] = __hadd2(dst[idx], src[idx]);
+        longlong2 *ps = reinterpret_cast<longlong2 *>(in) + idx;
+        longlong2 *pd = reinterpret_cast<longlong2 *>(out) + idx;
+        asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];" : "=l"(vs.u64[0]), "=l"(vs.u64[1]) : "l"(ps) : "memory");
+        asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];" : "=l"(vd.u64[0]), "=l"(vd.u64[1]) : "l"(pd) : "memory");
+        #pragma unroll
+        for (int i = 0; i < 4; ++i) {
+            __half2 d, s, t;
+            d.x = vd.u16[i * 2];
+            d.y = vd.u16[i * 2 + 1];
+            s.x = vs.u16[i * 2];
+            s.y = vs.u16[i * 2 + 1];
+            t = __hadd2(d, s);
+            vd.u16[i * 2] = t.x;
+            vd.u16[i * 2 + 1] = t.y;
+        }
+        asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};" : : "l"(pd), "l"(vd.u64[0]), "l"(vd.u64[1]) : "memory");
     }
 };
 
@@ -113,8 +135,10 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
                              src_offset_3, src_offset_4, src_offset_5,
                              src_offset_6};
     for (int i = 0; i < NPeers; ++i) {
-        half *src = reinterpret_cast<half *>((uint8_t *)_ARK_SM_CHANS[i].dst_ +
-                                             peer_offsets[i] + Offset);
+        int chan_idx = (Rank + i) % NPeers;
+        half *src =
+            reinterpret_cast<half *>((uint8_t *)_ARK_SM_CHANS[chan_idx].dst_ +
+                                     peer_offsets[chan_idx] + Offset);
         Ewise1<Dims, Shape, UnitOutDims, NumThreads, 0,
                MscclppEwiseSumCompType<Dims, half>>::run(dst, src, uop_idx);
     }
