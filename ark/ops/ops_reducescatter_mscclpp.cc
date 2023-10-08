@@ -10,15 +10,13 @@ namespace ark {
 extern const OpConfigMap MscclppReadAndReduceConfigMap;
 
 // currently only support in single node
-MscclppReadAndReduceOp::MscclppReadAndReduceOp(OpPrecType prec_type,
-                                               Tensor *local_buf,
-                                               Tensor *remote_buf, int sid,
-                                               int rank, int src_rank,
-                                               size_t offset, size_t bytes,
-                                               const std::string &name)
-    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {remote_buf},
-         {local_buf}, {{rank, src_rank, sid, offset, bytes}}, name,
-         &MscclppReadAndReduceConfigMap, -1, true)
+MscclppReadAndReduceOp::MscclppReadAndReduceOp(
+    OpPrecType prec_type, Tensor *local_buf, Tensor *cal_region_local,
+    Tensor *remote_buf, Tensor *cal_region_remote, int sid, int rank,
+    int src_rank, size_t offset, size_t bytes, const std::string &name)
+    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {cal_region_remote, remote_buf},
+         {cal_region_local, local_buf}, {{rank, src_rank, sid, offset, bytes}},
+         name, &MscclppReadAndReduceConfigMap, -1, true)
 {
 }
 
@@ -37,11 +35,10 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
     this->args.get(&bytes, 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
-    size_t nelems_out_shape = dst_buff->shape.size() / dst_buff->type_bytes();
-    size_t ntitle_eles = tile_out.x * tile_out.y > nelems_out_shape
-                             ? nelems_out_shape
+    size_t ntitle_eles = tile_out.x * tile_out.y > dst_buff->shape.size()
+                             ? dst_buff->shape.size()
                              : tile_out.x * tile_out.y;
-    Dims unit_out_dims{1, 1, 1, ntitle_eles};
+    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(ntitle_eles)};
     Dims shape_dims = {1, 1, 1,
                        static_cast<long long>(bytes) / dst_buff->type_bytes()};
     Dims dims = dst_buff->ldims.dims4();
@@ -56,8 +53,8 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
 
 OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
 {
-    Tensor *remote_buff = this->inputs[0];
-    Tensor *local_buff = this->outputs[0];
+    Tensor *remote_buff = this->inputs[1];
+    Tensor *local_buff = this->outputs[1];
 
     CHECK(remote_buff->buf != nullptr);
     CHECK(local_buff->buf != nullptr);
@@ -90,9 +87,20 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int src_rank,
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
     }
-    MscclppReadAndReduceOp op{
-        pt,       input,  remote_buf, sid, this->impl->rank,
-        src_rank, offset, bytes,      name};
+    Dims shape = {(long long)bytes / input->type_bytes()};
+    Tensor *cal_region_local = this->tensor(shape, input->type);
+    Tensor *cal_region_remote = this->tensor(shape, input->type);
+    MscclppReadAndReduceOp op{pt,
+                              input,
+                              cal_region_local,
+                              remote_buf,
+                              cal_region_remote,
+                              sid,
+                              this->impl->rank,
+                              src_rank,
+                              offset,
+                              bytes,
+                              name};
     return this->impl->add_op(op)[0];
 }
 
@@ -118,9 +126,10 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
     size_t bytes_per_peer = tensor->shape_bytes() / ngpus_per_node;
     for (int i = 0; i < npeers; ++i) {
         int peer_rank = i < gpu_id ? i : i + 1;
-        this->read_and_reduce_mscclpp(tensor, sid, peer_rank,
-                                      bytes_per_peer * gpu_id, bytes_per_peer,
-                                      name);
+        out = this->read_and_reduce_mscclpp(tensor, sid, peer_rank,
+                                            bytes_per_peer * gpu_id,
+                                            bytes_per_peer, name);
+        tensor = this->identity(tensor, {out});
     }
     return input;
 }
@@ -129,7 +138,7 @@ const OpConfigMap MscclppReadAndReduceConfigMap = {
     {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {16, 0, {{-1, 1024}}, {{-1, 1024}}, false, true},
+         {16, 0, {{-1, 1024}, {-1, -1}}, {{-1, 1024}, {-1, -1}}, false, false},
      }},
 };
 }; // namespace ark

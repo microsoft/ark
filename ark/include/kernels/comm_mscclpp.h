@@ -31,11 +31,10 @@ template <typename OutDims> struct MscclppEwiseSumCompType<OutDims, half>
     {
         __half2 *dst = reinterpret_cast<__half2 *>(out);
         __half2 *src = reinterpret_cast<__half2 *>(in);
-        int idx = idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W + idx_w;
-        if (threadIdx.x == 2) {
-            printf("idx is %d\n", idx);
-        }
-        dst[idx/2] = __hadd2(dst[idx/2], src[idx/2]);
+        int idx = (idx_n * OutDims::CHW + idx_c * OutDims::HW +
+                   idx_h * OutDims::W + idx_w) /
+                  NelemPerThread;
+        dst[idx] = __hadd2(dst[idx], src[idx]);
     }
 };
 
