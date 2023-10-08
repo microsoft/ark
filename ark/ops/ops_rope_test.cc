@@ -12,7 +12,7 @@ using namespace std;
 template <typename T>
 void baseline_rope(std::vector<void *> &outputs, const std::vector<ark::Dims> &,
                    const std::vector<void *> &inputs,
-                   const std::vector<ark::Dims> &input_shapes)
+                   const std::vector<ark::Dims> &input_shapes, int)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);

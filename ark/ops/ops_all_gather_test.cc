@@ -8,7 +8,7 @@ template <typename T, int NumGpus>
 void baseline_all_gather(std::vector<void *> &outputs,
                          const std::vector<ark::Dims> &output_shapes,
                          const std::vector<void *> &,
-                         const std::vector<ark::Dims> &)
+                         const std::vector<ark::Dims> &, int)
 {
     for (int i = 0; i < NumGpus; ++i) {
         T *out = static_cast<T *>(outputs[i]);

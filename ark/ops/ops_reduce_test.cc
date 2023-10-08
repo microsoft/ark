@@ -11,7 +11,7 @@ template <typename T>
 void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
+                               const std::vector<ark::Dims> &input_shapes, int)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
@@ -39,7 +39,7 @@ template <typename T>
 void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
+                               const std::vector<ark::Dims> &input_shapes, int)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
@@ -67,7 +67,7 @@ template <typename T>
 void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
+                               const std::vector<ark::Dims> &input_shapes, int)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
@@ -96,7 +96,7 @@ template <typename T>
 void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes)
+                               const std::vector<ark::Dims> &input_shapes, int)
 {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);

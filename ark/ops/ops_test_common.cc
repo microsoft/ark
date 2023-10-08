@@ -252,7 +252,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     }
 
     // Calculate ground truth.
-    baseline(gt, output_shapes, inputs_data_refs, input_shapes);
+    baseline(gt, output_shapes, inputs_data_refs, input_shapes, rank);
 
     std::stringstream test_name;
     test_name << test_name_prefix;

@@ -9,7 +9,7 @@ template <typename T, int NumGpus>
 void baseline_all_reduce(std::vector<void *> &outputs,
                          const std::vector<ark::Dims> &output_shapes,
                          const std::vector<void *> &,
-                         const std::vector<ark::Dims> &)
+                         const std::vector<ark::Dims> &, int)
 {
     // Calculate sum from 1 to NumGpus.
     T expected = 0;

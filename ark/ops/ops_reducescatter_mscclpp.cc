@@ -8,7 +8,7 @@
 namespace ark {
 
 extern const OpConfigMap MscclppReadAndReduceConfigMap;
-const int MAX_PEER_NUM = 7;
+constexpr int MAX_PEER_NUM = 7;
 
 // currently only support in single node
 MscclppReadAndReduceOp::MscclppReadAndReduceOp(
@@ -104,8 +104,10 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
         pt = OP_PREC_FP16;
     }
     Dims shape = {(long long)bytes / input->type_bytes()};
-    Tensor *cal_region_local = this->tensor(shape, input->type);
-    Tensor *cal_region_remote = this->tensor(shape, input->type);
+    // These two tensors are not actually used, just give hint to scheduler to
+    // split to correct tiles
+    Tensor *cal_region_local = this->tensor(shape, input->type, input->buf);
+    Tensor *cal_region_remote = this->tensor(shape, input->type, input->buf);
     MscclppReadAndReduceOp op{pt,
                               input,
                               cal_region_local,
@@ -117,7 +119,7 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
                               offset,
                               bytes,
                               name};
-    return this->impl->add_op(op)[0];
+    return this->impl->add_op(op)[1];
 }
 
 Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
@@ -134,7 +136,7 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
     }
     int npeers = ngpus_per_node - 1;
     LOG(DEBUG, "local_reduce_scatter_mscclpp ", input->shape, " ", gpu_id, " ",
-        sid, " ", ngpus_per_node, " ", npeers, " ");
+        sid, " ", ngpus_per_node, " ", ngpus_per_node, " ");
     Tensor *out = this->device_sync_mscclpp(ngpus_per_node);
     Tensor * tensor = this->identity(input, {out});
     // seems we can change the offset of input for the input based on gpu id
@@ -160,7 +162,7 @@ const OpConfigMap MscclppReadAndReduceConfigMap = {
            {-1, -1}},
           {{-1, 1024}, {-1, -1}},
           false,
-          false},
+          true},
      }},
 };
 }; // namespace ark

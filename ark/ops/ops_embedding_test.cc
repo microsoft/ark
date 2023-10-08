@@ -12,7 +12,7 @@ template <typename T>
 void baseline_embedding(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes)
+                        const std::vector<ark::Dims> &input_shapes, int)
 {
     T *out = static_cast<T *>(outputs[0]);
     int *in = static_cast<int *>(inputs[0]);
