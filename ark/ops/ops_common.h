@@ -574,9 +574,10 @@ class MscclppReadAndReduceOp : public Op
 {
   public:
     MscclppReadAndReduceOp(OpPrecType prec_type, Tensor *local_buf,
-                           Tensor *cal_region_local, Tensor *remote_buf,
+                           Tensor *cal_region_local,
+                           std::vector<Tensor *> remote_bufs,
                            Tensor *cal_region_remote, int sid, int rank,
-                           int src_rank, size_t offset, size_t bytes,
+                           int npeers, size_t offset, size_t bytes,
                            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;

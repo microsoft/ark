@@ -8,16 +8,19 @@
 namespace ark {
 
 extern const OpConfigMap MscclppReadAndReduceConfigMap;
+const int MAX_PEER_NUM = 7;
 
 // currently only support in single node
 MscclppReadAndReduceOp::MscclppReadAndReduceOp(
     OpPrecType prec_type, Tensor *local_buf, Tensor *cal_region_local,
-    Tensor *remote_buf, Tensor *cal_region_remote, int sid, int rank,
-    int src_rank, size_t offset, size_t bytes, const std::string &name)
-    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {cal_region_remote, remote_buf},
-         {cal_region_local, local_buf}, {{rank, src_rank, sid, offset, bytes}},
+    std::vector<Tensor*> remote_bufs, Tensor *cal_region_remote, int sid, int rank,
+    int npeers, size_t offset, size_t bytes, const std::string &name)
+    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {cal_region_remote},
+         {cal_region_local, local_buf}, {{rank, npeers, sid, offset, bytes}},
          name, &MscclppReadAndReduceConfigMap, -1, true)
 {
+    this->inputs.insert(this->inputs.end(), remote_bufs.begin(),
+                         remote_bufs.end());
 }
 
 std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
@@ -53,36 +56,49 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
 
 OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
 {
-    Tensor *remote_buff = this->inputs[1];
-    Tensor *local_buff = this->outputs[1];
-
-    CHECK(remote_buff->buf != nullptr);
-    CHECK(local_buff->buf != nullptr);
-
     int rank;
-    int peer_rank;
+    int npeers;
     this->args.get(&rank, 0);
-    this->args.get(&peer_rank, 1);
+    this->args.get(&npeers, 1);
+
+    Tensor *local_buff = this->outputs[1];
+    std::vector<Tensor *> remote_bufs =
+        std::vector<Tensor *>(this->inputs.begin() + 1, this->inputs.end());
+
+    CHECK(local_buff->buf != nullptr);
 
     OpArgs opargs;
     // read_and_redcue_mscclpp(dst_offset, src_offset...)
     opargs.put(
         (size_t)(local_buff->buf->get_buf_offset() + local_buff->offset_bytes()));
-    opargs.put((size_t)(remote_buff->buf->get_buf_offset() +
-                     remote_buff->offset_bytes()));
-    opargs.put(remote_buff);
+    for (int i = 0; i < MAX_PEER_NUM; i++) {
+        if (i < npeers) {
+            CHECK(remote_bufs[i]->buf != nullptr);
+            opargs.put((size_t)(remote_bufs[i]->buf->get_buf_offset() +
+                                remote_bufs[i]->offset_bytes()));
+        } else {
+            opargs.put((size_t)0);
+        }
+    }
+    opargs.put(remote_bufs[0]);
     return opargs;
 }
 
-Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int src_rank,
+Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
                                        size_t offset, size_t bytes,
                                        const std::string &name)
 {
-    LOG(DEBUG, "read_and_reduce_mscclpp ", input->shape, " ", src_rank);
+    LOG(DEBUG, "read_and_reduce_mscclpp ", input->shape, " nppers ", npeers);
     input->exported = true;
 
-    Tensor *remote_buf = this->tensor(input->shape, input->type);
-    remote_buf->imported_rank = src_rank;
+    int rank = this->impl->rank;
+    std::vector<Tensor *> remote_bufs;
+    for (int i = 0; i < npeers; i++) {
+        int peer_rank = i < rank ? i : i + 1;
+        Tensor *remote_buf = this->tensor(input->shape, input->type);
+        remote_buf->imported_rank = peer_rank;
+        remote_bufs.push_back(remote_buf);
+    }
     OpPrecType pt = OP_PREC_NONE;
     if (input->type == FP16) {
         pt = OP_PREC_FP16;
@@ -93,11 +109,11 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int src_rank,
     MscclppReadAndReduceOp op{pt,
                               input,
                               cal_region_local,
-                              remote_buf,
+                              remote_bufs,
                               cal_region_remote,
                               sid,
                               this->impl->rank,
-                              src_rank,
+                              npeers,
                               offset,
                               bytes,
                               name};
@@ -124,21 +140,27 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
     size_t bytes_per_peer = tensor->shape_bytes() / ngpus_per_node;
-    for (int i = 0; i < npeers; ++i) {
-        int peer_rank = i < gpu_id ? i : i + 1;
-        out = this->read_and_reduce_mscclpp(tensor, sid, peer_rank,
-                                            bytes_per_peer * gpu_id,
-                                            bytes_per_peer, name);
-        tensor = this->identity(tensor, {out});
-    }
-    return input;
+    return this->read_and_reduce_mscclpp(
+        tensor, sid, npeers, bytes_per_peer * gpu_id, bytes_per_peer, name);
 }
 
 const OpConfigMap MscclppReadAndReduceConfigMap = {
     {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {16, 0, {{-1, 1024}, {-1, -1}}, {{-1, 1024}, {-1, -1}}, false, false},
+         {16,
+          0,
+          {{-1, 1024},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{-1, 1024}, {-1, -1}},
+          false,
+          false},
      }},
 };
 }; // namespace ark
