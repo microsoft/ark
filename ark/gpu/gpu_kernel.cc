@@ -31,7 +31,7 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
                      initializer_list<GpuBuf *> buf_args_,
                      initializer_list<size_t> buf_offs_,
                      initializer_list<pair<void *, size_t>> args,
-                     const string &cubin_)
+                     const string &gpubin_)
     : name{name_},
       codes{codes_},
       gd{grid_dims},
@@ -42,7 +42,7 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
       ptr_args(buf_args.size(), 0),
       num_params{(int)(buf_args.size() + args.size())},
       params{new void *[num_params]},
-      cubin{cubin_} {
+      gpubin{gpubin_} {
     if (this->name.size() == 0) {
         LOG(ERROR, "Invalid kernel name: ", this->name);
     }
@@ -86,14 +86,14 @@ void GpuKernel::compile(const GpuInfo &gpu_info) {
         max_reg_cnt = gpu_info.max_registers_per_thread - 1;
     }
     //
-    if (this->cubin.empty()) {
-        this->cubin = gpu_compile(this->codes, gpu_info.arch, max_reg_cnt);
+    if (this->gpubin.empty()) {
+        this->gpubin = gpu_compile(this->codes, gpu_info.arch, max_reg_cnt);
     }
 
     //
     size_t num_opts = 5;
     size_t buflen = 8192;
-    std::unique_ptr<CUjit_option[]> opts(new CUjit_option[num_opts]);
+    std::unique_ptr<gpuJitOption[]> opts(new gpuJitOption[num_opts]);
     std::unique_ptr<void *[]> optvals(new void *[num_opts]);
     std::string infobuf;
     std::string errbuf;
@@ -103,35 +103,34 @@ void GpuKernel::compile(const GpuInfo &gpu_info) {
 
     int enable = 1;
 
-    opts[0] = CU_JIT_INFO_LOG_BUFFER;
+    opts[0] = gpuJitInfoLogBuffer;
     optvals[0] = (void *)infobuf.data();
 
-    opts[1] = CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES;
+    opts[1] = gpuJitInfoLogBufferSizeBytes;
     optvals[1] = (void *)(long)buflen;
 
-    opts[2] = CU_JIT_ERROR_LOG_BUFFER;
+    opts[2] = gpuJitErrorLogBuffer;
     optvals[2] = (void *)errbuf.data();
 
-    opts[3] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+    opts[3] = gpuJitErrorLogBufferSizeBytes;
     optvals[3] = (void *)(long)buflen;
 
-    opts[4] = CU_JIT_GENERATE_DEBUG_INFO;
+    opts[4] = gpuJitGenerateDebugInfo;
     optvals[4] = (void *)(long)enable;
 
-    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts,
-                           opts.get(), optvals.get()) != CUDA_SUCCESS) {
+    if (gpuModuleLoadDataEx(&this->module, this->gpubin.c_str(), num_opts,
+                            opts.get(), optvals.get()) != gpuSuccess) {
         LOG(DEBUG, infobuf);
-        LOG(ERROR, "cuModuleLoadDataEx() failed: ", errbuf);
+        LOG(ERROR, "gpuModuleLoadDataEx() failed: ", errbuf);
     }
-    CULOG(cuModuleGetFunction(&this->kernel, this->module, this->name.c_str()));
+    GLOG(gpuModuleGetFunction(&this->kernel, this->module, this->name.c_str()));
     //
     int static_smem_size_bytes;
-    CULOG(cuFuncGetAttribute(&static_smem_size_bytes,
-                             CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES,
-                             this->kernel));
+    GLOG(gpuFuncGetAttribute(&static_smem_size_bytes,
+                             gpuFuncAttributeSharedSizeBytes, this->kernel));
     int dynamic_smem_size_bytes = smem_bytes - static_smem_size_bytes;
-    CULOG(cuFuncSetAttribute(this->kernel,
-                             CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,
+    GLOG(gpuFuncSetAttribute(this->kernel,
+                             gpuFuncAttributeMaxDynamicSharedSizeBytes,
                              dynamic_smem_size_bytes));
 }
 
@@ -149,17 +148,18 @@ GpuState GpuKernel::launch(GpuStream stream) {
     for (size_t i = 0; i < this->ptr_args.size(); ++i) {
         *params++ = &this->ptr_args[i];
     }
-    return cuLaunchKernel(this->kernel, this->gd[0], this->gd[1], this->gd[2],
-                          this->bd[0], this->bd[1], this->bd[2],
-                          this->smem_bytes, stream, this->params, 0);
+    return gpuModuleLaunchKernel(this->kernel, this->gd[0], this->gd[1],
+                                 this->gd[2], this->bd[0], this->bd[1],
+                                 this->bd[2], this->smem_bytes, stream,
+                                 this->params, nullptr);
 }
 
-int GpuKernel::get_function_attribute(CUfunction_attribute attr) const {
+int GpuKernel::get_function_attribute(gpuFunctionAttribute attr) const {
     if (this->kernel == nullptr) {
         LOG(ERROR, "Kernel is not compiled yet.");
     }
     int ret;
-    CULOG(cuFuncGetAttribute(&ret, attr, this->kernel));
+    GLOG(gpuFuncGetAttribute(&ret, attr, this->kernel));
     return ret;
 }
 
@@ -168,7 +168,7 @@ int GpuKernel::get_function_attribute(CUfunction_attribute attr) const {
 GpuLoopKernel::GpuLoopKernel(const string &name_,
                              const vector<string> &codes_body,
                              unsigned int num_sm, unsigned int num_warp,
-                             unsigned int smem_bytes, const string &cubin_,
+                             unsigned int smem_bytes, const string &gpubin_,
                              GpuMgrCtx *ctx_)
     : GpuKernel{name_,
                 {},
@@ -178,7 +178,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                 {},
                 {},
                 {{0, sizeof(GpuPtr)}, {0, sizeof(GpuPtr)}},
-                cubin_},
+                gpubin_},
       ctx{ctx_},
       timer_begin{ctx_->create_event(false)},
       timer_end{ctx_->create_event(false)} {
@@ -267,30 +267,35 @@ void GpuLoopKernel::load() {
         GpuPtr buf_ptr_val = this->ctx->get_data_ref();
         GpuPtr lss_ptr_addr;
         GpuPtr buf_ptr_addr;
-        CULOG(cuModuleGetGlobal(&lss_ptr_addr, 0, this->module, ARK_LSS_NAME));
-        CULOG(cuModuleGetGlobal(&buf_ptr_addr, 0, this->module, ARK_BUF_NAME));
-        CULOG(cuMemsetD32(lss_ptr_addr, 0, 4));
-        CULOG(cuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val, sizeof(GpuPtr)));
+        GLOG(gpuModuleGetGlobal(&lss_ptr_addr, nullptr, this->module,
+                                ARK_LSS_NAME));
+        GLOG(gpuModuleGetGlobal(&buf_ptr_addr, nullptr, this->module,
+                                ARK_BUF_NAME));
+        GLOG(gpuMemsetD32(lss_ptr_addr, 0, 4));
+        GLOG(gpuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val, sizeof(GpuPtr)));
         //
         GpuPtr sc_ptr_val = this->ctx->get_sc_ref(0);
         GpuPtr rc_ptr_val = this->ctx->get_rc_ref(0);
         GpuPtr sc_ptr_addr;
         GpuPtr rc_ptr_addr;
-        CULOG(cuModuleGetGlobal(&sc_ptr_addr, 0, this->module, ARK_SC_NAME));
-        CULOG(cuModuleGetGlobal(&rc_ptr_addr, 0, this->module, ARK_RC_NAME));
-        CULOG(cuMemcpyHtoD(sc_ptr_addr, &sc_ptr_val, sizeof(GpuPtr)));
-        CULOG(cuMemcpyHtoD(rc_ptr_addr, &rc_ptr_val, sizeof(GpuPtr)));
+        GLOG(gpuModuleGetGlobal(&sc_ptr_addr, nullptr, this->module,
+                                ARK_SC_NAME));
+        GLOG(gpuModuleGetGlobal(&rc_ptr_addr, nullptr, this->module,
+                                ARK_RC_NAME));
+        GLOG(gpuMemcpyHtoD(sc_ptr_addr, &sc_ptr_val, sizeof(GpuPtr)));
+        GLOG(gpuMemcpyHtoD(rc_ptr_addr, &rc_ptr_val, sizeof(GpuPtr)));
         //
         GpuPtr db_ptr_val = this->ctx->get_request_ref();
         GpuPtr db_ptr_addr;
-        CULOG(cuModuleGetGlobal(&db_ptr_addr, 0, this->module, ARK_REQ_NAME));
-        CULOG(cuMemcpyHtoD(db_ptr_addr, &db_ptr_val, sizeof(GpuPtr)));
+        GLOG(gpuModuleGetGlobal(&db_ptr_addr, nullptr, this->module,
+                                ARK_REQ_NAME));
+        GLOG(gpuMemcpyHtoD(db_ptr_addr, &db_ptr_val, sizeof(GpuPtr)));
         //
         GpuPtr clks_ptr_val = this->clocks->ref();
         GpuPtr clks_ptr_addr;
-        CULOG(
-            cuModuleGetGlobal(&clks_ptr_addr, 0, this->module, ARK_CLKS_NAME));
-        CULOG(cuMemcpyHtoD(clks_ptr_addr, &clks_ptr_val, sizeof(GpuPtr)));
+        GLOG(gpuModuleGetGlobal(&clks_ptr_addr, nullptr, this->module,
+                                ARK_CLKS_NAME));
+        GLOG(gpuMemcpyHtoD(clks_ptr_addr, &clks_ptr_val, sizeof(GpuPtr)));
         // set the data buffer pointers of remote gpus
 
         int nrph = get_env().num_ranks_per_host;
@@ -306,22 +311,21 @@ void GpuLoopKernel::load() {
             }
             GpuPtr data_buf_ptr;
             string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-            CUresult _e = cuModuleGetGlobal(&data_buf_ptr, 0, this->module,
-                                            data_buf_name.c_str());
+            gpuError _e = gpuModuleGetGlobal(
+                &data_buf_ptr, nullptr, this->module, data_buf_name.c_str());
             // in some test code the symbol _ARK_BUF_0 is not defined
-            if (_e == CUDA_ERROR_NOT_FOUND) {
+            if (_e == gpuErrorNotFound) {
                 LOG(DEBUG, "global variable ", data_buf_name, " not found");
                 continue;
             }
-            // CULOG(_e);
             LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
                 " data_buf_value=", data_buf_value);
-            CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
+            GLOG(gpuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
     }
 }
 
-GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing) {
+GpuState GpuLoopKernel::launch(gpuStream stream, bool disable_timing) {
     this->elapsed_msec = -1;
     if (!this->is_compiled()) {
         LOG(ERROR, "Need to compile first before initialization.");
@@ -330,21 +334,21 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing) {
     } else if (this->stream != nullptr) {
         if (this->stream == stream) {
             LOG(WARN, "Ignore launching twice.");
-            return CUDA_SUCCESS;
+            return gpuSuccess;
         } else {
             LOG(ERROR, "This loop kernel is already running.");
         }
     }
     if (!disable_timing) {
-        CULOG(cuEventRecord(this->timer_begin, stream));
+        GLOG(gpuEventRecord(this->timer_begin, stream));
     }
     // Initialize loop flags.
     *(this->flag_href) = 0;
     GpuState res = GpuKernel::launch(stream);
-    if (res == CUDA_SUCCESS) {
+    if (res == gpuSuccess) {
         this->stream = stream;
         if (!disable_timing) {
-            CULOG(cuEventRecord(this->timer_end, stream));
+            GLOG(gpuEventRecord(this->timer_end, stream));
             this->is_recording = true;
         }
     }
@@ -370,8 +374,8 @@ void GpuLoopKernel::wait() {
             continue;
         }
         // Check if the kernel encountered an error.
-        CUresult res = cuStreamQuery(this->stream);
-        if (res == CUDA_SUCCESS) {
+        gpuError res = gpuStreamQuery(this->stream);
+        if (res == gpuSuccess) {
             if (*href > 0) {
                 LOG(WARN, "Stream is finished but the loop flag is still set.");
                 break;
@@ -381,10 +385,10 @@ void GpuLoopKernel::wait() {
                     "timing measurements may be inaccurate.");
                 break;
             }
-        } else if (res == CUDA_ERROR_NOT_READY) {
+        } else if (res == gpuErrorNotReady) {
             cnt = MAX_LOOP_COUNTER;
         } else {
-            CULOG(res);
+            GLOG(res);
         }
     }
 }
@@ -392,9 +396,9 @@ void GpuLoopKernel::wait() {
 void GpuLoopKernel::stop() {
     this->wait();
     *(this->flag_href) = -1;
-    CULOG(cuStreamSynchronize(this->stream));
+    GLOG(gpuStreamSynchronize(this->stream));
     if (is_recording) {
-        CULOG(cuEventElapsedTime(&(this->elapsed_msec), this->timer_begin,
+        GLOG(gpuEventElapsedTime(&(this->elapsed_msec), this->timer_begin,
                                  this->timer_end));
         this->is_recording = false;
     }

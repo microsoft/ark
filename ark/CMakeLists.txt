@@ -7,11 +7,6 @@ file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 
 set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
-if(CUDAToolkit_FOUND)
-    list(APPEND COMMON_LIBS CUDA::cuda_driver CUDA::nvml)
-elseif(ROCM_FOUND)
-    list(APPEND COMMON_LIBS ${ROCR_LIBRARY} ${ROCT_LIBRARY})
-endif()
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -22,23 +17,27 @@ target_include_directories(ark_obj SYSTEM PRIVATE
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
 )
+
 if(CUDAToolkit_FOUND)
+    list(APPEND COMMON_LIBS CUDA::cuda_driver)
     target_include_directories(ark_obj SYSTEM PRIVATE
         ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
         ${CUDAToolkit_INCLUDE_DIRS}
     )
-elseif(ROCM_FOUND)
+    target_compile_definitions(ark_obj PUBLIC ARK_CUDA)
+endif()
+
+if(ROCM_FOUND)
+    list(APPEND COMMON_LIBS ${ROCR_LIBRARY} ${ROCT_LIBRARY})
     target_include_directories(ark_obj SYSTEM PRIVATE
         ${ROCM_INCLUDE_DIRS}
         /opt/rocm/include
     )
+    target_compile_definitions(ark_obj PUBLIC ARK_ROCM)
 endif()
+
 target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
-if(ROCM_FOUND)
-    # define ROCM macro to enable ROCM-specific code
-    target_compile_definitions(ark_obj PRIVATE ARK_ROCM)
-endif()
 
 # ARK unit tests
 foreach(ut_source IN ITEMS ${UT_SOURCES})
@@ -46,14 +45,26 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
     add_executable(${exe_name} ${ut_source} ${UT_COMMON_SOURCES})
     add_dependencies(${exe_name} build)
     set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)
-    target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
     target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(${exe_name} SYSTEM PRIVATE
         ${PROJECT_SOURCE_DIR}/third_party/json
-        ${CUDAToolkit_INCLUDE_DIRS}
         ${IBVERBS_INCLUDE_DIRS}
         ${NUMA_INCLUDE_DIRS}
     )
+
+    if(CUDAToolkit_FOUND)
+        target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
+        target_include_directories(${exe_name} SYSTEM PRIVATE
+            ${CUDAToolkit_INCLUDE_DIRS}
+        )
+    else()
+        target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS})
+        target_include_directories(${exe_name} SYSTEM PRIVATE
+            ${ROCM_INCLUDE_DIRS}
+            /opt/rocm/include
+        )
+    endif()
+
     add_test(NAME ${exe_name}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMAND ${exe_name}

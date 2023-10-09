@@ -78,7 +78,7 @@ Env::Env() {
     } else {
         this->disable_ib = false;
     }
-    // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P CUDA memcpy.
+    // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P memcpy between GPUs.
     const char *disable_p2p_memcpy_ca = getenv("ARK_DISABLE_P2P_MEMCPY");
     if ((disable_p2p_memcpy_ca != nullptr) &&
         (strncmp(disable_p2p_memcpy_ca, "1", 2) == 0)) {

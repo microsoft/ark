@@ -94,11 +94,11 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     int *tmp0 = (int *)info->mmap;
     *tmp0 = 77;
     int tmp1;
-    CULOG(cuMemcpyDtoH(&tmp1, addr, 4));
+    GLOG(gpuMemcpyDtoH(&tmp1, addr, 4));
     if (tmp1 != 77) {
         LOG(ERROR, "mmap test failed: GPU reads ", tmp1, ", expected 77");
     }
-    CULOG(cuMemsetD32(addr, 55, 1));
+    GLOG(gpuMemsetD32(addr, 55, 1));
     if (*tmp0 != 55) {
         LOG(ERROR, "mmap test failed: CPU reads ", *tmp0, ", expected 55");
     }
@@ -137,22 +137,22 @@ void GpuMem::init(size_t bytes, bool expose) {
     }
 
     // Allocate more to align the bytes by 64KB.
-    CULOG(cuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
+    GLOG(gpuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
 
     // Make sure it is a base pointer.
     GpuPtr base_ptr;
     size_t base_size;  // unused
-    CULOG(cuMemGetAddressRange(&base_ptr, &base_size, raw_addr_));
+    GLOG(gpuMemGetAddressRange(&base_ptr, &base_size, raw_addr_));
     if (raw_addr_ != base_ptr) {
         LOG(ERROR, "Unexpected error.");
     }
 
     // Aligned address.
     addr_ =
-        (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+        (gpuDeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     int one = 1;
-    CULOG(cuPointerSetAttribute(&one, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr_));
+    GLOG(gpuPointerSetAttribute(&one, gpuPointerAttributeSyncMemops, addr_));
 
     ExposalInfo exp_info;
     if (expose) {
@@ -168,7 +168,7 @@ void GpuMem::init(size_t bytes, bool expose) {
     npage_ = exp_info.npage;
     mmap_ = exp_info.mmap;
 
-    CULOG(cuIpcGetMemHandle(&info_.ipc_hdl, raw_addr_));
+    GLOG(gpuIpcGetMemHandle(&info_.ipc_hdl, raw_addr_));
     info_.phys_addr = exp_info.phys;
     info_.bytes = bytes;
 
@@ -185,18 +185,18 @@ void GpuMem::init(const GpuMem::Info &info) {
     info_.phys_addr = info.phys_addr;
     info_.bytes = info.bytes;
 
-    CUresult res = cuIpcOpenMemHandle(&raw_addr_, info.ipc_hdl,
-                                      CU_IPC_MEM_LAZY_ENABLE_PEER_ACCESS);
-    if (res == CUDA_ERROR_PEER_ACCESS_UNSUPPORTED) {
+    gpuError res = gpuIpcOpenMemHandle(&raw_addr_, info.ipc_hdl,
+                                       gpuIpcMemLazyEnablePeerAccess);
+    if (res == gpuErrorPeerAccessUnsupported) {
         LOG(ERROR, "The GPU does not support peer access.");
-    } else if (res != CUDA_SUCCESS) {
+    } else if (res != gpuSuccess) {
         // Unexpected error.
-        CULOG(res);
+        GLOG(res);
     }
 
     // Aligned address.
     addr_ =
-        (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+        (gpuDeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     if (info.phys_addr != 0) {
         mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
@@ -222,10 +222,10 @@ GpuMem::~GpuMem() {
     }
     size_t mapped_bytes;
     if (is_remote_) {
-        cuIpcCloseMemHandle(raw_addr_);
+        gpuIpcCloseMemHandle(raw_addr_);
         mapped_bytes = info_.bytes;
     } else {
-        cuMemFree(raw_addr_);
+        gpuMemFree(raw_addr_);
         mapped_bytes = npage_ << GPU_PAGE_SHIFT;
     }
     if (mmap_ != nullptr) {

@@ -206,13 +206,12 @@ int test_net_ib_gpu_internal(std::size_t bytes, bool is_recv) {
     int dev = (ark::get_net_ib_device_num() >= 2) ? rank : 0;
     bytes = (bytes + 3) & -4;
 
-    // Create a CUDA context
-    CULOG(cuInit(0));
-    CUdevice cudev;
-    CUcontext cuctx;
-    CULOG(cuDeviceGet(&cudev, rank));
-    CULOG(cuCtxCreate(&cuctx, 0, cudev));
-    CULOG(cuCtxSetCurrent(cuctx));
+    GLOG(ark::gpuInit(0));
+    ark::gpuDevice cudev;
+    ark::gpuCtx cuctx;
+    GLOG(ark::gpuDeviceGet(&cudev, rank));
+    GLOG(ark::gpuCtxCreate(&cuctx, 0, cudev));
+    GLOG(ark::gpuCtxSetCurrent(cuctx));
 
     ark::NetIbMgr mgr{dev};
 
@@ -289,13 +288,12 @@ int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv) {
     int dev = rank + 1;
     bytes = (bytes + 3) & -4;
 
-    // Create a CUDA context
-    CULOG(cuInit(0));
-    CUdevice cudev;
-    CUcontext cuctx;
-    CULOG(cuDeviceGet(&cudev, dev));
-    CULOG(cuCtxCreate(&cuctx, 0, cudev));
-    CULOG(cuCtxSetCurrent(cuctx));
+    GLOG(ark::gpuInit(0));
+    ark::gpuDevice cudev;
+    ark::gpuCtx cuctx;
+    GLOG(ark::gpuDeviceGet(&cudev, dev));
+    GLOG(ark::gpuCtxCreate(&cuctx, 0, cudev));
+    GLOG(ark::gpuCtxSetCurrent(cuctx));
 
     ark::NetIbMgr mgr{(ark::get_net_ib_device_num() >= 2) ? dev : 0};
 

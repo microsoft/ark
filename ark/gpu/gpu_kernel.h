@@ -4,16 +4,11 @@
 #ifndef ARK_GPU_KERNEL_H_
 #define ARK_GPU_KERNEL_H_
 
-#ifndef ARK_ROCM
-#include <cuda.h>
-#else
-#include <hip/hip_runtime.h>
-#endif // ARK_ROCM
-
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "gpu/gpu.h"
 #include "gpu/gpu_mgr.h"
 
 #define ARK_BUF_NAME "_ARK_BUF"
@@ -33,7 +28,7 @@ class GpuKernel {
               unsigned int smem_bytes, std::initializer_list<GpuBuf *> buf_args,
               std::initializer_list<size_t> buf_offs,
               std::initializer_list<std::pair<void *, size_t>> args,
-              const std::string &cubin);
+              const std::string &gpubin);
     ~GpuKernel();
 
     void compile(const GpuInfo &gpu_info);
@@ -41,8 +36,8 @@ class GpuKernel {
 
     const std::string &get_name() { return name; }
     const std::vector<std::string> &get_codes() { return codes; }
-    const std::string &get_cubin() { return cubin; }
-    int get_function_attribute(CUfunction_attribute attr) const;
+    const std::string &get_gpubin() { return gpubin; }
+    int get_function_attribute(gpuFunctionAttribute attr) const;
     bool is_compiled() const { return this->kernel != nullptr; }
 
    protected:
@@ -59,10 +54,10 @@ class GpuKernel {
     std::vector<GpuPtr> ptr_args;
     int num_params;
     void **params;
-    std::string cubin;
+    std::string gpubin;
 
-    CUmodule module;
-    CUfunction kernel = nullptr;
+    gpuModule module;
+    gpuFunction kernel = nullptr;
 };
 
 class GpuLoopKernel : public GpuKernel {
@@ -70,11 +65,11 @@ class GpuLoopKernel : public GpuKernel {
     GpuLoopKernel(const std::string &name,
                   const std::vector<std::string> &codes_body,
                   unsigned int num_sm, unsigned int num_warp,
-                  unsigned int smem_bytes, const std::string &cubin,
+                  unsigned int smem_bytes, const std::string &gpubin,
                   GpuMgrCtx *ctx);
 
     void compile(const GpuInfo &gpu_info);
-    GpuState launch(CUstream stream, bool disable_timing = true);
+    GpuState launch(gpuStream stream, bool disable_timing = true);
     void load();
     void run(int iter = 1);
     bool poll();

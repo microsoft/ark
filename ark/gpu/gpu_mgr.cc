@@ -4,7 +4,6 @@
 #include "gpu/gpu_mgr.h"
 
 #include <fcntl.h>
-#include <nvml.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -25,41 +24,38 @@ namespace ark {
 
 // Initialize APIs.
 static void gpu_init() {
-    // Initialize CUDA driver APIs.
-    CULOG(cuInit(0));
-    // Initialize NVML APIs.
-    NVMLLOG(nvmlInit());
+    // Initialize GPU APIs.
+    GLOG(gpuInit(0));
 }
 
 // Return the number of GPUs in the system.
 static int gpu_num() {
     int n;
-    CULOG(cuDeviceGetCount(&n));
+    GLOG(gpuDeviceGetCount(&n));
     return n;
 }
 
 //
 void GpuInfo::init(const int gpu_id) {
-    CUdevice dev;
-    CULOG(cuDeviceGet(&dev, gpu_id));
+    gpuDevice dev;
+    GLOG(gpuDeviceGet(&dev, gpu_id));
     //
     size_t gmem_free;
-    CULOG(cuMemGetInfo(&gmem_free, &(this->gmem_total)));
+    GLOG(gpuMemGetInfo(&gmem_free, &(this->gmem_total)));
     //
-    CULOG(cuDeviceGetAttribute(
-        &(this->cc_major), CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, dev));
-    CULOG(cuDeviceGetAttribute(
-        &(this->cc_minor), CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, dev));
-    CULOG(cuDeviceGetAttribute(&(this->num_sm),
-                               CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev));
-    CULOG(cuDeviceGetAttribute(
-        &(this->smem_total),
-        CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR, dev));
-    CULOG(cuDeviceGetAttribute(
-        &(this->smem_block_total),
-        CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN, dev));
-    CULOG(cuDeviceGetAttribute(&(this->clk_rate),
-                               CU_DEVICE_ATTRIBUTE_CLOCK_RATE, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->cc_major),
+                               gpuDeviceAttributeComputeCapabilityMajor, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->cc_minor),
+                               gpuDeviceAttributeComputeCapabilityMinor, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->num_sm),
+                               gpuDeviceAttributeMultiprocessorCount, dev));
+    GLOG(gpuDeviceGetAttribute(
+        &(this->smem_total), gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
+        dev));
+    GLOG(gpuDeviceGetAttribute(&(this->smem_block_total),
+                               gpuDeviceAttributeSharedMemPerBlockOptin, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->clk_rate), gpuDeviceAttributeClockRate,
+                               dev));
 
     this->arch_str = to_string(this->cc_major * 10 + this->cc_minor);
     if (this->arch_str == "60") {
@@ -77,11 +73,11 @@ void GpuInfo::init(const int gpu_id) {
     int pci_domain;
     int pci_bus;
     int pci_device;
-    CULOG(cuDeviceGetAttribute(&pci_domain, CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID,
-                               dev));
-    CULOG(cuDeviceGetAttribute(&pci_bus, CU_DEVICE_ATTRIBUTE_PCI_BUS_ID, dev));
-    CULOG(cuDeviceGetAttribute(&pci_device, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID,
-                               dev));
+    GLOG(
+        gpuDeviceGetAttribute(&pci_domain, gpuDeviceAttributePciDomainID, dev));
+    GLOG(gpuDeviceGetAttribute(&pci_bus, gpuDeviceAttributePciBusId, dev));
+    GLOG(
+        gpuDeviceGetAttribute(&pci_device, gpuDeviceAttributePciDeviceId, dev));
     stringstream dbsf_s;
     dbsf_s << hex << setfill('0') << setw(4) << pci_domain << ":"
            << setfill('0') << setw(2) << pci_bus << ":" << setfill('0')
@@ -92,10 +88,10 @@ void GpuInfo::init(const int gpu_id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
-    // Create a CUDA context.
-    CUdevice dev;
-    CULOG(cuDeviceGet(&dev, gpu_id_));
-    CULOG(cuCtxCreate(&(this->cuda_ctx), CU_CTX_MAP_HOST, dev));
+    // Create a GPU context.
+    gpuDevice dev;
+    GLOG(gpuDeviceGet(&dev, gpu_id_));
+    GLOG(gpuCtxCreate(&(this->cuda_ctx), gpuCtxMapHost, dev));
 
     gpu_info.init(gpu_id_);
 }
@@ -140,7 +136,7 @@ void GpuMgr::validate_total_bytes() {
 }
 
 //
-GpuState GpuMgr::set_current() { return cuCtxSetCurrent(this->cuda_ctx); }
+GpuState GpuMgr::set_current() { return gpuCtxSetCurrent(this->cuda_ctx); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -171,7 +167,7 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
 GpuMgrCtx::~GpuMgrCtx() {
     //
     for (GpuStream s : this->streams) {
-        cuStreamDestroy(s);
+        gpuStreamDestroy(s);
     }
 }
 
@@ -179,14 +175,14 @@ GpuMgrCtx::~GpuMgrCtx() {
 GpuStream GpuMgrCtx::create_stream() {
     GpuStream s;
     this->gpu_mgr->set_current();
-    CULOG(cuStreamCreate(&s, CU_STREAM_NON_BLOCKING));
+    GLOG(gpuStreamCreate(&s, gpuStreamNonBlocking));
     this->streams.emplace_back(s);
     return s;
 }
 
 //
 GpuState GpuMgrCtx::sync_stream(const GpuStream &s) {
-    return cuStreamSynchronize(s);
+    return gpuStreamSynchronize(s);
 }
 
 //
@@ -194,7 +190,7 @@ void GpuMgrCtx::destroy_stream(const GpuStream &s) {
     auto it = this->streams.begin();
     for (; it != this->streams.end(); ++it) {
         if (*it == s) {
-            cuStreamDestroy(s);
+            gpuStreamDestroy(s);
             this->streams.erase(it);
             break;
         }
@@ -206,9 +202,9 @@ GpuEvent GpuMgrCtx::create_event(bool disable_timing) {
     GpuEvent cuda_event;
     unsigned int flags = 0;
     if (disable_timing) {
-        flags |= CU_EVENT_DISABLE_TIMING;
+        flags |= gpuEventDisableTiming;
     }
-    CULOG(cuEventCreate(&cuda_event, flags));
+    GLOG(cuEventCreate(&cuda_event, flags));
     return cuda_event;
 }
 
@@ -355,7 +351,7 @@ void GpuMgrCtx::freeze(bool expose) {
         LOG(INFO, "Allocating ", total_bytes, " bytes of GPU memory");
         this->data_mem.init(total_bytes, expose);
         // init the data mem
-        CULOG(cuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
+        GLOG(gpuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
     }
 
     //
@@ -415,7 +411,7 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
         gpu_init();
         int ngpu = gpu_num();
         if (ngpu <= 0) {
-            LOG(ERROR, "No CUDA-capable GPU is detected.");
+            LOG(ERROR, "No GPU is detected.");
         }
         ARK_GPU_MGR_GLOBAL.resize(ngpu);
     }
@@ -432,13 +428,13 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
 }
 
 void gpu_memset(GpuPtr buf, int val, size_t num) {
-    CULOG(cuMemsetD32(buf, val, num));
+    GLOG(gpuMemsetD32(buf, val, num));
 }
 void gpu_memcpy(GpuPtr dst, const void *src, size_t bytes) {
-    CULOG(cuMemcpyHtoD(dst, src, bytes));
+    GLOG(gpuMemcpyHtoD(dst, src, bytes));
 }
 void gpu_memcpy(void *dst, const GpuPtr src, size_t bytes) {
-    CULOG(cuMemcpyDtoH(dst, src, bytes));
+    GLOG(gpuMemcpyDtoH(dst, src, bytes));
 }
 void gpu_memset(GpuBuf *buf, int val, size_t num) {
     const size_t &bytes = buf->get_bytes();
@@ -451,7 +447,7 @@ void gpu_memset(GpuBuf *buf, int val, size_t num) {
     GpuPtr pb = buf->ref();
     if (pb != 0) {
         assert((pb % 4) == 0);
-        CULOG(cuMemsetD32(pb, val, num));
+        GLOG(gpuMemsetD32(pb, val, num));
     } else {
         int *phb = (int *)buf->href();
         assert(phb != nullptr);
@@ -461,20 +457,20 @@ void gpu_memset(GpuBuf *buf, int val, size_t num) {
     }
 }
 void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes) {
-    CULOG(cuMemcpyHtoD(dst->ref(), src, bytes));
+    GLOG(gpuMemcpyHtoD(dst->ref(), src, bytes));
 }
 void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes) {
-    CULOG(cuMemcpyDtoH(dst, src->ref(), bytes));
+    GLOG(gpuMemcpyDtoH(dst, src->ref(), bytes));
 }
 void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes) {
     GpuPtr rd = dst->ref();
     GpuPtr rs = src->ref();
     if ((rd != 0) && (rs != 0)) {
-        CULOG(cuMemcpyDtoD(dst->ref(), src->ref(), bytes));
+        GLOG(gpuMemcpyDtoD(dst->ref(), src->ref(), bytes));
     } else if (rd != 0) {
-        CULOG(cuMemcpyHtoD(dst->ref(), src->href(), bytes));
+        GLOG(gpuMemcpyHtoD(dst->ref(), src->href(), bytes));
     } else if (rs != 0) {
-        CULOG(cuMemcpyDtoH(dst->href(), src->ref(), bytes));
+        GLOG(gpuMemcpyDtoH(dst->href(), src->ref(), bytes));
     } else {
         // ::memcpy(dst->href(), src->href(), bytes);
         LOG(ERROR, "Unexpected case.");

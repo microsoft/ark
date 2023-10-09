@@ -119,8 +119,8 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
       world_size_{world_size},
       request_{new Request} {
     // Register `request_` as a mapped & pinned address.
-    CULOG(cuMemHostRegister((void *)request_, sizeof(request_),
-                            CU_MEMHOSTREGISTER_DEVICEMAP));
+    GLOG(gpuHostRegister((void *)request_, sizeof(request_),
+                         gpuHostRegisterMapped));
 
     // Reserve entries for GPU communication stack information.
     // Power of 2 larger than `gpu_id_` and at least 8.
@@ -151,7 +151,7 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
 GpuCommSw::Impl::~Impl() {
     this->stop_request_loop();
     if (request_ != nullptr) {
-        cuMemHostUnregister((void *)request_);
+        gpuHostUnregister((void *)request_);
         delete request_;
     }
 }
@@ -348,11 +348,11 @@ void GpuCommSw::Impl::launch_request_loop() {
         request_loop_thread_ = new thread([&, gid = gpu_id_] {
             //
             GpuState ret = get_gpu_mgr(gid)->set_current();
-            if (ret == CUDA_SUCCESS) {
+            if (ret == gpuSuccess) {
                 //
                 this->request_loop();
-            } else if (ret != CUDA_ERROR_DEINITIALIZED) {
-                CULOG(ret);
+            } else if (ret != gpuErrorDeinitialized) {
+                GLOG(ret);
             }
         });
         assert(request_loop_thread_ != nullptr);
@@ -479,7 +479,7 @@ void GpuCommSw::Impl::request_loop() {
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {
-            CULOG(cuMemcpyDtoD(dst, src, db.fields.len));
+            GLOG(gpuMemcpyDtoD(dst, src, (long unsigned int)db.fields.len));
             GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
             volatile int *rc_array = (volatile int *)mem->href(rc_offset);
             if (rc_array != nullptr) {
@@ -487,7 +487,7 @@ void GpuCommSw::Impl::request_loop() {
             } else {
                 GpuPtr rc_ref =
                     mem->ref(rc_offset + db.fields.sid * sizeof(int));
-                CULOG(cuMemsetD32(rc_ref, 1, 1));
+                GLOG(gpuMemsetD32(rc_ref, 1, 1));
             }
             sc_href[db.fields.sid] = 1;
         } else {
@@ -575,7 +575,7 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid) {
 //
 GpuPtr GpuCommSw::Impl::get_request_ref() const {
     GpuPtr ref;
-    CULOG(cuMemHostGetDevicePointer(&ref, request_, 0));
+    GLOG(gpuHostGetDevicePointer(&ref, request_, 0));
     return ref;
 }
 

@@ -4,8 +4,6 @@
 #ifndef ARK_GPU_MGR_H_
 #define ARK_GPU_MGR_H_
 
-#include <cuda.h>
-
 #include <list>
 #include <map>
 #include <set>
@@ -13,6 +11,7 @@
 #include <thread>
 #include <vector>
 
+#include "gpu/gpu.h"
 #include "gpu/gpu_comm_sw.h"
 
 namespace ark {
@@ -55,8 +54,8 @@ struct GpuInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 //
-typedef CUstream GpuStream;
-typedef CUevent GpuEvent;
+typedef gpuStream GpuStream;
+typedef gpuEvent GpuEvent;
 
 //
 class GpuMgrCtx;
@@ -83,8 +82,8 @@ class GpuMgr {
    private:
     //
     GpuInfo gpu_info;
-    // CUDA context of this GPU.
-    CUcontext cuda_ctx;
+    //
+    gpuCtx cuda_ctx;
     //
     std::list<std::unique_ptr<GpuMgrCtx>> mgr_ctxs;
 };
