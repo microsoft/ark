@@ -491,10 +491,18 @@ class Model
         Tensor *input, int gpu_id, int sid, int ngpus_per_node,
         const std::string &name = "local_reduce_scatter_mscclpp");
 
+    // local all gather
+    Tensor *local_all_gather_mscclpp(
+        Tensor *input, int gpu_id, int sid, int ngpus_per_node,
+        const std::string &name = "local_all_gather_mscclpp");
     // read data from remote and reduce to current buffer
     Tensor *read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
                                     size_t offset, size_t bytes,
-                                    const std::string &name);
+                                    const std::string &name="read_and_reduce_mscclpp");
+    // gather from peers
+    Tensor *gather_from_peers_mscclpp(
+        Tensor *input, int sid, int npeers, size_t chunkBytes,
+        const std::string &name = "gather_from_peers_mscclpp");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.data fr
     bool verify() const;

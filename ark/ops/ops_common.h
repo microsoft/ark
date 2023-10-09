@@ -134,6 +134,7 @@ typedef enum
     OP_EMBEDDING,
     OP_DEVICE_SYNC_MSCCLPP,
     OP_READ_AND_REDUCE_MSCCLPP,
+    OP_GATHER_FROM_PEERS_MSCCLPP,
 } OpType;
 
 /// Type of precision of @ref Op.
@@ -579,6 +580,19 @@ class MscclppReadAndReduceOp : public Op
                            Tensor *cal_region_remote, int sid, int rank,
                            int npeers, size_t offset, size_t bytes,
                            const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppGatherFromPeersOp : public Op
+{
+  public:
+    MscclppGatherFromPeersOp(OpPrecType prec_type, Tensor *local_buf,
+                             Tensor *trans_region_local,
+                             std::vector<Tensor *> remote_bufs,
+                             Tensor *trans_region_remote, int sid, int rank,
+                             int npeers, size_t chunkBytes,
+                             const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

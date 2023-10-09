@@ -164,6 +164,31 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
     }
 }
 
+template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+          unsigned int NPeers, unsigned int Rank, unsigned long long ChunkSize>
+DEVICE void gather_from_peers_mscclpp(size_t dst_offset, size_t src_offset_0,
+                                      size_t src_offset_1, size_t src_offset_2,
+                                      size_t src_offset_3, size_t src_offset_4,
+                                      size_t src_offset_5, size_t src_offset_6,
+                                      ark::half *, int uop_idx, int)
+{
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    constexpr int total_tiles =
+        math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
+    constexpr int total_threads = total_tiles * NumThreads;
+    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
+                             src_offset_3, src_offset_4, src_offset_5,
+                             src_offset_6};
+    for (int i = 0; i < NPeers; ++i) {
+        int chan_idx = (Rank + i) % NPeers;
+        int remote_rank = i < Rank ? i : i + 1;
+        size_t offset = ChunkSize * remote_rank;
+        _ARK_SM_CHANS[i].get(dst_offset + offset,
+                             peer_offsets[chan_idx] + offset, ChunkSize, tid,
+                             total_threads);
+    }
+}
 } // namespace comm
 } // namespace ark
 
