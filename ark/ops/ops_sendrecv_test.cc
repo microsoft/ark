@@ -63,7 +63,8 @@ void test_device_sync() {
     for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id]() {
             ark::Model model{gpu_id};
-            model.device_sync_mscclpp(2);
+            ark::Tensor *tns = model.tensor({1}, ark::FP16);
+            model.device_sync_mscclpp(tns, 2);
             ark::Executor exe{gpu_id, 2, model, "test_device_sync"};
             exe.compile();
 

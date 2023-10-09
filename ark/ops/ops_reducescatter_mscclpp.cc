@@ -88,7 +88,7 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
                                        size_t offset, size_t bytes,
                                        const std::string &name)
 {
-    LOG(DEBUG, "read_and_reduce_mscclpp ", input->shape, " nppers ", npeers);
+    LOG(DEBUG, "read_and_reduce_mscclpp ", input->shape, " npeers ", npeers);
     input->exported = true;
 
     int rank = this->impl->rank;
@@ -137,8 +137,7 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
     int npeers = ngpus_per_node - 1;
     LOG(DEBUG, "local_reduce_scatter_mscclpp ", input->shape, " ", gpu_id, " ",
         sid, " ", ngpus_per_node, " ", ngpus_per_node, " ");
-    Tensor *out = this->device_sync_mscclpp(ngpus_per_node);
-    Tensor * tensor = this->identity(input, {out});
+    Tensor *tensor = this->device_sync_mscclpp(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
     size_t bytes_per_peer = tensor->shape_bytes() / ngpus_per_node;

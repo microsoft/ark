@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 #include <type_traits>
@@ -47,10 +48,36 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter)
     ark::unittest::wait_all_processes();
 }
 
+void test_local_all_reduce_8gpus_internel(size_t nelem, int iter)
+{
+    constexpr int num_gpus = 8;
+    for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m{gpu_id};
+            ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
+            ark::Tensor *data = m.scale(ones, float(gpu_id + 1));
+            ark::Tensor *output = m.local_all_reduce(data, gpu_id, num_gpus, nullptr);
+
+            auto ones_data = ark::utils::ones<ark::half_t>(ones->shape.size());
+            auto result =
+                ark::op_test("all_reduce", m, {ones}, {output},
+                             baseline_all_reduce<ark::half_t, num_gpus>,
+                             {ones_data.get()}, true, gpu_id, num_gpus, 16);
+            ark::op_test_log(result);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
 ark::unittest::State test_all_reduce_4gpus()
 {
     test_all_reduce_4gpus_internal(8, 1);
     test_all_reduce_4gpus_internal(8192, 1);
+    if (ark::get_env().use_mscclpp) {
+        test_local_all_reduce_8gpus_internel(1024 * 1024 * 12, 1);
+    }
     return ark::unittest::SUCCESS;
 }
 

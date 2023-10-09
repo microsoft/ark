@@ -134,9 +134,10 @@ OpArgs MscclppRecvOp::function_call_args(const OpConfig &) const
     return {};
 }
 
-MscclppDeviceSyncOp::MscclppDeviceSyncOp(OpPrecType prec_type, Tensor *output,
-                                         int nranks, const std::string &name)
-    : Op{OP_DEVICE_SYNC_MSCCLPP, prec_type, {},  {output}, {{nranks}}, name,
+MscclppDeviceSyncOp::MscclppDeviceSyncOp(OpPrecType prec_type, Tensor *input,
+                                         Tensor *output, int nranks,
+                                         const std::string &name)
+    : Op{OP_DEVICE_SYNC_MSCCLPP, prec_type, {input}, {output}, {{nranks}}, name,
          &MscclppSyncConfigMap,  -1,        true}
 {
 }
@@ -206,10 +207,9 @@ Tensor *Model::recv_mscclpp(Tensor *input, int sid, int src_rank, size_t bytes,
     return this->impl->add_op(op)[0];
 }
 
-Tensor *Model::device_sync_mscclpp(int nranks, const std::string &name)
+Tensor *Model::device_sync_mscclpp(Tensor *input, int nranks, const std::string &name)
 {
-    Tensor* output = this->tensor({1, 1, 1, 1}, INT32);
-    MscclppDeviceSyncOp op{OP_PREC_NONE, output, nranks, name};
+    MscclppDeviceSyncOp op{OP_PREC_NONE, input, input, nranks, name};
     return this->impl->add_op(op)[0];
 }
 
