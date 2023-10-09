@@ -19,19 +19,8 @@ Executor::Impl::Impl(int rank, int world_size, Model &model,
     : rank_{rank}, world_size_{world_size} {
     //
     gpu_id_ = rank_ % get_env().num_ranks_per_host;
-    if (get_env().scheduler == "Simple") {
-        sched_.reset(static_cast<BaseScheduler *>(new SimpleScheduler{
-            model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
-    } else if (get_env().scheduler == "Default") {
-        sched_.reset(static_cast<BaseScheduler *>(new DefaultScheduler{
-            model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
-    }
-#ifdef USE_KAHYPAR
-    if (get_env().scheduler == "Kahypar") {
-        sched_.reset(static_cast<BaseScheduler *>(new KahyparScheduler{
-            model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
-    }
-#endif  // USE_KAHYPAR
+    sched_.reset(static_cast<BaseScheduler *>(new DefaultScheduler{
+        model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
 
     const GpuInfo &ginfo = get_gpu_mgr(gpu_id_)->get_gpu_info();
     sched_->schedule();

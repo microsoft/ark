@@ -17,15 +17,6 @@
 
 using namespace std;
 
-#define COM ", "
-#define OP_PREFIX "op"
-
-#define USE_KAHYPAR 0
-#define EVAL_DEPTHS 1
-#define COMPRESS_BRANCH 1
-#define MATMUL_GRAPH_OPT 1
-#define ALLOC_UNUSED_TENSORS 1
-
 namespace ark {
 
 SchedTile::SchedTile(const SchedOpSeq *opseq_, int x, int y, int z)

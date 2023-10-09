@@ -38,10 +38,6 @@
 
     If set to `1`, do not use peer-to-peer memory copy between GPUs (i.e., use ibverbs networking only, even within a single node).
 
-- `ARK_SCHEDULER` (Default: `Default`; Options: `Default`, `Simple`)
-
-    The GPU task scheduler used by ARK. `Simple` is a simple scheduler for debugging purposes.
-
 - `ARK_DISABLE_GRAPH_OPT` (Default: `1`; Options: `0`, `1`)
 
     If set to `1`, disable the ARK graph optimization. We expect higher performance with graph optimization enabled.

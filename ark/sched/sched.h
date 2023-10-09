@@ -69,28 +69,6 @@ class BaseScheduler {
     GpuMgrCtx *ctx;
 };
 
-class SimpleScheduler : public BaseScheduler {
-   public:
-    SimpleScheduler(Model &model, int gpu_id, int rank, int world_size,
-                    int num_warps_per_sm = 16);
-
-    void schedule();
-
-    std::vector<std::string> gen_code();
-
-   private:
-    // This function is used to configure the TensorBuf. The TensorBuf is an
-    // abstraction of the GPU memory, it correspond to a memory region on the
-    // _ARK_BUF. This function will configure the allocation, import and export
-    // of the TensorBuf and stores the TensorBuf information in buf_infos for
-    // later use
-    void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
-    void schedule_sched_opseq(SchedOpSeq &sop, int max_wps, int max_sm_num,
-                              std::vector<Sched> &scheds);
-
-    std::vector<SchedOp> sched_ops;
-};
-
 class DefaultScheduler : public BaseScheduler {
    public:
     DefaultScheduler(Model &model, int gpu_id, int rank_, int world_size_,
@@ -118,20 +96,6 @@ class DefaultScheduler : public BaseScheduler {
     std::unique_ptr<OpGraph> op_graph;
     std::vector<std::unique_ptr<SchedStream>> comp_stream;
     std::vector<std::unique_ptr<SchedStream>> comm_stream;
-};
-
-class KahyparScheduler : public DefaultScheduler {
-   public:
-    KahyparScheduler(const int gpu_id, int rank_, int world_size_,
-                     const Model &model, unsigned int num_warps_per_sm = 16);
-    std::vector<std::string> gen_code();
-
-   private:
-    std::vector<Sched> simplify_sched(std::vector<Sched> &original_scheds);
-
-    int kahypar_schedule_depth(std::vector<SchedOpSeq *> &depth,
-                               std::vector<Sched> &scheds);
-    SchedProfiler profiler;
 };
 
 }  // namespace ark
