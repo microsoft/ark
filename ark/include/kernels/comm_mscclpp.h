@@ -29,6 +29,41 @@ union BytesPack {
     uint64_t u64[2];
 };
 
+DEVICE void load(BytesPack &v, const longlong2 *p)
+{
+    asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];"
+                 : "=l"(v.u64[0]), "=l"(v.u64[1])
+                 : "l"(p)
+                 : "memory");
+}
+
+DEVICE void store(longlong2 *p, const BytesPack &v)
+{
+    asm volatile("st.volatile.global.v2.b64 [%0], {%1,%2};"
+                 :
+                 : "l"(p), "l"(v.u64[0]), "l"(v.u64[1])
+                 : "memory");
+}
+
+DEVICE void add_half8(void *dst, void *src)
+{
+    BytesPack vd, vs;
+    load(vd, reinterpret_cast<longlong2 *>(dst));
+    load(vs, reinterpret_cast<longlong2 *>(src));
+#pragma unroll
+    for (int i = 0; i < 4; ++i) {
+        __half2 d, s;
+        d.x = vd.u16[i * 2];
+        d.y = vd.u16[i * 2 + 1];
+        s.x = vs.u16[i * 2];
+        s.y = vs.u16[i * 2 + 1];
+        d = __hadd2(d, s);
+        vd.u16[i * 2] = d.x;
+        vd.u16[i * 2 + 1] = d.y;
+    }
+    store(reinterpret_cast<longlong2 *>(dst), vd);
+}
+
 template <typename OutDims> struct MscclppEwiseSumCompType<OutDims, half>
 {
     using DataType = half;
@@ -36,27 +71,12 @@ template <typename OutDims> struct MscclppEwiseSumCompType<OutDims, half>
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
                                int idx_c, int idx_h, int idx_w)
     {
-        BytesPack vs;
-        BytesPack vd;
         int idx = (idx_n * OutDims::CHW + idx_c * OutDims::HW +
                    idx_h * OutDims::W + idx_w) /
                   NelemPerThread;
         longlong2 *ps = reinterpret_cast<longlong2 *>(in) + idx;
         longlong2 *pd = reinterpret_cast<longlong2 *>(out) + idx;
-        asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];" : "=l"(vs.u64[0]), "=l"(vs.u64[1]) : "l"(ps) : "memory");
-        asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];" : "=l"(vd.u64[0]), "=l"(vd.u64[1]) : "l"(pd) : "memory");
-        #pragma unroll
-        for (int i = 0; i < 4; ++i) {
-            __half2 d, s, t;
-            d.x = vd.u16[i * 2];
-            d.y = vd.u16[i * 2 + 1];
-            s.x = vs.u16[i * 2];
-            s.y = vs.u16[i * 2 + 1];
-            t = __hadd2(d, s);
-            vd.u16[i * 2] = t.x;
-            vd.u16[i * 2 + 1] = t.y;
-        }
-        asm volatile("st.volatile.global.v2.u64 [%0], {%1,%2};" : : "l"(pd), "l"(vd.u64[0]), "l"(vd.u64[1]) : "memory");
+        add_half8(pd, ps);
     }
 };
 

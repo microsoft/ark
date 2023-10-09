@@ -164,7 +164,7 @@ const OpConfigMap MscclppReadAndReduceConfigMap = {
        true},
       {16,
        0,
-       {{-1, 524288},
+       {{-1, 32768},
         {-1, -1},
         {-1, -1},
         {-1, -1},
@@ -172,7 +172,7 @@ const OpConfigMap MscclppReadAndReduceConfigMap = {
         {-1, -1},
         {-1, -1},
         {-1, -1}},
-       {{-1, 524288}, {-1, -1}},
+       {{-1, 32768}, {-1, -1}},
        false,
        true}}},
 };

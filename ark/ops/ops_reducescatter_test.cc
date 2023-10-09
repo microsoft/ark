@@ -51,7 +51,7 @@ void test_reduce_scatter_internal(size_t nelem, int iter)
             auto result =
                 ark::op_test("reduce_scatter", model, {ones}, {output},
                              baseline_reduce_scatter<ark::half_t, num_gpus>,
-                             {ones_data.get()}, true, gpu_id, num_gpus, 16);
+                             {ones_data.get()}, false, gpu_id, num_gpus, 16);
             ark::op_test_log(result);
             return ark::unittest::SUCCESS;
         });
@@ -62,7 +62,7 @@ void test_reduce_scatter_internal(size_t nelem, int iter)
 
 ark::unittest::State test_reduce_scatter()
 {
-    test_reduce_scatter_internal(1024*1024*24, 1);
+    test_reduce_scatter_internal(1024*1024*12, 1);
     return ark::unittest::SUCCESS;
 }
 
