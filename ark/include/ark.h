@@ -504,7 +504,6 @@ class Model {
    protected:
     class Impl;
     friend class OpGraph;
-    friend class SimpleScheduler;
     friend class DefaultScheduler;
 
    private:

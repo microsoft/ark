@@ -8,8 +8,6 @@ set(ARK_PATCH "0")
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
-option(USE_KAHYPAR "Use KaHyPar for scheduling" OFF)
-
 cmake_minimum_required(VERSION 3.25)
 project(ark LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)

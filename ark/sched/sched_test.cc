@@ -234,131 +234,6 @@ ark::unittest::State test_sched_gpt3() {
     return unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_comp_baseline() {
-    // Hidden dimension of the dense layer.
-    unsigned int units = 512;
-    // Input dimension of the dense layer.
-    unsigned int in_dim = 512;
-    // Extra dimension of the input. CHANNEL=1 for 2D inputs.
-    unsigned int channel = 512;
-    // Batch size of the input.
-    unsigned int batch_size = 1;
-    int bytes = channel * in_dim * sizeof(ark::half_t);
-    int input_tensor_num = 3;
-    ark::srand();
-    vector<unique_ptr<ark::half_t[]>> input_data(input_tensor_num);
-    for (int i = 0; i < input_tensor_num; i++) {
-        input_data[i] = ark::utils::rand_halfs(channel * in_dim, 0.01);
-    }
-    // the result of the new scheduler
-    ark::half_t *output_data1 = (ark::half_t *)malloc(bytes);
-    UNITTEST_NE(output_data1, (void *)nullptr);
-
-    // the result of the old scheduler
-    ark::half_t *output_data2 = (ark::half_t *)malloc(bytes);
-    UNITTEST_NE(output_data2, (void *)nullptr);
-
-    // test the baseline scheduler
-    ark::unittest::spawn_process([&]() {
-        Model m;
-        Tensor *input[3];
-        input[0] = m.tensor({batch_size, channel, in_dim}, FP16);
-        input[1] = m.tensor({batch_size, in_dim, units}, FP16);
-        input[2] = m.tensor({batch_size, units, units}, FP16);
-
-        Tensor *middle_result = m.matmul(input[0], input[1]);
-
-        Tensor *middle_result1 = m.add(middle_result, input[2]);
-        Tensor *output = m.scale(middle_result1, 2.3);
-        GpuMgr *mgr = get_gpu_mgr(0);
-        const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::SimpleScheduler sched{m, 0, 0, 1, 8};
-        GpuMgrCtx *ctx = sched.create_context("test_scheduler_simple_mm");
-        sched.schedule();
-        auto codes = sched.gen_code();
-
-        GpuLoopKernel glk{"test_scheduler_simple_mm",
-                          codes,
-                          (unsigned int)ginfo.num_sm,
-                          8,
-                          (unsigned int)ginfo.smem_block_total,
-                          "",
-                          ctx};
-        glk.compile(ginfo);
-        for (int i = 0; i < input_tensor_num; i++) {
-            input[i]->write(input_data[i].get());
-        }
-        // load the data into the input
-
-        glk.load();
-
-        GpuStream stream = ctx->create_stream();
-        GpuState ret = glk.launch(stream, false);
-        UNITTEST_EQ(ret, 0);
-        glk.run(1);
-        glk.stop();
-        output->read(output_data1);
-        for (int i = 0; i < 10; i++) {
-            LOG(DEBUG, "output_data1: ", (float)output_data1[i]);
-        }
-        return unittest::SUCCESS;
-    });
-    ark::unittest::wait_all_processes();
-
-    // test the old scheduler
-    ark::unittest::spawn_process([&]() {
-        Model m;
-        Tensor *input[3];
-        input[0] = m.tensor({batch_size, channel, in_dim}, FP16);
-        input[1] = m.tensor({batch_size, in_dim, units}, FP16);
-        input[2] = m.tensor({batch_size, units, units}, FP16);
-
-        Tensor *middle_result = m.matmul(input[0], input[1]);
-
-        Tensor *middle_result1 = m.add(middle_result, input[2]);
-        Tensor *output = m.scale(middle_result1, 2.3);
-
-        GpuMgr *mgr = get_gpu_mgr(0);
-        const GpuInfo &ginfo = mgr->get_gpu_info();
-        ark::DefaultScheduler sched{m, 0, 0, 1, 8};
-        GpuMgrCtx *ctx = sched.create_context("test_scheduler_simple_mm");
-        sched.schedule();
-        auto codes = sched.gen_code();
-
-        GpuLoopKernel glk{"test_scheduler_simple_mm",
-                          codes,
-                          (unsigned int)ginfo.num_sm,
-                          8,
-                          (unsigned int)ginfo.smem_block_total,
-                          "",
-                          ctx};
-        glk.compile(ginfo);
-        for (int i = 0; i < input_tensor_num; i++) {
-            input[i]->write(input_data[i].get());
-        }
-        glk.load();
-        GpuStream stream = ctx->create_stream();
-        GpuState ret = glk.launch(stream, false);
-        UNITTEST_EQ(ret, 0);
-        glk.run(1);
-        glk.stop();
-        output->read(output_data2);
-        for (int i = 0; i < 10; i++) {
-            LOG(DEBUG, "output_data2: ", (float)output_data2[i]);
-        }
-        return unittest::SUCCESS;
-    });
-    ark::unittest::wait_all_processes();
-    // TODO: the output data are set on different processes,  we need to copy
-    //  run the test on the same process
-    auto comp = tensor_compare(output_data1, output_data2,
-                               ark::Dims(batch_size, units, units));
-    UNITTEST_LOG(" scheduler compare test: ", " total_bytes: ", bytes,
-                 " iter: ", 1, setprecision(4), " mse: ", comp.mse,
-                 " max_err: ", comp.max_error_rate * 100, "%");
-    return unittest::SUCCESS;
-}
-
 ark::unittest::State test_sched_many_comm_ops() {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
@@ -423,7 +298,6 @@ int main() {
     // UNITTEST(test_sched_mm_add);
     // UNITTEST(test_scheduler_simple_mm);
     // UNITTEST(test_sched_gpt3);
-    // UNITTEST(test_sched_comp_baseline);
     UNITTEST(test_sched_many_comm_ops);
     UNITTEST(test_sched_mixed_precision);
     UNITTEST(test_sched_parallel_matmul);
