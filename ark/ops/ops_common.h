@@ -4,10 +4,11 @@
 #ifndef ARK_OPS_COMMON_H_
 #define ARK_OPS_COMMON_H_
 
-#include "include/ark.h"
 #include <map>
 #include <ostream>
 #include <vector>
+
+#include "include/ark.h"
 
 namespace ark {
 
@@ -19,8 +20,7 @@ namespace ark {
 Dims broadcast(const Dims &dims1, const Dims &dims2);
 
 /// Type of operator argument.
-typedef enum
-{
+typedef enum {
     OP_ARG_INT,
     OP_ARG_INT64,
     OP_ARG_UINT64,
@@ -31,8 +31,7 @@ typedef enum
 } OpArgType;
 
 /// Stores an arbitrary type of argument given to an operator.
-struct OpArg
-{
+struct OpArg {
     OpArg(int arg);
     OpArg(long long int arg);
     OpArg(uint64_t arg);
@@ -61,9 +60,8 @@ struct OpArg
 class Op;
 
 /// Stores a list of @ref OpArg.
-class OpArgs
-{
-  public:
+class OpArgs {
+   public:
     OpArgs(const std::vector<OpArg> &args = {});
     OpArgs(const OpArgs &) = default;
     ~OpArgs(){};
@@ -82,7 +80,7 @@ class OpArgs
 
     const std::vector<OpArg> &get_args() const;
 
-  protected:
+   protected:
     std::vector<OpArg> args;
 
     friend class Op;
@@ -92,8 +90,7 @@ class OpArgs
 };
 
 /// Type of @ref Op.
-typedef enum
-{
+typedef enum {
     OP_UNKNOWN = 0,
     OP_TENSOR,
     OP_REFER,
@@ -106,14 +103,21 @@ typedef enum
     OP_REDUCE_W_MEAN,
     OP_REDUCE_W_MAX,
     OP_LAYERNORM,
+    OP_RMSNORM,
     OP_SOFTMAX,
     OP_SCALE,
     OP_RELU,
     OP_GELU,
+    OP_SIGMOID,
+    OP_EXP,
+    OP_SQRT,
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
+    OP_SUB,
     OP_MUL,
+    OP_DIV,
+    OP_ROPE,
     OP_IM2COL,
     OP_TRANSPOSE,
     OP_SEND,
@@ -121,35 +125,29 @@ typedef enum
     OP_RECV,
     OP_SEND_MM,
     OP_RECV_MM,
+    OP_EMBEDDING,
+    OP_CAST,
 } OpType;
 
-/// Type of precision of @ref Op.
-typedef enum
-{
-    OP_PREC_NONE,
-    OP_PREC_FP16,
-    OP_PREC_FP32,
-} OpPrecType;
-
 /// Type of hardware architecture support.
-typedef enum
-{
-    OP_ARCH_CUDA_70,
-    OP_ARCH_CUDA_80,
+typedef enum {
+    OP_ARCH_CUDA_60 = 0x1,
+    OP_ARCH_CUDA_70 = 0x2,
+    OP_ARCH_CUDA_80 = 0x4,
+    OP_ARCH_CUDA_90 = 0x8,
+    OP_ARCH_CUDA_ANY = -1,
 } OpArchType;
 
 struct Tensor;
 
 /// 2-dimensional op tile
-struct OpTile
-{
+struct OpTile {
     DimType x;
     DimType y;
 };
 
 /// Configurations for execution of a @ref Op.
-struct OpConfig
-{
+struct OpConfig {
     int num_warps = 0;
     int smem_bytes = 0;
     std::vector<OpTile> input_tiles;
@@ -159,10 +157,9 @@ struct OpConfig
 };
 
 /// Key to find a list of OpConfigs from OpConfigMap.
-struct OpConfigKey
-{
+struct OpConfigKey {
     OpArchType arch_type;
-    OpPrecType prec_type;
+    std::string prec_type;
 };
 
 bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
@@ -170,12 +167,22 @@ bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2);
 bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2);
 
 /// Map from OpConfigKey to a list of OpConfigs.
-using OpConfigMap = std::map<OpConfigKey, std::vector<OpConfig>>;
+class OpConfigMap {
+   public:
+    OpConfigMap(std::initializer_list<
+                std::pair<const OpConfigKey, const std::vector<OpConfig>>>
+                    ilist);
+    ~OpConfigMap(){};
+
+    const std::vector<OpConfig> &get(const OpConfigKey &key) const;
+
+   private:
+    const std::map<OpConfigKey, const std::vector<OpConfig>> cfg_map;
+};
 
 /// Operator.
-class Op
-{
-  public:
+class Op {
+   public:
     /// Construct an operator.
     Op() = default;
 
@@ -193,7 +200,7 @@ class Op
     /// should indicate finer-grained Ops. If it is -1, the granularity level
     /// will be automatically determined by the scheduler.
     /// @param force_inline whether to force inline the kernel of @ref Op.
-    Op(const OpType &type, const OpPrecType &prec_type,
+    Op(const OpType &type, const std::string &prec_type,
        const std::vector<Tensor *> &inputs,
        const std::vector<Tensor *> &output_refs, const OpArgs &args,
        const std::string &name, const OpConfigMap *cfg_map = nullptr,
@@ -225,7 +232,7 @@ class Op
     /// Type of the operator.
     OpType type;
     /// Precision type of the operator.
-    OpPrecType prec_type;
+    std::string prec_type;
     /// The input tensors of the operator.
     std::vector<Tensor *> inputs;
     /// The output tensors of the operator.
@@ -246,7 +253,7 @@ class Op
     friend bool operator<(const Op &op1, const Op &op2);
     friend bool operator==(const Op &op1, const Op &op2);
 
-  protected:
+   protected:
     static std::string function_name(const std::string &kernel_name,
                                      const OpArgs &template_args);
 };
@@ -255,220 +262,257 @@ std::ostream &operator<<(std::ostream &os, const OpType &s);
 
 /// List all operator classes below.
 
-class AddOp : public Op
-{
-  public:
-    AddOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-          const std::string &name);
+class AddOp : public Op {
+   public:
+    AddOp(const std::string &prec_type, Tensor *input, Tensor *other,
+          Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class GeluOp : public Op
-{
-  public:
-    GeluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class SubOp : public Op {
+   public:
+    SubOp(const std::string &prec_type, Tensor *input, Tensor *other,
+          Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class MulOp : public Op {
+   public:
+    MulOp(const std::string &prec_type, Tensor *input, Tensor *other,
+          Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class DivOp : public Op {
+   public:
+    DivOp(const std::string &prec_type, Tensor *input, Tensor *other,
+          Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class GeluOp : public Op {
+   public:
+    GeluOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class Im2colOp : public Op
-{
-  public:
-    Im2colOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class ExpOp : public Op {
+   public:
+    ExpOp(const std::string &prec_type, Tensor *input, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SqrtOp : public Op {
+   public:
+    SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
+           const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class RopeOp : public Op {
+   public:
+    RopeOp(const std::string &prec_type, Tensor *input, Tensor *other,
+           Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class Im2colOp : public Op {
+   public:
+    Im2colOp(const std::string &prec_type, Tensor *input, Tensor *output,
              int kernel_height, int kernel_width, int stride_height,
              int stride_width, int pad_height, int pad_width,
              int dilation_height, int dilation_width, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class LayernormOp : public Op
-{
-  public:
-    LayernormOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class LayernormOp : public Op {
+   public:
+    LayernormOp(const std::string &prec_type, Tensor *input, Tensor *output,
                 const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class MatmulOp : public Op
-{
-  public:
-    MatmulOp(OpPrecType prec_type, Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
-             Dims nca, Dims ncb, Dims problem_size, Dims leading_dims,
-             bool is_column_a, bool is_column_b, bool is_relu,
+class RMSnormOp : public Op {
+   public:
+    RMSnormOp(const std::string &prec_type, Tensor *input, Tensor *output,
+              const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class MatmulOp : public Op {
+   public:
+    MatmulOp(const std::string &prec_type, Tensor *mat_a, Tensor *mat_b,
+             Tensor *mat_y, Dims nca, Dims ncb, Dims problem_size,
+             Dims leading_dims, bool is_column_a, bool is_column_b,
              const std::string &name, int gran_lev);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class MaxPoolOp : public Op
-{
-  public:
-    MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class MaxPoolOp : public Op {
+   public:
+    MaxPoolOp(const std::string &prec_type, Tensor *input, Tensor *output,
               DimType kernel_size, DimType stride, const std::string &name);
 };
 
-class MulOp : public Op
-{
-  public:
-    MulOp(OpPrecType prec_type, Tensor *input, Tensor *other, Tensor *output,
-          const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-};
-
-class ReduceOp : public Op
-{
-  public:
-    ReduceOp(const OpType &type, const OpPrecType &prec_type,
+class ReduceOp : public Op {
+   public:
+    ReduceOp(const OpType &type, const std::string &prec_type,
              const std::vector<Tensor *> &inputs,
              const std::vector<Tensor *> &outputs, const OpArgs &args,
              const std::string &name, const OpConfigMap *cfg_map, int gran_lev);
 
-  protected:
+   protected:
     std::string function_name(const OpConfig &cfg,
                               const std::string &type) const;
 };
 
-class ReduceWSumOp : public ReduceOp
-{
-  public:
-    ReduceWSumOp(OpPrecType prec_type, Tensor *input, Tensor *output, int axis,
-                 const std::string &name);
+class ReduceWSumOp : public ReduceOp {
+   public:
+    ReduceWSumOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                 int axis, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReduceESumOp : public ReduceOp
-{
-  public:
-    ReduceESumOp(OpPrecType prec_type, Tensor *input, Tensor *output, int axis,
-                 const std::string &name);
+class ReduceESumOp : public ReduceOp {
+   public:
+    ReduceESumOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                 int axis, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReduceWMaxOp : public ReduceOp
-{
-  public:
-    ReduceWMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output, int axis,
-                 const std::string &name);
+class ReduceWMaxOp : public ReduceOp {
+   public:
+    ReduceWMaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                 int axis, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReduceEMaxOp : public ReduceOp
-{
-  public:
-    ReduceEMaxOp(OpPrecType prec_type, Tensor *input, Tensor *output, int axis,
-                 const std::string &name);
+class ReduceEMaxOp : public ReduceOp {
+   public:
+    ReduceEMaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                 int axis, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReduceWMeanOp : public ReduceOp
-{
-  public:
-    ReduceWMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output, int axis,
-                  const std::string &name);
+class ReduceWMeanOp : public ReduceOp {
+   public:
+    ReduceWMeanOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                  int axis, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReduceEMeanOp : public ReduceOp
-{
-  public:
-    ReduceEMeanOp(OpPrecType prec_type, Tensor *input, Tensor *output, int axis,
-                  const std::string &name);
+class ReduceEMeanOp : public ReduceOp {
+   public:
+    ReduceEMeanOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                  int axis, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReluOp : public Op
-{
-  public:
-    ReluOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class ReluOp : public Op {
+   public:
+    ReluOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReshapeOp : public Op
-{
-  public:
-    ReshapeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class SigmoidOp : public Op {
+   public:
+    SigmoidOp(const std::string &prec_type, Tensor *input, Tensor *output,
+              const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class ReshapeOp : public Op {
+   public:
+    ReshapeOp(const std::string &prec_type, Tensor *input, Tensor *output,
               const std::string &name);
 };
 
-class ScaleOp : public Op
-{
-  public:
-    ScaleOp(OpPrecType prec_type, Tensor *input, Tensor *output, float val,
-            const std::string &name);
+class ScaleOp : public Op {
+   public:
+    ScaleOp(const std::string &prec_type, Tensor *input, Tensor *output,
+            float val, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &) const;
 };
 
-class SendMMOp : public Op
-{
-  public:
-    SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+class SendMMOp : public Op {
+   public:
+    SendMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
              Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
              size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class RecvMMOp : public Op
-{
-  public:
-    RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+class RecvMMOp : public Op {
+   public:
+    RecvMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
              Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
              size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class SendOp : public Op
-{
-  public:
-    SendOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-           int rank, int dst_rank, size_t bytes, const std::string &name);
+class SendOp : public Op {
+   public:
+    SendOp(const std::string &prec_type, Tensor *input, int sid, int rank,
+           int dst_rank, size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class SendDoneOp : public Op
-{
-  public:
-    SendDoneOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-               int rank, int dst_rank, const std::string &name);
+class SendDoneOp : public Op {
+   public:
+    SendDoneOp(const std::string &prec_type, Tensor *input, int sid, int rank,
+               int dst_rank, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class RecvOp : public Op
-{
-  public:
-    RecvOp(OpPrecType prec_type, Tensor *input, Tensor *output, int sid,
-           int rank, int src_rank, size_t bytes, const std::string &name);
+class RecvOp : public Op {
+   public:
+    RecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
+           int src_rank, size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class SoftmaxOp : public Op
-{
-  public:
-    SoftmaxOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class SoftmaxOp : public Op {
+   public:
+    SoftmaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
               const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class TensorOp : public Op
-{
-  public:
+class TensorOp : public Op {
+   public:
     TensorOp(const std::vector<Tensor *> &deps, Tensor *output,
              const std::string &name);
 };
 
-class TransposeOp : public Op
-{
-  public:
-    TransposeOp(OpPrecType prec_type, Tensor *input, Tensor *output,
+class TransposeOp : public Op {
+   public:
+    TransposeOp(const std::string &prec_type, Tensor *input, Tensor *output,
                 int tp_type, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-} // namespace ark
+class EmbeddingOp : public Op {
+   public:
+    EmbeddingOp(const std::string &prec_type, Tensor *input, Tensor *weight,
+                Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
 
-#endif // ARK_OPS_COMMON_H_
+class CastOp : public Op {
+   public:
+    CastOp(Tensor *input, Tensor *output, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+}  // namespace ark
+
+#endif  // ARK_OPS_COMMON_H_

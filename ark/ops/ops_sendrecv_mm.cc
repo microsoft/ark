@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "env.h"
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
-#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap SendRecvMMConfigMap;
 
-SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+SendMMOp::SendMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
                    size_t bytes, const std::string &name)
     : Op{OP_SEND_MM,
@@ -21,12 +21,10 @@ SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          {{id, gpu_dst, bytes}},
          name,
          &SendRecvMMConfigMap,
-         -1}
-{
-}
+         -1,
+         true} {}
 
-std::string SendMMOp::function_name(const OpConfig &cfg) const
-{
+std::string SendMMOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
     Tensor *output = this->outputs[0];
@@ -53,18 +51,17 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::comm::sendLL",
                              {{
-                                 m,                  // LDM
-                                 n,                  // LDN
-                                 cfg.num_warps * 32, // TN
-                                 cfg.smem_bytes,     // SmemBytes
-                                 tile_in.y,          // TDM
-                                 tile_in.x,          // TDN
-                                 1,                  // FLAG
+                                 m,                   // LDM
+                                 n,                   // LDN
+                                 cfg.num_warps * 32,  // TN
+                                 cfg.smem_bytes,      // SmemBytes
+                                 tile_in.y,           // TDM
+                                 tile_in.x,           // TDN
+                                 1,                   // FLAG
                              }});
 }
 
-OpArgs SendMMOp::function_call_args(const OpConfig &) const
-{
+OpArgs SendMMOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     opargs.put(this->inputs[1]);
     opargs.put(this->inputs[0]);
@@ -72,7 +69,7 @@ OpArgs SendMMOp::function_call_args(const OpConfig &) const
     return opargs;
 }
 
-RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+RecvMMOp::RecvMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
                    size_t bytes, const std::string &name)
     : Op{OP_RECV_MM,
@@ -82,12 +79,10 @@ RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          {{id, gpu_src, bytes}},
          name,
          &SendRecvMMConfigMap,
-         -1}
-{
-}
+         -1,
+         true} {}
 
-std::string RecvMMOp::function_name(const OpConfig &cfg) const
-{
+std::string RecvMMOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
     Tensor *output = this->outputs[0];
@@ -114,18 +109,17 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::comm::recvLL",
                              {{
-                                 m,                  // LDM
-                                 n,                  // LDN
-                                 cfg.num_warps * 32, // TN
-                                 cfg.smem_bytes,     // SmemBytes
-                                 tile_in.y,          // TDM
-                                 tile_in.x,          // TDN
-                                 1,                  // FLAG
+                                 m,                   // LDM
+                                 n,                   // LDN
+                                 cfg.num_warps * 32,  // TN
+                                 cfg.smem_bytes,      // SmemBytes
+                                 tile_in.y,           // TDM
+                                 tile_in.x,           // TDN
+                                 1,                   // FLAG
                              }});
 }
 
-OpArgs RecvMMOp::function_call_args(const OpConfig &) const
-{
+OpArgs RecvMMOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     opargs.put(this->inputs[1]);
     opargs.put(this->inputs[0]);
@@ -138,27 +132,26 @@ const int max_tile_num = 2048;
 
 // send data from src to dst of id
 Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "send_mm", input->shape, " ", id, " ", gpu_dst, " ", bytes);
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOGERR("invalid output shape: ", output->shape);
+        LOG(ERROR, "invalid output shape: ", output->shape);
     }
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
+    CHECK(ndims == 2);
     recvbuf_shape[ndims - 2] *= 2 * input->type_bytes();
     Tensor *recvbuf = this->tensor(recvbuf_shape, ark::BYTE);
     recvbuf->imported_rank = gpu_dst;
@@ -168,38 +161,37 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
         },
         INT32);
     send_ready_flag->exported = true;
-    SendMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
-                gpu_dst,      bytes, name};
+    SendMMOp op{"none",  input, recvbuf, send_ready_flag, output, id,
+                gpu_dst, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 //
 Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOGERR("invalid bytes: ", bytes, ", max: ", max_bytes);
+        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    LOG(DEBUG, "recv_mm", input->shape, " ", id, " ", gpu_src, " ", bytes);
     input->exported = true;
 
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOGERR("invalid output shape: ", output->shape);
+        LOG(ERROR, "invalid output shape: ", output->shape);
     }
     // use a tensor as recvbuf to store the received data, the size of the
     // recvbuf is twice of the input
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
+    CHECK(ndims == 2);
     recvbuf_shape[ndims - 2] *= 2 * input->type_bytes();
     Tensor *recvbuf = this->tensor(recvbuf_shape, ark::BYTE);
     recvbuf->exported = true;
@@ -209,24 +201,13 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
         },
         INT32);
     send_ready_flag->imported_rank = gpu_src;
-    RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
-                gpu_src,      bytes, name};
+    RecvMMOp op{"none",  input, recvbuf, send_ready_flag, output, id,
+                gpu_src, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap SendRecvMMConfigMap = {
-    {{OP_ARCH_CUDA_70, OP_PREC_NONE},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}, {32, 64}, {1, 1}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}, {16, 64}, {1, 1}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}, {8, 64}, {1, 1}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}, {2, 128}, {1, 1}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}, {4, 64}, {1, 1}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}, {2, 64}, {1, 1}}, {{2, 64}}, false, false},
-     }},
-    {{OP_ARCH_CUDA_80, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},
@@ -239,4 +220,4 @@ const OpConfigMap SendRecvMMConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

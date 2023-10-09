@@ -8,8 +8,7 @@
 extern "C" __global__ void simple_matmul_nt(ark::half *C, ark::half *A,
                                             ark::half *B, unsigned int m,
                                             unsigned int n, unsigned int k,
-                                            bool is_relu)
-{
+                                            bool is_relu) {
     unsigned int coldiv2 = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int rowdiv2 = blockIdx.y * blockDim.y + threadIdx.y;
     unsigned int mdiv2 = m >> 1;

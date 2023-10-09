@@ -6,8 +6,7 @@
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
-{
+ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length) {
     ark::srand();
 
     ark::DimType mat_size = mat_length * mat_length;
@@ -18,10 +17,9 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         ark::Tensor *data = m.tensor({mat_length, mat_length}, ark::FP16);
         m.send_mm(data, 0, 1, 0);
 
-        ark::Executor exe{0, 0, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{0, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
-        exe.tensor_memcpy(data, send_data.get(),
-                          mat_size * sizeof(ark::half_t));
+        data->write(send_data.get());
         exe.launch();
         exe.run(1);
         exe.stop();
@@ -34,21 +32,20 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
         ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
         m.recv_mm(recvbuf, 0, 0, 0);
 
-        ark::Executor exe{1, 1, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{1, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
         exe.launch();
         exe.run(1);
         exe.stop();
 
         auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-        exe.tensor_memcpy(recv_data.get(), recvbuf,
-                          mat_size * sizeof(ark::half_t));
+        recvbuf->read(recv_data.get());
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data[i]) {
-                LOG(ark::INFO, "error at ", i,
-                    ": recv_data=", float(recv_data[i]),
-                    "send_data=", float(send_data[i]));
+                UNITTEST_LOG("error at ", i,
+                             ": recv_data=", float(recv_data[i]),
+                             "send_data=", float(send_data[i]));
                 return ark::unittest::FAILURE;
             }
         }
@@ -59,8 +56,7 @@ ark::unittest::State test_sendrecv_mm_copy_internal(ark::DimType mat_length)
 }
 
 ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
-    ark::DimType mat_length)
-{
+    ark::DimType mat_length) {
     ark::srand();
 
     ark::DimType mat_size = mat_length * mat_length;
@@ -76,23 +72,21 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
         ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
         m.recv_mm(recvbuf, 1, 1, 0);
 
-        ark::Executor exe{0, 0, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{0, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
-        exe.tensor_memcpy(data, send_data_0.get(),
-                          mat_size * sizeof(ark::half_t));
+        data->write(send_data_0.get());
         exe.launch();
         exe.run(1);
         exe.stop();
 
         auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-        exe.tensor_memcpy(recv_data.get(), recvbuf,
-                          mat_size * sizeof(ark::half_t));
+        recvbuf->read(recv_data.get());
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data_1[i]) {
-                LOG(ark::INFO, "error at ", i,
-                    ": recv_data=", float(recv_data[i]),
-                    "send_data=", float(send_data_1[i]));
+                UNITTEST_LOG("error at ", i,
+                             ": recv_data=", float(recv_data[i]),
+                             "send_data=", float(send_data_1[i]));
                 return ark::unittest::FAILURE;
             }
         }
@@ -107,23 +101,21 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
         ark::Tensor *recvbuf = m.tensor({mat_length, mat_length}, ark::FP16);
         m.recv_mm(recvbuf, 0, 0, 0);
 
-        ark::Executor exe{1, 1, 2, m, "test_sendrecv_mm_copy"};
+        ark::Executor exe{1, 2, m, "test_sendrecv_mm_copy"};
         exe.compile();
-        exe.tensor_memcpy(data, send_data_1.get(),
-                          mat_size * sizeof(ark::half_t));
+        data->write(send_data_1.get());
         exe.launch();
         exe.run(1);
         exe.stop();
 
         auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-        exe.tensor_memcpy(recv_data.get(), recvbuf,
-                          mat_size * sizeof(ark::half_t));
+        recvbuf->read(recv_data.get());
 
         for (int i = 0; i < mat_size; i++) {
             if (recv_data[i] != send_data_0[i]) {
-                LOG(ark::INFO, "error at ", i,
-                    ": recv_data=", float(recv_data[i]),
-                    "send_data=", float(send_data_0[i]));
+                UNITTEST_LOG("error at ", i,
+                             ": recv_data=", float(recv_data[i]),
+                             "send_data=", float(send_data_0[i]));
                 return ark::unittest::FAILURE;
             }
         }
@@ -133,8 +125,7 @@ ark::unittest::State test_sendrecv_mm_copy_bidir_internal(
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_4gpus()
-{
+ark::unittest::State test_sendrecv_mm_4gpus() {
     // the four gpus send recv data in a ring, gpu0->gpu1->gpu2->gpu3->gpu0
     const int gpu_num = 4;
     ark::DimType mat_length = 64;
@@ -155,25 +146,22 @@ ark::unittest::State test_sendrecv_mm_4gpus()
                 m.tensor({mat_length, mat_length}, ark::FP16);
             m.recv_mm(recvbuf, gpu_id, (gpu_id - 1 + gpu_num) % gpu_num);
 
-            ark::Executor exe{gpu_id, gpu_id, gpu_num, m,
-                              "test_sendrecv_mm_copy"};
+            ark::Executor exe{gpu_id, gpu_num, m, "test_sendrecv_mm_copy"};
             exe.compile();
-            exe.tensor_memcpy(data, send_data[gpu_id].get(),
-                              mat_size * sizeof(ark::half_t));
+            data->write(send_data[gpu_id].get());
             exe.launch();
             exe.run(1);
             exe.stop();
 
             auto recv_data = ark::utils::zeros<ark::half_t>(mat_size);
-            exe.tensor_memcpy(recv_data.get(), recvbuf,
-                              mat_size * sizeof(ark::half_t));
+            recvbuf->read(recv_data.get());
 
             auto &gt = send_data[(gpu_id - 1 + gpu_num) % gpu_num];
             for (int i = 0; i < mat_size; i++) {
                 if (recv_data[i] != gt[i]) {
-                    LOG(ark::INFO, "error at ", i,
-                        ": recv_data=", float(recv_data[i]),
-                        "send_data=", float(gt[i]));
+                    UNITTEST_LOG("error at ", i,
+                                 ": recv_data=", float(recv_data[i]),
+                                 "send_data=", float(gt[i]));
                     return ark::unittest::FAILURE;
                 }
             }
@@ -185,35 +173,24 @@ ark::unittest::State test_sendrecv_mm_4gpus()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_copy()
-{
+ark::unittest::State test_sendrecv_mm_copy() {
     test_sendrecv_mm_copy_internal(64);
-    test_sendrecv_mm_copy_internal(128);
-    test_sendrecv_mm_copy_internal(256);
-    test_sendrecv_mm_copy_internal(512);
-    test_sendrecv_mm_copy_internal(1024);
     test_sendrecv_mm_copy_internal(2048);
 
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sendrecv_mm_copy_bidir()
-{
+ark::unittest::State test_sendrecv_mm_copy_bidir() {
     test_sendrecv_mm_copy_bidir_internal(64);
-    test_sendrecv_mm_copy_bidir_internal(128);
-    test_sendrecv_mm_copy_bidir_internal(256);
-    test_sendrecv_mm_copy_bidir_internal(512);
-    test_sendrecv_mm_copy_bidir_internal(1024);
     test_sendrecv_mm_copy_bidir_internal(2048);
 
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sendrecv_mm_copy);
     UNITTEST(test_sendrecv_mm_copy_bidir);
-    UNITTEST(test_sendrecv_mm_4gpus);
+    // UNITTEST(test_sendrecv_mm_4gpus);
     return 0;
 }

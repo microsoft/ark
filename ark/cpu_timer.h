@@ -15,6 +15,6 @@ int cpu_timer_sleep(double sec);
 // Sleep in nanosecond.
 int cpu_ntimer_sleep(long nsec);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_CPU_TIMER_H_
+#endif  // ARK_CPU_TIMER_H_

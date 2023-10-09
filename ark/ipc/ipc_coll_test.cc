@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_coll.h"
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
-#include "ipc/ipc_coll.h"
 #include "unittest/unittest_utils.h"
 
 using namespace ark;
 using namespace std;
 
-unittest::State test_ipc_coll_allgather()
-{
+unittest::State test_ipc_coll_allgather() {
     // Launch 100 workers.
     vector<int> pids;
     for (int i = 0; i < 100; ++i) {
@@ -37,8 +37,7 @@ unittest::State test_ipc_coll_allgather()
     return unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_ipc_coll_allgather);
     return 0;

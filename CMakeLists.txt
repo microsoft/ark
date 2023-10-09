@@ -2,19 +2,31 @@
 # Licensed under the MIT license.
 
 set(ARK_MAJOR "0")
-set(ARK_MINOR "1")
+set(ARK_MINOR "3")
 set(ARK_PATCH "0")
 
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
-option(USE_KAHYPAR "Use KaHyPar for scheduling" OFF)
-
 cmake_minimum_required(VERSION 3.25)
-project(ark LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 14)
+project(ark LANGUAGES CXX CUDA)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wall,-Wextra")
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
+# Code coverage from https://github.com/codecov/example-cpp11-cmake
+add_library(coverage_config INTERFACE)
+if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # Add required flags (GCC & LLVM/Clang)
+    target_compile_options(coverage_config INTERFACE
+        -O0        # no optimization
+        -g         # generate debug info
+        --coverage # sets all required flags
+    )
+    target_link_options(coverage_config INTERFACE --coverage)
+endif()
 
 # Find ibverbs
 include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
@@ -33,6 +45,20 @@ if(NOT CUDAToolkit_FOUND AND NOT ROCM_FOUND)
     message(FATAL_ERROR "Neither CUDA nor ROCm is found")
 endif()
 
+if(CUDAToolkit_FOUND)
+    if(CUDAToolkit_VERSION_MAJOR LESS 11)
+        message(FATAL_ERROR "CUDA 11 or higher is required but detected ${CUDAToolkit_VERSION}")
+    endif()
+
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70 80)
+    endif()
+
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
+        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 90)
+    endif()
+endif()
+
 # Third party libraries
 add_subdirectory(third_party)
 
@@ -44,13 +70,15 @@ set_target_properties(ark_obj PROPERTIES
     VERSION ${ARK_VERSION}
     SOVERSION ${ARK_SOVERSION}
 )
-add_dependencies(ark_obj tp-cutlass-patch)
+add_dependencies(ark_obj tp-cutlass)
+target_link_libraries(ark_obj PUBLIC coverage_config)
 
 # Build
 add_custom_target(build)
-add_dependencies(build ark_obj tp-cutlass)
+add_dependencies(build ark_obj)
 add_custom_command(TARGET build POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/ark/include ${BUILD_DIR}/include
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/third_party/cutlass/include ${BUILD_DIR}/include/kernels
 )
 
 # ARK shared library
@@ -78,18 +106,21 @@ add_custom_target(ut)
 # Details
 add_subdirectory(ark)
 
-# Install libraries
-install(TARGETS ark ark_static
-    LIBRARY DESTINATION ark/lib
-    ARCHIVE DESTINATION ark/lib
-    FILE_SET install_headers DESTINATION ark/include
-    FILE_SET install_cutlass_headers DESTINATION ark/include/kernels
-)
-
-# Install Python module
 if(BUILD_PYTHON)
+    # Install Python module
     add_subdirectory(python)
+    add_dependencies(ark_py build)
+    install(TARGETS ark_py LIBRARY DESTINATION ark)
+else()
+    # Install libraries
+    install(TARGETS ark ark_static
+        LIBRARY DESTINATION ark/lib
+        ARCHIVE DESTINATION ark/lib
+    )
 endif()
+
+# Install header files
+install(DIRECTORY ${BUILD_DIR}/include DESTINATION ark)
 
 # Utils
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)

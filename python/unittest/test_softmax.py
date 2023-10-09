@@ -10,34 +10,25 @@ import unittest
 
 
 def test_softmax_internal(batch_size, m, n, data_type="float", iter=1):
-    ark.init()
-
-    # Create a Model instance
-    model = ark.Model()
+    runtime = ark.Runtime()
     if data_type == "float":
         ark_data_type = ark.TensorType.FP32
         numpy_data_type = np.float32
     elif data_type == "half":
         ark_data_type = ark.TensorType.FP16
         numpy_data_type = np.float16
-    input_tensor = model.tensor(ark.Dims(batch_size, m, n), ark_data_type)
+    input_tensor = ark.tensor(ark.Dims(batch_size, m, n), ark_data_type)
 
-    output_tensor = model.softmax(input_tensor)
+    output_tensor = ark.softmax(input_tensor)
     # Test the mul method
-    exe = ark.Executor(0, 0, 1, model, "ops_softmax_test")
-    exe.compile()
+    runtime.launch()
     input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
+    input_tensor.from_numpy(input_tensor_host)
+    runtime.run(iter)
 
-    exe.launch()
-    exe.tensor_memcpy_host_to_device(input_tensor, input_tensor_host)
+    elapsed = runtime.stop()
 
-    exe.run(iter)
-
-    elapsed = exe.stop()
-
-    output_tensor_host = np.zeros((batch_size, m, n), dtype=numpy_data_type)
-
-    exe.tensor_memcpy_device_to_host(output_tensor_host, output_tensor)
+    output_tensor_host = output_tensor.to_numpy()
 
     input_tensor_host_float32 = input_tensor_host.astype(np.float32)
 
@@ -55,27 +46,10 @@ def test_softmax_internal(batch_size, m, n, data_type="float", iter=1):
     )
 
     print(
-        "softmax test",
-        "batch_size:",
-        "{:6d}".format(batch_size),
-        "m:",
-        "{:6d}".format(m),
-        "n:",
-        "{:6d}".format(n),
-        "data_type:",
-        data_type,
-        "max_abs_error:",
-        "{:.5f}".format(max_abs_error),
-        "mean_abs_error:",
-        "{:.5f}".format(mean_abs_error),
-        "elapsed",
-        "{:.5f}".format(elapsed),
-        " ms ",
-        " iter ",
-        iter,
-        "elapsed_per_iter",
-        "{:.5f}".format(elapsed / iter),
-        " ms ",
+        f"softmax test batch_size: {batch_size:6d} m: {m:6d} n: {n:6d} "
+        f"data_type: {data_type} max_abs_error: {max_abs_error:.5f} "
+        f"mean_abs_error: {mean_abs_error:.5f} elapsed {elapsed:.5f} ms "
+        f"iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
     )
 
 

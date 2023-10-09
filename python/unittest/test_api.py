@@ -16,22 +16,32 @@ seq_len = 64
 import ark
 
 
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
+
+
 class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
-        self.weight_1 = ark.Parameter(
-            ark.tensor(ark.Dims(d_model, d_ff), ark.TensorType.FP16)
-        )
-        self.weight_2 = ark.Parameter(
-            ark.tensor(ark.Dims(d_ff, d_model), ark.TensorType.FP16)
-        )
+        self.weight_1 = ark.parameter([d_model, d_ff], ark.fp16)
+        self.weight_2 = ark.parameter([d_ff, d_model], ark.fp16)
 
     def forward(self, inputs):
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = ark.matmul(middle_result, self.weight_2)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = ark.matmul(output, self.weight_2)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 
 
 class TestModel(nn.Module):
@@ -92,7 +102,7 @@ def test_TestModel():
 
     torch_model = TestModel()
 
-    torch_model.load_state_dict(ark.convert_state_dict(state_dict, "torch"))
+    torch_model.load_state_dict(convert_state_dict(state_dict, "torch"))
 
     gt = torch_model(torch_input).detach().numpy().astype(np.float16)
 
@@ -105,18 +115,11 @@ def test_TestModel():
     # print(input_tensor_host)
     # print(output_tensor_host)
     # print(gt)
-    print("ARK module test")
     print(
-        "batch_size:",
-        batch_size,
-        "seq_len:",
-        seq_len,
-        "d_model:",
-        d_model,
-        "d_ff:",
-        d_ff,
+        f"ARK module test batch_size: {batch_size} seq_len: {seq_len} "
+        f"d_model: {d_model} d_ff: {d_ff} max error: {max_error} "
+        f"avg error: {avg_error}"
     )
-    print("max error: ", max_error, "avg error: ", avg_error)
 
 
 class TestAPI(unittest.TestCase):

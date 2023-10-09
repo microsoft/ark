@@ -4,19 +4,18 @@
 #ifndef ARK_SCHED_CODEGEN_H_
 #define ARK_SCHED_CODEGEN_H_
 
+#include <map>
+
 #include "gpu/gpu_kernel.h"
 #include "sched/sched_op.h"
 #include "sched/sched_opseq.h"
 #include "sched_branch.h"
-#include <map>
 
 namespace ark {
 
-class CodeGenerator
-{
-  public:
-    CodeGenerator(const std::map<TensorBuf *, GpuBuf *> &buf_trans,
-                  const GpuInfo &gpu_info_, int num_warps_per_sm_);
+class CodeGenerator {
+   public:
+    CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_);
 
     std::ostream &def_remote_buf(std::ostream &os, int remote_rank) const;
 
@@ -46,10 +45,9 @@ class CodeGenerator
 
     std::ostream &sched(std::ostream &os, Sched &sched) const;
 
-  protected:
+   protected:
     size_t get_tensor_offset(const Tensor *tensor) const;
 
-    const std::map<TensorBuf *, GpuBuf *> &buf_trans;
     const GpuInfo &gpu_info;
     int sm_num;
     int num_warps_per_sm;
@@ -57,6 +55,6 @@ class CodeGenerator
     int num_indent;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_SCHED_CODEGEN_H_
+#endif  // ARK_SCHED_CODEGEN_H_

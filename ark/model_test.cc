@@ -8,8 +8,7 @@
 
 using namespace std;
 
-ark::unittest::State test_simple_mm()
-{
+ark::unittest::State test_simple_mm() {
     // Hidden dimension of the dense layer.
     unsigned int units = 1024;
     // Input dimension of the dense layer.
@@ -27,8 +26,7 @@ ark::unittest::State test_simple_mm()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     for (int i = 0; i < ITERATION; ++i) {
         UNITTEST(test_simple_mm);

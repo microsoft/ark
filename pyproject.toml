@@ -4,14 +4,17 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "ark"
-version = "0.1.0"
+version = "0.3.0"
 
 [tool.scikit-build]
 cmake.minimum-version = "3.25"
 cmake.args = []
 cmake.verbose = false
 cmake.build-type = "Release"
+cmake.targets = ["ark_py"]
 wheel.packages = ["python/ark"]
+wheel.license-files = ["LICENSE", "CITATION.cff", "CODE_OF_CONDUCT.md", "SECURITY.md", "SUPPORT.md"]
+install.strip = true
 build-dir = "build/{wheel_tag}"
 
 [tool.scikit-build.cmake.define]
@@ -21,4 +24,4 @@ BUILD_PYTHON = "ON"
 line-length = 80
 target-version = ['py38']
 include = '\.pyi?$'
-exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|third_party|docs)/'
+exclude = '/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|third_party|docs|examples/llama/llama)/'

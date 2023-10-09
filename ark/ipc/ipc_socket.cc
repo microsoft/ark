@@ -1,14 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_socket.h"
+
 #include <arpa/inet.h>
-#include <cstring>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "ipc/ipc_socket.h"
+#include <cstring>
+
 #include "logging.h"
 
 #define MAX_LISTEN_LEN 4096
@@ -17,8 +19,7 @@
 namespace ark {
 
 IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
-    : ip{ip_}, port{port_}, create{create_}, server{nullptr}
-{
+    : ip{ip_}, port{port_}, create{create_} {
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port_);
@@ -29,42 +30,44 @@ IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
     ret = setsockopt(this->sock_listen, SOL_SOCKET, SO_REUSEADDR, &opt,
                      sizeof(int));
     if (ret != 0) {
-        LOGERR("setsockopt: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "setsockopt: ", strerror(errno), " (", errno, ")");
     }
     int flags = fcntl(this->sock_listen, F_GETFL, 0);
     if (flags == -1) {
-        LOGERR("fcntl: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     if (fcntl(this->sock_listen, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOGERR("fcntl: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     LOG(DEBUG, "listen ", ip_, ":", port_);
     ret = bind(this->sock_listen, (struct sockaddr *)&addr, sizeof(addr));
     if (ret != 0) {
-        LOGERR("bind: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "bind(", ip_, ":", port_, "): ", strerror(errno), " (",
+            errno, ")");
     }
     ret = listen(this->sock_listen, MAX_LISTEN_LEN);
     if (ret != 0) {
-        LOGERR("listen: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "listen: ", strerror(errno), " (", errno, ")");
     }
     this->run_server = true;
-    this->server = new std::thread([&] {
+    this->server = std::thread([&] {
         int epfd = epoll_create1(0);
         if (epfd == -1) {
-            LOGERR("epoll_create1: ", strerror(errno), " (", errno, ")");
+            LOG(ERROR, "epoll_create1: ", strerror(errno), " (", errno, ")");
         }
         struct epoll_event ev;
         ev.events = EPOLLIN;
         ev.data.fd = this->sock_listen;
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, this->sock_listen, &ev) == -1) {
-            LOGERR("epoll_ctl: ", strerror(errno), " (", errno, ")");
+            LOG(ERROR, "epoll_ctl: ", strerror(errno), " (", errno, ")");
         }
         struct epoll_event events[MAX_LISTEN_LEN];
         while (this->run_server) {
             int num = epoll_wait(epfd, events, MAX_LISTEN_LEN, 100);
             if (num == -1) {
                 if (errno != EINTR) {
-                    LOGERR("epoll_wait: ", strerror(errno), " (", errno, ")");
+                    LOG(ERROR, "epoll_wait: ", strerror(errno), " (", errno,
+                        ")");
                 }
             } else if (num > 0) {
                 this->serve_item();
@@ -73,26 +76,23 @@ IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
     });
 }
 
-IpcSocket::~IpcSocket()
-{
+IpcSocket::~IpcSocket() {
     this->run_server = false;
-    if (this->server) {
-        this->server->join();
-        delete this->server;
+    if (this->server.joinable()) {
+        this->server.join();
     }
     close(this->sock_listen);
     for (auto &item : this->items) {
-        if (item.second.data == nullptr) {
+        if (item.second.data != nullptr) {
             free(item.second.data);
         }
     }
 }
 
-IpcSocket::State IpcSocket::add_item(const std::string &name, void *data,
-                                     int size)
-{
+IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
+                                     int size) {
     if (name.size() > MAX_ITEM_NAME_LEN) {
-        LOGERR("name too long");
+        LOG(ERROR, "name too long");
     }
     void *copy;
     if ((data == nullptr) || (size == 0)) {
@@ -109,8 +109,7 @@ IpcSocket::State IpcSocket::add_item(const std::string &name, void *data,
     return SUCCESS;
 }
 
-IpcSocket::State IpcSocket::remove_item(const std::string &name)
-{
+IpcSocket::State IpcSocket::remove_item(const std::string &name) {
     auto it = this->items.find(name);
     if (it == this->items.end()) {
         return ITEM_NOT_FOUND;
@@ -125,8 +124,7 @@ IpcSocket::State IpcSocket::remove_item(const std::string &name)
 IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
                                                 const std::string &name,
                                                 void *data, int size,
-                                                bool block)
-{
+                                                bool block) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -139,7 +137,7 @@ IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
             break;
         } else if (block) {
             if ((errno != EINTR) && (errno != ECONNREFUSED)) {
-                LOGERR("connect: ", strerror(errno), " (", errno, ")");
+                LOG(ERROR, "connect: ", strerror(errno), " (", errno, ")");
             }
             sched_yield();
         } else {
@@ -149,10 +147,10 @@ IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
     }
     int flags = fcntl(sock, F_GETFL, 0);
     if (flags == -1) {
-        LOGERR("fcntl: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOGERR("fcntl: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     ret = this->send_all(sock, name.c_str(), name.size());
     if (ret != 0) {
@@ -173,8 +171,7 @@ IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
 
 IpcSocket::State IpcSocket::query_item(const std::string &ip, int port,
                                        const std::string &name, void *data,
-                                       int size, bool block)
-{
+                                       int size, bool block) {
     State s;
     for (;;) {
         s = query_item_internal(ip, port, name, data, size, block);
@@ -186,21 +183,21 @@ IpcSocket::State IpcSocket::query_item(const std::string &ip, int port,
     return s;
 }
 
-IpcSocket::State IpcSocket::serve_item()
-{
+IpcSocket::State IpcSocket::serve_item() {
     int sock = accept(this->sock_listen, NULL, NULL);
     if (sock < 0) {
         return ACCEPT_FAILED;
     }
     int flags = fcntl(sock, F_GETFL, 0);
     if (flags == -1) {
-        LOGERR("fcntl: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOGERR("fcntl: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
     }
+    // TODO: need a better way to make sure the whole name is received
     char name[MAX_ITEM_NAME_LEN + 1];
-    int ret = this->recv_all(sock, name, MAX_ITEM_NAME_LEN);
+    int ret = this->recv_try(sock, name, MAX_ITEM_NAME_LEN);
     if (ret < 0) {
         close(sock);
         return RECV_FAILED;
@@ -219,8 +216,7 @@ IpcSocket::State IpcSocket::serve_item()
     return SUCCESS;
 }
 
-const IpcSocket::Item *IpcSocket::get_item(const std::string &name) const
-{
+const IpcSocket::Item *IpcSocket::get_item(const std::string &name) const {
     auto it = this->items.find(name);
     if (it != this->items.end()) {
         return &it->second;
@@ -230,8 +226,7 @@ const IpcSocket::Item *IpcSocket::get_item(const std::string &name) const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int IpcSocket::send_all(int sock, const void *buf, int size)
-{
+int IpcSocket::send_all(int sock, const void *buf, int size) {
     int sent = 0;
     const char *ptr = (const char *)buf;
     while (sent < size) {
@@ -247,8 +242,7 @@ int IpcSocket::send_all(int sock, const void *buf, int size)
     return 0;
 }
 
-int IpcSocket::recv_all(int sock, void *buf, int size)
-{
+int IpcSocket::recv_try(int sock, void *buf, int size) {
     int cnt = 0;
     int received = 0;
     char *ptr = (char *)buf;
@@ -272,4 +266,27 @@ int IpcSocket::recv_all(int sock, void *buf, int size)
     return received;
 }
 
-} // namespace ark
+int IpcSocket::recv_all(int sock, void *buf, int size) {
+    int cnt = 0;
+    int received = 0;
+    char *ptr = (char *)buf;
+    while (received < size) {
+        int ret = recv(sock, ptr + received, size - received, 0);
+        if (ret < 0) {
+            if ((errno == EINTR) || (errno == EAGAIN)) {
+                if (++cnt > 10) {
+                    // Avoid deadlocks
+                    sched_yield();
+                }
+                continue;
+            }
+            return ret;
+        } else if (ret == 0) {
+            return 0;
+        }
+        received += ret;
+    }
+    return received;
+}
+
+}  // namespace ark

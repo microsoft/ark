@@ -4,6 +4,8 @@ A GPU-driven system framework for scalable AI applications.
 
 [![License](https://img.shields.io/github/license/microsoft/ark.svg)](LICENSE)
 [![CodeQL](https://github.com/microsoft/ark/actions/workflows/codeql.yml/badge.svg)](https://github.com/microsoft/ark/actions/workflows/codeql.yml)
+[![Build Status](https://dev.azure.com/binyli/HPC/_apis/build/status%2Fark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main)
+[![codecov](https://codecov.io/gh/microsoft/ark/graph/badge.svg?token=XmMOK85GOB)](https://codecov.io/gh/microsoft/ark)
 
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
@@ -19,25 +21,24 @@ ARK provides a set of APIs for users to express their distributed deep learning 
 
 ARK is under active development and a part of its features will be added in a future release. The following describes key features of each version.
 
-### ARK v0.1 (Latest Release)
+### New in ARK v0.3 (Latest Release)
 
-* The default tile-based operator scheduler
-* A simple software communication stack
-* Transformer inference examples
+* Enable heuristic model graph optimization
+* Revise Python interfaces
+* Add more operators & support mixed-precision models & support `bfloat16`
+* Add a Llama2-7B example
+* Fix connection setup bugs for large & distributed models
+* Fix correctness bugs from a few operators
+* Minor scheduler improvements
 
-### ARK v0.2 (TBU, Sep. 2023)
+See details from https://github.com/microsoft/ark/issues/113.
 
-* A simple operator scheduler for debugging
-* Extended communication interfaces
-* Support more operators
-* More inference examples
+### ARK v0.4 (TBU, Nov. 2023)
 
-### ARK v0.3 (TBU, Nov. 2023)
-
-* Full support for the operator profiler
-* High-performance collective communication
-* Support more operators
-* More inference & training examples
+* Support AMD GPUs
+* Add high-performance AllReduce & AllGather algorithms
+* Add multi-GPU LLM examples
+* Improve Python unit tests & code coverage
 
 ## Contributing
 

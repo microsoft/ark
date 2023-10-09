@@ -9,8 +9,7 @@
 namespace ark {
 
 // Environment variables.
-struct Env
-{
+struct Env {
     Env();
     // Log level.
     const char *log_level;
@@ -32,8 +31,6 @@ struct Env
     bool disable_ib;
     // Disable P2P CUDA memcpy.
     bool disable_p2p_memcpy;
-    // The scheduler to use.
-    std::string scheduler;
     // Disable the heuristic ARK graph optimization.
     bool disable_graph_opt;
     // Prefix of shared memory file names.
@@ -43,6 +40,6 @@ struct Env
 // Get the global Env.
 const Env &get_env();
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_ENV_H_
+#endif  // ARK_ENV_H_

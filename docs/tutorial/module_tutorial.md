@@ -16,38 +16,37 @@ class SubModuleARK(ark.Module):
     def __init__(self):
         super(SubModuleARK, self).__init__()
         # Define the parameters of the submodule
-        self.weight_2 = ark.Parameter(ark.tensor([d_ff, d_model], ark.FP16))
+        self.weight_2 = ark.parameter([d_ff, d_model], ark.fp16)
 
     def forward(self, inputs):
         # Perform the forward pass of the submodule
-        middle_result1 = ark.matmul(inputs, self.weight_2)
-        return middle_result1
+        output = ark.matmul(inputs, self.weight_2)
+        return output
 
 
 class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
         # Define the parameters of the module
-        self.weight_1 = ark.Parameter(ark.tensor([d_model, d_ff], ark.FP16))
+        self.weight_1 = ark.parameter([d_model, d_ff], ark.fp16)
         # Create a submodule of the module
         self.submodule = SubModuleARK()
 
     def forward(self, inputs):
         # Perform the forward pass of the model
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.submodule(middle_result)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = self.submodule(output)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 ```
 
 Here, we can create this model and then launch it.
 
 ```python
-# Initialize the ARK runtime
-runtime = ark.Runtime()
 # Create an input tensor
-input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.FP16)
+input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.fp16)
 
 # Create an ARK module
 ark_model = TestModelARK()
@@ -55,11 +54,14 @@ ark_model = TestModelARK()
 # Perform the forward pass
 output_tensor = ark_model(input_tensor)
 
+# Construct the ARK runtime
+runtime = ark.Runtime()
+
 # Launch the ARK runtime
 runtime.launch()
 ```
 
-The initialization of the model can be done using a state_dict. Note that the parameters of this model in the state_dict must have the same name as the parameters defined in the module. Then, we can use `load_state_dict` to import the parameters of this model.
+The initialization of the model can be done using a `state_dict`. Note that the parameters of this model in the `state_dict` must have the same name as the parameters defined in the module. Then, we can use `load_state_dict` to import the parameters of this model.
 
 ```python
 # Initialize the input tensor
@@ -68,7 +70,7 @@ input_tensor_host = (
 ).astype(np.float16)
 input_tensor.from_numpy(input_tensor_host)
     
-# Initialize the parameters of the ARK module using numpy state_dict
+# Initialize the parameters of the ARK module using numpy `state_dict`
 weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
     np.float16
 )
@@ -84,7 +86,7 @@ state_dict = {
 ark_model.load_state_dict(state_dict)
 ```
 
-If needed, we can save this state_dict using `save`. We provide a set of modules for saving and loading this model's parameters using Python's `pickle` library.
+If needed, we can save this `state_dict` using `save`. We provide a set of modules for saving and loading this model's parameters using Python's `pickle` library.
 
 ```python
 ark.save(ark_model.state_dict(), "test_model.pt")
@@ -112,8 +114,8 @@ class SubModulePytorch(nn.Module):
         self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
 
     def forward(self, inputs):
-        middle_result1 = torch.matmul(inputs, self.weight_2)
-        return middle_result1
+        output = torch.matmul(inputs, self.weight_2)
+        return output
 
 
 class TestModelPytorch(nn.Module):
@@ -143,9 +145,9 @@ torch_input = torch.from_numpy(input_tensor_host_float32)
 torch_model = TestModelPytorch()
 ```
 
-We can also convert ARK's state_dict into a PyTorch state_dict. This way, we can directly import the parameters of this model into the corresponding PyTorch model.
+We can also convert ARK's `state_dict` into a PyTorch `state_dict`. This way, we can directly import the parameters of this model into the corresponding PyTorch model.
 
-ARK state_dict's format is
+ARK `state_dict`'s format is
 ```
 {
     "weight_1": weight_1_numpy,
@@ -159,15 +161,29 @@ ARK state_dict's format is
     "submodule.weight_2": weight_2_torch,
 }
 ```
-`weight_1_torch` and `weight_2_torch` are `torch.Tensor` type. We need to convert the `numpy.ndarray` type state_dict to `torch.Tensor` type state_dict using `ark.convert_state_dict`.
+`weight_1_torch` and `weight_2_torch` are `torch.Tensor` type. We need to convert the `numpy.ndarray` type state_dict to `torch.Tensor` type state_dict.
 
 
 ```python
-    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict using       
-    #  ark.convert_state_dict
-    torch_state_dict = ark.convert_state_dict(state_dict, "torch")
+    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict
+    torch_state_dict = convert_state_dict(state_dict, "torch")
     # Load model parameters
     torch_model.load_state_dict(torch_state_dict)
+```
+
+The `convert_state_dict` function is defined as follows.
+```python
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
 ```
 
 Then we can run the model and compare the results.

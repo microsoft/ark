@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "sched_opgraph.h"
+
+#include <algorithm>
+
 #include "ark.h"
 #include "logging.h"
-#include "sched_opgraph.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_sched_opgraph()
-{
+ark::unittest::State test_sched_opgraph() {
     ark::Model model;
 
     // Basic Test.
@@ -320,8 +322,7 @@ ark::unittest::State test_sched_opgraph()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_noop()
-{
+ark::unittest::State test_sched_opgraph_noop() {
     ark::Model model;
     model.tensor({1}, ark::FP32);
     model.tensor({1}, ark::FP32);
@@ -333,8 +334,7 @@ ark::unittest::State test_sched_opgraph_noop()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_identity()
-{
+ark::unittest::State test_sched_opgraph_identity() {
     // OpNode graph (parentheses indicate a OpNode):
     //
     //   (Relu,) --+
@@ -376,8 +376,7 @@ ark::unittest::State test_sched_opgraph_identity()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_sharding()
-{
+ark::unittest::State test_sched_opgraph_sharding() {
     // OpNode graph (parentheses indicate a OpNode):
     //
     //   (Relu,) --+
@@ -433,8 +432,7 @@ ark::unittest::State test_sched_opgraph_sharding()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_split_matmul()
-{
+ark::unittest::State test_sched_opgraph_split_matmul() {
     // OpNode graph (parentheses indicate a OpNode):
     //
     //   (Matmul,) --+
@@ -445,8 +443,7 @@ ark::unittest::State test_sched_opgraph_split_matmul()
     ark::Model model;
     ark::Tensor *t0 = model.tensor({64, 128}, ark::FP16);
     ark::Tensor *t1 = model.tensor({128, 64}, ark::FP16);
-    ark::Tensor *m0 =
-        model.matmul(t0, t1, nullptr, 2, false, false, false, "matmul", 3);
+    model.matmul(t0, t1, nullptr, 2, false, false, "matmul", 3);
     UNITTEST_TRUE(model.verify());
 
     ark::OpGraph graph(model);
@@ -454,23 +451,24 @@ ark::unittest::State test_sched_opgraph_split_matmul()
 
     auto nodes_iter = graph.get_nodes().begin();
     auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->name, "matmul/matmul_shard_0");
     UNITTEST_EQ(node->producers.size(), 0UL);
     UNITTEST_EQ(node->users.size(), 1UL);
 
     node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops[0]->name, "matmul/matmul_shard_1");
     UNITTEST_EQ(node->producers.size(), 0UL);
     UNITTEST_EQ(node->users.size(), 1UL);
 
     node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->outputs[0], m0);
+    UNITTEST_EQ(node->ops[0]->name, "matmul/reduce_sum");
     UNITTEST_EQ(node->producers.size(), 2UL);
     UNITTEST_EQ(node->users.size(), 0UL);
 
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_cumulate()
-{
+ark::unittest::State test_sched_opgraph_cumulate() {
     // OpNode graph (parentheses indicate a OpNode):
     //
     //       (Relu,) --+   (Relu,) --+
@@ -500,8 +498,7 @@ ark::unittest::State test_sched_opgraph_cumulate()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_opgraph_all_reduce()
-{
+ark::unittest::State test_sched_opgraph_all_reduce() {
     // OpNode graph (parentheses indicate a OpNode):
     //
     //               +--> (S,SD,R,) --+--> (S,SD,R,) --+
@@ -529,6 +526,11 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     for (auto &user : node->users) {
         users.push_back(user);
     }
+    std::sort(users.begin(), users.end(),
+              [](const ark::OpNode *a, const ark::OpNode *b) {
+                  return a->get_name() < b->get_name();
+              });
+
     UNITTEST_EQ(users[0]->get_name(), "add;");
     UNITTEST_EQ(users[0]->producers.size(), 1UL);
     UNITTEST_EQ(users[0]->users.size(), 1UL);
@@ -543,6 +545,11 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     for (auto &user : node->users) {
         users.push_back(user);
     }
+    std::sort(users.begin(), users.end(),
+              [](const ark::OpNode *a, const ark::OpNode *b) {
+                  return a->get_name() < b->get_name();
+              });
+
     UNITTEST_EQ(users[0]->get_name(), "add_1;");
     UNITTEST_EQ(users[0]->producers.size(), 2UL);
     UNITTEST_EQ(users[0]->users.size(), 1UL);
@@ -557,8 +564,7 @@ ark::unittest::State test_sched_opgraph_all_reduce()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sched_opgraph);
     UNITTEST(test_sched_opgraph_noop);

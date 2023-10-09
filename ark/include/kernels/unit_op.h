@@ -32,8 +32,7 @@ namespace ark {
 ///
 template <typename _OutDims, typename _OutShape, typename _UnitOutDims,
           int _NumThreads, int _SmemBytes>
-struct UnitOp
-{
+struct UnitOp {
     static_assert(_OutDims::N >= _OutShape::N,
                   "Dimension N is smaller than tensor shape");
     static_assert(_OutDims::C >= _OutShape::C,
@@ -65,68 +64,55 @@ struct UnitOp
     static_assert(_SmemBytes >= 0, "Bytes of shared memory is negative");
 
     // Number of unit operators in each dimension.
-    using UnitOpDims =
-        Vec<_OutDims::N / _UnitOutDims::N, _OutDims::C / _UnitOutDims::C,
-            _OutDims::H / _UnitOutDims::H, _OutDims::W / _UnitOutDims::W>;
+    using UnitOpDims = Vec<math::div_up<_OutShape::N, _UnitOutDims::N>::value,
+                           math::div_up<_OutShape::C, _UnitOutDims::C>::value,
+                           math::div_up<_OutShape::H, _UnitOutDims::H>::value,
+                           math::div_up<_OutShape::W, _UnitOutDims::W>::value>;
 
     static const int NumThreads = _NumThreads;
     static const int SmemBytes = _SmemBytes;
 
     /// Do not use `threadIdx` and use this function instead.
-    static DEVICE int thread_id()
-    {
-        return math::mod<NumThreads>(threadIdx.x);
-    }
+    static DEVICE int thread_id() { return math::mod<NumThreads>(threadIdx.x); }
 
     /// Convert a unit operator ID to the corresponding index along the N
     /// dimension.
     /// @param uop_id Unit operator ID.
-    static DEVICE int uop_idx_n(int uop_id)
-    {
-        return uop_id / UnitOpDims::CHW;
-    }
+    static DEVICE int uop_idx_n(int uop_id) { return uop_id / UnitOpDims::CHW; }
 
     /// Convert a unit operator ID to the corresponding index along the C
     /// dimension.
     /// @param uop_id Unit operator ID.
-    static DEVICE int uop_idx_c(int uop_id)
-    {
+    static DEVICE int uop_idx_c(int uop_id) {
         return (uop_id / UnitOpDims::HW) % UnitOpDims::C;
     }
 
     /// Convert a unit operator ID to the corresponding index along the H
     /// dimension.
     /// @param uop_id Unit operator ID.
-    static DEVICE int uop_idx_h(int uop_id)
-    {
+    static DEVICE int uop_idx_h(int uop_id) {
         return (uop_id / UnitOpDims::W) % UnitOpDims::H;
     }
 
     /// Convert a unit operator ID to the corresponding index along the W
     /// dimension.
     /// @param uop_id Unit operator ID.
-    static DEVICE int uop_idx_w(int uop_id)
-    {
-        return uop_id % UnitOpDims::W;
-    }
+    static DEVICE int uop_idx_w(int uop_id) { return uop_id % UnitOpDims::W; }
 
     /// Return a shared memory pointer.
     /// @tparam T Type of the underlying data.
     /// @param smem_per_warp Bytes of shared memory per warp.
-    template <typename T> static DEVICE T *shared_memory(int smem_per_warp)
-    {
+    template <typename T>
+    static DEVICE T *shared_memory(int smem_per_warp) {
         static_assert(sizeof(T) <= SmemBytes,
                       "Shared memory is not large enough");
         return SharedMemory<T, NumThreads>::get(smem_per_warp);
     }
 
     /// Do not use `__syncthreads()` and use this function instead.
-    static DEVICE void sync_threads()
-    {
-        sync_warps<NumThreads>();
-    }
+    static DEVICE void sync_threads() { sync_warps<NumThreads>(); }
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_UNIT_OP_H_
+#endif  // ARK_KERNELS_UNIT_OP_H_

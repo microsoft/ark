@@ -14,39 +14,31 @@
 #include "sched/sched_tile.h"
 namespace ark {
 
-struct SchedPerf
-{
-    SchedPerf()
-    {
-    }
+struct SchedPerf {
+    SchedPerf() {}
     SchedPerf(std::tuple<float, int, int> perf)
-        : elapsed{std::get<0>(perf)}, regs_num{std::get<1>(perf)},
-          score{std::get<2>(perf)}
-    {
+        : elapsed{std::get<0>(perf)},
+          regs_num{std::get<1>(perf)},
+          score{std::get<2>(perf)} {
         assert(this->elapsed > 0);
         assert(this->regs_num > 0);
     }
 
-    void set(float e, int r, int s = -1)
-    {
+    void set(float e, int r, int s = -1) {
         assert(e > 0);
         assert(r > 0);
         elapsed = e;
         regs_num = r;
         score = s;
     }
-    bool is_set() const
-    {
-        return elapsed > 0 && regs_num > 0;
-    }
+    bool is_set() const { return elapsed > 0 && regs_num > 0; }
     //
     float elapsed = -1;
     int regs_num = -1;
     int score = -1;
 };
 
-struct SchedOpSeqPerf
-{
+struct SchedOpSeqPerf {
     SchedPerf s;
     SchedPerf x;
     SchedPerf y;
@@ -56,13 +48,10 @@ struct SchedOpSeqPerf
 
 std::vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm);
 
-class SchedProfiler
-{
-  public:
+class SchedProfiler {
+   public:
     SchedProfiler(GpuMgr *gpu_mgr, int num_warps_per_sm_)
-        : gpu_mgr{gpu_mgr}, num_warps_per_sm{num_warps_per_sm_}
-    {
-    }
+        : gpu_mgr{gpu_mgr}, num_warps_per_sm{num_warps_per_sm_} {}
     void profile(OpGraph *op_graph, CodeGenerator &codegen, GpuMgrCtx *ctx);
     float profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx);
 
@@ -73,6 +62,6 @@ class SchedProfiler
         wps_prof_results;
 };
 
-}; // namespace ark
+};  // namespace ark
 
 #endif

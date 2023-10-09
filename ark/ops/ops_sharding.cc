@@ -1,22 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "math.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 // Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
 std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
                                       DimType dim_per_shard,
-                                      const std::string &name)
-{
+                                      const std::string &name) {
     assert(input != nullptr);
-    LOG(DEBUG, "sharding ", input->shape, " ", axis, " ", dim_per_shard);
     if (axis >= DIMS_LEN) {
-        LOGERR("invlaid axis value: ", axis);
+        LOG(ERROR, "invlaid axis value: ", axis);
     }
     if ((input->shape[axis] % dim_per_shard) != 0) {
         // If the total dimension is not divided by the per-shard size,
@@ -27,9 +26,9 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
         // the tensor has adjacent data.
         DimType pdim = math::pad(input->shape[axis], input->pads[axis]);
         if (pdim < input->ldims[axis]) {
-            LOGERR("the dimension of axis ", axis, " (", input->shape[axis],
-                   ") is not divided by the dimension per shard (",
-                   dim_per_shard, ") and this tensor cannot be padded.");
+            LOG(ERROR, "the dimension of axis ", axis, " (", input->shape[axis],
+                ") is not divided by the dimension per shard (", dim_per_shard,
+                ") and this tensor cannot be padded.");
         }
     }
     std::vector<Tensor *> shards;
@@ -57,4 +56,4 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
     return shards;
 }
 
-} // namespace ark
+}  // namespace ark

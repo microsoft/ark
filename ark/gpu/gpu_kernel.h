@@ -25,9 +25,8 @@
 
 namespace ark {
 
-class GpuKernel
-{
-  public:
+class GpuKernel {
+   public:
     GpuKernel(const std::string &name, const std::vector<std::string> &codes,
               const std::array<unsigned int, 3> &grid_dims,
               const std::array<unsigned int, 3> &block_dims,
@@ -37,29 +36,16 @@ class GpuKernel
               const std::string &cubin);
     ~GpuKernel();
 
-    void compile(const GpuInfo &gpu_info, bool use_comm_sw = true);
-    void load();
+    void compile(const GpuInfo &gpu_info);
     GpuState launch(GpuStream stream);
 
-    const std::string &get_name()
-    {
-        return name;
-    }
-    const std::vector<std::string> &get_codes()
-    {
-        return codes;
-    }
-    const std::string &get_cubin()
-    {
-        return cubin;
-    }
+    const std::string &get_name() { return name; }
+    const std::vector<std::string> &get_codes() { return codes; }
+    const std::string &get_cubin() { return cubin; }
     int get_function_attribute(CUfunction_attribute attr) const;
-    bool is_compiled() const
-    {
-        return this->kernel != nullptr;
-    }
+    bool is_compiled() const { return this->kernel != nullptr; }
 
-  protected:
+   protected:
     const std::string name;
     std::vector<std::string> codes;
     std::array<unsigned int, 3> const gd;
@@ -79,9 +65,8 @@ class GpuKernel
     CUfunction kernel = nullptr;
 };
 
-class GpuLoopKernel : public GpuKernel
-{
-  public:
+class GpuLoopKernel : public GpuKernel {
+   public:
     GpuLoopKernel(const std::string &name,
                   const std::vector<std::string> &codes_body,
                   unsigned int num_sm, unsigned int num_warp,
@@ -96,17 +81,12 @@ class GpuLoopKernel : public GpuKernel
     void wait();
     void stop();
 
-    void set_buf(GpuPtr buf_ptr);
-    const float &get_elapsed_msec() const
-    {
-        return elapsed_msec;
-    }
-    const long long int *get_clocks() const
-    {
+    float get_elapsed_msec() const { return elapsed_msec; }
+    const long long int *get_clocks() const {
         return (const long long int *)clocks->href();
     }
 
-  private:
+   private:
     GpuMgrCtx *ctx;
     GpuEvent timer_begin;
     GpuEvent timer_end;
@@ -121,6 +101,6 @@ class GpuLoopKernel : public GpuKernel
     float elapsed_msec = -1;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_KERNEL_H_
+#endif  // ARK_GPU_KERNEL_H_

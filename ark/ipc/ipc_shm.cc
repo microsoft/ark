@@ -1,19 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <cassert>
-#include <cstring>
+#include "ipc/ipc_shm.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <stdexcept>
-#include <string>
 #include <sys/inotify.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "ipc/ipc_shm.h"
+#include <cassert>
+#include <cstring>
+#include <stdexcept>
+#include <string>
+
 #include "logging.h"
 
 #define SHM_DIR "/dev/shm/"
@@ -25,31 +27,26 @@ namespace ark {
 
 // Create a shm file if it does not exist, and truncate it to zero bytes.
 // If the creation fails, return -1.
-int ipc_shm_create(const char *name)
-{
+int ipc_shm_create(const char *name) {
     return shm_open(name, O_RDWR | O_CREAT | O_EXCL, SHM_MODE);
 }
 
 // Try opening a shm file.
 // Return its file descriptor on success, otherwise return -1.
-int ipc_shm_open(const char *name)
-{
-    return shm_open(name, O_RDWR, SHM_MODE);
-}
+int ipc_shm_open(const char *name) { return shm_open(name, O_RDWR, SHM_MODE); }
 
 // Open a shm file and return its file descriptor.
 // If opening fails due to non-existence, block until it can open.
 // If opening fails due to any other reasons, return -1.
-int ipc_shm_open_blocking(const char *name)
-{
+int ipc_shm_open_blocking(const char *name) {
     // Monitor file creations in the shm directory.
     int ifd = inotify_init1(IN_NONBLOCK);
     if (ifd == -1) {
-        LOGERR("inotify_init1: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "inotify_init1: ", strerror(errno), " (", errno, ")");
     }
     if (inotify_add_watch(ifd, SHM_DIR, IN_CREATE) == -1) {
         close(ifd);
-        LOGERR("inotify_add_watch: ", strerror(errno), " (", errno, ")");
+        LOG(ERROR, "inotify_add_watch: ", strerror(errno), " (", errno, ")");
     }
     // Check whether the file already exists.
     // NOTE: `inotify_add_watch()` should come before `shm_open()`
@@ -68,7 +65,7 @@ int ipc_shm_open_blocking(const char *name)
         if (poll_num == -1) {
             if (errno != EINTR) {
                 close(ifd);
-                LOGERR("poll: ", strerror(errno), " (", errno, ")");
+                LOG(ERROR, "poll: ", strerror(errno), " (", errno, ")");
             }
         } else if ((poll_num > 0) && (pfd.revents & POLLIN)) {
             // Read inotify events.
@@ -77,7 +74,7 @@ int ipc_shm_open_blocking(const char *name)
                 if (len == -1) {
                     if (errno != EAGAIN) {
                         close(ifd);
-                        LOGERR("read: ", strerror(errno), " (", errno, ")");
+                        LOG(ERROR, "read: ", strerror(errno), " (", errno, ")");
                     }
                     break;
                 }
@@ -100,14 +97,10 @@ int ipc_shm_open_blocking(const char *name)
 }
 
 // Destroy a shm file.
-int ipc_shm_destroy(const char *name)
-{
-    return shm_unlink(name);
-}
+int ipc_shm_destroy(const char *name) { return shm_unlink(name); }
 
 // Return zero if we can open the shm file.
-int ipc_shm_exist(const char *name)
-{
+int ipc_shm_exist(const char *name) {
     int fd = shm_open(name, O_RDWR, SHM_MODE);
     if (fd != -1) {
         close(fd);
@@ -116,4 +109,4 @@ int ipc_shm_exist(const char *name)
     return false;
 }
 
-} // namespace ark
+}  // namespace ark

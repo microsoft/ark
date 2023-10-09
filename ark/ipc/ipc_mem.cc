@@ -1,16 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <cassert>
-#include <cstring>
+#include "ipc/ipc_mem.h"
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cassert>
+#include <cstring>
+
 #include "cpu_timer.h"
 #include "env.h"
-#include "ipc/ipc_mem.h"
 #include "ipc/ipc_shm.h"
 #include "logging.h"
 
@@ -33,15 +35,14 @@ namespace ark {
 // NOTE: To elect the producer, we need to make sure that the lock file name
 // does not already exist, otherwise it will cause a deadlock.
 //
-IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
-    : name{name_}, create{create_}
-{
+IpcMem::IpcMem(const string &name, bool create, bool try_create)
+    : name_{name}, create_{create} {
     assert(name_.size() > 0);
     string lock_name_str =
         get_env().shm_name_prefix + name_ + NAME_LOCK_POSTFIX;
     const char *lock_name = lock_name_str.c_str();
     int fd;
-    if (create_ || try_create) {
+    if (create || try_create) {
         // Try creating a lock file.
         fd = ipc_shm_create(lock_name);
         if (fd != -1) {
@@ -50,8 +51,8 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
             if (r != 0) {
                 LOG(ERROR, "ftruncate failed (errno ", r, ")");
             }
-            create_ = true;
-        } else if (create_) {
+            create = true;
+        } else if (create) {
             fd = ipc_shm_open(lock_name);
             assert(fd != -1);
             int r = ftruncate(fd, sizeof(IpcLock));
@@ -60,7 +61,7 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
             }
         }
     }
-    if (!create_) {
+    if (!create) {
         // Wait until we can open the lock file.
         fd = ipc_shm_open_blocking(lock_name);
         assert(fd != -1);
@@ -79,91 +80,115 @@ IpcMem::IpcMem(const string &name_, bool create_, bool try_create)
         }
     }
     // Get mmap of the lock.
-    this->lock = (IpcLock *)mmap(0, sizeof(IpcLock), PROT_READ | PROT_WRITE,
-                                 MAP_SHARED, fd, 0);
-    assert(this->lock != MAP_FAILED);
+    lock_ = (IpcLock *)mmap(0, sizeof(IpcLock), PROT_READ | PROT_WRITE,
+                            MAP_SHARED, fd, 0);
+    assert(lock_ != MAP_FAILED);
     close(fd);
-    if (create_) {
+    if (create) {
         // Initialize and acquire the lock.
-        int r = ipc_lock_init(this->lock);
+        int r = ipc_lock_init(lock_);
         if (r != 0) {
             LOG(ERROR, "ipc_lock_init failed (errno ", r, ")");
         }
         // Release the lock immediately.
-        r = ipc_lock_release(this->lock);
+        r = ipc_lock_release(lock_);
         if (r != 0) {
             LOG(ERROR, "ipc_lock_release failed (errno ", r, ")");
         }
     } else {
         // Wait until the lock is initialized.
         // This must finish shortly, so we just wait polling.
-        while (!this->lock->is_init) {
+        while (!lock_->is_init) {
             cpu_ntimer_sleep(1000);
         }
     }
-    this->create = create_;
+    create_ = create;
+    locked_ = false;
 }
 
 // Destructor.
-IpcMem::~IpcMem()
-{
-    if (this->lock != nullptr) {
-        if (this->create) {
+IpcMem::~IpcMem() {
+    if (lock_ != nullptr) {
+        if (locked_) {
+            this->unlock();
+        }
+        if (create_) {
             string lock_name =
-                get_env().shm_name_prefix + this->name + NAME_LOCK_POSTFIX;
+                get_env().shm_name_prefix + name_ + NAME_LOCK_POSTFIX;
             shm_unlink(lock_name.c_str());
         }
-        munmap(this->lock, sizeof(IpcLock));
+        munmap(lock_, sizeof(IpcLock));
     }
-    if (this->addr != nullptr) {
-        if (this->create) {
+    if (addr_ != nullptr) {
+        if (create_) {
             string data_name =
-                get_env().shm_name_prefix + this->name + NAME_DATA_POSTFIX;
+                get_env().shm_name_prefix + name_ + NAME_DATA_POSTFIX;
             shm_unlink(data_name.c_str());
         }
-        munmap(this->addr, this->total_bytes);
+        munmap(addr_, total_bytes_);
     }
 }
+
+void IpcMem::lock() {
+    assert(lock_ != nullptr);
+    assert(!locked_);
+    int r = ipc_lock_acquire(lock_);
+    if (r != 0) {
+        LOG(ERROR, "ipc_lock_acquire failed (errno ", r, ")");
+    }
+    locked_ = true;
+}
+
+void IpcMem::unlock() {
+    assert(lock_ != nullptr);
+    assert(locked_);
+    int r = ipc_lock_release(lock_);
+    if (r != 0) {
+        LOG(ERROR, "ipc_lock_release failed (errno ", r, ")");
+    }
+    locked_ = false;
+}
+
+bool IpcMem::is_locked() const { return locked_; }
 
 // Allocate/re-allocate the shared memory space of the data file.
 // Return the current mmapped address if the given `bytes`
 // is equal to or less than `total_bytes`.
-void *IpcMem::alloc(size_t bytes)
-{
-    assert((bytes != 0) || !this->create);
-    if ((bytes != 0) && (bytes <= this->total_bytes)) {
+void *IpcMem::alloc(size_t bytes) {
+    assert((bytes != 0) || !create_);
+    if ((bytes != 0) && (bytes <= total_bytes_)) {
         // If `total_bytes` is zero, nullptr is returned.
-        return this->addr;
+        return addr_;
     }
     // Open the data file.
     string data_name_str =
-        get_env().shm_name_prefix + this->name + NAME_DATA_POSTFIX;
+        get_env().shm_name_prefix + name_ + NAME_DATA_POSTFIX;
     const char *data_name = data_name_str.c_str();
     int fd;
-    if ((this->total_bytes == 0) && this->create) {
+    if ((total_bytes_ == 0) && create_) {
         // Create an empty data file.
         fd = ipc_shm_create(data_name);
         if (fd == -1) {
             fd = ipc_shm_open(data_name);
             if (fd == -1) {
-                LOGERR("ipc_shm_open: ", strerror(errno), " (", errno, ")");
+                LOG(ERROR, "ipc_shm_open: ", strerror(errno), " (", errno, ")");
             }
         }
-    } else if (this->create) {
+    } else if (create_) {
         // Open the existing data file.
         fd = ipc_shm_open(data_name);
         if (fd == -1) {
-            LOGERR("ipc_shm_open: ", strerror(errno), " (", errno, ")");
+            LOG(ERROR, "ipc_shm_open: ", strerror(errno), " (", errno, ")");
         }
     } else {
         // Wait until the data file appears.
         fd = ipc_shm_open_blocking(data_name);
         if (fd == -1) {
-            LOGERR("ipc_shm_open_blocking: ", strerror(errno), " (", errno,
-                   ")");
+            LOG(ERROR, "ipc_shm_open_blocking: ", strerror(errno), " (", errno,
+                ")");
         }
     }
-    if (this->create) {
+    if (create_) {
         assert(bytes > 0);
         // Truncate the file size.
         int r = ftruncate(fd, bytes);
@@ -193,16 +218,16 @@ void *IpcMem::alloc(size_t bytes)
         }
     }
     // Create a new mmap.
-    void *old = this->addr;
-    this->addr = mmap(0, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    assert(this->addr != MAP_FAILED);
+    void *old = addr_;
+    addr_ = mmap(0, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    assert(addr_ != MAP_FAILED);
     // Remove the old mmap.
     if (old != nullptr) {
-        munmap(old, this->total_bytes);
+        munmap(old, total_bytes_);
     }
     close(fd);
-    this->total_bytes = bytes;
-    return this->addr;
+    total_bytes_ = bytes;
+    return addr_;
 }
 
-} // namespace ark
+}  // namespace ark

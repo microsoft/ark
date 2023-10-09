@@ -1,8 +1,12 @@
 cff-version: 1.2.0
 title: "ARK: A GPU-driven system framework for scalable AI applications"
-version: 0.1.0
+version: 0.3.0
 message: >-
   If you use this project in your research, please cite it as below.
+authors:
+  - given-names: Changho
+    family-names: Hwang
+    affiliation: Microsoft Research
 
 repository-code: 'https://github.com/microsoft/ark'
 abstract: >-
@@ -42,9 +46,11 @@ preferred-citation:
   - given-names: Yongqiang
     family-names: Xiong
     affiliation: Microsoft Research
-  booktitle: 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)
-  publisher: USENIX Association
-  address: Boston, MA
-  month: April
+  conference:
+    name: 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI '23)
+    city: Boston
+    region: MA
+    country: US
+  month: 4
   year: 2023
   url: https://www.usenix.org/conference/nsdi23/presentation/hwang

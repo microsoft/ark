@@ -8,20 +8,27 @@
 
 namespace ark {
 
-struct Relu
-{
-    static DEVICE __half2 compute(__half2 input)
-    {
-        return __hmax2(input, (__half2_raw){0, 0});
+struct Relu {
+    template <typename DataType>
+    static DEVICE DataType compute(DataType input) {
+        return type::Max::compute(input, type::Constant<DataType>::zero());
     }
 };
 
-struct Gelu
-{
-    static DEVICE __half2 compute(__half2 input)
-    {
+struct Gelu {
+    static DEVICE float compute(float input) {
+        return 0.5f * input *
+               (1.0f + tanhf(0.7978845608f *
+                             (input + 0.044715f * input * input * input)));
+    }
+
+    static DEVICE bfloat16 compute(bfloat16 input) {
+        return bfloat16(Gelu::compute(float(input)));
+    }
+
+    static DEVICE __half2 compute(__half2 input) {
         __half2 half_pi =
-            __float2half2_rn(0.7978845608f); // sqrt(2 / pi) = 0.7978845608
+            __float2half2_rn(0.7978845608f);  // sqrt(2 / pi) = 0.7978845608
         __half2 coeff = __float2half2_rn(0.044715f);
         __half2 one = __float2half2_rn(1.0f);
 
@@ -44,49 +51,66 @@ struct Gelu
     }
 };
 
-template <typename _ActivationType, typename _InShape, typename _DataType,
-          int _NelemPerThread>
-struct Activation;
-
-template <typename _ActivationType, typename _InShape>
-struct Activation<_ActivationType, _InShape, half, 2>
-{
-    using DataType = half;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(half *output, const half *input)
-    {
-        __half2 *pout = (__half2 *)output;
-        if (_InShape::W == 1) {
-            *pout =
-                _ActivationType::compute(__half2half2(*(const __half *)input));
-        } else {
-            __half2 *pin = (__half2 *)input;
-            *pout = _ActivationType::compute(*pin);
-        }
+struct Sigmoid {
+    template <typename DataType>
+    static DEVICE DataType compute(DataType input) {
+        return type::Div::compute(
+            DataType(1.0f),
+            (type::Add::compute(DataType(1.0f), type::Exp::compute(-input))));
+    }
+    static DEVICE __half2 compute(__half2 input) {
+        __half2 one = __float2half2_rn(1.0f);
+        __half2 exp_neg_input = h2exp(__hneg2(input));
+        __half2 one_plus_exp_neg_input = __hadd2(one, exp_neg_input);
+        return __h2div(one, one_plus_exp_neg_input);
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void relu(half *out, half *in, int uop_idx, int)
-{
+          int SmemBytes, typename InDataType, typename OutDataType>
+DEVICE void relu(OutDataType *out, InDataType *in, int uop_idx,
+                 int smem_per_warp) {
+    constexpr int NelemPerThread =
+        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
+            ? 8
+            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-               SmemBytes, Activation<Relu, InShape, half, 2>>::run(out, in,
-                                                                   uop_idx);
+               SmemBytes,
+               Broadcast1Intrinsic<Relu, InShape, InDataType, OutDataType,
+                                   NelemPerThread>>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void gelu(half *out, half *in, int uop_idx, int)
-{
+          int SmemBytes, typename InDataType, typename OutDataType>
+DEVICE void gelu(OutDataType *out, InDataType *in, int uop_idx,
+                 int smem_per_warp) {
+    constexpr int NelemPerThread =
+        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
+            ? 8
+            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-               SmemBytes, Activation<Gelu, InShape, half, 2>>::run(out, in,
-                                                                   uop_idx);
+               SmemBytes,
+               Broadcast1Intrinsic<Gelu, InShape, InDataType, OutDataType,
+                                   NelemPerThread>>::run(out, in, uop_idx);
 }
 
-} // namespace ark
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumThreads,
+          int SmemBytes, typename InDataType, typename OutDataType>
+DEVICE void sigmoid(OutDataType *out, InDataType *in, int uop_idx,
+                    int smem_per_warp) {
+    constexpr int NelemPerThread =
+        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
+            ? 8
+            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+               SmemBytes,
+               Broadcast1Intrinsic<Sigmoid, InShape, InDataType, OutDataType,
+                                   NelemPerThread>>::run(out, in, uop_idx);
+}
 
-#endif // ARK_KERNELS_ACTIVATION_H_
+}  // namespace ark
+
+#endif  // ARK_KERNELS_ACTIVATION_H_

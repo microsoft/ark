@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "gpu/gpu_kernel.h"
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
@@ -22,38 +23,32 @@ const string test_kernel_loop_void =
     "}\n";
 
 //
-unittest::State test_gpu_kernel_loop_void()
-{
-    int pid = ark::utils::proc_spawn([] {
-        GpuMgr *mgr = get_gpu_mgr(0);
-        GpuMgrCtx *ctx = mgr->create_context("test_loop_void", 0, 1);
-        ctx->freeze();
+unittest::State test_gpu_kernel_loop_void() {
+    GpuMgr *mgr = get_gpu_mgr(0);
+    GpuMgrCtx *ctx = mgr->create_context("test_loop_void", 0, 1);
+    ctx->freeze();
 
-        GpuLoopKernel glk{"test_kernel_loop_void",
-                          {test_kernel_loop_void},
-                          (unsigned int)mgr->get_gpu_info().num_sm,
-                          1,
-                          0,
-                          "",
-                          ctx};
-        glk.compile(mgr->get_gpu_info());
-        glk.load();
+    GpuLoopKernel glk{"test_kernel_loop_void",
+                      {test_kernel_loop_void},
+                      (unsigned int)mgr->get_gpu_info().num_sm,
+                      1,
+                      0,
+                      "",
+                      ctx};
+    glk.compile(mgr->get_gpu_info());
+    glk.load();
 
-        GpuState ret = glk.launch(ctx->create_stream());
-        UNITTEST_EQ(ret, 0);
-        glk.run(100);
-        glk.stop();
-
-        return 0;
-    });
-    UNITTEST_NE(pid, -1);
-    int ret = ark::utils::proc_wait(pid);
+    GpuState ret = glk.launch(ctx->create_stream());
     UNITTEST_EQ(ret, 0);
+    glk.run(100);
+    glk.stop();
+
+    mgr->destroy_context(ctx);
+
     return unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_gpu_kernel_loop_void);
     return 0;

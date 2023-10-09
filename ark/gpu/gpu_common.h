@@ -4,8 +4,9 @@
 #ifndef ARK_GPU_COMMON_H_
 #define ARK_GPU_COMMON_H_
 
-#include <cstdint>
 #include <cuda.h>
+
+#include <cstdint>
 
 #define ARK_GPU_NAME_PREFIX "gpu."
 #define ARK_GPU_DATA_NAME ARK_GPU_NAME_PREFIX "data."
@@ -15,29 +16,23 @@
 namespace ark {
 
 // Constants.
-enum
-{
-    REQUEST_INVALID = -1,
-    MAX_NUM_SID = 256
-};
+enum { REQUEST_INVALID = -1, MAX_NUM_SID = 65536 };
 
 //
 union alignas(8) Request {
     uint64_t value = REQUEST_INVALID;
-    struct
-    {
-        uint64_t req : 2;  // Request type
-        uint64_t dst : 8;  // Dst segment ID
-        uint64_t src : 8;  // Src segment ID
-        uint64_t rank : 7; // Rank
-        uint64_t len : 34; // Length
-        uint64_t rsv : 5;  // Unused (reserved)
+    struct {
+        uint64_t req : 2;   // Request type
+        uint64_t sid : 16;  // Segment ID
+        uint64_t rank : 7;  // Rank
+        uint64_t len : 34;  // Length
+        uint64_t rsv : 5;   // Unused (reserved)
     } fields;
 };
 
 //
 typedef CUresult GpuState;
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_COMM_COMMON_H_
+#endif  // ARK_GPU_COMM_COMMON_H_

@@ -11,21 +11,20 @@ namespace ark {
 
 namespace sync {
 
-struct State
-{
+struct State {
     volatile int flag;
     int cnt;
     int is_add;
     int clks_cnt;
 };
 
-} // namespace sync
+}  // namespace sync
 
 // Synchronize multiple thread blocks inside a kernel. Guarantee that all
 // previous work of all threads in cooperating blocks is finished and
 // visible to all threads in the device.
-template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
-{
+template <int BlockNum>
+DEVICE void sync_gpu(sync::State &state) {
     constexpr int MaxOldCnt = BlockNum - 1;
 #ifdef ARK_KERNELS_SYNC_CLKS_CNT
     static_assert(math::is_pow2<ARK_KERNELS_SYNC_CLKS_CNT>::value == 1, "");
@@ -33,7 +32,7 @@ template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
         _ARK_CLKS[state.clks_cnt] = clock64();
         state.clks_cnt = (state.clks_cnt + 1) & (ARK_KERNELS_SYNC_CLKS_CNT - 1);
     }
-#endif // ARK_KERNELS_SYNC_CLKS_CNT
+#endif  // ARK_KERNELS_SYNC_CLKS_CNT
     __syncthreads();
     if (BlockNum == 1) {
         return;
@@ -73,8 +72,8 @@ template <int BlockNum> DEVICE void sync_gpu(sync::State &state)
 // only. Since `__syncthreads()` synchronize the entire threads in a thread
 // block, we implement a finer-grained version of this via `barrier.sync` PTX
 // instruction.
-template <int ThreadsPerWarpGroup> DEVICE void sync_warps()
-{
+template <int ThreadsPerWarpGroup>
+DEVICE void sync_warps() {
     static_assert(ThreadsPerWarpGroup == 32 || ThreadsPerWarpGroup == 64 ||
                       ThreadsPerWarpGroup == 128 ||
                       ThreadsPerWarpGroup == 256 ||
@@ -117,6 +116,6 @@ template <int ThreadsPerWarpGroup> DEVICE void sync_warps()
     }
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_SYNC_H_
+#endif  // ARK_KERNELS_SYNC_H_

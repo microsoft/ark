@@ -8,8 +8,11 @@
 
 namespace ark {
 
+/// Return a hostname from the hostfile.
+/// @param idx Index of the hostname to return.
+/// @return The hostname.
 const std::string &get_host(int idx);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_IPC_HOSTS_H_
+#endif  // ARK_IPC_HOSTS_H_

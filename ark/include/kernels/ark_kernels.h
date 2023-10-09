@@ -11,14 +11,17 @@
 
 #include "activation.h"
 #include "arithmetic.h"
+#include "cast.h"
 #include "comm.h"
 #include "comm_mm.h"
+#include "embedding.h"
 #include "im2col.h"
 #include "layernorm.h"
+#include "math_functions.h"
 #include "matmul.h"
 #include "reduce.h"
 #include "softmax.h"
 #include "transpose.h"
 
-#endif // ARK_KERNELS_H_
-#endif // __CUDACC__
+#endif  // ARK_KERNELS_H_
+#endif  // __CUDACC__

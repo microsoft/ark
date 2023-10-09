@@ -1,36 +1,25 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include "tensor.h"
-#include <cassert>
 
 namespace ark {
 
-MaxPoolOp::MaxPoolOp(OpPrecType prec_type, Tensor *input, Tensor *output,
-                     DimType kernel_size, DimType stride,
+MaxPoolOp::MaxPoolOp(const std::string &prec_type, Tensor *input,
+                     Tensor *output, DimType kernel_size, DimType stride,
                      const std::string &name)
     : Op{OP_MAX_POOL, prec_type, {input}, {output}, {{kernel_size, stride}},
-         name,        nullptr,   -1}
-{
-}
+         name,        nullptr,   -1} {}
 
 // TODO: implement
 Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
-                        Tensor *output, const std::string &name)
-{
+                        Tensor *output, const std::string &name) {
     assert(input != nullptr);
-    OpPrecType pt;
-    if (input->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (input->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOGERR("unsupported input data type: ", type_str(input->type));
-    }
     if (output != nullptr && input->type != output->type) {
-        LOGERR("invalid output data type: ", type_str(output->type));
+        LOG(ERROR, "invalid output data type: ", output->type);
     }
     const Dims &is = input->shape;
     Dims os{{is[0], (is[1] + stride - 1) / stride,
@@ -38,8 +27,8 @@ Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
     if (output == nullptr) {
         output = this->tensor(os, input->type);
     }
-    MaxPoolOp op{pt, input, output, kernel_size, stride, name};
+    MaxPoolOp op{output->type.name(), input, output, kernel_size, stride, name};
     return this->impl->add_op(op)[0];
 }
 
-} // namespace ark
+}  // namespace ark

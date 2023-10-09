@@ -9,14 +9,21 @@
 
 using namespace std;
 
+#define DEBUG_SCHEDULE 0
+#define SCHEDULE_DEBUG(...)          \
+    do {                             \
+        if (DEBUG_SCHEDULE) {        \
+            LOG(DEBUG, __VA_ARGS__); \
+        }                            \
+    } while (0);
+
 namespace ark {
 
 /// Calculate the number of tiles for a given op and a tile.
 /// @param op input op
 /// @param tile input tile
 /// @return number of tiles
-static int calc_num_tiles(const Op &op, const OpTile &tile)
-{
+static int calc_num_tiles(const Op &op, const OpTile &tile) {
     if (op.outputs.size() == 0) {
         // This op has no output.
         return 0;
@@ -34,7 +41,7 @@ static int calc_num_tiles(const Op &op, const OpTile &tile)
     if (ndims > 1) {
         num_tiles *= math::div_up(s[ndims - 2], tile.x);
     } else if (tile.x != 1) {
-        LOGERR("The tile is 2D, but the output is 1D.");
+        LOG(ERROR, "The tile is 2D, but the output is 1D.");
     }
     // The remaining dimensions are not tiled.
     int remain_dims = ndims - 2;
@@ -56,25 +63,25 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                                                  Model::Impl *model_impl,
                                                  Op &matmul_op,
                                                  const GpuInfo &gpu_info,
-                                                 int num_sm)
-{
+                                                 int num_sm) {
     if (matmul_op.type != OP_MATMUL) {
-        LOGERR("This is not a matmul op.");
+        LOG(ERROR, "This is not a matmul op.");
     }
     if (matmul_op.gran_lev != -1) {
         // `gran_lev` is manually set. Do not optimize.
         return;
     }
     if (num_sm > gpu_info.num_sm) {
-        LOGERR("The total number of SMs (%d) is less than the number of SMs "
-               "requested (%d).",
-               gpu_info.num_sm, num_sm);
+        LOG(ERROR,
+            "The total number of SMs (%d) is less than the number of SMs "
+            "requested (%d).",
+            gpu_info.num_sm, num_sm);
     }
     const OpConfig *cfg = this->sched_op_config(&matmul_op);
     assert(cfg->output_tiles.size() == 1);
     int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
-        LOGERR("This matmul has no output tiles.");
+        LOG(ERROR, "This matmul has no output tiles.");
     }
 
     // Heuristically select a split_k value. If split_k is larger than 1, split
@@ -112,17 +119,15 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
         // No optimization is needed.
         return;
     }
-    LOG(DEBUG, "Optimize matmul %s with split_k=%d.", matmul_op.name, split_k);
+    LOG(DEBUG, "Optimize matmul ", matmul_op.name, " with split_k=", split_k);
 
     Tensor *input_a = matmul_op.inputs[0];
     Tensor *input_b = matmul_op.inputs[1];
-    Tensor *output = matmul_op.outputs[0];
+    Tensor *output = matmul_op.output_refs[0];
     bool is_column_a;
     bool is_column_b;
-    bool is_relu;
     matmul_op.args.get(&is_column_a, 4);
     matmul_op.args.get(&is_column_b, 5);
-    matmul_op.args.get(&is_relu, 6);
     std::string matmul_name = matmul_op.name;
 
     // Remove the original matmul op from the model.
@@ -130,7 +135,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 
     // Create a new matmul op with the optimized split_k.
     model.matmul(input_a, input_b, output, split_k, is_column_a, is_column_b,
-                 is_relu, matmul_name);
+                 matmul_name);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized
@@ -142,8 +147,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 void DefaultScheduler::heuristic_optimize_model(Model &model,
                                                 Model::Impl *model_impl,
                                                 const GpuInfo &gpu_info,
-                                                int num_sm)
-{
+                                                int num_sm) {
     if (get_env().disable_graph_opt) {
         LOG(INFO, "Graph optimization is disabled.");
         return;
@@ -162,8 +166,7 @@ void DefaultScheduler::heuristic_optimize_model(Model &model,
 
 DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
                                    int world_size_, int num_warps_per_sm_)
-    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
-{
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_) {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
 
     // Number of SMs to use for computation. The last SM is preserved for
@@ -175,8 +178,7 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
     this->op_graph = make_unique<OpGraph>(model);
 }
 
-void DefaultScheduler::schedule()
-{
+void DefaultScheduler::schedule() {
     LOG(DEBUG, "DefaultScheduler start scheduling");
 
     auto &nodes = this->op_graph->get_nodes();
@@ -200,8 +202,7 @@ void DefaultScheduler::schedule()
 
 ///
 void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
-                                          std::set<OpNode *> &seen_nodes)
-{
+                                          std::set<OpNode *> &seen_nodes) {
     if (nodes.empty()) {
         return;
     }
@@ -282,6 +283,13 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         item.num_uops = opseq->get_tdims_size();
         item.num_warps_per_uop = opseq->get_num_warps();
         item.smem_bytes_per_uop = aligned_smem_bytes;
+        if (item.num_uops <= 0) {
+            LOG(ERROR, "unexpected error: num_uops <= 0");
+        } else if (item.num_warps_per_uop <= 0) {
+            LOG(ERROR, "unexpected error: num_warps_per_uop <= 0");
+        } else if (item.smem_bytes_per_uop < 0) {
+            LOG(ERROR, "unexpected error: smem_bytes_per_uop < 0");
+        }
         if (op->is_comm()) {
             comm_items.emplace_back(item);
         } else {
@@ -324,20 +332,19 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
     this->comp_stream.back()->add_items(comp_items);
     this->comm_stream.back()->add_items(comm_items);
 
-    LOG(DEBUG, "scheduled ", nodes.size(), " nodes");
+    SCHEDULE_DEBUG("scheduled ", nodes.size(), " nodes");
     for (auto &item : comp_items) {
-        LOG(DEBUG, "  comp: ", this->opseqs[item.opseq_id]->get_name());
+        SCHEDULE_DEBUG("  comp: ", this->opseqs[item.opseq_id]->get_name());
     }
     for (auto &item : comm_items) {
-        LOG(DEBUG, "  comm: ", this->opseqs[item.opseq_id]->get_name());
+        SCHEDULE_DEBUG("  comm: ", this->opseqs[item.opseq_id]->get_name());
     }
 
     recursive_schedule(next_nodes, seen_nodes);
 }
 
 void DefaultScheduler::configure_gpu_buf(
-    const std::list<Tensor *> &model_tensors)
-{
+    const std::list<Tensor *> &model_tensors) {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other
     // GPUs. If it is on a remote GPU (the gid is not equal to this rank), it
@@ -382,7 +389,7 @@ void DefaultScheduler::configure_gpu_buf(
 
             const int send_ready_flag_sid_offset = 128;
 
-            //
+            // TODO: move this into BaseScheduler::create_context().
             if (op->type == OP_SEND) {
                 //
                 Tensor *in = op->inputs[0];
@@ -407,19 +414,19 @@ void DefaultScheduler::configure_gpu_buf(
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_RECV) {
                 //
-                Tensor *in = op->inputs[0];
+                Tensor *output = op->outputs[0];
                 int sid;
                 op->args.get(&sid, 0);
-                export_tns_sids[in->buf].emplace_back(in, sid);
+                export_tns_sids[output->buf].emplace_back(output, sid);
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_SEND_MM) {
                 int sid;
                 int dst_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&dst_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&dst_gid, 1);
                 // import the recvbuf, the recvbuf should be allocated on the
                 // receiver GPU
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 this->buf_infos.emplace_back(dst_gid, recvbuf->shape_bytes(),
                                              recvbuf->buf, sid, 0);
 
@@ -427,23 +434,23 @@ void DefaultScheduler::configure_gpu_buf(
                 // be exported to the recv GPU, since the sid of the
                 // send_ready_flag should not be the same as the recvBuf, so I
                 // use the sid+128 as the sid of the send_ready_flag
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 export_tns_sids[send_ready_flag->buf].emplace_back(
                     send_ready_flag, sid + send_ready_flag_sid_offset);
             } else if (op->type == OP_RECV_MM) {
                 int sid;
                 int src_gid;
-                sop.get_op()->args.get(&sid, 0);
-                sop.get_op()->args.get(&src_gid, 1);
+                op->args.get(&sid, 0);
+                op->args.get(&src_gid, 1);
                 // configure the recvbuf, the recvbuf needed to be export the to
                 // the sender GPU, the sid is the same as the sid of the send_mm
                 // op and the recv_mm op
-                Tensor *recvbuf = sop.get_op()->inputs[1];
+                Tensor *recvbuf = op->inputs[1];
                 export_tns_sids[recvbuf->buf].emplace_back(recvbuf, sid);
 
                 // import the send_ready_flag, the send_ready_flag tensor should
                 // be allocated on the sender GPU
-                Tensor *send_ready_flag = sop.get_op()->inputs[2];
+                Tensor *send_ready_flag = op->inputs[2];
                 this->buf_infos.emplace_back(
                     src_gid, send_ready_flag->shape_bytes(),
                     send_ready_flag->buf, sid + send_ready_flag_sid_offset, 0);
@@ -469,10 +476,8 @@ void DefaultScheduler::configure_gpu_buf(
                 max_bytes = tns_bytes;
             }
             // TODO: more verficiations.
-            auto &sh = tns->shape;
-            auto &ld = tns->ldims;
-            LOG(DEBUG, "Tensor buf ", tns->buf, " pads ", tns->pads,
-                " padding ", sh, " -> ", ld, " exported ", tns->exported);
+            // auto &sh = tns->shape;
+            // auto &ld = tns->ldims;
         }
         // Store the size.
         buf->bytes = max_bytes;
@@ -499,8 +504,7 @@ void DefaultScheduler::configure_gpu_buf(
     }
 }
 
-std::vector<std::string> DefaultScheduler::gen_code()
-{
+std::vector<std::string> DefaultScheduler::gen_code() {
     std::stringstream code;
 
     std::set<int> imported_ranks;
@@ -520,9 +524,9 @@ std::vector<std::string> DefaultScheduler::gen_code()
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
             int uop_id = (int)uop_map.size();
-            std::string sop_func_str = sop.function_name();
+            std::string sop_serial = sop.serialize();
             // Insert only if it does not exist
-            auto p = uop_map.emplace(sop_func_str, uop_id);
+            auto p = uop_map.emplace(sop_serial, uop_id);
             if (p.second) {
                 // If this is a new function, define it.
                 this->codegen->def_uop(code, sop, uop_id);
@@ -572,4 +576,4 @@ std::vector<std::string> DefaultScheduler::gen_code()
     return {code.str()};
 }
 
-} // namespace ark
+}  // namespace ark

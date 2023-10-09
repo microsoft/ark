@@ -2,15 +2,17 @@
 // Licensed under the MIT license.
 
 #include "cpu_timer.h"
-#include "logging.h"
-#include <iostream>
+
 #include <time.h>
+
+#include <iostream>
+
+#include "logging.h"
 
 namespace ark {
 
 // Measure current time in second.
-double cpu_timer(void)
-{
+double cpu_timer(void) {
     struct timespec tspec;
     if (clock_gettime(CLOCK_MONOTONIC, &tspec) == -1) {
         return -1;
@@ -19,8 +21,7 @@ double cpu_timer(void)
 }
 
 // Measure current time in nanosecond.
-long cpu_ntimer(void)
-{
+long cpu_ntimer(void) {
     struct timespec tspec;
     if (clock_gettime(CLOCK_MONOTONIC, &tspec) == -1) {
         return -1;
@@ -29,8 +30,7 @@ long cpu_ntimer(void)
 }
 
 // Sleep in second.
-int cpu_timer_sleep(double sec)
-{
+int cpu_timer_sleep(double sec) {
     struct timespec tspec;
     tspec.tv_sec = (time_t)sec;
     tspec.tv_nsec = (long)((sec - tspec.tv_sec) * 1.0e9);
@@ -38,12 +38,11 @@ int cpu_timer_sleep(double sec)
 }
 
 // Sleep in nanosecond.
-int cpu_ntimer_sleep(long nsec)
-{
+int cpu_ntimer_sleep(long nsec) {
     struct timespec tspec;
     tspec.tv_sec = 0;
     tspec.tv_nsec = nsec;
     return nanosleep(&tspec, 0);
 }
 
-} // namespace ark
+}  // namespace ark

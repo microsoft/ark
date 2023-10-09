@@ -5,6 +5,7 @@
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "logging.h"
+#include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
 using namespace std;
@@ -15,8 +16,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
                           ark::DimType kernel_width, ark::DimType stride_height,
                           ark::DimType stride_width, ark::DimType pad_height,
                           ark::DimType pad_width, ark::DimType dilation_height,
-                          ark::DimType dilation_width)
-{
+                          ark::DimType dilation_width) {
     //
     ark::Model model;
     ark::Tensor *tns_x = model.tensor({n, c, h, w}, ark::FP16);
@@ -26,16 +26,14 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     UNITTEST_EQ(tns_y->ndims(), 3);
 
     //
-    ark::Executor exe{0, 0, 1, model, "test_im2col"};
+    ark::Executor exe{0, 1, model, "test_im2col"};
     exe.compile();
 
     // Set data.
     ark::srand();
     auto data_x =
         ark::utils::range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
-    exe.tensor_memcpy(tns_x, data_x.get(), tns_x->shape_bytes());
-
-    // ark::utils::print_matrix(data_x.get(), h * w, c, h * w, c);
+    tns_x->write(data_x.get());
 
     exe.launch();
     exe.run(1);
@@ -45,7 +43,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     ark::half_t *res =
         (ark::half_t *)calloc(tns_y->shape.size(), sizeof(ark::half_t));
     UNITTEST_NE(res, (ark::half_t *)nullptr);
-    exe.tensor_memcpy(res, tns_y, tns_y->shape_bytes());
+    tns_y->read(res);
 
     // Calculate CPU results
     ark::half_t *gt = (ark::half_t *)calloc(
@@ -89,18 +87,17 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     }
 
     // Compare results with the ground truth.
-    auto p = ark::utils::cmp_matrix((ark::half_t *)gt, (ark::half_t *)res, mdim,
-                                    inner_dim, n, mdim, inner_dim);
-    float max_err = p.second;
+    auto comp = tensor_compare(gt, res, tns_y->shape);
+    float max_err = comp.max_error_rate;
     stringstream ss;
     ss << "im2col:n=" << n << ",c=" << c << ",h=" << h << ",w=" << w
        << ",kh=" << kernel_height << ",kw=" << kernel_width
        << ",sh=" << stride_height << ",sw=" << stride_width
        << ",ph=" << pad_height << ",pw=" << pad_width
        << ",dh=" << dilation_height << ",dw=" << dilation_width
-       << setprecision(4) << " mse " << p.first << " max_err " << max_err * 100
+       << setprecision(4) << " mse " << comp.mse << " max_err " << max_err * 100
        << "%";
-    LOG(ark::INFO, ss.str());
+    UNITTEST_LOG(ss.str());
 
     free(res);
     free(gt);
@@ -108,8 +105,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
     UNITTEST_EQ(max_err, 0.0);
 }
 
-ark::unittest::State test_im2col()
-{
+ark::unittest::State test_im2col() {
     test_im2col_internal(1, 2, 2, 2, 2, 2, 1, 1, 0, 0, 1, 1);
     test_im2col_internal(1, 4, 4, 3, 2, 2, 1, 1, 0, 0, 1, 1);
     test_im2col_internal(1, 4, 4, 15, 2, 2, 1, 1, 0, 0, 1, 1);
@@ -139,8 +135,7 @@ ark::unittest::State test_im2col()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_im2col);
     return ark::unittest::SUCCESS;

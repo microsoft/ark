@@ -8,18 +8,20 @@
 
 namespace ark {
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose0132
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose0132 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -33,18 +35,20 @@ struct Transpose0132
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose0213
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose0213 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -58,43 +62,20 @@ struct Transpose0213
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose0231
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose0231 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_n * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
-              idx_c;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
         }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose0312
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -108,18 +89,47 @@ struct Transpose0312
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose0321
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose0312 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_n * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
+              idx_c;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::W];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose0321 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -133,18 +143,20 @@ struct Transpose0321
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose1023
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose1023 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -158,18 +170,20 @@ struct Transpose1023
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose1032
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose1032 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -183,118 +197,20 @@ struct Transpose1032
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose1203
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose1203 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
-              idx_w;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i];
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
         }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose1230
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
-              idx_n;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose1302
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
-              idx_h;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose1320
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_h * InDims::W +
-              idx_n;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose2013
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -308,143 +224,20 @@ struct Transpose2013
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose2031
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose1230 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_w * InDims::W +
-              idx_c;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
         }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose2103
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_n * InDims::W +
-              idx_w;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose2130
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_w * InDims::W +
-              idx_n;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::W];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose2301
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
-              idx_c;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose2310
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
-        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
-               idx_w;
-        //
-        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
-              idx_n;
-        *out = *in;
-#pragma unroll
-        for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::HW];
-        }
-    }
-};
-
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose3012
-{
-    using InDims = _InDims;
-    using OutDims = _OutDims;
-    using DataType = _DataType;
-    static const int NelemPerThread = _NelemPerThread;
-
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -458,18 +251,47 @@ struct Transpose3012
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose3021
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose1302 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_h * InDims::CHW + idx_n * InDims::HW + idx_w * InDims::W +
+              idx_c;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::W];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose1320 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -483,18 +305,101 @@ struct Transpose3021
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose3102
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose2013 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_n * InDims::W +
+              idx_w;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose2031 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
+              idx_h;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::HW];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose2103 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_n * InDims::W +
+              idx_w;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose2130 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -508,43 +413,47 @@ struct Transpose3102
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose3120
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose2301 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
-        in += idx_w * InDims::CHW + idx_c * InDims::HW + idx_h * InDims::W +
-              idx_n;
+        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_n * InDims::W +
+              idx_c;
         *out = *in;
 #pragma unroll
         for (int i = 1; i < NelemPerThread; ++i) {
-            out[i] = in[i * InDims::CHW];
+            out[i] = in[i * InDims::HW];
         }
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose3201
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose2310 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -558,18 +467,155 @@ struct Transpose3201
     }
 };
 
-template <typename _InDims, typename _OutDims, typename _DataType,
-          int _NelemPerThread>
-struct Transpose3210
-{
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose3012 {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = _DataType;
     static const int NelemPerThread = _NelemPerThread;
 
     static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w)
-    {
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_c * InDims::CHW + idx_h * InDims::HW + idx_w * InDims::W +
+              idx_n;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::W];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose3021 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_c * InDims::CHW + idx_w * InDims::HW + idx_h * InDims::W +
+              idx_n;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::HW];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose3102 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_h * InDims::CHW + idx_c * InDims::HW + idx_w * InDims::W +
+              idx_n;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::W];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose3120 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_w * InDims::CHW + idx_c * InDims::HW + idx_h * InDims::W +
+              idx_n;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::CHW];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose3201 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
+        out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
+               idx_w;
+        //
+        in += idx_h * InDims::CHW + idx_w * InDims::HW + idx_c * InDims::W +
+              idx_n;
+        *out = *in;
+#pragma unroll
+        for (int i = 1; i < NelemPerThread; ++i) {
+            out[i] = in[i * InDims::HW];
+        }
+    }
+};
+
+template <typename _InDims, typename _OutDims, typename _OutShape,
+          typename _DataType, int _NelemPerThread>
+struct Transpose3210 {
+    using InDims = _InDims;
+    using OutDims = _OutDims;
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
+                               int idx_c, int idx_h, int idx_w) {
+        if (idx_w >= _OutShape::W || idx_h >= _OutShape::H ||
+            idx_c >= _OutShape::C || idx_n >= _OutShape::N) {
+            return;
+        }
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
         //
@@ -585,38 +631,25 @@ struct Transpose3210
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO: support NelemPerThread > 1
 template <typename InDims, typename OutDims, typename OutShape,
           typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Transpose>
-DEVICE void _transpose(float *out, float *in, int uop_idx)
-{
+          typename Transpose, typename DataType>
+DEVICE void _transpose(DataType *out, DataType *in, int uop_idx) {
     Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Transpose>::run(out, in, uop_idx);
 }
 
-// TODO: we need to use NelemPerThread=2 for half in the future, if out is a
-// __half pointer, this can cause a memory bug, because GPU DRAM access should
-// be always 4-byte aligned
-template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Transpose>
-DEVICE void _transpose(ark::half *out, ark::half *in, int uop_idx)
-{
-    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
-           Transpose>::run(out, in, uop_idx);
-}
-
-#define _DEC_TRANSPOSE(tp_type)                                                \
-    template <typename InDims, typename OutDims, typename OutShape,            \
-              typename UnitOutDims, int NumThreads, int SmemBytes,             \
-              typename DataType>                                               \
-    DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx,   \
-                                   int)                                        \
-    {                                                                          \
-        _transpose<InDims, OutDims, OutShape, UnitOutDims, NumThreads,         \
-                   SmemBytes,                                                  \
-                   Transpose##tp_type<InDims, OutDims, DataType, 1>>(out, in,  \
-                                                                     uop_idx); \
+#define _DEC_TRANSPOSE(tp_type)                                              \
+    template <typename InDims, typename OutDims, typename OutShape,          \
+              typename UnitOutDims, int NumThreads, int SmemBytes,           \
+              typename DataType>                                             \
+    DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx, \
+                                   int) {                                    \
+        _transpose<                                                          \
+            InDims, OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,   \
+            Transpose##tp_type<InDims, OutDims, OutShape, DataType, 1>>(     \
+            out, in, uop_idx);                                               \
     }
 
 _DEC_TRANSPOSE(0132)
@@ -643,6 +676,6 @@ _DEC_TRANSPOSE(3120)
 _DEC_TRANSPOSE(3201)
 _DEC_TRANSPOSE(3210)
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_TRANSPOSE_H_
+#endif  // ARK_KERNELS_TRANSPOSE_H_

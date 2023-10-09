@@ -1,40 +1,37 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cstring>
+
 #include "gpu/gpu_buf.h"
 #include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
-#include <cstring>
 
 using namespace std;
 
-ark::unittest::State test_tensor_memcpy()
-{
+ark::unittest::State test_tensor_memcpy() {
     ark::Model model;
     ark::Dims shape{2, 3, 4, 5};
     ark::Dims ldims{9, 8, 7, 6};
     ark::Dims offs{4, 3, 2, 1};
-    ark::Tensor *tns = model.tensor(shape, ark::FP32, nullptr, ldims, offs);
+    ark::Tensor *buffer = model.tensor(ldims, ark::FP32);
+    ark::Tensor *tns = model.tensor(shape, ark::FP32, buffer->buf, ldims, offs);
 
     // Create an executor
-    ark::Executor exe{0, 0, 1, model, "test_tensor_memcpy"};
+    ark::Executor exe{0, 1, model, "test_tensor_memcpy"};
     exe.compile();
 
-    ark::GpuBuf *buf = exe.get_gpu_buf(tns);
-    UNITTEST_NE(buf, (ark::GpuBuf *)nullptr);
-    UNITTEST_EQ(buf->get_bytes(), ldims.size() * sizeof(float));
-
-    // Fill tensor data: {1.0, 2.0, 3.0, ..., 3024.0}
+    // Fill buffer data: {1.0, 2.0, 3.0, ..., 3024.0}
     auto data = ark::utils::range_floats(ldims.size());
-    ark::gpu_memcpy(buf, data.get(), ldims.size() * sizeof(float));
+    buffer->write(data.get());
 
     // Copy tensor data from GPU to CPU
     float *res = (float *)malloc(shape.size() * sizeof(float));
     UNITTEST_NE(res, (float *)nullptr);
     memset(res, 0, shape.size() * sizeof(float));
-    exe.tensor_memcpy(res, tns, shape.size() * sizeof(float));
+    tns->read(res);
 
     // Validate
     int idx = 0;
@@ -47,6 +44,7 @@ ark::unittest::State test_tensor_memcpy()
                         (j + offs[1]) * (ldims[2] * ldims[3]) +
                         (k + offs[2]) * (ldims[3]) + (l + offs[3]) + 1;
                     UNITTEST_EQ(res[idx], truth);
+                    // Modify the value
                     res[idx] *= 2;
                     ++idx;
                 }
@@ -54,13 +52,13 @@ ark::unittest::State test_tensor_memcpy()
         }
     }
 
-    // Copy tensor data from CPU to GPU
-    exe.tensor_memcpy(tns, res, shape.size() * sizeof(float));
+    // Copy modified tensor data from CPU to GPU
+    tns->write(res);
 
-    // Copy all data from GPU to CPU
+    // Copy buffer data from GPU to CPU
     float *res2 = (float *)malloc(ldims.size() * sizeof(float));
     UNITTEST_NE(res2, (float *)nullptr);
-    ark::gpu_memcpy(res2, buf, ldims.size() * sizeof(float));
+    buffer->read(res2);
 
     // Validate
     idx = 0;
@@ -86,8 +84,7 @@ ark::unittest::State test_tensor_memcpy()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_tensor_layout()
-{
+ark::unittest::State test_tensor_layout() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor *tns =
@@ -107,16 +104,12 @@ ark::unittest::State test_tensor_layout()
     }
 
     // Create an executor
-    ark::Executor exe{0, 0, 1, model, "test_tensor_layout"};
+    ark::Executor exe{0, 1, model, "test_tensor_layout"};
     exe.compile();
-
-    ark::GpuBuf *buf = exe.get_gpu_buf(tns);
-    UNITTEST_NE(buf, (ark::GpuBuf *)nullptr);
-    UNITTEST_EQ(buf->get_bytes(), 8 * 7 * 6 * 5 * sizeof(float));
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
     auto data = ark::utils::range_floats(2 * 3 * 4 * 5);
-    exe.tensor_memcpy(tns, data.get(), 2 * 3 * 4 * 5 * sizeof(float));
+    tns->write(data.get());
 
     // Check reference values
     float ref_val;
@@ -125,7 +118,7 @@ ark::unittest::State test_tensor_layout()
         for (int j = 0; j < 3; ++j) {
             for (int k = 0; k < 4; ++k) {
                 for (int l = 0; l < 5; ++l) {
-                    exe.tensor_memcpy(&ref_val, ref[i][j][k][l], sizeof(float));
+                    ref[i][j][k][l]->read(&ref_val);
                     UNITTEST_EQ(ref_val, truth);
                     truth += 1.0f;
                 }
@@ -136,8 +129,7 @@ ark::unittest::State test_tensor_layout()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_tensor_memcpy);
     UNITTEST(test_tensor_layout);

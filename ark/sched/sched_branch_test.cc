@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "sched_branch.h"
+
 #include "ark.h"
 #include "logging.h"
-#include "sched_branch.h"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_sched_branch_single_opseq()
-{
+ark::unittest::State test_sched_branch_single_opseq() {
     std::map<int, int> sm_id_to_smem_per_warp;
 
     {
@@ -299,8 +299,7 @@ ark::unittest::State test_sched_branch_single_opseq()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_branch_multi_opseq()
-{
+ark::unittest::State test_sched_branch_multi_opseq() {
     std::map<int, int> sm_id_to_smem_per_warp;
 
     {
@@ -445,8 +444,7 @@ ark::unittest::State test_sched_branch_multi_opseq()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_sched_branch_clear()
-{
+ark::unittest::State test_sched_branch_clear() {
     std::map<int, int> sm_id_to_smem_per_warp;
     {
         ark::SchedBranch sb;
@@ -469,8 +467,7 @@ ark::unittest::State test_sched_branch_clear()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sched_branch_single_opseq);
     UNITTEST(test_sched_branch_multi_opseq);

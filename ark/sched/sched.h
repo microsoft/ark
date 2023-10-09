@@ -14,15 +14,15 @@
 
 namespace ark {
 
-struct BufInfo
-{
+struct BufInfo {
     // all the information of a GPU data buffer
     BufInfo(int gpu_id_, size_t bytes_, TensorBuf *tbuf_, int sid_,
             size_t offset_)
-        : gpu_id{gpu_id_}, bytes{bytes_}, tbuf{tbuf_}, sid{sid_}, offset{
-                                                                      offset_}
-    {
-    }
+        : gpu_id{gpu_id_},
+          bytes{bytes_},
+          tbuf{tbuf_},
+          sid{sid_},
+          offset{offset_} {}
     // gpu_id: the id of the GPU where the buffer is allocated. If the
     // gpu_id is the same as this rank's gpu_id, the buffer is allocated on
     // the GPU, otherwise it will be imported from another GPU.
@@ -36,9 +36,8 @@ struct BufInfo
     size_t offset;
 };
 
-class BaseScheduler
-{
-  public:
+class BaseScheduler {
+   public:
     BaseScheduler(Model &model, int gpu_id, int rank_, int world_size_,
                   int num_warps_per_sm_ = 16);
 
@@ -47,14 +46,12 @@ class BaseScheduler
 
     const OpConfig *sched_op_config(const Op *op);
 
-    GpuBuf *get_gpu_buf(Tensor *tns) const;
-
     virtual void schedule() = 0;
 
     //
     virtual std::vector<std::string> gen_code() = 0;
 
-  protected:
+   protected:
     Model *model;
     GpuMgr *gpu_mgr;
     int rank;
@@ -67,49 +64,20 @@ class BaseScheduler
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
 
-    // map from TensorBuf to gpu buffer, the TensorBuf is an abstract of the
-    // data buffer in the model layer, and the GpuBuf is the real buffer in the
-    // GPU address space
-    std::map<TensorBuf *, GpuBuf *> buf_trans;
-
     std::vector<const Op *> send_recv_ops;
 
     GpuMgrCtx *ctx;
 };
 
-class SimpleScheduler : public BaseScheduler
-{
-  public:
-    SimpleScheduler(Model &model, int gpu_id, int rank, int world_size,
-                    int num_warps_per_sm = 16);
-
-    void schedule();
-
-    std::vector<std::string> gen_code();
-
-  private:
-    // This function is used to configure the TensorBuf. The TensorBuf is an
-    // abstraction of the GPU memory, it correspond to a memory region on the
-    // _ARK_BUF. This function will configure the allocation, import and export
-    // of the TensorBuf and stores the TensorBuf information in buf_infos for
-    // later use
-    void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
-    void schedule_sched_opseq(SchedOpSeq &sop, int max_wps, int max_sm_num,
-                              std::vector<Sched> &scheds);
-
-    std::vector<SchedOp> sched_ops;
-};
-
-class DefaultScheduler : public BaseScheduler
-{
-  public:
+class DefaultScheduler : public BaseScheduler {
+   public:
     DefaultScheduler(Model &model, int gpu_id, int rank_, int world_size_,
                      int num_warps_per_sm = 16);
 
     std::vector<std::string> gen_code();
     void schedule();
 
-  protected:
+   protected:
     void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
     void schedule_depth(std::vector<SchedOpSeq *> &depth,
                         std::vector<Sched> &scheds);
@@ -121,7 +89,7 @@ class DefaultScheduler : public BaseScheduler
                                    Op &matmul_op, const GpuInfo &gpu_info,
                                    int num_sm);
 
-  private:
+   private:
     void recursive_schedule(std::list<OpNode *> &nodes,
                             std::set<OpNode *> &seen_nodes);
 
@@ -130,21 +98,6 @@ class DefaultScheduler : public BaseScheduler
     std::vector<std::unique_ptr<SchedStream>> comm_stream;
 };
 
-class KahyparScheduler : public DefaultScheduler
-{
-  public:
-    KahyparScheduler(const int gpu_id, int rank_, int world_size_,
-                     const Model &model, unsigned int num_warps_per_sm = 16);
-    std::vector<std::string> gen_code();
+}  // namespace ark
 
-  private:
-    std::vector<Sched> simplify_sched(std::vector<Sched> &original_scheds);
-
-    int kahypar_schedule_depth(std::vector<SchedOpSeq *> &depth,
-                               std::vector<Sched> &scheds);
-    SchedProfiler profiler;
-};
-
-} // namespace ark
-
-#endif // ARK_SCHED_H_
+#endif  // ARK_SCHED_H_

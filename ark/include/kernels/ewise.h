@@ -11,8 +11,7 @@ namespace ark {
 /// Element-wise computation operator with a single input.
 template <typename OutDims, typename OutShape, typename UnitOutDims,
           int NumThreads, int SmemBytes, typename CompType>
-struct Ewise1
-{
+struct Ewise1 {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
     using DataType = typename CompType::DataType;
@@ -27,8 +26,7 @@ struct Ewise1
     /// @param out Output data.
     /// @param in Input data.
     /// @param uop_idx Index of the unit operator.
-    static DEVICE void run(DataType *out, DataType *in, int uop_idx)
-    {
+    static DEVICE void run(DataType *out, DataType *in, int uop_idx) {
         int un = UnitOp::uop_idx_n(uop_idx);
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
@@ -46,14 +44,16 @@ struct Ewise1
                 break;
             }
 
-            CompType::compute(out, in, tid_n + un * UnitOutDims::N,
-                              tid_c + uc * UnitOutDims::C,
-                              tid_h + uh * UnitOutDims::H,
-                              tid_w + uw * UnitOutDims::W);
+            int idx_n = tid_n + un * UnitOutDims::N;
+            int idx_c = tid_c + uc * UnitOutDims::C;
+            int idx_h = tid_h + uh * UnitOutDims::H;
+            int idx_w = tid_w + uw * UnitOutDims::W;
+
+            CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w);
         }
     }
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_EWISE_H_
+#endif  // ARK_KERNELS_EWISE_H_

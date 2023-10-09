@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "gpu/gpu_kernel.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -10,7 +12,6 @@
 #include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_compile.h"
-#include "gpu/gpu_kernel.h"
 #include "gpu/gpu_logging.h"
 
 using namespace std;
@@ -31,14 +32,19 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
                      initializer_list<size_t> buf_offs_,
                      initializer_list<pair<void *, size_t>> args,
                      const string &cubin_)
-    : name{name_}, codes{codes_}, gd{grid_dims}, bd{block_dims},
-      smem_bytes{smem_bytes_}, buf_args{buf_args_}, buf_offs{buf_offs_},
-      ptr_args(buf_args.size(), 0), num_params{(int)(buf_args.size() +
-                                                     args.size())},
-      params{new void *[num_params]}, cubin{cubin_}
-{
+    : name{name_},
+      codes{codes_},
+      gd{grid_dims},
+      bd{block_dims},
+      smem_bytes{smem_bytes_},
+      buf_args{buf_args_},
+      buf_offs{buf_offs_},
+      ptr_args(buf_args.size(), 0),
+      num_params{(int)(buf_args.size() + args.size())},
+      params{new void *[num_params]},
+      cubin{cubin_} {
     if (this->name.size() == 0) {
-        LOGERR("Invalid kernel name: ", this->name);
+        LOG(ERROR, "Invalid kernel name: ", this->name);
     }
     assert(this->params != nullptr);
     // Default offset zero.
@@ -57,8 +63,7 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
 }
 
 //
-GpuKernel::~GpuKernel()
-{
+GpuKernel::~GpuKernel() {
     if (this->params != nullptr) {
         for (int i = buf_args.size(); i < this->num_params; ++i) {
             if (this->params[i] != nullptr) {
@@ -71,8 +76,7 @@ GpuKernel::~GpuKernel()
 }
 
 //
-void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
-{
+void GpuKernel::compile(const GpuInfo &gpu_info) {
     if (this->is_compiled()) {
         return;
     }
@@ -83,35 +87,30 @@ void GpuKernel::compile(const GpuInfo &gpu_info, bool use_comm_sw)
     }
     //
     if (this->cubin.empty()) {
-        this->cubin =
-            gpu_compile(this->codes, gpu_info.arch, max_reg_cnt, use_comm_sw);
+        this->cubin = gpu_compile(this->codes, gpu_info.arch, max_reg_cnt);
     }
-}
 
-//
-void GpuKernel::load()
-{
     //
-    unsigned int buflen = 8192;
-    char *infobuf = new char[buflen];
-    char *errbuf = new char[buflen];
-    assert(infobuf != nullptr);
-    assert(errbuf != nullptr);
+    size_t num_opts = 5;
+    size_t buflen = 8192;
+    std::unique_ptr<CUjit_option[]> opts(new CUjit_option[num_opts]);
+    std::unique_ptr<void *[]> optvals(new void *[num_opts]);
+    std::string infobuf;
+    std::string errbuf;
+
+    infobuf.resize(buflen, ' ');
+    errbuf.resize(buflen, ' ');
+
     int enable = 1;
-    int num_opts = 5;
-    CUjit_option *opts = new CUjit_option[num_opts];
-    void **optvals = new void *[num_opts];
-    assert(opts != nullptr);
-    assert(optvals != nullptr);
 
     opts[0] = CU_JIT_INFO_LOG_BUFFER;
-    optvals[0] = (void *)infobuf;
+    optvals[0] = (void *)infobuf.data();
 
     opts[1] = CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES;
     optvals[1] = (void *)(long)buflen;
 
     opts[2] = CU_JIT_ERROR_LOG_BUFFER;
-    optvals[2] = (void *)errbuf;
+    optvals[2] = (void *)errbuf.data();
 
     opts[3] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
     optvals[3] = (void *)(long)buflen;
@@ -119,13 +118,11 @@ void GpuKernel::load()
     opts[4] = CU_JIT_GENERATE_DEBUG_INFO;
     optvals[4] = (void *)(long)enable;
 
-    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts, opts,
-                           optvals) != CUDA_SUCCESS) {
+    if (cuModuleLoadDataEx(&this->module, this->cubin.c_str(), num_opts,
+                           opts.get(), optvals.get()) != CUDA_SUCCESS) {
         LOG(DEBUG, infobuf);
-        LOGERR("cuModuleLoadDataEx() failed: ", errbuf);
+        LOG(ERROR, "cuModuleLoadDataEx() failed: ", errbuf);
     }
-    delete[] infobuf;
-    delete[] errbuf;
     CULOG(cuModuleGetFunction(&this->kernel, this->module, this->name.c_str()));
     //
     int static_smem_size_bytes;
@@ -136,15 +133,12 @@ void GpuKernel::load()
     CULOG(cuFuncSetAttribute(this->kernel,
                              CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,
                              dynamic_smem_size_bytes));
-    // Now code string is not needed.
-    // this->code.clear();
 }
 
 //
-GpuState GpuKernel::launch(GpuStream stream)
-{
+GpuState GpuKernel::launch(GpuStream stream) {
     if (!this->is_compiled()) {
-        LOGERR("Kernel is not compiled yet.");
+        LOG(ERROR, "Kernel is not compiled yet.");
     }
     auto it_ptr = this->ptr_args.begin();
     auto it_off = this->buf_offs.begin();
@@ -160,10 +154,9 @@ GpuState GpuKernel::launch(GpuStream stream)
                           this->smem_bytes, stream, this->params, 0);
 }
 
-int GpuKernel::get_function_attribute(CUfunction_attribute attr) const
-{
+int GpuKernel::get_function_attribute(CUfunction_attribute attr) const {
     if (this->kernel == nullptr) {
-        LOGERR("Kernel is not compiled yet.");
+        LOG(ERROR, "Kernel is not compiled yet.");
     }
     int ret;
     CULOG(cuFuncGetAttribute(&ret, attr, this->kernel));
@@ -186,13 +179,12 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                 {},
                 {{0, sizeof(GpuPtr)}, {0, sizeof(GpuPtr)}},
                 cubin_},
-      ctx{ctx_}, timer_begin{ctx_->create_event(false, nullptr)},
-      timer_end{ctx_->create_event(false, nullptr)}
-{
+      ctx{ctx_},
+      timer_begin{ctx_->create_event(false)},
+      timer_end{ctx_->create_event(false)} {
     ctx_->set_current();
-    this->flag = make_unique<GpuMem>("", sizeof(int), true);
-    this->clocks =
-        make_unique<GpuMem>("", CLKS_CNT * sizeof(long long int), true);
+    this->flag = make_unique<GpuMem>(sizeof(int));
+    this->clocks = make_unique<GpuMem>(CLKS_CNT * sizeof(long long int));
     this->flag_href = (volatile int *)this->flag->href(0);
 
     *(GpuPtr *)this->params[0] = this->flag->ref(0);
@@ -252,23 +244,20 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
     }
 }
 
-void GpuLoopKernel::compile(const GpuInfo &gpu_info)
-{
+void GpuLoopKernel::compile(const GpuInfo &gpu_info) {
     this->ctx->set_current();
     if (this->is_compiled()) {
         return;
     }
     // Compile the code.
-    GpuKernel::compile(gpu_info, this->ctx->is_comm_sw());
+    GpuKernel::compile(gpu_info);
 }
 
-void GpuLoopKernel::load()
-{
+void GpuLoopKernel::load() {
     this->ctx->set_current();
-    GpuKernel::load();
     //
     if (!this->is_compiled()) {
-        LOGERR("Need to compile first before initialization.");
+        LOG(ERROR, "Need to compile first before initialization.");
     }
     if (this->stream != nullptr) {
         // Wait until previous works finish.
@@ -303,50 +292,47 @@ void GpuLoopKernel::load()
             cuModuleGetGlobal(&clks_ptr_addr, 0, this->module, ARK_CLKS_NAME));
         CULOG(cuMemcpyHtoD(clks_ptr_addr, &clks_ptr_val, sizeof(GpuPtr)));
         // set the data buffer pointers of remote gpus
-        if (this->ctx->is_comm_sw()) {
-            int nrph = get_env().num_ranks_per_host;
-            int nodes_id = this->ctx->get_gpu_id() / nrph;
-            // only set the GPU remote data buf pointers of the GPUs on the same
-            // node
-            for (int i = nodes_id * nrph;
-                 i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
-                 i++) {
-                GpuPtr data_buf_value = this->ctx->get_data_ref(i);
-                if (data_buf_value == 0) {
-                    continue;
-                }
-                GpuPtr data_buf_ptr;
-                string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-                CUresult _e = cuModuleGetGlobal(&data_buf_ptr, 0, this->module,
-                                                data_buf_name.c_str());
-                // in some test code the symbol _ARK_BUF_0 is not defined
-                if (_e == CUDA_ERROR_NOT_FOUND) {
-                    LOG(DEBUG, "global variable ", data_buf_name, " not found");
-                    continue;
-                }
-                // CULOG(_e);
-                LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex,
-                    data_buf_ptr, " data_buf_value=", data_buf_value);
-                CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value,
-                                   sizeof(GpuPtr)));
+
+        int nrph = get_env().num_ranks_per_host;
+        int nodes_id = this->ctx->get_gpu_id() / nrph;
+        // only set the GPU remote data buf pointers of the GPUs on the same
+        // node
+        for (int i = nodes_id * nrph;
+             i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
+             i++) {
+            GpuPtr data_buf_value = this->ctx->get_data_ref(i);
+            if (data_buf_value == 0) {
+                continue;
             }
+            GpuPtr data_buf_ptr;
+            string data_buf_name = ARK_BUF_NAME + std::to_string(i);
+            CUresult _e = cuModuleGetGlobal(&data_buf_ptr, 0, this->module,
+                                            data_buf_name.c_str());
+            // in some test code the symbol _ARK_BUF_0 is not defined
+            if (_e == CUDA_ERROR_NOT_FOUND) {
+                LOG(DEBUG, "global variable ", data_buf_name, " not found");
+                continue;
+            }
+            // CULOG(_e);
+            LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
+                " data_buf_value=", data_buf_value);
+            CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
     }
 }
 
-GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
-{
+GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing) {
     this->elapsed_msec = -1;
     if (!this->is_compiled()) {
-        LOGERR("Need to compile first before initialization.");
+        LOG(ERROR, "Need to compile first before initialization.");
     } else if (stream == nullptr) {
-        LOGERR("Given an invalid stream.");
+        LOG(ERROR, "Given an invalid stream.");
     } else if (this->stream != nullptr) {
         if (this->stream == stream) {
             LOG(WARN, "Ignore launching twice.");
             return CUDA_SUCCESS;
         } else {
-            LOGERR("This loop kernel is already running.");
+            LOG(ERROR, "This loop kernel is already running.");
         }
     }
     if (!disable_timing) {
@@ -365,38 +351,18 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
     return res;
 }
 
-void GpuLoopKernel::run(int iter)
-{
+void GpuLoopKernel::run(int iter) {
     if (iter > 0) {
-#if 0
-        int idx = this->flip_flag ? 0 : 1;
-        int rem = iter;
-        while (rem--) {
-            while (this->get_flag(idx) > 0) {
-                cpu_ntimer_sleep(500);
-            }
-            this->set_flag(idx, 1);
-            idx ^= 1;
-        }
-        if (iter & 1) {
-            this->flip_flag = !(this->flip_flag);
-        }
-#else
         volatile int *href = this->flag_href;
         while (*href > 0) {
         }
         *href = iter;
-#endif
     }
 }
 
-bool GpuLoopKernel::poll()
-{
-    return *(this->flag_href) <= 0;
-}
+bool GpuLoopKernel::poll() { return *(this->flag_href) <= 0; }
 
-void GpuLoopKernel::wait()
-{
+void GpuLoopKernel::wait() {
     volatile int *href = this->flag_href;
     int cnt = MAX_LOOP_COUNTER;
     while (*href > 0) {
@@ -410,8 +376,9 @@ void GpuLoopKernel::wait()
                 LOG(WARN, "Stream is finished but the loop flag is still set.");
                 break;
             } else {
-                LOG(WARN, "wait() is delayed by a stream query. Regarding "
-                          "timing measurements may be inaccurate.");
+                LOG(WARN,
+                    "wait() is delayed by a stream query. Regarding "
+                    "timing measurements may be inaccurate.");
                 break;
             }
         } else if (res == CUDA_ERROR_NOT_READY) {
@@ -422,8 +389,7 @@ void GpuLoopKernel::wait()
     }
 }
 
-void GpuLoopKernel::stop()
-{
+void GpuLoopKernel::stop() {
     this->wait();
     *(this->flag_href) = -1;
     CULOG(cuStreamSynchronize(this->stream));
@@ -435,4 +401,4 @@ void GpuLoopKernel::stop()
     this->stream = nullptr;
 }
 
-} // namespace ark
+}  // namespace ark

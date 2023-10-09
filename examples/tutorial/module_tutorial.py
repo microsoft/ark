@@ -13,11 +13,24 @@ d_model = 512
 d_ff = 2048
 
 
+def convert_state_dict(state_dict: dict, type="numpy"):
+    """
+    Convert the state_dict of a module to np.ndarray or torch.Tensor type
+    """
+    new_state_dict = {}
+    for key in state_dict:
+        if type == "torch":
+            new_state_dict[key] = torch.from_numpy(state_dict[key])
+        elif type == "numpy":
+            new_state_dict[key] = state_dict[key].numpy()
+    return new_state_dict
+
+
 class SubModuleARK(ark.Module):
     def __init__(self):
         super(SubModuleARK, self).__init__()
         # Define the parameters of the submodule
-        self.weight_2 = ark.Parameter(ark.tensor([d_ff, d_model], ark.FP16))
+        self.weight_2 = ark.parameter([d_ff, d_model], ark.fp16)
 
     def forward(self, inputs):
         # Perform the forward pass of the submodule
@@ -29,17 +42,18 @@ class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
         # Define the parameters of the module
-        self.weight_1 = ark.Parameter(ark.tensor([d_model, d_ff], ark.FP16))
+        self.weight_1 = ark.parameter([d_model, d_ff], ark.fp16)
         # Create a submodule of the module
         self.submodule = SubModuleARK()
 
     def forward(self, inputs):
         # Perform the forward pass of the model
-        middle_result = ark.matmul(inputs, self.weight_1, is_relu=True)
-        middle_result1 = self.submodule(middle_result)
-        output = ark.add(middle_result1, inputs)
-        output_layernorm = ark.layernorm(output)
-        return output_layernorm
+        output = ark.matmul(inputs, self.weight_1)
+        output = ark.relu(output)
+        output = self.submodule(output)
+        output = ark.add(output, inputs)
+        output = ark.layernorm(output)
+        return output
 
 
 # Use pytorch to define the same model
@@ -72,16 +86,17 @@ class TestModelPytorch(nn.Module):
 
 # An example of using the ARK module
 def module_test():
-    # Initialize the ARK runtime
-    runtime = ark.Runtime()
     # Create an input tensor
-    input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.FP16)
+    input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.fp16)
 
     # Create an ARK module
     ark_model = TestModelARK()
 
     # Perform the forward pass
     output_tensor = ark_model(input_tensor)
+
+    # Initialize the ARK runtime
+    runtime = ark.Runtime()
 
     # Launch the ARK runtime
     runtime.launch()
@@ -119,8 +134,8 @@ def module_test():
 
     torch_model = TestModelPytorch()
 
-    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict using ark.convert_state_dict
-    torch_state_dict = ark.convert_state_dict(state_dict, "torch")
+    # Convert the numpy.ndarray type state_dict to torch.Tensor type state_dict
+    torch_state_dict = convert_state_dict(state_dict, "torch")
     # Load model parameters
     torch_model.load_state_dict(torch_state_dict)
 
@@ -154,4 +169,5 @@ def module_test():
 
 
 if __name__ == "__main__":
+    ark.init()
     module_test()

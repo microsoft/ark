@@ -10,8 +10,7 @@
 using namespace std;
 
 //
-void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
-{
+void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k) {
     size_t buf_x_sz = (size_t)m * (size_t)n * (size_t)k * sizeof(ark::half_t);
     size_t buf_y_sz = (size_t)m * (size_t)n * sizeof(ark::half_t);
 
@@ -29,25 +28,23 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k)
     /* ark::Tensor *tns_y = */ model.layernorm(tns_x);
 
     //
-    ark::Executor exe{0, 0, 1, model, "test_layernorm"};
+    ark::Executor exe{0, 1, model, "test_layernorm"};
     exe.compile();
 
     // Set data.
-    exe.tensor_memcpy(tns_x, data_a.get(), buf_x_sz);
+    tns_x->write(data_a.get());
 
     exe.launch();
     exe.run(1);
     exe.stop();
 }
 
-ark::unittest::State test_layernorm()
-{
+ark::unittest::State test_layernorm() {
     test_layernorm_internal(1, 64, 4);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_layernorm);
     return ark::unittest::SUCCESS;
