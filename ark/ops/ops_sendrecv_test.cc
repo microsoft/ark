@@ -26,13 +26,6 @@ void test_sendrecv_internal() {
 
             ark::Executor exe{gpu_id, 2, model, "test_sendrecv"};
             exe.compile();
-            if (gpu_id == 0) {
-                std::vector<ark::half_t> data(1024);
-                for (int i = 0; i < 1024; ++i) {
-                    data[i] = ark::half_t(i + 1);
-                }
-                tns_x->write(data.data());
-            }
 
             if (gpu_id == 0) {
                 std::vector<ark::half_t> data(1024);

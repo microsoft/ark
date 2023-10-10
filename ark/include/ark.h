@@ -534,7 +534,7 @@ class Model {
     Tensor *local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
                              Tensor *output, const std::string &name="local_all_reduce");
     /// Verify if this model is valid.
-    /// @return true if the model is valid, false otherwise.data fr
+    /// @return true if the model is valid, false otherwise.
     bool verify() const;
 
    protected:

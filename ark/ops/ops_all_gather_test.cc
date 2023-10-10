@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "env.h"
-#include "ipc/ipc_coll.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
