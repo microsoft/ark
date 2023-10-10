@@ -10,8 +10,7 @@ template <typename T, int NumGpus>
 void baseline_all_gather(std::vector<void *> &outputs,
                          const std::vector<ark::Dims> &output_shapes,
                          const std::vector<void *> &,
-                         const std::vector<ark::Dims> &, int)
-{
+                         const std::vector<ark::Dims> &, int) {
     for (int i = 0; i < NumGpus; ++i) {
         T *out = static_cast<T *>(outputs[i]);
         for (ark::DimType j = 0; j < output_shapes[i].size(); ++j) {
@@ -24,8 +23,7 @@ template <typename T, int NumGpus>
 void baseline_all_gather_mscclpp(std::vector<void *> &outputs,
                                  const std::vector<ark::Dims> &output_shapes,
                                  const std::vector<void *> &,
-                                 const std::vector<ark::Dims> &, int)
-{
+                                 const std::vector<ark::Dims> &, int) {
     const int nelems_per_rank = output_shapes[0].size() / NumGpus;
     T *out = static_cast<T *>(outputs[0]);
     for (ark::DimType i = 0; i < output_shapes[0].size(); ++i) {
@@ -33,11 +31,10 @@ void baseline_all_gather_mscclpp(std::vector<void *> &outputs,
     }
 }
 
-void test_all_gather_4gpus_internal(size_t nelem, int iter)
-{
+void test_all_gather_4gpus_internal(size_t nelem, int iter) {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+        ark::unittest::spawn_process([gpu_id, nelem, iter]() {
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m{gpu_id};
             ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
@@ -49,7 +46,8 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter)
                 ark::op_test("all_gather", m, {ones}, outputs,
                              baseline_all_gather<ark::half_t, num_gpus>,
                              {ones_data.get()}, true, gpu_id, num_gpus);
-            ark::op_test_log(result);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });
     }
@@ -77,8 +75,7 @@ void test_all_gather_8gpus_internal_mscclpp(size_t nelem, int iter) {
     ark::unittest::wait_all_processes();
 }
 
-ark::unittest::State test_all_gather_4gpus()
-{
+ark::unittest::State test_all_gather_4gpus() {
     test_all_gather_4gpus_internal(8, 1);
     test_all_gather_4gpus_internal(8192, 1);
     if (ark::get_env().use_mscclpp) {
@@ -87,8 +84,7 @@ ark::unittest::State test_all_gather_4gpus()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_all_gather_4gpus);
     return ark::unittest::SUCCESS;

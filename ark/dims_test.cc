@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "sstream"
+#include <sstream>
 
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
 using namespace std;
 
-ark::unittest::State test_dims_basic()
-{
+ark::unittest::State test_dims_basic() {
     ark::Dims d0{1, 5, 9};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
@@ -27,8 +26,7 @@ ark::unittest::State test_dims_basic()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_dims_no_dim()
-{
+ark::unittest::State test_dims_no_dim() {
     ark::Dims d0{};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(d0.is_no_dim());
@@ -45,8 +43,7 @@ ark::unittest::State test_dims_no_dim()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_dims_zero()
-{
+ark::unittest::State test_dims_zero() {
     ark::Dims d0{0, 10, 0};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
@@ -60,8 +57,7 @@ ark::unittest::State test_dims_zero()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_dims_from_dims()
-{
+ark::unittest::State test_dims_from_dims() {
     ark::Dims d0{1, 2, 3, 4};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
@@ -72,8 +68,7 @@ ark::unittest::State test_dims_from_dims()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_dims_from_vector()
-{
+ark::unittest::State test_dims_from_vector() {
     vector<ark::DimType> v0{1, 2, 3, 4};
     ark::Dims d0{v0};
     UNITTEST_TRUE(!d0.is_invalid());
@@ -90,8 +85,7 @@ ark::unittest::State test_dims_from_vector()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_dims_neg_index()
-{
+ark::unittest::State test_dims_neg_index() {
     ark::Dims d0{10, 20, 30, 40};
 
     UNITTEST_EQ(d0[-0], 10);
@@ -103,8 +97,7 @@ ark::unittest::State test_dims_neg_index()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_dims_erase()
-{
+ark::unittest::State test_dims_erase() {
     ark::Dims d0{10, 20, 30, 40};
 
     UNITTEST_EQ(d0[0], 10);
@@ -127,8 +120,7 @@ ark::unittest::State test_dims_erase()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_dims_basic);
     UNITTEST(test_dims_no_dim);

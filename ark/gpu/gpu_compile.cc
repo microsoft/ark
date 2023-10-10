@@ -1,6 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "gpu/gpu_compile.h"
+
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
@@ -8,24 +14,20 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <mutex>
 
 #include "cpu_timer.h"
 #include "env.h"
-#include "gpu/gpu_compile.h"
 #include "gpu/gpu_logging.h"
 #include "include/ark.h"
 #include "random.h"
-#include "threading.h"
 
 #define ARK_USE_NVRTC 0
 #define ARK_DEBUG_KERNEL 0
 
 #if (ARK_USE_NVRTC)
 #include <nvrtc.h>
-#endif // (ARK_USE_NVRTC)
+#endif  // (ARK_USE_NVRTC)
 
 using namespace std;
 
@@ -33,8 +35,7 @@ namespace ark {
 
 #if (ARK_USE_NVRTC)
 const string nvrtc_compile(const string &ark_root, const string &arch,
-                           const string &code, unsigned int max_reg_cnt)
-{
+                           const string &code, unsigned int max_reg_cnt) {
     nvrtcProgram prog;
     NVRTCLOG(nvrtcCreateProgram(&prog, code.c_str(), nullptr, 0, 0, 0));
     string opt_arch = "-arch=compute_" + arch;
@@ -50,7 +51,7 @@ const string nvrtc_compile(const string &ark_root, const string &arch,
 #if (ARK_DEBUG_KERNEL)
         "--device-debug",
         "--generate-line-info",
-#endif // (ARK_DEBUG_KERNEL)
+#endif  // (ARK_DEBUG_KERNEL)
         opt_reg.c_str(),
         opt_arch_def.c_str(),
         opt_inc_0.c_str(),
@@ -88,8 +89,7 @@ const string nvrtc_compile(const string &ark_root, const string &arch,
     return string(ptx);
 }
 
-const string link(const vector<string> &ptxs)
-{
+const string link(const vector<string> &ptxs) {
     unsigned int buflen = 8192;
     char *infobuf = new char[buflen];
     char *errbuf = new char[buflen];
@@ -138,11 +138,40 @@ const string link(const vector<string> &ptxs)
     return ret;
 }
 
-#endif // (ARK_USE_NVRTC)
+#endif  // (ARK_USE_NVRTC)
+
+template <typename ItemType>
+static void para_exec(std::vector<ItemType> &items, int max_num_threads,
+                      const std::function<void(ItemType &)> &func) {
+    size_t nthread = (size_t)max_num_threads;
+    if (nthread > items.size()) {
+        nthread = items.size();
+    }
+    std::vector<std::thread> threads;
+    threads.reserve(nthread);
+    std::mutex mtx;
+    size_t idx = 0;
+    for (size_t i = 0; i < nthread; ++i) {
+        threads.emplace_back([&items, &mtx, &idx, &func] {
+            size_t local_idx = -1;
+            for (;;) {
+                {
+                    const std::lock_guard<std::mutex> lock(mtx);
+                    local_idx = idx++;
+                }
+                if (local_idx >= items.size()) break;
+                func(items[local_idx]);
+            }
+        });
+    }
+    for (auto &t : threads) {
+        t.join();
+    }
+}
 
 const string gpu_compile(const vector<string> &codes,
-                         const GpuArchType &arch_type, unsigned int max_reg_cnt)
-{
+                         const GpuArchType &arch_type,
+                         unsigned int max_reg_cnt) {
     const string &ark_root = get_env().path_root_dir;
     string arch;
     if (arch_type == GPU_ARCH_CUDA_60) {
@@ -167,7 +196,7 @@ const string gpu_compile(const vector<string> &codes,
 #else
     // assert(false);
     // return "";
-    vector<pair<string, string>> items;
+    vector<pair<string, string> > items;
     items.reserve(codes.size());
     srand();
     for (auto &code : codes) {
@@ -189,7 +218,7 @@ const string gpu_compile(const vector<string> &codes,
         items.emplace_back(code, "/tmp/ark_" + rand_str);
     }
     assert(items.size() == 1);
-    para_exec<pair<string, string>>(
+    para_exec<pair<string, string> >(
         items, 20, [&arch, &ark_root, max_reg_cnt](pair<string, string> &item) {
             string cu_file_path = item.second + ".cu";
             // Write CUDA code file.
@@ -202,7 +231,7 @@ const string gpu_compile(const vector<string> &codes,
             exec_cmd << "/usr/local/cuda/bin/nvcc -cubin ";
 #if (ARK_DEBUG_KERNEL)
             exec_cmd << "-G ";
-#endif // (ARK_DEBUG_KERNEL)
+#endif  // (ARK_DEBUG_KERNEL)
             if (max_reg_cnt > 0) {
                 exec_cmd << "-maxrregcount " << max_reg_cnt << " ";
             }
@@ -253,7 +282,7 @@ const string gpu_compile(const vector<string> &codes,
     // remove(cu_file_path.c_str());
     remove(cubin_file_path.c_str());
     return ss.str();
-#endif // (ARK_USE_NVRTC)
+#endif  // (ARK_USE_NVRTC)
 }
 
-} // namespace ark
+}  // namespace ark

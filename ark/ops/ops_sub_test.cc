@@ -38,8 +38,7 @@ void baseline_sub(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_sub_fp32()
-{
+ark::unittest::State test_sub_fp32() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP32);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP32);
@@ -47,12 +46,12 @@ ark::unittest::State test_sub_fp32()
 
     auto result =
         ark::op_test("sub_fp32", m, {t0, t1}, {out}, baseline_sub<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sub_fp32);
     return ark::unittest::SUCCESS;

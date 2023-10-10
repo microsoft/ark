@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cstring>
+
 #include "gpu/gpu_buf.h"
 #include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
-#include <cstring>
 
 using namespace std;
 
-ark::unittest::State test_tensor_memcpy()
-{
+ark::unittest::State test_tensor_memcpy() {
     ark::Model model;
     ark::Dims shape{2, 3, 4, 5};
     ark::Dims ldims{9, 8, 7, 6};
@@ -84,8 +84,7 @@ ark::unittest::State test_tensor_memcpy()
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_tensor_layout()
-{
+ark::unittest::State test_tensor_layout() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor *tns =
@@ -130,8 +129,7 @@ ark::unittest::State test_tensor_layout()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_tensor_memcpy);
     UNITTEST(test_tensor_layout);

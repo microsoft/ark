@@ -5,8 +5,7 @@
 // CAUTION: n*m should be even.
 extern "C" __global__ void simple_reduce(ark::half *y, ark::half *x,
                                          unsigned int m, unsigned int n,
-                                         unsigned int k, bool is_relu)
-{
+                                         unsigned int k, bool is_relu) {
     unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int num = n * m / 2;
     while (tid < num) {

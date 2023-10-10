@@ -4,17 +4,17 @@
 #ifndef ARK_MODEL_H_
 #define ARK_MODEL_H_
 
-#include "include/ark.h"
-#include "ops/ops_common.h"
 #include <list>
 #include <map>
 #include <set>
 
+#include "include/ark.h"
+#include "ops/ops_common.h"
+
 namespace ark {
 
-class Model::Impl
-{
-  public:
+class Model::Impl {
+   public:
     Impl() = default;
     ~Impl() = default;
 
@@ -44,7 +44,8 @@ class Model::Impl
     /// should indicate finer-grained Ops. If it is -1, the granularity level
     /// will be automatically determined by the scheduler.
     /// @return the output tensors of the @ref Op.
-    std::vector<Tensor *> add_op(const OpType type, const OpPrecType prec_type,
+    std::vector<Tensor *> add_op(const OpType type,
+                                 const std::string &prec_type,
                                  const std::vector<Tensor *> &inputs,
                                  const std::vector<Tensor *> &output_refs,
                                  const OpArgs &args, const std::string &name,
@@ -116,7 +117,7 @@ class Model::Impl
     /// @return the first cyclic @ref Op if there is any, otherwise nullptr.
     const Op *get_cyclic_op() const;
 
-  protected:
+   protected:
     /// Rank of this model.
     int rank;
     /// Number of assigned EIDs.
@@ -124,7 +125,7 @@ class Model::Impl
 
     friend class Model;
 
-  private:
+   private:
     /// Append a postfix to a name to make it unique.
     /// @param name the name to append postfix.
     /// @return the name with postfix.
@@ -144,6 +145,6 @@ class Model::Impl
     std::map<std::string, int> name_cnts;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_MODEL_H_
+#endif  // ARK_MODEL_H_

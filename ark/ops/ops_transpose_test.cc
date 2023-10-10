@@ -1,77 +1,138 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
-#include "logging.h"
+#include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
 template <typename T>
-void test_transpose_internal(ark::TensorType type, ark::DimType n,
-                             ark::DimType c, ark::DimType h, ark::DimType w,
-                             ark::DimType pn, ark::DimType pc, ark::DimType ph,
-                             ark::DimType pw)
-{
-    ark::Model model;
-    ark::Tensor *tns_in = model.tensor({n, c, h, w}, type);
-    ark::Tensor *tns_out = model.transpose(tns_in, {pn, pc, ph, pw});
-
-    ark::Executor exe{/*rank=*/0, /*world_size=*/1, model, "test_transpose"};
-    exe.compile();
-
-    // Set data.
-    ark::srand();
-    auto data_in = ark::utils::rand_array<T>(n * c * h * w, 0.01);
-    T *in_ptr = data_in.get();
-
-    tns_in->write(in_ptr);
-
-    exe.launch();
-    exe.run(1);
-    exe.stop();
-
-    // Copy results of the loop kernel routine into CPU memory.
-    T *res = (T *)malloc(n * c * h * w * sizeof(T));
-    UNITTEST_NE(res, (T *)nullptr);
-    tns_out->read(res);
-
-    // int on = tns_in->shape[pn];
-    ark::DimType oc = tns_in->shape[pc];
-    ark::DimType oh = tns_in->shape[ph];
-    ark::DimType ow = tns_in->shape[pw];
-
-    // Check results.
-    for (ark::DimType i = 0; i < n; ++i) {
-        for (ark::DimType j = 0; j < c; ++j) {
-            for (ark::DimType k = 0; k < h; ++k) {
-                for (ark::DimType l = 0; l < w; ++l) {
-                    ark::Dims axis{i, j, k, l};
-                    ark::Dims new_axis{axis[pn], axis[pc], axis[ph], axis[pw]};
-                    ark::DimType in_idx = i * c * h * w + j * h * w + k * w + l;
-                    ark::DimType res_idx = new_axis[0] * oc * oh * ow +
-                                           new_axis[1] * oh * ow +
-                                           new_axis[2] * ow + new_axis[3];
-                    UNITTEST_TRUE(in_idx < n * c * h * w);
-                    UNITTEST_TRUE(res_idx < n * c * h * w);
-                    UNITTEST_EQ(in_ptr[in_idx], res[res_idx]);
+void baseline_transpose_0132(std::vector<void *> &outputs,
+                             const std::vector<ark::Dims> &output_shapes,
+                             const std::vector<void *> &inputs,
+                             const std::vector<ark::Dims> &input_shapes) {
+    T *out = static_cast<T *>(outputs[0]);
+    T *in = static_cast<T *>(inputs[0]);
+    ark::Dims osh = output_shapes[0].dims4();
+    ark::Dims ish = input_shapes[0].dims4();
+    for (ark::DimType n = 0; n < ish[0]; ++n) {
+        for (ark::DimType c = 0; c < ish[1]; ++c) {
+            for (ark::DimType h = 0; h < ish[2]; ++h) {
+                for (ark::DimType w = 0; w < ish[3]; ++w) {
+                    // out[n][c][w][h] = in[n][c][h][w]
+                    out[h + w * osh[3] + c * osh[2] * osh[3] +
+                        n * osh[1] * osh[2] * osh[3]] =
+                        in[w + h * ish[3] + c * ish[3] * ish[2] +
+                           n * ish[3] * ish[2] * ish[1]];
                 }
             }
         }
     }
-}
+};
 
-ark::unittest::State test_transpose_fp32()
-{
-    test_transpose_internal<float>(ark::FP32, 3, 2048, 96, 128, 0, 2, 1, 3);
-    test_transpose_internal<ark::half_t>(ark::FP16, 1, 1, 64, 32, 0, 1, 3, 2);
+template <typename T>
+void baseline_transpose_0231(std::vector<void *> &outputs,
+                             const std::vector<ark::Dims> &output_shapes,
+                             const std::vector<void *> &inputs,
+                             const std::vector<ark::Dims> &input_shapes) {
+    T *out = static_cast<T *>(outputs[0]);
+    T *in = static_cast<T *>(inputs[0]);
+    ark::Dims osh = output_shapes[0].dims4();
+    ark::Dims ish = input_shapes[0].dims4();
+    for (ark::DimType n = 0; n < ish[0]; ++n) {
+        for (ark::DimType c = 0; c < ish[1]; ++c) {
+            for (ark::DimType h = 0; h < ish[2]; ++h) {
+                for (ark::DimType w = 0; w < ish[3]; ++w) {
+                    // out[n][h][w][c] = in[n][c][h][w]
+                    out[c + w * osh[3] + h * osh[2] * osh[3] +
+                        n * osh[1] * osh[2] * osh[3]] =
+                        in[w + h * ish[3] + c * ish[3] * ish[2] +
+                           n * ish[3] * ish[2] * ish[1]];
+                }
+            }
+        }
+    }
+};
 
+ark::unittest::State test_transpose_0132_fp32() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP32);
+    ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
+
+    auto result = ark::op_test("transpose_0132_fp32", m, {t}, {out},
+                               baseline_transpose_0132<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+ark::unittest::State test_transpose_0132_fp16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP16);
+    ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
+
+    auto result = ark::op_test("transpose_0132_fp16", m, {t}, {out},
+                               baseline_transpose_0132<ark::half_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_transpose_0132_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::BF16);
+    ark::Tensor *out = m.transpose(t, {0, 1, 3, 2});
+
+    auto result = ark::op_test("transpose_0132_bf16", m, {t}, {out},
+                               baseline_transpose_0132<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_transpose_0231_fp32() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP32);
+    ark::Tensor *out = m.transpose(t, {0, 2, 3, 1});
+
+    auto result = ark::op_test("transpose_0231_fp32", m, {t}, {out},
+                               baseline_transpose_0231<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_transpose_0231_fp16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::FP16);
+    ark::Tensor *out = m.transpose(t, {0, 2, 3, 1});
+
+    auto result = ark::op_test("transpose_0231_fp16", m, {t}, {out},
+                               baseline_transpose_0231<ark::half_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_transpose_0231_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor({5, 3, 32, 128}, ark::BF16);
+    ark::Tensor *out = m.transpose(t, {0, 2, 3, 1});
+
+    auto result = ark::op_test("transpose_0231_bf16", m, {t}, {out},
+                               baseline_transpose_0231<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+int main() {
     ark::init();
-    UNITTEST(test_transpose_fp32);
+    UNITTEST(test_transpose_0132_fp32);
+    UNITTEST(test_transpose_0132_fp16);
+    UNITTEST(test_transpose_0132_bf16);
+    UNITTEST(test_transpose_0231_fp32);
+    UNITTEST(test_transpose_0231_fp16);
+    UNITTEST(test_transpose_0231_bf16);
     return ark::unittest::SUCCESS;
 }

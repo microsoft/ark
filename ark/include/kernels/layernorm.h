@@ -9,8 +9,8 @@
 namespace ark {
 
 // Static checkers if InShape can be reduced into OutShape.
-template <typename InShape, typename OutShape> struct LayerNormShapeChecker
-{
+template <typename InShape, typename OutShape>
+struct LayerNormShapeChecker {
     static_assert(InShape::N == OutShape::N,
                   "Dimension N of input and output do not match");
     static_assert(InShape::C == OutShape::C,
@@ -25,17 +25,14 @@ template <typename InShape, typename OutShape> struct LayerNormShapeChecker
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, typename DataType, int NelemPerThread>
-struct LayerNorm
-{
+struct LayerNorm {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
-                           int smem_per_warp)
-    {
+                           int smem_per_warp) {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
-        using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
 
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         // The reduction dimension of the final stage.
@@ -59,68 +56,55 @@ struct LayerNorm
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
 
+        int idx_out_base = (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                           (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                           (tid_n + un * UnitOutDims::N) * OutDims::CHW;
         int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
         DataType reduced;
-        ReduceTypeMean::singleIdentity(&reduced);
+        ReduceTypeMean::identity<1>(&reduced);
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            ReduceTypeMean::singleReduce(&reduced, &reduced, &in[idx_in]);
+            ReduceTypeMean::reduce<1>(&reduced, &reduced, &in[idx_in]);
         }
-        UnitOp::sync_threads();
         // final reduction on shared memory using warp shuffle.
         reduced = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             reduced, tid, smem_per_warp);
         // get the average result.
-        ReduceTypeMean::singlePostReduce(&reduced, &reduced, UnitOutDims::W);
+        ReduceTypeMean::postReduce<1>(&reduced, &reduced, UnitOutDims::W);
         DataType variance;
-        ReduceTypeMean::singleIdentity(&variance);
+        ReduceTypeMean::identity<1>(&variance);
         // get the variance
-        UnitOp::sync_threads();
+        // TODO: Kahan sum
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
             variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
         }
-        UnitOp::sync_threads();
         variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             variance, tid, smem_per_warp);
-        ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutDims::W);
-        UnitOp::sync_threads();
+        ReduceTypeMean::postReduce<1>(&variance, &variance, UnitOutDims::W);
         // the output is (input - mean) / sqrt(variance)
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            int idx_out = idx_out_base + idx_w;
+            out[idx_out] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
         }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void layernorm(float *out, const float *in, int uop_idx,
-                      int smem_per_warp)
-{
+          int SmemBytes, typename DataType>
+DEVICE void layernorm(DataType *out, const DataType *in, int uop_idx,
+                      int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-              SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
-                                                     smem_per_warp);
-}
-
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx,
-                      int smem_per_warp)
-{
-    constexpr int NelemPerThread = 1;
-    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-              SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
-                                                         smem_per_warp);
+              SmemBytes, DataType, NelemPerThread>::run(out, in, uop_idx,
+                                                        smem_per_warp);
 }
 
 // Perform RMS normalization on input and write the result on output.
@@ -128,17 +112,14 @@ DEVICE void layernorm(ark::half *out, const ark::half *in, int uop_idx,
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
           int SmemBytes, typename DataType, int NelemPerThread>
-struct RMSNorm
-{
+struct RMSNorm {
     using UnitOp =
         UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
-                           int smem_per_warp)
-    {
+                           int smem_per_warp) {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
-        using ReduceTypeMean = ReduceTypeMean<DataType, NelemPerThread>;
 
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         // The reduction dimension of the final stage.
@@ -162,56 +143,52 @@ struct RMSNorm
         int uc = UnitOp::uop_idx_c(uop_idx);
         int uh = UnitOp::uop_idx_h(uop_idx);
 
+        int idx_out_base = (tid_h + uh * UnitOutDims::H) * OutDims::W +
+                           (tid_c + uc * UnitOutDims::C) * OutDims::HW +
+                           (tid_n + un * UnitOutDims::N) * OutDims::CHW;
         int idx_in_base = (tid_h + uh * UnitOutDims::H) * InDims::W +
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
-        DataType variance;
-        ReduceTypeMean::singleIdentity(&variance);
-        // get the variance
-        UnitOp::sync_threads();
+        // calculate mean square
+        DataType mean_square;
+        DataType cmp;
+        ReduceTypeMean::identity<1>(&mean_square);
+        ReduceTypeMean::identity<1>(&cmp);
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            variance += (in[idx_in]) * (in[idx_in]);
+            DataType in_val = in[idx_in];
+            DataType val = in_val * in_val - cmp;
+            DataType tmp = mean_square + val;
+            cmp = (tmp - mean_square) - val;
+            mean_square = tmp;
         }
-        UnitOp::sync_threads();
-        variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
-            variance, tid, smem_per_warp);
-        ReduceTypeMean::singlePostReduce(&variance, &variance, UnitOutDims::W);
-        UnitOp::sync_threads();
-        // the output is (input - mean) / sqrt(variance)
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            out[idx_in] = (in[idx_in]) * rsqrtf(variance + 1e-5f);
+        mean_square = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
+            mean_square, tid, smem_per_warp);
+        ReduceTypeMean::postReduce<1>(&mean_square, &mean_square,
+                                      UnitOutDims::W);
+        // the output is (input - mean) / sqrt(mean_square)
+        DataType rrms(rsqrtf(mean_square + 1e-5f));
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            int idx_out = idx_out_base + idx_w;
+            out[idx_out] = (in[idx_in]) * rrms;
         }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void rmsnorm(float *out, const float *in, int uop_idx, int smem_per_warp)
-{
+          int SmemBytes, typename DataType>
+DEVICE void rmsnorm(DataType *out, const DataType *in, int uop_idx,
+                    int smem_per_warp) {
     constexpr int NelemPerThread = 1;
     RMSNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, float, NelemPerThread>::run(out, in, uop_idx,
-                                                   smem_per_warp);
+            SmemBytes, DataType, NelemPerThread>::run(out, in, uop_idx,
+                                                      smem_per_warp);
 }
 
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes>
-DEVICE void rmsnorm(ark::half *out, const ark::half *in, int uop_idx,
-                    int smem_per_warp)
-{
-    constexpr int NelemPerThread = 1;
-    RMSNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
-            SmemBytes, ark::half, NelemPerThread>::run(out, in, uop_idx,
-                                                       smem_per_warp);
-}
+}  // namespace ark
 
-} // namespace ark
-
-#endif // ARK_KERNELS_LAYERNORM_H_
+#endif  // ARK_KERNELS_LAYERNORM_H_

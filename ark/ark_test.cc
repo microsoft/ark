@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 
 #include "include/ark.h"
+
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_version()
-{
+ark::unittest::State test_version() {
     auto version = ark::version();
 
     // Check if the version string is in the correct format.
@@ -17,8 +17,7 @@ ark::unittest::State test_version()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_version);
     return 0;

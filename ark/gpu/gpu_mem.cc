@@ -1,13 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <cassert>
-#include <cstring>
 #include <fcntl.h>
-#include <fstream>
-#include <string>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include <cassert>
+#include <cstring>
+#include <fstream>
+#include <string>
 
 #include "gpumemioctl.h"
 #define GPUMEM_DRIVER_PATH "/dev/" GPUMEM_DRIVER_NAME
@@ -22,8 +23,7 @@
 
 namespace ark {
 
-bool is_gpumem_loaded()
-{
+bool is_gpumem_loaded() {
     std::ifstream file("/proc/modules");
     std::string line;
     while (std::getline(file, line)) {
@@ -34,8 +34,7 @@ bool is_gpumem_loaded()
     return false;
 }
 
-struct ExposalInfo
-{
+struct ExposalInfo {
     // Physical address of GPU pointer.
     uint64_t phys;
     // Number of mmapped 64KB pages.
@@ -45,14 +44,11 @@ struct ExposalInfo
 };
 
 // Expose GPU memory space into CPU memory.
-static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
-{
+static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     if (!is_gpumem_loaded()) {
         LOG(ERROR, "gpumem driver is not loaded");
     }
 
-    int flag = 1;
-    CULOG(cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr));
     // Convert virtual into physical address.
     int fd = open(GPUMEM_DRIVER_PATH, O_RDWR, 0);
     if (fd < 0) {
@@ -108,14 +104,13 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes)
     }
     // Reset the tested address.
     *tmp0 = 0;
-#endif // DEBUG_ARK_GPU_MEM
+#endif  // DEBUG_ARK_GPU_MEM
     close(fd);
     return 0;
 }
 
 //
-static void *map_pa_to_va(uint64_t pa, uint64_t bytes)
-{
+static void *map_pa_to_va(uint64_t pa, uint64_t bytes) {
     int fd = open(GPUMEM_DRIVER_PATH, O_RDWR, 0);
     if (fd < 0) {
         LOG(ERROR, "open: ", strerror(errno), " (", errno, ")");
@@ -130,20 +125,13 @@ static void *map_pa_to_va(uint64_t pa, uint64_t bytes)
 }
 
 //
-GpuMem::GpuMem(size_t bytes)
-{
-    this->init(bytes);
-}
+GpuMem::GpuMem(size_t bytes) { this->init(bytes); }
 
 //
-GpuMem::GpuMem(const GpuMem::Info &info)
-{
-    this->init(info);
-}
+GpuMem::GpuMem(const GpuMem::Info &info) { this->init(info); }
 
 //
-void GpuMem::init(size_t bytes, bool expose)
-{
+void GpuMem::init(size_t bytes, bool expose) {
     if (bytes == 0) {
         LOG(ERROR, "Tried to allocate zero byte.");
     }
@@ -153,7 +141,7 @@ void GpuMem::init(size_t bytes, bool expose)
 
     // Make sure it is a base pointer.
     GpuPtr base_ptr;
-    size_t base_size; // unused
+    size_t base_size;  // unused
     CULOG(cuMemGetAddressRange(&base_ptr, &base_size, raw_addr_));
     if (raw_addr_ != base_ptr) {
         LOG(ERROR, "Unexpected error.");
@@ -162,6 +150,9 @@ void GpuMem::init(size_t bytes, bool expose)
     // Aligned address.
     addr_ =
         (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+
+    int one = 1;
+    CULOG(cuPointerSetAttribute(&one, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr_));
 
     ExposalInfo exp_info;
     if (expose) {
@@ -188,8 +179,7 @@ void GpuMem::init(size_t bytes, bool expose)
 }
 
 //
-void GpuMem::init(const GpuMem::Info &info)
-{
+void GpuMem::init(const GpuMem::Info &info) {
     // Copy info
     info_.ipc_hdl = info.ipc_hdl;
     info_.phys_addr = info.phys_addr;
@@ -226,53 +216,37 @@ void GpuMem::init(const GpuMem::Info &info)
 }
 
 // Destructor.
-GpuMem::~GpuMem()
-{
+GpuMem::~GpuMem() {
     if (addr_ == 0) {
         return;
     }
     size_t mapped_bytes;
     if (is_remote_) {
-        CULOG(cuIpcCloseMemHandle(raw_addr_));
+        cuIpcCloseMemHandle(raw_addr_);
         mapped_bytes = info_.bytes;
     } else {
-        CULOG(cuMemFree(raw_addr_));
+        cuMemFree(raw_addr_);
         mapped_bytes = npage_ << GPU_PAGE_SHIFT;
     }
     if (mmap_ != nullptr) {
-        if (munmap(mmap_, mapped_bytes) != 0) {
-            LOG(ERROR, "munmap failed with errno ", errno);
-        }
+        munmap(mmap_, mapped_bytes);
     }
 }
 
 // GPU-side virtual address.
-GpuPtr GpuMem::ref(size_t offset) const
-{
-    return addr_ + offset;
-}
+GpuPtr GpuMem::ref(size_t offset) const { return addr_ + offset; }
 
 // GPU-side physical address.
-uint64_t GpuMem::pref(size_t offset) const
-{
-    return info_.phys_addr + offset;
-}
+uint64_t GpuMem::pref(size_t offset) const { return info_.phys_addr + offset; }
 
 // Host-side mapped address.
-void *GpuMem::href(size_t offset) const
-{
+void *GpuMem::href(size_t offset) const {
     return (void *)((char *)mmap_ + offset);
 }
 
 // Return allocated number of bytes.
-uint64_t GpuMem::get_bytes() const
-{
-    return info_.bytes;
-}
+uint64_t GpuMem::get_bytes() const { return info_.bytes; }
 
-const GpuMem::Info &GpuMem::get_info() const
-{
-    return info_;
-}
+const GpuMem::Info &GpuMem::get_info() const { return info_; }
 
-} // namespace ark
+}  // namespace ark

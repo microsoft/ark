@@ -1,21 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_hosts.h"
+
 #include <arpa/inet.h>
-#include <cstring>
 #include <netdb.h>
+
+#include <cstring>
 #include <vector>
 
 #include "env.h"
-#include "ipc/ipc_hosts.h"
 #include "logging.h"
 
 namespace ark {
 
 static std::vector<std::string> hosts;
 
-const std::string &get_host(int idx)
-{
+const std::string &get_host(int idx) {
     if (hosts.size() == 0) {
         const char *hostfile = get_env().hostfile.c_str();
         FILE *fp = fopen(hostfile, "r");
@@ -51,4 +52,4 @@ const std::string &get_host(int idx)
     return hosts[idx];
 }
 
-} // namespace ark
+}  // namespace ark

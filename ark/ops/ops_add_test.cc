@@ -10,8 +10,7 @@ template <typename T>
 void baseline_add(std::vector<void *> &outputs,
                   const std::vector<ark::Dims> &output_shapes,
                   const std::vector<void *> &inputs,
-                  const std::vector<ark::Dims> &input_shapes, int)
-{
+                  const std::vector<ark::Dims> &input_shapes, int) {
     T *out = static_cast<T *>(outputs[0]);
     T *t0 = static_cast<T *>(inputs[0]);
     T *t1 = static_cast<T *>(inputs[1]);
@@ -38,8 +37,7 @@ void baseline_add(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_add_fp32()
-{
+ark::unittest::State test_add_fp32() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP32);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP32);
@@ -47,12 +45,12 @@ ark::unittest::State test_add_fp32()
 
     auto result =
         ark::op_test("add_fp32", m, {t0, t1}, {out}, baseline_add<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_add_fp16()
-{
+ark::unittest::State test_add_fp16() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP16);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP16);
@@ -60,12 +58,25 @@ ark::unittest::State test_add_fp16()
 
     auto result =
         ark::op_test("add_fp16", m, {t0, t1}, {out}, baseline_add<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_add_overwrite()
-{
+ark::unittest::State test_add_bf16() {
+    ark::Model m;
+    ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::BF16);
+    ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::BF16);
+    ark::Tensor *out = m.add(t0, t1);
+
+    auto result = ark::op_test("add_bf16", m, {t0, t1}, {out},
+                               baseline_add<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_add_overwrite() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP16);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP16);
@@ -73,12 +84,12 @@ ark::unittest::State test_add_overwrite()
 
     auto result = ark::op_test("add_overwrite", m, {t0, t1}, {out},
                                baseline_add<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_add_broadcast()
-{
+ark::unittest::State test_add_broadcast() {
     {
         ark::Model m;
         ark::Tensor *t0 = m.tensor(ark::Dims(4, 1024), ark::FP16);
@@ -87,7 +98,8 @@ ark::unittest::State test_add_broadcast()
 
         auto result = ark::op_test("add_broadcast", m, {t0, t1}, {out},
                                    baseline_add<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -97,7 +109,8 @@ ark::unittest::State test_add_broadcast()
 
         auto result = ark::op_test("add_broadcast", m, {t0, t1}, {out},
                                    baseline_add<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -107,16 +120,17 @@ ark::unittest::State test_add_broadcast()
 
         auto result = ark::op_test("add_broadcast", m, {t0, t1}, {out},
                                    baseline_add<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_add_fp32);
     UNITTEST(test_add_fp16);
+    UNITTEST(test_add_bf16);
     UNITTEST(test_add_overwrite);
     UNITTEST(test_add_broadcast);
     return ark::unittest::SUCCESS;

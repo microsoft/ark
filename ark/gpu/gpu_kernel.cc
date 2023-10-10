@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "gpu/gpu_kernel.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -10,7 +12,6 @@
 #include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_compile.h"
-#include "gpu/gpu_kernel.h"
 #include "gpu/gpu_logging.h"
 
 using namespace std;
@@ -31,12 +32,17 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
                      initializer_list<size_t> buf_offs_,
                      initializer_list<pair<void *, size_t>> args,
                      const string &cubin_)
-    : name{name_}, codes{codes_}, gd{grid_dims}, bd{block_dims},
-      smem_bytes{smem_bytes_}, buf_args{buf_args_}, buf_offs{buf_offs_},
-      ptr_args(buf_args.size(), 0), num_params{(int)(buf_args.size() +
-                                                     args.size())},
-      params{new void *[num_params]}, cubin{cubin_}
-{
+    : name{name_},
+      codes{codes_},
+      gd{grid_dims},
+      bd{block_dims},
+      smem_bytes{smem_bytes_},
+      buf_args{buf_args_},
+      buf_offs{buf_offs_},
+      ptr_args(buf_args.size(), 0),
+      num_params{(int)(buf_args.size() + args.size())},
+      params{new void *[num_params]},
+      cubin{cubin_} {
     if (this->name.size() == 0) {
         LOG(ERROR, "Invalid kernel name: ", this->name);
     }
@@ -57,8 +63,7 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
 }
 
 //
-GpuKernel::~GpuKernel()
-{
+GpuKernel::~GpuKernel() {
     if (this->params != nullptr) {
         for (int i = buf_args.size(); i < this->num_params; ++i) {
             if (this->params[i] != nullptr) {
@@ -71,8 +76,7 @@ GpuKernel::~GpuKernel()
 }
 
 //
-void GpuKernel::compile(const GpuInfo &gpu_info)
-{
+void GpuKernel::compile(const GpuInfo &gpu_info) {
     if (this->is_compiled()) {
         return;
     }
@@ -132,8 +136,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info)
 }
 
 //
-GpuState GpuKernel::launch(GpuStream stream)
-{
+GpuState GpuKernel::launch(GpuStream stream) {
     if (!this->is_compiled()) {
         LOG(ERROR, "Kernel is not compiled yet.");
     }
@@ -151,8 +154,7 @@ GpuState GpuKernel::launch(GpuStream stream)
                           this->smem_bytes, stream, this->params, 0);
 }
 
-int GpuKernel::get_function_attribute(CUfunction_attribute attr) const
-{
+int GpuKernel::get_function_attribute(CUfunction_attribute attr) const {
     if (this->kernel == nullptr) {
         LOG(ERROR, "Kernel is not compiled yet.");
     }
@@ -177,10 +179,9 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
                 {},
                 {{0, sizeof(GpuPtr)}, {0, sizeof(GpuPtr)}},
                 cubin_},
-      ctx{ctx_}, timer_begin{ctx_->create_event(false)}, timer_end{
-                                                             ctx_->create_event(
-                                                                 false)}
-{
+      ctx{ctx_},
+      timer_begin{ctx_->create_event(false)},
+      timer_end{ctx_->create_event(false)} {
     ctx_->set_current();
     this->flag = make_unique<GpuMem>(sizeof(int));
     this->clocks = make_unique<GpuMem>(CLKS_CNT * sizeof(long long int));
@@ -243,8 +244,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
     }
 }
 
-void GpuLoopKernel::compile(const GpuInfo &gpu_info)
-{
+void GpuLoopKernel::compile(const GpuInfo &gpu_info) {
     this->ctx->set_current();
     if (this->is_compiled()) {
         return;
@@ -253,8 +253,7 @@ void GpuLoopKernel::compile(const GpuInfo &gpu_info)
     GpuKernel::compile(gpu_info);
 }
 
-void GpuLoopKernel::load()
-{
+void GpuLoopKernel::load() {
     this->ctx->set_current();
     //
     if (!this->is_compiled()) {
@@ -341,8 +340,7 @@ void GpuLoopKernel::load()
     }
 }
 
-GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
-{
+GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing) {
     this->elapsed_msec = -1;
     if (!this->is_compiled()) {
         LOG(ERROR, "Need to compile first before initialization.");
@@ -375,8 +373,7 @@ GpuState GpuLoopKernel::launch(CUstream stream, bool disable_timing)
     return res;
 }
 
-void GpuLoopKernel::run(int iter)
-{
+void GpuLoopKernel::run(int iter) {
     if (iter > 0) {
         volatile int *href = this->flag_href;
         while (*href > 0) {
@@ -385,13 +382,9 @@ void GpuLoopKernel::run(int iter)
     }
 }
 
-bool GpuLoopKernel::poll()
-{
-    return *(this->flag_href) <= 0;
-}
+bool GpuLoopKernel::poll() { return *(this->flag_href) <= 0; }
 
-void GpuLoopKernel::wait()
-{
+void GpuLoopKernel::wait() {
     volatile int *href = this->flag_href;
     int cnt = MAX_LOOP_COUNTER;
     while (*href > 0) {
@@ -405,8 +398,9 @@ void GpuLoopKernel::wait()
                 LOG(WARN, "Stream is finished but the loop flag is still set.");
                 break;
             } else {
-                LOG(WARN, "wait() is delayed by a stream query. Regarding "
-                          "timing measurements may be inaccurate.");
+                LOG(WARN,
+                    "wait() is delayed by a stream query. Regarding "
+                    "timing measurements may be inaccurate.");
                 break;
             }
         } else if (res == CUDA_ERROR_NOT_READY) {
@@ -417,8 +411,7 @@ void GpuLoopKernel::wait()
     }
 }
 
-void GpuLoopKernel::stop()
-{
+void GpuLoopKernel::stop() {
     this->wait();
     *(this->flag_href) = -1;
     CULOG(cuStreamSynchronize(this->stream));
@@ -431,4 +424,4 @@ void GpuLoopKernel::stop()
     this->ctx->get_comm_sw()->stop_request_loop();
 }
 
-} // namespace ark
+}  // namespace ark

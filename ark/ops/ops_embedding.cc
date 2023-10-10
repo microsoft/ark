@@ -1,24 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap EmbeddingConfigMap;
 
-EmbeddingOp::EmbeddingOp(OpPrecType prec_type, Tensor *input, Tensor *weight,
-                         Tensor *output, const std::string &name)
+EmbeddingOp::EmbeddingOp(const std::string &prec_type, Tensor *input,
+                         Tensor *weight, Tensor *output,
+                         const std::string &name)
     : Op{OP_EMBEDDING, prec_type, {input, weight},     {output},
          {},           name,      &EmbeddingConfigMap, -1,
-         true}
-{
-}
+         true} {}
 
-std::string EmbeddingOp::function_name(const OpConfig &cfg) const
-{
+std::string EmbeddingOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *weight = this->inputs[1];
     Tensor *output = this->outputs[0];
@@ -35,20 +34,19 @@ std::string EmbeddingOp::function_name(const OpConfig &cfg) const
     int emb_dim = weight->shape[-1];
     return Op::function_name("ark::embedding",
                              {{
-                                 new_in_dims,           // InDims
-                                 new_in_shape,          // InShape
-                                 weight->ldims.dims4(), // WeightDims
-                                 weight->shape.dims4(), // WeightShape
-                                 output->ldims.dims4(), // OutDims
-                                 output->shape.dims4(), // OutShape
-                                 emb_dim,               // EmbeddingDim
-                                 cfg.num_warps * 32,    // NumThreads
+                                 new_in_dims,            // InDims
+                                 new_in_shape,           // InShape
+                                 weight->ldims.dims4(),  // WeightDims
+                                 weight->shape.dims4(),  // WeightShape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 emb_dim,                // EmbeddingDim
+                                 cfg.num_warps * 32,     // NumThreads
                              }});
 }
 
 Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
-                         const std::string &name)
-{
+                         const std::string &name) {
     assert(input != nullptr);
     assert(weight != nullptr);
     if (input->shape.ndims() > 3) {
@@ -56,14 +54,6 @@ Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
     }
     if (weight->shape.ndims() != 2) {
         LOG(ERROR, "weight shape ndims != 2: ", weight->shape);
-    }
-    OpPrecType pt = OP_PREC_NONE;
-    if (weight->type == FP16) {
-        pt = OP_PREC_FP16;
-    } else if (weight->type == FP32) {
-        pt = OP_PREC_FP32;
-    } else {
-        LOG(ERROR, "unsupported weight data type: ", weight->type);
     }
     auto emb_dim = weight->shape[-1];
 
@@ -76,12 +66,12 @@ Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
     if (output == nullptr) {
         output = this->tensor(out_shape, weight->type);
     }
-    EmbeddingOp op{pt, input, weight, output, name};
+    EmbeddingOp op{output->type.name(), input, weight, output, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap EmbeddingConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
+    {{OP_ARCH_CUDA_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{1, 1}, {1, -1}}, {{1, -1}}, true, false},
@@ -91,4 +81,4 @@ const OpConfigMap EmbeddingConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

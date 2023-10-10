@@ -4,15 +4,15 @@
 #ifndef ARK_EXECUTOR_H
 #define ARK_EXECUTOR_H
 
+#include <memory>
+
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include <memory>
 
 namespace ark {
 
-class Executor::Impl
-{
-  public:
+class Executor::Impl {
+   public:
     Impl(int rank, int world_size, Model &model, const std::string &name,
          int num_warps_per_sm);
     ~Impl();
@@ -23,7 +23,7 @@ class Executor::Impl
     void wait();
     float stop();
 
-  private:
+   private:
     const int rank_;
     const int world_size_;
     int gpu_id_;
@@ -34,6 +34,6 @@ class Executor::Impl
     GpuStream stream_;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_EXECUTOR_H
+#endif  // ARK_EXECUTOR_H

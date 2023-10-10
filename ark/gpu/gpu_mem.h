@@ -5,17 +5,16 @@
 #define ARK_GPU_MEM_H_
 
 #include <cuda.h>
+
 #include <memory>
 
 namespace ark {
 
 typedef CUdeviceptr GpuPtr;
 
-class GpuMem
-{
-  public:
-    struct Info
-    {
+class GpuMem {
+   public:
+    struct Info {
         // IPC handle.
         CUipcMemHandle ipc_hdl;
         // Physical address of GPU pointer.
@@ -50,7 +49,7 @@ class GpuMem
     // Return the information for exporting.
     const Info &get_info() const;
 
-  private:
+   private:
     // Aligned address.
     GpuPtr addr_ = 0;
     // The base address.
@@ -65,6 +64,6 @@ class GpuMem
     bool is_remote_;
 };
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_MEM_H_
+#endif  // ARK_GPU_MEM_H_

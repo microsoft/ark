@@ -5,6 +5,7 @@
 #define ARK_GPU_MGR_H_
 
 #include <cuda.h>
+
 #include <list>
 #include <map>
 #include <set>
@@ -17,8 +18,7 @@
 namespace ark {
 
 // Types of GPU architectures.
-typedef enum
-{
+typedef enum {
     GPU_ARCH_UNKNOWN = -1,
     GPU_ARCH_CUDA_60,
     GPU_ARCH_CUDA_70,
@@ -27,8 +27,7 @@ typedef enum
 } GpuArchType;
 
 // Details of a GPU device.
-struct GpuInfo
-{
+struct GpuInfo {
     // Constructor.
     void init(const int gpu_id);
 
@@ -63,9 +62,8 @@ typedef CUevent GpuEvent;
 class GpuMgrCtx;
 
 //
-class GpuMgr
-{
-  public:
+class GpuMgr {
+   public:
     GpuMgr(const int gpu_id);
     ~GpuMgr();
 
@@ -77,15 +75,12 @@ class GpuMgr
 
     GpuState set_current();
 
-    const GpuInfo &get_gpu_info() const
-    {
-        return gpu_info;
-    }
+    const GpuInfo &get_gpu_info() const { return gpu_info; }
 
     //
     const int gpu_id;
 
-  private:
+   private:
     //
     GpuInfo gpu_info;
     // CUDA context of this GPU.
@@ -95,9 +90,8 @@ class GpuMgr
 };
 
 //
-class GpuMgrCtx
-{
-  public:
+class GpuMgrCtx {
+   public:
     GpuMgrCtx(GpuMgr *gpu_mgr, int rank_, int world_size_,
               const std::string &name);
     ~GpuMgrCtx();
@@ -113,29 +107,14 @@ class GpuMgrCtx
     void mem_export(GpuBuf *buf, size_t offset, int sid);
     GpuBuf *mem_import(size_t bytes, int sid, int gpu_id);
     void reg_sendrecv(int sid, int gpu_dst, std::size_t bytes, bool is_recv);
-    void freeze();
+    void freeze(bool expose = false);
     // void send(int sid, int rank, size_t bytes);
     GpuState set_current();
-    int get_world_size() const
-    {
-        return world_size;
-    }
-    int get_rank() const
-    {
-        return rank;
-    }
-    int get_gpu_id() const
-    {
-        return gpu_mgr->gpu_id;
-    }
-    const std::string &get_name() const
-    {
-        return name;
-    }
-    size_t get_total_bytes() const
-    {
-        return total_bytes;
-    }
+    int get_world_size() const { return world_size; }
+    int get_rank() const { return rank; }
+    int get_gpu_id() const { return gpu_mgr->gpu_id; }
+    const std::string &get_name() const { return name; }
+    size_t get_total_bytes() const { return total_bytes; }
     // Get the host memory address of an SC flag.
     volatile int *get_sc_href(int sid) const;
     // Get the host memory address of an RC flag.
@@ -151,13 +130,10 @@ class GpuMgrCtx
     //
     GpuCommSw *get_comm_sw() const;
 
-  private:
+   private:
     //
-    struct Chunk
-    {
-        Chunk(size_t b_, size_t e_) : b{b_}, e{e_}
-        {
-        }
+    struct Chunk {
+        Chunk(size_t b_, size_t e_) : b{b_}, e{e_} {}
         size_t b;
         size_t e;
     };
@@ -200,6 +176,6 @@ void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes);
 void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes);
 void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes);
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_GPU_MGR_H_
+#endif  // ARK_GPU_MGR_H_

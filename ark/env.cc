@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "env.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-
-#include "env.h"
 
 using namespace std;
 
@@ -15,8 +15,7 @@ using namespace std;
 #define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
-#define DEFAULT_ARK_SCHEDULER "Default"
-#define DEFAULT_ARK_DISABLE_GRAPH_OPT true
+#define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_USE_MSCCLPP false
 #define DEFAULT_ARK_MSCCLPP_INCLUDE_DIR "/usr/local/mscclpp/include"
@@ -24,8 +23,7 @@ using namespace std;
 
 namespace ark {
 
-Env::Env()
-{
+Env::Env() {
     // Get log level.
     this->log_level = getenv("ARK_LOG_LEVEL");
     // Check if ARK_ROOT is set.
@@ -91,13 +89,6 @@ Env::Env()
     } else {
         this->disable_p2p_memcpy = false;
     }
-    // Specify the scheduler implementation. Supports "Default" and "Simple".
-    const char *scheduler_ca = getenv("ARK_SCHEDULER");
-    if (scheduler_ca == nullptr) {
-        this->scheduler = DEFAULT_ARK_SCHEDULER;
-    } else {
-        this->scheduler = scheduler_ca;
-    }
     // If `ARK_DISABLE_GRAPH_OPT=1`, we disable graph optimization.
     const char *disable_graph_opt_ca = getenv("ARK_DISABLE_GRAPH_OPT");
     if (disable_graph_opt_ca == nullptr) {
@@ -143,8 +134,7 @@ Env::Env()
 Env *_ARK_ENV_GLOBAL = nullptr;
 
 // Get the global Env.
-const Env &get_env()
-{
+const Env &get_env() {
     if (_ARK_ENV_GLOBAL == nullptr) {
         _ARK_ENV_GLOBAL = new Env;
         assert(_ARK_ENV_GLOBAL != nullptr);
@@ -152,4 +142,4 @@ const Env &get_env()
     return *_ARK_ENV_GLOBAL;
 }
 
-} // namespace ark
+}  // namespace ark

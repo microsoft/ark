@@ -25,11 +25,10 @@ void baseline_all_reduce(std::vector<void *> &outputs,
     }
 }
 
-void test_all_reduce_4gpus_internal(size_t nelem, int iter)
-{
+void test_all_reduce_4gpus_internal(size_t nelem, int iter) {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+        ark::unittest::spawn_process([gpu_id, nelem, iter]() {
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m{gpu_id};
             ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
@@ -40,8 +39,9 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter)
             auto result =
                 ark::op_test("all_reduce", m, {ones}, {output},
                              baseline_all_reduce<ark::half_t, num_gpus>,
-                             {ones_data.get()}, true, gpu_id, num_gpus);
-            ark::op_test_log(result);
+                             {ones_data.get()}, false, gpu_id, num_gpus);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });
     }
@@ -81,8 +81,7 @@ ark::unittest::State test_all_reduce_4gpus()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_all_reduce_4gpus);
     return ark::unittest::SUCCESS;

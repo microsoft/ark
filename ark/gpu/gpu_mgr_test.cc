@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include "gpu/gpu_mgr.h"
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
@@ -10,8 +11,7 @@ using namespace std;
 using namespace ark;
 
 // Test initializing and destroying GpuMgr and GpuMgrCtx.
-unittest::State test_gpu_mgr_basic()
-{
+unittest::State test_gpu_mgr_basic() {
     int pid = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         GpuMgr *mgr_a = get_gpu_mgr(0);
@@ -40,8 +40,7 @@ unittest::State test_gpu_mgr_basic()
     return unittest::SUCCESS;
 }
 
-unittest::State test_gpu_mgr_mem_alloc()
-{
+unittest::State test_gpu_mgr_mem_alloc() {
     int pid = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(0);
@@ -85,8 +84,7 @@ unittest::State test_gpu_mgr_mem_alloc()
     return unittest::SUCCESS;
 }
 
-unittest::State test_gpu_mgr_mem_free()
-{
+unittest::State test_gpu_mgr_mem_free() {
     int pid = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(0);
@@ -129,8 +127,7 @@ unittest::State test_gpu_mgr_mem_free()
 }
 
 // Test accessing remote GPU's memory space.
-unittest::State test_gpu_mgr_remote()
-{
+unittest::State test_gpu_mgr_remote() {
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         GpuMgr *mgr = get_gpu_mgr(0);
@@ -144,7 +141,7 @@ unittest::State test_gpu_mgr_remote()
         GpuBuf *gpu1_eid5 = ctx->mem_import(sizeof(int), 5, 1);
         GpuBuf *gpu1_eid6 = ctx->mem_import(sizeof(int), 6, 1);
 
-        ctx->freeze();
+        ctx->freeze(true);
 
         volatile int *ptr = (volatile int *)gpu0_eid3->href();
         while (*ptr != 7890) {
@@ -176,7 +173,7 @@ unittest::State test_gpu_mgr_remote()
         GpuBuf *gpu0_eid3 = ctx->mem_import(sizeof(int), 3, 0);
         GpuBuf *gpu0_eid4 = ctx->mem_import(sizeof(int), 4, 0);
 
-        ctx->freeze();
+        ctx->freeze(true);
 
         gpu_memset(gpu0_eid3, 7890, 1);
 
@@ -200,8 +197,7 @@ unittest::State test_gpu_mgr_remote()
     return unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_gpu_mgr_basic);
     UNITTEST(test_gpu_mgr_mem_alloc);

@@ -1,18 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "math.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 // Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
 std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
                                       DimType dim_per_shard,
-                                      const std::string &name)
-{
+                                      const std::string &name) {
     assert(input != nullptr);
     if (axis >= DIMS_LEN) {
         LOG(ERROR, "invlaid axis value: ", axis);
@@ -56,4 +56,4 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
     return shards;
 }
 
-} // namespace ark
+}  // namespace ark

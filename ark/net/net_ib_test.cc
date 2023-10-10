@@ -1,22 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "net/net_ib.h"
+
+#include <numa.h>
+
+#include <cstring>
+#include <string>
+
 #include "env.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mem.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ipc/ipc_coll.h"
-#include "net/net_ib.h"
 #include "unittest/unittest_utils.h"
-#include <cstring>
-#include <numa.h>
-#include <string>
 
 #define BW_TEST_BYTES 1073741824UL
 
-static void numa_bind(int node)
-{
+static void numa_bind(int node) {
     nodemask_t mask;
     nodemask_zero(&mask);
     nodemask_set_compat(&mask, node);
@@ -26,8 +28,7 @@ static void numa_bind(int node)
 static double sr_loop(ark::NetIbMgr *mgr, ark::NetIbQp *qp, ark::NetIbMr *mr1,
                       ark::NetIbMr *mr2, ark::NetIbMr::Info *rmi1,
                       ark::NetIbMr::Info *rmi2, int num_iter, int bytes,
-                      bool is_recv, bool bidir)
-{
+                      bool is_recv, bool bidir) {
     int ret;
     int max_num_wc = bidir ? 2 : 1;
     double start = ark::cpu_timer();
@@ -65,8 +66,7 @@ static double sr_loop(ark::NetIbMgr *mgr, ark::NetIbQp *qp, ark::NetIbMr *mr1,
     return ark::cpu_timer() - start;
 }
 
-int test_net_ib_cpu_internal(std::size_t bytes, bool is_recv)
-{
+int test_net_ib_cpu_internal(std::size_t bytes, bool is_recv) {
     int ret;
     int rank = is_recv ? 0 : 1;
     int dev = (ark::get_net_ib_device_num() >= 2) ? rank : 0;
@@ -140,8 +140,7 @@ int test_net_ib_cpu_internal(std::size_t bytes, bool is_recv)
     return 0;
 }
 
-int test_net_ib_cpu_bw_internal(std::size_t bytes, bool is_recv)
-{
+int test_net_ib_cpu_bw_internal(std::size_t bytes, bool is_recv) {
     int ret;
     int num_iter = 10;
     int rank = is_recv ? 0 : 1;
@@ -194,15 +193,14 @@ int test_net_ib_cpu_bw_internal(std::size_t bytes, bool is_recv)
     double elapsed;
     elapsed = sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv,
                       false);
-    LOG(ark::INFO, "Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     elapsed =
         sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv, true);
-    LOG(ark::INFO, "Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     return 0;
 }
 
-int test_net_ib_gpu_internal(std::size_t bytes, bool is_recv)
-{
+int test_net_ib_gpu_internal(std::size_t bytes, bool is_recv) {
     int ret;
     int rank = is_recv ? 0 : 1;
     int dev = (ark::get_net_ib_device_num() >= 2) ? rank : 0;
@@ -284,8 +282,7 @@ int test_net_ib_gpu_internal(std::size_t bytes, bool is_recv)
     return 0;
 }
 
-int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv)
-{
+int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv) {
     int ret;
     int num_iter = 10;
     int rank = is_recv ? 0 : 1;
@@ -344,16 +341,15 @@ int test_net_ib_gpu_bw_internal(std::size_t bytes, bool is_recv)
     double elapsed;
     elapsed = sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv,
                       false);
-    LOG(ark::INFO, "Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Uni-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     elapsed =
         sr_loop(&mgr, qp, mr, mr2, &rmi, &rmi2, num_iter, bytes, is_recv, true);
-    LOG(ark::INFO, "Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
+    UNITTEST_LOG("Bi-dir: ", bytes * num_iter / elapsed / 1e9, " GB/s");
     return 0;
 }
 
 //
-ark::unittest::State test_net_ib_cpu()
-{
+ark::unittest::State test_net_ib_cpu() {
     for (int i = 0; i < 100; ++i) {
         int pid0 = ark::utils::proc_spawn([] {
             ark::unittest::Timeout timeout{30};
@@ -375,8 +371,7 @@ ark::unittest::State test_net_ib_cpu()
 }
 
 //
-ark::unittest::State test_net_ib_cpu_bw()
-{
+ark::unittest::State test_net_ib_cpu_bw() {
     int pid0 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{30};
         std::size_t bytes = BW_TEST_BYTES;
@@ -397,8 +392,7 @@ ark::unittest::State test_net_ib_cpu_bw()
 }
 
 //
-ark::unittest::State test_net_ib_gpu()
-{
+ark::unittest::State test_net_ib_gpu() {
     for (int i = 0; i < 10; ++i) {
         int pid0 = ark::utils::proc_spawn([] {
             ark::unittest::Timeout timeout{30};
@@ -420,8 +414,7 @@ ark::unittest::State test_net_ib_gpu()
 }
 
 //
-ark::unittest::State test_net_ib_gpu_bw()
-{
+ark::unittest::State test_net_ib_gpu_bw() {
     int pid0 = ark::utils::proc_spawn([] {
         ark::unittest::Timeout timeout{30};
         std::size_t bytes = BW_TEST_BYTES;
@@ -441,12 +434,11 @@ ark::unittest::State test_net_ib_gpu_bw()
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
 
     if (ark::get_env().disable_ib) {
-        LOG(ark::WARN, "IB is disabled by the environment variable. Skip");
+        UNITTEST_LOG("IB is disabled by the environment variable. Skip");
         return 0;
     }
 

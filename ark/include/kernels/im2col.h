@@ -20,8 +20,7 @@ template <typename _InShape, typename _InDims, typename _OutDims,
           int DilationHeight, int DilationWidth>
 struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
               KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
-              DilationHeight, DilationWidth>
-{
+              DilationHeight, DilationWidth> {
     using InDims = _InDims;
     using OutDims = _OutDims;
     using DataType = half;
@@ -69,8 +68,7 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
     // This function reads a half value while avoiding 2-byte misaligned access.
     // Return the value as a float for efficiency.
     // CAUTION: This function assumes that `x` address is 4-byte aligned.
-    static DEVICE float read_elem(half *x, int midx, int nidx)
-    {
+    static DEVICE float read_elem(half *x, int midx, int nidx) {
         int elem_width = math::mod<PatchNumWidth>(midx) * StrideWidth +
                          math::mod<KernelWidth>(nidx) - PadWidth;
         int elem_height = math::div<PatchNumWidth>(midx) * StrideHeight +
@@ -89,8 +87,7 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
     }
 
     static DEVICE void compute(half *out, half *in, int idx_n, int idx_c,
-                               int idx_h, int idx_w)
-    {
+                               int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
 
@@ -119,8 +116,7 @@ template <typename InDims, typename InShape, typename OutDims,
           int SmemBytes, int KernelHeight, int KernelWidth, int StrideHeight,
           int StrideWidth, int PadHeight, int PadWidth, int DilationHeight,
           int DilationWidth>
-DEVICE void im2col(half *y, half *x, int uop_idx, int)
-{
+DEVICE void im2col(half *y, half *x, int uop_idx, int) {
     Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
            Im2Col<InShape, InDims, OutDims, UnitOutDims, half, 2, KernelHeight,
                   KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
@@ -128,6 +124,6 @@ DEVICE void im2col(half *y, half *x, int uop_idx, int)
     sync_warps<NumThreads>();
 }
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_KERNELS_IM2COL_H_
+#endif  // ARK_KERNELS_IM2COL_H_

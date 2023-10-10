@@ -1,16 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "env.h"
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
 extern const OpConfigMap SendRecvMMConfigMap;
 
-SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+SendMMOp::SendMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
                    size_t bytes, const std::string &name)
     : Op{OP_SEND_MM,
@@ -21,12 +22,9 @@ SendMMOp::SendMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          name,
          &SendRecvMMConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string SendMMOp::function_name(const OpConfig &cfg) const
-{
+std::string SendMMOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
     Tensor *output = this->outputs[0];
@@ -53,18 +51,17 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::comm::sendLL",
                              {{
-                                 m,                  // LDM
-                                 n,                  // LDN
-                                 cfg.num_warps * 32, // TN
-                                 cfg.smem_bytes,     // SmemBytes
-                                 tile_in.y,          // TDM
-                                 tile_in.x,          // TDN
-                                 1,                  // FLAG
+                                 m,                   // LDM
+                                 n,                   // LDN
+                                 cfg.num_warps * 32,  // TN
+                                 cfg.smem_bytes,      // SmemBytes
+                                 tile_in.y,           // TDM
+                                 tile_in.x,           // TDN
+                                 1,                   // FLAG
                              }});
 }
 
-OpArgs SendMMOp::function_call_args(const OpConfig &) const
-{
+OpArgs SendMMOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     opargs.put(this->inputs[1]);
     opargs.put(this->inputs[0]);
@@ -72,7 +69,7 @@ OpArgs SendMMOp::function_call_args(const OpConfig &) const
     return opargs;
 }
 
-RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
+RecvMMOp::RecvMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
                    Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
                    size_t bytes, const std::string &name)
     : Op{OP_RECV_MM,
@@ -83,12 +80,9 @@ RecvMMOp::RecvMMOp(OpPrecType prec_type, Tensor *input, Tensor *recvbuf,
          name,
          &SendRecvMMConfigMap,
          -1,
-         true}
-{
-}
+         true} {}
 
-std::string RecvMMOp::function_name(const OpConfig &cfg) const
-{
+std::string RecvMMOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Dims shp_in = input->shape;
     Tensor *output = this->outputs[0];
@@ -115,18 +109,17 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const
 
     return Op::function_name("ark::comm::recvLL",
                              {{
-                                 m,                  // LDM
-                                 n,                  // LDN
-                                 cfg.num_warps * 32, // TN
-                                 cfg.smem_bytes,     // SmemBytes
-                                 tile_in.y,          // TDM
-                                 tile_in.x,          // TDN
-                                 1,                  // FLAG
+                                 m,                   // LDM
+                                 n,                   // LDN
+                                 cfg.num_warps * 32,  // TN
+                                 cfg.smem_bytes,      // SmemBytes
+                                 tile_in.y,           // TDM
+                                 tile_in.x,           // TDN
+                                 1,                   // FLAG
                              }});
 }
 
-OpArgs RecvMMOp::function_call_args(const OpConfig &) const
-{
+OpArgs RecvMMOp::function_call_args(const OpConfig &) const {
     OpArgs opargs;
     opargs.put(this->inputs[1]);
     opargs.put(this->inputs[0]);
@@ -139,8 +132,7 @@ const int max_tile_num = 2048;
 
 // send data from src to dst of id
 Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
@@ -169,15 +161,14 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
         },
         INT32);
     send_ready_flag->exported = true;
-    SendMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
-                gpu_dst,      bytes, name};
+    SendMMOp op{"none",  input, recvbuf, send_ready_flag, output, id,
+                gpu_dst, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 //
 Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
-                       Tensor *output, const std::string &name)
-{
+                       Tensor *output, const std::string &name) {
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
@@ -210,13 +201,13 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
         },
         INT32);
     send_ready_flag->imported_rank = gpu_src;
-    RecvMMOp op{OP_PREC_NONE, input, recvbuf, send_ready_flag, output, id,
-                gpu_src,      bytes, name};
+    RecvMMOp op{"none",  input, recvbuf, send_ready_flag, output, id,
+                gpu_src, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 const OpConfigMap SendRecvMMConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_NONE},
+    {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},
@@ -229,4 +220,4 @@ const OpConfigMap SendRecvMMConfigMap = {
      }},
 };
 
-} // namespace ark
+}  // namespace ark

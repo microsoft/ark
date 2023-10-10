@@ -11,6 +11,7 @@
 
 #include "activation.h"
 #include "arithmetic.h"
+#include "cast.h"
 #include "comm.h"
 #include "comm_mm.h"
 #ifdef ARK_USE_MSCCLPP
@@ -25,5 +26,5 @@
 #include "softmax.h"
 #include "transpose.h"
 
-#endif // ARK_KERNELS_H_
-#endif // __CUDACC__
+#endif  // ARK_KERNELS_H_
+#endif  // __CUDACC__

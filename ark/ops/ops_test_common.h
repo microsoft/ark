@@ -4,17 +4,17 @@
 #ifndef ARK_OPS_TEST_COMMON_H_
 #define ARK_OPS_TEST_COMMON_H_
 
-#include "include/ark.h"
-#include "include/ark_utils.h"
-#include "unittest/unittest_utils.h"
 #include <functional>
 #include <ostream>
 #include <string>
 
+#include "include/ark.h"
+#include "include/ark_utils.h"
+#include "unittest/unittest_utils.h"
+
 namespace ark {
 
-struct TensorCompareResult
-{
+struct TensorCompareResult {
     float mse;
     float max_diff;
     float max_error_rate;
@@ -50,8 +50,7 @@ TensorCompareResult tensor_compare(int *ground_truth, int *res, Dims shape,
 TensorCompareResult tensor_compare(uint8_t *ground_truth, uint8_t *res,
                                    Dims shape, bool print = false);
 
-struct OpsTestResult
-{
+struct OpsTestResult {
     std::string test_name;
     int num_warps_per_sm;
     float msec_per_iter;
@@ -62,15 +61,14 @@ struct OpsTestResult
 
 std::ostream &operator<<(std::ostream &os, const OpsTestResult &result);
 
-class OpsTestGpuMem
-{
-  public:
+class OpsTestGpuMem {
+   public:
     OpsTestGpuMem(size_t size);
     ~OpsTestGpuMem();
     void *get() const;
     size_t size() const;
 
-  private:
+   private:
     size_t size_;
     void *gpu_ptr_;
 };
@@ -114,14 +112,12 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
                          bool print_on_error = false, int rank = 0,
                          int world_size = 1);
 
-void op_test_log(const OpsTestResult &result);
-
 OpsTestGpuMem to_gpu(const void *host_ptr, size_t size);
 
 void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr = nullptr);
 
 void sync_gpu();
 
-} // namespace ark
+}  // namespace ark
 
-#endif // ARK_OPS_TEST_COMMON_H_
+#endif  // ARK_OPS_TEST_COMMON_H_

@@ -1,21 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+#include <string>
+
 #include "ark.h"
 #include "gpu/gpu_mgr.h"
 #include "logging.h"
 #include "math.h"
-#include <cassert>
-#include <string>
 
 namespace ark {
 
-TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_}
-{
-}
+TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_} {}
 
-size_t TensorBuf::get_buf_offset() const
-{
+size_t TensorBuf::get_buf_offset() const {
     if (this->buf == nullptr) {
         LOG(ERROR, "TensorBuf is not configured yet");
     }
@@ -23,13 +21,16 @@ size_t TensorBuf::get_buf_offset() const
 }
 
 // Tensor constructor
-Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
+Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
                const Dims &ldims_, const Dims &offs_, const Dims &pads_,
                bool exported_, int imported_rank_, int id_,
                const std::string &name_)
-    : buf{buf_}, type{type_}, exported{exported_},
-      imported_rank{imported_rank_}, id{id_}, name{name_}
-{
+    : buf{buf_},
+      type{type_},
+      exported{exported_},
+      imported_rank{imported_rank_},
+      id{id_},
+      name{name_} {
     if (shape_.size() == 0) {
         LOG(ERROR,
             "Tensor shape should consist of positive numbers. Given: ", shape_);
@@ -96,8 +97,7 @@ Tensor::Tensor(const Dims &shape_, TensorType type_, TensorBuf *buf_,
 }
 
 //
-void Tensor::update_pads(const std::vector<DimType> &pads_)
-{
+void Tensor::update_pads(const std::vector<DimType> &pads_) {
     int ndims = this->ldims.ndims();
     std::vector<DimType> tmp;
     for (int i = 0; i < ndims - (int)pads_.size(); ++i) {
@@ -115,8 +115,7 @@ void Tensor::update_pads(const std::vector<DimType> &pads_)
 }
 
 // Offset to the element [i0][i1][i2][i3] of this tensor in the TensorBuf.
-DimType Tensor::offset(DimType i0, DimType i1, DimType i2, DimType i3) const
-{
+DimType Tensor::offset(DimType i0, DimType i1, DimType i2, DimType i3) const {
     auto &l = this->ldims;
     auto &o = this->offs;
     int ndims = this->shape.ndims();
@@ -134,66 +133,48 @@ DimType Tensor::offset(DimType i0, DimType i1, DimType i2, DimType i3) const
 }
 
 // Number of elements in the tensor excluding padding.
-DimType Tensor::size() const
-{
-    return this->shape.size();
-}
+DimType Tensor::size() const { return this->shape.size(); }
 
 // Number of dimensions in the tensor.
-int Tensor::ndims() const
-{
-    return this->shape.ndims();
-}
+int Tensor::ndims() const { return this->shape.ndims(); }
 
 // Number of bytes of each element in the tensor.
-int Tensor::type_bytes() const
-{
-    if (this->type == FP16) {
-        return 2;
-    } else if (this->type == FP32) {
-        return 4;
-    } else if (this->type == INT32) {
-        return 4;
-    } else if (this->type == BYTE) {
-        return 1;
-    }
-    return 0;
-}
+int Tensor::type_bytes() const { return this->type.bytes(); }
 
 // Number of bytes of the tensor.
-DimType Tensor::shape_bytes() const
-{
+DimType Tensor::shape_bytes() const {
     return this->shape.size() * this->type_bytes();
 }
 
 // Should be the same as the number of bytes of the TensorBuf.
-DimType Tensor::ldims_bytes() const
-{
+DimType Tensor::ldims_bytes() const {
     return this->ldims.size() * this->type_bytes();
 }
 
 // Offset in bytes.
 DimType Tensor::offset_bytes(DimType i0, DimType i1, DimType i2,
-                             DimType i3) const
-{
+                             DimType i3) const {
     return this->offset(i0, i1, i2, i3) * this->type_bytes();
 }
 
-bool Tensor::is_alloced() const
-{
+bool Tensor::is_alloced() const {
     if (this->buf == nullptr) {
         return false;
     }
     return this->buf->buf != nullptr;
 }
 
-bool Tensor::is_sequential() const
-{
-    return (this->shape == this->ldims) || (this->shape.ndims() == 1);
+bool Tensor::is_sequential() const {
+    // Shape and ldims should be the same except for the first dimension.
+    for (int i = 1; i < this->shape.ndims(); ++i) {
+        if (this->shape[i] != this->ldims[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
-void Tensor::write(const void *buf)
-{
+void Tensor::write(const void *buf) {
     if (buf == nullptr) {
         LOG(ERROR, "the given host buffer is null");
     }
@@ -252,8 +233,7 @@ void Tensor::write(const void *buf)
     assert(done == bytes);
 }
 
-void *Tensor::read(void *buf)
-{
+void *Tensor::read(void *buf) {
     GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
     if (gbuf == nullptr) {
         LOG(ERROR, "failed to get GPU buffer for tensor ", this->id);
@@ -316,8 +296,7 @@ void *Tensor::read(void *buf)
     return buf;
 }
 
-void *Tensor::read_raw(void *buf)
-{
+void *Tensor::read_raw(void *buf) {
     GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
     if (gbuf == nullptr) {
         LOG(ERROR, "failed to get GPU buffer for tensor ", this->id);
@@ -333,8 +312,7 @@ void *Tensor::read_raw(void *buf)
     return buf;
 }
 
-void Tensor::clear()
-{
+void Tensor::clear() {
     GpuBuf *buf = static_cast<GpuBuf *>(this->buf->buf);
     if (buf == nullptr) {
         LOG(ERROR, "failed to get GPU buffer for tensor ", this->name);
@@ -392,26 +370,4 @@ void Tensor::clear()
     assert(done == num);
 }
 
-std::ostream &operator<<(std::ostream &os, TensorType type)
-{
-    switch (type) {
-    case BYTE:
-        os << "byte";
-        break;
-    case INT32:
-        os << "int32";
-        break;
-    case FP16:
-        os << "fp16";
-        break;
-    case FP32:
-        os << "fp32";
-        break;
-    default:
-        os << "none";
-        break;
-    }
-    return os;
-}
-
-} // namespace ark
+}  // namespace ark

@@ -1,16 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cmath>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <cmath>
 
-float sigmoid(float x)
-{
-    return 1 / (1 + std::exp(-x));
-}
+float sigmoid(float x) { return 1 / (1 + std::exp(-x)); }
 
 template <typename T>
 void baseline_sigmoid(std::vector<void *> &outputs,
@@ -26,21 +24,33 @@ void baseline_sigmoid(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_sigmoid_fp32()
-{
+ark::unittest::State test_sigmoid_fp32() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
     ark::Tensor *out = m.sigmoid(t);
 
     auto result =
         ark::op_test("sigmoid_fp32", m, {t}, {out}, baseline_sigmoid<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+ark::unittest::State test_sigmoid_bf16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+    ark::Tensor *out = m.sigmoid(t);
+
+    auto result = ark::op_test("sigmoid_bf16", m, {t}, {out},
+                               baseline_sigmoid<ark::bfloat16_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
+    return ark::unittest::SUCCESS;
+}
+
+int main() {
     ark::init();
     UNITTEST(test_sigmoid_fp32);
+    UNITTEST(test_sigmoid_bf16);
     return ark::unittest::SUCCESS;
 }

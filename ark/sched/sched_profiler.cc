@@ -1,26 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "json.h"
+#include "sched/sched_profiler.h"
+
+#include <unistd.h>
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <initializer_list>
 #include <ostream>
-#include <unistd.h>
 
+#include "json.h"
 #include "logging.h"
 #include "math.h"
 #include "sched/sched_opseq.h"
-#include "sched/sched_profiler.h"
 #include "sched/sched_tile.h"
 
 using namespace std;
 
 namespace ark {
 
-float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx)
-{
+float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx) {
     const int probe_iter = 10;
 
     glk->load();
@@ -30,8 +31,7 @@ float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx)
     }
 
     int test_iter = probe_iter * 1e2 / 1;
-    if (test_iter == 0)
-        test_iter = 1;
+    if (test_iter == 0) test_iter = 1;
     // LOG(DEBUG, "test_iter", test_iter);
     glk->run(test_iter);
     glk->stop();
@@ -39,12 +39,10 @@ float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx)
     return (float)((glk->get_elapsed_msec() / test_iter * 1e3));
 }
 
-struct ProfInfo
-{
+struct ProfInfo {
     ProfInfo(const SchedTileSetType &type_, const SchedOpSeq *opseq0_,
              const SchedOpSeq *opseq1_ = nullptr)
-        : type{type_}, opseq0{opseq0_}, opseq1{opseq1_}
-    {
+        : type{type_}, opseq0{opseq0_}, opseq1{opseq1_} {
         if (type == SCHED_TILE_SET_MIXED) {
             assert(opseq1_ != nullptr);
         } else {
@@ -52,8 +50,7 @@ struct ProfInfo
         }
     }
 
-    const string get_name() const
-    {
+    const string get_name() const {
         if (type == SCHED_TILE_SET_S) {
             return "prof_" + to_string(opseq0->get_id()) + "_s";
         } else if (type == SCHED_TILE_SET_X) {
@@ -73,8 +70,7 @@ struct ProfInfo
     const SchedOpSeq *opseq1;
 };
 
-bool operator<(const ProfInfo &info0, const ProfInfo &info1)
-{
+bool operator<(const ProfInfo &info0, const ProfInfo &info1) {
     if (!(*info0.opseq0 == *info1.opseq0)) {
         return *info0.opseq0 < *info1.opseq0;
     } else if (info0.opseq1 != nullptr && info1.opseq1 == nullptr) {
@@ -108,8 +104,7 @@ bool operator<(const ProfInfo &info0, const ProfInfo &info1)
 // }
 
 // convert SchedTileDepth to Sched
-vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm)
-{
+vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm) {
     vector<Sched> scheds;
     int sm_b = 0;
     int sm_e = 1;
@@ -159,8 +154,7 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm)
     return scheds;
 }
 
-void SchedProfiler::profile(OpGraph *, CodeGenerator &, GpuMgrCtx *)
-{
+void SchedProfiler::profile(OpGraph *, CodeGenerator &, GpuMgrCtx *) {
 #if 0
     using ProfCallback = function<void(float, int)>;
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
@@ -342,4 +336,4 @@ void SchedProfiler::profile(OpGraph *, CodeGenerator &, GpuMgrCtx *)
 #endif
 }
 
-} // namespace ark
+}  // namespace ark

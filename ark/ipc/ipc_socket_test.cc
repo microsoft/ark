@@ -1,25 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ipc/ipc_socket.h"
+
 #include "env.h"
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ipc/ipc_hosts.h"
-#include "ipc/ipc_socket.h"
 #include "logging.h"
 #include "unittest/unittest_utils.h"
 
 using namespace ark;
 
-struct TestIpcSocketItem
-{
+struct TestIpcSocketItem {
     int a;
     int b;
     int c;
 };
 
-unittest::State test_ipc_socket_simple()
-{
+unittest::State test_ipc_socket_simple() {
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{5};
         int port_base = get_env().ipc_listen_port_base;
@@ -83,8 +82,7 @@ unittest::State test_ipc_socket_simple()
     return unittest::SUCCESS;
 }
 
-unittest::State test_ipc_socket_no_item()
-{
+unittest::State test_ipc_socket_no_item() {
     int pid0 = ark::utils::proc_spawn([] {
         unittest::Timeout timeout{10};
         int port_base = get_env().ipc_listen_port_base;
@@ -130,8 +128,7 @@ unittest::State test_ipc_socket_no_item()
     return unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_ipc_socket_simple);
     UNITTEST(test_ipc_socket_no_item);

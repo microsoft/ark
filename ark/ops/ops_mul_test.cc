@@ -10,8 +10,7 @@ template <typename T>
 void baseline_mul(std::vector<void *> &outputs,
                   const std::vector<ark::Dims> &output_shapes,
                   const std::vector<void *> &inputs,
-                  const std::vector<ark::Dims> &input_shapes, int)
-{
+                  const std::vector<ark::Dims> &input_shapes, int) {
     T *out = static_cast<T *>(outputs[0]);
     T *t0 = static_cast<T *>(inputs[0]);
     T *t1 = static_cast<T *>(inputs[1]);
@@ -38,8 +37,7 @@ void baseline_mul(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_mul_fp32()
-{
+ark::unittest::State test_mul_fp32() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP32);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP32);
@@ -47,12 +45,12 @@ ark::unittest::State test_mul_fp32()
 
     auto result =
         ark::op_test("mul_fp32", m, {t0, t1}, {out}, baseline_mul<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_mul_fp16()
-{
+ark::unittest::State test_mul_fp16() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP16);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP16);
@@ -60,12 +58,12 @@ ark::unittest::State test_mul_fp16()
 
     auto result =
         ark::op_test("mul_fp16", m, {t0, t1}, {out}, baseline_mul<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_mul_overwrite()
-{
+ark::unittest::State test_mul_overwrite() {
     ark::Model m;
     ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP16);
     ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP16);
@@ -73,12 +71,12 @@ ark::unittest::State test_mul_overwrite()
 
     auto result = ark::op_test("mul_overwrite", m, {t0, t1}, {out},
                                baseline_mul<ark::half_t>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_mul_broadcast()
-{
+ark::unittest::State test_mul_broadcast() {
     {
         ark::Model m;
         ark::Tensor *t0 = m.tensor(ark::Dims(4, 1024), ark::FP16);
@@ -87,7 +85,8 @@ ark::unittest::State test_mul_broadcast()
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -97,7 +96,8 @@ ark::unittest::State test_mul_broadcast()
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -107,13 +107,13 @@ ark::unittest::State test_mul_broadcast()
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
-        ark::op_test_log(result);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_mul_fp32);
     UNITTEST(test_mul_fp16);

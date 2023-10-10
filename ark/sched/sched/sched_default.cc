@@ -10,11 +10,11 @@
 using namespace std;
 
 #define DEBUG_SCHEDULE 0
-#define SCHEDULE_DEBUG(...)                                                    \
-    do {                                                                       \
-        if (DEBUG_SCHEDULE) {                                                  \
-            LOG(DEBUG, __VA_ARGS__);                                           \
-        }                                                                      \
+#define SCHEDULE_DEBUG(...)          \
+    do {                             \
+        if (DEBUG_SCHEDULE) {        \
+            LOG(DEBUG, __VA_ARGS__); \
+        }                            \
     } while (0);
 
 namespace ark {
@@ -23,8 +23,7 @@ namespace ark {
 /// @param op input op
 /// @param tile input tile
 /// @return number of tiles
-static int calc_num_tiles(const Op &op, const OpTile &tile)
-{
+static int calc_num_tiles(const Op &op, const OpTile &tile) {
     if (op.outputs.size() == 0) {
         // This op has no output.
         return 0;
@@ -64,8 +63,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                                                  Model::Impl *model_impl,
                                                  Op &matmul_op,
                                                  const GpuInfo &gpu_info,
-                                                 int num_sm)
-{
+                                                 int num_sm) {
     if (matmul_op.type != OP_MATMUL) {
         LOG(ERROR, "This is not a matmul op.");
     }
@@ -121,11 +119,11 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
         // No optimization is needed.
         return;
     }
-    LOG(DEBUG, "Optimize matmul %s with split_k=%d.", matmul_op.name, split_k);
+    LOG(DEBUG, "Optimize matmul ", matmul_op.name, " with split_k=", split_k);
 
     Tensor *input_a = matmul_op.inputs[0];
     Tensor *input_b = matmul_op.inputs[1];
-    Tensor *output = matmul_op.outputs[0];
+    Tensor *output = matmul_op.output_refs[0];
     bool is_column_a;
     bool is_column_b;
     matmul_op.args.get(&is_column_a, 4);
@@ -149,8 +147,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 void DefaultScheduler::heuristic_optimize_model(Model &model,
                                                 Model::Impl *model_impl,
                                                 const GpuInfo &gpu_info,
-                                                int num_sm)
-{
+                                                int num_sm) {
     if (get_env().disable_graph_opt) {
         LOG(INFO, "Graph optimization is disabled.");
         return;
@@ -169,8 +166,7 @@ void DefaultScheduler::heuristic_optimize_model(Model &model,
 
 DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
                                    int world_size_, int num_warps_per_sm_)
-    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_)
-{
+    : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_) {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
 
     // Number of SMs to use for computation. The last SM is preserved for
@@ -182,8 +178,7 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
     this->op_graph = make_unique<OpGraph>(model);
 }
 
-void DefaultScheduler::schedule()
-{
+void DefaultScheduler::schedule() {
     LOG(DEBUG, "DefaultScheduler start scheduling");
 
     auto &nodes = this->op_graph->get_nodes();
@@ -207,8 +202,7 @@ void DefaultScheduler::schedule()
 
 ///
 void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
-                                          std::set<OpNode *> &seen_nodes)
-{
+                                          std::set<OpNode *> &seen_nodes) {
     if (nodes.empty()) {
         return;
     }
@@ -289,6 +283,13 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         item.num_uops = opseq->get_tdims_size();
         item.num_warps_per_uop = opseq->get_num_warps();
         item.smem_bytes_per_uop = aligned_smem_bytes;
+        if (item.num_uops <= 0) {
+            LOG(ERROR, "unexpected error: num_uops <= 0");
+        } else if (item.num_warps_per_uop <= 0) {
+            LOG(ERROR, "unexpected error: num_warps_per_uop <= 0");
+        } else if (item.smem_bytes_per_uop < 0) {
+            LOG(ERROR, "unexpected error: smem_bytes_per_uop < 0");
+        }
         if (op->is_comm()) {
             comm_items.emplace_back(item);
         } else {
@@ -343,8 +344,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 }
 
 void DefaultScheduler::configure_gpu_buf(
-    const std::list<Tensor *> &model_tensors)
-{
+    const std::list<Tensor *> &model_tensors) {
     // A TensorBuf can be located on a local GPU or a remote GPU. If it is on
     // this rank's GPU, it should be allocated and might be exported to other
     // GPUs. If it is on a remote GPU (the gid is not equal to this rank), it
@@ -414,10 +414,10 @@ void DefaultScheduler::configure_gpu_buf(
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_RECV) {
                 //
-                Tensor *in = op->inputs[0];
+                Tensor *output = op->outputs[0];
                 int sid;
                 op->args.get(&sid, 0);
-                export_tns_sids[in->buf].emplace_back(in, sid);
+                export_tns_sids[output->buf].emplace_back(output, sid);
                 this->send_recv_ops.emplace_back(op);
             } else if (op->type == OP_SEND_MM) {
                 int sid;
@@ -538,8 +538,7 @@ void DefaultScheduler::configure_gpu_buf(
     }
 }
 
-std::vector<std::string> DefaultScheduler::gen_code()
-{
+std::vector<std::string> DefaultScheduler::gen_code() {
     std::stringstream code;
 
     std::set<int> imported_ranks;
@@ -567,9 +566,9 @@ std::vector<std::string> DefaultScheduler::gen_code()
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
             int uop_id = (int)uop_map.size();
-            std::string sop_func_str = sop.function_name();
+            std::string sop_serial = sop.serialize();
             // Insert only if it does not exist
-            auto p = uop_map.emplace(sop_func_str, uop_id);
+            auto p = uop_map.emplace(sop_serial, uop_id);
             if (p.second) {
                 // If this is a new function, define it.
                 this->codegen->def_uop(code, sop, uop_id);
@@ -619,4 +618,4 @@ std::vector<std::string> DefaultScheduler::gen_code()
     return {code.str()};
 }
 
-} // namespace ark
+}  // namespace ark

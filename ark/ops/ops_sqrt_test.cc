@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cmath>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <cmath>
 
 template <typename T>
 void baseline_sqrt(std::vector<void *> &outputs,
@@ -21,20 +22,19 @@ void baseline_sqrt(std::vector<void *> &outputs,
     }
 };
 
-ark::unittest::State test_sqrt_fp32()
-{
+ark::unittest::State test_sqrt_fp32() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
     ark::Tensor *out = m.sqrt(t);
 
     auto result =
         ark::op_test("sqrt_fp32", m, {t}, {out}, baseline_sqrt<float>);
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-6f);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_sqrt_fp32);
     return ark::unittest::SUCCESS;

@@ -8,50 +8,44 @@ import multiprocessing
 world_size = 2
 
 tensor_len = 2048
-tensor_size = tensor_len * 2
+tensor_size = tensor_len * ark.fp16.element_size()
 
 
 def sendrecv_test_ping_pong_function(rank, np_inputs):
     print("rank:", rank)
-    # Initialize the ARK runtime
-    runtime = ark.Runtime(rank, world_size)
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
 
     # Define the behavior for rank 0
     if rank == 0:
-        send_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
-
-        # send the tensor to rank 1
+        # send a tensor to rank 1
+        send_tensor = ark.tensor([tensor_len], ark.fp16)
         send_id, dst_rank = 0, 1
-        send_dep_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
-        # A identity operation is used to add an execution dependency and
-        # make sure execution order correct
-        ark.send_done(
-            ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
-        )
+        send_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
+        # wait until the send is done
+        ark.send_done(send_tensor, send_id, dst_rank)
         # recv the tensor from rank 1
         recv_id, recv_rank = 1, 1
-        ark.recv(recv_tensor, recv_id, recv_rank)
+        recv_tensor = ark.recv(recv_id, recv_rank, bytes=tensor_size)
+        # cast received bytes to fp16
+        recv_tensor = ark.cast(recv_tensor, ark.fp16)
 
     # Define the behavior for rank 1
     if rank == 1:
         # recv the tensor from rank 0
-        recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.FP16)
         recv_id, recv_rank = 0, 0
-        recv_dep = ark.recv(recv_tensor, recv_id, recv_rank)
-
-        # The send must be executed after the recv, identity is used to
-        # add an execution dependency between the two operations
-        send_tensor = ark.identity(recv_tensor, [recv_dep])
-
-        # Send the received tensor back to rank 0
+        recv_tensor = ark.recv(recv_id, recv_rank, bytes=tensor_size)
+        # cast received bytes to fp16
+        recv_tensor = ark.cast(recv_tensor, ark.fp16)
+        # send the received tensor back to rank 0
+        send_tensor = recv_tensor
         send_id, dst_rank = 1, 0
-        send_dep_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
-        # A identity operation is used to add an execution dependency and
-        # make sure execution order correct
-        ark.send_done(
-            ark.identity(send_tensor, [send_dep_tensor]), send_id, dst_rank
-        )
+        send_tensor = ark.send(send_tensor, send_id, dst_rank, tensor_size)
+        # wait until the send is done
+        ark.send_done(send_tensor, send_id, dst_rank)
+
+    # Initialize the ARK runtime
+    runtime = ark.Runtime()
 
     # Launch the ARK runtime
     runtime.launch()

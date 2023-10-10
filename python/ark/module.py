@@ -36,7 +36,6 @@ class Module:
     def register_module(self, name: str, module: "Module") -> None:
         """Adds a child module to the current module."""
         if not isinstance(module, Module):
-            logging.error("module must be a Module")
             raise TypeError("module must be a Module")
         self.sub_modules[name] = module
 
@@ -65,6 +64,7 @@ class Module:
         Must be called after the executor is launched.
         """
         logging.info("Loading model from state_dict")
+
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
         for name, param in pd.items():

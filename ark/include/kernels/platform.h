@@ -4,22 +4,20 @@
 #ifndef ARK_KERNELS_PLATFORM_H_
 #define ARK_KERNELS_PLATFORM_H_
 
-#include "cutlass/platform/platform.h"
-#include "device.h"
-#include "half.h"
 #include <cfloat>
 #include <limits>
 
+#include "cutlass/platform/platform.h"
+#include "device.h"
+#include "half.h"
+
 namespace platform {
 
-template <> struct numeric_limits<float>
-{
-    static DEVICE float lowest()
-    {
-        return -FLT_MAX;
-    }
+template <>
+struct numeric_limits<float> {
+    static DEVICE float lowest() { return -FLT_MAX; }
 };
 
-} // namespace platform
+}  // namespace platform
 
-#endif // ARK_KERNELS_PLATFORM_H_
+#endif  // ARK_KERNELS_PLATFORM_H_

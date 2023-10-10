@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+#include <type_traits>
+
 #include "include/ark.h"
 #include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
-#include <cassert>
-#include <type_traits>
 
 template <typename T>
 void baseline_embedding(std::vector<void *> &outputs,
@@ -38,21 +39,21 @@ void baseline_embedding(std::vector<void *> &outputs,
     }
 };
 
-template <typename T> ark::unittest::State test_embedding()
-{
+template <typename T>
+ark::unittest::State test_embedding() {
     const int num_emb = 1000;
     const int emb_dim = 8192;
 
-    ark::TensorType weight_type;
+    const ark::TensorType *weight_type;
     if (std::is_same<T, float>::value) {
-        weight_type = ark::FP32;
+        weight_type = &ark::FP32;
     } else {
-        weight_type = ark::FP16;
+        weight_type = &ark::FP16;
     }
 
     ark::Model m;
     ark::Tensor *ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
-    ark::Tensor *tw = m.tensor(ark::Dims(num_emb, emb_dim), weight_type);
+    ark::Tensor *tw = m.tensor(ark::Dims(num_emb, emb_dim), *weight_type);
     ark::Tensor *to = m.embedding(ti, tw);
 
     ark::srand();
@@ -66,24 +67,25 @@ template <typename T> ark::unittest::State test_embedding()
     auto result =
         ark::op_test("embedding_fp32", m, {ti, tw}, {to}, baseline_embedding<T>,
                      {ti_data.data(), tw_data.get()});
-    ark::op_test_log(result);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_embedding_fp32()
-{
-    return test_embedding<float>();
-}
+ark::unittest::State test_embedding_fp32() { return test_embedding<float>(); }
 
-ark::unittest::State test_embedding_fp16()
-{
+ark::unittest::State test_embedding_fp16() {
     return test_embedding<ark::half_t>();
 }
 
-int main()
-{
+ark::unittest::State test_embedding_bf16() {
+    return test_embedding<ark::bfloat16_t>();
+}
+
+int main() {
     ark::init();
     UNITTEST(test_embedding_fp32);
     UNITTEST(test_embedding_fp16);
+    UNITTEST(test_embedding_bf16);
     return ark::unittest::SUCCESS;
 }
