@@ -95,7 +95,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, cuGetErrorString);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGet, cuDeviceGet);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetCount, cuDeviceGetCount);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cuDeviceGetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cuDeviceSynchronize);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cuCtxSynchronize);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxCreate, cuCtxCreate);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxSetCurrent, cuCtxSetCurrent);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadDataEx, cuModuleLoadDataEx);

@@ -40,8 +40,8 @@ inline auto blasGemmEx(blasHandle handle, blasOperation transA,
                        const void *beta, void *C, blasDataType Ctype, int ldc,
                        blasComputeType computeType) {
     return cublasGemmEx(handle, transA, transB, m, n, k, alpha, A, Atype, lda,
-                        B, Btype, ldb, beta, C, Ctype, ldc, nullptr, Ctype, ldc,
-                        computeType);
+                        B, Btype, ldb, beta, C, Ctype, ldc, computeType,
+                        CUBLAS_GEMM_DEFAULT);
 }
 
 inline auto blasGemmStridedBatchedEx(
@@ -52,8 +52,8 @@ inline auto blasGemmStridedBatchedEx(
     int batchCount, blasComputeType computeType) {
     return cublasGemmStridedBatchedEx(
         handle, transA, transB, m, n, k, alpha, A, Atype, lda, strideA, B,
-        Btype, ldb, strideB, beta, C, Ctype, ldc, strideC, batchCount, nullptr,
-        Ctype, ldc, strideC, computeType);
+        Btype, ldb, strideB, beta, C, Ctype, ldc, strideC, batchCount,
+        computeType, CUBLAS_GEMM_DEFAULT);
 }
 
 #elif defined(ARK_ROCM)

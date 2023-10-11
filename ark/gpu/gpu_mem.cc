@@ -56,7 +56,7 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     }
     gpudma_lock_t lock;
     lock.handle = 0;
-    lock.addr = reinterpret_cast<uint64_t>(addr);
+    lock.addr = addr;
     lock.size = bytes;
     if (ioctl(fd, IOCTL_GPUMEM_LOCK, &lock) < 0) {
         return errno;
@@ -239,8 +239,8 @@ GpuMem::~GpuMem() {
 
 // GPU-side virtual address.
 GpuPtr GpuMem::ref(size_t offset) const {
-    return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(addr_) +
-                                    offset);
+    return reinterpret_cast<GpuPtr>(
+        reinterpret_cast<long long unsigned int>(addr_) + offset);
 }
 
 // GPU-side physical address.

@@ -443,7 +443,7 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     }
     GpuPtr pb = buf->ref(offset);
     if (pb != 0) {
-        assert((reinterpret_cast<uintptr_t>(pb) % 4) == 0);
+        assert((reinterpret_cast<long long unsigned int>(pb) % 4) == 0);
         GLOG(gpuMemsetD32(pb, val, num));
     } else {
         int *phb = (int *)buf->href(offset);
