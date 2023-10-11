@@ -61,13 +61,15 @@ void test_all_gather_8gpus_internal_mscclpp(size_t nelem, int iter) {
             ark::Model m{gpu_id};
             ark::Tensor *ones = m.tensor(ark::Dims(nelem), ark::FP16);
             ark::Tensor *data = m.scale(ones, float(gpu_id + 1));
-            auto outputs = m.local_all_gather_mscclpp(data, gpu_id, 0, num_gpus);
+            auto outputs =
+                m.local_all_gather_mscclpp(data, gpu_id, 0, num_gpus);
             auto ones_data = ark::utils::ones<ark::half_t>(ones->shape.size());
             auto result =
                 ark::op_test("all_gather", m, {ones}, {outputs},
                              baseline_all_gather_mscclpp<ark::half_t, num_gpus>,
                              {ones_data.get()}, true, gpu_id, num_gpus, 16);
-            ark::op_test_log(result);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });
     }

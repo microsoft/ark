@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,19 +13,17 @@ constexpr int MAX_PEER_NUM = 7;
 
 // currently only support in single node
 MscclppReadAndReduceOp::MscclppReadAndReduceOp(
-    OpPrecType prec_type, Tensor *local_buf, Tensor *cal_region_local,
-    std::vector<Tensor*> remote_bufs, Tensor *cal_region_remote, int sid, int rank,
-    int npeers, size_t offset, size_t bytes, const std::string &name)
+    const std::string &prec_type, Tensor *local_buf, Tensor *cal_region_local,
+    std::vector<Tensor *> remote_bufs, Tensor *cal_region_remote, int sid,
+    int rank, int npeers, size_t offset, size_t bytes, const std::string &name)
     : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {cal_region_remote},
          {cal_region_local, local_buf}, {{rank, npeers, sid, offset, bytes}},
-         name, &MscclppReadAndReduceConfigMap, -1, true)
-{
+         name, &MscclppReadAndReduceConfigMap, -1, true) {
     this->inputs.insert(this->inputs.end(), remote_bufs.begin(),
-                         remote_bufs.end());
+                        remote_bufs.end());
 }
 
-std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
-{
+std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
     Tensor *dst_buff = this->outputs[0];
     CHECK(dst_buff->is_sequential());
 
@@ -47,15 +46,14 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const
     Dims dims = dst_buff->ldims.dims4();
 
     return Op::function_name("ark::comm::read_and_reduce_mscclpp",
-                             {{dims,               // Dims
-                               shape_dims,         // Shape
-                               unit_out_dims,      // UnitOutDims
-                               cfg.num_warps * 32, // NumThreads
+                             {{dims,                // Dims
+                               shape_dims,          // Shape
+                               unit_out_dims,       // UnitOutDims
+                               cfg.num_warps * 32,  // NumThreads
                                peer_rank, rank, offset}});
 }
 
-OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
-{
+OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
     int rank;
     int npeers;
     this->args.get(&rank, 0);
@@ -69,8 +67,8 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
 
     OpArgs opargs;
     // read_and_redcue_mscclpp(dst_offset, src_offset...)
-    opargs.put(
-        (size_t)(local_buff->buf->get_buf_offset() + local_buff->offset_bytes()));
+    opargs.put((size_t)(local_buff->buf->get_buf_offset() +
+                        local_buff->offset_bytes()));
     for (int i = 0; i < MAX_PEER_NUM; i++) {
         if (i < npeers) {
             CHECK(remote_bufs[i]->buf != nullptr);
@@ -86,8 +84,7 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const
 
 Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
                                        size_t offset, size_t bytes,
-                                       const std::string &name)
-{
+                                       const std::string &name) {
     LOG(DEBUG, "read_and_reduce_mscclpp ", input->shape, " npeers ", npeers);
     input->exported = true;
 
@@ -99,9 +96,9 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
         remote_buf->imported_rank = peer_rank;
         remote_bufs.push_back(remote_buf);
     }
-    OpPrecType pt = OP_PREC_NONE;
+    std::string pt = "none";
     if (input->type == FP16) {
-        pt = OP_PREC_FP16;
+        pt = "fp16";
     }
     Dims shape = {(long long)bytes / input->type_bytes()};
     // These two tensors are not actually used, just give hint to scheduler to
@@ -122,17 +119,17 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
     return this->impl->add_op(op)[1];
 }
 
-Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
-                                            int sid, int ngpus_per_node,
-                                            const std::string &name)
-{
+Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id, int sid,
+                                            int ngpus_per_node,
+                                            const std::string &name) {
     assert(input != nullptr);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
     }
     if (!input->is_sequential()) {
-        LOG(WARN, "reduce_scatter may not work correctly if the input tensor is "
-                  "not contiguous");
+        LOG(WARN,
+            "reduce_scatter may not work correctly if the input tensor is "
+            "not contiguous");
     }
     int npeers = ngpus_per_node - 1;
     LOG(DEBUG, "local_reduce_scatter_mscclpp ", input->shape, " ", gpu_id, " ",
@@ -146,7 +143,7 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
 }
 
 const OpConfigMap MscclppReadAndReduceConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
+    {{OP_ARCH_CUDA_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       {16,
        0,
@@ -175,4 +172,4 @@ const OpConfigMap MscclppReadAndReduceConfigMap = {
        false,
        true}}},
 };
-}; // namespace ark
+};  // namespace ark

@@ -485,8 +485,8 @@ class Model {
                               Tensor *output = nullptr,
                               const std::string &name = "send_done_mscclpp");
     //
-    Tensor *recv_mscclpp(Tensor *input, int sid, int src_rank,
-                         std::size_t bytes = 0, Tensor *output = nullptr,
+    Tensor *recv_mscclpp(int sid, int src_rank, std::size_t bytes = 0,
+                         Tensor *output = nullptr,
                          const std::string &name = "recv_mscclpp");
     // Performs an all-reduce operator across all GPUs, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the

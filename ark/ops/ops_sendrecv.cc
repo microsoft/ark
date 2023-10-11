@@ -145,7 +145,7 @@ Tensor *Model::recv(int id, int src_rank, size_t bytes, Tensor *output,
         bytes = max_bytes;
     }
     if (get_env().use_mscclpp) {
-        return this->recv_mscclpp(input, id, src_rank, bytes, output, name);
+        return this->recv_mscclpp(id, src_rank, bytes, output, name);
     }
     RecvOp op{"none", output, id, this->impl->rank, src_rank, bytes, name};
     return this->impl->add_op(op)[0];

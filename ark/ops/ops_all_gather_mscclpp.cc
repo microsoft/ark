@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cassert>
+
 #include "logging.h"
 #include "model.h"
-#include <cassert>
 
 namespace ark {
 
@@ -12,19 +13,17 @@ constexpr int MAX_PEER_NUM = 7;
 
 // currently only support in single node
 MscclppGatherFromPeersOp::MscclppGatherFromPeersOp(
-    OpPrecType prec_type, Tensor *local_buf, Tensor *trans_region_local,
+    const std::string &prec_type, Tensor *local_buf, Tensor *trans_region_local,
     std::vector<Tensor *> remote_bufs, Tensor *trans_region_remote, int sid,
     int rank, int npeers, size_t chunk_bytes, const std::string &name)
     : Op(OP_GATHER_FROM_PEERS_MSCCLPP, prec_type, {trans_region_remote},
          {trans_region_local, local_buf}, {{rank, npeers, sid, chunk_bytes}},
-         name, &MscclppGatherFromPeersConfigMap, -1, true)
-{
+         name, &MscclppGatherFromPeersConfigMap, -1, true) {
     this->inputs.insert(this->inputs.end(), remote_bufs.begin(),
                         remote_bufs.end());
 }
 
-std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const
-{
+std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const {
     Tensor *dst_buff = this->outputs[0];
     CHECK(dst_buff->is_sequential());
 
@@ -44,15 +43,14 @@ std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const
     Dims dims = dst_buff->ldims.dims4();
 
     return Op::function_name("ark::comm::gather_from_peers_mscclpp",
-                             {{dims,               // Dims
-                               shape_dims,         // Shape
-                               unit_out_dims,      // UnitOutDims
-                               cfg.num_warps * 32, // NumThreads
+                             {{dims,                // Dims
+                               shape_dims,          // Shape
+                               unit_out_dims,       // UnitOutDims
+                               cfg.num_warps * 32,  // NumThreads
                                npeers, rank, chunk_bytes}});
 }
 
-OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const
-{
+OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const {
     int rank;
     int npeers;
     this->args.get(&rank, 0);
@@ -66,8 +64,8 @@ OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const
 
     OpArgs opargs;
     // gether_from_peers_mscclpp(dst_offset, src_offset...)
-    opargs.put(
-        (size_t)(local_buff->buf->get_buf_offset() + local_buff->offset_bytes()));
+    opargs.put((size_t)(local_buff->buf->get_buf_offset() +
+                        local_buff->offset_bytes()));
     for (int i = 0; i < MAX_PEER_NUM; i++) {
         if (i < npeers) {
             CHECK(remote_bufs[i]->buf != nullptr);
@@ -81,11 +79,9 @@ OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const
     return opargs;
 }
 
-
 Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
                                          size_t chunk_bytes,
-                                         const std::string &name)
-{
+                                         const std::string &name) {
     LOG(DEBUG, "gather_from_peers_mscclpp ", input->shape, " nppers ", npeers);
     input->exported = true;
 
@@ -97,9 +93,9 @@ Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
         remote_buf->imported_rank = peer_rank;
         remote_bufs.push_back(remote_buf);
     }
-    OpPrecType pt = OP_PREC_NONE;
+    std::string pt = "none";
     if (input->type == FP16) {
-        pt = OP_PREC_FP16;
+        pt = "fp16";
     }
     Dims shape = {(long long)chunk_bytes / input->type_bytes()};
     // These two tensors are not actually used, just give hint to scheduler to
@@ -107,29 +103,29 @@ Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
     Tensor *trans_region_local = this->tensor(shape, input->type, input->buf);
     Tensor *trans_region_remote = this->tensor(shape, input->type, input->buf);
     MscclppGatherFromPeersOp op{pt,
-                              input,
-                              trans_region_local,
-                              remote_bufs,
-                              trans_region_remote,
-                              sid,
-                              this->impl->rank,
-                              npeers,
-                              chunk_bytes,
-                              name};
+                                input,
+                                trans_region_local,
+                                remote_bufs,
+                                trans_region_remote,
+                                sid,
+                                this->impl->rank,
+                                npeers,
+                                chunk_bytes,
+                                name};
     return this->impl->add_op(op)[1];
 }
 
 Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id, int sid,
                                         int ngpus_per_node,
-                                        const std::string &name)
-{
+                                        const std::string &name) {
     assert(input != nullptr);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
     }
     if (!input->is_sequential()) {
-        LOG(WARN, "all_gather may not work correctly if the input tensor is "
-                  "not contiguous");
+        LOG(WARN,
+            "all_gather may not work correctly if the input tensor is "
+            "not contiguous");
     }
     int npeers = ngpus_per_node - 1;
     LOG(DEBUG, "local_all_gather_mscclpp ", input->shape, " ", gpu_id, " ", sid,
@@ -143,7 +139,7 @@ Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id, int sid,
 }
 
 const OpConfigMap MscclppGatherFromPeersConfigMap = {
-    {{OP_ARCH_CUDA_ANY, OP_PREC_ANY},
+    {{OP_ARCH_CUDA_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       {16,
        0,
@@ -159,4 +155,4 @@ const OpConfigMap MscclppGatherFromPeersConfigMap = {
        false,
        true}}},
 };
-} // namespace ark
+}  // namespace ark
