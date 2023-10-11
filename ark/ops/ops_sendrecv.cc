@@ -123,6 +123,9 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 //
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank,
                          const std::string &name) {
+    if (get_env().use_mscclpp) {
+        return this->send_done_mscclpp(input, dst_rank, name);
+    }
     SendDoneOp op{"none", input, id, this->impl->rank, dst_rank, name};
     return this->impl->add_op(op)[0];
 }

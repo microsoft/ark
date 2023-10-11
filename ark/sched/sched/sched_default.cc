@@ -467,7 +467,7 @@ void DefaultScheduler::configure_gpu_buf(
                                              recvbuf->buf, sid, 0);
                 export_tns_sids[input->buf].emplace_back(input, sid);
             } else if (op->type == OP_RECV_MSCCLPP) {
-                Tensor *in = op->inputs[0];
+                Tensor *in = op->outputs[0];
                 int sid;
                 op->args.get(&sid, 3);
                 export_tns_sids[in->buf].emplace_back(in, sid);

@@ -482,7 +482,6 @@ class Model {
                          std::size_t bytes = 0, const std::string &name = "send_mscclpp");
     //
     Tensor *send_done_mscclpp(Tensor *input, int dst_rank,
-                              Tensor *output = nullptr,
                               const std::string &name = "send_done_mscclpp");
     //
     Tensor *recv_mscclpp(int sid, int src_rank, std::size_t bytes = 0,

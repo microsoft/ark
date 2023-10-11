@@ -59,12 +59,12 @@ OpArgs MscclppSendOp::function_call_args(const OpConfig &) const {
 }
 
 MscclppSendDoneOp::MscclppSendDoneOp(const std::string &prec_type,
-                                     Tensor *input, Tensor *output, int rank,
-                                     int dst_rank, const std::string &name)
+                                     Tensor *input, int rank, int dst_rank,
+                                     const std::string &name)
     : Op{OP_SEND_DONE_MSCCLPP,
          prec_type,
          {input},
-         {output},
+         {input},
          {{rank, dst_rank}},
          name,
          &MscclppConfigMap,
@@ -105,8 +105,8 @@ MscclppRecvOp::MscclppRecvOp(const std::string &prec_type, Tensor *output,
          true} {}
 
 std::string MscclppRecvOp::function_name(const OpConfig &) const {
-    Tensor *input = this->inputs[0];
-    CHECK(input->is_sequential());
+    Tensor *output = this->outputs[0];
+    CHECK(output->is_sequential());
 
     int rank;
     int src_rank;
@@ -157,14 +157,10 @@ Tensor *Model::send_mscclpp(Tensor *input, int sid, int dst_rank,
     return this->impl->add_op(op)[0];
 }
 
-Tensor *Model::send_done_mscclpp(Tensor *input, int dst_rank, Tensor *output,
+Tensor *Model::send_done_mscclpp(Tensor *input, int dst_rank,
                                  const std::string &name) {
     LOG(DEBUG, "send_done_mscclpp ", input->shape, " ", dst_rank);
-    if (output == nullptr) {
-        output = this->tensor({1, 1, 1, 1}, INT32);
-    }
-    MscclppSendDoneOp op{"none",           input,    output,
-                         this->impl->rank, dst_rank, name};
+    MscclppSendDoneOp op{"none", input, this->impl->rank, dst_rank, name};
     return this->impl->add_op(op)[0];
 }
 

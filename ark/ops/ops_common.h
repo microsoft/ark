@@ -507,9 +507,8 @@ class MscclppRecvOp : public Op {
 
 class MscclppSendDoneOp : public Op {
    public:
-    MscclppSendDoneOp(const std::string &prec_type, Tensor *input,
-                      Tensor *output, int rank, int dst_rank,
-                      const std::string &name);
+    MscclppSendDoneOp(const std::string &prec_type, Tensor *input, int rank,
+                      int dst_rank, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

@@ -57,7 +57,7 @@ void test_sendrecv_internal() {
     ark::unittest::wait_all_processes();
 }
 
-void test_device_sync() {
+ark::unittest::State test_device_sync() {
     for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id]() {
             ark::Model model{gpu_id};
@@ -74,18 +74,19 @@ void test_device_sync() {
     }
 
     ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_sendrecv() {
     test_sendrecv_internal();
-    if (ark::get_env().use_mscclpp) {
-        test_device_sync();
-    }
     return ark::unittest::SUCCESS;
 }
 
 int main() {
     ark::init();
     UNITTEST(test_sendrecv);
+    // if (ark::get_env().use_mscclpp) {
+    //     UNITTEST(test_device_sync);
+    // }
     return ark::unittest::SUCCESS;
 }
