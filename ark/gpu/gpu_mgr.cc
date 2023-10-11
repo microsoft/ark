@@ -167,14 +167,18 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
 GpuMgrCtx::~GpuMgrCtx() {
     //
     for (GpuStream s : this->streams) {
-        gpuStreamDestroy(s);
+        if (gpuStreamDestroy(s) != gpuSuccess) {
+            LOG(WARN, "gpuStreamDestroy() failed.");
+        }
     }
 }
 
 //
 GpuStream GpuMgrCtx::create_stream() {
     GpuStream s;
-    this->gpu_mgr->set_current();
+    if (this->gpu_mgr->set_current() != gpuSuccess) {
+        LOG(ERROR, "gpuCtxSetCurrent() failed.");
+    }
     GLOG(gpuStreamCreate(&s, gpuStreamNonBlocking));
     this->streams.emplace_back(s);
     return s;
@@ -190,7 +194,9 @@ void GpuMgrCtx::destroy_stream(const GpuStream &s) {
     auto it = this->streams.begin();
     for (; it != this->streams.end(); ++it) {
         if (*it == s) {
-            gpuStreamDestroy(s);
+            if (gpuStreamDestroy(s) != gpuSuccess) {
+                LOG(WARN, "gpuStreamDestroy() failed.");
+            }
             this->streams.erase(it);
             break;
         }
@@ -204,7 +210,7 @@ GpuEvent GpuMgrCtx::create_event(bool disable_timing) {
     if (disable_timing) {
         flags |= gpuEventDisableTiming;
     }
-    GLOG(cuEventCreate(&cuda_event, flags));
+    GLOG(gpuEventCreate(&cuda_event, flags));
     return cuda_event;
 }
 
@@ -427,16 +433,7 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
     return mgr;
 }
 
-void gpu_memset(GpuPtr buf, int val, size_t num) {
-    GLOG(gpuMemsetD32(buf, val, num));
-}
-void gpu_memcpy(GpuPtr dst, const void *src, size_t bytes) {
-    GLOG(gpuMemcpyHtoD(dst, src, bytes));
-}
-void gpu_memcpy(void *dst, const GpuPtr src, size_t bytes) {
-    GLOG(gpuMemcpyDtoH(dst, src, bytes));
-}
-void gpu_memset(GpuBuf *buf, int val, size_t num) {
+void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     const size_t &bytes = buf->get_bytes();
     assert(bytes >= 4);
     if ((bytes >> 2) < num) {
@@ -444,33 +441,38 @@ void gpu_memset(GpuBuf *buf, int val, size_t num) {
             "memset requests too many elements. Expected <= ", bytes >> 2,
             ", given ", num);
     }
-    GpuPtr pb = buf->ref();
+    GpuPtr pb = buf->ref(offset);
     if (pb != 0) {
-        assert((pb % 4) == 0);
+        assert((reinterpret_cast<uintptr_t>(pb) % 4) == 0);
         GLOG(gpuMemsetD32(pb, val, num));
     } else {
-        int *phb = (int *)buf->href();
+        int *phb = (int *)buf->href(offset);
         assert(phb != nullptr);
         for (size_t i = 0; i < num; ++i) {
             phb[i] = val;
         }
     }
 }
-void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes) {
-    GLOG(gpuMemcpyHtoD(dst->ref(), src, bytes));
+void gpu_memcpy(GpuBuf *dst, size_t dst_offset, void *src, size_t src_offset,
+                size_t bytes) {
+    src = static_cast<char *>(src) + src_offset;
+    GLOG(gpuMemcpyHtoD(dst->ref(dst_offset), src, bytes));
 }
-void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes) {
-    GLOG(gpuMemcpyDtoH(dst, src->ref(), bytes));
+void gpu_memcpy(void *dst, size_t dst_offset, const GpuBuf *src,
+                size_t src_offset, size_t bytes) {
+    dst = static_cast<char *>(dst) + dst_offset;
+    GLOG(gpuMemcpyDtoH(dst, src->ref(src_offset), bytes));
 }
-void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes) {
-    GpuPtr rd = dst->ref();
-    GpuPtr rs = src->ref();
+void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
+                size_t src_offset, size_t bytes) {
+    GpuPtr rd = dst->ref(dst_offset);
+    GpuPtr rs = src->ref(src_offset);
     if ((rd != 0) && (rs != 0)) {
-        GLOG(gpuMemcpyDtoD(dst->ref(), src->ref(), bytes));
+        GLOG(gpuMemcpyDtoD(dst->ref(dst_offset), src->ref(src_offset), bytes));
     } else if (rd != 0) {
-        GLOG(gpuMemcpyHtoD(dst->ref(), src->href(), bytes));
+        GLOG(gpuMemcpyHtoD(dst->ref(dst_offset), src->href(src_offset), bytes));
     } else if (rs != 0) {
-        GLOG(gpuMemcpyDtoH(dst->href(), src->ref(), bytes));
+        GLOG(gpuMemcpyDtoH(dst->href(dst_offset), src->ref(src_offset), bytes));
     } else {
         // ::memcpy(dst->href(), src->href(), bytes);
         LOG(ERROR, "Unexpected case.");

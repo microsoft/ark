@@ -4,7 +4,6 @@
 #include <cmath>
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
@@ -107,7 +106,7 @@ ark::unittest::State test_softmax_fp16_big_magnitude() {
     std::vector<ark::half_t> input_data;
     for (ark::DimType i = 0; i < input->shape.size(); ++i) {
         // larger to smaller
-        input_data.push_back(ark::half_t((2047 - i) % 2048 - 1024));
+        input_data.push_back(ark::half_t(int((2047 - i) % 2048 - 1024)));
     }
 
     auto result = ark::op_test("softmax_fp16_big_magnitude", model, {input},

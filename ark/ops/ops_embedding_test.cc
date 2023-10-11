@@ -5,8 +5,8 @@
 #include <type_traits>
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
+#include "random.h"
 #include "unittest/unittest_utils.h"
 
 template <typename T>
@@ -62,10 +62,13 @@ ark::unittest::State test_embedding() {
         // Random indices in [0, num_emb)
         ti_data.push_back(ark::rand() % num_emb);
     }
-    auto tw_data = ark::utils::rand_array<T>(tw->shape.size(), 1.0);
+    std::vector<T> tw_data(tw->shape.size());
+    for (auto i = 0; i < tw->shape.size(); ++i) {
+        tw_data[i] = ark::rand<T>(-1.0, 1.0);
+    }
     auto result =
         ark::op_test("embedding_fp32", m, {ti, tw}, {to}, baseline_embedding<T>,
-                     {ti_data.data(), tw_data.get()});
+                     {ti_data.data(), tw_data.data()});
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;

@@ -4,37 +4,30 @@
 #include "ipc/ipc_coll.h"
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
 
-using namespace ark;
-using namespace std;
-
-unittest::State test_ipc_coll_allgather() {
+ark::unittest::State test_ipc_coll_allgather() {
     // Launch 100 workers.
-    vector<int> pids;
     for (int i = 0; i < 100; ++i) {
-        int pid = ark::utils::proc_spawn([i]() {
-            unittest::Timeout timeout{5};
+        int pid = ark::unittest::spawn_process([i]() {
+            ark::unittest::Timeout timeout{5};
             int rank = i;
             int size = 100;
             int data = rank + 1;
-            IpcAllGather iag{"ipc_coll_allgather_test", rank, size,
-                             (const void *)&data, sizeof(data)};
+            ark::IpcAllGather iag{"ipc_coll_allgather_test", rank, size,
+                                  (const void *)&data, sizeof(data)};
             iag.sync();
             for (int i = 0; i < size; ++i) {
                 int *ptr = (int *)iag.get_data(i);
                 UNITTEST_EQ(*ptr, i + 1);
             }
-            return 0;
+            return ark::unittest::SUCCESS;
         });
         UNITTEST_NE(pid, -1);
-        pids.emplace_back(pid);
     }
     // Wait until all workers finish.
-    int ret = ark::utils::proc_wait(pids);
-    UNITTEST_EQ(ret, 0);
-    return unittest::SUCCESS;
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
 }
 
 int main() {

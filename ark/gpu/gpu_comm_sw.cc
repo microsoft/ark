@@ -151,7 +151,9 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
 GpuCommSw::Impl::~Impl() {
     this->stop_request_loop();
     if (request_ != nullptr) {
-        gpuHostUnregister((void *)request_);
+        if (gpuHostUnregister((void *)request_) != gpuSuccess) {
+            LOG(WARN, "gpuHostUnregister() failed.");
+        }
         delete request_;
     }
 }

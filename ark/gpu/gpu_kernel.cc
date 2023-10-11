@@ -182,7 +182,9 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
       ctx{ctx_},
       timer_begin{ctx_->create_event(false)},
       timer_end{ctx_->create_event(false)} {
-    ctx_->set_current();
+    if (ctx_->set_current() != gpuSuccess) {
+        LOG(ERROR, "Failed to set the context.");
+    }
     this->flag = make_unique<GpuMem>(sizeof(int));
     this->clocks = make_unique<GpuMem>(CLKS_CNT * sizeof(long long int));
     this->flag_href = (volatile int *)this->flag->href(0);
@@ -245,7 +247,9 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
 }
 
 void GpuLoopKernel::compile(const GpuInfo &gpu_info) {
-    this->ctx->set_current();
+    if (this->ctx->set_current() != gpuSuccess) {
+        LOG(ERROR, "Failed to set the context.");
+    }
     if (this->is_compiled()) {
         return;
     }
@@ -254,7 +258,9 @@ void GpuLoopKernel::compile(const GpuInfo &gpu_info) {
 }
 
 void GpuLoopKernel::load() {
-    this->ctx->set_current();
+    if (this->ctx->set_current() != gpuSuccess) {
+        LOG(ERROR, "Failed to set the context.");
+    }
     //
     if (!this->is_compiled()) {
         LOG(ERROR, "Need to compile first before initialization.");

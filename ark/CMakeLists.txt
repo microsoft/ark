@@ -6,6 +6,11 @@ file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cc *_test.cu)
 file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unittest/*.cc)
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 
+if(USE_ROCM)
+    file(GLOB_RECURSE CU_SOURCES CONFIGURE_DEPENDS *.cu)
+    set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE HIP)
+endif()
+
 set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
 
 # ARK object
@@ -18,7 +23,7 @@ target_include_directories(ark_obj SYSTEM PRIVATE
     ${NUMA_INCLUDE_DIRS}
 )
 
-if(CUDAToolkit_FOUND)
+if(USE_CUDA)
     list(APPEND COMMON_LIBS CUDA::cuda_driver)
     target_include_directories(ark_obj SYSTEM PRIVATE
         ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
@@ -27,10 +32,10 @@ if(CUDAToolkit_FOUND)
     target_compile_definitions(ark_obj PUBLIC ARK_CUDA)
 endif()
 
-if(ROCM_FOUND)
-    list(APPEND COMMON_LIBS ${ROCR_LIBRARY} ${ROCT_LIBRARY})
+if(USE_ROCM)
+    list(APPEND COMMON_LIBS hip::host)
     target_include_directories(ark_obj SYSTEM PRIVATE
-        ${ROCM_INCLUDE_DIRS}
+        ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
         /opt/rocm/include
     )
     target_compile_definitions(ark_obj PUBLIC ARK_ROCM)
@@ -52,15 +57,15 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
         ${NUMA_INCLUDE_DIRS}
     )
 
-    if(CUDAToolkit_FOUND)
+    if(USE_CUDA)
         target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
         target_include_directories(${exe_name} SYSTEM PRIVATE
             ${CUDAToolkit_INCLUDE_DIRS}
         )
     else()
-        target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS})
+        find_package(rocblas REQUIRED)
+        target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} roc::rocblas)
         target_include_directories(${exe_name} SYSTEM PRIVATE
-            ${ROCM_INCLUDE_DIRS}
             /opt/rocm/include
         )
     endif()

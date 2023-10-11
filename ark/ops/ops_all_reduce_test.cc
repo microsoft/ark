@@ -12,7 +12,7 @@ void baseline_all_reduce(std::vector<void *> &outputs,
     // Calculate sum from 1 to NumGpus.
     T expected = 0;
     for (int i = 1; i <= NumGpus; ++i) {
-        expected += i;
+        expected += T(i);
     }
 
     T *out = static_cast<T *>(outputs[0]);
@@ -32,11 +32,12 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter) {
             ark::Tensor *data = m.scale(ones, float(gpu_id + 1));
             ark::Tensor *output = m.all_reduce(data, gpu_id, num_gpus);
 
-            auto ones_data = ark::utils::ones<ark::half_t>(ones->shape.size());
+            std::vector<ark::half_t> ones_vec(ones->shape.size(),
+                                              ark::half_t(1.0f));
             auto result =
                 ark::op_test("all_reduce", m, {ones}, {output},
                              baseline_all_reduce<ark::half_t, num_gpus>,
-                             {ones_data.get()}, false, gpu_id, num_gpus);
+                             {ones_vec.data()}, false, gpu_id, num_gpus);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;

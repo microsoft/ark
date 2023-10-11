@@ -3,11 +3,10 @@
 
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "logging.h"
+#include "ops_test_common.h"
+#include "random.h"
 #include "unittest/unittest_utils.h"
-
-using namespace std;
 
 //
 void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k) {
@@ -16,10 +15,13 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k) {
 
     // Set data.
     ark::srand();
-    auto data_a = ark::utils::rand_halfs(buf_x_sz / sizeof(ark::half_t), 0.01);
+    std::vector<ark::half_t> data_a(buf_x_sz / sizeof(ark::half_t));
+    for (size_t i = 0; i < data_a.size(); ++i) {
+        data_a[i] = ark::rand<ark::half_t>(-0.01, 0.01);
+    }
 
     // Copy the ground truth results into CPU memory.
-    void *gt = malloc(buf_y_sz);
+    void *gt = std::malloc(buf_y_sz);
     UNITTEST_NE(gt, (void *)nullptr);
 
     //
@@ -32,7 +34,7 @@ void test_layernorm_internal(unsigned int n, unsigned int m, unsigned int k) {
     exe.compile();
 
     // Set data.
-    tns_x->write(data_a.get());
+    tns_x->write(data_a.data());
 
     exe.launch();
     exe.run(1);

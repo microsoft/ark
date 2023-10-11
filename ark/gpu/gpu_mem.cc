@@ -56,7 +56,7 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     }
     gpudma_lock_t lock;
     lock.handle = 0;
-    lock.addr = addr;
+    lock.addr = reinterpret_cast<uint64_t>(addr);
     lock.size = bytes;
     if (ioctl(fd, IOCTL_GPUMEM_LOCK, &lock) < 0) {
         return errno;
@@ -222,10 +222,14 @@ GpuMem::~GpuMem() {
     }
     size_t mapped_bytes;
     if (is_remote_) {
-        gpuIpcCloseMemHandle(raw_addr_);
+        if (gpuIpcCloseMemHandle(raw_addr_) != gpuSuccess) {
+            LOG(WARN, "gpuIpcCloseMemHandle() failed.");
+        }
         mapped_bytes = info_.bytes;
     } else {
-        gpuMemFree(raw_addr_);
+        if (gpuMemFree(raw_addr_) != gpuSuccess) {
+            LOG(WARN, "gpuMemFree() failed.");
+        }
         mapped_bytes = npage_ << GPU_PAGE_SHIFT;
     }
     if (mmap_ != nullptr) {
@@ -234,7 +238,10 @@ GpuMem::~GpuMem() {
 }
 
 // GPU-side virtual address.
-GpuPtr GpuMem::ref(size_t offset) const { return addr_ + offset; }
+GpuPtr GpuMem::ref(size_t offset) const {
+    return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(addr_) +
+                                    offset);
+}
 
 // GPU-side physical address.
 uint64_t GpuMem::pref(size_t offset) const { return info_.phys_addr + offset; }

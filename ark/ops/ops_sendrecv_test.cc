@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <numeric>
+
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ipc/ipc_coll.h"
 #include "logging.h"
+#include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
 void test_sendrecv_internal() {
@@ -28,9 +30,7 @@ void test_sendrecv_internal() {
 
             if (gpu_id == 0) {
                 std::vector<ark::half_t> data(1024);
-                for (int i = 0; i < 1024; ++i) {
-                    data[i] = ark::half_t(i + 1);
-                }
+                std::iota(data.begin(), data.end(), 1.0f);
                 tns_x->write(data.data());
             }
             exe.launch();

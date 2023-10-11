@@ -126,6 +126,13 @@ const LogLevel &get_log_level();
 #define SSTREAM_(N, ...) CONCATENATE(SSTREAM_, N)(__VA_ARGS__)
 #define SSTREAM(...) SSTREAM_(NARGS(__VA_ARGS__), __VA_ARGS__)
 
+template <int LogLevel>
+void _log_throw_helper() {
+    if constexpr (LogLevel == ark::ERROR) {
+        throw std::runtime_error("ARK runtime error");
+    }
+}
+
 // Logging.
 #define LOG(level, ...)                                      \
     do {                                                     \
@@ -136,9 +143,8 @@ const LogLevel &get_log_level();
             _ss << '\n';                                     \
             std::clog << _ss.str();                          \
         }                                                    \
-        if (level == ark::ERROR) {                           \
-            throw std::runtime_error("ARK runtime error");   \
-        }                                                    \
+        ark::_log_throw_helper<level>();                     \
+        break;                                               \
     } while (0)
 
 #define CHECK(cond)                                 \

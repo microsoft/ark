@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 
 #include <cstring>
+#include <numeric>
 
 #include "gpu/gpu_buf.h"
 #include "gpu/gpu_mgr.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
 
 using namespace std;
@@ -24,8 +24,9 @@ ark::unittest::State test_tensor_memcpy() {
     exe.compile();
 
     // Fill buffer data: {1.0, 2.0, 3.0, ..., 3024.0}
-    auto data = ark::utils::range_floats(ldims.size());
-    buffer->write(data.get());
+    std::vector<float> data(ldims.size());
+    std::iota(data.begin(), data.end(), 1.0f);
+    buffer->write(data.data());
 
     // Copy tensor data from GPU to CPU
     float *res = (float *)malloc(shape.size() * sizeof(float));
@@ -108,8 +109,9 @@ ark::unittest::State test_tensor_layout() {
     exe.compile();
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
-    auto data = ark::utils::range_floats(2 * 3 * 4 * 5);
-    tns->write(data.get());
+    std::vector<float> data(2 * 3 * 4 * 5);
+    std::iota(data.begin(), data.end(), 1.0f);
+    tns->write(data.data());
 
     // Check reference values
     float ref_val;

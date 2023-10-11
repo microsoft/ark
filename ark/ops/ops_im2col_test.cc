@@ -3,7 +3,6 @@
 
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "logging.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
@@ -31,9 +30,11 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
 
     // Set data.
     ark::srand();
-    auto data_x =
-        ark::utils::range_halfs(tns_x->shape_bytes(), 0.00001, 0.00001);
-    tns_x->write(data_x.get());
+    std::vector<ark::half_t> data_x(tns_x->shape.size());
+    for (size_t i = 0; i < data_x.size(); ++i) {
+        data_x[i] = ark::half_t(1e-4 * i);
+    }
+    tns_x->write(data_x.data());
 
     exe.launch();
     exe.run(1);
@@ -81,7 +82,7 @@ void test_im2col_internal(ark::DimType n, ark::DimType h, ark::DimType w,
             } else {
                 ark::DimType elem_idx =
                     elem_width + elem_height * w + channel_idx * h * w;
-                gt[midx + nidx * mdim] = data_x.get()[elem_idx];
+                gt[midx + nidx * mdim] = data_x.data()[elem_idx];
             }
         }
     }

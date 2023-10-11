@@ -4,7 +4,6 @@
 #include "gpu/gpu_kernel.h"
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "unittest/unittest_utils.h"
 
 using namespace std;
