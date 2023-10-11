@@ -42,16 +42,18 @@ void test_reduce_scatter_internal(size_t nelem, int iter)
         ark::unittest::spawn_process([gpu_id, nelem, iter]() {
             //
             ark::Model model{gpu_id};
-            ark::Tensor *ones = model.tensor(ark::Dims(nelem), ark::FP16);
-            ark::Tensor *data = model.scale(ones, float(gpu_id + 1));
+            ark::Tensor *data = model.tensor(ark::Dims(nelem), ark::FP16);
+            std::vector<ark::half_t> data_buf(nelem);
+            for (size_t i = 0; i < nelem; ++i) {
+                data_buf[i] = ark::half_t(gpu_id + 1);
+            }
             ark::Tensor *output =
                 model.local_reduce_scatter_mscclpp(data, gpu_id, 0, num_gpus);
 
-            auto ones_data = ark::utils::ones<ark::half_t>(ones->shape.size());
             auto result =
-                ark::op_test("reduce_scatter", model, {ones}, {output},
+                ark::op_test("reduce_scatter", model, {data}, {output},
                              baseline_reduce_scatter<ark::half_t, num_gpus>,
-                             {ones_data.get()}, false, gpu_id, num_gpus, 16);
+                             {data_buf.data()}, false, gpu_id, num_gpus, 16);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;

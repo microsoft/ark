@@ -24,7 +24,7 @@ struct MscclppEwiseSumCompType
 };
 
 union BytesPack {
-    uint32_t u16[8];
+    uint16_t u16[8];
     uint32_t u32[4];
     uint64_t u64[2];
 };
@@ -50,16 +50,19 @@ DEVICE void add_half8(void *dst, void *src)
     BytesPack vd, vs;
     load(vd, reinterpret_cast<longlong2 *>(dst));
     load(vs, reinterpret_cast<longlong2 *>(src));
+
+    __half *pd = reinterpret_cast<__half *>(vd.u16);
+    __half *ps = reinterpret_cast<__half *>(vs.u16);
 #pragma unroll
     for (int i = 0; i < 4; ++i) {
         __half2 d, s;
-        d.x = vd.u16[i * 2];
-        d.y = vd.u16[i * 2 + 1];
-        s.x = vs.u16[i * 2];
-        s.y = vs.u16[i * 2 + 1];
+        d.x = pd[i * 2];
+        d.y = pd[i * 2 + 1];
+        s.x = ps[i * 2];
+        s.y = ps[i * 2 + 1];
         d = __hadd2(d, s);
-        vd.u16[i * 2] = d.x;
-        vd.u16[i * 2 + 1] = d.y;
+        pd[i * 2] = d.x;
+        pd[i * 2 + 1] = d.y;
     }
     store(reinterpret_cast<longlong2 *>(dst), vd);
 }
@@ -72,10 +75,9 @@ template <typename OutDims> struct MscclppEwiseSumCompType<OutDims, half>
                                int idx_c, int idx_h, int idx_w)
     {
         int idx = (idx_n * OutDims::CHW + idx_c * OutDims::HW +
-                   idx_h * OutDims::W + idx_w) /
-                  NelemPerThread;
-        longlong2 *ps = reinterpret_cast<longlong2 *>(in) + idx;
-        longlong2 *pd = reinterpret_cast<longlong2 *>(out) + idx;
+                   idx_h * OutDims::W + idx_w);
+        longlong2 *ps = reinterpret_cast<longlong2 *>(in + idx);
+        longlong2 *pd = reinterpret_cast<longlong2 *>(out + idx);
         add_half8(pd, ps);
     }
 };

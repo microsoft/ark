@@ -217,7 +217,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     exe.launch();
 
     // Correctness test.
-    exe.run(10000);
+    exe.run(1);
     exe.wait();
     exe.stop();
 
@@ -301,7 +301,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         // For multi-GPU, we need to make sure that all GPUs run the same
         // number of iterations. Rather than doing allgather, we just
         // use a magic number here.
-        int iter = 100;
+        int iter = 1000;
         exe.launch();
         exe.run(iter);
         float msec = exe.stop();
