@@ -65,7 +65,7 @@ void test_reduce_scatter_internal(size_t nelem, int iter)
 
 ark::unittest::State test_reduce_scatter()
 {
-    test_reduce_scatter_internal(1024*1024*12, 1);
+    test_reduce_scatter_internal(1024*1024*32, 1);
     return ark::unittest::SUCCESS;
 }
 

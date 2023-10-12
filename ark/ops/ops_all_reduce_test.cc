@@ -77,7 +77,7 @@ ark::unittest::State test_all_reduce_4gpus() {
     test_all_reduce_4gpus_internal(8, 1);
     test_all_reduce_4gpus_internal(8192, 1);
     if (ark::get_env().use_mscclpp) {
-        test_local_all_reduce_8gpus_internel(1024 * 1024 * 16, 1);
+        test_local_all_reduce_8gpus_internel(1024 * 1024 * 32, 1);
     }
     return ark::unittest::SUCCESS;
 }

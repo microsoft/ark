@@ -182,13 +182,14 @@ DEVICE void gather_from_peers_mscclpp(size_t dst_offset, size_t src_offset_0,
     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
                              src_offset_3, src_offset_4, src_offset_5,
                              src_offset_6};
+#pragma unroll
     for (int i = 0; i < NPeers; ++i) {
         int chan_idx = (Rank + i) % NPeers;
-        int remote_rank = i < Rank ? i : i + 1;
+        int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
         size_t offset = ChunkSize * remote_rank;
-        _ARK_SM_CHANS[i].get(dst_offset + offset,
-                             peer_offsets[chan_idx] + offset, ChunkSize, tid,
-                             total_threads);
+        _ARK_SM_CHANS[chan_idx].get(dst_offset + offset,
+                                    peer_offsets[chan_idx] + offset, ChunkSize,
+                                    tid, total_threads);
     }
 }
 } // namespace comm
