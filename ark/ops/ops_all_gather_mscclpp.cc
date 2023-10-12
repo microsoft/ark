@@ -141,9 +141,11 @@ Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id, int sid,
 const OpConfigMap MscclppGatherFromPeersConfigMap = {
     {{OP_ARCH_CUDA_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+      // TODO: The config for 32MB elements, need to update for other message
+      // size
       {16,
        0,
-       {{-1, 4096},
+       {{-1, 65536},
         {-1, -1},
         {-1, -1},
         {-1, -1},
@@ -151,7 +153,7 @@ const OpConfigMap MscclppGatherFromPeersConfigMap = {
         {-1, -1},
         {-1, -1},
         {-1, -1}},
-       {{-1, 4096}, {-1, -1}},
+       {{-1, 65536}, {-1, -1}},
        false,
        true}}},
 };
