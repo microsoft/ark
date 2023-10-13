@@ -429,7 +429,7 @@ if __name__ == "__main__":
     # Configurations
     args = ModelArgs7B()
     batch_size = 1
-    seq_len = 2048
+    seq_len = 1024
     dtype = np.float16
     world_size = 1
 
@@ -437,7 +437,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # PyTorch model cannot run all layers due to OOM
-    args.n_layers = 24
+    args.max_seq_len = 1024
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
