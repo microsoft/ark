@@ -29,6 +29,11 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
 GpuMgrCtx *BaseScheduler::create_context(const std::string &name) {
     GpuMgrCtx *ctx =
         this->gpu_mgr->create_context(name, this->rank, this->world_size);
+    // sort by buf ID.
+    std::sort(this->buf_infos.begin(), this->buf_infos.end(),
+              [](const BufInfo &a, const BufInfo &b) {
+                  return a.tbuf->id < b.tbuf->id;
+              });
     for (BufInfo &bi : this->buf_infos) {
         GpuBuf *buf;
         if (bi.gpu_id == this->gpu_mgr->gpu_id) {
