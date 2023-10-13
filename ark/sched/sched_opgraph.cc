@@ -120,24 +120,37 @@ void OpGraph::create_nodes(const Model &model) {
     recursive_merge(this->nodes_storage, seen_nodes, leaf_nodes);
 }
 
-/// Helper of @ref create_nodes().
-/// Traverse the model graph and remove virtual Ops that perform no computation.
-///
-/// @param nodes The list of @ref OpNode.
-/// @param boundary_nodes The list of boundary @ref OpNode.
-///
-void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
-                                std::set<OpNode *> &seen_nodes,
-                                const std::list<OpNode *> &boundary_nodes) {
+std::vector<OpNode *> OpGraph::get_nodes_in_order() {
+    std::set<OpNode *> seen_nodes;
+    std::list<OpNode *> leaf_nodes;
+    for (auto &node : this->nodes_storage) {
+        if (node->users.empty()) {
+            leaf_nodes.emplace_back(node.get());
+        }
+    }
+    std::vector<OpNode *> nodes;
+    OpGraph::recursive_traverse_internal(
+        this->nodes_storage, seen_nodes, leaf_nodes, []() {},
+        [&nodes](OpNode *boundary_node) {
+            nodes.emplace_back(boundary_node);
+            return true;
+        });
+    // Reverse the order.
+    std::reverse(nodes.begin(), nodes.end());
+    return nodes;
+}
+
+void OpGraph::recursive_traverse_internal(
+    std::list<std::unique_ptr<OpNode>> &nodes, std::set<OpNode *> &seen_nodes,
+    const std::list<OpNode *> &boundary_nodes,
+    const std::function<void()> &hook_boundary,
+    const std::function<bool(OpNode *)> &hook_boundary_node) {
     if (boundary_nodes.size() == 0) {
         return;
     }
-    OPGRAPH_DEBUG("remove virtual ops");
+    hook_boundary();
     std::list<OpNode *> new_boundary_nodes;
     for (auto &boundary_node : boundary_nodes) {
-        if (boundary_node->ops.size() != 1) {
-            LOG(ERROR, "unexpected error");
-        }
         OPGRAPH_DEBUG("  boundary node");
         OPGRAPH_DEBUG("    op: ", boundary_node->get_name());
         for (auto &producer : boundary_node->producers) {
@@ -164,26 +177,52 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
                           " to next boundary");
             new_boundary_nodes.emplace_back(producer);
         }
-        if (boundary_node->ops[0]->is_virtual()) {
-            OPGRAPH_DEBUG("    remove op: ", boundary_node->get_name());
-            // Remove this node from the graph.
-            boundary_node->remove_self();
-            // Remove this node from the list of nodes.
-            auto it = std::find_if(
-                nodes.begin(), nodes.end(),
-                [boundary_node](const std::unique_ptr<OpNode> &node) {
-                    return node.get() == boundary_node;
-                });
-            if (it == nodes.end()) {
-                LOG(ERROR, "unexpected error");
-            }
-            nodes.erase(it);
-            OPGRAPH_DEBUG("      nodes.size() ", nodes.size());
-        } else {
+        bool seen = hook_boundary_node(boundary_node);
+        if (seen) {
             seen_nodes.insert(boundary_node);
         }
     }
-    recursive_rm_virt(nodes, seen_nodes, new_boundary_nodes);
+    recursive_traverse_internal(nodes, seen_nodes, new_boundary_nodes,
+                                hook_boundary, hook_boundary_node);
+}
+
+/// Helper of @ref create_nodes().
+/// Traverse the model graph and remove virtual Ops that perform no computation.
+///
+/// @param nodes The list of @ref OpNode.
+/// @param boundary_nodes The list of boundary @ref OpNode.
+///
+void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
+                                std::set<OpNode *> &seen_nodes,
+                                const std::list<OpNode *> &boundary_nodes) {
+    OpGraph::recursive_traverse_internal(
+        nodes, seen_nodes, boundary_nodes,
+        []() { OPGRAPH_DEBUG("remove virtual ops"); },
+        [&nodes](OpNode *boundary_node) {
+            bool seen = false;
+            if (boundary_node->ops.size() != 1) {
+                LOG(ERROR, "unexpected error");
+            }
+            if (boundary_node->ops[0]->is_virtual()) {
+                OPGRAPH_DEBUG("    remove op: ", boundary_node->get_name());
+                // Remove this node from the graph.
+                boundary_node->remove_self();
+                // Remove this node from the list of nodes.
+                auto it = std::find_if(
+                    nodes.begin(), nodes.end(),
+                    [boundary_node](const std::unique_ptr<OpNode> &node) {
+                        return node.get() == boundary_node;
+                    });
+                if (it == nodes.end()) {
+                    LOG(ERROR, "unexpected error");
+                }
+                nodes.erase(it);
+                OPGRAPH_DEBUG("      nodes.size() ", nodes.size());
+            } else {
+                seen = true;
+            }
+            return seen;
+        });
 }
 
 /// Helper of @ref create_nodes().
@@ -197,89 +236,54 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
 void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
                               std::set<OpNode *> &seen_nodes,
                               const std::list<OpNode *> &boundary_nodes) {
-    if (boundary_nodes.size() == 0) {
-        return;
-    }
-    OPGRAPH_DEBUG("merge ops");
-    std::list<OpNode *> new_boundary_nodes;
-    for (auto &boundary_node : boundary_nodes) {
-        OPGRAPH_DEBUG("  boundary node");
-        OPGRAPH_DEBUG("    op: ", boundary_node->get_name());
-        if (boundary_node->producers.size() == 0) {
-            // This node is a root.
-            seen_nodes.insert(boundary_node);
-            OPGRAPH_DEBUG("    root");
-            continue;
-        }
-        // Add all producers of this node to the next boundary.
-        for (auto &producer : boundary_node->producers) {
-            // Exception: if any user of the producer (rather than the current
-            // boundary_node) is unseen, we should not add the producer to the
-            // next boundary.
-            bool should_add = true;
+    OpGraph::recursive_traverse_internal(
+        nodes, seen_nodes, boundary_nodes, []() { OPGRAPH_DEBUG("merge ops"); },
+        [&nodes](OpNode *boundary_node) {
+            if (boundary_node->producers.size() == 0) {
+                // This node is a root.
+                OPGRAPH_DEBUG("    root");
+                return true;
+            }
+            if (boundary_node->producers.size() > 1) {
+                // This node has multiple producers. It cannot be merged.
+                OPGRAPH_DEBUG("    multiple producers");
+                return true;
+            }
+            // This node has only one producer.
+            OpNode *producer = *(boundary_node->producers.begin());
+            if (producer->users.size() == 0) {
+                LOG(ERROR, "unexpected error: graph is incomplete");
+            }
+            if (producer->users.size() > 1) {
+                // The producer has multiple users. It cannot be merged.
+                OPGRAPH_DEBUG("    multiple users");
+                return true;
+            }
+            // The producer has only one user. Merge the two nodes.
+
+            // Merge `boundary_node` into `producer`.
+            OPGRAPH_DEBUG("  merge ops: ", producer->get_name(), " -> ",
+                          boundary_node->get_name());
+            auto &ops = boundary_node->ops;
+            producer->ops.insert(producer->ops.end(), ops.begin(), ops.end());
+            producer->users = boundary_node->users;
             for (auto &user : producer->users) {
-                if (user == boundary_node) {
-                    continue;
-                }
-                if (seen_nodes.find(user) == seen_nodes.end()) {
-                    should_add = false;
-                    break;
-                }
+                user->producers.erase(boundary_node);
+                user->producers.insert(producer);
             }
-            if (!should_add) {
-                continue;
+
+            // Remove `boundary_node` from `nodes`.
+            auto it = std::find_if(
+                nodes.begin(), nodes.end(),
+                [boundary_node](const std::unique_ptr<OpNode> &node) {
+                    return node.get() == boundary_node;
+                });
+            if (it == nodes.end()) {
+                LOG(ERROR, "unexpected error");
             }
-            if (seen_nodes.find(producer) != seen_nodes.end()) {
-                LOG(ERROR, "unexpected error: circular dependency detected");
-            }
-            new_boundary_nodes.emplace_back(producer);
-        }
-        if (boundary_node->producers.size() > 1) {
-            // This node has multiple producers. It cannot be merged.
-            seen_nodes.insert(boundary_node);
-            OPGRAPH_DEBUG("    multiple producers");
-            continue;
-        }
-        // This node has only one producer.
-        OpNode *producer = *(boundary_node->producers.begin());
-        if (producer->users.size() == 0) {
-            LOG(ERROR, "unexpected error: graph is incomplete");
-        }
-        if (producer->users.size() > 1) {
-            // The producer has multiple users. It cannot be merged.
-            seen_nodes.insert(boundary_node);
-            OPGRAPH_DEBUG("    multiple users");
-            continue;
-        }
-        // The producer has only one user. Merge the two nodes.
-
-        // Merge `boundary_node` into `producer`.
-        OPGRAPH_DEBUG("  merge ops: ", producer->get_name(), " -> ",
-                      boundary_node->get_name());
-        auto &ops = boundary_node->ops;
-        producer->ops.insert(producer->ops.end(), ops.begin(), ops.end());
-        producer->users = boundary_node->users;
-        for (auto &user : producer->users) {
-            user->producers.erase(boundary_node);
-            user->producers.insert(producer);
-        }
-
-        // Remove `boundary_node` from `nodes`.
-        auto it =
-            std::find_if(nodes.begin(), nodes.end(),
-                         [boundary_node](const std::unique_ptr<OpNode> &node) {
-                             return node.get() == boundary_node;
-                         });
-        if (it == nodes.end()) {
-            LOG(ERROR, "unexpected error");
-        }
-        nodes.erase(it);
-
-        // Since producer is already in the next boundary and boundary_node is
-        // merged into producer, we don't need to add anything to
-        // seen_nodes here.
-    }
-    recursive_merge(nodes, seen_nodes, new_boundary_nodes);
+            nodes.erase(it);
+            return false;
+        });
 }
 
 OpNode *OpGraph::break_node(OpNode *node, int op_idx) {

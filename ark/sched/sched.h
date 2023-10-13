@@ -52,6 +52,8 @@ class BaseScheduler {
     virtual std::vector<std::string> gen_code() = 0;
 
    protected:
+    void init_op_graph();
+
     Model *model;
     GpuMgr *gpu_mgr;
     int rank;
@@ -67,6 +69,8 @@ class BaseScheduler {
     std::vector<const Op *> send_recv_ops;
 
     GpuMgrCtx *ctx;
+
+    std::unique_ptr<OpGraph> op_graph;
 };
 
 class DefaultScheduler : public BaseScheduler {
@@ -93,7 +97,6 @@ class DefaultScheduler : public BaseScheduler {
     void recursive_schedule(std::list<OpNode *> &nodes,
                             std::set<OpNode *> &seen_nodes);
 
-    std::unique_ptr<OpGraph> op_graph;
     std::vector<std::unique_ptr<SchedStream>> comp_stream;
     std::vector<std::unique_ptr<SchedStream>> comm_stream;
 };

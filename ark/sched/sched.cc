@@ -22,18 +22,17 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
         (int)(gpu_info.max_threads_per_block / gpu_info.threads_per_warp);
     this->num_warps_per_sm = std::min(num_warps_per_sm_, max_warps_per_sm);
     this->codegen =
-        std::make_unique<CodeGenerator>(gpu_info, num_warps_per_sm_);
+        std::make_unique<CodeGenerator>(gpu_info, this->num_warps_per_sm);
+}
+
+void BaseScheduler::init_op_graph() {
+    this->op_graph = make_unique<OpGraph>(*(this->model));
 }
 
 // create context on gpu for the model
 GpuMgrCtx *BaseScheduler::create_context(const std::string &name) {
     GpuMgrCtx *ctx =
         this->gpu_mgr->create_context(name, this->rank, this->world_size);
-    // sort by buf ID.
-    std::sort(this->buf_infos.begin(), this->buf_infos.end(),
-              [](const BufInfo &a, const BufInfo &b) {
-                  return a.tbuf->id < b.tbuf->id;
-              });
     for (BufInfo &bi : this->buf_infos) {
         GpuBuf *buf;
         if (bi.gpu_id == this->gpu_mgr->gpu_id) {

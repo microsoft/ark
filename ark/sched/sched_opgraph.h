@@ -4,6 +4,7 @@
 #ifndef _ARK_SCHED_OPGRAPH_H_
 #define _ARK_SCHED_OPGRAPH_H_
 
+#include <functional>
 #include <list>
 #include <memory>
 #include <set>
@@ -84,13 +85,30 @@ class OpGraph {
     /// @return The new @ref OpNode.
     OpNode *break_node(OpNode *node, int op_idx);
 
+    /// Traverse OpGraph and return the nodes in the order of execution.
+    ///
+    /// If there are multiple nodes that can be executed at the same time, they
+    /// will appear in a random order in the returned vector.
+    ///
+    /// @return The nodes in the order of execution.
+    std::vector<OpNode *> get_nodes_in_order();
+
    private:
     std::list<std::unique_ptr<OpNode>> nodes_storage;
 
     void create_nodes(const Model &model);
+
+    static void recursive_traverse_internal(
+        std::list<std::unique_ptr<OpNode>> &nodes,
+        std::set<OpNode *> &seen_nodes,
+        const std::list<OpNode *> &boundary_nodes,
+        const std::function<void()> &hook_boundary,
+        const std::function<bool(OpNode *)> &hook_boundary_node);
+
     static void recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
                                   std::set<OpNode *> &seen_nodes,
                                   const std::list<OpNode *> &boundary_nodes);
+
     static void recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
                                 std::set<OpNode *> &seen_nodes,
                                 const std::list<OpNode *> &boundary_nodes);

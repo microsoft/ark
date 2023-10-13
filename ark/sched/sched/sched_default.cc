@@ -175,7 +175,7 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
 
     heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
 
-    this->op_graph = make_unique<OpGraph>(model);
+    this->init_op_graph();
 }
 
 void DefaultScheduler::schedule() {
