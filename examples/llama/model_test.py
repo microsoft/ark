@@ -28,10 +28,12 @@ numpy_dtype_to_torch_dtype: dict = {
     np.int32: torch.int32,
 }
 
+
 @dataclass
 class RunResults:
     outputs: List[np.ndarray] = None
-    runtime: float = 0.0    # in seconds
+    runtime: float = 0.0  # in seconds
+
 
 def run_ark(
     module: ark.Module,
@@ -155,18 +157,28 @@ def test_module(
         raise ValueError(f"Cannot find the given path: {pth_path}")
 
     # Run the ARK module
-    res_ark = run_ark(module_ark, state_dict_ark, inputs_ark,
-                      iterations=test_thru_iterations if test_thru else 1)
+    res_ark = run_ark(
+        module_ark,
+        state_dict_ark,
+        inputs_ark,
+        iterations=test_thru_iterations if test_thru else 1,
+    )
 
     # PyTorch module
     module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
 
     # Run the PyTorch module
-    res_pt = run_pt(module_pt, state_dict_pt, inputs_pt,
-                    iterations=test_thru_iterations if test_thru else 1)
+    res_pt = run_pt(
+        module_pt,
+        state_dict_pt,
+        inputs_pt,
+        iterations=test_thru_iterations if test_thru else 1,
+    )
 
     if test_thru:
-        print(f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds")
+        print(
+            f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+        )
         return
 
     # Compare the outputs
