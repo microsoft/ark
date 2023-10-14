@@ -487,6 +487,12 @@ class Model {
     Tensor *recv_mscclpp(int sid, int src_rank, std::size_t bytes = 0,
                          Tensor *output = nullptr,
                          const std::string &name = "recv_mscclpp");
+    //
+    Tensor *put_packet_mscclpp(Tensor *input, Tensor *local_tmp_buf,
+                               Tensor *recv_buf, int id, int rank, int dst_rank,
+                               size_t src_offset, size_t dst_offset,
+                               size_t bytes, int flag,
+                               const std::string &name = "put_packet_mscclpp");
     // Performs an all-reduce operator across all GPUs, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
     // total number of GPUs `gpu_num`.
@@ -531,7 +537,10 @@ class Model {
         const std::string &name = "gather_from_peers_mscclpp");
 
     Tensor *local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
-                             Tensor *output, const std::string &name="local_all_reduce");
+                             const std::string &name = "local_all_reduce");
+    Tensor *local_all_reduce_packet(
+        Tensor *input, int gpu_id, int gpu_num,
+        const std::string &name = "local_all_reduce_packet");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
     bool verify() const;

@@ -133,6 +133,7 @@ typedef enum {
     OP_READ_AND_REDUCE_MSCCLPP,
     OP_GATHER_FROM_PEERS_MSCCLPP,
     OP_CAST,
+    OP_PUT_PACKET_MSCCLPP,
 } OpType;
 
 /// Type of hardware architecture support.
@@ -541,6 +542,36 @@ class MscclppGatherFromPeersOp : public Op {
                              Tensor *trans_region_remote, int sid, int rank,
                              int npeers, size_t chunkBytes,
                              const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppPutPacketOp : public Op {
+   public:
+    MscclppPutPacketOp(const std::string &prec_type, Tensor *input,
+                       Tensor *local_tmp_buf, Tensor *recv_buf, int id,
+                       int rank, int dst_rank, size_t src_offset,
+                       size_t dst_offset, size_t bytes, int flag,
+                       const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppReduceAndWritePacketOp : public Op {
+   public:
+    MscclppReduceAndWritePacketOp(const std::string &prec_type,
+                                  std::vector<Tensor *> inputs, Tensor *output,
+                                  int id, int rank, size_t elems_per_rank,
+                                  const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class MscclppGetFromPacketOp : public Op {
+   public:
+    MscclppGetFromPacketOp(const std::string &prec_type, Tensor *input,
+                           Tensor *output, int id, size_t src_offset,
+                           size_t dst_offset);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

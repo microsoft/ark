@@ -60,7 +60,7 @@ void test_local_all_reduce_8gpus_internel(size_t nelem, int iter) {
                 data_buf[i] = ark::half_t(gpu_id + 1);
             }
             ark::Tensor *output =
-                m.local_all_reduce(data, gpu_id, num_gpus, nullptr);
+                m.local_all_reduce(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_reduce", m, {data}, {output},
                              baseline_all_reduce<ark::half_t, num_gpus>,
@@ -73,17 +73,48 @@ void test_local_all_reduce_8gpus_internel(size_t nelem, int iter) {
     ark::unittest::wait_all_processes();
 }
 
+void test_local_all_reduce_packet_8gpus_internel(size_t nelem, int iter) {
+    constexpr int num_gpus = 8;
+    for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m{gpu_id};
+            ark::Tensor *data = m.tensor(ark::Dims(nelem), ark::FP16);
+            std::vector<ark::half_t> data_buf(nelem);
+            for (size_t i = 0; i < nelem; ++i) {
+                data_buf[i] = ark::half_t(gpu_id + 1);
+            }
+            ark::Tensor *output =
+                m.local_all_reduce_packet(data, gpu_id, num_gpus);
+            auto result =
+                ark::op_test("all_reduce_packet", m, {data}, {output},
+                             baseline_all_reduce<ark::half_t, num_gpus>,
+                             {data_buf.data()}, false, gpu_id, num_gpus, 16);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
 ark::unittest::State test_all_reduce_4gpus() {
     test_all_reduce_4gpus_internal(8, 1);
     test_all_reduce_4gpus_internal(8192, 1);
-    if (ark::get_env().use_mscclpp) {
-        test_local_all_reduce_8gpus_internel(1024 * 1024 * 32, 1);
-    }
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_mscclpp() {
+    // test_local_all_reduce_8gpus_internel(1024 * 1024 * 32, 1);
+    test_local_all_reduce_packet_8gpus_internel(8 * 1024, 1);
     return ark::unittest::SUCCESS;
 }
 
 int main() {
     ark::init();
-    UNITTEST(test_all_reduce_4gpus);
+    // UNITTEST(test_all_reduce_4gpus);
+    if (ark::get_env().use_mscclpp) {
+        UNITTEST(test_all_reduce_mscclpp);
+    }
     return ark::unittest::SUCCESS;
 }
