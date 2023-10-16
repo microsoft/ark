@@ -117,7 +117,7 @@ static const std::string gpu_compile_command(
 
     // TODO: use the compiler found by cmake.
     args.emplace_back("/usr/bin/hipcc");
-    args.emplace_back("-fgpu-rdc");
+    args.emplace_back("--genco");
 #if (ARK_DEBUG_KERNEL != 0)
     args.emplace_back("-O3");
 #endif  // (ARK_DEBUG_KERNEL)
@@ -125,6 +125,7 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
+    args.emplace_back("--offload-arch=" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
     args.emplace_back("2>&1");

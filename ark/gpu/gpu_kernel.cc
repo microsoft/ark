@@ -91,38 +91,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info) {
     }
 
     //
-    size_t num_opts = 5;
-    size_t buflen = 8192;
-    std::unique_ptr<gpuJitOption[]> opts(new gpuJitOption[num_opts]);
-    std::unique_ptr<void *[]> optvals(new void *[num_opts]);
-    std::string infobuf;
-    std::string errbuf;
-
-    infobuf.resize(buflen, ' ');
-    errbuf.resize(buflen, ' ');
-
-    int enable = 1;
-
-    opts[0] = gpuJitInfoLogBuffer;
-    optvals[0] = (void *)infobuf.data();
-
-    opts[1] = gpuJitInfoLogBufferSizeBytes;
-    optvals[1] = (void *)(long)buflen;
-
-    opts[2] = gpuJitErrorLogBuffer;
-    optvals[2] = (void *)errbuf.data();
-
-    opts[3] = gpuJitErrorLogBufferSizeBytes;
-    optvals[3] = (void *)(long)buflen;
-
-    opts[4] = gpuJitGenerateDebugInfo;
-    optvals[4] = (void *)(long)enable;
-
-    if (gpuModuleLoadDataEx(&this->module, this->gpubin.c_str(), num_opts,
-                            opts.get(), optvals.get()) != gpuSuccess) {
-        LOG(DEBUG, infobuf);
-        LOG(ERROR, "gpuModuleLoadDataEx() failed: ", errbuf);
-    }
+    GLOG(gpuModuleLoadData(&this->module, this->gpubin.c_str()));
     GLOG(gpuModuleGetFunction(&this->kernel, this->module, this->name.c_str()));
     //
     int static_smem_size_bytes;
@@ -211,9 +180,9 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "#define ARK_THREADS_PER_BLOCK " << num_warp * 32 << "\n"
         "#define ARK_KERNELS_SYNC_CLKS_CNT " << CLKS_CNT << "\n"
         "__device__ volatile unsigned long long int *" ARK_REQ_NAME ";\n"
-        "__device__ volatile unsigned           int *_ARK_SC;\n"
-        "__device__ volatile unsigned           int *_ARK_RC;\n"
-        "__device__ long long int *_ARK_CLKS;\n"
+        "__device__ volatile unsigned           int *" ARK_SC_NAME ";\n"
+        "__device__ volatile unsigned           int *" ARK_RC_NAME ";\n"
+        "__device__ long long int *" ARK_CLKS_NAME ";\n"
         "__device__ int _ITER = 0;\n"
         "#include \"ark_kernels.h\"\n"
         "__device__ ark::sync::State " ARK_LSS_NAME ";\n"
@@ -239,6 +208,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "    if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
         "      *_it = 0;\n"
         "    }\n"
+        "    ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "  }\n"
         "}\n";
         // clang-format on
@@ -273,9 +243,10 @@ void GpuLoopKernel::load() {
         GpuPtr buf_ptr_val = this->ctx->get_data_ref();
         GpuPtr lss_ptr_addr;
         GpuPtr buf_ptr_addr;
-        GLOG(gpuModuleGetGlobal(&lss_ptr_addr, nullptr, this->module,
+        size_t tmp = 0;
+        GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, this->module,
                                 ARK_LSS_NAME));
-        GLOG(gpuModuleGetGlobal(&buf_ptr_addr, nullptr, this->module,
+        GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, this->module,
                                 ARK_BUF_NAME));
         GLOG(gpuMemsetD32(lss_ptr_addr, 0, 4));
         GLOG(gpuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val, sizeof(GpuPtr)));
@@ -284,22 +255,20 @@ void GpuLoopKernel::load() {
         GpuPtr rc_ptr_val = this->ctx->get_rc_ref(0);
         GpuPtr sc_ptr_addr;
         GpuPtr rc_ptr_addr;
-        GLOG(gpuModuleGetGlobal(&sc_ptr_addr, nullptr, this->module,
-                                ARK_SC_NAME));
-        GLOG(gpuModuleGetGlobal(&rc_ptr_addr, nullptr, this->module,
-                                ARK_RC_NAME));
+        GLOG(gpuModuleGetGlobal(&sc_ptr_addr, &tmp, this->module, ARK_SC_NAME));
+        GLOG(gpuModuleGetGlobal(&rc_ptr_addr, &tmp, this->module, ARK_RC_NAME));
         GLOG(gpuMemcpyHtoD(sc_ptr_addr, &sc_ptr_val, sizeof(GpuPtr)));
         GLOG(gpuMemcpyHtoD(rc_ptr_addr, &rc_ptr_val, sizeof(GpuPtr)));
         //
         GpuPtr db_ptr_val = this->ctx->get_request_ref();
         GpuPtr db_ptr_addr;
-        GLOG(gpuModuleGetGlobal(&db_ptr_addr, nullptr, this->module,
-                                ARK_REQ_NAME));
+        GLOG(
+            gpuModuleGetGlobal(&db_ptr_addr, &tmp, this->module, ARK_REQ_NAME));
         GLOG(gpuMemcpyHtoD(db_ptr_addr, &db_ptr_val, sizeof(GpuPtr)));
         //
         GpuPtr clks_ptr_val = this->clocks->ref();
         GpuPtr clks_ptr_addr;
-        GLOG(gpuModuleGetGlobal(&clks_ptr_addr, nullptr, this->module,
+        GLOG(gpuModuleGetGlobal(&clks_ptr_addr, &tmp, this->module,
                                 ARK_CLKS_NAME));
         GLOG(gpuMemcpyHtoD(clks_ptr_addr, &clks_ptr_val, sizeof(GpuPtr)));
         // set the data buffer pointers of remote gpus
@@ -317,9 +286,8 @@ void GpuLoopKernel::load() {
             }
             GpuPtr data_buf_ptr;
             string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-            gpuError _e = gpuModuleGetGlobal(
-                &data_buf_ptr, nullptr, this->module, data_buf_name.c_str());
-            // in some test code the symbol _ARK_BUF_0 is not defined
+            gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, this->module,
+                                             data_buf_name.c_str());
             if (_e == gpuErrorNotFound) {
                 LOG(DEBUG, "global variable ", data_buf_name, " not found");
                 continue;

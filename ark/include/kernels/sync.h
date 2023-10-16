@@ -4,6 +4,11 @@
 #ifndef ARK_KERNELS_SYNC_H_
 #define ARK_KERNELS_SYNC_H_
 
+#if defined(ARK_TARGET_ROCM_ARCH)
+#include <hip/hip_runtime.h>
+#endif  // ARK_TARGET_ROCM_ARCH
+
+#include "arch.h"
 #include "device.h"
 #include "static_math.h"
 
@@ -29,7 +34,7 @@ DEVICE void sync_gpu(sync::State &state) {
 #ifdef ARK_KERNELS_SYNC_CLKS_CNT
     static_assert(math::is_pow2<ARK_KERNELS_SYNC_CLKS_CNT>::value == 1, "");
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        _ARK_CLKS[state.clks_cnt] = clock64();
+        ARK_CLKS[state.clks_cnt] = clock64();
         state.clks_cnt = (state.clks_cnt + 1) & (ARK_KERNELS_SYNC_CLKS_CNT - 1);
     }
 #endif  // ARK_KERNELS_SYNC_CLKS_CNT
@@ -74,11 +79,6 @@ DEVICE void sync_gpu(sync::State &state) {
 // instruction.
 template <int ThreadsPerWarpGroup>
 DEVICE void sync_warps() {
-    static_assert(ThreadsPerWarpGroup == 32 || ThreadsPerWarpGroup == 64 ||
-                      ThreadsPerWarpGroup == 128 ||
-                      ThreadsPerWarpGroup == 256 ||
-                      ThreadsPerWarpGroup == 512 || ThreadsPerWarpGroup == 1024,
-                  "");
     // When ThreadsPerWarpGroup is 64, this function should not be called in
     // parallel with __syncthreads(). The following is the explanation why.
     // GPUs have 16 hardware barriers, numbered 0~15. This means that more than
@@ -97,6 +97,13 @@ DEVICE void sync_warps() {
     // the kernel may stop unexpectedly during runtime. Option 2: Do not use
     // barrier 0 to be more safe, instead we cannot support 64 threads. Here we
     // select the first option.
+#if defined(ARK_TARGET_CUDA_ARCH)
+    static_assert(Arch::ThreadsPerWarp == 32, "");
+    static_assert(ThreadsPerWarpGroup == 32 || ThreadsPerWarpGroup == 64 ||
+                      ThreadsPerWarpGroup == 128 ||
+                      ThreadsPerWarpGroup == 256 ||
+                      ThreadsPerWarpGroup == 512 || ThreadsPerWarpGroup == 1024,
+                  "");
     if (ThreadsPerWarpGroup == 32) {
         __syncwarp();
     } else if (ThreadsPerWarpGroup == 64) {
@@ -114,6 +121,19 @@ DEVICE void sync_warps() {
         // just use barrier 8.
         asm volatile("barrier.sync 8, 1024;");
     }
+#elif defined(ARK_TARGET_ROCM_ARCH)
+    static_assert(Arch::ThreadsPerWarp == 64, "");
+    static_assert(ThreadsPerWarpGroup == 64 || ThreadsPerWarpGroup == 128 ||
+                      ThreadsPerWarpGroup == 256 ||
+                      ThreadsPerWarpGroup == 512 || ThreadsPerWarpGroup == 1024,
+                  "");
+    if (ThreadsPerWarpGroup == 64) {
+        __builtin_amdgcn_wave_barrier();
+    } else {
+        // TODO:
+        __syncthreads();
+    }
+#endif
 }
 
 }  // namespace ark

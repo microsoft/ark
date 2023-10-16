@@ -64,11 +64,12 @@ void GpuInfo::init(const int gpu_id) {
                                gpuDeviceAttributeMaxThreadsPerBlock, dev));
 
 #if defined(ARK_CUDA)
-    this->arch = "cuda_";
+    this->arch = "cuda_" + std::to_string(this->cc_major * 10 + this->cc_minor);
 #elif defined(ARK_ROCM)
-    this->arch = "rocm_";
+    hipDeviceProp_t prop;
+    GLOG(hipGetDeviceProperties(&prop, gpu_id));
+    this->arch = "rocm_" + std::string(prop.gcnArchName);
 #endif
-    this->arch += std::to_string(this->cc_major * 10 + this->cc_minor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
