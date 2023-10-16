@@ -134,6 +134,7 @@ typedef enum {
     OP_GATHER_FROM_PEERS_MSCCLPP,
     OP_CAST,
     OP_PUT_PACKET_MSCCLPP,
+    OP_REDUCE_AND_WRITE_PACKET_MSCCLPP,
 } OpType;
 
 /// Type of hardware architecture support.
@@ -561,7 +562,9 @@ class MscclppReduceAndWritePacketOp : public Op {
    public:
     MscclppReduceAndWritePacketOp(const std::string &prec_type,
                                   std::vector<Tensor *> inputs, Tensor *output,
-                                  int id, int rank, size_t elems_per_rank,
+                                  int id, int rank, int npeers,
+                                  size_t elems_per_rank, size_t src_offset,
+                                  size_t remote_dst_offset, int flag,
                                   const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;

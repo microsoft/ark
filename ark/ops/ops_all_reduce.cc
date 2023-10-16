@@ -98,28 +98,36 @@ Tensor *Model::local_all_reduce_packet(Tensor *input, int gpu_id, int gpu_num,
     scratch->exported = true;
     int npeer = gpu_num - 1;
     std::vector<Tensor*> outputs;
+    std::vector<Tensor*> remote_scratchs;
     size_t nelems_per_rank = input->shape_bytes() / input->type_bytes() / gpu_num;
     size_t npackets_per_rank = num_packets / gpu_num;
     int flag = this->impl->reduce_packet_flag;
     size_t scratch_base_offset = (flag & 1) ? 0 : num_packets * sizeof(mscclpp::LLPacket);
+    size_t scratch_result_offset =
+        (flag & 1) ? 2 * num_packets * sizeof(mscclpp::LLPacket)
+                   : 3 * num_packets * sizeof(mscclpp::LLPacket);
+    int id = this->impl->next_eid;
     for (int i = 0; i < npeer; ++i) {
-        int id = this->impl->next_eid;
         int remote_rank = i < gpu_id ? i : i + 1;
         Tensor *remote_scratch = this->tensor(scratch_shape, UINT8);
+        remote_scratchs.push_back(remote_scratch);
         Tensor *out = this->put_packet_mscclpp(
             input, scratch, remote_scratch, id, gpu_id, remote_rank,
-            nelems_per_rank * gpu_id * input->type_bytes(),
+            nelems_per_rank * remote_rank * input->type_bytes(),
             scratch_base_offset +
                 npackets_per_rank * gpu_id * sizeof(mscclpp::LLPacket),
             nelems_per_rank * input->type_bytes(), flag);
         outputs.push_back(out);
-        this->impl->next_eid += 1;
     }
-    // Tensor *scratch_stage2 = this->identity(scratch, outputs);
+    Tensor *scratch_stage2 = this->identity(scratch, outputs);
     // // This op should reduce from the scratch buffer and write to the remote. The input is all peers scratch buffset
+    Tensor *out_stage2 = this->reduce_and_write_packet_mscclpp(
+        scratch_stage2, out, remote_scratchs, id, gpu_id, npeer,
+        nelems_per_rank, scratch_base_offset, scratch_result_offset, flag);
     // Tensor* out = this->impl->add_op()[0];
+    this->impl->next_eid += 1;
     this->impl->reduce_packet_flag += 1;
-    return this->identity(out, outputs);
+    return this->identity(out, {out_stage2});
 }
 
 } // namespace ark

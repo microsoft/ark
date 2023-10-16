@@ -541,6 +541,13 @@ class Model {
     Tensor *local_all_reduce_packet(
         Tensor *input, int gpu_id, int gpu_num,
         const std::string &name = "local_all_reduce_packet");
+
+    Tensor *reduce_and_write_packet_mscclpp(
+        Tensor *input, Tensor *output,
+        const std::vector<Tensor *> &remote_peer_bufs, int id, int rank,
+        int npeers, size_t elems_per_rank, size_t src_offset,
+        size_t remote_dst_offset, int flag,
+        const std::string &name = "reduce_and_write_packet_mscclpp");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
     bool verify() const;
