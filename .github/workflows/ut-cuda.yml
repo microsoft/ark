@@ -1,4 +1,4 @@
-name: ArkTestCuda
+name: "Unit Tests (CUDA)"
 
 on:
   pull_request:
@@ -42,6 +42,7 @@ jobs:
 
       - name: UpdateSubmodules
         run: |
+          git config --global --add safe.directory /__w/ark/ark
           git submodule update --init --recursive
 
       - name: InstallGPUDMA
