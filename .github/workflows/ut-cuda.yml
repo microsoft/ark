@@ -12,12 +12,12 @@ jobs:
       run:
         shell: bash
     timeout-minutes: 30
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     strategy:
       matrix:
         cuda: [ cuda11.8, cuda12.1 ]
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.cuda }}
+      cancel-in-progress: true
 
     container:
       image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.cuda }}"
