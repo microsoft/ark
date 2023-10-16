@@ -91,7 +91,7 @@ struct Div {
 
 struct Exp {
     static DEVICE float compute(float input) { return expf(input); }
-    static DEVICE __half compute(__half input) { return hexp(input); }
+    static DEVICE half compute(half input) { return half(expf(float(input))); }
     static DEVICE bfloat16 compute(bfloat16 input) {
         return bfloat16(expf(float(input)));
     }
@@ -103,7 +103,7 @@ struct Exp {
 
 struct Sqrt {
     static DEVICE float compute(float input) { return sqrtf(input); }
-    static DEVICE __half compute(__half input) { return hsqrt(input); }
+    static DEVICE half compute(half input) { return half(sqrtf(float(input))); }
     static DEVICE bfloat16 compute(bfloat16 input) {
         return bfloat16(sqrtf(float(input)));
     }

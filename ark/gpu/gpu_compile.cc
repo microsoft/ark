@@ -14,10 +14,12 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <mutex>
 
 #include "cpu_timer.h"
 #include "env.h"
+#include "file_io.h"
 #include "gpu/gpu_logging.h"
 #include "include/ark.h"
 #include "random.h"
@@ -57,6 +59,19 @@ static void para_exec(std::vector<ItemType> &items, int max_num_threads,
     }
 }
 
+// TODO: use a stronger hash function
+static std::string fnv1a_hash(const std::string &str) {
+    const uint64_t FNV_prime = 1099511628211u;
+    const uint64_t FNV_offset_basis = 14695981039346656037u;
+    uint64_t hash = FNV_offset_basis;
+    for (const auto &c : str) {
+        hash ^= static_cast<uint64_t>(c);
+        hash *= FNV_prime;
+    }
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return ss.str();
+}
 
 static const std::string gpu_compile_command(
     const std::string &code_file_path, const std::string &ark_root,
@@ -134,22 +149,8 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
     items.reserve(codes.size());
     srand();
     for (auto &code : codes) {
-        string rand_str;
-        for (;;) {
-            rand_str = rand_anum(16);
-            bool retry = false;
-            for (auto &p : items) {
-                if (p.second == rand_str) {
-                    retry = true;
-                    break;
-                }
-            }
-            if (!retry) {
-                break;
-            }
-        }
-        // TODO: retry if the file name already exists.
-        items.emplace_back(code, "/tmp/ark_" + rand_str);
+        string hash_str = fnv1a_hash(code);
+        items.emplace_back(code, "/tmp/ark_" + hash_str);
     }
     assert(items.size() == 1);
     para_exec<std::pair<std::string, std::string> >(
@@ -157,6 +158,11 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
         [&arch, &ark_root,
          max_reg_cnt](std::pair<std::string, std::string> &item) {
             std::string code_file_path = item.second + ".cu";
+            std::string bin_file_path = item.second + ".cubin";
+            if (is_exist(code_file_path) && is_exist(bin_file_path)) {
+                LOG(INFO, "Reusing cached binary for ", code_file_path);
+                return;
+            }
             // Write GPU kernel code file.
             {
                 std::ofstream code_file(code_file_path,
@@ -188,14 +194,8 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             LOG(INFO, "Compile succeed: ", code_file_path, " (",
                 cpu_timer() - start, " seconds)");
         });
-    string code_file_path = items[0].second + ".cu";
     string gpubin_file_path = items[0].second + ".cubin";
-    ifstream gpubin_file(gpubin_file_path);
-    stringstream ss;
-    ss << gpubin_file.rdbuf();
-    // remove(code_file_path.c_str());
-    remove(gpubin_file_path.c_str());
-    return ss.str();
+    return read_file(gpubin_file_path);
 }
 
 }  // namespace ark

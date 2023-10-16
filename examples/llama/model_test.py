@@ -15,6 +15,7 @@ import llama.model as model_pt
 import model as model_ark
 import numpy as np
 from typing import Dict, List
+from dataclasses import dataclass
 from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 from generator import precompute_freqs_cis
 
@@ -28,10 +29,17 @@ numpy_dtype_to_torch_dtype: dict = {
 }
 
 
+@dataclass
+class RunResults:
+    outputs: List[np.ndarray] = None
+    runtime: float = 0.0  # in seconds
+
+
 def run_ark(
     module: ark.Module,
     state_dict: Dict[str, np.ndarray],
     inputs: list = [],
+    iterations: int = 1,
     rank: int = 0,
     world_size: int = 1,
 ) -> List[np.ndarray]:
@@ -58,18 +66,26 @@ def run_ark(
     for tensor, ndarray in zip(tensors, tensor_data):
         tensor.from_numpy(ndarray)
 
+    start_time = time.time()
+
     # Run the model
-    runtime.run()
+    runtime.run(iter=iterations)
+
+    end_time = time.time()
 
     if isinstance(output, list) or isinstance(output, tuple):
-        return [o.to_numpy() for o in output]
-    return [output.to_numpy()]
+        outputs = [o.to_numpy() for o in output]
+    outputs = [output.to_numpy()]
+
+    return RunResults(outputs=outputs, runtime=end_time - start_time)
 
 
+@torch.inference_mode()
 def run_pt(
     module: torch.nn.Module,
     state_dict: Dict[str, torch.Tensor],
     inputs: list = [],
+    iterations: int = 1,
 ) -> List[np.ndarray]:
     # Update the current state_dict with the given one
     cur_state_dict = module.state_dict()
@@ -86,13 +102,20 @@ def run_pt(
     # Load the module to GPU
     module = module.to("cuda:0")
 
+    start_time = time.time()
+
     # Run the module
     with torch.no_grad():
-        output = module(*input_tensors)
+        for _ in range(iterations):
+            output = module(*input_tensors)
+
+    end_time = time.time()
 
     if isinstance(output, list) or isinstance(output, tuple):
-        return [o.detach().to("cpu").numpy() for o in output]
-    return [output.detach().to("cpu").numpy()]
+        outputs = [o.detach().to("cpu").numpy() for o in output]
+    outputs = [output.detach().to("cpu").numpy()]
+
+    return RunResults(outputs=outputs, runtime=end_time - start_time)
 
 
 def test_module(
@@ -103,7 +126,14 @@ def test_module(
     module_args_pt: list,
     inputs_pt: List[np.ndarray],
     module_name_prefix: str = "",
+    test_thru: bool = False,
+    test_thru_iterations: int = 100,
 ):
+    if test_thru:
+        print(f"Throughput test (iterations: {test_thru_iterations})")
+    else:
+        print(f"Correctness test")
+
     # ARK module
     module_ark: ark.Module = module_class_ark(*module_args_ark)
 
@@ -127,17 +157,33 @@ def test_module(
         raise ValueError(f"Cannot find the given path: {pth_path}")
 
     # Run the ARK module
-    output_ark = run_ark(module_ark, state_dict_ark, inputs_ark)
+    res_ark = run_ark(
+        module_ark,
+        state_dict_ark,
+        inputs_ark,
+        iterations=test_thru_iterations if test_thru else 1,
+    )
 
     # PyTorch module
     module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
 
     # Run the PyTorch module
-    output_pt = run_pt(module_pt, state_dict_pt, inputs_pt)
+    res_pt = run_pt(
+        module_pt,
+        state_dict_pt,
+        inputs_pt,
+        iterations=test_thru_iterations if test_thru else 1,
+    )
+
+    if test_thru:
+        print(
+            f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+        )
+        return
 
     # Compare the outputs
     eps = np.finfo(np.float64).eps
-    for i, (o_ark, o_pt) in enumerate(zip(output_ark, output_pt)):
+    for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
         shape = o_ark.shape
         o_ark = o_ark.flatten().astype(np.float64)
         o_pt = o_pt.flatten().astype(np.float64)
@@ -429,15 +475,15 @@ if __name__ == "__main__":
     # Configurations
     args = ModelArgs7B()
     batch_size = 1
-    seq_len = 2048
-    dtype = np.float16
+    seq_len = 1024
+    dtype = np.float32
     world_size = 1
 
     # Default from HuggingFace
     args.vocab_size = 32000
 
-    # PyTorch model cannot run all layers due to OOM
-    args.n_layers = 24
+    # Reduce max_seq_len due to OOM from the PyTorch model
+    args.max_seq_len = 1024
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
