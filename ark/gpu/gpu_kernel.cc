@@ -81,7 +81,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info) {
         return;
     }
     int max_reg_cnt = gpu_info.max_registers_per_block /
-                               (this->bd[0] * this->bd[1] * this->bd[2]);
+                      (this->bd[0] * this->bd[1] * this->bd[2]);
     if (max_reg_cnt >= gpu_info.max_registers_per_thread) {
         max_reg_cnt = gpu_info.max_registers_per_thread - 1;
     }

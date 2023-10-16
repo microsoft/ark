@@ -61,7 +61,7 @@ void GpuInfo::init(const int gpu_id) {
     GLOG(gpuDeviceGetAttribute(&(this->max_registers_per_block),
                                gpuDeviceAttributeMaxRegistersPerBlock, dev));
     GLOG(gpuDeviceGetAttribute(&(this->max_threads_per_block),
-                                 gpuDeviceAttributeMaxThreadsPerBlock, dev));
+                               gpuDeviceAttributeMaxThreadsPerBlock, dev));
 
 #if defined(ARK_CUDA)
     this->arch = "cuda_";

@@ -170,8 +170,8 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
                 code_file << item.first;
             }
             const std::string compile_cmd =
-                gpu_compile_command(code_file_path, ark_root, arch,
-                                      max_reg_cnt, item.second + ".cubin");
+                gpu_compile_command(code_file_path, ark_root, arch, max_reg_cnt,
+                                    item.second + ".cubin");
 
             double start = cpu_timer();
             LOG(INFO, "Compiling: ", code_file_path);

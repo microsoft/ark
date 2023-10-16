@@ -33,7 +33,8 @@ struct GpuInfo {
     int max_threads_per_block;
     // TODO: how to get this?
     int max_registers_per_thread = 256;
-    int min_threads_per_block = max_registers_per_block / max_registers_per_thread;
+    int min_threads_per_block =
+        max_registers_per_block / max_registers_per_thread;
     // TODO: how to get this?
     int smem_align = 128;
 
