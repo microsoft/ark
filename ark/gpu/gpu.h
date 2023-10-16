@@ -62,6 +62,10 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(
     CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeClockRate,
                               CU_DEVICE_ATTRIBUTE_CLOCK_RATE);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeWarpSize,
+                              CU_DEVICE_ATTRIBUTE_WARP_SIZE);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMaxRegistersPerBlock,
+                              CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDomainID,
                               CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciBusId,
@@ -159,9 +163,13 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(
     gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
     hipDeviceAttributeMaxSharedMemoryPerMultiprocessor);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeSharedMemPerBlockOptin,
-                              hipDeviceAttributeSharedMemPerBlockOptin);
+                              hipDeviceAttributeMaxSharedMemoryPerBlock);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeClockRate,
                               hipDeviceAttributeClockRate);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeWarpSize,
+                              hipDeviceAttributeWarpSize);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMaxRegistersPerBlock,
+                              hipDeviceAttributeMaxRegistersPerBlock);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDomainID,
                               hipDeviceAttributePciDomainID);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciBusId,

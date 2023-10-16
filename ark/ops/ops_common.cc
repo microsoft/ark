@@ -35,6 +35,21 @@ Dims broadcast(const Dims &dims1, const Dims &dims2) {
     return Dims{output_dims_reversed};
 }
 
+OpArchType op_arch_from_string(const std::string &arch) {
+    if (arch == "cuda_60") {
+        return OP_ARCH_CUDA_60;
+    } else if (arch == "cuda_70") {
+        return OP_ARCH_CUDA_70;
+    } else if (arch == "cuda_80") {
+        return OP_ARCH_CUDA_80;
+    } else if (arch == "cuda_90") {
+        return OP_ARCH_CUDA_90;
+    } else if (arch == "rocm_90") {
+        return OP_ARCH_ROCM_90;
+    }
+    return OP_ARCH_UNKNOWN;
+}
+
 bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2) {
     if (ops1.arch_type != ops2.arch_type) {
         return ops1.arch_type < ops2.arch_type;
@@ -65,11 +80,11 @@ const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
     if (search != this->cfg_map.end()) {
         return search->second;
     }
-    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, key.prec_type});
+    search = this->cfg_map.find({OP_ARCH_ANY, key.prec_type});
     if (search != this->cfg_map.end()) {
         return search->second;
     }
-    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, "any"});
+    search = this->cfg_map.find({OP_ARCH_ANY, "any"});
     if (search == this->cfg_map.end()) {
         return NoneConfigs;
     }

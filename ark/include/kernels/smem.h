@@ -12,7 +12,6 @@ extern __shared__ int _ARK_SMEM[];
 
 namespace ark {
 
-#if defined(ARK_THREADS_PER_BLOCK)
 template <typename T, int NumThreads>
 struct SharedMemory {
     static DEVICE int smem_base_offset(int smem_per_warp) {
@@ -26,7 +25,6 @@ struct SharedMemory {
         return (T *)&_ARK_SMEM[smem_base_offset(smem_per_warp)];
     }
 };
-#endif  // defined(ARK_THREADS_PER_BLOCK)
 
 }  // namespace ark
 

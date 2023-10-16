@@ -172,7 +172,7 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
 }
 
 const OpConfigMap ReduceEConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
@@ -191,7 +191,7 @@ const OpConfigMap ReduceEConfigMap = {
 };
 
 const OpConfigMap ReduceWConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, 1}}, {{32, 1}}, true, false},

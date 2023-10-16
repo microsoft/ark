@@ -16,8 +16,6 @@
 
     If set to `1`, do not remove temporal files in the `ARK_TMP` directory, vice versa.
 
-- `ARK_FPGA_DBSF` (Deprecated; Unused)
-
 - `ARK_HOSTFILE` (Default: `${ARK_ROOT}/hostfile`)
 
     Path to a hostfile. Need to set for multi-node execution. Ranks will be assigned in the order that hosts appear in the hostfile (`ARK_NUM_RANKS_PER_HOST` ranks per host).

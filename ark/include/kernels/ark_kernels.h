@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifdef __CUDACC__
+#if defined(ARK_TARGET_CUDA_ARCH) || defined(ARK_TARGET_ROCM_ARCH)
+
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
@@ -24,4 +25,5 @@
 #include "transpose.h"
 
 #endif  // ARK_KERNELS_H_
-#endif  // __CUDACC__
+
+#endif

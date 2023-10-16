@@ -56,33 +56,19 @@ void GpuInfo::init(const int gpu_id) {
                                gpuDeviceAttributeSharedMemPerBlockOptin, dev));
     GLOG(gpuDeviceGetAttribute(&(this->clk_rate), gpuDeviceAttributeClockRate,
                                dev));
+    GLOG(gpuDeviceGetAttribute(&(this->threads_per_warp),
+                               gpuDeviceAttributeWarpSize, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->max_registers_per_block),
+                               gpuDeviceAttributeMaxRegistersPerBlock, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->max_threads_per_block),
+                                 gpuDeviceAttributeMaxThreadsPerBlock, dev));
 
-    this->arch_str = to_string(this->cc_major * 10 + this->cc_minor);
-    if (this->arch_str == "60") {
-        this->arch = GPU_ARCH_CUDA_60;
-    } else if (this->arch_str == "70") {
-        this->arch = GPU_ARCH_CUDA_70;
-    } else if (this->arch_str == "80") {
-        this->arch = GPU_ARCH_CUDA_80;
-    } else if (this->arch_str == "90") {
-        this->arch = GPU_ARCH_CUDA_90;
-    } else {
-        this->arch = GPU_ARCH_UNKNOWN;
-    }
-    // Get PCIe info.
-    int pci_domain;
-    int pci_bus;
-    int pci_device;
-    GLOG(
-        gpuDeviceGetAttribute(&pci_domain, gpuDeviceAttributePciDomainID, dev));
-    GLOG(gpuDeviceGetAttribute(&pci_bus, gpuDeviceAttributePciBusId, dev));
-    GLOG(
-        gpuDeviceGetAttribute(&pci_device, gpuDeviceAttributePciDeviceId, dev));
-    stringstream dbsf_s;
-    dbsf_s << hex << setfill('0') << setw(4) << pci_domain << ":"
-           << setfill('0') << setw(2) << pci_bus << ":" << setfill('0')
-           << setw(2) << pci_device << ".0";
-    this->dbsf = dbsf_s.str();
+#if defined(ARK_CUDA)
+    this->arch = "cuda_";
+#elif defined(ARK_ROCM)
+    this->arch = "rocm_";
+#endif
+    this->arch += std::to_string(this->cc_major * 10 + this->cc_minor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

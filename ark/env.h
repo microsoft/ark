@@ -21,8 +21,6 @@ struct Env {
     bool keep_tmp;
     // Hostfile.
     std::string hostfile;
-    // PCIe name (domain:bus:slot.function) of the FPGA.
-    std::string fpga_dbsf;
     // Base value of listen socket ports.
     int ipc_listen_port_base;
     // Number of ranks per host.

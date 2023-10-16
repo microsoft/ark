@@ -43,13 +43,6 @@ Env::Env() {
     } else {
         this->keep_tmp = false;
     }
-    // Get the PCIe name (domain:bus:slot.function) of the FPGA.
-    const char *fpga_ca = getenv("ARK_FPGA_DBSF");
-    if (fpga_ca == nullptr) {
-        this->fpga_dbsf = "";
-    } else {
-        this->fpga_dbsf = fpga_ca;
-    }
     // Get the hostfile path.
     const char *hostfile_ca = getenv("ARK_HOSTFILE");
     if (hostfile_ca == nullptr) {

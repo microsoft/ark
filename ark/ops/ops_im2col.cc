@@ -128,7 +128,7 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
 }
 
 const OpConfigMap Im2colConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "fp16"},
+    {{OP_ARCH_ANY, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},

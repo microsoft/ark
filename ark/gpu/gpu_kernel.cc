@@ -80,7 +80,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info) {
     if (this->is_compiled()) {
         return;
     }
-    unsigned int max_reg_cnt = gpu_info.max_registers_per_block /
+    int max_reg_cnt = gpu_info.max_registers_per_block /
                                (this->bd[0] * this->bd[1] * this->bd[2]);
     if (max_reg_cnt >= gpu_info.max_registers_per_thread) {
         max_reg_cnt = gpu_info.max_registers_per_thread - 1;

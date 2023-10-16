@@ -153,7 +153,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
 }
 
 const OpConfigMap CastConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
+    {{OP_ARCH_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},

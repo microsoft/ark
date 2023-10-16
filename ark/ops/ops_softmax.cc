@@ -49,7 +49,7 @@ Tensor *Model::softmax(Tensor *input, Tensor *output, const std::string &name) {
 }
 
 const OpConfigMap SoftmaxConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 128, {{32, -1}}, {{32, -1}}, true, false},

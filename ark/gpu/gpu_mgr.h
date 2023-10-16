@@ -16,15 +16,6 @@
 
 namespace ark {
 
-// Types of GPU architectures.
-typedef enum {
-    GPU_ARCH_UNKNOWN = -1,
-    GPU_ARCH_CUDA_60,
-    GPU_ARCH_CUDA_70,
-    GPU_ARCH_CUDA_80,
-    GPU_ARCH_CUDA_90,
-} GpuArchType;
-
 // Details of a GPU device.
 struct GpuInfo {
     // Constructor.
@@ -37,18 +28,16 @@ struct GpuInfo {
     int smem_block_total;
     int num_sm;
     int clk_rate;
-    GpuArchType arch;
-    std::string arch_str;
-    // PCIe "Domain:Bus:Slot.Function"
-    std::string dbsf;
-    //
-    const unsigned int threads_per_warp = 32;
-    const unsigned int max_registers_per_thread = 256;
-    const unsigned int max_registers_per_block = 65536;
-    const unsigned int min_threads_per_block =
-        max_registers_per_block / max_registers_per_thread;
-    const unsigned int max_threads_per_block = 1024;
-    const unsigned int smem_align = 128;
+    int threads_per_warp;
+    int max_registers_per_block;
+    int max_threads_per_block;
+    // TODO: how to get this?
+    int max_registers_per_thread = 256;
+    int min_threads_per_block = max_registers_per_block / max_registers_per_thread;
+    // TODO: how to get this?
+    int smem_align = 128;
+
+    std::string arch;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
