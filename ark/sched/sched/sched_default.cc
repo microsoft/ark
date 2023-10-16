@@ -487,19 +487,17 @@ void DefaultScheduler::configure_gpu_buf(
     for (auto &el : bufs) {
         TensorBuf *buf = el.first;
         int sid = -1;
-        size_t off = 0;
         auto search = export_tns_sids.find(buf);
         if (search != export_tns_sids.end()) {
             for (auto &p : search->second) {
                 Tensor *t = p.first;
                 sid = p.second;
-                off = t->offset() * t->type_bytes();
                 this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, buf->bytes,
-                                             buf, sid, off);
+                                             buf, sid, t->offset_bytes());
             }
         } else {
             this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, buf->bytes, buf,
-                                         sid, off);
+                                         sid, 0);
         }
     }
 }

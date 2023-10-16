@@ -18,20 +18,27 @@ Llama2 examples over ARK.
     git submodule update --init --recursive
     ```
 
-3. Download Llama2 model weights and tokenizer weights.
-    * The model weights should be compatible with the [official PyTorch implementation](https://github.com/facebookresearch/llama/blob/main/llama/model.py).
-    * The tokenizer weights should be compatible with the [HuggingFace implementation](https://huggingface.co/meta-llama).
+3. Install `llama` submodule.
+    
+    ```bash
+    cd llama
+    python3 -m pip install -e .
+    cd ..
+    ```
 
-4. Run the model accuracy test. `--pth_path` is the path to the model weights file (`*.pth`).
+4. Download Llama2 model weights and tokenizer weights.
+    * The model and tokenizer should be compatible with the [official PyTorch implementation](https://github.com/facebookresearch/llama/blob/main/llama).
+
+5. Run the model accuracy test. `--pth_path` is the path to the model weights file (`consolidated.00.pth`).
 
     ```bash
     python3 model_test.py --pth_path=/path/to/model/weights.pth
     ```
 
-5. Test text generation. `--pth_path` is the path to the model weights file (`*.pth`) and `--tok_dir` is the path to the tokenizer weights directory.
+6. Test text generation. `--pth_path` is the path to the model weights file (`consolidated.00.pth`), `--tok_path` is the path to the tokenizer weights file (`tokenizer.model`), and `--params_path` is the path to the model parameters (`params.json`).
 
     ```bash
-    python3 generator.py --pth_path=/path/to/model/weights.pth --tok_dir=/path/to/tokenizer/weights
+    python3 generator.py --pth_path=consolidated.00.pth --tok_path=tokenizer.model --params_path=params.json
     ```
 
 ## Multi-GPU Inference
