@@ -164,7 +164,7 @@ if __name__ == "__main__":
     gen.launch(args.pth_path, args.tok_path)
 
     prompt_list = [
-        "Where is the captial of France?",
+        "Where is the capital of France?",
     ]
     for i, prompt in enumerate(prompt_list):
         output = gen.run(prompt)
