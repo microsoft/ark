@@ -7,7 +7,7 @@ name = "ark"
 version = "0.3.0"
 
 [tool.scikit-build]
-cmake.minimum-version = "3.24"
+cmake.minimum-version = "3.25"
 cmake.args = []
 cmake.verbose = false
 cmake.build-type = "Release"

@@ -10,12 +10,6 @@ from model import ModelArgs, ModelArgs7B, Transformer
 
 from llama.tokenizer import Tokenizer
 
-# TODO #1: inst /inst (done)
-# TODO #2: params.json not used (done)
-# TODO #3: mimic llama script for tokenizer usage
-# TODO #4: batch size > 1
-# TODO #5: support no kv cache
-# TODO $6: support temparature and top_p
 
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
     freqs = 1.0 / (
@@ -26,6 +20,7 @@ def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
     freqs_cis = np.exp(1j * freqs)
     return freqs_cis
 
+
 class Generator:
     def __init__(
         self,
@@ -33,7 +28,7 @@ class Generator:
         dtype: np.dtype = np.float16,
         local_rank: int = 0,
         world_size: int = 1,
-        seq_len: int = 2048
+        seq_len: int = 2048,
     ):
         self.args = args
         self.dtype = dtype
@@ -43,10 +38,7 @@ class Generator:
         assert world_size == 1
         self.local_rank = local_rank
         self.world_size = world_size
-        # self.seq_len = seq_len
-
-        self.seq_len = 128 # correct output_ids
-        # self.seq_len = 256 # all-zero output_ids
+        self.seq_len = seq_len
 
         self.tokenizer: Tokenizer = None
 
@@ -78,7 +70,9 @@ class Generator:
         self.tokens = ark.tensor([1, self.seq_len], ark.int32)
 
         # Pre-allocated and calculated freqs_cis, later assigned
-        freqs_cis_np = precompute_freqs_cis(self.args.dim // self.args.n_heads, self.args.max_seq_len)[:self.seq_len]
+        freqs_cis_np = precompute_freqs_cis(
+            self.args.dim // self.args.n_heads, self.args.max_seq_len
+        )[: self.seq_len]
         freqs_cis_np = freqs_cis_np.astype(np.complex64)
         freqs_cis_np = (
             np.stack([freqs_cis_np.real, freqs_cis_np.imag], axis=-1)
@@ -97,10 +91,17 @@ class Generator:
         # Transformer
         ark.set_rank(self.local_rank)
         ark.set_world_size(self.world_size)
-        module = Transformer(self.args, dtype_ark, local_rank=self.local_rank, world_size=self.world_size)
+        module = Transformer(
+            self.args,
+            dtype_ark,
+            local_rank=self.local_rank,
+            world_size=self.world_size,
+        )
         self.module = module
 
-        self.logits = module.forward(self.tokens, start_pos, self.freqs_cis, self.mask)
+        self.logits = module.forward(
+            self.tokens, start_pos, self.freqs_cis, self.mask
+        )
 
         # Make sure we can read state_dict before initiating runtime
         param_names = set(module.params_dict().keys())
@@ -122,9 +123,14 @@ class Generator:
 
     @torch.inference_mode()
     def run(self, prompt: str):
+        prompt = f"[INST] {prompt} [/INST]"
         prompt_ids = self.tokenizer.encode(prompt, bos=True, eos=False)
-        input_ids = np.array([prompt_ids + [self.tokenizer.pad_id] * (self.seq_len - len(prompt_ids))])
-        print('input_ids', input_ids.shape, input_ids)
+        input_ids = np.array(
+            [
+                prompt_ids
+                + [self.tokenizer.pad_id] * (self.seq_len - len(prompt_ids))
+            ]
+        )
 
         output_ids = []
         for cur_pos in range(len(prompt_ids), self.seq_len):
@@ -136,7 +142,6 @@ class Generator:
             if next_token == self.tokenizer.eos_id:
                 break
             output_ids.append(next_token)
-            print('output_ids', output_ids)
 
         output_text = self.tokenizer.decode(output_ids)
         return output_text
@@ -150,16 +155,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    with open(args.params_path, 'r') as f:
+    with open(args.params_path, "r") as f:
         params = json.load(f)
 
     gen = Generator(ModelArgs7B(**params))
-    print('gen.args', gen.args)
+    print("gen.args", gen.args)
 
     gen.launch(args.pth_path, args.tok_path)
 
     prompt_list = [
-        "[INST] Where is the captial of France? [/INST]",
+        "Where is the captial of France?",
     ]
     for i, prompt in enumerate(prompt_list):
         output = gen.run(prompt)
