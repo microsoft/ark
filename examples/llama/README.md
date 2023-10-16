@@ -18,16 +18,24 @@ Llama2 examples over ARK.
     git submodule update --init --recursive
     ```
 
-3. Download Llama2 model weights and tokenizer weights.
+3. Install `llama` submodule.
+    
+    ```bash
+    cd llama
+    python3 -m pip install -e .
+    cd ..
+    ```
+
+4. Download Llama2 model weights and tokenizer weights.
     * The model and tokenizer should be compatible with the [official PyTorch implementation](https://github.com/facebookresearch/llama/blob/main/llama).
 
-4. Run the model accuracy test. `--pth_path` is the path to the model weights file (`consolidated.00.pth`).
+5. Run the model accuracy test. `--pth_path` is the path to the model weights file (`consolidated.00.pth`).
 
     ```bash
     python3 model_test.py --pth_path=/path/to/model/weights.pth
     ```
 
-5. Test text generation. `--pth_path` is the path to the model weights file (`consolidated.00.pth`), `--tok_path` is the path to the tokenizer weights file (`tokenizer.model`), and `--params_path` is the path to the model parameters (`params.json`).
+6. Test text generation. `--pth_path` is the path to the model weights file (`consolidated.00.pth`), `--tok_path` is the path to the tokenizer weights file (`tokenizer.model`), and `--params_path` is the path to the model parameters (`params.json`).
 
     ```bash
     python3 generator.py --pth_path=consolidated.00.pth --tok_path=tokenizer.model --params_path=params.json
