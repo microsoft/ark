@@ -1,9 +1,9 @@
-name: "CodeQL"
+name: CodeQL
 
 on:
   push:
     branches:
-      - "**"
+      - main
   schedule:
     - cron: '42 20 * * 4'
 

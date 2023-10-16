@@ -1,4 +1,4 @@
-name: ark-test-cuda
+name: ArkTestCuda
 
 on:
   pull_request:
