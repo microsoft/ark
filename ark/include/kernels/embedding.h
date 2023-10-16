@@ -171,6 +171,10 @@ DEVICE void embedding(DataType *output, int *input, DataType *weight,
 
     // pWeight: Vec<1, 1, 1, EmbeddingDim>
     int emb_idx = input[un * InDims::CH + uc * InDims::H + uh];
+    if (emb_idx < 0) {
+        emb_idx += WeightShape::H;
+    }
+    // TODO: assert if emb_idx is still negative
     DataType *pWeight = &weight[emb_idx * WeightDims::W];
 
     Broadcast1<Vec<1, 1, 1, WeightDims::W>, Vec<1, 1, 1, EmbeddingDim>, OutDims,

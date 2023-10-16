@@ -1,11 +1,12 @@
 trigger:
 - main
 
-pr:
-  branches:
-    include:
-    - main
-  drafts: false
+# pr:
+#   branches:
+#     include:
+#     - main
+#   drafts: false
+pr: none
 
 jobs:
 - job: UnitTest

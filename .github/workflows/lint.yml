@@ -3,7 +3,7 @@ name: Lint
 on:
   pull_request:
     branches:
-      - "**"
+      - main
 
 jobs:
   linters:
@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install ClangFormat
       run: sudo apt-get install -y clang-format
@@ -35,7 +35,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Download misspell
       run: |
