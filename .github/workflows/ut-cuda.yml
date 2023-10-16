@@ -6,21 +6,15 @@ on:
       - main
 
 jobs:
-  cancel:
-    name: Cancel previous runs
-    runs-on: ubuntu-latest
-    steps:
-    - name: Cancel previous runs
-      uses: styfle/cancel-workflow-action@0.8.0
-      with:
-        access_token: ${{ secrets.GITHUB_TOKEN }}
-
   UnitTest:
     runs-on: [ self-hosted, A100 ]
     defaults:
       run:
         shell: bash
     timeout-minutes: 30
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     strategy:
       matrix:
         cuda: [ cuda11.8, cuda12.1 ]

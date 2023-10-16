@@ -8,22 +8,15 @@ on:
     - cron: '42 20 * * 4'
 
 jobs:
-  cancel:
-    name: Cancel previous runs
-    runs-on: ubuntu-latest
-    steps:
-    - name: Cancel previous runs
-      uses: styfle/cancel-workflow-action@0.8.0
-      with:
-        access_token: ${{ secrets.GITHUB_TOKEN }}
-
   analyze:
     name: Analyze
     strategy:
       fail-fast: false
       matrix:
         language: [ 'cpp' ]
-
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/microsoft/ark/ark:base-cuda12.1
@@ -34,7 +27,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Check disk space
       run: |
