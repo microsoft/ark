@@ -135,6 +135,7 @@ typedef enum {
     OP_CAST,
     OP_PUT_PACKET_MSCCLPP,
     OP_REDUCE_AND_WRITE_PACKET_MSCCLPP,
+    OP_GET_FROM_PACKET_MSCCLPP,
 } OpType;
 
 /// Type of hardware architecture support.
@@ -551,8 +552,7 @@ class MscclppPutPacketOp : public Op {
    public:
     MscclppPutPacketOp(const std::string &prec_type, Tensor *input,
                        Tensor *local_tmp_buf, Tensor *recv_buf, int id,
-                       int rank, int dst_rank, size_t src_offset,
-                       size_t dst_offset, size_t bytes, int flag,
+                       int rank, int dst_rank, size_t dst_offset, int flag,
                        const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
@@ -563,8 +563,7 @@ class MscclppReduceAndWritePacketOp : public Op {
     MscclppReduceAndWritePacketOp(const std::string &prec_type,
                                   std::vector<Tensor *> inputs, Tensor *output,
                                   int id, int rank, int npeers,
-                                  size_t elems_per_rank, size_t src_offset,
-                                  size_t scratch_offset,
+                                  size_t elems_per_rank, size_t scratch_offset,
                                   size_t remote_dst_offset, int flag,
                                   const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
@@ -573,9 +572,10 @@ class MscclppReduceAndWritePacketOp : public Op {
 
 class MscclppGetFromPacketOp : public Op {
    public:
-    MscclppGetFromPacketOp(const std::string &prec_type, Tensor *input,
-                           Tensor *output, int id, size_t src_offset,
-                           size_t dst_offset);
+    MscclppGetFromPacketOp(const std::string &prec_type, Tensor *shape,
+                           Tensor *input, Tensor *output, size_t src_offset,
+                           size_t dst_offset, size_t npackets, int flag,
+                           const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
