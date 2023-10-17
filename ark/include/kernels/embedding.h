@@ -30,26 +30,25 @@ struct RoPE<float> {
 };
 
 template <>
-struct RoPE<half> {
-    using InputType = half;
-    using OutputType = half;
+struct RoPE<fp16> {
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 2;
-    static DEVICE void compute(half *c, const half *a, const half *b) {
-        __half2 *pc = (__half2 *)c;
-        const __half2 *pa = (const __half2 *)a;
-        const __half2 *pb = (const __half2 *)b;
+    static DEVICE void compute(fp16 *c, const fp16 *a, const fp16 *b) {
+        fp16x2 *pc = (fp16x2 *)c;
+        const fp16x2 *pa = (const fp16x2 *)a;
+        const fp16x2 *pb = (const fp16x2 *)b;
         pc->x = __hmul(pa->x, pb->x) - __hmul(pa->y, pb->y);
         pc->y = __hmul(pa->x, pb->y) + __hmul(pa->y, pb->x);
     }
 };
 
 template <>
-struct RoPE<bfloat16> {
-    using InputType = bfloat16;
-    using OutputType = bfloat16;
+struct RoPE<bf16> {
+    using InputType = bf16;
+    using OutputType = bf16;
     static const int NelemPerThread = 2;
-    static DEVICE void compute(bfloat16 *c, const bfloat16 *a,
-                               const bfloat16 *b) {
+    static DEVICE void compute(bf16 *c, const bf16 *a, const bf16 *b) {
         float2 pa;
         float2 pb;
         float2 pc;
@@ -59,8 +58,8 @@ struct RoPE<bfloat16> {
         pb.y = float(b[1]);
         RoPE<float>::compute((float *)&pc, (const float *)&pa,
                              (const float *)&pb);
-        c[0] = bfloat16(pc.x);
-        c[1] = bfloat16(pc.y);
+        c[0] = bf16(pc.x);
+        c[1] = bf16(pc.y);
     }
 };
 

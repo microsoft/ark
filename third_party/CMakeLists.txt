@@ -1,10 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include PARENT_SCOPE)
-set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include PARENT_SCOPE)
-set(GPUDMA_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/gpudma/module PARENT_SCOPE)
-set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json PARENT_SCOPE)
+set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include)
+set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include)
+set(GPUDMA_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/gpudma/module)
+set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 
 include(FetchContent)
 

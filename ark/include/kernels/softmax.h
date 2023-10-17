@@ -90,7 +90,7 @@ struct Softmax {
         for (int idx_in_w = tid_w; idx_in_w < InShape::W;
              idx_in_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_in_w;
-            DataType val(expf(in[idx_in] - max_input) - cmp);
+            DataType val(type::Exp::compute(in[idx_in] - max_input) - cmp);
             DataType tmp = exp_sum_input + val;
             cmp = (tmp - exp_sum_input) - val;
             exp_sum_input = tmp;
@@ -104,7 +104,7 @@ struct Softmax {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
             out[idx_out] =
-                DataType(expf(in[idx_in] - max_input) / exp_sum_input);
+                type::Exp::compute(in[idx_in] - max_input) / exp_sum_input;
         }
     }
 };

@@ -22,29 +22,29 @@ struct Gelu {
                              (input + 0.044715f * input * input * input)));
     }
 
-    static DEVICE bfloat16 compute(bfloat16 input) {
-        return bfloat16(Gelu::compute(float(input)));
+    static DEVICE bf16 compute(bf16 input) {
+        return bf16(Gelu::compute(float(input)));
     }
 
-    static DEVICE __half2 compute(__half2 input) {
-        __half2 half_pi =
+    static DEVICE fp16x2 compute(fp16x2 input) {
+        fp16x2 half_pi =
             __float2half2_rn(0.7978845608f);  // sqrt(2 / pi) = 0.7978845608
-        __half2 coeff = __float2half2_rn(0.044715f);
-        __half2 one = __float2half2_rn(1.0f);
+        fp16x2 coeff = __float2half2_rn(0.044715f);
+        fp16x2 one = __float2half2_rn(1.0f);
 
-        __half2 x_cubed = __hmul2(input, __hmul2(input, input));
-        __half2 tanh_input = __hadd2(__hmul2(input, half_pi),
-                                     __hmul2(x_cubed, __hmul2(coeff, half_pi)));
+        fp16x2 x_cubed = __hmul2(input, __hmul2(input, input));
+        fp16x2 tanh_input = __hadd2(__hmul2(input, half_pi),
+                                    __hmul2(x_cubed, __hmul2(coeff, half_pi)));
 
-        // Convert __half2 to float2
+        // Convert fp16x2 to float2
         float2 input_float2 = __half22float2(tanh_input);
 
         // Compute tanh for each float in the float2 variable
         float2 output_float2 =
             make_float2(tanhf(input_float2.x), tanhf(input_float2.y));
 
-        // Convert float2 back to __half2
-        __half2 tanh_output = __float22half2_rn(output_float2);
+        // Convert float2 back to fp16x2
+        fp16x2 tanh_output = __float22half2_rn(output_float2);
 
         return __hmul2(__hmul2(input, __hadd2(one, tanh_output)),
                        __float2half2_rn(0.5f));
@@ -58,10 +58,10 @@ struct Sigmoid {
             DataType(1.0f),
             (type::Add::compute(DataType(1.0f), type::Exp::compute(-input))));
     }
-    static DEVICE __half2 compute(__half2 input) {
-        __half2 one = __float2half2_rn(1.0f);
-        __half2 exp_neg_input = h2exp(__hneg2(input));
-        __half2 one_plus_exp_neg_input = __hadd2(one, exp_neg_input);
+    static DEVICE fp16x2 compute(fp16x2 input) {
+        fp16x2 one = __float2half2_rn(1.0f);
+        fp16x2 exp_neg_input = h2exp(__hneg2(input));
+        fp16x2 one_plus_exp_neg_input = __hadd2(one, exp_neg_input);
         return __h2div(one, one_plus_exp_neg_input);
     }
 };

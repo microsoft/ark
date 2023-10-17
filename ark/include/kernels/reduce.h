@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "ewise.h"
+#include "type_intrinsics.h"
 
 namespace ark {
 
@@ -64,12 +65,12 @@ DEVICE DataType warpReduce(DataType val) {
     return res;
 }
 
-// Reduce bfloat16 `val` within a single warp.
+// Reduce bf16 `val` within a single warp.
 template <typename ReduceType, int LanesNum>
-DEVICE bfloat16 warpReduce(bfloat16 val) {
+DEVICE bf16 warpReduce(bf16 val) {
     float tmp(val);
     tmp = warpReduce<ReduceType, LanesNum, float>(tmp);
-    return bfloat16(tmp);
+    return bf16(tmp);
 }
 
 // Reduce single-precision `val` within multiple warps.
@@ -147,49 +148,27 @@ struct ReduceTypeSum {
             out[elem] = in[elem];
         }
     }
-
-    // template <>
-    // static DEVICE void identity<2, half>(half *v) {
-    //     *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
-    // }
-
-    // template <>
-    // static DEVICE void reduce<2, half>(half *out, const half *in0,
-    //                                    const half *in1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    //     const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    //     *out2 = type::Add::compute(*in02, *in12);
-    // }
-
-    // template <>
-    // static DEVICE void postReduce<2, half>(half *out, const half *in,
-    //                                        int nelem = 1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    //     *out2 = *in2;
-    // }
 };
 
 template <>
-DEVICE void ReduceTypeSum::identity<2, half>(half *v) {
-    *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
+DEVICE void ReduceTypeSum::identity<2, fp16>(fp16 *v) {
+    *reinterpret_cast<fp16x2 *>(v) = type::Constant<fp16x2>::zero();
 }
 
 template <>
-DEVICE void ReduceTypeSum::reduce<2, half>(half *out, const half *in0,
-                                           const half *in1) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
+DEVICE void ReduceTypeSum::reduce<2, fp16>(fp16 *out, const fp16 *in0,
+                                           const fp16 *in1) {
+    fp16x2 *out2 = reinterpret_cast<fp16x2 *>(out);
+    const fp16x2 *in02 = reinterpret_cast<const fp16x2 *>(in0);
+    const fp16x2 *in12 = reinterpret_cast<const fp16x2 *>(in1);
     *out2 = type::Add::compute(*in02, *in12);
 }
 
 template <>
-DEVICE void ReduceTypeSum::postReduce<2, half>(half *out, const half *in,
+DEVICE void ReduceTypeSum::postReduce<2, fp16>(fp16 *out, const fp16 *in,
                                                int nelem) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
+    fp16x2 *out2 = reinterpret_cast<fp16x2 *>(out);
+    const fp16x2 *in2 = reinterpret_cast<const fp16x2 *>(in);
     *out2 = *in2;
 }
 
@@ -219,49 +198,27 @@ struct ReduceTypeMax {
             out[elem] = in[elem];
         }
     }
-
-    // template <>
-    // static DEVICE void identity<2, half>(half *v) {
-    //     *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::lowest();
-    // }
-
-    // template <>
-    // static DEVICE void reduce<2, half>(half *out, const half *in0, const half
-    // *in1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    //     const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    //     *out2 = type::Max::compute(*in02, *in12);
-    // }
-
-    // template <>
-    // static DEVICE void postReduce<2, half>(half *out, const half *in,
-    //                               int nelem = 1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    //     *out2 = *in2;
-    // }
 };
 
 template <>
-DEVICE void ReduceTypeMax::identity<2, half>(half *v) {
-    *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::lowest();
+DEVICE void ReduceTypeMax::identity<2, fp16>(fp16 *v) {
+    *reinterpret_cast<fp16x2 *>(v) = type::Constant<fp16x2>::lowest();
 }
 
 template <>
-DEVICE void ReduceTypeMax::reduce<2, half>(half *out, const half *in0,
-                                           const half *in1) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
+DEVICE void ReduceTypeMax::reduce<2, fp16>(fp16 *out, const fp16 *in0,
+                                           const fp16 *in1) {
+    fp16x2 *out2 = reinterpret_cast<fp16x2 *>(out);
+    const fp16x2 *in02 = reinterpret_cast<const fp16x2 *>(in0);
+    const fp16x2 *in12 = reinterpret_cast<const fp16x2 *>(in1);
     *out2 = type::Max::compute(*in02, *in12);
 }
 
 template <>
-DEVICE void ReduceTypeMax::postReduce<2, half>(half *out, const half *in,
+DEVICE void ReduceTypeMax::postReduce<2, fp16>(fp16 *out, const fp16 *in,
                                                int nelem) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
+    fp16x2 *out2 = reinterpret_cast<fp16x2 *>(out);
+    const fp16x2 *in2 = reinterpret_cast<const fp16x2 *>(in);
     *out2 = *in2;
 }
 
@@ -291,49 +248,27 @@ struct ReduceTypeMean {
             out[elem] = type::Div::compute(in[elem], DataType(nelem));
         }
     }
-
-    // template <>
-    // static DEVICE void identity<2, half>(half *v) {
-    //     *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
-    // }
-
-    // template <>
-    // static DEVICE void reduce<2, half>(half *out, const half *in0,
-    //                           const half *in1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    //     const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    //     *out2 = type::Add::compute(*in02, *in12);
-    // }
-
-    // template <>
-    // static DEVICE void postReduce<2, half>(half *out, const half *in,
-    //                               int nelem = 1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    //     *out2 = type::Div::compute(*in2, __float2half2_rn((float)nelem));
-    // }
 };
 
 template <>
-DEVICE void ReduceTypeMean::identity<2, half>(half *v) {
-    *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
+DEVICE void ReduceTypeMean::identity<2, fp16>(fp16 *v) {
+    *reinterpret_cast<fp16x2 *>(v) = type::Constant<fp16x2>::zero();
 }
 
 template <>
-DEVICE void ReduceTypeMean::reduce<2, half>(half *out, const half *in0,
-                                            const half *in1) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
+DEVICE void ReduceTypeMean::reduce<2, fp16>(fp16 *out, const fp16 *in0,
+                                            const fp16 *in1) {
+    fp16x2 *out2 = reinterpret_cast<fp16x2 *>(out);
+    const fp16x2 *in02 = reinterpret_cast<const fp16x2 *>(in0);
+    const fp16x2 *in12 = reinterpret_cast<const fp16x2 *>(in1);
     *out2 = type::Add::compute(*in02, *in12);
 }
 
 template <>
-DEVICE void ReduceTypeMean::postReduce<2, half>(half *out, const half *in,
+DEVICE void ReduceTypeMean::postReduce<2, fp16>(fp16 *out, const fp16 *in,
                                                 int nelem) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
+    fp16x2 *out2 = reinterpret_cast<fp16x2 *>(out);
+    const fp16x2 *in2 = reinterpret_cast<const fp16x2 *>(in);
     *out2 = type::Div::compute(*in2, __float2half2_rn((float)nelem));
 }
 

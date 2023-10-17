@@ -5,7 +5,7 @@ set(AMD_FOUND "FALSE")
 
 set(CMAKE_PREFIX_PATH "/opt/rocm;${CMAKE_PREFIX_PATH}")
 
-find_package(hip)
+find_package(hip QUIET)
 
 if(NOT hip_FOUND)
     return()

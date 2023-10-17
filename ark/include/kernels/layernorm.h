@@ -169,7 +169,7 @@ struct RMSNorm {
         ReduceTypeMean::postReduce<1>(&mean_square, &mean_square,
                                       UnitOutDims::W);
         // the output is (input - mean) / sqrt(mean_square)
-        DataType rrms(rsqrtf(mean_square + 1e-5f));
+        DataType rrms(rsqrtf(float(mean_square) + 1e-5f));
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;

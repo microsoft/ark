@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include <cassert>
+#include <numeric>
 
 #include "include/ark.h"
 #include "ops_test_common.h"
@@ -203,13 +204,19 @@ ark::unittest::State test_reduce_fp16() {
 }
 
 ark::unittest::State test_reduce_bf16() {
+    std::vector<ark::bfloat16_t> data_vec(7 * 2 * 4 * 1024);
+    for (size_t i = 0; i < data_vec.size(); ++i) {
+        data_vec[i] = ark::bfloat16_t((i % 1000) * 1e-4f);
+    }
+
     {
         ark::Model m;
         ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor *out = m.reduce_sum(t, /*axis=*/0);
 
         auto result = ark::op_test("reduce_bf16_axis0", m, {t}, {out},
-                                   baseline_reduce_sum_axis0<ark::bfloat16_t>);
+                                   baseline_reduce_sum_axis0<ark::bfloat16_t>,
+                                   {data_vec.data()});
         UNITTEST_LOG(result);
         UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
     }
@@ -219,7 +226,8 @@ ark::unittest::State test_reduce_bf16() {
         ark::Tensor *out = m.reduce_sum(t, /*axis=*/3);
 
         auto result = ark::op_test("reduce_bf16_axis3", m, {t}, {out},
-                                   baseline_reduce_sum_axis3<ark::bfloat16_t>);
+                                   baseline_reduce_sum_axis3<ark::bfloat16_t>,
+                                   {data_vec.data()});
         UNITTEST_LOG(result);
     }
     return ark::unittest::SUCCESS;

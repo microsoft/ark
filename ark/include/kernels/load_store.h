@@ -5,6 +5,7 @@
 #define ARK_KERNELS_LOAD_STORE_H_
 
 #include <cstdint>
+
 #include "device.h"
 
 namespace ark {
@@ -13,9 +14,9 @@ DEVICE longlong2 load_128b(const longlong2 *p) {
     longlong2 v;
 #if defined(ARK_TARGET_CUDA_ARCH)
     asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                    : "=l"(v.x), "=l"(v.y)
-                    : "l"(p)
-                    : "memory");
+                 : "=l"(v.x), "=l"(v.y)
+                 : "l"(p)
+                 : "memory");
 #else
     v.x = p->x;
     v.y = p->y;
@@ -26,9 +27,9 @@ DEVICE longlong2 load_128b(const longlong2 *p) {
 DEVICE void store_128b(longlong2 *p, const longlong2 &v) {
 #if defined(ARK_TARGET_CUDA_ARCH)
     asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                :
-                : "l"(p), "l"(v.x), "l"(v.y)
-                : "memory");
+                 :
+                 : "l"(p), "l"(v.x), "l"(v.y)
+                 : "memory");
 #else
     p->x = v.x;
     p->y = v.y;

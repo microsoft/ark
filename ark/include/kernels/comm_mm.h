@@ -68,7 +68,7 @@ DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int uop_idx) {
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
 // send a tile of the tensor from data_src to recv_buff
-DEVICE void sendLL(void *recv_buff, ark::half *data_src,
+DEVICE void sendLL(void *recv_buff, fp16 *data_src,
                    volatile int *send_ready_flag, int uop_idx, int) {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
@@ -98,7 +98,7 @@ DEVICE void sendLL(void *recv_buff, ark::half *data_src,
             // in ARK the src and dst store the float16 data, so a
             // thread copied 4 float16 (64 bits) data in a loop
             storeLL<FLAG>(recv_buff_ptr + math::div<4>(idx),
-                          *(uint64_t *)&((ark::half *)data_src)[idx]);
+                          *(uint64_t *)&((fp16 *)data_src)[idx]);
         }
     }
 }
@@ -106,7 +106,7 @@ DEVICE void sendLL(void *recv_buff, ark::half *data_src,
 // recv a tile of the tensor from recv_buff to data_dst
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,
           int FLAG = 1>
-DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
+DEVICE void recvLL(void *recv_buff, fp16 *data_dst,
                    volatile int *send_ready_flag, int uop_idx, int) {
     using UnitOp = UnitOp<Vec<1, 1, LDN, LDM>, Vec<1, 1, LDN, LDM>,
                           Vec<1, 1, TDN, TDM>, TN, SmemBytes>;
@@ -134,7 +134,7 @@ DEVICE void recvLL(void *recv_buff, ark::half *data_dst,
             int idx = midx + j * MNumPerLoop + (nidx + i * NNumPerLoop) * LDM;
             // in ARK the src and dst store the float16 data, so a
             // thread copied 4 float16 (64 bits) data in a loop
-            *(uint64_t *)&(((ark::half *)data_dst)[idx]) =
+            *(uint64_t *)&(((fp16 *)data_dst)[idx]) =
                 readLL<FLAG>(recv_buff_ptr + math::div<4>(idx));
             (recv_buff_ptr + math::div<4>(idx))->i4 = make_int4(0, 0, 0, 0);
         }
