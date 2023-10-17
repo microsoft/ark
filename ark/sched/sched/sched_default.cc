@@ -489,7 +489,7 @@ void DefaultScheduler::configure_gpu_buf(
                                                  remote_bufs[i]->buf, sid, 0);
                 }
             } else if (op->type == OP_PUT_PACKET_MSCCLPP) {
-                Tensor *input = op->inputs[0];
+                Tensor *scratch = op->inputs[1];
                 Tensor *recvbuf = op->inputs[2];
                 int dst_rank;
                 int sid;
@@ -499,15 +499,15 @@ void DefaultScheduler::configure_gpu_buf(
                 // receiver GPU
                 this->buf_infos.emplace_back(dst_rank, recvbuf->shape_bytes(),
                                              recvbuf->buf, sid, 0);
-                export_tns_sids[input->buf].emplace_back(input, sid);
+                export_tns_sids[scratch->buf].emplace_back(scratch, sid);
             } else if (op->type == OP_REDUCE_AND_WRITE_PACKET_MSCCLPP) {
-                Tensor *input = op->inputs[0];
+                Tensor *scratch = op->inputs[1];
                 std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
-                    op->inputs.begin() + 1, op->inputs.end());
+                    op->inputs.begin() + 2, op->inputs.end());
                 int sid;
                 op->args.get(&sid, 0);
-                export_tns_sids[input->buf].emplace_back(input, sid);
-                for (int i = 0; i < remote_bufs.size(); i++) {
+                export_tns_sids[scratch->buf].emplace_back(scratch, sid);
+                for (int i = 0; i < (int)remote_bufs.size(); i++) {
                     int peer_rank = i < this->rank ? i : i + 1;
                     this->buf_infos.emplace_back(peer_rank,
                                                  remote_bufs[i]->shape_bytes(),

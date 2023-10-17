@@ -241,9 +241,9 @@ DEVICE void put_packet_mscclpp(size_t dst_offset, size_t src_offset,
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
           unsigned int NPeers, unsigned int NElemPerRank, unsigned int Rank,
           unsigned long long RemoteDstOffset, unsigned long long SrcOffset,
-          int Flag>
+          unsigned long long ScratchOffset, int Flag>
 DEVICE void reduce_and_write_packet_mscclpp(
-    ark::half *local_dst, void *local_src, size_t peer_offset_0,
+    ark::half *dst, ark::half *src, void *scratch, size_t peer_offset_0,
     size_t peer_offset_1, size_t peer_offset_2, size_t peer_offset_3,
     size_t peer_offset_4, size_t peer_offset_5, size_t peer_offset_6,
     int uop_idx, int) {
@@ -254,7 +254,9 @@ DEVICE void reduce_and_write_packet_mscclpp(
     constexpr int total_threads = total_tiles * NumThreads;
     constexpr int npackets_per_rank =
         NElemPerRank * sizeof(ark::half) / (sizeof(mscclpp::LLPacket) / 2);
-    uint8_t *src_base = (uint8_t *)local_src + SrcOffset;
+    uint8_t *scratch_base = (uint8_t *)scratch + ScratchOffset;
+    uint8_t *src_base = (uint8_t *)src + SrcOffset;
+    uint8_t *dst_base = (uint8_t *)dst + SrcOffset;
     const int tid = uop_idx * NumThreads + UnitOp::thread_id();
     size_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
                              peer_offset_3, peer_offset_4, peer_offset_5,
@@ -264,7 +266,7 @@ DEVICE void reduce_and_write_packet_mscclpp(
         load(data, (uint2 *)src_base + idx);
         for (int index = 0; index < NPeers; index++) {
             const int remote_rank = index < Rank ? index : index + 1;
-            mscclpp::LLPacket *pkt = (mscclpp::LLPacket *)(src_base) +
+            mscclpp::LLPacket *pkt = (mscclpp::LLPacket *)(scratch_base) +
                                      remote_rank * npackets_per_rank;
             uint2 val = pkt[idx].read(Flag);
             BytesPack<8> packet;
@@ -272,7 +274,7 @@ DEVICE void reduce_and_write_packet_mscclpp(
             packet.u32[1] = val.y;
             add_half4(data, packet);
         }
-        store((uint2 *)local_dst + idx, data);
+        store((uint2 *)dst_base + idx, data);
         for (int index = 0; index < NPeers; index++) {
             mscclpp::LLPacket *dst_pkt =
                 (mscclpp::LLPacket *)((char *)_ARK_SM_CHANS[index].dst_ +

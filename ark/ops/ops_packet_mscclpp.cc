@@ -45,13 +45,13 @@ std::string MscclppPutPacketOp::function_name(const OpConfig &cfg) const {
     this->args.get(&bytes, 5);
     this->args.get(&flag, 6);
 
-    const OpTile &tile_out = cfg.output_tiles[0];
-    size_t nelems_per_tile = tile_out.x * tile_out.y > input->shape.size()
-                                 ? input->shape.size()
-                                 : tile_out.x * tile_out.y;
-    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(nelems_per_tile)};
     Dims shape_dims = {1, 1, 1,
                        static_cast<long long>(bytes) / input->type_bytes()};
+    const OpTile &tile_out = cfg.output_tiles[0];
+    size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
+                                 ? shape_dims.size()
+                                 : tile_out.x * tile_out.y;
+    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(nelems_per_tile)};
 
     return Op::function_name("ark::comm::put_packet_mscclpp",
                              {{
@@ -110,13 +110,14 @@ Tensor *Model::put_packet_mscclpp(Tensor *input, Tensor *local_tmp_buf,
 MscclppReduceAndWritePacketOp::MscclppReduceAndWritePacketOp(
     const std::string &prec_type, std::vector<Tensor *> inputs, Tensor *output,
     int id, int rank, int npeers, size_t elems_per_rank, size_t src_offset,
-    size_t remote_dst_offset, int flag, const std::string &name)
+    size_t scratch_offset, size_t remote_dst_offset, int flag,
+    const std::string &name)
     : Op{OP_REDUCE_AND_WRITE_PACKET_MSCCLPP,
          prec_type,
          inputs,
          {output},
-         {{id, rank, npeers, elems_per_rank, src_offset, remote_dst_offset,
-           flag}},
+         {{id, rank, npeers, elems_per_rank, src_offset, scratch_offset,
+           remote_dst_offset, flag}},
          name,
          &MscclppReduceAndWritePacketConfigMap,
          -1,
@@ -130,6 +131,7 @@ std::string MscclppReduceAndWritePacketOp::function_name(
     int npeers;
     size_t elems_per_rank;
     size_t src_offset;
+    size_t scratch_offset;
     size_t remote_dst_offset;
     int flag;
 
@@ -137,15 +139,17 @@ std::string MscclppReduceAndWritePacketOp::function_name(
     this->args.get(&npeers, 2);
     this->args.get(&elems_per_rank, 3);
     this->args.get(&src_offset, 4);
-    this->args.get(&remote_dst_offset, 5);
-    this->args.get(&flag, 6);
+    this->args.get(&scratch_offset, 5);
+    this->args.get(&remote_dst_offset, 6);
+    this->args.get(&flag, 7);
 
+    Dims shape_dims = {1, 1, 1,
+                       static_cast<ark::DimType>(elems_per_rank)};
     const OpTile &tile_out = cfg.output_tiles[0];
-    size_t nelems_per_tile = tile_out.x * tile_out.y > output->shape.size()
-                                 ? output->shape.size()
+    size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
+                                 ? shape_dims.size()
                                  : tile_out.x * tile_out.y;
     Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(nelems_per_tile)};
-    Dims shape_dims = {1, 1, 1, static_cast<ark::DimType>(elems_per_rank)};
 
     return Op::function_name("ark::comm::reduce_and_write_packet_mscclpp",
                              {{
@@ -158,15 +162,16 @@ std::string MscclppReduceAndWritePacketOp::function_name(
                                  rank,                   // Rank
                                  remote_dst_offset,      // RemoteDstOffset
                                  src_offset,             // SrcOffset
+                                 scratch_offset,         // ScratchOffset
                                  flag,                   // Flag
                              }});
 }
 
 Tensor *Model::reduce_and_write_packet_mscclpp(
-    Tensor *input, Tensor *output,
+    Tensor *input, Tensor *scratch, Tensor *output,
     const std::vector<Tensor *> &remote_peer_bufs, int id, int rank, int npeers,
-    size_t elems_per_rank, size_t src_offset, size_t remote_dst_offset,
-    int flag, const std::string &name) {
+    size_t elems_per_rank, size_t src_offset, size_t scratch_offset,
+    size_t remote_dst_offset, int flag, const std::string &name) {
     CHECK(input != nullptr);
     CHECK(output != nullptr);
     CHECK(input->is_sequential());
@@ -184,7 +189,7 @@ Tensor *Model::reduce_and_write_packet_mscclpp(
         int remote_rank = i < rank ? i : i + 1;
         remote_peer_bufs[i]->imported_rank = remote_rank;
     }
-    std::vector<Tensor *> inputs = {input};
+    std::vector<Tensor *> inputs = {input, scratch};
     inputs.insert(inputs.end(), remote_peer_bufs.begin(),
                   remote_peer_bufs.end());
     MscclppReduceAndWritePacketOp op{pt,
@@ -195,6 +200,7 @@ Tensor *Model::reduce_and_write_packet_mscclpp(
                                      npeers,
                                      elems_per_rank,
                                      src_offset,
+                                     scratch_offset,
                                      remote_dst_offset,
                                      flag,
                                      name};
@@ -204,9 +210,10 @@ Tensor *Model::reduce_and_write_packet_mscclpp(
 OpArgs MscclppReduceAndWritePacketOp::function_call_args(
     const OpConfig &) const {
     Tensor *input = this->inputs[0];
+    Tensor *scratch = this->inputs[1];
     Tensor *output = this->outputs[0];
     std::vector<Tensor *> peer_bufs =
-        std::vector<Tensor *>(this->inputs.begin() + 1, this->inputs.end());
+        std::vector<Tensor *>(this->inputs.begin() + 2, this->inputs.end());
 
     CHECK(input->buf != nullptr);
     CHECK(output->buf != nullptr);
@@ -218,6 +225,7 @@ OpArgs MscclppReduceAndWritePacketOp::function_call_args(
     OpArgs opargs;
     opargs.put(output);
     opargs.put(input);
+    opargs.put(scratch);
     for (int i = 0; i < MAX_PEER_NUM; i++) {
         if (i < npeers) {
             CHECK(peer_bufs[i]->buf != nullptr);

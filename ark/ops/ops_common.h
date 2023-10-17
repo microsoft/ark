@@ -564,6 +564,7 @@ class MscclppReduceAndWritePacketOp : public Op {
                                   std::vector<Tensor *> inputs, Tensor *output,
                                   int id, int rank, int npeers,
                                   size_t elems_per_rank, size_t src_offset,
+                                  size_t scratch_offset,
                                   size_t remote_dst_offset, int flag,
                                   const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
