@@ -68,7 +68,17 @@ void GpuInfo::init(const int gpu_id) {
 #elif defined(ARK_ROCM)
     hipDeviceProp_t prop;
     GLOG(hipGetDeviceProperties(&prop, gpu_id));
-    this->arch = "rocm_" + std::string(prop.gcnArchName);
+    // E.g.: "gfx90a:sramecc+:xnack-"
+    std::string gcn_arch_name = prop.gcnArchName;
+    if (gcn_arch_name.substr(0, 3) != "gfx") {
+        LOG(ERROR, "unexpected GCN architecture name: ", gcn_arch_name);
+    }
+    size_t pos_e = gcn_arch_name.find(":");
+    if (pos_e == std::string::npos) {
+        LOG(ERROR, "unexpected GCN architecture name: ", gcn_arch_name);
+    }
+    // E.g.: "90a"
+    this->arch = "rocm_" + gcn_arch_name.substr(3, pos_e - 3);
 #endif
 }
 

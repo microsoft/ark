@@ -44,8 +44,8 @@ OpArchType op_arch_from_string(const std::string &arch) {
         return OP_ARCH_CUDA_80;
     } else if (arch == "cuda_90") {
         return OP_ARCH_CUDA_90;
-    } else if (arch == "rocm_90") {
-        return OP_ARCH_ROCM_90;
+    } else if (arch == "rocm_90a") {
+        return OP_ARCH_ROCM_90A;
     }
     return OP_ARCH_UNKNOWN;
 }

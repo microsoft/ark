@@ -89,7 +89,7 @@ set_target_properties(ark_obj PROPERTIES
     VERSION ${ARK_VERSION}
     SOVERSION ${ARK_SOVERSION}
 )
-add_dependencies(ark_obj tp-cutlass)
+add_dependencies(ark_obj ${TP_TARGETS})
 target_link_libraries(ark_obj PUBLIC coverage_config)
 
 # Build
@@ -98,11 +98,9 @@ add_dependencies(build ark_obj)
 add_custom_command(TARGET build POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/ark/include ${CMAKE_CURRENT_BINARY_DIR}/include
 )
-if(TRUE)
-    add_custom_command(TARGET build POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/third_party/cutlass/include ${CMAKE_CURRENT_BINARY_DIR}/include/kernels
-    )
-endif()
+add_custom_command(TARGET build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${TP_KERNELS} ${CMAKE_CURRENT_BINARY_DIR}/include/kernels
+)
 
 # ARK shared library
 add_library(ark SHARED)

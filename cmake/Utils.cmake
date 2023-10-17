@@ -33,14 +33,6 @@ else()
     message(STATUS "black not found.")
 endif()
 
-# Insert gpumem module
-add_custom_target(gpumem
-    COMMENT "Inserting gpumem module..."
-    COMMAND insmod ${PROJECT_SOURCE_DIR}/third_party/gpudma/module/gpumem.ko
-    COMMAND chmod 666 /dev/gpumem
-)
-add_dependencies(gpumem tp-gpudma)
-
 # lcov
 find_program(LCOV lcov)
 if(LCOV)

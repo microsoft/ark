@@ -11,7 +11,7 @@
 // clang-format on
 
 // #include "activation.h"
-// #include "arithmetic.h"
+#include "arithmetic.h"
 // #include "cast.h"
 // #include "comm.h"
 // #include "comm_mm.h"

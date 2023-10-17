@@ -78,7 +78,8 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     OpArchType arch_type = op_arch_from_string(gpu_info.arch);
     if (arch_type == OP_ARCH_UNKNOWN) {
-        LOG(ERROR, "unsupported GPU architecture: ", gpu_info.arch);
+        LOG(ERROR, "unsupported GPU architecture ", gpu_info.arch,
+            " for op: ", op->name);
     }
     auto &configs = op->cfg_map->get({arch_type, op->prec_type});
     if (configs.empty()) {

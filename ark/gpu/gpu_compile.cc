@@ -125,7 +125,7 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
-    args.emplace_back("--offload-arch=" + cc);
+    args.emplace_back("--offload-arch=gfx" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
     args.emplace_back("2>&1");

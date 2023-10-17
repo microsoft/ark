@@ -10,7 +10,7 @@
 #include "smem.h"
 #include "static_math.h"
 #include "sync.h"
-// #include "type_intrinsics.h"
+#include "type_intrinsics.h"
 #include "unit_op.h"
 #include "vec.h"
 

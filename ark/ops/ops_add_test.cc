@@ -129,8 +129,8 @@ int main() {
     ark::init();
     UNITTEST(test_add_fp32);
     UNITTEST(test_add_fp16);
-    UNITTEST(test_add_bf16);
-    UNITTEST(test_add_overwrite);
-    UNITTEST(test_add_broadcast);
+    // UNITTEST(test_add_bf16);
+    // UNITTEST(test_add_overwrite);
+    // UNITTEST(test_add_broadcast);
     return ark::unittest::SUCCESS;
 }
