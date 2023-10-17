@@ -66,13 +66,9 @@ DEVICE void store(uint2 *p, const BytesPack<8> &v) {
                  : "memory");
 }
 
-DEVICE void add_half8(void *dst, void *src) {
-    BytesPack<16> vd, vs;
-    load(vd, reinterpret_cast<longlong2 *>(dst));
-    load(vs, reinterpret_cast<longlong2 *>(src));
-
-    __half *pd = reinterpret_cast<__half *>(vd.u16);
-    __half *ps = reinterpret_cast<__half *>(vs.u16);
+DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
+    __half *pd = reinterpret_cast<__half *>(dst.u16);
+    __half *ps = reinterpret_cast<__half *>(src.u16);
 #pragma unroll
     for (int i = 0; i < 4; ++i) {
         __half2 d, s;
@@ -84,7 +80,6 @@ DEVICE void add_half8(void *dst, void *src) {
         pd[i * 2] = d.x;
         pd[i * 2 + 1] = d.y;
     }
-    store(reinterpret_cast<longlong2 *>(dst), vd);
 }
 
 DEVICE void add_half4(BytesPack<8> &dst, BytesPack<8> &src) {
@@ -102,20 +97,6 @@ DEVICE void add_half4(BytesPack<8> &dst, BytesPack<8> &src) {
         pd[i * 2 + 1] = d.y;
     }
 }
-
-template <typename OutDims>
-struct MscclppEwiseSumCompType<OutDims, half> {
-    using DataType = half;
-    static const int NelemPerThread = 8;
-    static DEVICE void compute(DataType *out, DataType *in, int idx_n,
-                               int idx_c, int idx_h, int idx_w) {
-        int idx = (idx_n * OutDims::CHW + idx_c * OutDims::HW +
-                   idx_h * OutDims::W + idx_w);
-        longlong2 *ps = reinterpret_cast<longlong2 *>(in + idx);
-        longlong2 *pd = reinterpret_cast<longlong2 *>(out + idx);
-        add_half8(pd, ps);
-    }
-};
 
 // Send a trigger to proxy to request transaction.
 template <unsigned int Rank, unsigned int DstRank,
@@ -170,7 +151,8 @@ DEVICE void device_sync_mscclpp(int, int) {
 
 // Do reduce scatter in a single node
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
-          unsigned int NPeers, unsigned int Rank, unsigned long long Offset>
+          unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
+          unsigned long long Length>
 DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
                                     size_t src_offset_1, size_t src_offset_2,
                                     size_t src_offset_3, size_t src_offset_4,
@@ -178,21 +160,29 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
                                     ark::half *, int uop_idx, int) {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
-
-    // All channels have the same src_, so we can use any channel to get dst
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
-    half *dst = reinterpret_cast<half *>((uint8_t *)_ARK_SM_CHANS[0].src_ +
-                                         dst_offset + Offset);
+    constexpr int total_tiles =
+        math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
+    constexpr int total_threads = total_tiles * NumThreads;
+    constexpr size_t nInt4 = Length / sizeof(int4);
+    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    // All channels have the same src_, so we can use any channel to get dst
+    BytesPack<16> *dst = reinterpret_cast<BytesPack<16> *>(
+        (uint8_t *)_ARK_SM_CHANS[0].src_ + dst_offset + Offset);
     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
                              src_offset_3, src_offset_4, src_offset_5,
                              src_offset_6};
     for (int i = 0; i < NPeers; ++i) {
         int chan_idx = (Rank + i) % NPeers;
-        half *src =
-            reinterpret_cast<half *>((uint8_t *)_ARK_SM_CHANS[chan_idx].dst_ +
-                                     peer_offsets[chan_idx] + Offset);
-        Ewise1<Dims, Shape, UnitOutDims, NumThreads, 0,
-               MscclppEwiseSumCompType<Dims, half>>::run(dst, src, uop_idx);
+        const size_t index_offset4 = (peer_offsets[chan_idx] + Offset) / sizeof(int4);
+        union {
+            BytesPack<16> data;
+            int4 val;
+        } ret;
+        for (int idx = tid; idx < nInt4; idx += total_threads) {
+            ret.val = _ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
+            add_half8(dst[idx], ret.data);
+        }
     }
 }
 

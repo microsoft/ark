@@ -72,7 +72,7 @@ Tensor *Model::local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
     Tensor *out =
         this->local_reduce_scatter_mscclpp(input, gpu_id, sid, gpu_num);
     Tensor *res = this->local_all_gather_mscclpp(out, gpu_id, sid, gpu_num);
-    this->impl->next_eid += gpu_num;
+    this->impl->next_eid += 1;
     return res;
 }
 

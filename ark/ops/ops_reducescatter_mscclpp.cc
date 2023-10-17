@@ -50,7 +50,7 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
                                shape_dims,          // Shape
                                unit_out_dims,       // UnitOutDims
                                cfg.num_warps * 32,  // NumThreads
-                               peer_rank, rank, offset}});
+                               peer_rank, rank, offset, bytes}});
 }
 
 OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
