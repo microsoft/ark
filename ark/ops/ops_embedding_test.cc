@@ -29,6 +29,9 @@ void baseline_embedding(std::vector<void *> &outputs,
         for (ark::DimType c = 0; c < osh[1]; ++c) {
             for (ark::DimType h = 0; h < osh[2]; ++h) {
                 int weight_idx = in[in_idx++];
+                if (weight_idx < 0) {
+                    weight_idx += wsh[2];
+                }
                 T *ptr = &weight[weight_idx * wsh[3]];
                 for (ark::DimType w = 0; w < osh[3]; ++w) {
                     out[n * osh[1] * osh[2] * osh[3] + c * osh[2] * osh[3] +
@@ -61,7 +64,12 @@ ark::unittest::State test_embedding() {
     std::vector<int> ti_data;
     for (auto i = 0; i < ti->shape.size(); ++i) {
         // Random indices in [0, num_emb)
-        ti_data.push_back(ark::rand() % num_emb);
+        int rand_idx = ark::rand() % num_emb;
+        if (i % 9 == 0) {
+            // test negative tokens (padding)
+            rand_idx = -rand_idx;
+        }
+        ti_data.push_back(rand_idx);
     }
     auto tw_data = ark::utils::rand_array<T>(tw->shape.size(), 1.0);
     auto result =

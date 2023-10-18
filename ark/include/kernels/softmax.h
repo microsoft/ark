@@ -70,9 +70,8 @@ struct Softmax {
         // get the max input.
         DataType max_input;
         ReduceTypeMax::identity<1>(&max_input);
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
             ReduceTypeMax::reduce<1>(&max_input, &max_input, &in[idx_in]);
         }
 
@@ -87,9 +86,8 @@ struct Softmax {
         DataType cmp;
         ReduceTypeSum::identity<1>(&exp_sum_input);
         ReduceTypeSum::identity<1>(&cmp);
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
             DataType val(expf(in[idx_in] - max_input) - cmp);
             DataType tmp = exp_sum_input + val;
             cmp = (tmp - exp_sum_input) - val;
@@ -99,12 +97,14 @@ struct Softmax {
             exp_sum_input, tid, smem_per_warp);
         ReduceTypeSum::postReduce<1>(&exp_sum_input, &exp_sum_input);
 
+        DataType r_exp_sum_input = DataType(1) / exp_sum_input;
+
         // the output is
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
             out[idx_out] =
-                DataType(expf(in[idx_in] - max_input) / exp_sum_input);
+                DataType(expf(in[idx_in] - max_input)) * r_exp_sum_input;
         }
     }
 };
