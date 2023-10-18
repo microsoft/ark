@@ -115,7 +115,7 @@ Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
     return this->impl->add_op(op)[1];
 }
 
-Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id, int sid,
+Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id,
                                         int ngpus_per_node,
                                         const std::string &name) {
     assert(input != nullptr);
@@ -128,14 +128,17 @@ Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id, int sid,
             "not contiguous");
     }
     int npeers = ngpus_per_node - 1;
-    LOG(DEBUG, "local_all_gather_mscclpp ", input->shape, " ", gpu_id, " ", sid,
+    int id = this->impl->next_eid;
+    LOG(DEBUG, "local_all_gather_mscclpp ", input->shape, " ", gpu_id, " ", id,
         " ", ngpus_per_node, " ", ngpus_per_node, " ");
     Tensor *tensor = this->device_sync_mscclpp(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
     size_t bytes_per_chunk = tensor->shape_bytes() / ngpus_per_node;
-    return this->gather_from_peers_mscclpp(tensor, sid, npeers, bytes_per_chunk,
-                                           name);
+    Tensor *out = this->gather_from_peers_mscclpp(tensor, id, npeers,
+                                                  bytes_per_chunk, name);
+    this->impl->next_eid += 1;
+    return out;
 }
 
 const OpConfigMap MscclppGatherFromPeersConfigMap = {

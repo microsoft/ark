@@ -519,12 +519,12 @@ class Model {
 
     // local reduce scatter
     Tensor *local_reduce_scatter_mscclpp(
-        Tensor *input, int gpu_id, int sid, int ngpus_per_node,
+        Tensor *input, int gpu_id, int ngpus_per_node,
         const std::string &name = "local_reduce_scatter_mscclpp");
 
     // local all gather
     Tensor *local_all_gather_mscclpp(
-        Tensor *input, int gpu_id, int sid, int ngpus_per_node,
+        Tensor *input, int gpu_id, int ngpus_per_node,
         const std::string &name = "local_all_gather_mscclpp");
     // read data from remote and reduce to current buffer
     Tensor *read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
@@ -535,9 +535,10 @@ class Model {
         Tensor *input, int sid, int npeers, size_t chunkBytes,
         const std::string &name = "gather_from_peers_mscclpp");
 
-    Tensor *local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
-                             const std::string &name = "local_all_reduce");
-    Tensor *local_all_reduce_packet(
+    Tensor *local_all_reduce_mscclpp(
+        Tensor *input, int gpu_id, int gpu_num,
+        const std::string &name = "local_all_reduce");
+    Tensor *local_all_reduce_packet_mscclpp(
         Tensor *input, int gpu_id, int gpu_num,
         const std::string &name = "local_all_reduce_packet");
 

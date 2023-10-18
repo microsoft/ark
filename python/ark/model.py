@@ -909,6 +909,28 @@ def all_gather(
 
 
 @register_op
+def local_all_gather_mscclpp(input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_gather_mscclpp",) -> Tensor:
+    """
+    Performs an all-gather operator across local node GPUs.
+    Usage:
+    # all-gather
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allgather_result = ark.local_all_gather_mscclpp(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_gather_mscclpp(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
 def all_reduce(
     input: Tensor,
     rank: int,
@@ -932,6 +954,56 @@ def all_reduce(
         rank,
         world_size,
         output,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_all_reduce_mscclpp(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_reduce_mscclpp",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across local GPUs, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs in a node`ranks_per_node`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.local_all_reduce_mscclpp(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_reduce_mscclpp(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_all_reduce_packet_mscclpp(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_reduce_mscclpp",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across local GPUs with LL algo, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs in a node`ranks_per_node`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.local_all_reduce_packet_mscclpp(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_reduce_packet_mscclpp(
+        input._tensor,
+        rank,
+        ranks_per_node,
         name,
     )
     return Tensor(_tensor)
