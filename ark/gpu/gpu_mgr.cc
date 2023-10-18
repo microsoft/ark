@@ -441,6 +441,9 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     }
     GpuPtr pb = buf->ref(offset);
     if (pb != 0) {
+        // TODO: the set_current below seems to be necessary but returns
+        // `CUDA_ERROR_INVALID_VALUE`.
+        // CULOG(get_gpu_mgr(buf->get_gpu_id())->set_current());
         assert((reinterpret_cast<long long unsigned int>(pb) % 4) == 0);
         CULOG(cuMemsetD32(pb, val, num));
     } else {
