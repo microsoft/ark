@@ -811,9 +811,9 @@ def send_mscclpp(
     ark.send(tensor_send, 1, 1)
     ark.send_done(tensor_send, 1, 1)
     # on GPU1:
-    ark.recv(tensor, 1, 0)
+    ark.recv(1, 0, 0, tensor_recv)
     """
-    _tensor = Model.get_global_model().send_mscclpp(
+    _tensor = Model.get_model().send_mscclpp(
         input._tensor,
         sid,
         dst_rank,
@@ -827,19 +827,15 @@ def send_mscclpp(
 def send_done_mscclpp(
     input: Tensor,
     dst_rank: int,
-    output: Tensor = None,
     name: str = "send_done_mscclpp",
 ) -> Tensor:
     """
     Blocks the execution until the corresponding 'send' operator
     with the specified `id` is completed.
     """
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_global_model().send_done_mscclpp(
+    _tensor = Model.get_model().send_done_mscclpp(
         input._tensor,
         dst_rank,
-        output,
         name,
     )
     return Tensor(_tensor)
@@ -847,10 +843,9 @@ def send_done_mscclpp(
 
 @register_op
 def recv_mscclpp(
-    input: Tensor,
     sid: int,
     src_rank: int,
-    bytes: int = 0,
+    bytes: int,
     output: Tensor = None,
     name: str = "recv",
 ) -> Tensor:
@@ -861,8 +856,7 @@ def recv_mscclpp(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_global_model().recv_mscclpp(
-        input._tensor,
+    _tensor = Model.get_model().recv_mscclpp(
         sid,
         src_rank,
         bytes,

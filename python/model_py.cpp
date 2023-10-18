@@ -220,14 +220,13 @@ void register_model(py::module &m) {
              py::arg("name") = "send_mscclpp")
         .def("send_done_mscclpp", &ark::Model::send_done_mscclpp, "",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("dst_rank"), py::arg("output") = nullptr,
-             py::arg("name") = "send_done_mscclpp")
+             py::arg("dst_rank"), py::arg("name") = "send_done_mscclpp")
         .def("recv_mscclpp", &ark::Model::recv_mscclpp,
              "Receives a tensor from a source GPU (`src_rank`), identified by "
              "the `id` parameter. Blocks the execution until the corresponding "
              "'recv' operator is completed.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("sid"), py::arg("src_rank"), py::arg("bytes") = 0,
+             py::return_value_policy::reference_internal, py::arg("sid"),
+             py::arg("src_rank"), py::arg("bytes"),
              py::arg("output") = nullptr, py::arg("name") = "recv_mscclpp")
         .def("all_gather", &ark::Model::all_gather,
              "Performs an all-gather operator across all GPUs",

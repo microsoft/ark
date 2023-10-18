@@ -125,7 +125,6 @@ std::string MscclppReduceAndWritePacketOp::function_name(
     int rank;
     int npeers;
     size_t elems_per_rank;
-    size_t src_offset;
     size_t scratch_offset;
     size_t remote_dst_offset;
     int flag;

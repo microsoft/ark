@@ -4,6 +4,7 @@
 import ark
 import numpy as np
 import multiprocessing
+import os
 import unittest
 
 world_size = 2
@@ -14,28 +15,25 @@ tensor_size = tensor_len * 2
 
 def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     # Create a Model instance
-    model = ark.Model(rank)
+    runtime = ark.Runtime()
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
 
-    input_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    output_tensor = ark.tensor([tensor_len], ark.fp16)
     if rank == 0:
-        model.send_mscclpp(input_tensor, 0, 1, tensor_size)
-        model.send_done_mscclpp(input_tensor, 1)
+        ark.send_mscclpp(input_tensor, 0, 1, tensor_size)
+        ark.send_done_mscclpp(input_tensor, 1)
     if rank == 1:
-        model.recv_mscclpp(input_tensor, 0, 0)
-    # model.all_reduce(input_tensor, rank, world_size)
+        output_tensor = ark.recv_mscclpp(0, 0, 0, output_tensor)
 
-    exe = ark.Executor(rank, rank, world_size, model, "sendrecv_test_one_dir")
-    exe.compile()
-
-    exe.launch()
+    runtime.launch()
     if rank == 0:
-        exe.tensor_memcpy_host_to_device(input_tensor, np_inputs)
-    exe.run(iter)
-    elapsed = exe.stop()
+        input_tensor.from_numpy(np_inputs)
+    runtime.run(iter)
+    elapsed = runtime.stop()
     if rank == 1:
-        host_output = np.zeros(tensor_len, dtype=np.float16)
-        exe.tensor_memcpy_device_to_host(host_output, input_tensor)
-
+        host_output = output_tensor.to_numpy()
         max_abs_error = np.max(np.abs(host_output - np_inputs))
         mean_abs_error = np.mean(np.abs(host_output - np_inputs))
         # The numeric error of half precision of the machine
@@ -80,27 +78,26 @@ def sendrecv_test_one_dir():
 
 
 def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
-    other_rank = 1 - rank
     # Create a Model instance
-    model = ark.Model(rank)
+    runtime = ark.Runtime()
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
+    other_rank = 1 - rank
 
-    send_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-    recv_tensor = model.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-    model.send_mscclpp(send_tensor, rank, other_rank, tensor_size)
-    model.send_done_mscclpp(send_tensor, other_rank)
-    model.recv_mscclpp(recv_tensor, other_rank, other_rank)
+    send_tensor = ark.tensor([tensor_len], ark.fp16)
+    recv_tensor = ark.tensor([tensor_len], ark.fp16)
+    ark.send_mscclpp(send_tensor, rank, other_rank, tensor_size)
+    ark.send_done_mscclpp(send_tensor, other_rank)
+    ark.recv_mscclpp(other_rank, other_rank, 0, recv_tensor)
 
-    exe = ark.Executor(rank, rank, world_size, model, "sendrecv_test_bi_dir")
-    exe.compile()
+    runtime.launch()
+    send_tensor.from_numpy(np_inputs[rank])
 
-    exe.launch()
-    exe.tensor_memcpy_host_to_device(send_tensor, np_inputs[rank])
-
-    exe.run(iter)
-    elapsed = exe.stop()
+    runtime.run(iter)
+    elapsed = runtime.stop()
 
     host_output = np.zeros(tensor_len, dtype=np.float16)
-    exe.tensor_memcpy_device_to_host(host_output, recv_tensor)
+    host_output = recv_tensor.to_numpy()
 
     gt = np_inputs[other_rank]
     max_abs_error = np.max(np.abs(host_output - gt))
@@ -153,4 +150,5 @@ class SendRecvMscclppTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    os.environ["ARK_USE_MSCCLPP"] = "1"
     unittest.main()
