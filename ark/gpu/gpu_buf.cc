@@ -9,8 +9,9 @@ using namespace std;
 
 namespace ark {
 
-GpuBuf::GpuBuf(const GpuMem *mem_, int id_, size_t offset_, size_t bytes_)
-    : mem{mem_}, id{id_}, offset{offset_}, bytes{bytes_} {
+GpuBuf::GpuBuf(int gpu_id_, const GpuMem *mem_, int id_, size_t offset_,
+               size_t bytes_)
+    : gpu_id{gpu_id_}, mem{mem_}, id{id_}, offset{offset_}, bytes{bytes_} {
     assert(mem_ != nullptr);
 }
 

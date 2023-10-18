@@ -97,7 +97,6 @@ class GpuMgrCtx {
     ~GpuMgrCtx();
 
     GpuStream create_stream();
-    GpuState sync_stream(const GpuStream &s);
     void destroy_stream(const GpuStream &s);
     GpuEvent create_event(bool disable_timing);
 
@@ -168,13 +167,13 @@ class GpuMgrCtx {
 GpuMgr *get_gpu_mgr(const int gpu_id);
 
 //
-void gpu_memset(GpuPtr buf, int val, size_t num);
-void gpu_memcpy(GpuPtr dst, const void *src, size_t bytes);
-void gpu_memcpy(void *dst, const GpuPtr src, size_t bytes);
-void gpu_memset(GpuBuf *buf, int val, size_t num);
-void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes);
-void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes);
-void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes);
+void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num);
+void gpu_memcpy(GpuBuf *dst, size_t dst_offset, void *src, size_t src_offset,
+                size_t bytes);
+void gpu_memcpy(void *dst, size_t dst_offset, const GpuBuf *src,
+                size_t src_offset, size_t bytes);
+void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
+                size_t src_offset, size_t bytes);
 
 }  // namespace ark
 
