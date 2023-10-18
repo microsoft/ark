@@ -27,4 +27,24 @@ DEVICE int warp_id() {
 
 }  // namespace ark
 
+#if defined(ARK_TARGET_CUDA_ARCH)
+#define ARCH_ALIAS_TYPE(alias, cuda_type, hip_type) typedef cuda_type alias;
+#elif defined(ARK_TARGET_ROCM_ARCH)
+#define ARCH_ALIAS_TYPE(alias, cuda_type, hip_type) typedef hip_type alias;
+#endif
+
+#if defined(ARK_TARGET_CUDA_ARCH)
+#define ARCH_ALIAS_FUNC(alias, cuda_func, hip_func)    \
+    template <typename... Args>                        \
+    inline auto alias(Args &&... args) {               \
+        return cuda_func(std::forward<Args>(args)...); \
+    }
+#elif defined(ARK_TARGET_ROCM_ARCH)
+#define ARCH_ALIAS_FUNC(alias, cuda_func, hip_func)   \
+    template <typename... Args>                       \
+    inline auto alias(Args &&... args) {              \
+        return hip_func(std::forward<Args>(args)...); \
+    }
+#endif
+
 #endif  // ARK_KERNELS_ARCH_H_

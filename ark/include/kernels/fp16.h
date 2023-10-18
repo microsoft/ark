@@ -11,6 +11,7 @@
 #endif
 
 #include "device.h"
+#include "vector_type.h"
 
 namespace ark {
 
@@ -25,13 +26,38 @@ struct Constant;
 template <>
 struct Constant<fp16> {
     static DEVICE fp16 zero() { return __half_raw{0}; }
-    static DEVICE fp16 lowest() { return __half_raw{0xfbff}; }
+    static DEVICE fp16 lowest() {
+#if defined(ARK_TARGET_CUDA_ARCH)
+        return __half_raw{0xfbff};
+#elif defined(ARK_TARGET_ROCM_ARCH)
+        union BitCast {
+            unsigned short u;
+            fp16 f;
+        };
+        return BitCast{0xfbff}.f;
+#endif
+    }
 };
 
 template <>
 struct Constant<fp16x2> {
     static DEVICE fp16x2 zero() { return __half2_raw{0, 0}; }
-    static DEVICE fp16x2 lowest() { return __half2_raw{0xfbff, 0xfbff}; }
+    static DEVICE fp16x2 lowest() {
+#if defined(ARK_TARGET_CUDA_ARCH)
+        return __half2_raw{0xfbff, 0xfbff};
+#elif defined(ARK_TARGET_ROCM_ARCH)
+        union BitCast {
+            unsigned short u[2];
+            fp16x2 f;
+        };
+        return BitCast{0xfbff, 0xfbff}.f;
+#endif
+    }
+};
+
+template <>
+struct Vtype<fp16, 2> {
+    using type = fp16x2;
 };
 
 }  // namespace type

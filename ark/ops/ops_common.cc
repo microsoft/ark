@@ -80,15 +80,34 @@ const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
     if (search != this->cfg_map.end()) {
         return search->second;
     }
+#if defined(ARK_CUDA)
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+#elif defined(ARK_ROCM)
+    search = this->cfg_map.find({OP_ARCH_ROCM_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_ROCM_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+#endif
     search = this->cfg_map.find({OP_ARCH_ANY, key.prec_type});
     if (search != this->cfg_map.end()) {
         return search->second;
     }
     search = this->cfg_map.find({OP_ARCH_ANY, "any"});
-    if (search == this->cfg_map.end()) {
-        return NoneConfigs;
+    if (search != this->cfg_map.end()) {
+        return search->second;
     }
-    return search->second;
+    return NoneConfigs;
 }
 
 ostream &operator<<(ostream &os, const OpType &s) {

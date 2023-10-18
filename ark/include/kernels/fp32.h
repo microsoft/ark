@@ -7,6 +7,7 @@
 #include <cfloat>
 
 #include "device.h"
+#include "vector_type.h"
 
 namespace ark {
 
@@ -23,6 +24,16 @@ template <>
 struct Constant<fp32> {
     static DEVICE fp32 zero() { return 0; }
     static DEVICE fp32 lowest() { return -FLT_MAX; }
+};
+
+template <>
+struct Vtype<fp32, 2> {
+    using type = fp32x2;
+};
+
+template <>
+struct Vtype<fp32, 4> {
+    using type = fp32x4;
 };
 
 }  // namespace type

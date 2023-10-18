@@ -6,7 +6,9 @@
 
 #include <type_traits>
 
+#include "arch.h"
 #include "ewise.h"
+#include "shfl.h"
 #include "type_intrinsics.h"
 
 namespace ark {
@@ -21,7 +23,7 @@ typedef enum {
 // Shared memory for reduction.
 template <typename DataType>
 struct ReduceSharedStorage {
-    DataType storage[32];
+    DataType storage[Arch::ThreadsPerWarp];
 };
 
 // Reduce single-precision `val` within a single warp.
@@ -29,38 +31,12 @@ template <typename ReduceType, int LanesNum, typename DataType>
 DEVICE DataType warpReduce(DataType val) {
     DataType res = val;
     DataType tmp;
-    if (LanesNum >= 32) {
-        tmp = __shfl_xor_sync(0xffffffff, res, 16, 32);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 8, 16);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 4, 8);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 2, 4);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 1, 2);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-    } else {
-        if (LanesNum > 16) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 16, 32);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 8) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 8, 16);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 4) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 4, 8);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 2) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 2, 4);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 1) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 1, 2);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
+    constexpr int iter =
+        math::log2_up<math::min<LanesNum, Arch::ThreadsPerWarp>::value>::value;
+#pragma unroll
+    for (int i = (1 << (iter - 1)); i > 0; i /= 2) {
+        tmp = SHFL_XOR(res, i, i * 2);
+        ReduceType::template reduce<1>(&res, &res, &tmp);
     }
     return res;
 }
@@ -68,31 +44,31 @@ DEVICE DataType warpReduce(DataType val) {
 // Reduce bf16 `val` within a single warp.
 template <typename ReduceType, int LanesNum>
 DEVICE bf16 warpReduce(bf16 val) {
-    float tmp(val);
+    float tmp = type::Cast::compute<float>(val);
     tmp = warpReduce<ReduceType, LanesNum, float>(tmp);
-    return bf16(tmp);
+    return type::Cast::compute<bf16>(tmp);
 }
 
 // Reduce single-precision `val` within multiple warps.
 template <typename ReduceType, typename UnitOp, int LanesNum, typename DataType>
 DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp) {
     val = warpReduce<ReduceType, LanesNum>(val);
-    if (LanesNum > 32) {
+    if (LanesNum > Arch::ThreadsPerWarp) {
         ReduceSharedStorage<DataType> *shared =
             UnitOp::template shared_memory<ReduceSharedStorage<DataType>>(
                 smem_per_warp);
-        int laneId = tid & 31;
-        int warpId = tid >> 5;
+        int laneId = tid & (Arch::ThreadsPerWarp - 1);
+        int warpId = tid >> math::log2_up<Arch::ThreadsPerWarp>::value;
         if (laneId == 0) {
             shared->storage[warpId] = val;
         }
         UnitOp::sync_threads();
-        if (laneId < (LanesNum >> 5)) {
+        if (laneId < (LanesNum >> math::log2_up<Arch::ThreadsPerWarp>::value)) {
             val = shared->storage[laneId];
         } else {
-            ReduceType::identity<1>(&val);
+            ReduceType::template identity<1>(&val);
         }
-        val = warpReduce<ReduceType, 32>(val);
+        val = warpReduce<ReduceType, Arch::ThreadsPerWarp>(val);
     }
     return val;
 }

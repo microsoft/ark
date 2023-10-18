@@ -1,7 +1,8 @@
 {
     "cmake.buildDirectory": "${workspaceFolder}/build",
     "cmake.environment": {
-        "ARK_ROOT": "${workspaceFolder}/build"
+        "ARK_ROOT": "${workspaceFolder}/build",
+        // "ARK_LOG_LEVEL": "DEBUG"
     },
     "cmake.ctestArgs": [
         "--verbose"

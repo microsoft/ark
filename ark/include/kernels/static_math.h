@@ -38,6 +38,17 @@ struct log2_up<N, 1, Count> {
     enum { value = ((1 << Count) < N) ? Count + 1 : Count };
 };
 
+// Statically determine log2(N), rounded down
+template <int N, int CurrentVal = N, int Count = 0>
+struct log2_down {
+    enum { value = log2_down<N, (CurrentVal >> 1), Count + 1>::value };
+};
+template <int N, int Count>
+struct log2_down<N, 1, Count> {
+    static_assert(N > 0, "invalid input domain.");
+    enum { value = Count };
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Safe multiplication for preventing overflow.

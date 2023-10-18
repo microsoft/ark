@@ -5,6 +5,7 @@
 #define ARK_COMM_MM_H_
 
 #include "common.h"
+#include "load_store.h"
 
 namespace ark {
 namespace comm {
@@ -19,7 +20,7 @@ union alignas(16) DataPacketLL {
         uint32_t data2;
         uint32_t flag2;
     };
-    uint64_t v[2];
+    longlong2 l2;
     int4 i4;
 };
 
@@ -29,20 +30,21 @@ union alignas(16) DataPacketLL {
 // size.
 template <int FLAG>
 DEVICE uint64_t readLL(DataPacketLL *recv_buf) {
-    uint32_t data1, flag1, data2, flag2;
+    DataPacketLL pkt;
     do {
-        asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];"
-                     : "=r"(data1), "=r"(flag1), "=r"(data2), "=r"(flag2)
-                     : "l"(&recv_buf->i4));
-    } while ((flag1 != FLAG) || (flag2 != FLAG));
-    uint64_t val64 = data1 + (((uint64_t)data2) << 32);
-    return val64;
+        pkt.l2 = load_volatile_128b(recv_buf);
+    } while ((pkt.flag1 != FLAG) || (pkt.flag2 != FLAG));
+    return pkt.data1 + (((uint64_t)pkt.data2) << sizeof(uint32_t));
 }
+
 template <int FLAG>
 DEVICE void storeLL(DataPacketLL *data_dst, uint64_t val) {
-    asm volatile(
-        "st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" ::"l"(&data_dst->i4),
-        "r"((uint32_t)val), "r"(FLAG), "r"((uint32_t)(val >> 32)), "r"(FLAG));
+    DataPacketLL pkt;
+    pkt.data1 = val & 0xFFFFFFFF;
+    pkt.flag1 = FLAG;
+    pkt.data2 = val >> sizeof(uint32_t);
+    pkt.flag2 = FLAG;
+    store_volatile_128b(data_dst, pkt.l2);
 }
 
 template <int TN>
@@ -62,7 +64,7 @@ DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int uop_idx) {
         // reset the send_ready_flag to 0
         send_ready_flag[uop_idx] = 0;
     }
-    __syncwarp();
+    sync_warps<Arch::ThreadsPerWarp>();
 }
 
 template <int LDM, int LDN, int TN, int SmemBytes, int TDM, int TDN,

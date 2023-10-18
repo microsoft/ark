@@ -67,6 +67,8 @@ DEVICE void sync_gpu(sync::State &state) {
     __syncthreads();
 }
 
+ARCH_ALIAS_FUNC(sync_warp, __syncwarp, __builtin_amdgcn_wave_barrier);
+
 // Synchronize a group of warps.
 // This function replaces `__syncthreads()` of legacy kernel implementations.
 // It is needed because in normal practices to implement a kernel, each thread

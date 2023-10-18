@@ -5,6 +5,7 @@
 #define ARK_KERNELS_ACTIVATION_H_
 
 #include "broadcast.h"
+#include "type_intrinsics.h"
 
 namespace ark {
 
@@ -23,7 +24,8 @@ struct Gelu {
     }
 
     static DEVICE bf16 compute(bf16 input) {
-        return bf16(Gelu::compute(float(input)));
+        return type::Cast::compute<bf16>(
+            Gelu::compute(type::Cast::compute<float>(input)));
     }
 
     static DEVICE fp16x2 compute(fp16x2 input) {

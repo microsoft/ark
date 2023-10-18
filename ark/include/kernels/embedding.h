@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "common.h"
+#include "type_intrinsics.h"
 
 namespace ark {
 
@@ -52,14 +53,14 @@ struct RoPE<bf16> {
         float2 pa;
         float2 pb;
         float2 pc;
-        pa.x = float(a[0]);
-        pa.y = float(a[1]);
-        pb.x = float(b[0]);
-        pb.y = float(b[1]);
+        pa.x = type::Cast::compute<float>(a[0]);
+        pa.y = type::Cast::compute<float>(a[1]);
+        pb.x = type::Cast::compute<float>(b[0]);
+        pb.y = type::Cast::compute<float>(b[1]);
         RoPE<float>::compute((float *)&pc, (const float *)&pa,
                              (const float *)&pb);
-        c[0] = bf16(pc.x);
-        c[1] = bf16(pc.y);
+        c[0] = type::Cast::compute<bf16>(pc.x);
+        c[1] = type::Cast::compute<bf16>(pc.y);
     }
 };
 

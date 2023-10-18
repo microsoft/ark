@@ -5,6 +5,8 @@
 #define ARK_KERNELS_CAST_H_
 
 #include "broadcast.h"
+#include "type_intrinsics.h"
+#include "vector_type.h"
 
 namespace ark {
 
@@ -20,121 +22,22 @@ struct Cast<_InShape, _FromType, _ToType, 2> {
 
     static DEVICE void compute(_ToType *output, const _FromType *input) {
         if constexpr (_InShape::W == 1) {
-            *output = _ToType(*input);
+            *output = type::Cast::compute<_ToType>(*input);
+        } else if constexpr (type::VtypeExists<
+                                 type::Vtype<_FromType, 2>>::value &&
+                             type::VtypeExists<
+                                 type::Vtype<_ToType, 2>>::value) {
+            using ToType2 = typename type::Vtype<_ToType, 2>::type;
+            using FromType2 = typename type::Vtype<_FromType, 2>::type;
+            ToType2 *pout = reinterpret_cast<ToType2 *>(output);
+            const FromType2 *pin = reinterpret_cast<const FromType2 *>(input);
+            *pout = type::Cast::compute<ToType2>(*pin);
         } else {
-            output[0] = _ToType(input[0]);
-            output[1] = _ToType(input[1]);
+            output[0] = type::Cast::compute<_ToType>(input[0]);
+            output[1] = type::Cast::compute<_ToType>(input[1]);
         }
     }
 };
-
-template <typename _InShape>
-struct Cast<_InShape, fp16, float, 2> {
-    using InputType = fp16;
-    using OutputType = float;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(float *output, const fp16 *input) {
-        if constexpr (_InShape::W == 1) {
-            *output = __half2float(*input);
-        } else {
-            float2 *pout = (float2 *)output;
-            fp16x2 *pin = (fp16x2 *)input;
-            *pout = __half22float2(*pin);
-        }
-    }
-};
-
-template <typename _InShape>
-struct Cast<_InShape, int, float, 2> {
-    using InputType = int;
-    using OutputType = float;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(float *output, const int *input) {
-        if constexpr (_InShape::W == 1) {
-            *output = float(*input);
-        } else {
-            float2 *pout = (float2 *)output;
-            int2 *pin = (int2 *)input;
-            pout->x = float(pin->x);
-            pout->y = float(pin->y);
-        }
-    }
-};
-
-template <typename _InShape>
-struct Cast<_InShape, float, fp16, 2> {
-    using InputType = float;
-    using OutputType = fp16;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(fp16 *output, const float *input) {
-        if constexpr (_InShape::W == 1) {
-            *output = __float2half_rn(*input);
-        } else {
-            fp16x2 *pout = (fp16x2 *)output;
-            float2 *pin = (float2 *)input;
-            *pout = __float22half2_rn(*pin);
-        }
-    }
-};
-
-template <typename _InShape>
-struct Cast<_InShape, int, fp16, 2> {
-    using InputType = int;
-    using OutputType = fp16;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(fp16 *output, const int *input) {
-        if constexpr (_InShape::W == 1) {
-            *output = __int2half_rn(*input);
-        } else {
-            fp16x2 *pout = (fp16x2 *)output;
-            int2 *pin = (int2 *)input;
-            *pout =
-                __halves2half2(__int2half_rn(pin->x), __int2half_rn(pin->y));
-        }
-    }
-};
-
-template <typename _InShape>
-struct Cast<_InShape, float, int, 2> {
-    using InputType = float;
-    using OutputType = int;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(int *output, const float *input) {
-        if constexpr (_InShape::W == 1) {
-            *output = int(*input);
-        } else {
-            int2 *pout = (int2 *)output;
-            float2 *pin = (float2 *)input;
-            pout->x = int(pin->x);
-            pout->y = int(pin->y);
-        }
-    }
-};
-
-template <typename _InShape>
-struct Cast<_InShape, fp16, int, 2> {
-    using InputType = fp16;
-    using OutputType = int;
-    static const int NelemPerThread = 2;
-
-    static DEVICE void compute(int *output, const fp16 *input) {
-        if constexpr (_InShape::W == 1) {
-            *output = __half2int_rn(*input);
-        } else {
-            int2 *pout = (int2 *)output;
-            fp16x2 *pin = (fp16x2 *)input;
-            pout->x = __half2int_rn(__low2half(*pin));
-            pout->y = __half2int_rn(__high2half(*pin));
-        }
-    }
-};
-
-// TODO: specialization for bf16
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumThreads,

@@ -5,6 +5,7 @@
 #define ARK_KERNELS_IM2COL_H_
 
 #include "ewise.h"
+#include "sync.h"
 
 namespace ark {
 
@@ -104,7 +105,7 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, fp16, 2, KernelHeight,
                 f2 = read_elem(in, midx + 1, nidx);
             }
         }
-        __syncwarp();
+        sync_warps<Arch::ThreadsPerWarp>();
         *(fp16x2 *)out = __floats2half2_rn(f1, f2);
     }
 };
