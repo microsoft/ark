@@ -155,7 +155,7 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
                                     size_t src_offset_1, size_t src_offset_2,
                                     size_t src_offset_3, size_t src_offset_4,
                                     size_t src_offset_5, size_t src_offset_6,
-                                    ark::half *, int uop_idx, int) {
+                                    ark::half *src, int uop_idx, int) {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
@@ -164,9 +164,8 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
     constexpr int total_threads = total_tiles * NumThreads;
     constexpr size_t nInt4 = Length / sizeof(int4);
     const int tid = uop_idx * NumThreads + UnitOp::thread_id();
-    // All channels have the same src_, so we can use any channel to get dst
     BytesPack<16> *dst = reinterpret_cast<BytesPack<16> *>(
-        (uint8_t *)_ARK_SM_CHANS[0].src_ + dst_offset + Offset);
+        (uint8_t *)src + dst_offset + Offset);
     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
                              src_offset_3, src_offset_4, src_offset_5,
                              src_offset_6};

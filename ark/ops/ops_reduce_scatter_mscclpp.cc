@@ -14,9 +14,9 @@ constexpr int MAX_PEER_NUM = 7;
 // currently only support in single node
 MscclppReadAndReduceOp::MscclppReadAndReduceOp(
     const std::string &prec_type, Tensor *local_buf, Tensor *cal_region_local,
-    std::vector<Tensor *> remote_bufs, Tensor *cal_region_remote, int sid,
-    int rank, int npeers, size_t offset, size_t bytes, const std::string &name)
-    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {cal_region_remote},
+    std::vector<Tensor *> remote_bufs, int sid, int rank, int npeers,
+    size_t offset, size_t bytes, const std::string &name)
+    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {local_buf},
          {cal_region_local, local_buf}, {{rank, npeers, sid, offset, bytes}},
          name, &MscclppReadAndReduceConfigMap, -1, true) {
     this->inputs.insert(this->inputs.end(), remote_bufs.begin(),
@@ -104,12 +104,10 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
     // These two tensors are not actually used, just give hint to scheduler to
     // split to correct tiles
     Tensor *cal_region_local = this->tensor(shape, input->type, input->buf);
-    Tensor *cal_region_remote = this->tensor(shape, input->type, input->buf);
     MscclppReadAndReduceOp op{pt,
                               input,
                               cal_region_local,
                               remote_bufs,
-                              cal_region_remote,
                               sid,
                               this->impl->rank,
                               npeers,
@@ -152,7 +150,7 @@ const OpConfigMap MscclppReadAndReduceConfigMap = {
       // size
       {16,
        0,
-       {{-1, 65536},
+       {{-1, -1},
         {-1, -1},
         {-1, -1},
         {-1, -1},
