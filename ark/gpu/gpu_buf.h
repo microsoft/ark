@@ -13,7 +13,7 @@ namespace ark {
 //
 class GpuBuf {
    public:
-    GpuBuf(const GpuMem *mem, int id, size_t offset, size_t bytes);
+    GpuBuf(int gpu_id, const GpuMem *mem, int id, size_t offset, size_t bytes);
 
     GpuPtr ref(size_t off = 0) const;
 
@@ -24,6 +24,8 @@ class GpuBuf {
 
     void set_offset(size_t off) { offset = off; }
 
+    int get_gpu_id() const { return gpu_id; }
+
     const GpuMem *get_mem() const { return mem; }
 
     int get_id() const { return id; }
@@ -31,6 +33,7 @@ class GpuBuf {
     size_t get_bytes() const { return bytes; }
 
    private:
+    int gpu_id;
     const GpuMem *mem;
     // ID of a local buffer or SID of a remote buffer.
     const int id;
