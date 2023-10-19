@@ -8,22 +8,22 @@
 
 namespace ark {
 
-extern const OpConfigMap MscclppGatherFromPeersConfigMap;
+extern const OpConfigMap MsllGatherFromPeersConfigMap;
 constexpr int MAX_PEER_NUM = 7;
 
 // currently only support in single node
-MscclppGatherFromPeersOp::MscclppGatherFromPeersOp(
+MsllGatherFromPeersOp::MsllGatherFromPeersOp(
     const std::string &prec_type, Tensor *local_buf, Tensor *trans_region_local,
     std::vector<Tensor *> remote_bufs, Tensor *trans_region_remote, int sid,
     int rank, int npeers, size_t chunk_bytes, const std::string &name)
-    : Op(OP_GATHER_FROM_PEERS_MSCCLPP, prec_type, {trans_region_remote},
+    : Op(OP_GATHER_FROM_PEERS_MSLL, prec_type, {trans_region_remote},
          {trans_region_local, local_buf}, {{rank, npeers, sid, chunk_bytes}},
-         name, &MscclppGatherFromPeersConfigMap, -1, true) {
+         name, &MsllGatherFromPeersConfigMap, -1, true) {
     this->inputs.insert(this->inputs.end(), remote_bufs.begin(),
                         remote_bufs.end());
 }
 
-std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const {
+std::string MsllGatherFromPeersOp::function_name(const OpConfig &cfg) const {
     Tensor *dst_buff = this->outputs[0];
     CHECK(dst_buff->is_sequential());
 
@@ -42,7 +42,7 @@ std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const {
     Dims shape_dims = {1, 1, 1, (int64_t)chunk_bytes / dst_buff->type_bytes()};
     Dims dims = dst_buff->ldims.dims4();
 
-    return Op::function_name("ark::comm::gather_from_peers_mscclpp",
+    return Op::function_name("ark::comm::gather_from_peers_msll",
                              {{dims,                // Dims
                                shape_dims,          // Shape
                                unit_out_dims,       // UnitOutDims
@@ -50,7 +50,7 @@ std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const {
                                npeers, rank, chunk_bytes}});
 }
 
-OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const {
+OpArgs MsllGatherFromPeersOp::function_call_args(const OpConfig &) const {
     int rank;
     int npeers;
     this->args.get(&rank, 0);
@@ -63,7 +63,7 @@ OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const {
     CHECK(local_buff->buf != nullptr);
 
     OpArgs opargs;
-    // gether_from_peers_mscclpp(dst_offset, src_offset...)
+    // gether_from_peers_msll(dst_offset, src_offset...)
     opargs.put((size_t)(local_buff->buf->get_buf_offset() +
                         local_buff->offset_bytes()));
     for (int i = 0; i < MAX_PEER_NUM; i++) {
@@ -79,10 +79,10 @@ OpArgs MscclppGatherFromPeersOp::function_call_args(const OpConfig &) const {
     return opargs;
 }
 
-Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
+Tensor *Model::gather_from_peers_msll(Tensor *input, int sid, int npeers,
                                          size_t chunk_bytes,
                                          const std::string &name) {
-    LOG(DEBUG, "gather_from_peers_mscclpp ", input->shape, " nppers ", npeers);
+    LOG(DEBUG, "gather_from_peers_msll ", input->shape, " nppers ", npeers);
     input->exported = true;
 
     int rank = this->impl->rank;
@@ -102,7 +102,7 @@ Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
     // split to correct tiles
     Tensor *trans_region_local = this->tensor(shape, input->type, input->buf);
     Tensor *trans_region_remote = this->tensor(shape, input->type, input->buf);
-    MscclppGatherFromPeersOp op{pt,
+    MsllGatherFromPeersOp op{pt,
                                 input,
                                 trans_region_local,
                                 remote_bufs,
@@ -115,7 +115,7 @@ Tensor *Model::gather_from_peers_mscclpp(Tensor *input, int sid, int npeers,
     return this->impl->add_op(op)[1];
 }
 
-Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id,
+Tensor *Model::local_all_gather_msll(Tensor *input, int gpu_id,
                                         int ngpus_per_node,
                                         const std::string &name) {
     assert(input != nullptr);
@@ -129,19 +129,19 @@ Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id,
     }
     int npeers = ngpus_per_node - 1;
     int id = this->impl->next_eid;
-    LOG(DEBUG, "local_all_gather_mscclpp ", input->shape, " ", gpu_id, " ", id,
+    LOG(DEBUG, "local_all_gather_msll ", input->shape, " ", gpu_id, " ", id,
         " ", ngpus_per_node, " ", ngpus_per_node, " ");
-    Tensor *tensor = this->device_sync_mscclpp(input, ngpus_per_node);
+    Tensor *tensor = this->device_sync_msll(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
     size_t bytes_per_chunk = tensor->shape_bytes() / ngpus_per_node;
-    Tensor *out = this->gather_from_peers_mscclpp(tensor, id, npeers,
+    Tensor *out = this->gather_from_peers_msll(tensor, id, npeers,
                                                   bytes_per_chunk, name);
     this->impl->next_eid += 1;
     return out;
 }
 
-const OpConfigMap MscclppGatherFromPeersConfigMap = {
+const OpConfigMap MsllGatherFromPeersConfigMap = {
     {{OP_ARCH_CUDA_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       // TODO: The config for 32MB elements, need to update for other message

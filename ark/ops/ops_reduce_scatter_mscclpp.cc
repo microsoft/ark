@@ -8,22 +8,22 @@
 
 namespace ark {
 
-extern const OpConfigMap MscclppReadAndReduceConfigMap;
+extern const OpConfigMap MsllReadAndReduceConfigMap;
 constexpr int MAX_PEER_NUM = 7;
 
 // currently only support in single node
-MscclppReadAndReduceOp::MscclppReadAndReduceOp(
+MsllReadAndReduceOp::MsllReadAndReduceOp(
     const std::string &prec_type, Tensor *local_buf, Tensor *cal_region_local,
     std::vector<Tensor *> remote_bufs, int sid, int rank, int npeers,
     size_t offset, size_t bytes, const std::string &name)
-    : Op(OP_READ_AND_REDUCE_MSCCLPP, prec_type, {local_buf},
+    : Op(OP_READ_AND_REDUCE_MSLL, prec_type, {local_buf},
          {cal_region_local, local_buf}, {{rank, npeers, sid, offset, bytes}},
-         name, &MscclppReadAndReduceConfigMap, -1, true) {
+         name, &MsllReadAndReduceConfigMap, -1, true) {
     this->inputs.insert(this->inputs.end(), remote_bufs.begin(),
                         remote_bufs.end());
 }
 
-std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
+std::string MsllReadAndReduceOp::function_name(const OpConfig &cfg) const {
     Tensor *dst_buff = this->outputs[0];
     CHECK(dst_buff->is_sequential());
 
@@ -45,7 +45,7 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
                        static_cast<long long>(bytes) / dst_buff->type_bytes()};
     Dims dims = dst_buff->ldims.dims4();
 
-    return Op::function_name("ark::comm::read_and_reduce_mscclpp",
+    return Op::function_name("ark::comm::read_and_reduce_msll",
                              {{dims,                // Dims
                                shape_dims,          // Shape
                                unit_out_dims,       // UnitOutDims
@@ -53,7 +53,7 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
                                peer_rank, rank, offset, bytes}});
 }
 
-OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
+OpArgs MsllReadAndReduceOp::function_call_args(const OpConfig &) const {
     int rank;
     int npeers;
     this->args.get(&rank, 0);
@@ -66,7 +66,7 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
     CHECK(local_buff->buf != nullptr);
 
     OpArgs opargs;
-    // read_and_redcue_mscclpp(dst_offset, src_offset...)
+    // read_and_redcue_msll(dst_offset, src_offset...)
     opargs.put((size_t)(local_buff->buf->get_buf_offset() +
                         local_buff->offset_bytes()));
     for (int i = 0; i < MAX_PEER_NUM; i++) {
@@ -82,10 +82,10 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
     return opargs;
 }
 
-Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
+Tensor *Model::read_and_reduce_msll(Tensor *input, int sid, int npeers,
                                        size_t offset, size_t bytes,
                                        const std::string &name) {
-    LOG(DEBUG, "read_and_reduce_mscclpp ", input->shape, " npeers ", npeers);
+    LOG(DEBUG, "read_and_reduce_msll ", input->shape, " npeers ", npeers);
     input->exported = true;
 
     int rank = this->impl->rank;
@@ -104,7 +104,7 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
     // These two tensors are not actually used, just give hint to scheduler to
     // split to correct tiles
     Tensor *cal_region_local = this->tensor(shape, input->type, input->buf);
-    MscclppReadAndReduceOp op{pt,
+    MsllReadAndReduceOp op{pt,
                               input,
                               cal_region_local,
                               remote_bufs,
@@ -117,7 +117,7 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
     return this->impl->add_op(op)[1];
 }
 
-Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
+Tensor *Model::local_reduce_scatter_msll(Tensor *input, int gpu_id,
                                             int ngpus_per_node,
                                             const std::string &name) {
     assert(input != nullptr);
@@ -131,19 +131,19 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
     }
     int npeers = ngpus_per_node - 1;
     int id = this->impl->next_eid;
-    LOG(DEBUG, "local_reduce_scatter_mscclpp ", input->shape, " ", gpu_id, " ",
+    LOG(DEBUG, "local_reduce_scatter_msll ", input->shape, " ", gpu_id, " ",
         id, " ", ngpus_per_node, " ", ngpus_per_node, " ");
-    Tensor *tensor = this->device_sync_mscclpp(input, ngpus_per_node);
+    Tensor *tensor = this->device_sync_msll(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
     size_t bytes_per_peer = tensor->shape_bytes() / ngpus_per_node;
-    Tensor *output = this->read_and_reduce_mscclpp(
+    Tensor *output = this->read_and_reduce_msll(
         tensor, id, npeers, bytes_per_peer * gpu_id, bytes_per_peer, name);
     this->impl->next_eid += 1;
     return output;
 }
 
-const OpConfigMap MscclppReadAndReduceConfigMap = {
+const OpConfigMap MsllReadAndReduceConfigMap = {
     {{OP_ARCH_CUDA_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       // TODO: The config for 32MB elements, need to update for other message

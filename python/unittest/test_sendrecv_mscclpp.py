@@ -22,10 +22,10 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     input_tensor = ark.tensor([tensor_len], ark.fp16)
     output_tensor = ark.tensor([tensor_len], ark.fp16)
     if rank == 0:
-        ark.send_mscclpp(input_tensor, 0, 1, tensor_size)
-        ark.send_done_mscclpp(input_tensor, 1)
+        ark.send_msll(input_tensor, 0, 1, tensor_size)
+        ark.send_done_msll(input_tensor, 1)
     if rank == 1:
-        output_tensor = ark.recv_mscclpp(0, 0, 0, output_tensor)
+        output_tensor = ark.recv_msll(0, 0, 0, output_tensor)
 
     runtime.launch()
     if rank == 0:
@@ -86,9 +86,9 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
 
     send_tensor = ark.tensor([tensor_len], ark.fp16)
     recv_tensor = ark.tensor([tensor_len], ark.fp16)
-    ark.send_mscclpp(send_tensor, rank, other_rank, tensor_size)
-    ark.send_done_mscclpp(send_tensor, other_rank)
-    ark.recv_mscclpp(other_rank, other_rank, 0, recv_tensor)
+    ark.send_msll(send_tensor, rank, other_rank, tensor_size)
+    ark.send_done_msll(send_tensor, other_rank)
+    ark.recv_msll(other_rank, other_rank, 0, recv_tensor)
 
     runtime.launch()
     send_tensor.from_numpy(np_inputs[rank])
@@ -141,7 +141,7 @@ def sendrecv_test_bi_dir():
         process.join()
 
 
-class SendRecvMscclppTest(unittest.TestCase):
+class SendRecvMsllTest(unittest.TestCase):
     def test_sendrecv_one_dir(self):
         sendrecv_test_one_dir()
 
@@ -150,5 +150,5 @@ class SendRecvMscclppTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.environ["ARK_USE_MSCCLPP"] = "1"
+    os.environ["ARK_USE_MSLL"] = "1"
     unittest.main()

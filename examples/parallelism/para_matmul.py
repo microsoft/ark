@@ -19,7 +19,7 @@ def main(rank, mat_b_data):
         assert mat_a_part0.shape == [128, C_DIM]
         assert mat_a_part1.shape == [128, C_DIM]
 
-        send_tensor = ark.send_mscclpp(
+        send_tensor = ark.send_msll(
             mat_a_part1, sid=0, dst_rank=1, bytes=mat_a_part1.shape_bytes()
         )
         mat_a_part0 = ark.identity(mat_a_part0, [send_tensor])
@@ -32,27 +32,27 @@ def main(rank, mat_b_data):
         matmul_part0 = ark.matmul(mat_a_part0, mat_b, output=output_part0)
         output_part1 = ark.identity(output_part1, [matmul_part0])
 
-        recv_tensor = ark.recv_mscclpp(
+        recv_tensor = ark.recv_msll(
             output_part1, sid=1, src_rank=1, bytes=output_part1.shape_bytes()
         )
         send_tensor = ark.identity(send_tensor, [recv_tensor])
-        send_done_tensor = ark.send_done_mscclpp(send_tensor, dst_rank=1)
+        send_done_tensor = ark.send_done_msll(send_tensor, dst_rank=1)
 
         mat_c = ark.matmul(mat_a, mat_b)
     else:
         mat_a_part1 = ark.tensor([128, C_DIM], ark.FP16)
         mat_b = ark.tensor([C_DIM, C_DIM], ark.FP16)
 
-        recv_tensor = ark.recv_mscclpp(
+        recv_tensor = ark.recv_msll(
             mat_a_part1, sid=0, src_rank=0, bytes=mat_a_part1.shape_bytes()
         )
         mat_a_part1 = ark.identity(mat_a_part1, [recv_tensor])
         matmul_part1 = ark.matmul(mat_a_part1, mat_b)
 
-        send_tensor = ark.send_mscclpp(
+        send_tensor = ark.send_msll(
             matmul_part1, sid=1, dst_rank=0, bytes=matmul_part1.shape_bytes()
         )
-        send_done_tensor = ark.send_done_mscclpp(send_tensor, dst_rank=0)
+        send_done_tensor = ark.send_done_msll(send_tensor, dst_rank=0)
 
     rt.launch()
 

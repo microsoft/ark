@@ -112,18 +112,18 @@ ostream &operator<<(ostream &os, const OpType &s) {
     case OP_GELU:          os << "OP_GELU";          break;
     case OP_EXP:           os << "OP_EXP";           break;
     case OP_SQRT:          os << "OP_SQRT";          break;
-    case OP_SEND_MSCCLPP:      os << "OP_SEND_MSCCLPP";  break;
-    case OP_SEND_DONE_MSCCLPP: os << "OP_SEND_DONE_MSCCLPP"; break;
-    case OP_RECV_MSCCLPP:      os << "OP_RECV_MSCCLPP";  break;
+    case OP_SEND_MSLL:      os << "OP_SEND_MSLL";  break;
+    case OP_SEND_DONE_MSLL: os << "OP_SEND_DONE_MSLL"; break;
+    case OP_RECV_MSLL:      os << "OP_RECV_MSLL";  break;
     case OP_ROPE:          os << "OP_ROPE";          break;
     case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
     case OP_CAST:          os << "OP_CAST";          break;
-    case OP_DEVICE_SYNC_MSCCLPP:       os << "OP_DEVICE_SYNC_MSCCLPP";       break;
-    case OP_READ_AND_REDUCE_MSCCLPP:   os << "OP_READ_AND_REDUCE_MSCCLPP";   break;
-    case OP_GATHER_FROM_PEERS_MSCCLPP: os << "OP_GATHER_FROM_PEERS_MSCCLPP"; break;
-    case OP_PUT_PACKET_MSCCLPP:        os << "OP_PUT_PACKET_MSCCLPP";        break;
-    case OP_REDUCE_AND_WRITE_PACKET_MSCCLPP: os << "OP_REDUCE_AND_WRITE_PACKET_MSCCLPP"; break;
-    case OP_GET_FROM_PACKET_MSCCLPP:  os << "OP_GET_FROM_PACKET_MSCCLPP";   break;
+    case OP_DEVICE_SYNC_MSLL:       os << "OP_DEVICE_SYNC_MSLL";       break;
+    case OP_READ_AND_REDUCE_MSLL:   os << "OP_READ_AND_REDUCE_MSLL";   break;
+    case OP_GATHER_FROM_PEERS_MSLL: os << "OP_GATHER_FROM_PEERS_MSLL"; break;
+    case OP_PUT_PACKET_MSLL:        os << "OP_PUT_PACKET_MSLL";        break;
+    case OP_REDUCE_AND_WRITE_PACKET_MSLL: os << "OP_REDUCE_AND_WRITE_PACKET_MSLL"; break;
+    case OP_GET_FROM_PACKET_MSLL:  os << "OP_GET_FROM_PACKET_MSLL";   break;
     }
     // clang-format on
     return os;
@@ -460,13 +460,13 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const RecvOp *>(this)->function_name(cfg);
         case OP_RECV_MM:
             return static_cast<const RecvMMOp *>(this)->function_name(cfg);
-        case OP_SEND_MSCCLPP:
-            return static_cast<const MscclppSendOp *>(this)->function_name(cfg);
-        case OP_SEND_DONE_MSCCLPP:
-            return static_cast<const MscclppSendDoneOp *>(this)->function_name(
+        case OP_SEND_MSLL:
+            return static_cast<const MsllSendOp *>(this)->function_name(cfg);
+        case OP_SEND_DONE_MSLL:
+            return static_cast<const MsllSendDoneOp *>(this)->function_name(
                 cfg);
-        case OP_RECV_MSCCLPP:
-            return static_cast<const MscclppRecvOp *>(this)->function_name(cfg);
+        case OP_RECV_MSLL:
+            return static_cast<const MsllRecvOp *>(this)->function_name(cfg);
         case OP_LAYERNORM:
             return static_cast<const LayernormOp *>(this)->function_name(cfg);
         case OP_RMSNORM:
@@ -489,23 +489,23 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
         case OP_CAST:
             return static_cast<const CastOp *>(this)->function_name(cfg);
-        case OP_DEVICE_SYNC_MSCCLPP:
-            return static_cast<const MscclppDeviceSyncOp *>(this)
+        case OP_DEVICE_SYNC_MSLL:
+            return static_cast<const MsllDeviceSyncOp *>(this)
                 ->function_name(cfg);
-        case OP_READ_AND_REDUCE_MSCCLPP:
-            return static_cast<const MscclppReadAndReduceOp *>(this)
+        case OP_READ_AND_REDUCE_MSLL:
+            return static_cast<const MsllReadAndReduceOp *>(this)
                 ->function_name(cfg);
-        case OP_GATHER_FROM_PEERS_MSCCLPP:
-            return static_cast<const MscclppGatherFromPeersOp *>(this)
+        case OP_GATHER_FROM_PEERS_MSLL:
+            return static_cast<const MsllGatherFromPeersOp *>(this)
                 ->function_name(cfg);
-        case OP_PUT_PACKET_MSCCLPP:
-            return static_cast<const MscclppPutPacketOp *>(this)->function_name(
+        case OP_PUT_PACKET_MSLL:
+            return static_cast<const MsllPutPacketOp *>(this)->function_name(
                 cfg);
-        case OP_REDUCE_AND_WRITE_PACKET_MSCCLPP:
-            return static_cast<const MscclppReduceAndWritePacketOp *>(this)
+        case OP_REDUCE_AND_WRITE_PACKET_MSLL:
+            return static_cast<const MsllReduceAndWritePacketOp *>(this)
                 ->function_name(cfg);
-        case OP_GET_FROM_PACKET_MSCCLPP:
-            return static_cast<const MscclppGetFromPacketOp *>(this)
+        case OP_GET_FROM_PACKET_MSLL:
+            return static_cast<const MsllGetFromPacketOp *>(this)
                 ->function_name(cfg);
         default:
             LOG(ERROR, "invalid op type ", this->type);
@@ -530,32 +530,32 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const {
             return static_cast<const SendMMOp *>(this)->function_call_args(cfg);
         case OP_RECV_MM:
             return static_cast<const RecvMMOp *>(this)->function_call_args(cfg);
-        case OP_SEND_MSCCLPP:
-            return static_cast<const MscclppSendOp *>(this)->function_call_args(
+        case OP_SEND_MSLL:
+            return static_cast<const MsllSendOp *>(this)->function_call_args(
                 cfg);
-        case OP_SEND_DONE_MSCCLPP:
-            return static_cast<const MscclppSendDoneOp *>(this)
+        case OP_SEND_DONE_MSLL:
+            return static_cast<const MsllSendDoneOp *>(this)
                 ->function_call_args(cfg);
-        case OP_RECV_MSCCLPP:
-            return static_cast<const MscclppRecvOp *>(this)->function_call_args(
+        case OP_RECV_MSLL:
+            return static_cast<const MsllRecvOp *>(this)->function_call_args(
                 cfg);
-        case OP_DEVICE_SYNC_MSCCLPP:
-            return static_cast<const MscclppDeviceSyncOp *>(this)
+        case OP_DEVICE_SYNC_MSLL:
+            return static_cast<const MsllDeviceSyncOp *>(this)
                 ->function_call_args(cfg);
-        case OP_READ_AND_REDUCE_MSCCLPP:
-            return static_cast<const MscclppReadAndReduceOp *>(this)
+        case OP_READ_AND_REDUCE_MSLL:
+            return static_cast<const MsllReadAndReduceOp *>(this)
                 ->function_call_args(cfg);
-        case OP_GATHER_FROM_PEERS_MSCCLPP:
-            return static_cast<const MscclppGatherFromPeersOp *>(this)
+        case OP_GATHER_FROM_PEERS_MSLL:
+            return static_cast<const MsllGatherFromPeersOp *>(this)
                 ->function_call_args(cfg);
-        case OP_PUT_PACKET_MSCCLPP:
-            return static_cast<const MscclppPutPacketOp *>(this)
+        case OP_PUT_PACKET_MSLL:
+            return static_cast<const MsllPutPacketOp *>(this)
                 ->function_call_args(cfg);
-        case OP_REDUCE_AND_WRITE_PACKET_MSCCLPP:
-            return static_cast<const MscclppReduceAndWritePacketOp *>(this)
+        case OP_REDUCE_AND_WRITE_PACKET_MSLL:
+            return static_cast<const MsllReduceAndWritePacketOp *>(this)
                 ->function_call_args(cfg);
-        case OP_GET_FROM_PACKET_MSCCLPP:
-            return static_cast<const MscclppGetFromPacketOp *>(this)
+        case OP_GET_FROM_PACKET_MSLL:
+            return static_cast<const MsllGetFromPacketOp *>(this)
                 ->function_call_args(cfg);
         default:
             OpArgs opargs;
@@ -618,10 +618,10 @@ bool Op::is_comm() const {
     // NOTE: we treat OP_SEND_MM and OP_RECV_MM as computation as
     // they run over GPU threads.
     return this->type == OP_SEND || this->type == OP_SEND_DONE ||
-           this->type == OP_RECV || this->type == OP_SEND_MSCCLPP ||
-           this->type == OP_SEND_DONE_MSCCLPP ||
-           this->type == OP_RECV_MSCCLPP ||
-           this->type == OP_DEVICE_SYNC_MSCCLPP;
+           this->type == OP_RECV || this->type == OP_SEND_MSLL ||
+           this->type == OP_SEND_DONE_MSLL ||
+           this->type == OP_RECV_MSLL ||
+           this->type == OP_DEVICE_SYNC_MSLL;
 }
 
 bool operator<(const Op &op1, const Op &op2) {

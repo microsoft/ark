@@ -4,46 +4,46 @@
 # Find the MSCCL++ libraries
 #
 # The following variables are optionally searched for defaults
-#  MSCCLPP_ROOT_DIR: Base directory where all mscclpp components are found
-#  MSCCLPP_INCLUDE_DIR: Directory where mscclpp headers are found
-#  MSCCLPP_LIB_DIR: Directory where mscclpp libraries are found
+#  MSLL_ROOT_DIR: Base directory where all msll components are found
+#  MSLL_INCLUDE_DIR: Directory where msll headers are found
+#  MSLL_LIB_DIR: Directory where msll libraries are found
 
 # The following are set after configuration is done:
-#  MSCCLPP_FOUND
-#  MSCCLPP_INCLUDE_DIRS
-#  MSCCLPP_LIBRARIES
+#  MSLL_FOUND
+#  MSLL_INCLUDE_DIRS
+#  MSLL_LIBRARIES
 
-# An imported target ARK::mscclpp is created if the library is found.
+# An imported target ARK::msll is created if the library is found.
 
-find_path(MSCCLPP_INCLUDE_DIRS
-    NAMES mscclpp/core.hpp
+find_path(MSLL_INCLUDE_DIRS
+    NAMES msll/core.hpp
     HINTS
-    ${MSCCLPP_INCLUDE_DIR}
-    ${MSCCLPP_ROOT_DIR}
-    ${MSCCLPP_ROOT_DIR}/include
-    /usr/local/mscclpp/include
+    ${MSLL_INCLUDE_DIR}
+    ${MSLL_ROOT_DIR}
+    ${MSLL_ROOT_DIR}/include
+    /usr/local/msll/include
 )
 
-find_library(MSCCLPP_LIBRARIES
-    NAMES mscclpp
+find_library(MSLL_LIBRARIES
+    NAMES msll
     HINTS
-    ${MSCCLPP_LIB_DIR}
-    ${MSCCLPP_ROOT_DIR}
-    ${MSCCLPP_ROOT_DIR}/lib
-    /usr/local/mscclpp/lib
+    ${MSLL_LIB_DIR}
+    ${MSLL_ROOT_DIR}
+    ${MSLL_ROOT_DIR}/lib
+    /usr/local/msll/lib
 )
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(MSCCLPP DEFAULT_MSG MSCCLPP_INCLUDE_DIRS MSCCLPP_LIBRARIES)
-mark_as_advanced(MSCCLPP_INCLUDE_DIR MSCCLPP_LIBRARIES)
+find_package_handle_standard_args(MSLL DEFAULT_MSG MSLL_INCLUDE_DIRS MSLL_LIBRARIES)
+mark_as_advanced(MSLL_INCLUDE_DIR MSLL_LIBRARIES)
 
-if(MSCCLPP_FOUND)
-    if(NOT TARGET ARK::mscclpp)
-        add_library(ARK::mscclpp UNKNOWN IMPORTED)
+if(MSLL_FOUND)
+    if(NOT TARGET ARK::msll)
+        add_library(ARK::msll UNKNOWN IMPORTED)
     endif()
-    set_target_properties(ARK::mscclpp PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${MSCCLPP_INCLUDE_DIR}"
+    set_target_properties(ARK::msll PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${MSLL_INCLUDE_DIR}"
         IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
-        IMPORTED_LOCATION "${MSCCLPP_LIBRARIES}"
+        IMPORTED_LOCATION "${MSLL_LIBRARIES}"
     )
 endif()

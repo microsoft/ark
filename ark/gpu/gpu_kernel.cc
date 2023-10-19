@@ -318,9 +318,9 @@ void GpuLoopKernel::load() {
                 " data_buf_value=", data_buf_value);
             CULOG(cuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
-#ifdef ARK_USE_MSCCLPP
+#ifdef ARK_USE_MSLL
         GpuCommSw *comm = this->ctx->get_comm_sw();
-        if (get_env().use_mscclpp && comm->get_proxy_channels_num() > 0) {
+        if (get_env().use_msll && comm->get_proxy_channels_num() > 0) {
             GpuPtr channel_addr;
             CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
                                     "_ARK_PROXY_CHANS"));
@@ -328,7 +328,7 @@ void GpuLoopKernel::load() {
             size_t chans_bytes = comm->get_proxy_channels_bytes();
             CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
         }
-        if (get_env().use_mscclpp && comm->get_sm_channels_num() > 0) {
+        if (get_env().use_msll && comm->get_sm_channels_num() > 0) {
             GpuPtr channel_addr;
             CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
                                     "_ARK_SM_CHANS"));
@@ -336,7 +336,7 @@ void GpuLoopKernel::load() {
             size_t chans_bytes = comm->get_sm_channels_bytes();
             CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
         }
-#endif // ARK_USE_MSCCLPP
+#endif // ARK_USE_MSLL
     }
 }
 

@@ -793,12 +793,12 @@ def recv_mm(
 
 
 @register_op
-def send_mscclpp(
+def send_msll(
     input: Tensor,
     sid: int,
     dst_rank: int,
     bytes: int = 0,
-    name: str = "send_mscclpp",
+    name: str = "send_msll",
 ) -> Tensor:
     """
     Sends a tensor to a destination GPU (`dst_rank`). Multiple
@@ -813,7 +813,7 @@ def send_mscclpp(
     # on GPU1:
     ark.recv(1, 0, 0, tensor_recv)
     """
-    _tensor = Model.get_model().send_mscclpp(
+    _tensor = Model.get_model().send_msll(
         input._tensor,
         sid,
         dst_rank,
@@ -824,16 +824,16 @@ def send_mscclpp(
 
 
 @register_op
-def send_done_mscclpp(
+def send_done_msll(
     input: Tensor,
     dst_rank: int,
-    name: str = "send_done_mscclpp",
+    name: str = "send_done_msll",
 ) -> Tensor:
     """
     Blocks the execution until the corresponding 'send' operator
     with the specified `id` is completed.
     """
-    _tensor = Model.get_model().send_done_mscclpp(
+    _tensor = Model.get_model().send_done_msll(
         input._tensor,
         dst_rank,
         name,
@@ -842,7 +842,7 @@ def send_done_mscclpp(
 
 
 @register_op
-def recv_mscclpp(
+def recv_msll(
     sid: int,
     src_rank: int,
     bytes: int,
@@ -856,7 +856,7 @@ def recv_mscclpp(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().recv_mscclpp(
+    _tensor = Model.get_model().recv_msll(
         sid,
         src_rank,
         bytes,
@@ -909,19 +909,19 @@ def all_gather(
 
 
 @register_op
-def local_all_gather_mscclpp(input: Tensor,
+def local_all_gather_msll(input: Tensor,
     rank: int,
     ranks_per_node: int,
-    name: str = "local_all_gather_mscclpp",) -> Tensor:
+    name: str = "local_all_gather_msll",) -> Tensor:
     """
     Performs an all-gather operator across local node GPUs.
     Usage:
     # all-gather
     ark.init(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.fp16)
-    allgather_result = ark.local_all_gather_mscclpp(input_tensor, rank, ranks_per_node)
+    allgather_result = ark.local_all_gather_msll(input_tensor, rank, ranks_per_node)
     """
-    _tensor = Model.get_model().local_all_gather_mscclpp(
+    _tensor = Model.get_model().local_all_gather_msll(
         input._tensor,
         rank,
         ranks_per_node,
@@ -931,19 +931,19 @@ def local_all_gather_mscclpp(input: Tensor,
 
 
 @register_op
-def local_reduce_scatter_mscclpp(input: Tensor,
+def local_reduce_scatter_msll(input: Tensor,
     rank: int,
     ranks_per_node: int,
-    name: str = "local_reduce_scatter_mscclpp",) -> Tensor:
+    name: str = "local_reduce_scatter_msll",) -> Tensor:
     """
     Performs an reduce-scatter operator across local node GPUs.
     Usage:
     # reduce-scatter
     ark.init(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.fp16)
-    reduce_scatter_result = ark.local_reduce_scatter_mscclpp(input_tensor, rank, ranks_per_node)
+    reduce_scatter_result = ark.local_reduce_scatter_msll(input_tensor, rank, ranks_per_node)
     """
-    _tensor = Model.get_model().local_reduce_scatter_mscclpp(
+    _tensor = Model.get_model().local_reduce_scatter_msll(
         input._tensor,
         rank,
         ranks_per_node,
@@ -982,11 +982,11 @@ def all_reduce(
 
 
 @register_op
-def local_all_reduce_mscclpp(
+def local_all_reduce_msll(
     input: Tensor,
     rank: int,
     ranks_per_node: int,
-    name: str = "local_all_reduce_mscclpp",
+    name: str = "local_all_reduce_msll",
 ) -> Tensor:
     """
     Performs an all-reduce operator across local GPUs, aggregating the
@@ -995,9 +995,9 @@ def local_all_reduce_mscclpp(
     Usage:
     ark.init(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.fp16)
-    allreduce_result = ark.local_all_reduce_mscclpp(input_tensor, rank, ranks_per_node)
+    allreduce_result = ark.local_all_reduce_msll(input_tensor, rank, ranks_per_node)
     """
-    _tensor = Model.get_model().local_all_reduce_mscclpp(
+    _tensor = Model.get_model().local_all_reduce_msll(
         input._tensor,
         rank,
         ranks_per_node,
@@ -1007,11 +1007,11 @@ def local_all_reduce_mscclpp(
 
 
 @register_op
-def local_all_reduce_packet_mscclpp(
+def local_all_reduce_packet_msll(
     input: Tensor,
     rank: int,
     ranks_per_node: int,
-    name: str = "local_all_reduce_mscclpp",
+    name: str = "local_all_reduce_msll",
 ) -> Tensor:
     """
     Performs an all-reduce operator across local GPUs with LL algo, aggregating the
@@ -1020,9 +1020,9 @@ def local_all_reduce_packet_mscclpp(
     Usage:
     ark.init(rank, world_size)
     input_tensor = ark.tensor([tensor_len], ark.fp16)
-    allreduce_result = ark.local_all_reduce_packet_mscclpp(input_tensor, rank, ranks_per_node)
+    allreduce_result = ark.local_all_reduce_packet_msll(input_tensor, rank, ranks_per_node)
     """
-    _tensor = Model.get_model().local_all_reduce_packet_mscclpp(
+    _tensor = Model.get_model().local_all_reduce_packet_msll(
         input._tensor,
         rank,
         ranks_per_node,

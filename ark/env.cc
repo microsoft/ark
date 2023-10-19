@@ -17,9 +17,9 @@ using namespace std;
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
-#define DEFAULT_ARK_USE_MSCCLPP false
-#define DEFAULT_ARK_MSCCLPP_INCLUDE_DIR "/usr/local/mscclpp/include"
-#define DEFAULT_ARK_MSCCLPP_PORT 50051
+#define DEFAULT_ARK_USE_MSLL false
+#define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
+#define DEFAULT_ARK_MSLL_PORT 50051
 
 namespace ark {
 
@@ -105,28 +105,28 @@ Env::Env() {
     } else {
         this->shm_name_prefix = shm_name_prefix_ca;
     }
-    // If `ARK_USE_MSCCLPP=1`, we use MSCCL++.
-    const char *use_mscclpp_ca = getenv("ARK_USE_MSCCLPP");
-    if (use_mscclpp_ca == nullptr) {
-        this->use_mscclpp = DEFAULT_ARK_USE_MSCCLPP;
-    } else if (strncmp(use_mscclpp_ca, "1", 2) == 0) {
-        this->use_mscclpp = true;
+    // If `ARK_USE_MSLL=1`, we use MSCCL++.
+    const char *use_msll_ca = getenv("ARK_USE_MSLL");
+    if (use_msll_ca == nullptr) {
+        this->use_msll = DEFAULT_ARK_USE_MSLL;
+    } else if (strncmp(use_msll_ca, "1", 2) == 0) {
+        this->use_msll = true;
     } else {
-        this->use_mscclpp = false;
+        this->use_msll = false;
     }
     // Get the MSCCL++ include directory path.
-    const char *mscclpp_include_dir_ca = getenv("ARK_MSCCLPP_INCLUDE_DIR");
-    if (mscclpp_include_dir_ca == nullptr) {
-        this->mscclpp_include_dir = DEFAULT_ARK_MSCCLPP_INCLUDE_DIR;
+    const char *msll_include_dir_ca = getenv("ARK_MSLL_INCLUDE_DIR");
+    if (msll_include_dir_ca == nullptr) {
+        this->msll_include_dir = DEFAULT_ARK_MSLL_INCLUDE_DIR;
     } else {
-        this->mscclpp_include_dir = mscclpp_include_dir_ca;
+        this->msll_include_dir = msll_include_dir_ca;
     }
     // Get the port number of MSCCL++.
-    const char *mscclpp_port_ca = getenv("ARK_MSCCLPP_PORT");
-    if (mscclpp_port_ca == nullptr) {
-        this->mscclpp_port = DEFAULT_ARK_MSCCLPP_PORT;
+    const char *msll_port_ca = getenv("ARK_MSLL_PORT");
+    if (msll_port_ca == nullptr) {
+        this->msll_port = DEFAULT_ARK_MSLL_PORT;
     } else {
-        this->mscclpp_port = atoi(mscclpp_port_ca);
+        this->msll_port = atoi(msll_port_ca);
     }
 }
 

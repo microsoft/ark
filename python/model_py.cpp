@@ -209,7 +209,7 @@ void register_model(py::module &m) {
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv_mm")
-        .def("send_mscclpp", &ark::Model::send_mscclpp,
+        .def("send_msll", &ark::Model::send_msll,
              "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "
              "required to distinguish the tensor. Each 'send' operator must "
@@ -217,28 +217,28 @@ void register_model(py::module &m) {
              "another GPU's model.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("sid"), py::arg("dst_rank"), py::arg("bytes") = 0,
-             py::arg("name") = "send_mscclpp")
-        .def("send_done_mscclpp", &ark::Model::send_done_mscclpp, "",
+             py::arg("name") = "send_msll")
+        .def("send_done_msll", &ark::Model::send_done_msll, "",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("dst_rank"), py::arg("name") = "send_done_mscclpp")
-        .def("recv_mscclpp", &ark::Model::recv_mscclpp,
+             py::arg("dst_rank"), py::arg("name") = "send_done_msll")
+        .def("recv_msll", &ark::Model::recv_msll,
              "Receives a tensor from a source GPU (`src_rank`), identified by "
              "the `id` parameter. Blocks the execution until the corresponding "
              "'recv' operator is completed.",
              py::return_value_policy::reference_internal, py::arg("sid"),
              py::arg("src_rank"), py::arg("bytes"), py::arg("output") = nullptr,
-             py::arg("name") = "recv_mscclpp")
+             py::arg("name") = "recv_msll")
         .def("all_gather", &ark::Model::all_gather,
              "Performs an all-gather operator across all GPUs",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
              py::arg("output") = std::vector<ark::Tensor *>(),
              py::arg("name") = "all_gather")
-        .def("local_all_gather_mscclpp", &ark::Model::local_all_gather_mscclpp,
+        .def("local_all_gather_msll", &ark::Model::local_all_gather_msll,
              "Performs an all-gather operator across all GPUs",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("ngpus_per_node"),
-             py::arg("name") = "local_all_gather_mscclpp")
+             py::arg("name") = "local_all_gather_msll")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current "
@@ -247,30 +247,30 @@ void register_model(py::module &m) {
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output") = nullptr,
              py::arg("name") = "all_reduce")
-        .def("local_all_reduce_mscclpp", &ark::Model::local_all_reduce_mscclpp,
+        .def("local_all_reduce_msll", &ark::Model::local_all_reduce_msll,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
-             py::arg("name") = "local_all_reduce_mscclpp")
-        .def("local_reduce_scatter_mscclpp", &ark::Model::local_reduce_scatter_mscclpp,
+             py::arg("name") = "local_all_reduce_msll")
+        .def("local_reduce_scatter_msll", &ark::Model::local_reduce_scatter_msll,
              "Performs a reduce-scatter operator across all GPUs in a node, aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
-             py::arg("name") = "local_all_reduce_mscclpp")
-        .def("local_all_reduce_packet_mscclpp", &ark::Model::local_all_reduce_packet_mscclpp,
+             py::arg("name") = "local_all_reduce_msll")
+        .def("local_all_reduce_packet_msll", &ark::Model::local_all_reduce_packet_msll,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
-             py::arg("name") = "local_all_reduce_packet_mscclpp")
+             py::arg("name") = "local_all_reduce_packet_msll")
         .def("embedding", &ark::Model::embedding, "Embedding layer.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("weight"), py::arg("output") = nullptr,

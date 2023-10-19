@@ -249,9 +249,9 @@ const string gpu_compile(const vector<string> &codes,
                         << "--define-macro=ARK_COMM_SW=1 ";
             include_args << "-I" << ark_root << "/include "
                          << "-I" << ark_root << "/include/kernels ";
-            if (get_env().use_mscclpp) {
-                define_args << "-DARK_USE_MSCCLPP=1 ";
-                include_args << "-I" << get_env().mscclpp_include_dir << " ";
+            if (get_env().use_msll) {
+                define_args << "-DARK_USE_MSLL=1 ";
+                include_args << "-I" << get_env().msll_include_dir << " ";
             }
             exec_cmd << "-ccbin g++ -std c++17 -lcuda "
                 << define_args.str() << include_args.str() <<

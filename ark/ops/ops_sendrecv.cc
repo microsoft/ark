@@ -105,8 +105,8 @@ OpArgs RecvOp::function_call_args(const OpConfig &) const { return {}; }
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
                     const std::string &name)
 {
-    if (get_env().use_mscclpp) {
-        return this->send_mscclpp(input, id, dst_rank, bytes, name);
+    if (get_env().use_msll) {
+        return this->send_msll(input, id, dst_rank, bytes, name);
     }
     size_t max_bytes = input->shape_bytes();
     if (max_bytes < bytes) {
@@ -123,8 +123,8 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
 //
 Tensor *Model::send_done(Tensor *input, int id, int dst_rank,
                          const std::string &name) {
-    if (get_env().use_mscclpp) {
-        return this->send_done_mscclpp(input, dst_rank, name);
+    if (get_env().use_msll) {
+        return this->send_done_msll(input, dst_rank, name);
     }
     SendDoneOp op{"none", input, id, this->impl->rank, dst_rank, name};
     return this->impl->add_op(op)[0];
@@ -147,8 +147,8 @@ Tensor *Model::recv(int id, int src_rank, size_t bytes, Tensor *output,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    if (get_env().use_mscclpp) {
-        return this->recv_mscclpp(id, src_rank, bytes, output, name);
+    if (get_env().use_msll) {
+        return this->recv_msll(id, src_rank, bytes, output, name);
     }
     RecvOp op{"none", output, id, this->impl->rank, src_rank, bytes, name};
     return this->impl->add_op(op)[0];

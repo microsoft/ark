@@ -36,11 +36,11 @@ struct Env {
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
     // Use MSCCL++.
-    bool use_mscclpp;
+    bool use_msll;
     // MSCCL++ include directory path.
-    std::string mscclpp_include_dir;
+    std::string msll_include_dir;
     // MSCCL++ bootstrap port.
-    int mscclpp_port;
+    int msll_port;
 };
 
 // Get the global Env.

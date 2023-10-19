@@ -7,8 +7,8 @@ file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 
 set(COMMON_LIBS CUDA::cuda_driver CUDA::nvml ARK::numa ARK::ibverbs pthread rt)
-if (USE_MSCCLPP)
-    set(COMMON_LIBS ${COMMON_LIBS} ARK::mscclpp)
+if (USE_MSLL)
+    set(COMMON_LIBS ${COMMON_LIBS} ARK::msll)
 endif()
 
 # ARK object
@@ -22,12 +22,12 @@ target_include_directories(ark_obj SYSTEM PRIVATE
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
 )
-if (USE_MSCCLPP)
+if (USE_MSLL)
     target_include_directories(ark_obj SYSTEM PRIVATE
-        ${MSCCLPP_INCLUDE_DIRS}
+        ${MSLL_INCLUDE_DIRS}
     )
-    target_compile_definitions(ark_obj PRIVATE ARK_USE_MSCCLPP=1)
-    target_compile_definitions(ark_obj PRIVATE ARK_MSCCLPP_INCLUDE_DIR=${MSCCLPP_INCLUDE_DIRS})
+    target_compile_definitions(ark_obj PRIVATE ARK_USE_MSLL=1)
+    target_compile_definitions(ark_obj PRIVATE ARK_MSLL_INCLUDE_DIR=${MSLL_INCLUDE_DIRS})
 endif()
 target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
