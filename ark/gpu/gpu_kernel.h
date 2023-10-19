@@ -86,6 +86,8 @@ class GpuLoopKernel : public GpuKernel {
     GpuEvent timer_begin;
     GpuEvent timer_end;
 
+    int threads_per_warp = -1;
+
     std::unique_ptr<GpuMem> flag;
     std::unique_ptr<GpuMem> clocks;
 

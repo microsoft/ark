@@ -34,6 +34,18 @@ ark::unittest::State test_relu_fp32() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_relu_fp16() {
+    ark::Model m;
+    ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+    ark::Tensor *out = m.relu(t);
+
+    auto result =
+        ark::op_test("relu_fp16", m, {t}, {out}, baseline_relu<ark::half_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_relu_bf16() {
     ark::Model m;
     ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
@@ -49,6 +61,7 @@ ark::unittest::State test_relu_bf16() {
 int main() {
     ark::init();
     UNITTEST(test_relu_fp32);
+    UNITTEST(test_relu_fp16);
     UNITTEST(test_relu_bf16);
     return ark::unittest::SUCCESS;
 }

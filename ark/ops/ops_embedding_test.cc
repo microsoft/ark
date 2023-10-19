@@ -74,9 +74,17 @@ ark::unittest::State test_embedding() {
     for (auto i = 0; i < tw->shape.size(); ++i) {
         tw_data[i] = ark::rand<T>(-1.0, 1.0);
     }
-    auto result =
-        ark::op_test("embedding_fp32", m, {ti, tw}, {to}, baseline_embedding<T>,
-                     {ti_data.data(), tw_data.data()});
+    std::string type_str = "";
+    if (std::is_same<T, float>::value) {
+        type_str = "fp32";
+    } else if (std::is_same<T, ark::half_t>::value) {
+        type_str = "fp16";
+    } else if (std::is_same<T, ark::bfloat16_t>::value) {
+        type_str = "bf16";
+    }
+    auto result = ark::op_test("embedding_" + type_str, m, {ti, tw}, {to},
+                               baseline_embedding<T>,
+                               {ti_data.data(), tw_data.data()}, true);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;

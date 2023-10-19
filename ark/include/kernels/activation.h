@@ -57,8 +57,9 @@ struct Sigmoid {
     template <typename DataType>
     static DEVICE DataType compute(DataType input) {
         return type::Div::compute(
-            DataType(1.0f),
-            (type::Add::compute(DataType(1.0f), type::Exp::compute(-input))));
+            type::Cast::compute<DataType>(1.0f),
+            (type::Add::compute(type::Cast::compute<DataType>(1.0f),
+                                type::Exp::compute(-input))));
     }
     static DEVICE fp16x2 compute(fp16x2 input) {
         fp16x2 one = __float2half2_rn(1.0f);
@@ -69,45 +70,45 @@ struct Sigmoid {
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename InDataType, typename OutDataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename InDataType, typename OutDataType>
 DEVICE void relu(OutDataType *out, InDataType *in, int uop_idx,
                  int smem_per_warp) {
     constexpr int NelemPerThread =
         (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
             ? 8
             : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                SmemBytes,
                Broadcast1Intrinsic<Relu, InShape, InDataType, OutDataType,
                                    NelemPerThread>>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename InDataType, typename OutDataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename InDataType, typename OutDataType>
 DEVICE void gelu(OutDataType *out, InDataType *in, int uop_idx,
                  int smem_per_warp) {
     constexpr int NelemPerThread =
         (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
             ? 8
             : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                SmemBytes,
                Broadcast1Intrinsic<Gelu, InShape, InDataType, OutDataType,
                                    NelemPerThread>>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename InDataType, typename OutDataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename InDataType, typename OutDataType>
 DEVICE void sigmoid(OutDataType *out, InDataType *in, int uop_idx,
                     int smem_per_warp) {
     constexpr int NelemPerThread =
         (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
             ? 8
             : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                SmemBytes,
                Broadcast1Intrinsic<Sigmoid, InShape, InDataType, OutDataType,
                                    NelemPerThread>>::run(out, in, uop_idx);

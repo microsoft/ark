@@ -75,10 +75,18 @@ struct Cast {
             return __int2half_rn(input);
         } else if constexpr (std::is_same<CastType, int>::value &&
                              std::is_same<DataType, bf16>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __bfloat162int_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<int>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, bf16>::value &&
                              std::is_same<DataType, int>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __int2bfloat16_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<bf16>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, unsigned int>::value &&
                              std::is_same<DataType, float>::value) {
             return (unsigned int)(input);
@@ -93,10 +101,18 @@ struct Cast {
             return __uint2half_rn(input);
         } else if constexpr (std::is_same<CastType, unsigned int>::value &&
                              std::is_same<DataType, bf16>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __bfloat162uint_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<unsigned int>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, bf16>::value &&
                              std::is_same<DataType, unsigned int>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __uint2bfloat16_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<bf16>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, int2>::value &&
                              std::is_same<DataType, fp16x2>::value) {
             int2 output;
@@ -203,7 +219,11 @@ struct Exp {
         return Cast::compute<DataType>(expf(Cast::compute<float>(input)));
     }
 
+    static DEVICE fp16 compute(fp16 input) { return hexp(input); }
+
     static DEVICE fp16x2 compute(fp16x2 input) { return h2exp(input); }
+
+    static DEVICE bf16 compute(bf16 input) { return hexp(input); }
 
     static DEVICE bf16x2 compute(bf16x2 input) { return h2exp(input); }
 };
@@ -214,9 +234,28 @@ struct Sqrt {
         return Cast::compute<DataType>(sqrtf(Cast::compute<float>(input)));
     }
 
+    static DEVICE fp16 compute(fp16 input) { return hsqrt(input); }
+
     static DEVICE fp16x2 compute(fp16x2 input) { return h2sqrt(input); }
 
+    static DEVICE bf16 compute(bf16 input) { return hsqrt(input); }
+
     static DEVICE bf16x2 compute(bf16x2 input) { return h2sqrt(input); }
+};
+
+struct Rsqrt {
+    template <typename DataType>
+    static DEVICE DataType compute(DataType input) {
+        return Cast::compute<DataType>(rsqrtf(Cast::compute<float>(input)));
+    }
+
+    static DEVICE fp16 compute(fp16 input) { return hrsqrt(input); }
+
+    static DEVICE fp16x2 compute(fp16x2 input) { return h2rsqrt(input); }
+
+    static DEVICE bf16 compute(bf16 input) { return hrsqrt(input); }
+
+    static DEVICE bf16x2 compute(bf16x2 input) { return h2rsqrt(input); }
 };
 
 struct Max {
@@ -227,13 +266,18 @@ struct Max {
 
     static DEVICE float compute(float a, float b) { return fmaxf(a, b); }
 
+    static DEVICE fp16 compute(fp16 a, fp16 b) { return __hmax(a, b); }
+
     static DEVICE fp16x2 compute(fp16x2 a, fp16x2 b) {
 #if defined(ARK_TARGET_CUDA_ARCH) && (ARK_TARGET_CUDA_ARCH >= 800)
         return __hmax2(a, b);
 #else
-        return __halves2half2((a.x > b.x) ? a.x : b.x, (a.y > b.y) ? a.y : b.y);
-#endif  // (ARK_TARGET_CUDA_ARCH >= 800)
+        return __halves2half2(Max::compute(__low2half(a), __low2half(b)),
+                              Max::compute(__high2half(a), __high2half(b)));
+#endif
     }
+
+    static DEVICE bf16 compute(bf16 a, bf16 b) { return __hmax(a, b); }
 
     static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __hmax2(a, b); }
 };

@@ -86,7 +86,7 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const {
                                  in_ldim_b,             // InnerLdimB
                                  is_column_a,           // IsColumnA
                                  is_column_b,           // IsColumnB
-                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.num_warps,         // NumWarps
                                  cfg.smem_bytes,        // SmemBytes
                              }});
 }

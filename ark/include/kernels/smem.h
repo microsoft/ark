@@ -12,11 +12,10 @@ extern __shared__ int _ARK_SMEM[];
 
 namespace ark {
 
-template <typename T, int NumThreads>
+template <typename T, int NumWarps>
 struct SharedMemory {
     static DEVICE int smem_base_offset(int smem_per_warp) {
         // The smallest warp ID in the uop.
-        constexpr int NumWarps = NumThreads / Arch::ThreadsPerWarp;
         int least_warp_id = math::gm<NumWarps>(warp_id());
         return math::div<sizeof(int)>(least_warp_id * smem_per_warp);
     }

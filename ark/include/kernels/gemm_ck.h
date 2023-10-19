@@ -11,7 +11,7 @@ namespace ark {
 /// Row-major GeMM.
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, int InnerLdimA,
-          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
+          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
           int SmemBytes, typename DataTypeA, typename DataTypeB,
           typename DataTypeC, typename AccumulateType>
 DEVICE void gemm_ck(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,

@@ -113,16 +113,15 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, fp16, 2, KernelHeight,
 // Half-precision image to column operation.
 // TODO: support dilation.
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int KernelHeight, int KernelWidth, int StrideHeight,
-          int StrideWidth, int PadHeight, int PadWidth, int DilationHeight,
-          int DilationWidth>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int KernelHeight, int KernelWidth, int StrideHeight, int StrideWidth,
+          int PadHeight, int PadWidth, int DilationHeight, int DilationWidth>
 DEVICE void im2col(fp16 *y, fp16 *x, int uop_idx, int) {
-    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
+    Ewise1<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
            Im2Col<InShape, InDims, OutDims, UnitOutDims, fp16, 2, KernelHeight,
                   KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
                   DilationHeight, DilationWidth>>::run(y, x, uop_idx);
-    sync_warps<NumThreads>();
+    sync_warps<NumWarps>();
 }
 
 }  // namespace ark

@@ -633,21 +633,21 @@ struct Transpose3210 {
 
 // TODO: support NelemPerThread > 1
 template <typename InDims, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Transpose, typename DataType>
+          typename UnitOutDims, int NumWarps, int SmemBytes, typename Transpose,
+          typename DataType>
 DEVICE void _transpose(DataType *out, DataType *in, int uop_idx) {
-    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
-           Transpose>::run(out, in, uop_idx);
+    Ewise1<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, Transpose>::run(
+        out, in, uop_idx);
 }
 
 #define _DEC_TRANSPOSE(tp_type)                                              \
     template <typename InDims, typename OutDims, typename OutShape,          \
-              typename UnitOutDims, int NumThreads, int SmemBytes,           \
+              typename UnitOutDims, int NumWarps, int SmemBytes,             \
               typename DataType>                                             \
     DEVICE void transpose##tp_type(DataType *out, DataType *in, int uop_idx, \
                                    int) {                                    \
         _transpose<                                                          \
-            InDims, OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,   \
+            InDims, OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,     \
             Transpose##tp_type<InDims, OutDims, OutShape, DataType, 1>>(     \
             out, in, uop_idx);                                               \
     }

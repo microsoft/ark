@@ -413,11 +413,10 @@ struct BroadcastShapeChecker2 {
 // Broadcast a unit operator. Follows NumPy-style broadcasting:
 // https://numpy.org/doc/stable/user/basics.broadcasting.html
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename Intrinsic>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename Intrinsic>
 struct Broadcast1 {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
     static const int NelemPerThread = Intrinsic::NelemPerThread;
@@ -438,7 +437,7 @@ struct Broadcast1 {
         int uh = UnitOp::uop_idx_h(uop_idx);
         int uw = UnitOp::uop_idx_w(uop_idx);
 
-        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+        for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
                 ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
@@ -480,11 +479,9 @@ struct Broadcast1 {
 // https://numpy.org/doc/stable/user/basics.broadcasting.html
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Intrinsic>
+          typename UnitOutDims, int NumWarps, int SmemBytes, typename Intrinsic>
 struct Broadcast2 {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
     static const int NelemPerThread = Intrinsic::NelemPerThread;
@@ -507,7 +504,7 @@ struct Broadcast2 {
         int uh = UnitOp::uop_idx_h(uop_idx);
         int uw = UnitOp::uop_idx_w(uop_idx);
 
-        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+        for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
                 ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
@@ -568,7 +565,7 @@ struct Broadcast2 {
 // Broadcast2 with a default `NelemPerThread` and the intrinsic template.
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
+          typename UnitOutDims, int NumWarps, int SmemBytes,
           typename In0DataType, typename In1DataType, typename OutDataType,
           typename IntrinsicType>
 DEVICE void broadcast2(OutDataType *c, const In0DataType *a,
@@ -579,7 +576,7 @@ DEVICE void broadcast2(OutDataType *c, const In0DataType *a,
             : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast2<
         In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape, UnitOutDims,
-        NumThreads, SmemBytes,
+        NumWarps, SmemBytes,
         Broadcast2Intrinsic<IntrinsicType, In0Shape, In1Shape, In0DataType,
                             OutDataType, NelemPerThread>>::run(c, a, b,
                                                                uop_idx);

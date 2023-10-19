@@ -162,7 +162,7 @@ ark::unittest::State test_reduce_axis3() {
     auto result = ark::op_test("reduce_axis3", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
     return ark::unittest::SUCCESS;
 }
 
@@ -176,7 +176,7 @@ ark::unittest::State test_reduce_axis3_padded() {
     auto result = ark::op_test("reduce_axis3_padded", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
     return ark::unittest::SUCCESS;
 }
 

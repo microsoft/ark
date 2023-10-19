@@ -8,12 +8,12 @@
 
 namespace ark {
 
-extern const OpConfigMap ReduceWConfigMap;
+extern const OpConfigMap LayernormConfigMap;
 
 RMSnormOp::RMSnormOp(const std::string &prec_type, Tensor *input,
                      Tensor *output, const std::string &name)
-    : Op{OP_RMSNORM, prec_type,         {input}, {output}, {},
-         name,       &ReduceWConfigMap, -1,      true} {}
+    : Op{OP_RMSNORM, prec_type,           {input}, {output}, {},
+         name,       &LayernormConfigMap, -1,      true} {}
 
 std::string RMSnormOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
@@ -36,7 +36,7 @@ std::string RMSnormOp::function_name(const OpConfig &cfg) const {
                                  output->ldims.dims4(),  // OutDims
                                  output->shape.dims4(),  // OutShape
                                  unit_out_dims,          // UnitOutDims
-                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.num_warps,          // NumWarps
                                  cfg.smem_bytes,         // SmemBytes
                              }});
 }

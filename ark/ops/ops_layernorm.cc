@@ -8,12 +8,12 @@
 
 namespace ark {
 
-extern const OpConfigMap ReduceWConfigMap;
+extern const OpConfigMap LayernormConfigMap;
 
 LayernormOp::LayernormOp(const std::string &prec_type, Tensor *input,
                          Tensor *output, const std::string &name)
-    : Op{OP_LAYERNORM, prec_type,         {input}, {output}, {},
-         name,         &ReduceWConfigMap, -1,      true} {}
+    : Op{OP_LAYERNORM, prec_type,           {input}, {output}, {},
+         name,         &LayernormConfigMap, -1,      true} {}
 
 std::string LayernormOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
@@ -36,7 +36,7 @@ std::string LayernormOp::function_name(const OpConfig &cfg) const {
                                  output->ldims.dims4(),  // OutDims
                                  output->shape.dims4(),  // OutShape
                                  unit_out_dims,          // UnitOutDims
-                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.num_warps,          // NumWarps
                                  cfg.smem_bytes,         // SmemBytes
                              }});
 }
@@ -55,5 +55,32 @@ Tensor *Model::layernorm(Tensor *input, Tensor *output,
     LayernormOp op{output->type.name(), input, output, name};
     return this->impl->add_op(op)[0];
 }
+
+const OpConfigMap LayernormConfigMap = {
+    {{OP_ARCH_CUDA_ANY, "any"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 128, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 128, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 128, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 128, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 128, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 128, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 128, {{1, -1}}, {{1, -1}}, true, false},
+     }},
+    {{OP_ARCH_ROCM_ANY, "any"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 256, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 256, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 256, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 256, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 256, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 256, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 256, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 256, {{1, -1}}, {{1, -1}}, true, false},
+     }},
+};
 
 }  // namespace ark

@@ -40,9 +40,9 @@ std::string SubOp::function_name(const OpConfig &cfg) const {
                                              other->shape.dims4(),   // In1Shape
                                              output->ldims.dims4(),  // OutDims
                                              output->shape.dims4(),  // OutShape
-                                             unit_out_dims,       // UnitOutDims
-                                             cfg.num_warps * 32,  // NumThreads
-                                             cfg.smem_bytes,      // SmemBytes
+                                             unit_out_dims,   // UnitOutDims
+                                             cfg.num_warps,   // NumWarps
+                                             cfg.smem_bytes,  // SmemBytes
                                          }});
 }
 

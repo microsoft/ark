@@ -26,28 +26,28 @@ namespace ark {
 /// @tparam InnerLdimB (int) The leading dimension of the inner dimension of B.
 /// @tparam IsColumnA (bool) Whether matrix A is column-major.
 /// @tparam IsColumnB (bool) Whether matrix B is column-major.
-/// @tparam NumThreads (int) The number of threads per uop.
+/// @tparam NumWarps (int) The number of warps per uop.
 /// @tparam SmemBytes (int) The size of shared memory per uop.
 ///
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, int InnerLdimA,
-          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
+          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
           int SmemBytes, typename DataTypeA, typename DataTypeB,
           typename DataTypeC>
 DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                    int smem_per_warp) {
     gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
-         InnerLdimB, IsColumnA, IsColumnB, NumThreads, SmemBytes, DataTypeA,
+         InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, DataTypeA,
          DataTypeB, DataTypeC, DataTypeC>(C, A, B, uop_idx, smem_per_warp);
 }
 
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename ProblemSize, typename LeadingDims, int InnerLdimA,
-          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
+          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
           int SmemBytes>
 DEVICE void matmul(bf16 *C, bf16 *A, bf16 *B, int uop_idx, int smem_per_warp) {
     gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
-         InnerLdimB, IsColumnA, IsColumnB, NumThreads, SmemBytes, bf16, bf16,
+         InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, bf16, bf16,
          bf16, float>(C, A, B, uop_idx, smem_per_warp);
 }
 

@@ -66,12 +66,11 @@ struct RoPE<bf16> {
 
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename DataType>
+          typename UnitOutDims, int NumWarps, int SmemBytes, typename DataType>
 DEVICE void rope(DataType *c, DataType *a, DataType *b, int uop_idx, int) {
     Broadcast2<In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape,
-               UnitOutDims, NumThreads, SmemBytes,
-               RoPE<DataType>>::run(c, a, b, uop_idx);
+               UnitOutDims, NumWarps, SmemBytes, RoPE<DataType>>::run(c, a, b,
+                                                                      uop_idx);
 }
 
 // TODO: figure out why below doesn't pass the accuracy test for half
@@ -101,7 +100,7 @@ DEVICE void rope(DataType *c, DataType *a, DataType *b, int uop_idx, int) {
 
 // template <typename In0Dims, typename In0Shape, typename In1Dims,
 //           typename In1Shape, typename OutDims, typename OutShape,
-//           typename UnitOutDims, int NumThreads, int SmemBytes,
+//           typename UnitOutDims, int NumWarps, int SmemBytes,
 //           typename DataType>
 // DEVICE void rope(DataType *c, DataType *a, DataType *b, int uop_idx, int) {
 //     static_assert(In0Dims::W % 2 == 0, "");
@@ -134,7 +133,7 @@ DEVICE void rope(DataType *c, DataType *a, DataType *b, int uop_idx, int) {
 
 //     Broadcast2<In0VecDims, In0VecShape, In1VecDims, In1VecShape, OutVecDims,
 //     OutVecShape,
-//                UnitOutDims, NumThreads, SmemBytes,
+//                UnitOutDims, NumWarps, SmemBytes,
 //                Broadcast2Intrinsic<Rope, In0VecShape, In1VecShape,
 //                VecType,
 //                                    VecType, 1>>::run((VecType *)c, (VecType
@@ -154,7 +153,7 @@ struct Assign {
 
 template <typename InDims, typename InShape, typename WeightDims,
           typename WeightShape, typename OutDims, typename OutShape,
-          int EmbeddingDim, int NumThreads, typename DataType>
+          int EmbeddingDim, int NumWarps, typename DataType>
 DEVICE void embedding(DataType *output, int *input, DataType *weight,
                       int uop_idx, int) {
     // InShape:     Vec<D0, D1, D2, 1>
@@ -164,7 +163,7 @@ DEVICE void embedding(DataType *output, int *input, DataType *weight,
     static_assert(InShape::W == 1, "");
 
     using UnitOutDims = Vec<1, 1, 1, OutDims::W>;
-    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, 0>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, 0>;
     int un = UnitOp::uop_idx_n(uop_idx);
     int uc = UnitOp::uop_idx_c(uop_idx);
     int uh = UnitOp::uop_idx_h(uop_idx);
@@ -178,7 +177,7 @@ DEVICE void embedding(DataType *output, int *input, DataType *weight,
     DataType *pWeight = &weight[emb_idx * WeightDims::W];
 
     Broadcast1<Vec<1, 1, 1, WeightDims::W>, Vec<1, 1, 1, EmbeddingDim>, OutDims,
-               OutShape, UnitOutDims, NumThreads, 0,
+               OutShape, UnitOutDims, NumWarps, 0,
                Assign<DataType>>::run(output, pWeight, uop_idx);
 }
 

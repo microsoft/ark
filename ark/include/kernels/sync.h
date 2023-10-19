@@ -79,44 +79,22 @@ ARCH_ALIAS_FUNC(sync_warp, __syncwarp, __builtin_amdgcn_wave_barrier);
 // only. Since `__syncthreads()` synchronize the entire threads in a thread
 // block, we implement a finer-grained version of this via `barrier.sync` PTX
 // instruction.
-template <int ThreadsPerWarpGroup>
+template <int NumWarps>
 DEVICE void sync_warps() {
-    // When ThreadsPerWarpGroup is 64, this function should not be called in
-    // parallel with __syncthreads(). The following is the explanation why.
-    // GPUs have 16 hardware barriers, numbered 0~15. This means that more than
-    // sixteen `barrier.sync` instructions cannot run at the same time due to HW
-    // limitation. This is reasonable because the maximum threads per block is
-    // 1024 (32 warps), so we need at most 16 barriers, which happens in the
-    // case when we synchronize warps in two-pairs. If we synchronize warps in
-    // four-pairs, we need at most 8 barriers. The problem here is that
-    // `__syncthreads()` always uses barrier 0, so if `__syncthreads()`
-    // instruction is on flight, `sync_warps()` should not use barrier 0.
-    // However, we cannot know whether `__syncthreads()` will be on flight or
-    // not. So we have two options. Option 1: Let users take the risk and we
-    // just use barrier 0, which enables to support 64 threads (sync in
-    // two-pairs). In this case, users should make sure that their kernels never
-    // issue `__syncthreads()` and `sync_warps()` at the same time, otherwise
-    // the kernel may stop unexpectedly during runtime. Option 2: Do not use
-    // barrier 0 to be more safe, instead we cannot support 64 threads. Here we
-    // select the first option.
+    static_assert(math::is_pow2<NumWarps>::value == 1, "");
 #if defined(ARK_TARGET_CUDA_ARCH)
     static_assert(Arch::ThreadsPerWarp == 32, "");
-    static_assert(ThreadsPerWarpGroup == 32 || ThreadsPerWarpGroup == 64 ||
-                      ThreadsPerWarpGroup == 128 ||
-                      ThreadsPerWarpGroup == 256 ||
-                      ThreadsPerWarpGroup == 512 || ThreadsPerWarpGroup == 1024,
-                  "");
-    if (ThreadsPerWarpGroup == 32) {
+    if (NumWarps == 1) {
         __syncwarp();
-    } else if (ThreadsPerWarpGroup == 64) {
+    } else if (NumWarps == 2) {
         asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6)));
-    } else if (ThreadsPerWarpGroup == 128) {
+    } else if (NumWarps == 4) {
         asm volatile("barrier.sync %0, 128;" ::"r"((threadIdx.x >> 7) + 8));
-    } else if (ThreadsPerWarpGroup == 256) {
+    } else if (NumWarps == 8) {
         asm volatile("barrier.sync %0, 256;" ::"r"((threadIdx.x >> 8) + 8));
-    } else if (ThreadsPerWarpGroup == 512) {
+    } else if (NumWarps == 16) {
         asm volatile("barrier.sync %0, 512;" ::"r"((threadIdx.x >> 9) + 8));
-    } else if (ThreadsPerWarpGroup == 1024) {
+    } else if (NumWarps == 32) {
         // If we sync 1024 threads, it means we sync all threads in a thread
         // block because the maximum number of threads per block is 1024 in
         // all NVIDIA devices. Therefore, we do not check `threadIdx.x` and
@@ -125,11 +103,7 @@ DEVICE void sync_warps() {
     }
 #elif defined(ARK_TARGET_ROCM_ARCH)
     static_assert(Arch::ThreadsPerWarp == 64, "");
-    static_assert(ThreadsPerWarpGroup == 64 || ThreadsPerWarpGroup == 128 ||
-                      ThreadsPerWarpGroup == 256 ||
-                      ThreadsPerWarpGroup == 512 || ThreadsPerWarpGroup == 1024,
-                  "");
-    if (ThreadsPerWarpGroup == 64) {
+    if (NumWarps == 1) {
         __builtin_amdgcn_wave_barrier();
     } else {
         // TODO:

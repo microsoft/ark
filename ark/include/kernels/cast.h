@@ -40,10 +40,10 @@ struct Cast<_InShape, _FromType, _ToType, 2> {
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
+          typename OutShape, typename UnitOutDims, int NumWarps,
           typename FromType, typename ToType>
 DEVICE void cast(ToType *out, FromType *in, int uop_idx, int) {
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads, 0,
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps, 0,
                Cast<InShape, FromType, ToType, 2>>::run(out, in, uop_idx);
 }
 
