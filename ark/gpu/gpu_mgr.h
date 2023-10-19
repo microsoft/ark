@@ -86,7 +86,6 @@ class GpuMgrCtx {
     ~GpuMgrCtx();
 
     GpuStream create_stream();
-    GpuState sync_stream(const GpuStream &s);
     void destroy_stream(const GpuStream &s);
     GpuEvent create_event(bool disable_timing);
 

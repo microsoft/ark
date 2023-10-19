@@ -100,6 +100,9 @@ struct Softmax {
             exp_sum_input, tid, smem_per_warp);
         ReduceTypeSum::postReduce<1>(&exp_sum_input, &exp_sum_input);
 
+        DataType r_exp_sum_input =
+            type::Div::compute(type::Cast::compute<DataType>(1), exp_sum_input);
+
         // the output is
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;

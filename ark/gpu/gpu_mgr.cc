@@ -88,7 +88,8 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
     // Create a GPU context.
     gpuDevice dev;
     GLOG(gpuDeviceGet(&dev, gpu_id_));
-    GLOG(gpuCtxCreate(&(this->cuda_ctx), gpuCtxMapHost, dev));
+    GLOG(gpuDevicePrimaryCtxRetain(&(this->cuda_ctx), dev));
+    GLOG(gpuCtxSetCurrent(this->cuda_ctx));
 
     gpu_info.init(gpu_id_);
 }
@@ -182,11 +183,6 @@ GpuStream GpuMgrCtx::create_stream() {
 }
 
 //
-GpuState GpuMgrCtx::sync_stream(const GpuStream &s) {
-    return gpuStreamSynchronize(s);
-}
-
-//
 void GpuMgrCtx::destroy_stream(const GpuStream &s) {
     auto it = this->streams.begin();
     for (; it != this->streams.end(); ++it) {
@@ -271,8 +267,8 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align) {
         total_bytes = off + sz;
         this->usage.emplace_back(off, off + sz);
     }
-    this->bufs.emplace_back(
-        std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
+    this->bufs.emplace_back(std::make_unique<GpuBuf>(
+        this->gpu_mgr->gpu_id, &this->data_mem, id, off, bytes));
     return this->bufs.back().get();
 }
 
@@ -330,7 +326,7 @@ GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid) {
         LOG(ERROR, "invalid SID ", sid);
     }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
-    this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
+    this->bufs.emplace_back(std::make_unique<GpuBuf>(gid, dm, sid, 0, bytes));
     GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 
@@ -346,6 +342,7 @@ void GpuMgrCtx::reg_sendrecv(int sid, int remote_gpu_id, size_t bytes,
 
 //
 void GpuMgrCtx::freeze(bool expose) {
+    GLOG(this->gpu_mgr->set_current());
     //
     this->gpu_mgr->validate_total_bytes();
 
@@ -417,6 +414,9 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
             LOG(ERROR, "No GPU is detected.");
         }
         ARK_GPU_MGR_GLOBAL.resize(ngpu);
+        for (auto &mgr : ARK_GPU_MGR_GLOBAL) {
+            mgr.reset(nullptr);
+        }
     }
     if ((unsigned int)gpu_id >= ARK_GPU_MGR_GLOBAL.size()) {
         LOG(ERROR, "invalid GPU ID ", gpu_id);
@@ -440,6 +440,9 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     }
     GpuPtr pb = buf->ref(offset);
     if (pb != 0) {
+        // TODO: the set_current below seems to be necessary but returns
+        // `CUDA_ERROR_INVALID_VALUE`.
+        // GLOG(get_gpu_mgr(buf->get_gpu_id())->set_current());
         assert((reinterpret_cast<long long unsigned int>(pb) % 4) == 0);
         GLOG(gpuMemsetD32(pb, val, num));
     } else {
@@ -450,18 +453,24 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
         }
     }
 }
+
 void gpu_memcpy(GpuBuf *dst, size_t dst_offset, void *src, size_t src_offset,
                 size_t bytes) {
+    GLOG(get_gpu_mgr(dst->get_gpu_id())->set_current());
     src = static_cast<char *>(src) + src_offset;
     GLOG(gpuMemcpyHtoD(dst->ref(dst_offset), src, bytes));
 }
+
 void gpu_memcpy(void *dst, size_t dst_offset, const GpuBuf *src,
                 size_t src_offset, size_t bytes) {
+    GLOG(get_gpu_mgr(src->get_gpu_id())->set_current());
     dst = static_cast<char *>(dst) + dst_offset;
     GLOG(gpuMemcpyDtoH(dst, src->ref(src_offset), bytes));
 }
+
 void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
                 size_t src_offset, size_t bytes) {
+    GLOG(get_gpu_mgr(src->get_gpu_id())->set_current());
     GpuPtr rd = dst->ref(dst_offset);
     GpuPtr rs = src->ref(src_offset);
     if ((rd != 0) && (rs != 0)) {
