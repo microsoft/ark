@@ -67,18 +67,16 @@ DEVICE void store(uint2 *p, const BytesPack<8> &v) {
 }
 
 DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
-    __half *pd = reinterpret_cast<__half *>(dst.u16);
-    __half *ps = reinterpret_cast<__half *>(src.u16);
+    __half2 *pd = reinterpret_cast<__half2 *>(dst.u32);
+    __half2 *ps = reinterpret_cast<__half2 *>(src.u32);
 #pragma unroll
     for (int i = 0; i < 4; ++i) {
-        __half2 d, s;
-        d.x = pd[i * 2];
-        d.y = pd[i * 2 + 1];
-        s.x = ps[i * 2];
-        s.y = ps[i * 2 + 1];
-        d = __hadd2(d, s);
-        pd[i * 2] = d.x;
-        pd[i * 2 + 1] = d.y;
+        union {
+            __half2 h2; uint32_t u32;
+        } d, s;
+        d.h2 = pd[i];
+        s.h2 = ps[i];
+        pd[i] = __hadd2(d.h2, s.h2);
     }
 }
 
@@ -180,8 +178,10 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
             int4 val;
         } ret;
         for (int idx = tid; idx < nInt4; idx += total_threads) {
+            BytesPack<16> tmp = dst[idx];
             ret.val = _ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
-            add_half8(dst[idx], ret.data);
+            add_half8(tmp, ret.data);
+            dst[idx] = tmp;
         }
     }
 }

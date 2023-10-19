@@ -78,7 +78,7 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
             opargs.put((size_t)0);
         }
     }
-    opargs.put(remote_bufs[0]);
+    opargs.put(local_buff);
     return opargs;
 }
 

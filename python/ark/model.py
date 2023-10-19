@@ -931,6 +931,28 @@ def local_all_gather_mscclpp(input: Tensor,
 
 
 @register_op
+def local_reduce_scatter_mscclpp(input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_reduce_scatter_mscclpp",) -> Tensor:
+    """
+    Performs an reduce-scatter operator across local node GPUs.
+    Usage:
+    # reduce-scatter
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    reduce_scatter_result = ark.local_reduce_scatter_mscclpp(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_reduce_scatter_mscclpp(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
 def all_reduce(
     input: Tensor,
     rank: int,

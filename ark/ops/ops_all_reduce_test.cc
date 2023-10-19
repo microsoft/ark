@@ -60,7 +60,7 @@ void test_local_all_reduce_8gpus_internel(size_t nelem, int iter) {
                 data_buf[i] = ark::half_t(gpu_id + 1);
             }
             ark::Tensor *output =
-                m.local_all_reduce(data, gpu_id, num_gpus);
+                m.local_all_reduce_mscclpp(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_reduce", m, {data}, {output},
                              baseline_all_reduce<ark::half_t, num_gpus>,
@@ -85,7 +85,7 @@ void test_local_all_reduce_packet_8gpus_internel(size_t nelem, int iter) {
                 data_buf[i] = ark::half_t(gpu_id + 1);
             }
             ark::Tensor *output =
-                m.local_all_reduce_packet(data, gpu_id, num_gpus);
+                m.local_all_reduce_packet_mscclpp(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_reduce_packet", m, {data}, {output},
                              baseline_all_reduce<ark::half_t, num_gpus>,

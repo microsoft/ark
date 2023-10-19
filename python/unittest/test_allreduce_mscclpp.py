@@ -8,7 +8,7 @@ import os
 import unittest
 
 
-def all_reduce_packet_test(rank, np_inputs, world_size, tensor_len, iter=1000):
+def all_reduce_packet_test(rank, np_inputs, world_size, tensor_len, iter=1):
     # Create a Model instance
     runtime = ark.Runtime()
     ark.set_rank(rank)
@@ -43,7 +43,7 @@ def all_reduce_packet_test(rank, np_inputs, world_size, tensor_len, iter=1000):
     )
 
 
-def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=100):
+def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     # Create a Model instance
     runtime = ark.Runtime()
     ark.set_rank(rank)
@@ -67,9 +67,9 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=100):
     mean_abs_error = np.mean(np.abs(host_output - gt))
     # The numeric error of half precision of the machine
     numeric_epsilon_half = np.finfo(np.float16).eps
-    # np.testing.assert_allclose(
-    #     host_output, gt, atol=2 * world_size * numeric_epsilon_half
-    # )
+    np.testing.assert_allclose(
+        host_output, gt, atol=2 * world_size * numeric_epsilon_half
+    )
     print(
         f"allreduce all_reduce_test: world_size {world_size} rank {rank} tensor_len "
         f"{tensor_len:6d} max_abs_error {max_abs_error:.5f} mean_abs_error "
@@ -118,7 +118,7 @@ def test_allreduce_mscclpp_internal(world_size, tensor_len):
 
 class TestAllreduce(unittest.TestCase):
     def test_allreduce_mscclpp(self):
-        # test_allreduce_mscclpp_packet_internal(8, 4096)
+        test_allreduce_mscclpp_packet_internal(8, 4096)
         test_allreduce_mscclpp_internal(8, 32*1024*1024)
 
 
