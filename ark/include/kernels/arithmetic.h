@@ -57,7 +57,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void scale(OutDataType *y, InDataType *x, float val, int uop_idx,
                   int smem_per_warp) {
-    InDataType val_cast(val);
+    InDataType val_cast = type::Cast::compute<InDataType>(val);
     using ValDims = Vec<1, 1, 1, 1>;
     using ValShape = Vec<1, 1, 1, 1>;
     broadcast2<InDims, InShape, ValDims, ValShape, OutDims, OutShape,

@@ -58,8 +58,9 @@ struct Sigmoid {
     static DEVICE DataType compute(DataType input) {
         return type::Div::compute(
             type::Cast::compute<DataType>(1.0f),
-            (type::Add::compute(type::Cast::compute<DataType>(1.0f),
-                                type::Exp::compute(-input))));
+            (type::Add::compute(
+                type::Cast::compute<DataType>(1.0f),
+                type::Exp::compute(type::Neg::compute(input)))));
     }
     static DEVICE fp16x2 compute(fp16x2 input) {
         fp16x2 one = __float2half2_rn(1.0f);

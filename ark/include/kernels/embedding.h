@@ -14,53 +14,18 @@ namespace ark {
 // Rotary Position Embedding(RoPE): https://arxiv.org/pdf/2104.09864.pdf
 
 template <typename DataType>
-struct RoPE;
+struct RoPE {
+    using InputType = DataType;
+    using OutputType = DataType;
 
-template <>
-struct RoPE<float> {
-    using InputType = float;
-    using OutputType = float;
     static const int NelemPerThread = 2;
-    static DEVICE void compute(float *c, const float *a, const float *b) {
-        float2 *pc = (float2 *)c;
-        const float2 *pa = (const float2 *)a;
-        const float2 *pb = (const float2 *)b;
-        pc->x = pa->x * pb->x - pa->y * pb->y;
-        pc->y = pa->x * pb->y + pa->y * pb->x;
-    }
-};
 
-template <>
-struct RoPE<fp16> {
-    using InputType = fp16;
-    using OutputType = fp16;
-    static const int NelemPerThread = 2;
-    static DEVICE void compute(fp16 *c, const fp16 *a, const fp16 *b) {
-        fp16x2 *pc = (fp16x2 *)c;
-        const fp16x2 *pa = (const fp16x2 *)a;
-        const fp16x2 *pb = (const fp16x2 *)b;
-        pc->x = __hmul(pa->x, pb->x) - __hmul(pa->y, pb->y);
-        pc->y = __hmul(pa->x, pb->y) + __hmul(pa->y, pb->x);
-    }
-};
-
-template <>
-struct RoPE<bf16> {
-    using InputType = bf16;
-    using OutputType = bf16;
-    static const int NelemPerThread = 2;
-    static DEVICE void compute(bf16 *c, const bf16 *a, const bf16 *b) {
-        float2 pa;
-        float2 pb;
-        float2 pc;
-        pa.x = type::Cast::compute<float>(a[0]);
-        pa.y = type::Cast::compute<float>(a[1]);
-        pb.x = type::Cast::compute<float>(b[0]);
-        pb.y = type::Cast::compute<float>(b[1]);
-        RoPE<float>::compute((float *)&pc, (const float *)&pa,
-                             (const float *)&pb);
-        c[0] = type::Cast::compute<bf16>(pc.x);
-        c[1] = type::Cast::compute<bf16>(pc.y);
+    static DEVICE void compute(DataType *c, const DataType *a,
+                               const DataType *b) {
+        c[0] = type::Sub::compute(type::Mul::compute(a[0], b[0]),
+                                  type::Mul::compute(a[1], b[1]));
+        c[1] = type::Add::compute(type::Mul::compute(a[0], b[1]),
+                                  type::Mul::compute(a[1], b[0]));
     }
 };
 
@@ -72,8 +37,6 @@ DEVICE void rope(DataType *c, DataType *a, DataType *b, int uop_idx, int) {
                UnitOutDims, NumWarps, SmemBytes, RoPE<DataType>>::run(c, a, b,
                                                                       uop_idx);
 }
-
-// TODO: figure out why below doesn't pass the accuracy test for half
 
 // struct Rope {
 //     static DEVICE float2 compute(float2 a, float2 b) {

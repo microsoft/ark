@@ -213,6 +213,21 @@ struct Div {
     static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __h2div(a, b); }
 };
 
+struct Neg {
+    template <typename DataType>
+    static DEVICE DataType compute(DataType input) {
+        return -input;
+    }
+
+    static DEVICE fp16 compute(fp16 input) { return __hneg(input); }
+
+    static DEVICE fp16x2 compute(fp16x2 input) { return __hneg2(input); }
+
+    static DEVICE bf16 compute(bf16 input) { return __hneg(input); }
+
+    static DEVICE bf16x2 compute(bf16x2 input) { return __hneg2(input); }
+};
+
 struct Exp {
     template <typename DataType>
     static DEVICE DataType compute(DataType input) {
