@@ -361,19 +361,6 @@ void DefaultScheduler::configure_gpu_buf(
 
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
-            for (unsigned int i = 0; i < sop.get_op()->inputs.size(); ++i) {
-                auto &tile = sop.get_cfg()->input_tiles[i];
-                sop.get_op()->inputs[i]->update_pads({tile.x, tile.y});
-            }
-            for (unsigned int i = 0; i < sop.get_op()->outputs.size(); ++i) {
-                auto &tile = sop.get_cfg()->output_tiles[i];
-                sop.get_op()->outputs[i]->update_pads({tile.x, tile.y});
-            }
-        }
-    }
-
-    for (auto &opseq : this->opseqs) {
-        for (auto &sop : opseq->get_sched_ops()) {
             const Op *op = sop.get_op();
             std::vector<Tensor *> tensors = op->inputs;
             tensors.insert(tensors.end(), op->outputs.begin(),
