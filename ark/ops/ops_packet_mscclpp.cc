@@ -8,6 +8,10 @@
 
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/packet.hpp>
+#include <mscclpp/packet.hpp>
+constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
+#else
+constexpr int MSCCLPP_PACKET_SIZE = 16;
 #endif
 
 
@@ -257,7 +261,7 @@ std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
     this->args.get(&flag, 3);
 
     DimType nelems =
-        npackets * (sizeof(mscclpp::LLPacket) / 2 / output->type_bytes());
+        npackets * (MSCCLPP_PACKET_SIZE / 2 / output->type_bytes());
     Dims shape_dims = {1, 1, 1, static_cast<DimType>(nelems)};
     const OpTile &tile_out = cfg.output_tiles[0];
     size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
@@ -305,7 +309,7 @@ Tensor *Model::get_packet_mscclpp(Tensor *input, Tensor *output,
     }
 
     Dims shape = {(DimType)(
-        npackets * (sizeof(mscclpp::LLPacket) / 2 / output->type_bytes()))};
+        npackets * (MSCCLPP_PACKET_SIZE / 2 / output->type_bytes()))};
     // TODO: remove this hack
     Tensor *mock_tensor = this->tensor(shape, input->type, input->buf);
     MscclppGetFromPacketOp op{"none",   mock_tensor, input,

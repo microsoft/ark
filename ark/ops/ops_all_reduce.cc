@@ -10,6 +10,9 @@
 
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/packet.hpp>
+constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
+#else
+constexpr int MSCCLPP_PACKET_SIZE = 16;
 #endif
 
 namespace ark {
@@ -89,12 +92,12 @@ Tensor *Model::local_all_reduce_packet_mscclpp(Tensor *input, int gpu_id,
     Tensor *out = this->tensor(input->shape, input->type);
     // only half of the packets are used to store data
     const int num_packets =
-        input->shape_bytes() / (sizeof(mscclpp::LLPacket) / 2);
+        input->shape_bytes() / (MSCCLPP_PACKET_SIZE / 2);
     const int scratch_nelems = num_packets *
                                2 /*oringinal data & reduced result*/ *
                                2 /*double buffer*/;
     Dims scratch_shape = {
-        static_cast<ark::DimType>(scratch_nelems * sizeof(mscclpp::LLPacket))};
+        static_cast<ark::DimType>(scratch_nelems * MSCCLPP_PACKET_SIZE)};
     Tensor *scratch = this->tensor(scratch_shape, UINT8);
     int npeer = gpu_num - 1;
     std::vector<Tensor *> outputs;
@@ -104,10 +107,10 @@ Tensor *Model::local_all_reduce_packet_mscclpp(Tensor *input, int gpu_id,
     size_t npackets_per_rank = num_packets / gpu_num;
     int flag = this->impl->reduce_packet_flag;
     size_t scratch_base_offset =
-        (flag & 1) ? 0 : num_packets * sizeof(mscclpp::LLPacket);
+        (flag & 1) ? 0 : num_packets * MSCCLPP_PACKET_SIZE;
     size_t scratch_result_offset =
-        (flag & 1) ? 2 * num_packets * sizeof(mscclpp::LLPacket)
-                   : 3 * num_packets * sizeof(mscclpp::LLPacket);
+        (flag & 1) ? 2 * num_packets * MSCCLPP_PACKET_SIZE
+                   : 3 * num_packets * MSCCLPP_PACKET_SIZE;
     int id = this->impl->next_eid;
     std::vector<Tensor *> sharded_inputs =
         this->sharding(input, 0, nelems_per_rank);
@@ -121,7 +124,7 @@ Tensor *Model::local_all_reduce_packet_mscclpp(Tensor *input, int gpu_id,
             sharded_inputs[remote_rank], scratch, remote_scratch, id, gpu_id,
             remote_rank,
             scratch_base_offset +
-                npackets_per_rank * gpu_id * sizeof(mscclpp::LLPacket),
+                npackets_per_rank * gpu_id * MSCCLPP_PACKET_SIZE,
             flag);
         outputs.push_back(out);
     }
@@ -139,7 +142,7 @@ Tensor *Model::local_all_reduce_packet_mscclpp(Tensor *input, int gpu_id,
         size_t dst_offset = nelems_per_rank * remote_rank * input->type_bytes();
         size_t src_offset =
             scratch_result_offset +
-            npackets_per_rank * remote_rank * sizeof(mscclpp::LLPacket);
+            npackets_per_rank * remote_rank * MSCCLPP_PACKET_SIZE;
         Tensor *res =
             this->get_packet_mscclpp(scratch_stage3, out, src_offset,
                                      dst_offset, npackets_per_rank, flag);
