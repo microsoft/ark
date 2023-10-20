@@ -81,7 +81,9 @@ bool SchedOpSeq::append(const Op *op, const OpConfig *cfg) {
     }
     if ((op->outputs.size() > 0) && (wn > 0)) {
         const Dims &s = op->outputs[0]->shape;
-        const OpTile &tile = cfg->output_tiles[0];
+        OpTile tile = cfg->output_tiles[0];
+        if (tile.x < 0) tile.x = s.dims4()[2];
+        if (tile.y < 0) tile.y = s.dims4()[3];
 
         int ndims = s.ndims();
         assert(ndims != 0);
