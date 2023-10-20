@@ -459,8 +459,9 @@ class Transformer(ark.Module):
             )
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps, dtype=dtype)
+        # TODO: parallize
         self.output = ColumnParallelLinear(
-            params.dim, params.vocab_size, dtype, local_rank, world_size
+            params.dim, params.vocab_size, dtype, 0, 1
         )
 
     def forward(
@@ -472,8 +473,8 @@ class Transformer(ark.Module):
     ):
         h = self.tok_embeddings(tokens)
 
-        # for layer in self.layers:
-        #     h = layer(h, start_pos, freqs_cis, mask)
+        for layer in self.layers:
+            h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)
         output = self.output(h)
         return output

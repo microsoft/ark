@@ -115,7 +115,7 @@ class Generator:
         self.runtime.launch()
 
         # Initiate model parameters & precalculated values
-        module.load_state_dict(state_dict)
+        # module.load_state_dict(state_dict)
         self.freqs_cis.from_numpy(freqs_cis_np)
         self.mask.from_numpy(mask_np)
 
