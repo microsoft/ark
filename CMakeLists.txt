@@ -36,11 +36,11 @@ include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
 # Find NUMA
 include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
 
-# Find MSCCL++
+# Find MSLL
 if(USE_MSLL)
     include(${PROJECT_SOURCE_DIR}/cmake/FindMSLL.cmake)
     if (NOT MSLL_FOUND)
-        message(FATAL_ERROR "MSCCL++ not found")
+        message(FATAL_ERROR "MSLL not found")
     endif()
 endif()
 
