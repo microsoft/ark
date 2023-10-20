@@ -53,7 +53,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
 }
 
 Tensor *Model::local_all_reduce_msll(Tensor *input, int gpu_id, int gpu_num,
-                                        const std::string &) {
+                                     const std::string &) {
     assert(input != nullptr);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
@@ -63,14 +63,12 @@ Tensor *Model::local_all_reduce_msll(Tensor *input, int gpu_id, int gpu_num,
             "all_reduce may not work correctly if the input tensor is "
             "not contiguous");
     }
-    Tensor *out =
-        this->local_reduce_scatter_msll(input, gpu_id, gpu_num);
+    Tensor *out = this->local_reduce_scatter_msll(input, gpu_id, gpu_num);
     return this->local_all_gather_msll(out, gpu_id, gpu_num);
 }
 
 Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
-                                               int gpu_num,
-                                               const std::string &) {
+                                            int gpu_num, const std::string &) {
     assert(input != nullptr);
     // We only support out-of-place all_reduce
     if (input->ndims() > 1) {
@@ -83,8 +81,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     }
     Tensor *out = this->tensor(input->shape, input->type);
     // only half of the packets are used to store data
-    const int num_packets =
-        input->shape_bytes() / (MSLL_PACKET_SIZE / 2);
+    const int num_packets = input->shape_bytes() / (MSLL_PACKET_SIZE / 2);
     const int scratch_nelems = num_packets *
                                2 /*oringinal data & reduced result*/ *
                                2 /*double buffer*/;
@@ -100,9 +97,9 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     int flag = this->impl->reduce_packet_flag;
     size_t scratch_base_offset =
         (flag & 1) ? 0 : num_packets * MSLL_PACKET_SIZE;
-    size_t scratch_result_offset =
-        (flag & 1) ? 2 * num_packets * MSLL_PACKET_SIZE
-                   : 3 * num_packets * MSLL_PACKET_SIZE;
+    size_t scratch_result_offset = (flag & 1)
+                                       ? 2 * num_packets * MSLL_PACKET_SIZE
+                                       : 3 * num_packets * MSLL_PACKET_SIZE;
     int id = this->impl->next_eid;
     std::vector<Tensor *> sharded_inputs =
         this->sharding(input, 0, nelems_per_rank);
@@ -115,8 +112,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
         Tensor *out = this->put_packet_msll(
             sharded_inputs[remote_rank], scratch, remote_scratch, id, gpu_id,
             remote_rank,
-            scratch_base_offset +
-                npackets_per_rank * gpu_id * MSLL_PACKET_SIZE,
+            scratch_base_offset + npackets_per_rank * gpu_id * MSLL_PACKET_SIZE,
             flag);
         outputs.push_back(out);
     }
@@ -132,12 +128,11 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     for (int i = 0; i < npeer; ++i) {
         int remote_rank = i < gpu_id ? i : i + 1;
         size_t dst_offset = nelems_per_rank * remote_rank * input->type_bytes();
-        size_t src_offset =
-            scratch_result_offset +
-            npackets_per_rank * remote_rank * MSLL_PACKET_SIZE;
+        size_t src_offset = scratch_result_offset +
+                            npackets_per_rank * remote_rank * MSLL_PACKET_SIZE;
         Tensor *res =
-            this->get_packet_msll(scratch_stage3, out, src_offset,
-                                     dst_offset, npackets_per_rank, flag);
+            this->get_packet_msll(scratch_stage3, out, src_offset, dst_offset,
+                                  npackets_per_rank, flag);
         outputs.push_back(res);
     }
     this->impl->next_eid += 1;

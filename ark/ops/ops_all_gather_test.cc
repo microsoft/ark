@@ -20,9 +20,9 @@ void baseline_all_gather(std::vector<void *> &outputs,
 
 template <typename T, int NumGpus>
 void baseline_all_gather_msll(std::vector<void *> &outputs,
-                                 const std::vector<ark::Dims> &output_shapes,
-                                 const std::vector<void *> &,
-                                 const std::vector<ark::Dims> &, int) {
+                              const std::vector<ark::Dims> &output_shapes,
+                              const std::vector<void *> &,
+                              const std::vector<ark::Dims> &, int) {
     const int nelems_per_rank = output_shapes[0].size() / NumGpus;
     T *out = static_cast<T *>(outputs[0]);
     for (ark::DimType i = 0; i < output_shapes[0].size(); ++i) {
@@ -64,8 +64,7 @@ void test_all_gather_8gpus_internal_msll(size_t nelem, int iter) {
             for (size_t i = 0; i < nelem; ++i) {
                 data_buf[i] = ark::half_t(gpu_id + 1);
             }
-            auto outputs =
-                m.local_all_gather_msll(data, gpu_id, num_gpus);
+            auto outputs = m.local_all_gather_msll(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_gather", m, {data}, {outputs},
                              baseline_all_gather_msll<ark::half_t, num_gpus>,

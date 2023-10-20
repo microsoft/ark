@@ -336,7 +336,7 @@ void GpuLoopKernel::load() {
             size_t chans_bytes = comm->get_sm_channels_bytes();
             CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
         }
-#endif // ARK_USE_MSLL
+#endif  // ARK_USE_MSLL
     }
 }
 

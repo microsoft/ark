@@ -80,8 +80,8 @@ OpArgs MsllGatherFromPeersOp::function_call_args(const OpConfig &) const {
 }
 
 Tensor *Model::gather_from_peers_msll(Tensor *input, int sid, int npeers,
-                                         size_t chunk_bytes,
-                                         const std::string &name) {
+                                      size_t chunk_bytes,
+                                      const std::string &name) {
     LOG(DEBUG, "gather_from_peers_msll ", input->shape, " nppers ", npeers);
     input->exported = true;
 
@@ -103,21 +103,21 @@ Tensor *Model::gather_from_peers_msll(Tensor *input, int sid, int npeers,
     Tensor *trans_region_local = this->tensor(shape, input->type, input->buf);
     Tensor *trans_region_remote = this->tensor(shape, input->type, input->buf);
     MsllGatherFromPeersOp op{pt,
-                                input,
-                                trans_region_local,
-                                remote_bufs,
-                                trans_region_remote,
-                                sid,
-                                this->impl->rank,
-                                npeers,
-                                chunk_bytes,
-                                name};
+                             input,
+                             trans_region_local,
+                             remote_bufs,
+                             trans_region_remote,
+                             sid,
+                             this->impl->rank,
+                             npeers,
+                             chunk_bytes,
+                             name};
     return this->impl->add_op(op)[1];
 }
 
 Tensor *Model::local_all_gather_msll(Tensor *input, int gpu_id,
-                                        int ngpus_per_node,
-                                        const std::string &name) {
+                                     int ngpus_per_node,
+                                     const std::string &name) {
     assert(input != nullptr);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
@@ -135,8 +135,8 @@ Tensor *Model::local_all_gather_msll(Tensor *input, int gpu_id,
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
     size_t bytes_per_chunk = tensor->shape_bytes() / ngpus_per_node;
-    Tensor *out = this->gather_from_peers_msll(tensor, id, npeers,
-                                                  bytes_per_chunk, name);
+    Tensor *out =
+        this->gather_from_peers_msll(tensor, id, npeers, bytes_per_chunk, name);
     this->impl->next_eid += 1;
     return out;
 }

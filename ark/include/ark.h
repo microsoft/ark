@@ -479,19 +479,20 @@ class Model {
                     const std::string &name = "recv_mm");
     //
     Tensor *send_msll(Tensor *input, int sid, int dst_rank,
-                         std::size_t bytes = 0, const std::string &name = "send_msll");
+                      std::size_t bytes = 0,
+                      const std::string &name = "send_msll");
     //
     Tensor *send_done_msll(Tensor *input, int dst_rank,
-                              const std::string &name = "send_done_msll");
+                           const std::string &name = "send_done_msll");
     //
     Tensor *recv_msll(int sid, int src_rank, std::size_t bytes = 0,
-                         Tensor *output = nullptr,
-                         const std::string &name = "recv_msll");
+                      Tensor *output = nullptr,
+                      const std::string &name = "recv_msll");
     //
     Tensor *put_packet_msll(Tensor *input, Tensor *local_tmp_buf,
-                               Tensor *recv_buf, int id, int rank, int dst_rank,
-                               size_t dst_offset, int flag,
-                               const std::string &name = "put_packet_msll");
+                            Tensor *recv_buf, int id, int rank, int dst_rank,
+                            size_t dst_offset, int flag,
+                            const std::string &name = "put_packet_msll");
     // Performs an all-reduce operator across all GPUs, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
     // total number of GPUs `gpu_num`.
@@ -513,9 +514,8 @@ class Model {
                  Tensor *output = nullptr, const std::string &name = "cast");
 
     // sync across multi devices
-    Tensor *device_sync_msll(
-        Tensor *input, int npeers,
-        const std::string &name = "device_sync_msll");
+    Tensor *device_sync_msll(Tensor *input, int npeers,
+                             const std::string &name = "device_sync_msll");
 
     // local reduce scatter
     Tensor *local_reduce_scatter_msll(
@@ -527,17 +527,16 @@ class Model {
         Tensor *input, int gpu_id, int ngpus_per_node,
         const std::string &name = "local_all_gather_msll");
     // read data from remote and reduce to current buffer
-    Tensor *read_and_reduce_msll(Tensor *input, int sid, int npeers,
-                                    size_t offset, size_t bytes,
-                                    const std::string &name="read_and_reduce_msll");
+    Tensor *read_and_reduce_msll(
+        Tensor *input, int sid, int npeers, size_t offset, size_t bytes,
+        const std::string &name = "read_and_reduce_msll");
     // gather from peers
     Tensor *gather_from_peers_msll(
         Tensor *input, int sid, int npeers, size_t chunkBytes,
         const std::string &name = "gather_from_peers_msll");
 
-    Tensor *local_all_reduce_msll(
-        Tensor *input, int gpu_id, int gpu_num,
-        const std::string &name = "local_all_reduce");
+    Tensor *local_all_reduce_msll(Tensor *input, int gpu_id, int gpu_num,
+                                  const std::string &name = "local_all_reduce");
     Tensor *local_all_reduce_packet_msll(
         Tensor *input, int gpu_id, int gpu_num,
         const std::string &name = "local_all_reduce_packet");
@@ -549,8 +548,8 @@ class Model {
         size_t remote_dst_offset, int flag,
         const std::string &name = "reduce_and_write_packet_msll");
     Tensor *get_packet_msll(Tensor *input, Tensor *output, size_t src_offset,
-                               size_t dst_offset, size_t npackets, int flag,
-                               const std::string &name = "get_packet_msll");
+                            size_t dst_offset, size_t npackets, int flag,
+                            const std::string &name = "get_packet_msll");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
     bool verify() const;

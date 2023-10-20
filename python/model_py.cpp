@@ -255,15 +255,18 @@ void register_model(py::module &m) {
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
              py::arg("name") = "local_all_reduce_msll")
-        .def("local_reduce_scatter_msll", &ark::Model::local_reduce_scatter_msll,
-             "Performs a reduce-scatter operator across all GPUs in a node, aggregating "
+        .def("local_reduce_scatter_msll",
+             &ark::Model::local_reduce_scatter_msll,
+             "Performs a reduce-scatter operator across all GPUs in a node, "
+             "aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
              py::arg("name") = "local_all_reduce_msll")
-        .def("local_all_reduce_packet_msll", &ark::Model::local_all_reduce_packet_msll,
+        .def("local_all_reduce_packet_msll",
+             &ark::Model::local_all_reduce_packet_msll,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "

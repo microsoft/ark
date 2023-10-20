@@ -48,10 +48,9 @@ class CodeGenerator {
     std::ostream &def_proxy_channels(std::ostream &os,
                                      size_t num_channels) const;
 
-    std::ostream &def_sm_channels(std::ostream &os,
-                                          size_t num_channels) const;
+    std::ostream &def_sm_channels(std::ostream &os, size_t num_channels) const;
 
-  protected:
+   protected:
     size_t get_tensor_offset(const Tensor *tensor) const;
 
     const GpuInfo &gpu_info;

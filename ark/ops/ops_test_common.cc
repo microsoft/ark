@@ -11,7 +11,6 @@
 #include "gpu/gpu_kernel.h"
 #include "logging.h"
 #include "random.h"
-#include "env.h"
 #include "unittest/unittest_utils.h"
 
 namespace ark {

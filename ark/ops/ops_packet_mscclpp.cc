@@ -3,8 +3,8 @@
 
 #include <cassert>
 
-#include "model.h"
 #include "logging.h"
+#include "model.h"
 
 #ifdef ARK_USE_MSLL
 #include <msll/packet.hpp>
@@ -12,17 +12,16 @@
 
 constexpr int MSLL_PACKET_SIZE = 16;
 
-
-namespace ark{
+namespace ark {
 
 extern const OpConfigMap MsllPacketConfigMap;
 constexpr int MAX_PEER_NUM = 7;
 
-MsllPutPacketOp::MsllPutPacketOp(const std::string &prec_type,
-                                       Tensor *input, Tensor *local_tmp_buf,
-                                       Tensor *recv_buf, int id, int rank,
-                                       int dst_rank, size_t dst_offset,
-                                       int flag, const std::string &name)
+MsllPutPacketOp::MsllPutPacketOp(const std::string &prec_type, Tensor *input,
+                                 Tensor *local_tmp_buf, Tensor *recv_buf,
+                                 int id, int rank, int dst_rank,
+                                 size_t dst_offset, int flag,
+                                 const std::string &name)
     : Op{OP_PUT_PACKET_MSLL,
          prec_type,
          {input, local_tmp_buf, recv_buf},
@@ -83,9 +82,9 @@ OpArgs MsllPutPacketOp::function_call_args(const OpConfig &) const {
 }
 
 Tensor *Model::put_packet_msll(Tensor *input, Tensor *local_tmp_buf,
-                                  Tensor *recv_buf, int id, int rank,
-                                  int dst_rank, size_t dst_offset, int flag,
-                                  const std::string &name) {
+                               Tensor *recv_buf, int id, int rank, int dst_rank,
+                               size_t dst_offset, int flag,
+                               const std::string &name) {
     CHECK(input != nullptr);
     CHECK(local_tmp_buf != nullptr);
     CHECK(recv_buf != nullptr);
@@ -101,7 +100,7 @@ Tensor *Model::put_packet_msll(Tensor *input, Tensor *local_tmp_buf,
     local_tmp_buf->exported = true;
     recv_buf->imported_rank = dst_rank;
     MsllPutPacketOp op{pt,   input,    local_tmp_buf, recv_buf, id,
-                          rank, dst_rank, dst_offset,    flag,     name};
+                       rank, dst_rank, dst_offset,    flag,     name};
     return this->impl->add_op(op)[0];
 }
 
@@ -138,8 +137,7 @@ std::string MsllReduceAndWritePacketOp::function_name(
     this->args.get(&remote_dst_offset, 5);
     this->args.get(&flag, 6);
 
-    Dims shape_dims = {1, 1, 1,
-                       static_cast<ark::DimType>(elems_per_rank)};
+    Dims shape_dims = {1, 1, 1, static_cast<ark::DimType>(elems_per_rank)};
     const OpTile &tile_out = cfg.output_tiles[0];
     size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
                                  ? shape_dims.size()
@@ -187,21 +185,20 @@ Tensor *Model::reduce_and_write_packet_msll(
     inputs.insert(inputs.end(), remote_peer_bufs.begin(),
                   remote_peer_bufs.end());
     MsllReduceAndWritePacketOp op{pt,
-                                     inputs,
-                                     output,
-                                     id,
-                                     rank,
-                                     npeers,
-                                     elems_per_rank,
-                                     scratch_offset,
-                                     remote_dst_offset,
-                                     flag,
-                                     name};
+                                  inputs,
+                                  output,
+                                  id,
+                                  rank,
+                                  npeers,
+                                  elems_per_rank,
+                                  scratch_offset,
+                                  remote_dst_offset,
+                                  flag,
+                                  name};
     return this->impl->add_op(op)[0];
 }
 
-OpArgs MsllReduceAndWritePacketOp::function_call_args(
-    const OpConfig &) const {
+OpArgs MsllReduceAndWritePacketOp::function_call_args(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     Tensor *scratch = this->inputs[1];
     Tensor *output = this->outputs[0];
@@ -231,10 +228,11 @@ OpArgs MsllReduceAndWritePacketOp::function_call_args(
     return opargs;
 }
 
-MsllGetFromPacketOp::MsllGetFromPacketOp(
-    const std::string &prec_type, Tensor *shape, Tensor *input, Tensor *output,
-    size_t src_offset, size_t dst_offset, size_t npackets, int flag,
-    const std::string &name)
+MsllGetFromPacketOp::MsllGetFromPacketOp(const std::string &prec_type,
+                                         Tensor *shape, Tensor *input,
+                                         Tensor *output, size_t src_offset,
+                                         size_t dst_offset, size_t npackets,
+                                         int flag, const std::string &name)
     : Op{OP_GET_FROM_PACKET_MSLL,
          prec_type,
          {shape, input},
@@ -258,8 +256,7 @@ std::string MsllGetFromPacketOp::function_name(const OpConfig &cfg) const {
     this->args.get(&npackets, 2);
     this->args.get(&flag, 3);
 
-    DimType nelems =
-        npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes());
+    DimType nelems = npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes());
     Dims shape_dims = {1, 1, 1, static_cast<DimType>(nelems)};
     const OpTile &tile_out = cfg.output_tiles[0];
     size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
@@ -280,8 +277,7 @@ std::string MsllGetFromPacketOp::function_name(const OpConfig &cfg) const {
                              }});
 }
 
-OpArgs MsllGetFromPacketOp::function_call_args(
-    const OpConfig &) const {
+OpArgs MsllGetFromPacketOp::function_call_args(const OpConfig &) const {
     Tensor *input = this->inputs[1];
     Tensor *output = this->outputs[0];
 
@@ -294,10 +290,9 @@ OpArgs MsllGetFromPacketOp::function_call_args(
     return opargs;
 }
 
-Tensor *Model::get_packet_msll(Tensor *input, Tensor *output,
-                                  size_t src_offset, size_t dst_offset,
-                                  size_t npackets, int flag,
-                                  const std::string &name) {
+Tensor *Model::get_packet_msll(Tensor *input, Tensor *output, size_t src_offset,
+                               size_t dst_offset, size_t npackets, int flag,
+                               const std::string &name) {
     CHECK(input != nullptr);
     CHECK(output != nullptr);
     CHECK(input->is_sequential());
@@ -306,13 +301,12 @@ Tensor *Model::get_packet_msll(Tensor *input, Tensor *output,
         LOG(ERROR, "supports only 1D input");
     }
 
-    Dims shape = {(DimType)(
-        npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes()))};
+    Dims shape = {
+        (DimType)(npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes()))};
     // TODO: remove this hack
     Tensor *mock_tensor = this->tensor(shape, input->type, input->buf);
-    MsllGetFromPacketOp op{"none",   mock_tensor, input,
-                              output,   src_offset,  dst_offset,
-                              npackets, flag,        name};
+    MsllGetFromPacketOp op{"none",     mock_tensor, input, output, src_offset,
+                           dst_offset, npackets,    flag,  name};
     return this->impl->add_op(op)[0];
 }
 
@@ -335,4 +329,4 @@ const OpConfigMap MsllPacketConfigMap = {
        false}}},
 };
 
-} // namespace ark
+}  // namespace ark

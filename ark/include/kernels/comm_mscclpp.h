@@ -72,7 +72,8 @@ DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
 #pragma unroll
     for (int i = 0; i < 4; ++i) {
         union {
-            __half2 h2; uint32_t u32;
+            __half2 h2;
+            uint32_t u32;
         } d, s;
         d.h2 = pd[i];
         s.h2 = ps[i];

@@ -13,8 +13,8 @@ extern const OpConfigMap MsllConfigMap;
 extern const OpConfigMap MsllSyncConfigMap;
 
 MsllSendOp::MsllSendOp(const std::string &prec_type, Tensor *input,
-                             Tensor *recvbuf, int sid, int rank, int dst_rank,
-                             size_t bytes, const std::string &name)
+                       Tensor *recvbuf, int sid, int rank, int dst_rank,
+                       size_t bytes, const std::string &name)
     : Op{OP_SEND_MSLL,
          prec_type,
          {input, recvbuf},
@@ -58,9 +58,8 @@ OpArgs MsllSendOp::function_call_args(const OpConfig &) const {
     return opargs;
 }
 
-MsllSendDoneOp::MsllSendDoneOp(const std::string &prec_type,
-                                     Tensor *input, int rank, int dst_rank,
-                                     const std::string &name)
+MsllSendDoneOp::MsllSendDoneOp(const std::string &prec_type, Tensor *input,
+                               int rank, int dst_rank, const std::string &name)
     : Op{OP_SEND_DONE_MSLL,
          prec_type,
          {input},
@@ -87,13 +86,11 @@ std::string MsllSendDoneOp::function_name(const OpConfig &) const {
                              }});
 }
 
-OpArgs MsllSendDoneOp::function_call_args(const OpConfig &) const {
-    return {};
-}
+OpArgs MsllSendDoneOp::function_call_args(const OpConfig &) const { return {}; }
 
-MsllRecvOp::MsllRecvOp(const std::string &prec_type, Tensor *output,
-                             int sid, int rank, int src_rank, size_t bytes,
-                             const std::string &name)
+MsllRecvOp::MsllRecvOp(const std::string &prec_type, Tensor *output, int sid,
+                       int rank, int src_rank, size_t bytes,
+                       const std::string &name)
     : Op{OP_RECV_MSLL,
          prec_type,
          {},
@@ -122,9 +119,9 @@ std::string MsllRecvOp::function_name(const OpConfig &) const {
 
 OpArgs MsllRecvOp::function_call_args(const OpConfig &) const { return {}; }
 
-MsllDeviceSyncOp::MsllDeviceSyncOp(const std::string &prec_type,
-                                         Tensor *input, Tensor *output,
-                                         int nranks, const std::string &name)
+MsllDeviceSyncOp::MsllDeviceSyncOp(const std::string &prec_type, Tensor *input,
+                                   Tensor *output, int nranks,
+                                   const std::string &name)
     : Op{OP_DEVICE_SYNC_MSLL, prec_type, {input}, {output}, {{nranks}}, name,
          &MsllSyncConfigMap,  -1,        true} {}
 
@@ -139,7 +136,7 @@ OpArgs MsllDeviceSyncOp::function_call_args(const OpConfig &) const {
 }
 
 Tensor *Model::send_msll(Tensor *input, int sid, int dst_rank,
-                            std::size_t bytes, const std::string &name) {
+                         std::size_t bytes, const std::string &name) {
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
         LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
@@ -153,19 +150,19 @@ Tensor *Model::send_msll(Tensor *input, int sid, int dst_rank,
     Tensor *recvbuf = this->tensor(input->shape, input->type);
     recvbuf->imported_rank = dst_rank;
     MsllSendOp op{"none",           input,    recvbuf, sid,
-                     this->impl->rank, dst_rank, bytes,   name};
+                  this->impl->rank, dst_rank, bytes,   name};
     return this->impl->add_op(op)[0];
 }
 
 Tensor *Model::send_done_msll(Tensor *input, int dst_rank,
-                                 const std::string &name) {
+                              const std::string &name) {
     LOG(DEBUG, "send_done_msll ", input->shape, " ", dst_rank);
     MsllSendDoneOp op{"none", input, this->impl->rank, dst_rank, name};
     return this->impl->add_op(op)[0];
 }
 
 Tensor *Model::recv_msll(int sid, int src_rank, size_t bytes, Tensor *output,
-                            const std::string &name) {
+                         const std::string &name) {
     if (output == nullptr) {
         if (bytes == 0) {
             LOG(ERROR, "receive bytes cannot be 0");
@@ -180,13 +177,12 @@ Tensor *Model::recv_msll(int sid, int src_rank, size_t bytes, Tensor *output,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    MsllRecvOp op{"none",               output, sid,
-                     this->impl->rank, src_rank, bytes,  name};
+    MsllRecvOp op{"none", output, sid, this->impl->rank, src_rank, bytes, name};
     return this->impl->add_op(op)[0];
 }
 
 Tensor *Model::device_sync_msll(Tensor *input, int nranks,
-                                   const std::string &name) {
+                                const std::string &name) {
     MsllDeviceSyncOp op{"none", input, input, nranks, name};
     return this->impl->add_op(op)[0];
 }

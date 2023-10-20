@@ -102,8 +102,7 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
 }
 
 //
-GpuMgr::~GpuMgr()
-{
+GpuMgr::~GpuMgr() {
     this->mgr_ctxs.clear();
     cuCtxDestroy(this->cuda_ctx);
 }

@@ -53,7 +53,7 @@ class GpuCommSw {
 
     int get_sm_channels_bytes() const;
 
-  protected:
+   protected:
     class Impl;
     std::unique_ptr<Impl> impl;
 };

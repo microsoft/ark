@@ -490,8 +490,8 @@ std::string Op::function_name(const OpConfig &cfg) const {
         case OP_CAST:
             return static_cast<const CastOp *>(this)->function_name(cfg);
         case OP_DEVICE_SYNC_MSLL:
-            return static_cast<const MsllDeviceSyncOp *>(this)
-                ->function_name(cfg);
+            return static_cast<const MsllDeviceSyncOp *>(this)->function_name(
+                cfg);
         case OP_READ_AND_REDUCE_MSLL:
             return static_cast<const MsllReadAndReduceOp *>(this)
                 ->function_name(cfg);
@@ -619,8 +619,7 @@ bool Op::is_comm() const {
     // they run over GPU threads.
     return this->type == OP_SEND || this->type == OP_SEND_DONE ||
            this->type == OP_RECV || this->type == OP_SEND_MSLL ||
-           this->type == OP_SEND_DONE_MSLL ||
-           this->type == OP_RECV_MSLL ||
+           this->type == OP_SEND_DONE_MSLL || this->type == OP_RECV_MSLL ||
            this->type == OP_DEVICE_SYNC_MSLL;
 }
 

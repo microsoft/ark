@@ -83,8 +83,8 @@ OpArgs MsllReadAndReduceOp::function_call_args(const OpConfig &) const {
 }
 
 Tensor *Model::read_and_reduce_msll(Tensor *input, int sid, int npeers,
-                                       size_t offset, size_t bytes,
-                                       const std::string &name) {
+                                    size_t offset, size_t bytes,
+                                    const std::string &name) {
     LOG(DEBUG, "read_and_reduce_msll ", input->shape, " npeers ", npeers);
     input->exported = true;
 
@@ -104,22 +104,16 @@ Tensor *Model::read_and_reduce_msll(Tensor *input, int sid, int npeers,
     // These two tensors are not actually used, just give hint to scheduler to
     // split to correct tiles
     Tensor *cal_region_local = this->tensor(shape, input->type, input->buf);
-    MsllReadAndReduceOp op{pt,
-                              input,
-                              cal_region_local,
-                              remote_bufs,
-                              sid,
-                              this->impl->rank,
-                              npeers,
-                              offset,
-                              bytes,
-                              name};
+    MsllReadAndReduceOp op{pt,          input,  cal_region_local,
+                           remote_bufs, sid,    this->impl->rank,
+                           npeers,      offset, bytes,
+                           name};
     return this->impl->add_op(op)[1];
 }
 
 Tensor *Model::local_reduce_scatter_msll(Tensor *input, int gpu_id,
-                                            int ngpus_per_node,
-                                            const std::string &name) {
+                                         int ngpus_per_node,
+                                         const std::string &name) {
     assert(input != nullptr);
     if (input->ndims() > 1) {
         LOG(ERROR, "supports only 1D input");
@@ -131,8 +125,8 @@ Tensor *Model::local_reduce_scatter_msll(Tensor *input, int gpu_id,
     }
     int npeers = ngpus_per_node - 1;
     int id = this->impl->next_eid;
-    LOG(DEBUG, "local_reduce_scatter_msll ", input->shape, " ", gpu_id, " ",
-        id, " ", ngpus_per_node, " ", ngpus_per_node, " ");
+    LOG(DEBUG, "local_reduce_scatter_msll ", input->shape, " ", gpu_id, " ", id,
+        " ", ngpus_per_node, " ", ngpus_per_node, " ");
     Tensor *tensor = this->device_sync_msll(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);

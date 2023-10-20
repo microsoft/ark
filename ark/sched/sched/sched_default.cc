@@ -471,7 +471,8 @@ void DefaultScheduler::configure_gpu_buf(
                 int sid;
                 op->args.get(&sid, 3);
                 export_tns_sids[in->buf].emplace_back(in, sid);
-            } else if (op->type == OP_READ_AND_REDUCE_MSLL || op->type == OP_GATHER_FROM_PEERS_MSLL) {
+            } else if (op->type == OP_READ_AND_REDUCE_MSLL ||
+                       op->type == OP_GATHER_FROM_PEERS_MSLL) {
                 Tensor *local_buff = op->outputs[1];
                 std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
                     op->inputs.begin() + 1, op->inputs.end());
