@@ -39,6 +39,8 @@ jobs:
       - name: UpdateSubmodules
         run: |
           git config --global --add safe.directory /__w/ark/ark
+          git submodule foreach --recursive git reset --hard  
+          git submodule foreach --recursive git clean -fdx
           git submodule update --init --recursive
 
       - name: InstallGPUDMA
