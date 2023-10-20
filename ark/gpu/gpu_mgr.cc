@@ -95,7 +95,8 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
     // Create a CUDA context.
     CUdevice dev;
     CULOG(cuDeviceGet(&dev, gpu_id_));
-    CULOG(cuCtxCreate(&(this->cuda_ctx), CU_CTX_MAP_HOST, dev));
+    CULOG(cuDevicePrimaryCtxRetain(&(this->cuda_ctx), dev));
+    CULOG(cuCtxSetCurrent(this->cuda_ctx));
 
     gpu_info.init(gpu_id_);
 }
@@ -182,15 +183,10 @@ GpuMgrCtx::~GpuMgrCtx() {
 //
 GpuStream GpuMgrCtx::create_stream() {
     GpuStream s;
-    this->gpu_mgr->set_current();
+    CULOG(this->gpu_mgr->set_current());
     CULOG(cuStreamCreate(&s, CU_STREAM_NON_BLOCKING));
     this->streams.emplace_back(s);
     return s;
-}
-
-//
-GpuState GpuMgrCtx::sync_stream(const GpuStream &s) {
-    return cuStreamSynchronize(s);
 }
 
 //
@@ -276,8 +272,8 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align) {
         total_bytes = off + sz;
         this->usage.emplace_back(off, off + sz);
     }
-    this->bufs.emplace_back(
-        std::make_unique<GpuBuf>(&this->data_mem, id, off, bytes));
+    this->bufs.emplace_back(std::make_unique<GpuBuf>(
+        this->gpu_mgr->gpu_id, &this->data_mem, id, off, bytes));
     LOG(DEBUG, "Allocated ", bytes, " bytes of GPU memory at offset ", off,
         " rank ", rank);
     return this->bufs.back().get();
@@ -337,7 +333,7 @@ GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid) {
         LOG(ERROR, "invalid SID ", sid);
     }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
-    this->bufs.emplace_back(std::make_unique<GpuBuf>(dm, sid, 0, bytes));
+    this->bufs.emplace_back(std::make_unique<GpuBuf>(gid, dm, sid, 0, bytes));
     GpuBuf *buf = this->bufs.back().get();
     this->import_gid_bufs[gid].emplace_back(buf);
 
@@ -353,6 +349,7 @@ void GpuMgrCtx::reg_sendrecv(int sid, int remote_gpu_id, size_t bytes,
 
 //
 void GpuMgrCtx::freeze(bool expose) {
+    CULOG(this->gpu_mgr->set_current());
     //
     this->gpu_mgr->validate_total_bytes();
 
@@ -423,6 +420,9 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
             LOG(ERROR, "No CUDA-capable GPU is detected.");
         }
         ARK_GPU_MGR_GLOBAL.resize(ngpu);
+        for (auto &mgr : ARK_GPU_MGR_GLOBAL) {
+            mgr.reset(nullptr);
+        }
     }
     if ((unsigned int)gpu_id >= ARK_GPU_MGR_GLOBAL.size()) {
         LOG(ERROR, "invalid GPU ID ", gpu_id);
@@ -436,16 +436,7 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
     return mgr;
 }
 
-void gpu_memset(GpuPtr buf, int val, size_t num) {
-    CULOG(cuMemsetD32(buf, val, num));
-}
-void gpu_memcpy(GpuPtr dst, const void *src, size_t bytes) {
-    CULOG(cuMemcpyHtoD(dst, src, bytes));
-}
-void gpu_memcpy(void *dst, const GpuPtr src, size_t bytes) {
-    CULOG(cuMemcpyDtoH(dst, src, bytes));
-}
-void gpu_memset(GpuBuf *buf, int val, size_t num) {
+void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     const size_t &bytes = buf->get_bytes();
     assert(bytes >= 4);
     if ((bytes >> 2) < num) {
@@ -453,33 +444,47 @@ void gpu_memset(GpuBuf *buf, int val, size_t num) {
             "memset requests too many elements. Expected <= ", bytes >> 2,
             ", given ", num);
     }
-    GpuPtr pb = buf->ref();
+    GpuPtr pb = buf->ref(offset);
     if (pb != 0) {
-        assert((pb % 4) == 0);
+        // TODO: the set_current below seems to be necessary but returns
+        // `CUDA_ERROR_INVALID_VALUE`.
+        // CULOG(get_gpu_mgr(buf->get_gpu_id())->set_current());
+        assert((reinterpret_cast<long long unsigned int>(pb) % 4) == 0);
         CULOG(cuMemsetD32(pb, val, num));
     } else {
-        int *phb = (int *)buf->href();
+        int *phb = (int *)buf->href(offset);
         assert(phb != nullptr);
         for (size_t i = 0; i < num; ++i) {
             phb[i] = val;
         }
     }
 }
-void gpu_memcpy(GpuBuf *dst, const void *src, size_t bytes) {
-    CULOG(cuMemcpyHtoD(dst->ref(), src, bytes));
+
+void gpu_memcpy(GpuBuf *dst, size_t dst_offset, void *src, size_t src_offset,
+                size_t bytes) {
+    CULOG(get_gpu_mgr(dst->get_gpu_id())->set_current());
+    src = static_cast<char *>(src) + src_offset;
+    CULOG(cuMemcpyHtoD(dst->ref(dst_offset), src, bytes));
 }
-void gpu_memcpy(void *dst, const GpuBuf *src, size_t bytes) {
-    CULOG(cuMemcpyDtoH(dst, src->ref(), bytes));
+
+void gpu_memcpy(void *dst, size_t dst_offset, const GpuBuf *src,
+                size_t src_offset, size_t bytes) {
+    CULOG(get_gpu_mgr(src->get_gpu_id())->set_current());
+    dst = static_cast<char *>(dst) + dst_offset;
+    CULOG(cuMemcpyDtoH(dst, src->ref(src_offset), bytes));
 }
-void gpu_memcpy(GpuBuf *dst, const GpuBuf *src, size_t bytes) {
-    GpuPtr rd = dst->ref();
-    GpuPtr rs = src->ref();
+
+void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
+                size_t src_offset, size_t bytes) {
+    CULOG(get_gpu_mgr(src->get_gpu_id())->set_current());
+    GpuPtr rd = dst->ref(dst_offset);
+    GpuPtr rs = src->ref(src_offset);
     if ((rd != 0) && (rs != 0)) {
-        CULOG(cuMemcpyDtoD(dst->ref(), src->ref(), bytes));
+        CULOG(cuMemcpyDtoD(dst->ref(dst_offset), src->ref(src_offset), bytes));
     } else if (rd != 0) {
-        CULOG(cuMemcpyHtoD(dst->ref(), src->href(), bytes));
+        CULOG(cuMemcpyHtoD(dst->ref(dst_offset), src->href(src_offset), bytes));
     } else if (rs != 0) {
-        CULOG(cuMemcpyDtoH(dst->href(), src->ref(), bytes));
+        CULOG(cuMemcpyDtoH(dst->href(dst_offset), src->ref(src_offset), bytes));
     } else {
         // ::memcpy(dst->href(), src->href(), bytes);
         LOG(ERROR, "Unexpected case.");

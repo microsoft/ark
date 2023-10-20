@@ -57,21 +57,21 @@ unittest::State test_gpu_mgr_mem_alloc() {
 
         int buf0_data = 7;
         int buf1_data = 8;
-        gpu_memcpy(buf0, &buf0_data, sizeof(int));
-        gpu_memcpy(buf1, &buf1_data, sizeof(int));
+        gpu_memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
+        gpu_memcpy(buf1, 0, &buf1_data, 0, sizeof(int));
 
         int buf0_data2 = 0;
         int buf1_data2 = 0;
 
-        gpu_memcpy(&buf0_data2, buf0, sizeof(int));
-        gpu_memcpy(&buf1_data2, buf1, sizeof(int));
+        gpu_memcpy(&buf0_data2, 0, buf0, 0, sizeof(int));
+        gpu_memcpy(&buf1_data2, 0, buf1, 0, sizeof(int));
 
         UNITTEST_EQ(buf0_data2, 7);
         UNITTEST_EQ(buf1_data2, 8);
 
-        gpu_memcpy(buf0, buf1, sizeof(int));
+        gpu_memcpy(buf0, 0, buf1, 0, sizeof(int));
 
-        gpu_memcpy(&buf0_data2, buf0->ref(), sizeof(int));
+        gpu_memcpy(&buf0_data2, 0, buf0, 0, sizeof(int));
         UNITTEST_EQ(buf0_data2, 8);
 
         mgr->destroy_context(ctx);
@@ -108,11 +108,11 @@ unittest::State test_gpu_mgr_mem_free() {
         UNITTEST_EQ(buf0->pref(), buf1->pref());
 
         int buf0_data = 9;
-        gpu_memcpy(buf0, &buf0_data, sizeof(int));
+        gpu_memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
 
         int buf1_data = 0;
 
-        gpu_memcpy(&buf1_data, buf1, sizeof(int));
+        gpu_memcpy(&buf1_data, 0, buf1, 0, sizeof(int));
 
         UNITTEST_EQ(buf1_data, 9);
 
@@ -147,13 +147,13 @@ unittest::State test_gpu_mgr_remote() {
         while (*ptr != 7890) {
         }
 
-        gpu_memset(gpu1_eid5, 1234, 1);
+        gpu_memset(gpu1_eid5, 0, 1234, 1);
 
         ptr = (volatile int *)gpu0_eid4->href();
         while (*ptr != 3456) {
         }
 
-        gpu_memset(gpu1_eid6, 5678, 1);
+        gpu_memset(gpu1_eid6, 0, 5678, 1);
 
         mgr->destroy_context(ctx);
         return 0;
@@ -175,13 +175,13 @@ unittest::State test_gpu_mgr_remote() {
 
         ctx->freeze(true);
 
-        gpu_memset(gpu0_eid3, 7890, 1);
+        gpu_memset(gpu0_eid3, 0, 7890, 1);
 
         volatile int *ptr = (volatile int *)gpu1_eid5->href();
         while (*ptr != 1234) {
         }
 
-        gpu_memset(gpu0_eid4->ref(), 3456, 1);
+        gpu_memset(gpu0_eid4, 0, 3456, 1);
 
         ptr = (volatile int *)gpu1_eid6->href();
         while (*ptr != 5678) {

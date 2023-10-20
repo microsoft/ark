@@ -186,7 +186,7 @@ void Tensor::write(const void *buf) {
     int ndims = this->ndims();
     char *ptr = (char *)buf;
     if (ndims == 1) {
-        gpu_memcpy(gbuf->ref(this->offset_bytes(0)), ptr, bytes);
+        gpu_memcpy(gbuf, this->offset_bytes(0), ptr, 0, bytes);
         return;
     }
     size_t done = 0;
@@ -195,7 +195,7 @@ void Tensor::write(const void *buf) {
         if (ndims == 2) {
             size_t cb =
                 std::min(rem, (size_t)this->shape[1] * this->type_bytes());
-            gpu_memcpy(gbuf->ref(this->offset_bytes(i, 0)), &ptr[done], cb);
+            gpu_memcpy(gbuf, this->offset_bytes(i, 0), &ptr[done], 0, cb);
             rem -= cb;
             done += cb;
             if (rem == 0) {
@@ -207,7 +207,7 @@ void Tensor::write(const void *buf) {
             if (ndims == 3) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[2] * this->type_bytes());
-                gpu_memcpy(gbuf->ref(this->offset_bytes(i, j, 0)), &ptr[done],
+                gpu_memcpy(gbuf, this->offset_bytes(i, j, 0), &ptr[done], 0,
                            cb);
                 rem -= cb;
                 done += cb;
@@ -219,8 +219,8 @@ void Tensor::write(const void *buf) {
             for (DimType k = 0; k < this->shape[2]; ++k) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[3] * this->type_bytes());
-                gpu_memcpy(gbuf->ref(this->offset_bytes(i, j, k, 0)),
-                           &ptr[done], cb);
+                gpu_memcpy(gbuf, this->offset_bytes(i, j, k, 0), &ptr[done], 0,
+                           cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -248,7 +248,7 @@ void *Tensor::read(void *buf) {
     }
     char *ptr = (char *)buf;
     if (ndims == 1) {
-        gpu_memcpy(ptr, gbuf->ref(this->offset_bytes(0)), bytes);
+        gpu_memcpy(ptr, 0, gbuf, this->offset_bytes(0), bytes);
         return ptr;
     }
     size_t done = 0;
@@ -257,7 +257,7 @@ void *Tensor::read(void *buf) {
         if (ndims == 2) {
             size_t cb =
                 std::min(rem, (size_t)this->shape[1] * this->type_bytes());
-            gpu_memcpy(&ptr[done], gbuf->ref(this->offset_bytes(i, 0)), cb);
+            gpu_memcpy(&ptr[done], 0, gbuf, this->offset_bytes(i, 0), cb);
             rem -= cb;
             done += cb;
             if (rem == 0) {
@@ -269,7 +269,7 @@ void *Tensor::read(void *buf) {
             if (ndims == 3) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[2] * this->type_bytes());
-                gpu_memcpy(&ptr[done], gbuf->ref(this->offset_bytes(i, j, 0)),
+                gpu_memcpy(&ptr[done], 0, gbuf, this->offset_bytes(i, j, 0),
                            cb);
                 rem -= cb;
                 done += cb;
@@ -281,8 +281,8 @@ void *Tensor::read(void *buf) {
             for (DimType k = 0; k < this->shape[2]; ++k) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[3] * this->type_bytes());
-                gpu_memcpy(&ptr[done],
-                           gbuf->ref(this->offset_bytes(i, j, k, 0)), cb);
+                gpu_memcpy(&ptr[done], 0, gbuf, this->offset_bytes(i, j, k, 0),
+                           cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -308,7 +308,7 @@ void *Tensor::read_raw(void *buf) {
             LOG(ERROR, "failed to allocate host buffer");
         }
     }
-    gpu_memcpy(buf, gbuf->ref(this->offset_bytes(0)), bytes);
+    gpu_memcpy(buf, 0, gbuf, this->offset_bytes(0), bytes);
     return buf;
 }
 
@@ -322,7 +322,7 @@ void Tensor::clear() {
     assert(bytes % 4 == 0);
     size_t num = bytes >> 2;
     if (ndims == 1) {
-        gpu_memset(buf->ref(this->offset_bytes(0)), 0, num);
+        gpu_memset(buf, this->offset_bytes(0), 0, num);
         return;
     }
     size_t done = 0;
@@ -332,7 +332,7 @@ void Tensor::clear() {
             bytes = (size_t)this->shape[1] * this->type_bytes();
             assert(bytes % 4 == 0);
             size_t cn = std::min(rem, bytes >> 2);
-            gpu_memset(buf->ref(this->offset_bytes(i, 0)), 0, cn);
+            gpu_memset(buf, this->offset_bytes(i, 0), 0, cn);
             rem -= cn;
             done += cn;
             if (rem == 0) {
@@ -345,7 +345,7 @@ void Tensor::clear() {
                 bytes = (size_t)this->shape[2] * this->type_bytes();
                 assert(bytes % 4 == 0);
                 size_t cn = std::min(rem, bytes >> 2);
-                gpu_memset(buf->ref(this->offset_bytes(i, j, 0)), 0, cn);
+                gpu_memset(buf, this->offset_bytes(i, j, 0), 0, cn);
                 rem -= cn;
                 done += cn;
                 if (rem == 0) {
@@ -357,7 +357,7 @@ void Tensor::clear() {
                 bytes = (size_t)this->shape[3] * this->type_bytes();
                 assert(bytes % 4 == 0);
                 size_t cn = std::min(rem, bytes >> 2);
-                gpu_memset(buf->ref(this->offset_bytes(i, j, k, 0)), 0, cn);
+                gpu_memset(buf, this->offset_bytes(i, j, k, 0), 0, cn);
                 rem -= cn;
                 done += cn;
                 if (rem == 0) {
