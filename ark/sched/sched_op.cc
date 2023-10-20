@@ -11,7 +11,7 @@ using namespace std;
 namespace ark {
 
 SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
-    : op{op_}, cfg{cfg_}, name{name}, tnums{} {
+    : op{op_}, cfg{cfg_}, name{name} {
     if (op_ == nullptr) {
         return;
     }
@@ -81,24 +81,6 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
             pads.emplace_back(tile.y);
         }
         this->op->outputs[i]->update_pads(pads);
-    }
-    // claculate the tile size for the SchedOp
-    if ((this->op->outputs.size() == 1) && (this->cfg != nullptr)) {
-        const OpTile &tile = this->cfg->output_tiles[0];
-        const Dims &s = this->op->outputs[0]->shape;
-        int ndims = s.ndims();
-        vector<DimType> vec;
-        if (ndims == 1) {
-            vec.emplace_back((DimType)math::div_up(s[0], tile.y));
-        } else {
-            int i = 0;
-            for (; i < ndims - 2; ++i) {
-                vec.emplace_back(s[i]);
-            }
-            vec.emplace_back((DimType)math::div_up(s[i], tile.x));
-            vec.emplace_back((DimType)math::div_up(s[i + 1], tile.y));
-        }
-        this->tnums = Dims{vec};
     }
 }
 

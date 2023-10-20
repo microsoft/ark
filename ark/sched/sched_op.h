@@ -16,7 +16,6 @@ class SchedOp {
     SchedOp(const Op *op_, const OpConfig *cfg_, const std::string name);
     const Op *get_op() const { return op; }
     int get_num_warps() const { return const_cast<OpConfig *>(cfg)->num_warps; }
-    const Dims &get_tnums() const { return tnums; }
     const std::string &get_name() const { return name; }
     const OpConfig *get_cfg() const { return cfg; }
     const std::string function_name() const;
@@ -27,8 +26,6 @@ class SchedOp {
     const Op *op;
     const OpConfig *cfg;
     std::string name;
-    // The number of tiles along each axis of the operator.
-    Dims tnums;
 };
 
 }  // namespace ark
