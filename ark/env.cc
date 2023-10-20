@@ -105,7 +105,7 @@ Env::Env() {
     } else {
         this->shm_name_prefix = shm_name_prefix_ca;
     }
-    // If `ARK_USE_MSLL=1`, we use MSCCL++.
+    // If `ARK_USE_MSLL=1`, we use MSLL.
     const char *use_msll_ca = getenv("ARK_USE_MSLL");
     if (use_msll_ca == nullptr) {
         this->use_msll = DEFAULT_ARK_USE_MSLL;
@@ -114,14 +114,14 @@ Env::Env() {
     } else {
         this->use_msll = false;
     }
-    // Get the MSCCL++ include directory path.
+    // Get the MSLL include directory path.
     const char *msll_include_dir_ca = getenv("ARK_MSLL_INCLUDE_DIR");
     if (msll_include_dir_ca == nullptr) {
         this->msll_include_dir = DEFAULT_ARK_MSLL_INCLUDE_DIR;
     } else {
         this->msll_include_dir = msll_include_dir_ca;
     }
-    // Get the port number of MSCCL++.
+    // Get the port number of MSLL.
     const char *msll_port_ca = getenv("ARK_MSLL_PORT");
     if (msll_port_ca == nullptr) {
         this->msll_port = DEFAULT_ARK_MSLL_PORT;

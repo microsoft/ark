@@ -12,7 +12,7 @@
 #include <msll/packet.hpp>
 #endif
 
-constexpr int MSCLLPP_PACKET_SIZE = 16;
+constexpr int MSLL_PACKET_SIZE = 16;
 
 namespace ark {
 
@@ -91,12 +91,12 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     Tensor *out = this->tensor(input->shape, input->type);
     // only half of the packets are used to store data
     const int num_packets =
-        input->shape_bytes() / (MSCLLPP_PACKET_SIZE / 2);
+        input->shape_bytes() / (MSLL_PACKET_SIZE / 2);
     const int scratch_nelems = num_packets *
                                2 /*oringinal data & reduced result*/ *
                                2 /*double buffer*/;
     Dims scratch_shape = {
-        static_cast<ark::DimType>(scratch_nelems * MSCLLPP_PACKET_SIZE)};
+        static_cast<ark::DimType>(scratch_nelems * MSLL_PACKET_SIZE)};
     Tensor *scratch = this->tensor(scratch_shape, UINT8);
     int npeer = gpu_num - 1;
     std::vector<Tensor *> outputs;
@@ -106,10 +106,10 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     size_t npackets_per_rank = num_packets / gpu_num;
     int flag = this->impl->reduce_packet_flag;
     size_t scratch_base_offset =
-        (flag & 1) ? 0 : num_packets * MSCLLPP_PACKET_SIZE;
+        (flag & 1) ? 0 : num_packets * MSLL_PACKET_SIZE;
     size_t scratch_result_offset =
-        (flag & 1) ? 2 * num_packets * MSCLLPP_PACKET_SIZE
-                   : 3 * num_packets * MSCLLPP_PACKET_SIZE;
+        (flag & 1) ? 2 * num_packets * MSLL_PACKET_SIZE
+                   : 3 * num_packets * MSLL_PACKET_SIZE;
     int id = this->impl->next_eid;
     std::vector<Tensor *> sharded_inputs =
         this->sharding(input, 0, nelems_per_rank);
@@ -123,7 +123,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
             sharded_inputs[remote_rank], scratch, remote_scratch, id, gpu_id,
             remote_rank,
             scratch_base_offset +
-                npackets_per_rank * gpu_id * MSCLLPP_PACKET_SIZE,
+                npackets_per_rank * gpu_id * MSLL_PACKET_SIZE,
             flag);
         outputs.push_back(out);
     }
@@ -141,7 +141,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
         size_t dst_offset = nelems_per_rank * remote_rank * input->type_bytes();
         size_t src_offset =
             scratch_result_offset +
-            npackets_per_rank * remote_rank * MSCLLPP_PACKET_SIZE;
+            npackets_per_rank * remote_rank * MSLL_PACKET_SIZE;
         Tensor *res =
             this->get_packet_msll(scratch_stage3, out, src_offset,
                                      dst_offset, npackets_per_rank, flag);

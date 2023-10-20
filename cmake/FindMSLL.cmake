@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-# Find the MSCCL++ libraries
+# Find the MSLL libraries
 #
 # The following variables are optionally searched for defaults
 #  MSLL_ROOT_DIR: Base directory where all msll components are found

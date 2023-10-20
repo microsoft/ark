@@ -10,7 +10,7 @@
 #include <msll/packet.hpp>
 #endif
 
-constexpr int MSCLLPP_PACKET_SIZE = 16;
+constexpr int MSLL_PACKET_SIZE = 16;
 
 
 namespace ark{
@@ -259,7 +259,7 @@ std::string MsllGetFromPacketOp::function_name(const OpConfig &cfg) const {
     this->args.get(&flag, 3);
 
     DimType nelems =
-        npackets * (MSCLLPP_PACKET_SIZE / 2 / output->type_bytes());
+        npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes());
     Dims shape_dims = {1, 1, 1, static_cast<DimType>(nelems)};
     const OpTile &tile_out = cfg.output_tiles[0];
     size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
@@ -307,7 +307,7 @@ Tensor *Model::get_packet_msll(Tensor *input, Tensor *output,
     }
 
     Dims shape = {(DimType)(
-        npackets * (MSCLLPP_PACKET_SIZE / 2 / output->type_bytes()))};
+        npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes()))};
     // TODO: remove this hack
     Tensor *mock_tensor = this->tensor(shape, input->type, input->buf);
     MsllGetFromPacketOp op{"none",   mock_tensor, input,

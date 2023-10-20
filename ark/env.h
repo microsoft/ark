@@ -35,11 +35,11 @@ struct Env {
     bool disable_graph_opt;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
-    // Use MSCCL++.
+    // Use MSLL.
     bool use_msll;
-    // MSCCL++ include directory path.
+    // MSLL include directory path.
     std::string msll_include_dir;
-    // MSCCL++ bootstrap port.
+    // MSLL bootstrap port.
     int msll_port;
 };
 
