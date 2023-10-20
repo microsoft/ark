@@ -30,7 +30,9 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const {
     Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.output_tiles[0];
+    OpTile tile_out = cfg.output_tiles[0];
+    if (tile_out.x < 0) tile_out.x = output->ldims.dims4()[2];
+    if (tile_out.y < 0) tile_out.y = output->ldims.dims4()[3];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
@@ -88,7 +90,9 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const {
     Tensor *output = this->outputs[0];
 
     int ndims = output->shape.ndims();
-    const OpTile &tile_out = cfg.output_tiles[0];
+    OpTile tile_out = cfg.output_tiles[0];
+    if (tile_out.x < 0) tile_out.x = output->ldims.dims4()[2];
+    if (tile_out.y < 0) tile_out.y = output->ldims.dims4()[3];
     CHECK(output->ldims[ndims - 1] % tile_out.y == 0);
     if (ndims > 1) {
         CHECK(output->ldims[ndims - 2] % tile_out.x == 0);
