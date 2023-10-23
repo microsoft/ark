@@ -455,10 +455,11 @@ void GpuCommSw::Impl::request_loop() {
         //
         GpuPtr src = addr_table_[gpu_id_][db.fields.sid];
         if (src == 0) {
-            LOG(ERROR, "Invalid SRC SID ", db.fields.sid, " in GPU ", gpu_id_);
+            LOG(ERROR, "Invalid SRC SID ", (uint64_t)db.fields.sid, " in GPU ",
+                gpu_id_);
         }
-        REQUEST_DEBUG("Request SRC: RANK ", rank_, ", sid ", db.fields.sid,
-                      ", ", (void *)src);
+        REQUEST_DEBUG("Request SRC: RANK ", rank_, ", sid ",
+                      (uint64_t)db.fields.sid, ", ", (void *)src);
         GpuPtr dst = 0;
         // TODO: generalize converting rank to GPU ID.
         int nrph = get_env().num_ranks_per_host;
@@ -466,18 +467,18 @@ void GpuCommSw::Impl::request_loop() {
         if ((db.fields.rank / nrph) != (rank_ / nrph)) {
             // This GPU is not in this machine.
             gid_dst = -1;
-            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                          db.fields.sid, ", remote");
+            REQUEST_DEBUG("Request DST: RANK ", (uint64_t)db.fields.rank,
+                          ", sid ", (uint64_t)db.fields.sid, ", remote");
         } else {
             dst = addr_table_[gid_dst][db.fields.sid];
             if (dst == 0) {
-                LOG(ERROR, "Invalid DST SID ", db.fields.sid, " in GPU ",
-                    gid_dst);
+                LOG(ERROR, "Invalid DST SID ", (uint64_t)db.fields.sid,
+                    " in GPU ", gid_dst);
             }
-            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                          db.fields.sid, ", ", (void *)dst);
+            REQUEST_DEBUG("Request DST: RANK ", (uint64_t)db.fields.rank,
+                          ", sid ", (uint64_t)db.fields.sid, ", ", (void *)dst);
         }
-        REQUEST_DEBUG("Request LEN: ", db.fields.len);
+        REQUEST_DEBUG("Request LEN: ", (uint64_t)db.fields.len);
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {

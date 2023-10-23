@@ -13,18 +13,16 @@
 #include "cpu_timer.h"
 #include "env.h"
 
-using namespace std;
-
 namespace ark {
 
-Logging::Logging(const char *lv) : pid{getpid()} {
+Logging::Logging(const char *lv) : pid{::getpid()} {
     if (lv == nullptr) {
         this->level = INFO;
-    } else if (strncmp(lv, "DEBUG", 6) == 0) {
+    } else if (::strncmp(lv, "DEBUG", 6) == 0) {
         this->level = DEBUG;
-    } else if (strncmp(lv, "WARN", 5) == 0) {
+    } else if (::strncmp(lv, "WARN", 5) == 0) {
         this->level = WARN;
-    } else if (strncmp(lv, "ERROR", 6) == 0) {
+    } else if (::strncmp(lv, "ERROR", 6) == 0) {
         this->level = ERROR;
     } else {
         this->level = INFO;
@@ -37,7 +35,7 @@ void Logging::set_level(LogLevel lv) { this->level = lv; };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-unique_ptr<Logging> _ARK_LOGGING_GLOBAL = nullptr;
+std::unique_ptr<Logging> _ARK_LOGGING_GLOBAL = nullptr;
 
 // Get the global Logging.
 Logging &get_logging() {
@@ -48,11 +46,9 @@ Logging &get_logging() {
     return *_ARK_LOGGING_GLOBAL;
 }
 
-void log_header(ostream &os, const LogLevel ll, const string &file,
-                const int line) {
-    long usec = cpu_ntimer() / 1000;
-    os << dec << setfill('0') << setw(6) << usec << " ARK " << setfill(' ')
-       << setw(5) << getpid() << ' ';
+void _log_header(std::ostream &os, const LogLevel ll, const std::string &file,
+                 const int line) {
+    os << "ARK " << std::setfill(' ') << std::setw(5) << ::getpid() << ' ';
     switch (ll) {
         case INFO:
             os << "INFO ";
@@ -67,13 +63,14 @@ void log_header(ostream &os, const LogLevel ll, const string &file,
             os << "ERROR ";
             break;
     }
-    os << file << ':' << line << ' ';
-}
-
-ostream &log(ostream &os, const LogLevel ll, const string &file,
-             const int line) {
-    log_header(os, ll, file, line);
-    return os;
+    std::string file_name;
+    size_t pos = file.rfind("ark/");
+    if (pos == std::string::npos) {
+        file_name = file;
+    } else {
+        file_name = file.substr(pos + 4);
+    }
+    os << file_name << ':' << line << ' ';
 }
 
 void set_log_level(LogLevel lv) { get_logging().set_level(lv); }
