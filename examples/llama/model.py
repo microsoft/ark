@@ -204,8 +204,7 @@ class RowParallelLinear(ark.Module):
         for i in range(len(output_shape)):
             output_shape_bytes *= output_shape[i]
         output_parallel_reshape = ark.reshape(
-            output_parallel,
-            [output_shape_bytes],
+            output_parallel, [output_shape_bytes]
         )
         output_reshape = ark.all_reduce(
             output_parallel_reshape, self.local_rank, self.world_size
