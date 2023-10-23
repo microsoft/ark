@@ -30,7 +30,9 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const {
     Tensor *mat_y = this->outputs[0];
 
     int ndims_y = mat_y->shape.ndims();
-    const OpTile &tile_out = cfg.output_tiles[0];
+    OpTile tile_out = cfg.output_tiles[0];
+    if (tile_out.x < 0) tile_out.x = mat_y->ldims.dims4()[2];
+    if (tile_out.y < 0) tile_out.y = mat_y->ldims.dims4()[3];
     CHECK(mat_y->ldims[ndims_y - 1] % tile_out.y == 0);
     if (ndims_y > 1) {
         CHECK(mat_y->ldims[ndims_y - 2] % tile_out.x == 0);

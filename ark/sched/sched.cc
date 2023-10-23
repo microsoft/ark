@@ -154,15 +154,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     } else {
         cfg = high_priority_candidates[0];
     }
-    OpConfig *cfg_new = new OpConfig(*cfg);
-    OpTile &op_tile = cfg_new->output_tiles[0];
-    if (op_tile.x == -1) {
-        op_tile.x = ldims4[2];
-    }
-    if (op_tile.y == -1) {
-        op_tile.y = ldims4[3];
-    }
-    return cfg_new;
+    return cfg;
 }
 
 }  // namespace ark

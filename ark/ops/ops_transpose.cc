@@ -29,7 +29,9 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const {
 
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
-    const OpTile &tile_out = cfg.output_tiles[0];
+    OpTile tile_out = cfg.output_tiles[0];
+    if (tile_out.x < 0) tile_out.x = output->ldims.dims4()[2];
+    if (tile_out.y < 0) tile_out.y = output->ldims.dims4()[3];
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
 
     return Op::function_name("ark::transpose" + tp_type_str,
