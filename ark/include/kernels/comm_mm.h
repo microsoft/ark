@@ -63,7 +63,7 @@ DEVICE void post_recv_mm_op(volatile int *send_ready_flag, int uop_idx) {
         // reset the send_ready_flag to 0
         send_ready_flag[uop_idx] = 0;
     }
-    sync_warps<Arch::ThreadsPerWarp>();
+    sync_warps<1>();
 }
 
 template <int LDM, int LDN, int NumWarps, int SmemBytes, int TDM, int TDN,

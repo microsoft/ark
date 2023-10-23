@@ -1141,40 +1141,62 @@ DEVICE void gemm_cutlass(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     int un = UnitOp::uop_idx_n(uop_idx);
     int uc = UnitOp::uop_idx_c(uop_idx);
 
+    using CutDataTypeA = typename cutlass::platform::conditional<
+        std::is_same<DataTypeA, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeA, bf16>::value, cutlass::bfloat16_t,
+            DataTypeA>::type>::type;
+
+    using CutDataTypeB = typename cutlass::platform::conditional<
+        std::is_same<DataTypeB, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeB, bf16>::value, cutlass::bfloat16_t,
+            DataTypeB>::type>::type;
+
+    using CutDataTypeC = typename cutlass::platform::conditional<
+        std::is_same<DataTypeC, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeC, bf16>::value, cutlass::bfloat16_t,
+            DataTypeC>::type>::type;
+
     // Broadcasting
-    DataTypeA *pA;
-    DataTypeB *pB;
-    DataTypeC *pC = &C[un * math::mul<CC, SizeC>::value + uc * SizeC];
+    CutDataTypeA *pA;
+    CutDataTypeB *pB;
+    CutDataTypeC *pC = reinterpret_cast<CutDataTypeC *>(
+        &C[un * math::mul<CC, SizeC>::value + uc * SizeC]);
     if constexpr (NCA::D0 == 1 && NCA::D1 == 1) {
-        pA = A;
+        pA = reinterpret_cast<CutDataTypeA *>(A);
     } else if constexpr (NCA::D0 == 1) {
-        pA = &A[uc * SizeA];
+        pA = reinterpret_cast<CutDataTypeA *>(&A[uc * SizeA]);
     } else if constexpr (NCA::D1 == 1) {
-        pA = &A[un * SizeA];
+        pA = reinterpret_cast<CutDataTypeA *>(&A[un * SizeA]);
     } else {
-        pA = &A[un * math::mul<CC, SizeA>::value + uc * SizeA];
+        pA = reinterpret_cast<CutDataTypeA *>(
+            &A[un * math::mul<CC, SizeA>::value + uc * SizeA]);
     }
     if constexpr (NCB::D0 == 1 && NCB::D1 == 1) {
-        pB = B;
+        pB = reinterpret_cast<CutDataTypeB *>(B);
     } else if constexpr (NCB::D0 == 1) {
-        pB = &B[uc * SizeB];
+        pB = reinterpret_cast<CutDataTypeB *>(&B[uc * SizeB]);
     } else if constexpr (NCB::D1 == 1) {
-        pB = &B[un * SizeB];
+        pB = reinterpret_cast<CutDataTypeB *>(&B[un * SizeB]);
     } else {
-        pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
+        pB = reinterpret_cast<CutDataTypeB *>(
+            &B[un * math::mul<CC, SizeB>::value + uc * SizeB]);
     }
 
 #if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
      ARK_TARGET_CUDA_ARCH == 80)
-    gemm_cuda<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
-              IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
+    gemm_cuda<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB, LeadingDimB,
+              IsColumnB, CutDataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
               ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp, NumWarps,
               SmemBytes>(pC, pA, pB, uop_idx, smem_per_warp);
 #elif (ARK_TARGET_CUDA_ARCH == 90)
-    gemm_cuda_90<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
-                 IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-                 ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp,
-                 NumWarps, SmemBytes>(pC, pA, pB, uop_idx, smem_per_warp);
+    gemm_cuda_90<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
+                 LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
+                 ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM, TileSizeN,
+                 TileSizeK, UnitOp, NumWarps, SmemBytes>(pC, pA, pB, uop_idx,
+                                                         smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif

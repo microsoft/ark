@@ -105,7 +105,7 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, fp16, 2, KernelHeight,
                 f2 = read_elem(in, midx + 1, nidx);
             }
         }
-        sync_warps<Arch::ThreadsPerWarp>();
+        sync_warps<1>();
         *(fp16x2 *)out = __floats2half2_rn(f1, f2);
     }
 };

@@ -4,7 +4,11 @@
 #ifndef ARK_KERNELS_MATMUL_H_
 #define ARK_KERNELS_MATMUL_H_
 
-#include "gemm.h"
+#if defined(ARK_TARGET_CUDA_ARCH)
+#include "gemm_cutlass.h"
+#elif defined(ARK_TARGET_ROCM_ARCH)
+#include "gemm_ck.h"
+#endif
 
 namespace ark {
 
@@ -36,9 +40,16 @@ template <typename OutDims, typename NCA, typename NCB, typename Shape,
           typename DataTypeC>
 DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                    int smem_per_warp) {
-    gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
-         InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, DataTypeA,
-         DataTypeB, DataTypeC, DataTypeC>(C, A, B, uop_idx, smem_per_warp);
+#if defined(ARK_TARGET_CUDA_ARCH)
+    gemm_cutlass<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
+                 InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes,
+                 DataTypeA, DataTypeB, DataTypeC, DataTypeC>(C, A, B, uop_idx,
+                                                             smem_per_warp);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+    gemm_ck<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
+            InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, DataTypeA,
+            DataTypeB, DataTypeC, DataTypeC>(C, A, B, uop_idx, smem_per_warp);
+#endif
 }
 
 template <typename OutDims, typename NCA, typename NCB, typename Shape,
@@ -46,9 +57,15 @@ template <typename OutDims, typename NCA, typename NCB, typename Shape,
           int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
           int SmemBytes>
 DEVICE void matmul(bf16 *C, bf16 *A, bf16 *B, int uop_idx, int smem_per_warp) {
-    gemm<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
-         InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, bf16, bf16,
-         bf16, float>(C, A, B, uop_idx, smem_per_warp);
+#if defined(ARK_TARGET_CUDA_ARCH)
+    gemm_cutlass<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
+                 InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, bf16,
+                 bf16, bf16, float>(C, A, B, uop_idx, smem_per_warp);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+    gemm_ck<OutDims, NCA, NCB, Shape, ProblemSize, LeadingDims, InnerLdimA,
+            InnerLdimB, IsColumnA, IsColumnB, NumWarps, SmemBytes, bf16, bf16,
+            bf16, float>(C, A, B, uop_idx, smem_per_warp);
+#endif
 }
 
 }  // namespace ark

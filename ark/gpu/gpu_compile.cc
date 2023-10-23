@@ -161,8 +161,16 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             std::string code_file_path = item.second + ".cu";
             std::string bin_file_path = item.second + ".cubin";
             if (is_exist(code_file_path) && is_exist(bin_file_path)) {
-                LOG(INFO, "Reusing cached binary for ", code_file_path);
-                return;
+                if (!get_env().ignore_binary_cache) {
+                    LOG(INFO, "Reusing cached binary for ", code_file_path);
+                    return;
+                }
+                // Remove the cached binary.
+                int err = remove_file(bin_file_path);
+                if (err != 0) {
+                    LOG(ERROR, "Failed to remove a cache file: ", bin_file_path,
+                        " (errno ", err, ")");
+                }
             }
             // Write GPU kernel code file.
             {

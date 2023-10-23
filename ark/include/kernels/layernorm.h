@@ -63,35 +63,50 @@ struct LayerNorm {
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
-        DataType reduced;
-        ReduceTypeMean::template identity<1>(&reduced);
+        DataType mean;
+        DataType cmp;
+        ReduceTypeMean::template identity<1>(&mean);
+        ReduceTypeMean::template identity<1>(&cmp);
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
-            ReduceTypeMean::template reduce<1>(&reduced, &reduced, &in[idx_in]);
+            DataType in_val = in[idx_in];
+            DataType val = type::Sub::compute(in_val, cmp);
+            DataType tmp = type::Add::compute(mean, val);
+            cmp = type::Sub::compute(type::Sub::compute(tmp, mean), val);
+            mean = tmp;
         }
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
-            reduced, tid, smem_per_warp);
+        mean = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
+            mean, tid, smem_per_warp);
         // get the average result.
-        ReduceTypeMean::template postReduce<1>(&reduced, &reduced,
-                                               UnitOutDims::W);
+        ReduceTypeMean::template postReduce<1>(&mean, &mean, UnitOutDims::W);
         DataType variance;
         ReduceTypeMean::template identity<1>(&variance);
+        ReduceTypeMean::template identity<1>(&cmp);
         // get the variance
-        // TODO: Kahan sum
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
-            variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
+            DataType in_val = in[idx_in];
+            DataType val = type::Sub::compute(
+                type::Mul::compute(type::Sub::compute(in_val, mean),
+                                   type::Sub::compute(in_val, mean)),
+                cmp);
+            DataType tmp = type::Add::compute(variance, val);
+            cmp = type::Sub::compute(type::Sub::compute(tmp, variance), val);
+            variance = tmp;
         }
         variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             variance, tid, smem_per_warp);
         ReduceTypeMean::template postReduce<1>(&variance, &variance,
                                                UnitOutDims::W);
+        variance = type::Rsqrt::compute(
+            type::Add::compute(variance, type::Cast::compute<DataType>(1e-5f)));
         // the output is (input - mean) / sqrt(variance)
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
-            out[idx_out] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
+            out[idx_out] = type::Mul::compute(
+                type::Sub::compute(in[idx_in], mean), variance);
         }
     }
 };

@@ -28,6 +28,7 @@ constexpr auto BLAS_R_32F = CUDA_R_32F;
 constexpr auto BLAS_R_16F = CUDA_R_16F;
 constexpr auto BLAS_R_16BF = CUDA_R_16BF;
 constexpr auto BLAS_COMPUTE_32F = CUBLAS_COMPUTE_32F;
+constexpr auto BLAS_COMPUTE_32F_FAST_TF32 = CUBLAS_COMPUTE_32F_FAST_TF32;
 constexpr auto BLAS_COMPUTE_16F = CUBLAS_COMPUTE_16F;
 
 ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, cublasCreate);
@@ -72,6 +73,7 @@ constexpr auto BLAS_R_32F = rocblas_datatype_f32_r;
 constexpr auto BLAS_R_16F = rocblas_datatype_f16_r;
 constexpr auto BLAS_R_16BF = rocblas_datatype_bf16_r;
 constexpr auto BLAS_COMPUTE_32F = rocblas_datatype_f32_r;
+constexpr auto BLAS_COMPUTE_32F_FAST_TF32 = rocblas_datatype_f32_r;
 constexpr auto BLAS_COMPUTE_16F = rocblas_datatype_f16_r;
 
 ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, rocblas_create_handle);
@@ -181,9 +183,10 @@ void baseline_matmul_nn(std::vector<void *> &outputs,
     if constexpr (std::is_same_v<T, float>) {
         float alpha = 1;
         float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_32F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
+        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_32F,
+                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
+                                                devB, ldb, &beta, devC, ldc,
+                                                batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
         ark::half_t alpha = 1;
         ark::half_t beta = 0;
@@ -234,9 +237,10 @@ void baseline_matmul_nt(std::vector<void *> &outputs,
     if constexpr (std::is_same_v<T, float>) {
         float alpha = 1;
         float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_32F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
+        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_32F,
+                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
+                                                devB, ldb, &beta, devC, ldc,
+                                                batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
         ark::half_t alpha = 1;
         ark::half_t beta = 0;
@@ -287,9 +291,10 @@ void baseline_matmul_tn(std::vector<void *> &outputs,
     if constexpr (std::is_same_v<T, float>) {
         float alpha = 1;
         float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_32F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
+        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_32F,
+                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
+                                                devB, ldb, &beta, devC, ldc,
+                                                batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
         ark::half_t alpha = 1;
         ark::half_t beta = 0;
@@ -340,9 +345,10 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
     if constexpr (std::is_same_v<T, float>) {
         float alpha = 1;
         float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_32F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
+        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_32F,
+                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
+                                                devB, ldb, &beta, devC, ldc,
+                                                batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
         ark::half_t alpha = 1;
         ark::half_t beta = 0;
@@ -452,7 +458,7 @@ ark::unittest::State test_matmul_split() {
         auto result = ark::op_test("matmul_split", m, {a, b}, {c},
                                    baseline_matmul_nn<float>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -467,7 +473,7 @@ ark::unittest::State test_matmul_fp32() {
         auto result = ark::op_test("matmul_fp32", m, {a, b}, {c},
                                    baseline_matmul_nn<float>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -478,7 +484,7 @@ ark::unittest::State test_matmul_fp32() {
         auto result = ark::op_test("matmul_fp32", m, {a, b}, {c},
                                    baseline_matmul_nn<float>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -493,7 +499,7 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     {
         ark::Model m;
@@ -504,7 +510,7 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }

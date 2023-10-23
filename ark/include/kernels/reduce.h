@@ -34,10 +34,12 @@ DEVICE DataType warpReduce(DataType val) {
     DataType tmp;
     constexpr int iter =
         math::log2_up<math::min<LanesNum, Arch::ThreadsPerWarp>::value>::value;
+    if constexpr (iter > 0) {
 #pragma unroll
-    for (int i = (1 << (iter - 1)); i > 0; i /= 2) {
-        tmp = SHFL_XOR(res, i, i * 2);
-        ReduceType::template reduce<1>(&res, &res, &tmp);
+        for (int i = (1 << (iter - 1)); i > 0; i /= 2) {
+            tmp = SHFL_XOR(res, i, i * 2);
+            ReduceType::template reduce<1>(&res, &res, &tmp);
+        }
     }
     return res;
 }
