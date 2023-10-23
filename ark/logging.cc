@@ -5,8 +5,6 @@
 
 #include <unistd.h>
 
-#include <cassert>
-#include <cstring>
 #include <iomanip>
 #include <sstream>
 
@@ -15,23 +13,23 @@
 
 namespace ark {
 
-Logging::Logging(const char *lv) : pid{::getpid()} {
-    if (lv == nullptr) {
-        this->level = INFO;
-    } else if (::strncmp(lv, "DEBUG", 6) == 0) {
-        this->level = DEBUG;
-    } else if (::strncmp(lv, "WARN", 5) == 0) {
-        this->level = WARN;
-    } else if (::strncmp(lv, "ERROR", 6) == 0) {
-        this->level = ERROR;
+Logging::Logging(const std::string &lv) : pid_{::getpid()} {
+    if (lv.size() == 0) {
+        level_ = INFO;
+    } else if (lv == "DEBUG") {
+        level_ = DEBUG;
+    } else if (lv == "WARN") {
+        level_ = WARN;
+    } else if (lv == "ERROR") {
+        level_ = ERROR;
     } else {
-        this->level = INFO;
+        level_ = INFO;
     }
 }
 
-const LogLevel &Logging::get_level() const { return this->level; }
+const LogLevel &Logging::get_level() const { return level_; }
 
-void Logging::set_level(LogLevel lv) { this->level = lv; };
+void Logging::set_level(LogLevel lv) { level_ = lv; };
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,8 +38,7 @@ std::unique_ptr<Logging> _ARK_LOGGING_GLOBAL = nullptr;
 // Get the global Logging.
 Logging &get_logging() {
     if (_ARK_LOGGING_GLOBAL.get() == nullptr) {
-        _ARK_LOGGING_GLOBAL.reset(new Logging{get_env().log_level});
-        assert(_ARK_LOGGING_GLOBAL.get() != nullptr);
+        _ARK_LOGGING_GLOBAL = std::make_unique<Logging>(get_env().log_level);
     }
     return *_ARK_LOGGING_GLOBAL;
 }

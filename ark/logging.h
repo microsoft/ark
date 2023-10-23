@@ -14,14 +14,14 @@ typedef enum { DEBUG, INFO, WARN, ERROR } LogLevel;
 
 class Logging {
    public:
-    Logging(const char *lv);
+    Logging(const std::string &lv);
 
     const LogLevel &get_level() const;
     void set_level(LogLevel lv);
 
    private:
-    const pid_t pid;
-    LogLevel level;
+    const pid_t pid_;
+    LogLevel level_;
 };
 
 // Get the global Logging.

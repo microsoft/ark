@@ -12,7 +12,7 @@ namespace ark {
 struct Env {
     Env();
     // Log level.
-    const char *log_level;
+    std::string log_level;
     // Root directory where ARK is installed.
     std::string path_root_dir;
     // Temporary directory.
@@ -31,6 +31,8 @@ struct Env {
     bool disable_p2p_memcpy;
     // Disable the heuristic ARK graph optimization.
     bool disable_graph_opt;
+    // Ignore compiled binary cache.
+    bool ignore_binary_cache;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
 };
