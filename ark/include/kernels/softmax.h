@@ -98,7 +98,6 @@ struct Softmax {
         }
         exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
             exp_sum_input, tid, smem_per_warp);
-        ReduceTypeSum::postReduce<1>(&exp_sum_input, &exp_sum_input);
 
         DataType r_exp_sum_input =
             type::Div::compute(type::Cast::compute<DataType>(1), exp_sum_input);

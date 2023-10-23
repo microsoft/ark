@@ -84,17 +84,20 @@ DEVICE void sync_warps() {
     static_assert(math::is_pow2<NumWarps>::value == 1, "");
 #if defined(ARK_TARGET_CUDA_ARCH)
     static_assert(Arch::ThreadsPerWarp == 32, "");
-    if (NumWarps == 1) {
+    if constexpr (NumWarps == 1) {
         __syncwarp();
-    } else if (NumWarps == 2) {
-        asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6)));
-    } else if (NumWarps == 4) {
+    } else if constexpr (NumWarps == 2) {
+        static_assert(
+            ARK_THREADS_PER_BLOCK <= 512,
+            "2-warp barrier is not supported for block sizes larger than 512");
+        asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6) + 8));
+    } else if constexpr (NumWarps == 4) {
         asm volatile("barrier.sync %0, 128;" ::"r"((threadIdx.x >> 7) + 8));
-    } else if (NumWarps == 8) {
+    } else if constexpr (NumWarps == 8) {
         asm volatile("barrier.sync %0, 256;" ::"r"((threadIdx.x >> 8) + 8));
-    } else if (NumWarps == 16) {
+    } else if constexpr (NumWarps == 16) {
         asm volatile("barrier.sync %0, 512;" ::"r"((threadIdx.x >> 9) + 8));
-    } else if (NumWarps == 32) {
+    } else if constexpr (NumWarps == 32) {
         // If we sync 1024 threads, it means we sync all threads in a thread
         // block because the maximum number of threads per block is 1024 in
         // all NVIDIA devices. Therefore, we do not check `threadIdx.x` and
@@ -103,7 +106,7 @@ DEVICE void sync_warps() {
     }
 #elif defined(ARK_TARGET_ROCM_ARCH)
     static_assert(Arch::ThreadsPerWarp == 64, "");
-    if (NumWarps == 1) {
+    if constexpr (NumWarps == 1) {
         __builtin_amdgcn_wave_barrier();
     } else {
         // TODO:
