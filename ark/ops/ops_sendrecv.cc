@@ -83,6 +83,12 @@ RecvOp::RecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
 
 std::string RecvOp::function_name(const OpConfig &) const {
     Tensor *output = this->outputs[0];
+    if (!output->is_sequential()) {
+        LOG(INFO, "output shape: ", output->shape);
+        LOG(INFO, "output ldims: ", output->ldims);
+        LOG(INFO, "output offs: ", output->offs);
+        LOG(INFO, "output pads: ", output->pads);
+    }
     CHECK(output->is_sequential());
 
     int sid;
@@ -116,6 +122,9 @@ Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
         bytes = max_bytes;
     }
     input->exported = true;
+    if (!input->is_sequential()) {
+        LOG(ERROR, "input tensor must be sequential");
+    }
     SendOp op{"none", input, id, this->impl->rank, dst_rank, bytes, name};
     return this->impl->add_op(op)[0];
 }
@@ -146,6 +155,9 @@ Tensor *Model::recv(int id, int src_rank, size_t bytes, Tensor *output,
     }
     if (bytes == 0) {
         bytes = max_bytes;
+    }
+    if (!output->is_sequential()) {
+        LOG(ERROR, "output tensor must be sequential");
     }
     if (get_env().use_mscclpp) {
         return this->recv_mscclpp(id, src_rank, bytes, output, name);
