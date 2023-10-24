@@ -156,7 +156,7 @@ const OpConfigMap MscclppGatherFromPeersConfigMap = {
         {-1, -1},
         {-1, -1},
         {-1, -1}},
-       {{-1, 65536}, {-1, -1}},
+       {{1, 65536}, {-1, -1}},
        false,
        true}}},
 };
