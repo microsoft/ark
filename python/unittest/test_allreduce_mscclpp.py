@@ -16,7 +16,9 @@ def all_reduce_packet_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     input_tensor = ark.tensor([tensor_len], ark.fp16)
 
-    allreduce_result = ark.local_all_reduce_packet_mscclpp(input_tensor, rank, world_size)
+    allreduce_result = ark.local_all_reduce_packet_mscclpp(
+        input_tensor, rank, world_size
+    )
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
@@ -51,7 +53,9 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     input_tensor = ark.tensor([tensor_len], ark.fp16)
 
-    allreduce_result = ark.local_all_reduce_mscclpp(input_tensor, rank, world_size)
+    allreduce_result = ark.local_all_reduce_mscclpp(
+        input_tensor, rank, world_size
+    )
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
@@ -119,7 +123,7 @@ def test_allreduce_mscclpp_internal(world_size, tensor_len):
 class TestAllreduce(unittest.TestCase):
     def test_allreduce_mscclpp(self):
         test_allreduce_mscclpp_packet_internal(8, 4096)
-        test_allreduce_mscclpp_internal(8, 32*1024*1024)
+        test_allreduce_mscclpp_internal(8, 32 * 1024 * 1024)
 
 
 if __name__ == "__main__":

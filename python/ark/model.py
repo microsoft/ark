@@ -909,10 +909,12 @@ def all_gather(
 
 
 @register_op
-def local_all_gather_mscclpp(input: Tensor,
+def local_all_gather_mscclpp(
+    input: Tensor,
     rank: int,
     ranks_per_node: int,
-    name: str = "local_all_gather_mscclpp",) -> Tensor:
+    name: str = "local_all_gather_mscclpp",
+) -> Tensor:
     """
     Performs an all-gather operator across local node GPUs.
     Usage:
@@ -931,10 +933,12 @@ def local_all_gather_mscclpp(input: Tensor,
 
 
 @register_op
-def local_reduce_scatter_mscclpp(input: Tensor,
+def local_reduce_scatter_mscclpp(
+    input: Tensor,
     rank: int,
     ranks_per_node: int,
-    name: str = "local_reduce_scatter_mscclpp",) -> Tensor:
+    name: str = "local_reduce_scatter_mscclpp",
+) -> Tensor:
     """
     Performs an reduce-scatter operator across local node GPUs.
     Usage:
