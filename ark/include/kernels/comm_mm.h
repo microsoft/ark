@@ -33,15 +33,15 @@ DEVICE uint64_t readLL(DataPacketLL *recv_buf) {
     do {
         pkt.l2 = load_volatile_128b(recv_buf);
     } while ((pkt.flag1 != FLAG) || (pkt.flag2 != FLAG));
-    return pkt.data1 + (((uint64_t)pkt.data2) << sizeof(uint32_t));
+    return pkt.data1 + (((uint64_t)pkt.data2) << 32);
 }
 
 template <int FLAG>
 DEVICE void storeLL(DataPacketLL *data_dst, uint64_t val) {
     DataPacketLL pkt;
-    pkt.data1 = val & 0xFFFFFFFF;
+    pkt.data1 = (uint32_t)val;
     pkt.flag1 = FLAG;
-    pkt.data2 = val >> sizeof(uint32_t);
+    pkt.data2 = val >> 32;
     pkt.flag2 = FLAG;
     store_volatile_128b(data_dst, pkt.l2);
 }
