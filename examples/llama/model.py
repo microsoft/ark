@@ -138,9 +138,13 @@ class ColumnParallelLinear(ark.Module):
         output_tensor_shards = ark.sharding(
             output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
         )
-        shard = ark.scale(local_result, 1.0, output_tensor_shards[self.local_rank])
+        shard = ark.scale(
+            local_result, 1.0, output_tensor_shards[self.local_rank]
+        )
         gather_result = ark.identity(output_tensor, deps=[shard])
-        return ark.local_all_gather_mscclpp(gather_result, self.local_rank, self.world_size)
+        return ark.local_all_gather_mscclpp(
+            gather_result, self.local_rank, self.world_size
+        )
 
 
 class RowParallelLinear(ark.Module):
