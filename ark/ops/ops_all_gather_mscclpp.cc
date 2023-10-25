@@ -82,7 +82,7 @@ OpArgs MsllGatherFromPeersOp::function_call_args(const OpConfig &) const {
 Tensor *Model::gather_from_peers_msll(Tensor *input, int sid, int npeers,
                                       size_t chunk_bytes,
                                       const std::string &name) {
-    LOG(DEBUG, "gather_from_peers_msll ", input->shape, " nppers ", npeers);
+    LOG(DEBUG, "gather_from_peers_msll ", input->shape, " npeers ", npeers);
     input->exported = true;
 
     int rank = this->impl->rank;
@@ -119,14 +119,13 @@ Tensor *Model::local_all_gather_msll(Tensor *input, int gpu_id,
                                      int ngpus_per_node,
                                      const std::string &name) {
     assert(input != nullptr);
-    if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
-    }
     if (!input->is_sequential()) {
         LOG(WARN,
             "all_gather may not work correctly if the input tensor is "
             "not contiguous");
     }
+    ark::Dims ori_shape = input->shape;
+    Tensor *input_reshaped = this->reshape(input, {input->shape.size()});
     int npeers = ngpus_per_node - 1;
     int id = this->impl->next_eid;
     LOG(DEBUG, "local_all_gather_msll ", input->shape, " ", gpu_id, " ", id,
@@ -138,7 +137,7 @@ Tensor *Model::local_all_gather_msll(Tensor *input, int gpu_id,
     Tensor *out =
         this->gather_from_peers_msll(tensor, id, npeers, bytes_per_chunk, name);
     this->impl->next_eid += 1;
-    return out;
+    return this->reshape(out, ori_shape);
 }
 
 const OpConfigMap MsllGatherFromPeersConfigMap = {
@@ -156,7 +155,7 @@ const OpConfigMap MsllGatherFromPeersConfigMap = {
         {-1, -1},
         {-1, -1},
         {-1, -1}},
-       {{-1, 65536}, {-1, -1}},
+       {{1, 65536}, {-1, -1}},
        false,
        true}}},
 };

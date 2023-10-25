@@ -37,10 +37,10 @@ std::string MsllReadAndReduceOp::function_name(const OpConfig &cfg) const {
     this->args.get(&bytes, 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
-    size_t ntitle_eles = tile_out.x * tile_out.y > dst_buff->shape.size()
-                             ? dst_buff->shape.size()
-                             : tile_out.x * tile_out.y;
-    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(ntitle_eles)};
+    size_t eles_per_tile = tile_out.x * tile_out.y > dst_buff->shape.size()
+                               ? dst_buff->shape.size()
+                               : tile_out.x * tile_out.y;
+    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(eles_per_tile)};
     Dims shape_dims = {1, 1, 1,
                        static_cast<long long>(bytes) / dst_buff->type_bytes()};
     Dims dims = dst_buff->ldims.dims4();
@@ -66,9 +66,7 @@ OpArgs MsllReadAndReduceOp::function_call_args(const OpConfig &) const {
     CHECK(local_buff->buf != nullptr);
 
     OpArgs opargs;
-    // read_and_redcue_msll(dst_offset, src_offset...)
-    opargs.put((size_t)(local_buff->buf->get_buf_offset() +
-                        local_buff->offset_bytes()));
+    // read_and_redcue_mscclpp(src_offset...)
     for (int i = 0; i < MAX_PEER_NUM; i++) {
         if (i < npeers) {
             CHECK(remote_bufs[i]->buf != nullptr);
@@ -152,7 +150,7 @@ const OpConfigMap MsllReadAndReduceConfigMap = {
         {-1, -1},
         {-1, -1},
         {-1, -1}},
-       {{-1, 65536}, {-1, -1}},
+       {{1, 65536}, {-1, -1}},
        false,
        true}}},
 };

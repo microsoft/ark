@@ -55,16 +55,17 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
 Tensor *Model::local_all_reduce_msll(Tensor *input, int gpu_id, int gpu_num,
                                      const std::string &) {
     assert(input != nullptr);
-    if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
-    }
     if (!input->is_sequential()) {
         LOG(WARN,
             "all_reduce may not work correctly if the input tensor is "
             "not contiguous");
     }
-    Tensor *out = this->local_reduce_scatter_msll(input, gpu_id, gpu_num);
-    return this->local_all_gather_msll(out, gpu_id, gpu_num);
+    ark::Dims ori_shape = input->shape;
+    Tensor *input_reshaped = this->reshape(input, {input->shape.size()});
+    Tensor *out =
+        this->local_reduce_scatter_msll(input_reshaped, gpu_id, gpu_num);
+    Tensor *res = this->local_all_gather_msll(out, gpu_id, gpu_num);
+    return this->reshape(res, ori_shape);
 }
 
 Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
@@ -90,7 +91,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     Tensor *scratch = this->tensor(scratch_shape, UINT8);
     int npeer = gpu_num - 1;
     std::vector<Tensor *> outputs;
-    std::vector<Tensor *> remote_scratchs;
+    std::vector<Tensor *> remote_scratches;
     size_t nelems_per_rank =
         input->shape_bytes() / input->type_bytes() / gpu_num;
     size_t npackets_per_rank = num_packets / gpu_num;
@@ -108,7 +109,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     for (int i = 0; i < npeer; ++i) {
         int remote_rank = i < gpu_id ? i : i + 1;
         Tensor *remote_scratch = this->tensor(scratch_shape, UINT8);
-        remote_scratchs.push_back(remote_scratch);
+        remote_scratches.push_back(remote_scratch);
         Tensor *out = this->put_packet_msll(
             sharded_inputs[remote_rank], scratch, remote_scratch, id, gpu_id,
             remote_rank,
@@ -119,7 +120,7 @@ Tensor *Model::local_all_reduce_packet_msll(Tensor *input, int gpu_id,
     Tensor *input_sharded = this->identity(sharded_inputs[gpu_id], outputs);
     // This op should reduce from the scratch buffer and write to the remote.
     Tensor *out_stage2 = this->reduce_and_write_packet_msll(
-        input_sharded, scratch, sharded_outputs[gpu_id], remote_scratchs, id,
+        input_sharded, scratch, sharded_outputs[gpu_id], remote_scratches, id,
         gpu_id, npeer, nelems_per_rank, scratch_base_offset,
         scratch_result_offset, flag);
     // Get the result from the scratch buffer.
