@@ -37,10 +37,10 @@ std::string MsllReadAndReduceOp::function_name(const OpConfig &cfg) const {
     this->args.get(&bytes, 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
-    size_t eles_per_tile = tile_out.x * tile_out.y > dst_buff->shape.size()
-                               ? dst_buff->shape.size()
-                               : tile_out.x * tile_out.y;
-    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(eles_per_tile)};
+    size_t neles_per_tile = tile_out.x * tile_out.y > dst_buff->shape.size()
+                                ? dst_buff->shape.size()
+                                : tile_out.x * tile_out.y;
+    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(neles_per_tile)};
     Dims shape_dims = {1, 1, 1,
                        static_cast<long long>(bytes) / dst_buff->type_bytes()};
     Dims dims = dst_buff->ldims.dims4();
