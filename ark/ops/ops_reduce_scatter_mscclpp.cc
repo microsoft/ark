@@ -66,9 +66,7 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
     CHECK(local_buff->buf != nullptr);
 
     OpArgs opargs;
-    // read_and_redcue_mscclpp(dst_offset, src_offset...)
-    opargs.put((size_t)(local_buff->buf->get_buf_offset() +
-                        local_buff->offset_bytes()));
+    // read_and_redcue_mscclpp(src_offset...)
     for (int i = 0; i < MAX_PEER_NUM; i++) {
         if (i < npeers) {
             CHECK(remote_bufs[i]->buf != nullptr);
@@ -132,7 +130,7 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
     int npeers = ngpus_per_node - 1;
     int id = this->impl->next_eid;
     LOG(DEBUG, "local_reduce_scatter_mscclpp ", input->shape, " ", gpu_id, " ",
-        id, " ", ngpus_per_node, " ", ngpus_per_node, " ");
+        id, " ", ngpus_per_node, " ", npeers, " ");
     Tensor *tensor = this->device_sync_mscclpp(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);

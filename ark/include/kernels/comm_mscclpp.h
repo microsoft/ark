@@ -151,11 +151,11 @@ DEVICE void device_sync_mscclpp(int, int) {
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
           unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
           unsigned long long Length>
-DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
-                                    size_t src_offset_1, size_t src_offset_2,
-                                    size_t src_offset_3, size_t src_offset_4,
-                                    size_t src_offset_5, size_t src_offset_6,
-                                    ark::half *src, int uop_idx, int) {
+DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
+                                    size_t src_offset_2, size_t src_offset_3,
+                                    size_t src_offset_4, size_t src_offset_5,
+                                    size_t src_offset_6, ark::half *src,
+                                    int uop_idx, int) {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
@@ -165,7 +165,7 @@ DEVICE void read_and_reduce_mscclpp(size_t dst_offset, size_t src_offset_0,
     constexpr size_t nInt4 = Length / sizeof(int4);
     const int tid = uop_idx * NumThreads + UnitOp::thread_id();
     BytesPack<16> *dst = reinterpret_cast<BytesPack<16> *>(
-        (uint8_t *)src + dst_offset + Offset);
+        (uint8_t *)src + Offset);
     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
                              src_offset_3, src_offset_4, src_offset_5,
                              src_offset_6};

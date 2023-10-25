@@ -56,17 +56,17 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
 Tensor *Model::local_all_reduce_mscclpp(Tensor *input, int gpu_id, int gpu_num,
                                         const std::string &) {
     assert(input != nullptr);
-    if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
-    }
     if (!input->is_sequential()) {
         LOG(WARN,
             "all_reduce may not work correctly if the input tensor is "
             "not contiguous");
     }
+    ark::Dims ori_shape = input->shape;
+    Tensor *input_reshaped = this->reshape(input, {input->shape.size()});
     Tensor *out =
-        this->local_reduce_scatter_mscclpp(input, gpu_id, gpu_num);
-    return this->local_all_gather_mscclpp(out, gpu_id, gpu_num);
+        this->local_reduce_scatter_mscclpp(input_reshaped, gpu_id, gpu_num);
+    Tensor *res = this->local_all_gather_mscclpp(out, gpu_id, gpu_num);
+    return this->reshape(res, ori_shape);
 }
 
 Tensor *Model::local_all_reduce_packet_mscclpp(Tensor *input, int gpu_id,
