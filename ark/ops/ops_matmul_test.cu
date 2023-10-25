@@ -86,9 +86,8 @@ inline auto blasGemmEx(blasHandle handle, blasOperation transA,
                        const void *beta, void *C, blasDataType Ctype, int ldc,
                        blasComputeType computeType) {
     return rocblas_gemm_ex(handle, transA, transB, m, n, k, alpha, A, Atype,
-                           lda, B, Btype, ldb, beta, C, Ctype, ldc, nullptr,
-                           Ctype, ldc, computeType, rocblas_gemm_algo_standard,
-                           0, 0);
+                           lda, B, Btype, ldb, beta, C, Ctype, ldc, C, Ctype,
+                           ldc, computeType, rocblas_gemm_algo_standard, 0, 0);
 }
 
 inline auto blasGemmStridedBatchedEx(
@@ -99,7 +98,7 @@ inline auto blasGemmStridedBatchedEx(
     int batchCount, blasComputeType computeType) {
     return rocblas_gemm_strided_batched_ex(
         handle, transA, transB, m, n, k, alpha, A, Atype, lda, strideA, B,
-        Btype, ldb, strideB, beta, C, Ctype, ldc, strideC, nullptr, Ctype, ldc,
+        Btype, ldb, strideB, beta, C, Ctype, ldc, strideC, C, Ctype, ldc,
         strideC, batchCount, computeType, rocblas_gemm_algo_standard, 0, 0);
 }
 
