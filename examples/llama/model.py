@@ -137,11 +137,17 @@ class ColumnParallelLinear(ark.Module):
                 [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
             )
             output_tensor_shards = ark.sharding(
-                output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
             )
-            shard = ark.scale(local_result, 1.0, output_tensor_shards[self.local_rank])
+            shard = ark.scale(
+                local_result, 1.0, output_tensor_shards[self.local_rank]
+            )
             gather_result = ark.identity(output_tensor, deps=[shard])
-            return ark.local_all_gather_msll(gather_result, self.local_rank, self.world_size)
+            return ark.local_all_gather_msll(
+                gather_result, self.local_rank, self.world_size
+            )
         else:
             gathered_list = ark.all_gather(
                 local_result, self.local_rank, self.world_size
@@ -151,7 +157,9 @@ class ColumnParallelLinear(ark.Module):
                 [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
             )
             output_tensor_shards = ark.sharding(
-                output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
             )
             deps = []
             # Copy all tensors in gathered_list to output_tensor_shards
@@ -215,7 +223,6 @@ class RowParallelLinear(ark.Module):
                 local_result, self.local_rank, self.world_size
             )
         return reduced_result
-
 
 
 class ParallelEmbedding(ark.Module):

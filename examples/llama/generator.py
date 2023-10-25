@@ -152,7 +152,12 @@ def worker(args: argparse.Namespace, rank: int):
     with open(args.params_path, "r") as f:
         params = json.load(f)
 
-    gen = Generator(ModelArgs7B(**params), local_rank=rank, world_size=args.ngpus, seq_len=128)
+    gen = Generator(
+        ModelArgs7B(**params),
+        local_rank=rank,
+        world_size=args.ngpus,
+        seq_len=128,
+    )
     if rank == 0:
         log(f"gen.args {gen.args}")
 
