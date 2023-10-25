@@ -9,11 +9,11 @@
 namespace ark {
 
 /// Row-major GeMM.
-template <typename OutDims, typename NCA, typename NCB, typename Shape,
-          typename ProblemSize, typename LeadingDims, int InnerLdimA,
-          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
-          int SmemBytes, typename DataTypeA, typename DataTypeB,
-          typename DataTypeC, typename AccumulateType>
+template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
+          typename DataTypeB, int LeadingDimB, bool IsColumnB,
+          typename DataTypeC, int LeadingDimC, int ProblemSizeM,
+          int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
+          int TileSizeK, typename UnitOp>
 DEVICE void gemm_ck(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                     int smem_per_warp) {}
 

@@ -69,8 +69,9 @@ struct UnitOp {
                            math::div_up<_OutShape::H, _UnitOutDims::H>::value,
                            math::div_up<_OutShape::W, _UnitOutDims::W>::value>;
 
-    static const int NumThreads = _NumWarps * Arch::ThreadsPerWarp;
-    static const int SmemBytes = _SmemBytes;
+    static constexpr int NumWarps = _NumWarps;
+    static constexpr int NumThreads = _NumWarps * Arch::ThreadsPerWarp;
+    static constexpr int SmemBytes = _SmemBytes;
 
     /// Do not use `threadIdx` and use this function instead.
     static DEVICE int thread_id() { return math::mod<NumThreads>(threadIdx.x); }

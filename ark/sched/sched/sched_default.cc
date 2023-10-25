@@ -352,6 +352,79 @@ void DefaultScheduler::configure_gpu_buf(
     // A TensorBuf can have multi tensors pointing to it. Different Tensor
     // represent a different sharding or view of the same TensorBuf.
     std::map<TensorBuf *, std::vector<Tensor *>> bufs;
+    for (auto tns : model_tensors) {
+        // If the tensor is imported, it should not be allocated on this GPU
+        if (tns->imported_rank >= 0) continue;
+        bufs[tns->buf].emplace_back(tns);
+    }
+
+    const std::string padding_error_msg =
+        "invalid padding detected. This is likely caused because one GPU buffer"
+        " is used by multiple operators that require different padding. A "
+        "possible workaround is to let each operator use a different buffer by "
+        "creating a new tensor rather than overwriting an existing tensor.";
+
+    for (auto &opseq : this->opseqs) {
+        for (auto &sop : opseq->get_sched_ops()) {
+            auto tile_vec = sop.get_cfg()->input_tiles;
+            auto tns_vec = sop.get_op()->inputs;
+            tile_vec.insert(tile_vec.end(), sop.get_cfg()->output_tiles.begin(),
+                            sop.get_cfg()->output_tiles.end());
+            tns_vec.insert(tns_vec.end(), sop.get_op()->outputs.begin(),
+                           sop.get_op()->outputs.end());
+            for (size_t i = 0; i < tns_vec.size(); ++i) {
+                auto tile = tile_vec[i];
+                if (tile.x < 0) tile.x = 1;
+                if (tile.y < 0) tile.y = 1;
+                std::vector<DimType> pads;
+                if (tns_vec[i]->ndims() == 1) {
+                    if (tile.x != 1) {
+                        LOG(ERROR, "invalid tile shape for 1D tensor: {",
+                            tile.x, ", ", tile.y, "}");
+                    }
+                    pads.emplace_back(tile.y);
+                } else {
+                    for (int j = 0; j < tns_vec[i]->ndims() - 2; ++j) {
+                        pads.emplace_back(1);
+                    }
+                    pads.emplace_back(tile.x);
+                    pads.emplace_back(tile.y);
+                }
+                auto op_tns = tns_vec[i];
+                auto orig_ldims = op_tns->ldims;
+                auto orig_ldims_bytes = op_tns->ldims_bytes();
+                op_tns->update_pads(pads);
+                for (auto tns : bufs[op_tns->buf]) {
+                    if (tns == op_tns) continue;
+                    if (tns->ldims_bytes() == orig_ldims_bytes) {
+                        tns->update_pads(pads);
+                        if (tns->ldims_bytes() != op_tns->ldims_bytes()) {
+                            LOG(ERROR, padding_error_msg, " ", tns->ldims,
+                                " vs ", op_tns->ldims);
+                        }
+                    } else {
+                        LOG(ERROR, padding_error_msg, " ", tns->ldims, " vs ",
+                            orig_ldims);
+                    }
+                }
+            }
+        }
+    }
+    // Fix TensorBuf size.
+    for (auto &el : bufs) {
+        TensorBuf *buf = el.first;
+        DimType buf_bytes = -1;
+        for (auto tns : el.second) {
+            if (buf_bytes == -1) {
+                buf_bytes = tns->ldims_bytes();
+            } else if (buf_bytes != tns->ldims_bytes()) {
+                LOG(ERROR, padding_error_msg);
+            }
+        }
+        // Store the size.
+        buf->bytes = (buf_bytes == -1) ? 0 : buf_bytes;
+    }
+
     // export_tns_sids is a map of the TensorBuf that needed to be exported, and
     // the corresponding tensors and sids. A TensorBuf can have multiple tensors
     // pointing to it, and might be exported to multiple ranks as different
@@ -359,37 +432,13 @@ void DefaultScheduler::configure_gpu_buf(
     std::map<TensorBuf *, std::vector<std::pair<Tensor *, int>>>
         export_tns_sids;
 
-    for (auto &opseq : this->opseqs) {
-        for (auto &sop : opseq->get_sched_ops()) {
-            for (unsigned int i = 0; i < sop.get_op()->inputs.size(); ++i) {
-                auto &tile = sop.get_cfg()->input_tiles[i];
-                sop.get_op()->inputs[i]->update_pads({tile.x, tile.y});
-            }
-            for (unsigned int i = 0; i < sop.get_op()->outputs.size(); ++i) {
-                auto &tile = sop.get_cfg()->output_tiles[i];
-                sop.get_op()->outputs[i]->update_pads({tile.x, tile.y});
-            }
-        }
-    }
-
+    // TODO: move this into BaseScheduler::create_context().
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
             const Op *op = sop.get_op();
-            std::vector<Tensor *> tensors = op->inputs;
-            tensors.insert(tensors.end(), op->outputs.begin(),
-                           op->outputs.end());
-
-            for (auto &tns : tensors) {
-                // If the tensor is not imported, it should be allocated on this
-                // GPU
-                if (tns->imported_rank < 0) {
-                    bufs[tns->buf].emplace_back(tns);
-                }
-            }
 
             const int send_ready_flag_sid_offset = 128;
 
-            // TODO: move this into BaseScheduler::create_context().
             if (op->type == OP_SEND) {
                 //
                 Tensor *in = op->inputs[0];
@@ -456,31 +505,6 @@ void DefaultScheduler::configure_gpu_buf(
                     send_ready_flag->buf, sid + send_ready_flag_sid_offset, 0);
             }
         }
-    }
-
-    for (auto &tns : model_tensors) {
-        auto search = bufs.find(tns->buf);
-        if (search == bufs.end()) {
-            bufs[tns->buf].emplace_back(tns);
-        }
-    }
-
-    // Fix TensorBuf size.
-    for (auto &el : bufs) {
-        TensorBuf *buf = el.first;
-        vector<Tensor *> &tensors = el.second;
-        size_t max_bytes = 0;
-        for (auto &tns : tensors) {
-            size_t tns_bytes = tns->ldims_bytes();
-            if (max_bytes < tns_bytes) {
-                max_bytes = tns_bytes;
-            }
-            // TODO: more verficiations.
-            // auto &sh = tns->shape;
-            // auto &ld = tns->ldims;
-        }
-        // Store the size.
-        buf->bytes = max_bytes;
     }
 
     // Allocate all GPU buffers.

@@ -450,6 +450,21 @@ ark::unittest::State test_matmul_fp16_gran2() {
 ark::unittest::State test_matmul_split() {
     {
         ark::Model m;
+        ark::Tensor *a = m.tensor(ark::Dims(128, 128), ark::FP16);
+        ark::Tensor *b = m.tensor(ark::Dims(128, 128), ark::FP16);
+        ark::Tensor *c = m.matmul(a, b, nullptr, 2, false, false, "matmul", 0);
+
+        std::vector<ark::half_t> ones_a(a->size(), ark::half_t(1.0f));
+        std::vector<ark::half_t> ones_b(b->size(), ark::half_t(1.0f));
+
+        auto result = ark::op_test("matmul_split", m, {a, b}, {c},
+                                   baseline_matmul_nn<ark::half_t>,
+                                   {ones_a.data(), ones_b.data()});
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    {
+        ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(4096, 8192), ark::FP32);
         ark::Tensor *b = m.tensor(ark::Dims(8192, 16384), ark::FP32);
         ark::Tensor *c = m.matmul(a, b, nullptr, 7, false, false, "matmul", 0);
@@ -620,6 +635,23 @@ ark::unittest::State test_matmul_batched_padded() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_matmul_offset() {
+    ark::Model m;
+    ark::Tensor *a =
+        m.tensor({1, 128, 64}, ark::FP16, nullptr, {1, 128, 256}, {0, 0, 64});
+    ark::Tensor *b =
+        m.tensor({1, 64, 128}, ark::FP16, nullptr, {1, 128, 256}, {0, 64, 0});
+    ark::Tensor *c = m.tensor({1, 128, 128}, ark::FP16, nullptr, {2, 256, 256},
+                              {1, 64, 128});
+    m.matmul(a, b, c);
+
+    auto result = ark::op_test("matmul_offset", m, {a, b}, {c},
+                               baseline_matmul_nn<ark::half_t>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_matmul_fp16_gran0);
@@ -633,6 +665,7 @@ int main() {
     UNITTEST(test_matmul_fp16_tt);
     UNITTEST(test_matmul_batched);
     UNITTEST(test_matmul_batched_padded);
+    UNITTEST(test_matmul_offset);
 
     return ark::unittest::SUCCESS;
 }
