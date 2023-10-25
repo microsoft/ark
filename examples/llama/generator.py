@@ -7,7 +7,8 @@ import torch
 import argparse
 import multiprocessing as mp
 import numpy as np
-from model import ModelArgs, ModelArgs7B, Transformer
+from model import ModelArgs, ModelArgs13B, ModelArgs70B, Transformer
+import os
 
 from llama.tokenizer import Tokenizer
 
@@ -103,12 +104,12 @@ class Generator:
 
         # Make sure we can read state_dict before initiating runtime
         param_names = set(module.params_dict().keys())
-        state_dict = torch.load(pth_path)
-        state_dict = {
-            k: v.float().numpy().astype(self.dtype)
-            for k, v in state_dict.items()
-            if k in param_names
-        }
+        # state_dict = torch.load(pth_path)
+        # state_dict = {
+        #     k: v.float().numpy().astype(self.dtype)
+        #     for k, v in state_dict.items()
+        #     if k in param_names
+        # }
 
         # Initiate runtime
         self.runtime = ark.Runtime()
@@ -133,7 +134,7 @@ class Generator:
         output_ids = []
         for cur_pos in range(len(prompt_ids), self.seq_len):
             self.tokens.from_numpy(input_ids)
-            self.runtime.run()
+            self.runtime.run(100)
             logits = self.logits.to_numpy()
             next_token = np.argmax(logits[0, cur_pos - 1, :]).item()
             input_ids[0, cur_pos] = next_token
@@ -141,6 +142,8 @@ class Generator:
                 break
             output_ids.append(next_token)
 
+        elapsed = self.runtime.stop()
+        print(f"elapsed {elapsed:.5f} ms, itr {len(output_ids) * 100}")
         output_text = self.tokenizer.decode(output_ids)
         return output_text
 
@@ -152,7 +155,7 @@ def worker(args: argparse.Namespace, rank: int):
     with open(args.params_path, "r") as f:
         params = json.load(f)
 
-    gen = Generator(ModelArgs7B(**params), local_rank=rank, world_size=args.ngpus, seq_len=128)
+    gen = Generator(ModelArgs70B(), local_rank=rank, world_size=args.ngpus, seq_len=128)
     if rank == 0:
         log(f"gen.args {gen.args}")
 
@@ -177,6 +180,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    os.environ["ARK_IPC_LISTEN_PORT_BASE"] = "42500"
     procs = []
     for i in range(args.ngpus):
         p = mp.Process(target=worker, args=(args, i))
