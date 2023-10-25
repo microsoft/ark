@@ -42,7 +42,7 @@ if(USE_CUDA)
 
     # Patch CUTLASS
     add_custom_target(tp-cutlass
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
     )
 
     set(TP_TARGETS tp-cutlass PARENT_SCOPE)
