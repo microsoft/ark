@@ -66,7 +66,7 @@ OpArgs MsllReadAndReduceOp::function_call_args(const OpConfig &) const {
     CHECK(local_buff->buf != nullptr);
 
     OpArgs opargs;
-    // read_and_redcue_mscclpp(src_offset...)
+    // read_and_redcue_msll(src_offset...)
     for (int i = 0; i < MAX_PEER_NUM; i++) {
         if (i < npeers) {
             CHECK(remote_bufs[i]->buf != nullptr);
