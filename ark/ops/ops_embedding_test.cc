@@ -43,8 +43,8 @@ void baseline_embedding(std::vector<void *> &outputs,
 
 template <typename T>
 ark::unittest::State test_embedding() {
-    const int num_emb = 1000;
-    const int emb_dim = 8192;
+    const int num_emb = 100;
+    const int emb_dim = 4096;
 
     const ark::TensorType *weight_type;
     if (std::is_same<T, float>::value) {

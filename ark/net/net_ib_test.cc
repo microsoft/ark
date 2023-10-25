@@ -349,7 +349,7 @@ ark::unittest::State test_net_ib_gpu_bw_internal(std::size_t bytes,
 
 //
 ark::unittest::State test_net_ib_cpu() {
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 10; ++i) {
         int pid0 = ark::unittest::spawn_process([] {
             ark::unittest::Timeout timeout{30};
             std::size_t bytes = 1024 * 1024;

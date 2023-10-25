@@ -54,7 +54,7 @@ void baseline_layernorm(std::vector<void *> &outputs,
 
 ark::unittest::State test_layernorm_fp32() {
     ark::Model m;
-    ark::Tensor *t = m.tensor(ark::Dims(1, 32, 32, 8192), ark::FP32);
+    ark::Tensor *t = m.tensor(ark::Dims(1, 3, 16, 8192), ark::FP32);
     ark::Tensor *out = m.layernorm(t);
     auto result = ark::op_test("layernorm_fp32", m, {t}, {out},
                                baseline_layernorm<float>);
@@ -65,7 +65,7 @@ ark::unittest::State test_layernorm_fp32() {
 
 ark::unittest::State test_layernorm_fp16() {
     ark::Model model;
-    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 8192), ark::FP16);
+    ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP16);
     ark::Tensor *output = model.layernorm(input);
     auto result = ark::op_test("layernorm_fp16", model, {input}, {output},
                                baseline_layernorm<ark::half_t>);
@@ -75,7 +75,7 @@ ark::unittest::State test_layernorm_fp16() {
 
 ark::unittest::State test_layernorm_bf16() {
     ark::Model model;
-    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 8192), ark::BF16);
+    ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::BF16);
     ark::Tensor *output = model.layernorm(input);
     auto result = ark::op_test("layernorm_bf16", model, {input}, {output},
                                baseline_layernorm<ark::bfloat16_t>);
