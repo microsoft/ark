@@ -9,6 +9,7 @@
 #elif defined(ARK_TARGET_ROCM_ARCH)
 #include "gemm_ck.h"
 #endif
+#include "unit_op.h"
 
 namespace ark {
 
@@ -67,9 +68,12 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     constexpr int TileSizeN = Shape::D1;
     constexpr int TileSizeK = Shape::D2;
 
-    constexpr int SizeA = math::mul<OutDims::H, InnerLdimA>::value;
-    constexpr int SizeB = math::mul<OutDims::W, InnerLdimB>::value;
-    constexpr int SizeC = math::mul<OutDims::H, OutDims::W>::value;
+    constexpr DimType SizeA = math::mul<OutDims::H, InnerLdimA>::value;
+    constexpr DimType SizeB = math::mul<OutDims::W, InnerLdimB>::value;
+    constexpr DimType SizeC = math::mul<OutDims::H, OutDims::W>::value;
+    static_assert(SizeA >= 0, "");
+    static_assert(SizeB >= 0, "");
+    static_assert(SizeC >= 0, "");
 
     int un = UnitOp::uop_idx_n(uop_idx);
     int uc = UnitOp::uop_idx_c(uop_idx);
