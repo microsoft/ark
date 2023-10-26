@@ -1,0 +1,180 @@
+diff --git a/include/ck/tensor_operation/gpu/device/device_base.hpp b/include/ck/tensor_operation/gpu/device/device_base.hpp
+index 5946daf21..00e2b6f02 100644
+--- a/include/ck/tensor_operation/gpu/device/device_base.hpp
++++ b/include/ck/tensor_operation/gpu/device/device_base.hpp
+@@ -14,11 +14,11 @@ namespace device {
+ 
+ struct BaseArgument
+ {
+-    BaseArgument()                    = default;
+-    BaseArgument(const BaseArgument&) = default;
+-    BaseArgument& operator=(const BaseArgument&) = default;
++    __host__ __device__ BaseArgument()                    = default;
++    __host__ __device__ BaseArgument(const BaseArgument&) = default;
++    __host__ __device__ BaseArgument& operator=(const BaseArgument&) = default;
+ 
+-    virtual ~BaseArgument() {}
++    __host__ __device__ virtual ~BaseArgument() {}
+ 
+     void* p_workspace_ = nullptr;
+ };
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
+index a5051455b..77f8a0bb0 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
+@@ -75,6 +75,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+ 
+     static constexpr auto K1Number = Number<K1>{};
+ 
++    __host__ __device__
+     static auto MakeAGridDescriptor_K0_M_K1(index_t M, index_t K, index_t StrideA)
+     {
+         const index_t K0 = K / K1;
+@@ -112,6 +113,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeBGridDescriptor_K0_N_K1(index_t K, index_t N, index_t StrideB)
+     {
+         const index_t K0 = K / K1;
+@@ -149,6 +151,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeCGridDescriptor_M_N(index_t M, index_t N, index_t StrideC)
+     {
+         const auto c_grid_desc_m_n = [&]() {
+@@ -235,6 +238,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+     // Argument
+     struct Argument : public BaseArgument
+     {
++        __host__ __device__
+         Argument(const ADataType* p_a_grid,
+                  const BDataType* p_b_grid,
+                  CDataType* p_c_grid,
+@@ -281,6 +285,9 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+             }
+         }
+ 
++        __host__ __device__
++        ~Argument() {}
++
+         //  private:
+         const ADataType* p_a_grid_;
+         const BDataType* p_b_grid_;
+@@ -458,6 +465,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+         return IsSupportedArgument(*dynamic_cast<const Argument*>(p_arg));
+     }
+ 
++    __host__ __device__
+     static auto MakeArgument(const ADataType* p_a,
+                              const BDataType* p_b,
+                              CDataType* p_c,
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
+index 76dd5a366..a613e5ebf 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
+@@ -437,7 +437,7 @@ struct DeviceGroupedContractionMultipleD_Xdl_CShuffle
+             return default_block_2_etile_map_.ValidCTileIndex(c_tile_idx, c_tile_dim);
+         }
+ 
+-        __host__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
++        __host__ __device__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
+         {
+             return default_block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
+         }
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
+index d424f2992..dffee7e2d 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
+@@ -372,7 +372,7 @@ struct DeviceGroupedGemmMultipleD_Dl : public DeviceGroupedGemm<ALayout,
+             return block_2_etile_map_.ValidCTileIndex(c_tile_idx, c_tile_dim);
+         }
+ 
+-        __host__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
++        __host__ __device__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
+         {
+             return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
+         }
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
+index e3795060b..cc0463897 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
+@@ -313,7 +313,7 @@ struct DeviceGroupedGemm_Xdl : public DeviceGroupedGemm<ALayout,
+             return block_2_etile_map_.ValidCTileIndex(c_tile_idx, c_tile_dim);
+         }
+ 
+-        __host__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
++        __host__ __device__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
+         {
+             return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
+         }
+diff --git a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
+index 9bd860f39..73f4c1bda 100644
+--- a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
++++ b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
+@@ -58,7 +58,7 @@ struct BlockToCTileMap_M00_N0_M01
+             return true;
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         if constexpr(DeviceCTileIndexCheck)
+             return true; // validity check moved to kernel
+@@ -209,7 +209,7 @@ struct BlockToCTileMap_M00_N0_M01Adapt
+         return true; // always valid provided that user gets grid size from CalculateGridSize()
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
+ 
+     private:
+     index_t M01_;
+@@ -279,7 +279,7 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
+         return true; // always valid provided that user gets grid size from CalculateGridSize()
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
+ 
+     private:
+     index_t M01_;
+@@ -337,7 +337,7 @@ struct BlockToCTileMap_M00_N00_M01_N01
+             return true;
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         if constexpr(DeviceCTileIndexCheck)
+             return true; // validity check moved to kernel
+@@ -449,7 +449,7 @@ struct BlockToCTileMap_KSplit_M00_N00_M01_N01
+             return true;
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         if constexpr(DeviceCTileIndexCheck)
+             return true; // validity check moved to kernel
+@@ -572,7 +572,7 @@ struct OffsettedBlockToCTileMap
+     }
+ 
+     template <typename CGridDesc_M_N>
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         return block_to_ctile_map_.CheckValidity(c_grid_desc_m_n);
+     }
+@@ -629,7 +629,7 @@ struct BlockToCTileMap_3DGrid_KSplit
+     }
+ 
+     template <typename CGridDesc_M_N>
+-    __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const
+     {
+         return true;
+     }

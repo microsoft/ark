@@ -28,7 +28,8 @@ struct min {
 };
 
 // Statically determine log2(N), rounded up
-template <long long int N, long long int CurrentVal = N, long long int Count = 0>
+template <long long int N, long long int CurrentVal = N,
+          long long int Count = 0>
 struct log2_up {
     enum { value = log2_up<N, (CurrentVal >> 1), Count + 1>::value };
 };
@@ -40,7 +41,8 @@ struct log2_up<N, 1, Count> {
 };
 
 // Statically determine log2(N), rounded down
-template <long long int N, long long int CurrentVal = N, long long int Count = 0>
+template <long long int N, long long int CurrentVal = N,
+          long long int Count = 0>
 struct log2_down {
     enum { value = log2_down<N, (CurrentVal >> 1), Count + 1>::value };
 };
@@ -124,7 +126,9 @@ struct Mod {};
 
 template <long long int Divisor>
 struct Mod<Divisor, true> {
-    static DEVICE long long int compute(long long int x) { return x & (Divisor - 1); }
+    static DEVICE long long int compute(long long int x) {
+        return x & (Divisor - 1);
+    }
 };
 
 template <long long int Divisor>
