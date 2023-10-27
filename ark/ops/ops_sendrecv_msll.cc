@@ -10,7 +10,6 @@
 namespace ark {
 
 extern const OpConfigMap MsllConfigMap;
-extern const OpConfigMap MsllSyncConfigMap;
 
 MsllSendOp::MsllSendOp(const std::string &prec_type, Tensor *input,
                        Tensor *recvbuf, int sid, int rank, int dst_rank,
@@ -119,22 +118,6 @@ std::string MsllRecvOp::function_name(const OpConfig &) const {
 
 OpArgs MsllRecvOp::function_call_args(const OpConfig &) const { return {}; }
 
-MsllDeviceSyncOp::MsllDeviceSyncOp(const std::string &prec_type, Tensor *input,
-                                   Tensor *output, int nranks,
-                                   const std::string &name)
-    : Op{OP_DEVICE_SYNC_MSLL, prec_type, {input}, {output}, {{nranks}}, name,
-         &MsllSyncConfigMap,  -1,        true} {}
-
-std::string MsllDeviceSyncOp::function_name(const OpConfig &) const {
-    int nranks;
-    this->args.get(&nranks, 0);
-    return Op::function_name("ark::comm::device_sync_msll", {{nranks}});
-}
-
-OpArgs MsllDeviceSyncOp::function_call_args(const OpConfig &) const {
-    return {};
-}
-
 Tensor *Model::send_msll(Tensor *input, int sid, int dst_rank,
                          std::size_t bytes, const std::string &name) {
     size_t max_bytes = input->ldims_bytes();
@@ -192,14 +175,6 @@ const OpConfigMap MsllConfigMap = {
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, true, true},
-     }},
-};
-
-const OpConfigMap MsllSyncConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, false, true},
      }},
 };
 

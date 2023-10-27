@@ -536,10 +536,10 @@ class Model {
         const std::string &name = "gather_from_peers_msll");
 
     Tensor *local_all_reduce_msll(Tensor *input, int gpu_id, int gpu_num,
-                                  const std::string &name = "local_all_reduce");
+                                  const std::string &name = "local_all_reduce_msll");
     Tensor *local_all_reduce_packet_msll(
         Tensor *input, int gpu_id, int gpu_num,
-        const std::string &name = "local_all_reduce_packet");
+        const std::string &name = "local_all_reduce_packet_msll");
 
     Tensor *reduce_and_write_packet_msll(
         Tensor *input, Tensor *scratch, Tensor *output,

@@ -3,6 +3,7 @@
 
 #include <cassert>
 
+#include "env.h"
 #include "logging.h"
 #include "model.h"
 
@@ -15,7 +16,6 @@ constexpr int MSLL_PACKET_SIZE = 16;
 namespace ark {
 
 extern const OpConfigMap MsllPacketConfigMap;
-constexpr int MAX_PEER_NUM = 7;
 
 MsllPutPacketOp::MsllPutPacketOp(const std::string &prec_type, Tensor *input,
                                  Tensor *local_tmp_buf, Tensor *recv_buf,
@@ -216,7 +216,7 @@ OpArgs MsllReduceAndWritePacketOp::function_call_args(const OpConfig &) const {
     opargs.put(output);
     opargs.put(input);
     opargs.put(scratch);
-    for (int i = 0; i < MAX_PEER_NUM; i++) {
+    for (int i = 0; i < get_env().num_ranks_per_host - 1; i++) {
         if (i < npeers) {
             CHECK(peer_bufs[i]->buf != nullptr);
             opargs.put((size_t)(peer_bufs[i]->buf->get_buf_offset() +
@@ -229,13 +229,13 @@ OpArgs MsllReduceAndWritePacketOp::function_call_args(const OpConfig &) const {
 }
 
 MsllGetFromPacketOp::MsllGetFromPacketOp(const std::string &prec_type,
-                                         Tensor *shape, Tensor *input,
-                                         Tensor *output, size_t src_offset,
-                                         size_t dst_offset, size_t npackets,
-                                         int flag, const std::string &name)
+                                         Tensor *input, Tensor *output,
+                                         size_t src_offset, size_t dst_offset,
+                                         size_t npackets, int flag,
+                                         const std::string &name)
     : Op{OP_GET_FROM_PACKET_MSLL,
          prec_type,
-         {shape, input},
+         {input},
          {output},
          {{src_offset, dst_offset, npackets, flag}},
          name,
@@ -278,7 +278,7 @@ std::string MsllGetFromPacketOp::function_name(const OpConfig &cfg) const {
 }
 
 OpArgs MsllGetFromPacketOp::function_call_args(const OpConfig &) const {
-    Tensor *input = this->inputs[1];
+    Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
     CHECK(input->buf != nullptr);
@@ -301,12 +301,8 @@ Tensor *Model::get_packet_msll(Tensor *input, Tensor *output, size_t src_offset,
         LOG(ERROR, "supports only 1D input");
     }
 
-    Dims shape = {
-        (DimType)(npackets * (MSLL_PACKET_SIZE / 2 / output->type_bytes()))};
-    // TODO: remove this hack
-    Tensor *mock_tensor = this->tensor(shape, input->type, input->buf);
-    MsllGetFromPacketOp op{"none",     mock_tensor, input, output, src_offset,
-                           dst_offset, npackets,    flag,  name};
+    MsllGetFromPacketOp op{"none",     input,    output, src_offset,
+                           dst_offset, npackets, flag,   name};
     return this->impl->add_op(op)[0];
 }
 
@@ -315,7 +311,7 @@ const OpConfigMap MsllPacketConfigMap = {
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       {16,
        0,
-       {{-1, 1024},
+       {{-1, -1},
         {-1, -1},
         {-1, -1},
         {-1, -1},
