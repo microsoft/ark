@@ -54,7 +54,7 @@ template <typename T>
 void baseline_matmul_nn(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes) {
+                        const std::vector<ark::Dims> &input_shapes, int) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -108,7 +108,7 @@ template <typename T>
 void baseline_matmul_nt(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes) {
+                        const std::vector<ark::Dims> &input_shapes, int) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -162,7 +162,7 @@ template <typename T>
 void baseline_matmul_tn(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes) {
+                        const std::vector<ark::Dims> &input_shapes, int) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding
@@ -216,7 +216,7 @@ template <typename T>
 void baseline_matmul_tt(std::vector<void *> &outputs,
                         const std::vector<ark::Dims> &output_shapes,
                         const std::vector<void *> &inputs,
-                        const std::vector<ark::Dims> &input_shapes) {
+                        const std::vector<ark::Dims> &input_shapes, int) {
     auto out_shape_dims4 = output_shapes[0].dims4();
 
     // baseline inputs & outputs have no padding

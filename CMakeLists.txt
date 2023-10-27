@@ -8,6 +8,8 @@ set(ARK_PATCH "0")
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
+option(USE_MSLL "Use USE_MSLL" OFF)
+
 cmake_minimum_required(VERSION 3.25)
 project(ark LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)
@@ -33,6 +35,14 @@ include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
 
 # Find NUMA
 include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
+
+# Find MSLL
+if(USE_MSLL)
+    include(${PROJECT_SOURCE_DIR}/cmake/FindMSLL.cmake)
+    if (NOT MSLL_FOUND)
+        message(FATAL_ERROR "MSLL not found")
+    endif()
+endif()
 
 # Find CUDAToolkit
 find_package(CUDAToolkit REQUIRED)

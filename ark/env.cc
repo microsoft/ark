@@ -17,6 +17,9 @@ using namespace std;
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
+#define DEFAULT_ARK_USE_MSLL false
+#define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
+#define DEFAULT_ARK_MSLL_PORT 50051
 
 namespace ark {
 
@@ -101,6 +104,29 @@ Env::Env() {
         this->shm_name_prefix = DEFAULT_ARK_SHM_NAME_PREFIX;
     } else {
         this->shm_name_prefix = shm_name_prefix_ca;
+    }
+    // If `ARK_USE_MSLL=1`, we use MSLL.
+    const char *use_msll_ca = getenv("ARK_USE_MSLL");
+    if (use_msll_ca == nullptr) {
+        this->use_msll = DEFAULT_ARK_USE_MSLL;
+    } else if (strncmp(use_msll_ca, "1", 2) == 0) {
+        this->use_msll = true;
+    } else {
+        this->use_msll = false;
+    }
+    // Get the MSLL include directory path.
+    const char *msll_include_dir_ca = getenv("ARK_MSLL_INCLUDE_DIR");
+    if (msll_include_dir_ca == nullptr) {
+        this->msll_include_dir = DEFAULT_ARK_MSLL_INCLUDE_DIR;
+    } else {
+        this->msll_include_dir = msll_include_dir_ca;
+    }
+    // Get the port number of MSLL.
+    const char *msll_port_ca = getenv("ARK_MSLL_PORT");
+    if (msll_port_ca == nullptr) {
+        this->msll_port = DEFAULT_ARK_MSLL_PORT;
+    } else {
+        this->msll_port = atoi(msll_port_ca);
     }
 }
 

@@ -5,6 +5,7 @@ import ark
 import json
 import torch
 import argparse
+import multiprocessing as mp
 import numpy as np
 from model import ModelArgs, ModelArgs7B, Transformer
 
@@ -33,9 +34,6 @@ class Generator:
         self.args = args
         self.dtype = dtype
 
-        # TODO: support multi-GPU
-        assert local_rank == 0
-        assert world_size == 1
         self.local_rank = local_rank
         self.world_size = world_size
         self.seq_len = seq_len
@@ -147,20 +145,23 @@ class Generator:
         return output_text
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--pth_path", type=str, required=True)
-    parser.add_argument("--params_path", type=str, required=True)
-    parser.add_argument("--tok_path", type=str, required=True)
-
-    args = parser.parse_args()
+def worker(args: argparse.Namespace, rank: int):
+    def log(msg):
+        print(f"[Rank {rank}] {msg}")
 
     with open(args.params_path, "r") as f:
         params = json.load(f)
 
-    gen = Generator(ModelArgs7B(**params))
-    print("gen.args", gen.args)
+    gen = Generator(
+        ModelArgs7B(**params),
+        local_rank=rank,
+        world_size=args.ngpus,
+        seq_len=128,
+    )
+    if rank == 0:
+        log(f"gen.args {gen.args}")
 
+    log("Launching generator...")
     gen.launch(args.pth_path, args.tok_path)
 
     prompt_list = [
@@ -168,4 +169,24 @@ if __name__ == "__main__":
     ]
     for i, prompt in enumerate(prompt_list):
         output = gen.run(prompt)
-        print(f"---\nPrompt[{i}]: {prompt}\nOutput[{i}]: {output}")
+        if rank == 0:
+            log(f"---\nPrompt[{i}]: {prompt}\nOutput[{i}]: {output}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pth_path", type=str, required=True)
+    parser.add_argument("--params_path", type=str, required=True)
+    parser.add_argument("--tok_path", type=str, required=True)
+    parser.add_argument("--ngpus", type=int, default=1)
+
+    args = parser.parse_args()
+
+    procs = []
+    for i in range(args.ngpus):
+        p = mp.Process(target=worker, args=(args, i))
+        p.start()
+        procs.append(p)
+
+    for p in procs:
+        p.join()

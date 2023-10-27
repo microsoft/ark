@@ -78,7 +78,7 @@ class OpsTestGpuMem {
 using OpsTestBaseline = std::function<void(
     std::vector<void *> &outputs, const std::vector<ark::Dims> &output_tensors,
     const std::vector<void *> &inputs,
-    const std::vector<ark::Dims> &input_tensors)>;
+    const std::vector<ark::Dims> &input_tensors, int rank)>;
 
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,

@@ -242,14 +242,19 @@ const string gpu_compile(const vector<string> &codes,
             if (max_reg_cnt > 0) {
                 exec_cmd << "-maxrregcount " << max_reg_cnt << " ";
             }
+            stringstream define_args;
             stringstream include_args;
             // clang-format off
+            define_args << "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
+                        << "--define-macro=ARK_COMM_SW=1 ";
             include_args << "-I" << ark_root << "/include "
                          << "-I" << ark_root << "/include/kernels ";
+            if (get_env().use_msll) {
+                define_args << "-DARK_USE_MSLL=1 ";
+                include_args << "-I" << get_env().msll_include_dir << " ";
+            }
             exec_cmd << "-ccbin g++ -std c++17 -lcuda "
-                "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
-                "--define-macro=ARK_COMM_SW=1 " <<
-                include_args.str() <<
+                << define_args.str() << include_args.str() <<
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "
                 "-o " << item.second << ".cubin "
@@ -271,7 +276,7 @@ const string gpu_compile(const vector<string> &codes,
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, endl, exec_print_str, endl);
+                LOG(ERROR, endl, exec_cmd.str(), endl, exec_print_str, endl);
             }
             LOG(INFO, "Compile succeed: ", cu_file_path, " (",
                 cpu_timer() - start, " seconds)");

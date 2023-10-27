@@ -246,7 +246,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     }
 
     // Calculate ground truth.
-    baseline(gt, output_shapes, inputs_data_refs, input_shapes);
+    baseline(gt, output_shapes, inputs_data_refs, input_shapes, rank);
 
     std::stringstream test_name;
     test_name << test_name_prefix;
@@ -300,7 +300,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         // For multi-GPU, we need to make sure that all GPUs run the same
         // number of iterations. Rather than doing allgather, we just
         // use a magic number here.
-        int iter = 100;
+        int iter = 1000;
         exe.launch();
         exe.run(iter);
         float msec = exe.stop();
