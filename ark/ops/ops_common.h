@@ -570,10 +570,9 @@ class MsllReduceAndWritePacketOp : public Op {
 
 class MsllGetFromPacketOp : public Op {
    public:
-    MsllGetFromPacketOp(const std::string &prec_type, Tensor *shape,
-                        Tensor *input, Tensor *output, size_t src_offset,
-                        size_t dst_offset, size_t npackets, int flag,
-                        const std::string &name);
+    MsllGetFromPacketOp(const std::string &prec_type, Tensor *input,
+                        Tensor *output, size_t src_offset, size_t dst_offset,
+                        size_t npackets, int flag, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
