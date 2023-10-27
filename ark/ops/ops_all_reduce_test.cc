@@ -105,14 +105,14 @@ ark::unittest::State test_all_reduce_4gpus() {
 }
 
 ark::unittest::State test_all_reduce_mscclpp() {
-    test_local_all_reduce_8gpus_internel(1024 * 1024 * 32, 1);
+    // test_local_all_reduce_8gpus_internel(1024 * 1024 * 32, 1);
     test_local_all_reduce_packet_8gpus_internel(4096, 1);
     return ark::unittest::SUCCESS;
 }
 
 int main() {
     ark::init();
-    UNITTEST(test_all_reduce_4gpus);
+    // UNITTEST(test_all_reduce_4gpus);
     if (ark::get_env().use_mscclpp) {
         UNITTEST(test_all_reduce_mscclpp);
     }

@@ -8,7 +8,6 @@
 
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/packet.hpp>
-#include <mscclpp/packet.hpp>
 constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
 #else
 constexpr int MSCCLPP_PACKET_SIZE = 16;
@@ -233,13 +232,15 @@ OpArgs MscclppReduceAndWritePacketOp::function_call_args(
     return opargs;
 }
 
-MscclppGetFromPacketOp::MscclppGetFromPacketOp(
-    const std::string &prec_type, Tensor *shape, Tensor *input, Tensor *output,
-    size_t src_offset, size_t dst_offset, size_t npackets, int flag,
-    const std::string &name)
+MscclppGetFromPacketOp::MscclppGetFromPacketOp(const std::string &prec_type,
+                                               Tensor *input, Tensor *output,
+                                               size_t src_offset,
+                                               size_t dst_offset,
+                                               size_t npackets, int flag,
+                                               const std::string &name)
     : Op{OP_GET_FROM_PACKET_MSCCLPP,
          prec_type,
-         {shape, input},
+         {input},
          {output},
          {{src_offset, dst_offset, npackets, flag}},
          name,
@@ -284,7 +285,7 @@ std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
 
 OpArgs MscclppGetFromPacketOp::function_call_args(
     const OpConfig &) const {
-    Tensor *input = this->inputs[1];
+    Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
     CHECK(input->buf != nullptr);
@@ -308,13 +309,8 @@ Tensor *Model::get_packet_mscclpp(Tensor *input, Tensor *output,
         LOG(ERROR, "supports only 1D input");
     }
 
-    Dims shape = {(DimType)(
-        npackets * (MSCCLPP_PACKET_SIZE / 2 / output->type_bytes()))};
-    // TODO: remove this hack
-    Tensor *mock_tensor = this->tensor(shape, input->type, input->buf);
-    MscclppGetFromPacketOp op{"none",   mock_tensor, input,
-                              output,   src_offset,  dst_offset,
-                              npackets, flag,        name};
+    MscclppGetFromPacketOp op{"none",     input,    output, src_offset,
+                              dst_offset, npackets, flag,   name};
     return this->impl->add_op(op)[0];
 }
 
@@ -323,7 +319,7 @@ const OpConfigMap MscclppPacketConfigMap = {
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       {16,
        0,
-       {{-1, 1024},
+       {{-1, -1},
         {-1, -1},
         {-1, -1},
         {-1, -1},
