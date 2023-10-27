@@ -654,7 +654,7 @@ ark::unittest::State test_matmul_offset() {
 
 int main() {
     ark::init();
-    // UNITTEST(test_matmul_fp16_gran0);
+    UNITTEST(test_matmul_fp16_gran0);
     // UNITTEST(test_matmul_fp16_gran1);
     // UNITTEST(test_matmul_fp16_gran2);
     // UNITTEST(test_matmul_split);
