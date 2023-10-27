@@ -82,12 +82,6 @@ RecvOp::RecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
 
 std::string RecvOp::function_name(const OpConfig &) const {
     Tensor *output = this->outputs[0];
-    if (!output->is_sequential()) {
-        LOG(INFO, "output shape: ", output->shape);
-        LOG(INFO, "output ldims: ", output->ldims);
-        LOG(INFO, "output offs: ", output->offs);
-        LOG(INFO, "output pads: ", output->pads);
-    }
     CHECK(output->is_sequential());
 
     int sid;
