@@ -535,8 +535,9 @@ class Model {
         Tensor *input, int sid, int npeers, size_t chunkBytes,
         const std::string &name = "gather_from_peers_msll");
 
-    Tensor *local_all_reduce_msll(Tensor *input, int gpu_id, int gpu_num,
-                                  const std::string &name = "local_all_reduce_msll");
+    Tensor *local_all_reduce_msll(
+        Tensor *input, int gpu_id, int gpu_num,
+        const std::string &name = "local_all_reduce_msll");
     Tensor *local_all_reduce_packet_msll(
         Tensor *input, int gpu_id, int gpu_num,
         const std::string &name = "local_all_reduce_packet_msll");
