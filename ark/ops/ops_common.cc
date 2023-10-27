@@ -568,7 +568,7 @@ std::string Op::function_name(const std::string &kernel_name,
         } else if (arg.type == OP_ARG_BOOL) {
             bool val;
             template_args.get(&val, i);
-            ss << val;
+            ss << (val ? "true" : "false");
         } else if (arg.type == OP_ARG_FLOAT) {
             LOG(ERROR, "float template args are not supported");
         } else if (arg.type == OP_ARG_DIMS) {
