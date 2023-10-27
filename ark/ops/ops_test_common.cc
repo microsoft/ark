@@ -21,7 +21,8 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     for (size_t i = 0; i < result.mse.size(); i++) {
         float err_pcnt = result.max_err_rate[i] * 100;
         os << ", mse " << result.mse[i] << ", max_diff " << result.max_diff[i]
-           << ", max_err_rate " << err_pcnt << "%";
+           << ", max_err_rate " << err_pcnt << "%, #diff "
+           << result.num_wrong[i] << "/" << result.num_total[i];
     }
     return os;
 }
@@ -170,6 +171,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         result.mse.push_back(comp.mse);
         result.max_diff.push_back(comp.max_diff);
         result.max_err_rate.push_back(comp.max_error_rate);
+        result.num_wrong.push_back(comp.num_wrong);
+        result.num_total.push_back(comp.num_total);
     }
 
     GLOG(gpuDeviceSynchronize());

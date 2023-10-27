@@ -76,6 +76,11 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const {
     CHECK(tile_in0.y == tile_in1.x);
     Dims shape{tile_out.x, tile_out.y, tile_in0.y};
 
+    // Re-calculate the problem size to be a multiple of tile size.
+    problem_size[0] = math::pad(problem_size[0], tile_out.x);
+    problem_size[1] = math::pad(problem_size[1], tile_out.y);
+    problem_size[2] = math::pad(problem_size[2], tile_in0.y);
+
     return Op::function_name("ark::matmul",
                              {{
                                  mat_y->ldims.dims4(),  // OutDims
@@ -303,17 +308,23 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_ROCM_90A, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 65536, {{256, 4}, {4, 128}}, {{256, 128}}, true, false},
+         {4, 24672, {{128, 4}, {4, 256}}, {{128, 256}}, true, false},
+         {2, 24672, {{128, 4}, {4, 128}}, {{128, 128}}, true, false},
+         {1, 24672, {{64, 4}, {4, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_ROCM_90A, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 65536, {{256, 4}, {4, 128}}, {{256, 128}}, true, false},
+         {4, 24672, {{128, 4}, {4, 256}}, {{128, 256}}, true, false},
+         {2, 24672, {{128, 4}, {4, 128}}, {{128, 128}}, true, false},
+         {1, 24672, {{64, 4}, {4, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_ROCM_90A, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 65536, {{256, 4}, {4, 128}}, {{256, 128}}, true, false},
+         {4, 24672, {{128, 4}, {4, 256}}, {{128, 256}}, true, false},
+         {2, 24672, {{128, 4}, {4, 128}}, {{128, 128}}, true, false},
+         {1, 24672, {{64, 4}, {4, 64}}, {{64, 64}}, true, false},
      }},
 };
 

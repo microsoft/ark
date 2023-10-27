@@ -31,12 +31,12 @@ template <typename DataTypeA, typename DataTypeB, typename DataTypeC,
 struct CkGemm;
 
 template <>
-struct CkGemm<fp32, fp32, fp32, fp32, false, false, 256, 256, 128> {
+struct CkGemm<fp32, fp32, fp32, fp32, false, false, 256, 128, 256> {
     using Impl = ck::tensor_operation::device::DeviceGemmXdl<
         F32, F32, F32, F32, Row, Row, Row, PassThrough, PassThrough,
-        PassThrough, GemmDefault, 256, 256, 128, 4, 4, 32, 32, 4, 2,
+        PassThrough, GemmDefault, 256, 128, 256, 4, 4, 32, 32, 2, 4,
         S<4, 64, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 4, 4, true, S<4, 64, 1>,
-        S<0, 2, 1>, S<0, 2, 1>, 1, 2, 4, true, 7, 1>;
+        S<0, 2, 1>, S<0, 2, 1>, 1, 4, 4, true, 7, 1>;
 };
 
 /// Row-major GeMM.
@@ -81,9 +81,12 @@ DEVICE void gemm_ck(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         A, B, C, ProblemSizeM, ProblemSizeN, ProblemSizeK, LeadingDimA,
         LeadingDimB, LeadingDimC, a_element_op, b_element_op, c_element_op);
 
-    assert(GridwiseGemm::CheckValidity(
-        arg.a_grid_desc_k0_m_k1_, arg.b_grid_desc_k0_n_k1_,
-        arg.c_grid_desc_m_n_, arg.block_2_ctile_map_));
+    if (UnitOp::thread_id() == 0) {
+        assert(GridwiseGemm::CheckValidity(
+            arg.a_grid_desc_k0_m_k1_, arg.b_grid_desc_k0_n_k1_,
+            arg.c_grid_desc_m_n_, arg.block_2_ctile_map_));
+    }
+    UnitOp::sync_threads();
 
     const auto K = arg.a_grid_desc_k0_m_k1_.GetLength(I0) *
                    arg.a_grid_desc_k0_m_k1_.GetLength(I2);
@@ -94,12 +97,14 @@ DEVICE void gemm_ck(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         GridwiseGemm::template Run<true>(
             A, B, C, p_shared, arg.a_grid_desc_k0_m_k1_,
             arg.b_grid_desc_k0_n_k1_, arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
-            a_element_op, b_element_op, c_element_op, arg.block_2_ctile_map_);
+            a_element_op, b_element_op, c_element_op, arg.block_2_ctile_map_,
+            uop_idx);
     } else {
         GridwiseGemm::template Run<false>(
             A, B, C, p_shared, arg.a_grid_desc_k0_m_k1_,
             arg.b_grid_desc_k0_n_k1_, arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_,
-            a_element_op, b_element_op, c_element_op, arg.block_2_ctile_map_);
+            a_element_op, b_element_op, c_element_op, arg.block_2_ctile_map_,
+            uop_idx);
     }
 }
 

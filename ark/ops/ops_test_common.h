@@ -19,6 +19,8 @@ struct TensorCompareResult {
     float mse;
     float max_diff;
     float max_error_rate;
+    size_t num_wrong;
+    size_t num_total;
 };
 
 /// Calculate the error rate between two values.
@@ -51,6 +53,7 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
     float l2_loss = 0;
     float max_err = 0;
     float max_diff = 0;
+    size_t num_wrong = 0;
     for (DimType i = 0; i < nelem; ++i) {
         float diff = (float)(ground_truth[i] - res[i]);
         if (std::abs(diff) > max_diff) {
@@ -60,6 +63,7 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
 
         float err = error_rate(ground_truth[i], res[i]);
         if (err > 0.) {
+            num_wrong++;
             if (print) {
                 Dims idx(std::vector<DimType>(ndims, 0));
                 for (int j = 0; j < ndims; ++j) {
@@ -82,6 +86,8 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
     result.mse = l2_loss / nelem;
     result.max_diff = max_diff;
     result.max_error_rate = max_err;
+    result.num_wrong = num_wrong;
+    result.num_total = nelem;
     return result;
 }
 
@@ -92,6 +98,8 @@ struct OpsTestResult {
     std::vector<float> mse;
     std::vector<float> max_diff;
     std::vector<float> max_err_rate;
+    std::vector<size_t> num_wrong;
+    std::vector<size_t> num_total;
 };
 
 std::ostream &operator<<(std::ostream &os, const OpsTestResult &result);
