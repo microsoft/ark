@@ -9,6 +9,8 @@ import multiprocessing as mp
 import numpy as np
 from model import ModelArgs, ModelArgs13B, ModelArgs70B, Transformer
 import os
+from pathlib import Path
+import os
 
 from llama.tokenizer import Tokenizer
 
@@ -50,7 +52,7 @@ class Generator:
 
     def launch(
         self,
-        pth_path: str,
+        ckpt_dir: str,
         tok_path: str,
     ):
         # Load a pretrained tokenizer
@@ -59,6 +61,8 @@ class Generator:
 
         # Initiate ARK
         ark.init()
+        ark.set_rank(self.local_rank)
+        ark.set_world_size(self.world_size)
 
         dtype_ark = ark.DataType.from_numpy(self.dtype)
 
@@ -88,8 +92,6 @@ class Generator:
         self.mask = ark.tensor(list(mask_np.shape), dtype_ark)
 
         # Transformer
-        ark.set_rank(self.local_rank)
-        ark.set_world_size(self.world_size)
         module = Transformer(
             self.args,
             dtype_ark,
@@ -104,19 +106,35 @@ class Generator:
 
         # Make sure we can read state_dict before initiating runtime
         param_names = set(module.params_dict().keys())
-        # state_dict = torch.load(pth_path)
-        # state_dict = {
-        #     k: v.float().numpy().astype(self.dtype)
-        #     for k, v in state_dict.items()
-        #     if k in param_names
-        # }
+        checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+        ckpt_path = checkpoints[self.local_rank]
+        print(f"Loading checkpoint from {ckpt_path} for rank {self.local_rank}")
+        state_dict = torch.load(ckpt_path)
+        state_dict = {
+            k: v.float().numpy().astype(self.dtype)
+            for k, v in state_dict.items()
+            if k in param_names
+        }
+        embeddings = []
+        output = []
+        for ckp in checkpoints:
+            dict = torch.load(ckp)
+            emb = dict["tok_embeddings.weight"]
+            out = dict["output.weight"]
+            embeddings.append(emb)
+            output.append(out)
+
+        concat_embedding = torch.cat(embeddings, dim=1)
+        state_dict["tok_embeddings.weight"] = concat_embedding.float().numpy().astype(self.dtype)
+        concat_output = torch.cat(output, dim=0)
+        state_dict["output.weight"] = concat_output.float().numpy().astype(self.dtype)
 
         # Initiate runtime
         self.runtime = ark.Runtime()
         self.runtime.launch()
 
         # Initiate model parameters & precalculated values
-        # module.load_state_dict(state_dict)
+        module.load_state_dict(state_dict)
         self.freqs_cis.from_numpy(freqs_cis_np)
         self.mask.from_numpy(mask_np)
 
@@ -134,7 +152,7 @@ class Generator:
         output_ids = []
         for cur_pos in range(len(prompt_ids), self.seq_len):
             self.tokens.from_numpy(input_ids)
-            self.runtime.run(100)
+            self.runtime.run()
             logits = self.logits.to_numpy()
             next_token = np.argmax(logits[0, cur_pos - 1, :]).item()
             input_ids[0, cur_pos] = next_token
@@ -143,7 +161,7 @@ class Generator:
             output_ids.append(next_token)
 
         elapsed = self.runtime.stop()
-        print(f"elapsed {elapsed:.5f} ms, itr {len(output_ids) * 100}")
+        print(f"elapsed {elapsed:.5f} ms, itr {len(output_ids)}")
         output_text = self.tokenizer.decode(output_ids)
         return output_text
 
@@ -156,13 +174,13 @@ def worker(args: argparse.Namespace, rank: int):
         params = json.load(f)
 
     gen = Generator(
-        ModelArgs70B(), local_rank=rank, world_size=args.ngpus, seq_len=128
+        ModelArgs13B(), local_rank=rank, world_size=args.ngpus, seq_len=128
     )
     if rank == 0:
         log(f"gen.args {gen.args}")
 
     log("Launching generator...")
-    gen.launch(args.pth_path, args.tok_path)
+    gen.launch(args.ckpt_dir, args.tok_path)
 
     prompt_list = [
         "Where is the capital of France?",
@@ -175,7 +193,7 @@ def worker(args: argparse.Namespace, rank: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pth_path", type=str, required=True)
+    parser.add_argument("--ckpt_dir", type=str, required=True)
     parser.add_argument("--params_path", type=str, required=True)
     parser.add_argument("--tok_path", type=str, required=True)
     parser.add_argument("--ngpus", type=int, default=1)

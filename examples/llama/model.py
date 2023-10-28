@@ -129,8 +129,6 @@ class ColumnParallelLinear(ark.Module):
     def forward(self, x):
         if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_other=True)
-        # (batch_size, seq_len, out_dim // world_size)
-        local_result = ark.matmul(x, self.weight, transpose_other=True)
         # We need to concat the output_tensor_shards along the last dimension
         output_tensor = ark.tensor(
             [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
@@ -138,10 +136,10 @@ class ColumnParallelLinear(ark.Module):
         output_tensor_shards = ark.sharding(
             output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
         )
-        shard = ark.scale(
-            local_result, 1.0, output_tensor_shards[self.local_rank]
-        )
-        gather_result = ark.identity(output_tensor, deps=[shard])
+        local_result = ark.identity(output_tensor_shards[self.local_rank], deps=output_tensor_shards)
+        # (batch_size, seq_len, out_dim // world_size)
+        local_result = ark.matmul(x, self.weight, local_result, transpose_other=True)
+        gather_result = ark.identity(output_tensor, deps=[local_result])
         return ark.local_all_gather_mscclpp(
             gather_result, self.local_rank, self.world_size
         )
