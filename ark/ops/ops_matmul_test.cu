@@ -73,7 +73,8 @@ constexpr auto BLAS_R_32F = rocblas_datatype_f32_r;
 constexpr auto BLAS_R_16F = rocblas_datatype_f16_r;
 constexpr auto BLAS_R_16BF = rocblas_datatype_bf16_r;
 constexpr auto BLAS_COMPUTE_32F = rocblas_datatype_f32_r;
-constexpr auto BLAS_COMPUTE_32F_FAST_TF32 = rocblas_datatype_f32_r;
+[[maybe_unused]] constexpr auto BLAS_COMPUTE_32F_FAST_TF32 =
+    rocblas_datatype_f32_r;
 [[maybe_unused]] constexpr auto BLAS_COMPUTE_16F = rocblas_datatype_f16_r;
 
 ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, rocblas_create_handle);
@@ -126,27 +127,52 @@ class BlasHandle {
 
 static BlasHandle globalBlasHandle;
 
-template <int BlasOpTypeA, int BlasOpTypeB, int BlasDataType,
-          int BlasComputeType>
-void blas_matmul(int m, int n, int k, void *alpha, const void *a, int lda,
-                 const void *b, int ldb, void *beta, void *c, int ldc,
+template <int BlasOpTypeA, int BlasOpTypeB, typename DataType>
+void blas_matmul(int m, int n, int k, const DataType *a, int lda,
+                 const DataType *b, int ldb, DataType *c, int ldc,
                  int batch_size = 1) {
+    static_assert(std::is_same_v<DataType, float> ||
+                      std::is_same_v<DataType, ark::half_t> ||
+                      std::is_same_v<DataType, ark::bfloat16_t>,
+                  "Unsupported data type");
+
     auto blasH = globalBlasHandle.get();
     blasStatus status;
     blasOperation optypeA = (blasOperation)BlasOpTypeA;
     blasOperation optypeB = (blasOperation)BlasOpTypeB;
-    blasDataType dtype = (blasDataType)BlasDataType;
-    blasComputeType ctype = (blasComputeType)BlasComputeType;
+
+#if defined(ARK_CUDA)
+    using CompType =
+        typename std::conditional_t<std::is_same_v<DataType, ark::half_t>,
+                                    ark::half_t, float>;
+    blasComputeType ctype =
+        std::is_same_v<DataType, float>
+            ? BLAS_COMPUTE_32F_FAST_TF32
+            : (std::is_same_v<DataType, ark::half_t> ? BLAS_COMPUTE_16F
+                                                     : BLAS_COMPUTE_32F);
+#elif defined(ARK_ROCM)
+    // CK uses only fp32 compute type for fp16/bf16
+    using CompType = float;
+    blasComputeType ctype = BLAS_COMPUTE_32F;
+#endif
+    CompType alpha = 1;
+    CompType beta = 0;
+
+    blasDataType dtype =
+        std::is_same_v<DataType, float>
+            ? BLAS_R_32F
+            : (std::is_same_v<DataType, ark::half_t> ? BLAS_R_16F
+                                                     : BLAS_R_16BF);
     if (batch_size == 1) {
-        status = blasGemmEx(blasH, optypeB, optypeA, n, m, k, alpha, b, dtype,
-                            ldb, a, dtype, lda, beta, c, dtype, ldc, ctype);
+        status = blasGemmEx(blasH, optypeB, optypeA, n, m, k, &alpha, b, dtype,
+                            ldb, a, dtype, lda, &beta, c, dtype, ldc, ctype);
         if (status != blasSuccess) {
             throw std::runtime_error("Failed to call blasGemmEx");
         }
     } else {
         status = blasGemmStridedBatchedEx(
-            blasH, optypeB, optypeA, n, m, k, alpha, b, dtype, ldb, n * k, a,
-            dtype, lda, k * m, beta, c, dtype, ldc, n * m, batch_size, ctype);
+            blasH, optypeB, optypeA, n, m, k, &alpha, b, dtype, ldb, n * k, a,
+            dtype, lda, k * m, &beta, c, dtype, ldc, n * m, batch_size, ctype);
         if (status != blasSuccess) {
             throw std::runtime_error("Failed to call blasGemmStridedBatchedEx");
         }
@@ -178,29 +204,8 @@ void baseline_matmul_nn(std::vector<void *> &outputs,
     T *devB = static_cast<T *>(memB.get());
     T *devC = static_cast<T *>(memC.get());
 
-    // matmul using cublas
-    if constexpr (std::is_same_v<T, float>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_32F,
-                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
-                                                devB, ldb, &beta, devC, ldc,
-                                                batch_size);
-    } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_16F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_16BF, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else {
-        throw std::runtime_error("Unsupported data type");
-    }
+    blas_matmul<BLAS_OP_N, BLAS_OP_N>(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                                      batch_size);
     ark::sync_gpu();
 
     // copy back to host
@@ -232,29 +237,8 @@ void baseline_matmul_nt(std::vector<void *> &outputs,
     T *devB = static_cast<T *>(memB.get());
     T *devC = static_cast<T *>(memC.get());
 
-    // matmul using cublas
-    if constexpr (std::is_same_v<T, float>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_32F,
-                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
-                                                devB, ldb, &beta, devC, ldc,
-                                                batch_size);
-    } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_16F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_16BF, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else {
-        throw std::runtime_error("Unsupported data type");
-    }
+    blas_matmul<BLAS_OP_N, BLAS_OP_T>(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                                      batch_size);
     ark::sync_gpu();
 
     // copy back to host
@@ -286,29 +270,8 @@ void baseline_matmul_tn(std::vector<void *> &outputs,
     T *devB = static_cast<T *>(memB.get());
     T *devC = static_cast<T *>(memC.get());
 
-    // matmul using cublas
-    if constexpr (std::is_same_v<T, float>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_32F,
-                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
-                                                devB, ldb, &beta, devC, ldc,
-                                                batch_size);
-    } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_16F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_16BF, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else {
-        throw std::runtime_error("Unsupported data type");
-    }
+    blas_matmul<BLAS_OP_T, BLAS_OP_N>(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                                      batch_size);
     ark::sync_gpu();
 
     // copy back to host
@@ -340,29 +303,8 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
     T *devB = static_cast<T *>(memB.get());
     T *devC = static_cast<T *>(memC.get());
 
-    // matmul using cublas
-    if constexpr (std::is_same_v<T, float>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_32F,
-                    BLAS_COMPUTE_32F_FAST_TF32>(m, n, k, &alpha, devA, lda,
-                                                devB, ldb, &beta, devC, ldc,
-                                                batch_size);
-    } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_16F, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
-        float alpha = 1;
-        float beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_16BF, BLAS_COMPUTE_32F>(
-            m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
-            batch_size);
-    } else {
-        throw std::runtime_error("Unsupported data type");
-    }
+    blas_matmul<BLAS_OP_T, BLAS_OP_T>(m, n, k, devA, lda, devB, ldb, devC, ldc,
+                                      batch_size);
     ark::sync_gpu();
 
     // copy back to host
