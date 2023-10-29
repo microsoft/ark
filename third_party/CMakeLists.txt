@@ -62,7 +62,7 @@ if(USE_ROCM)
 
     # Patch CK
     add_custom_target(tp-ck
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/composable_kernel/ck.patch || true
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/composable_kernel/ck.patch || true
     )
 
     set(TP_TARGETS tp-ck PARENT_SCOPE)

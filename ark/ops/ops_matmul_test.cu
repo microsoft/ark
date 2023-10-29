@@ -74,7 +74,7 @@ constexpr auto BLAS_R_16F = rocblas_datatype_f16_r;
 constexpr auto BLAS_R_16BF = rocblas_datatype_bf16_r;
 constexpr auto BLAS_COMPUTE_32F = rocblas_datatype_f32_r;
 constexpr auto BLAS_COMPUTE_32F_FAST_TF32 = rocblas_datatype_f32_r;
-constexpr auto BLAS_COMPUTE_16F = rocblas_datatype_f16_r;
+[[maybe_unused]] constexpr auto BLAS_COMPUTE_16F = rocblas_datatype_f16_r;
 
 ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, rocblas_create_handle);
 ARK_GPU_DEFINE_FUNC_ALIAS(blasDestroy, rocblas_destroy_handle);
@@ -187,9 +187,9 @@ void baseline_matmul_nn(std::vector<void *> &outputs,
                                                 devB, ldb, &beta, devC, ldc,
                                                 batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        ark::half_t alpha = 1;
-        ark::half_t beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_16F, BLAS_COMPUTE_16F>(
+        float alpha = 1;
+        float beta = 0;
+        blas_matmul<BLAS_OP_N, BLAS_OP_N, BLAS_R_16F, BLAS_COMPUTE_32F>(
             m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
             batch_size);
     } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
@@ -241,9 +241,9 @@ void baseline_matmul_nt(std::vector<void *> &outputs,
                                                 devB, ldb, &beta, devC, ldc,
                                                 batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        ark::half_t alpha = 1;
-        ark::half_t beta = 0;
-        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_16F, BLAS_COMPUTE_16F>(
+        float alpha = 1;
+        float beta = 0;
+        blas_matmul<BLAS_OP_N, BLAS_OP_T, BLAS_R_16F, BLAS_COMPUTE_32F>(
             m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
             batch_size);
     } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
@@ -295,9 +295,9 @@ void baseline_matmul_tn(std::vector<void *> &outputs,
                                                 devB, ldb, &beta, devC, ldc,
                                                 batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        ark::half_t alpha = 1;
-        ark::half_t beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_16F, BLAS_COMPUTE_16F>(
+        float alpha = 1;
+        float beta = 0;
+        blas_matmul<BLAS_OP_T, BLAS_OP_N, BLAS_R_16F, BLAS_COMPUTE_32F>(
             m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
             batch_size);
     } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
@@ -349,9 +349,9 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
                                                 devB, ldb, &beta, devC, ldc,
                                                 batch_size);
     } else if constexpr (std::is_same_v<T, ark::half_t>) {
-        ark::half_t alpha = 1;
-        ark::half_t beta = 0;
-        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_16F, BLAS_COMPUTE_16F>(
+        float alpha = 1;
+        float beta = 0;
+        blas_matmul<BLAS_OP_T, BLAS_OP_T, BLAS_R_16F, BLAS_COMPUTE_32F>(
             m, n, k, &alpha, devA, lda, devB, ldb, &beta, devC, ldc,
             batch_size);
     } else if constexpr (std::is_same_v<T, ark::bfloat16_t>) {
@@ -379,7 +379,7 @@ ark::unittest::State test_matmul_fp16_gran0() {
         auto result = ark::op_test("matmul_fp16_gran0", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -390,7 +390,7 @@ ark::unittest::State test_matmul_fp16_gran0() {
         auto result = ark::op_test("matmul_fp16_gran0", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -405,7 +405,7 @@ ark::unittest::State test_matmul_fp16_gran1() {
         auto result = ark::op_test("matmul_fp16_gran1", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -416,7 +416,7 @@ ark::unittest::State test_matmul_fp16_gran1() {
         auto result = ark::op_test("matmul_fp16_gran1", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -431,7 +431,7 @@ ark::unittest::State test_matmul_fp16_gran2() {
         auto result = ark::op_test("matmul_fp16_gran2", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -442,12 +442,12 @@ ark::unittest::State test_matmul_fp16_gran2() {
         auto result = ark::op_test("matmul_fp16_gran2", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_split() {
+ark::unittest::State test_matmul_fp16_split() {
     {
         ark::Model m;
         ark::Tensor *a = m.tensor(ark::Dims(128, 128), ark::FP16);
@@ -457,11 +457,11 @@ ark::unittest::State test_matmul_split() {
         std::vector<ark::half_t> ones_a(a->size(), ark::half_t(1.0f));
         std::vector<ark::half_t> ones_b(b->size(), ark::half_t(1.0f));
 
-        auto result = ark::op_test("matmul_split", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_split", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>,
                                    {ones_a.data(), ones_b.data()});
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
     }
     {
         ark::Model m;
@@ -469,7 +469,7 @@ ark::unittest::State test_matmul_split() {
         ark::Tensor *b = m.tensor(ark::Dims(8192, 16384), ark::FP32);
         ark::Tensor *c = m.matmul(a, b, nullptr, 7, false, false, "matmul", 0);
 
-        auto result = ark::op_test("matmul_split", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_split", m, {a, b}, {c},
                                    baseline_matmul_nn<float>);
         UNITTEST_LOG(result);
         UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
@@ -536,10 +536,10 @@ ark::unittest::State test_matmul_fp16_nt() {
         ark::Tensor *b = m.tensor(ark::Dims(256, 64), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, false, true, "matmul", 0);
 
-        auto result = ark::op_test("matmul_nt", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -547,10 +547,10 @@ ark::unittest::State test_matmul_fp16_nt() {
         ark::Tensor *b = m.tensor(ark::Dims(16384, 8192), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, false, true, "matmul", 0);
 
-        auto result = ark::op_test("matmul_nt", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -562,13 +562,10 @@ ark::unittest::State test_matmul_fp16_tn() {
         ark::Tensor *b = m.tensor(ark::Dims(64, 256), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, false, "matmul", 0);
 
-        std::vector<ark::half_t> ones_a(a->shape.size(), ark::half_t(1.0f));
-        std::vector<ark::half_t> ones_b(b->shape.size(), ark::half_t(1.0f));
-        auto result = ark::op_test("matmul_tn", m, {a, b}, {c},
-                                   baseline_matmul_tn<ark::half_t>,
-                                   {ones_a.data(), ones_b.data()}, true);
+        auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
+                                   baseline_matmul_tn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -576,10 +573,10 @@ ark::unittest::State test_matmul_fp16_tn() {
         ark::Tensor *b = m.tensor(ark::Dims(8192, 16384), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, false, "matmul", 0);
 
-        auto result = ark::op_test("matmul_tn", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -591,10 +588,10 @@ ark::unittest::State test_matmul_fp16_tt() {
         ark::Tensor *b = m.tensor(ark::Dims(256, 64), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, true, "matmul", 0);
 
-        auto result = ark::op_test("matmul_tt", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -602,40 +599,41 @@ ark::unittest::State test_matmul_fp16_tt() {
         ark::Tensor *b = m.tensor(ark::Dims(16384, 8192), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, true, true, "matmul", 0);
 
-        auto result = ark::op_test("matmul_tt", m, {a, b}, {c},
+        auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_batched() {
+ark::unittest::State test_matmul_fp16_batched() {
     ark::Model m;
     ark::Tensor *a = m.tensor(ark::Dims(3, 7, 64, 128), ark::FP16);
     ark::Tensor *b = m.tensor(ark::Dims(3, 7, 128, 256), ark::FP16);
     ark::Tensor *c = m.matmul(a, b);
 
-    auto result = ark::op_test("matmul_batched", m, {a, b}, {c},
+    auto result = ark::op_test("matmul_fp16_batched", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_batched_padded() {
+ark::unittest::State test_matmul_fp16_batched_padded() {
     ark::Model m;
     ark::Tensor *a = m.tensor(ark::Dims(3, 7, 2, 9), ark::FP16);
     ark::Tensor *b = m.tensor(ark::Dims(3, 7, 9, 2), ark::FP16);
     ark::Tensor *c = m.matmul(a, b);
 
-    auto result = ark::op_test("matmul_batched_padded", m, {a, b}, {c},
+    auto result = ark::op_test("matmul_fp16_batched_padded", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < 1e-3f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_matmul_offset() {
+ark::unittest::State test_matmul_fp16_offset() {
     ark::Model m;
     ark::Tensor *a =
         m.tensor({1, 128, 64}, ark::FP16, nullptr, {1, 128, 256}, {0, 0, 64});
@@ -645,27 +643,27 @@ ark::unittest::State test_matmul_offset() {
                               {1, 64, 128});
     m.matmul(a, b, c);
 
-    auto result = ark::op_test("matmul_offset", m, {a, b}, {c},
+    auto result = ark::op_test("matmul_fp16_offset", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    // UNITTEST_EQ(result.max_diff[0], 0.0f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
     return ark::unittest::SUCCESS;
 }
 
 int main() {
     ark::init();
     UNITTEST(test_matmul_fp16_gran0);
-    // UNITTEST(test_matmul_fp16_gran1);
-    // UNITTEST(test_matmul_fp16_gran2);
-    // UNITTEST(test_matmul_split);
+    UNITTEST(test_matmul_fp16_gran1);
+    UNITTEST(test_matmul_fp16_gran2);
+    UNITTEST(test_matmul_fp16_split);
     UNITTEST(test_matmul_fp32);
-    // UNITTEST(test_matmul_bf16);
-    // UNITTEST(test_matmul_fp16_nt);
-    // UNITTEST(test_matmul_fp16_tn);
-    // UNITTEST(test_matmul_fp16_tt);
-    // UNITTEST(test_matmul_batched);
-    // UNITTEST(test_matmul_batched_padded);
-    // UNITTEST(test_matmul_offset);
+    UNITTEST(test_matmul_bf16);
+    UNITTEST(test_matmul_fp16_nt);
+    UNITTEST(test_matmul_fp16_tn);
+    UNITTEST(test_matmul_fp16_tt);
+    UNITTEST(test_matmul_fp16_batched);
+    UNITTEST(test_matmul_fp16_batched_padded);
+    UNITTEST(test_matmul_fp16_offset);
 
     return ark::unittest::SUCCESS;
 }
