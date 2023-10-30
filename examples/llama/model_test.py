@@ -307,6 +307,7 @@ def test_column_parallel_linear(
     batch_size: int,
     seq_len: int,
     dtype: np.dtype,
+    rank: int = 0,
     world_size: int = 1,
 ):
     ark.init()
@@ -317,29 +318,30 @@ def test_column_parallel_linear(
             low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
         ).astype(dtype)
     ]
-    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
+    inputs_pt = [i.astype(dtype) for i in inputs_ark]
 
-    if world_size == 1:
-        test_module(
-            module_class_ark=model_ark.ColumnParallelLinear,
-            module_args_ark=[
-                args.dim,
-                args.dim // args.n_heads * args.n_heads,
-                ark.DataType.from_numpy(dtype),
-                0,
-                1,
-            ],
-            inputs_ark=inputs_ark,
-            module_class_pt=fairscale.nn.model_parallel.ColumnParallelLinear,
-            module_args_pt=[
-                args.dim,
-                args.dim // args.n_heads * args.n_heads,
-                False,
-                lambda x: x,
-            ],
-            inputs_pt=inputs_pt,
-            module_name_prefix="layers.0.attention.wq",
-        )
+    test_module(
+        module_class_ark=model_ark.ColumnParallelLinear,
+        module_args_ark=[
+            args.dim,
+            args.dim // args.n_heads * args.n_heads,
+            ark.DataType.from_numpy(dtype),
+            rank,
+            world_size,
+        ],
+        inputs_ark=inputs_ark,
+        module_class_pt=fairscale.nn.model_parallel.ColumnParallelLinear,
+        module_args_pt=[
+            args.dim,
+            args.dim // args.n_heads * args.n_heads,
+            False,
+            True,
+            lambda x: x,
+        ],
+        inputs_pt=inputs_pt,
+        module_name_prefix="layers.0.attention.wq",
+        dtype = dtype
+    )
 
 
 def test_attention(
@@ -474,7 +476,7 @@ def test_transformer(
 def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_rmsnorm(args, batch_size, seq_len, dtype)
     test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_column_parallel_linear(args, batch_size, seq_len, dtype, world_size)
+    test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, world_size)
     # test_transformer_block(args, batch_size, seq_len, dtype, world_size)
     # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
@@ -507,7 +509,7 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs7B()
+    args = ModelArgs13B()
     batch_size = 1
     seq_len = 128
     dtype = np.float16
