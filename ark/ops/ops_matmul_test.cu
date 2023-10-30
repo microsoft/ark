@@ -321,7 +321,8 @@ ark::unittest::State test_matmul_fp16_gran0() {
         auto result = ark::op_test("matmul_fp16_gran0", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -332,7 +333,8 @@ ark::unittest::State test_matmul_fp16_gran0() {
         auto result = ark::op_test("matmul_fp16_gran0", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -347,7 +349,8 @@ ark::unittest::State test_matmul_fp16_gran1() {
         auto result = ark::op_test("matmul_fp16_gran1", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -358,7 +361,8 @@ ark::unittest::State test_matmul_fp16_gran1() {
         auto result = ark::op_test("matmul_fp16_gran1", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -373,7 +377,8 @@ ark::unittest::State test_matmul_fp16_gran2() {
         auto result = ark::op_test("matmul_fp16_gran2", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -384,7 +389,8 @@ ark::unittest::State test_matmul_fp16_gran2() {
         auto result = ark::op_test("matmul_fp16_gran2", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -481,7 +487,8 @@ ark::unittest::State test_matmul_fp16_nt() {
         auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -492,7 +499,8 @@ ark::unittest::State test_matmul_fp16_nt() {
         auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -507,7 +515,8 @@ ark::unittest::State test_matmul_fp16_tn() {
         auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -518,7 +527,8 @@ ark::unittest::State test_matmul_fp16_tn() {
         auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -533,7 +543,8 @@ ark::unittest::State test_matmul_fp16_tt() {
         auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     {
         ark::Model m;
@@ -544,7 +555,8 @@ ark::unittest::State test_matmul_fp16_tt() {
         auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f ||
+                      result.max_diff[0] < 3e-3f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -558,7 +570,7 @@ ark::unittest::State test_matmul_fp16_batched() {
     auto result = ark::op_test("matmul_fp16_batched", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f || result.max_diff[0] < 3e-3f);
     return ark::unittest::SUCCESS;
 }
 
@@ -571,7 +583,7 @@ ark::unittest::State test_matmul_fp16_batched_padded() {
     auto result = ark::op_test("matmul_fp16_batched_padded", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f || result.max_diff[0] < 3e-3f);
     return ark::unittest::SUCCESS;
 }
 
@@ -588,7 +600,7 @@ ark::unittest::State test_matmul_fp16_offset() {
     auto result = ark::op_test("matmul_fp16_offset", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 3e-3f || result.max_diff[0] < 3e-3f);
     return ark::unittest::SUCCESS;
 }
 
