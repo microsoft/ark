@@ -19,6 +19,9 @@
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
+#define DEFAULT_ARK_USE_MSLL false
+#define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
+#define DEFAULT_ARK_MSLL_PORT 50051
 
 template <typename T>
 T env(const std::string &env_name, const T &default_val) {
@@ -69,8 +72,16 @@ Env::Env() {
     // If `ARK_IGNORE_BINARY_CACHE=1`, we ignore compiled binary cache.
     this->ignore_binary_cache =
         env<bool>("ARK_IGNORE_BINARY_CACHE", DEFAULT_ARK_IGNORE_BINARY_CACHE);
+    //
     this->shm_name_prefix =
         env<std::string>("ARK_SHM_NAME_PREFIX", DEFAULT_ARK_SHM_NAME_PREFIX);
+    // If `ARK_USE_MSLL=1`, we use MSLL.
+    this->use_msll = env<bool>("ARK_USE_MSLL", DEFAULT_ARK_USE_MSLL);
+    // Get the MSLL include directory path.
+    this->msll_include_dir =
+        env<std::string>("ARK_MSLL_INCLUDE_DIR", DEFAULT_ARK_MSLL_INCLUDE_DIR);
+    // Get the port number of MSLL.
+    this->msll_port = env<int>("ARK_MSLL_PORT", DEFAULT_ARK_MSLL_PORT);
 }
 
 // Global Env.

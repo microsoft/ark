@@ -695,6 +695,80 @@ def recv_mm(
 
 
 @register_op
+def send_msll(
+    input: Tensor,
+    sid: int,
+    dst_rank: int,
+    bytes: int = 0,
+    name: str = "send_msll",
+) -> Tensor:
+    """
+    Sends a tensor to a destination GPU (`dst_rank`). Multiple
+    tensors can be sent to the same GPU, so an identifier `id` is
+    required to distinguish the tensor. Each 'send' operator must
+    have a corresponding 'recv' operator that have the same id in
+    another GPU's model.
+    Usage:
+    # on GPU0:
+    ark.send(tensor_send, 1, 1)
+    ark.send_done(tensor_send, 1, 1)
+    # on GPU1:
+    ark.recv(1, 0, 0, tensor_recv)
+    """
+    _tensor = Model.get_model().send_msll(
+        input._tensor,
+        sid,
+        dst_rank,
+        bytes,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def send_done_msll(
+    input: Tensor,
+    dst_rank: int,
+    name: str = "send_done_msll",
+) -> Tensor:
+    """
+    Blocks the execution until the corresponding 'send' operator
+    with the specified `id` is completed.
+    """
+    _tensor = Model.get_model().send_done_msll(
+        input._tensor,
+        dst_rank,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def recv_msll(
+    sid: int,
+    src_rank: int,
+    bytes: int,
+    output: Tensor = None,
+    name: str = "recv",
+) -> Tensor:
+    """
+    Receives a tensor from a source GPU (`src_rank`), identified by
+    the `id` parameter. Blocks the execution until the corresponding
+    'recv' operator is completed.
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().recv_msll(
+        sid,
+        src_rank,
+        bytes,
+        output,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
 def all_gather(
     input: Tensor,
     rank: int,
@@ -733,6 +807,54 @@ def all_gather(
 
 
 @register_op
+def local_all_gather_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_gather_msll",
+) -> Tensor:
+    """
+    Performs an all-gather operator across local node GPUs.
+    Usage:
+    # all-gather
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allgather_result = ark.local_all_gather_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_gather_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_reduce_scatter_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_reduce_scatter_msll",
+) -> Tensor:
+    """
+    Performs an reduce-scatter operator across local node GPUs.
+    Usage:
+    # reduce-scatter
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    reduce_scatter_result = ark.local_reduce_scatter_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_reduce_scatter_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
 def all_reduce(
     input: Tensor,
     rank: int,
@@ -753,6 +875,56 @@ def all_reduce(
         output = output._tensor
     _tensor = Model.get_model().all_reduce(
         input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_all_reduce_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_reduce_msll",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across local GPUs, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs in a node`ranks_per_node`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.local_all_reduce_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_reduce_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_all_reduce_packet_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_reduce_msll",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across local GPUs with LL algo, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs in a node`ranks_per_node`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.local_all_reduce_packet_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_reduce_packet_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
     )
     return Tensor(_tensor)
 

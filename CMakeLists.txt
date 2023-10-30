@@ -8,6 +8,8 @@ set(ARK_PATCH "0")
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
+option(USE_MSLL "Use USE_MSLL" OFF)
+
 cmake_minimum_required(VERSION 3.25)
 enable_language(CXX)
 
@@ -75,6 +77,14 @@ else()  # USE_ROCM
     set(CMAKE_HIP_STANDARD 17)
     set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -Wall -Wextra")
     project(ark LANGUAGES CXX HIP)
+endif()
+
+# Find MSLL
+if(USE_MSLL)
+    include(${PROJECT_SOURCE_DIR}/cmake/FindMSLL.cmake)
+    if (NOT MSLL_FOUND)
+        message(FATAL_ERROR "MSLL not found")
+    endif()
 endif()
 
 # Code coverage from https://github.com/codecov/example-cpp11-cmake

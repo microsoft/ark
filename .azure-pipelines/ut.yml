@@ -12,7 +12,7 @@ jobs:
 - job: UnitTest
   timeoutInMinutes: 30
   pool:
-    name: mscclpp
+    name: msll
   strategy:
     matrix:
       cuda11:

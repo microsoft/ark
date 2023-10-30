@@ -27,6 +27,7 @@ class SchedOpSeq {
     bool is_send_done() const;
     bool is_recv() const;
     bool is_comm() const;
+    bool is_sync() const;
 
     const std::string get_name() const {
         std::stringstream ss;

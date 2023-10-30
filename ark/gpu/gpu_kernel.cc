@@ -303,6 +303,25 @@ void GpuLoopKernel::load() {
                 " data_buf_value=", data_buf_value);
             GLOG(gpuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
+#ifdef ARK_USE_MSLL
+        GpuCommSw *comm = this->ctx->get_comm_sw();
+        if (get_env().use_msll && comm->get_proxy_channels_num() > 0) {
+            GpuPtr channel_addr;
+            CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
+                                    "_ARK_PROXY_CHANS"));
+            const void *chans_ref = comm->get_proxy_channels_ref();
+            size_t chans_bytes = comm->get_proxy_channels_bytes();
+            CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
+        }
+        if (get_env().use_msll && comm->get_sm_channels_num() > 0) {
+            GpuPtr channel_addr;
+            CULOG(cuModuleGetGlobal(&channel_addr, 0, this->module,
+                                    "_ARK_SM_CHANS"));
+            const void *chans_ref = comm->get_sm_channels_ref();
+            size_t chans_bytes = comm->get_sm_channels_bytes();
+            CULOG(cuMemcpyHtoD(channel_addr, chans_ref, chans_bytes));
+        }
+#endif  // ARK_USE_MSLL
     }
 }
 
@@ -323,6 +342,9 @@ GpuState GpuLoopKernel::launch(gpuStream stream, bool disable_timing) {
     if (!disable_timing) {
         GLOG(gpuEventRecord(this->timer_begin, stream));
     }
+
+    this->ctx->get_comm_sw()->launch_request_loop();
+
     // Initialize loop flags.
     *(this->flag_href) = 0;
     GpuState res = GpuKernel::launch(stream);
@@ -384,6 +406,7 @@ void GpuLoopKernel::stop() {
         this->is_recording = false;
     }
     this->stream = nullptr;
+    this->ctx->get_comm_sw()->stop_request_loop();
 }
 
 }  // namespace ark

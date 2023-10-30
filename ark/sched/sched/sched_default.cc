@@ -503,6 +503,66 @@ void DefaultScheduler::configure_gpu_buf(
                 this->buf_infos.emplace_back(
                     src_gid, send_ready_flag->shape_bytes(),
                     send_ready_flag->buf, sid + send_ready_flag_sid_offset, 0);
+            } else if (op->type == OP_SEND_MSLL) {
+                Tensor *input = op->inputs[0];
+                Tensor *recvbuf = op->inputs[1];
+                int dst_rank;
+                int sid;
+                op->args.get(&dst_rank, 1);
+                op->args.get(&sid, 3);
+                // import the recvbuf, the recvbuf should be allocated on the
+                // receiver GPU
+                this->buf_infos.emplace_back(dst_rank, recvbuf->shape_bytes(),
+                                             recvbuf->buf, sid, 0);
+                export_tns_sids[input->buf].emplace_back(input, sid);
+            } else if (op->type == OP_RECV_MSLL) {
+                Tensor *in = op->outputs[0];
+                int sid;
+                op->args.get(&sid, 3);
+                export_tns_sids[in->buf].emplace_back(in, sid);
+            } else if (op->type == OP_READ_AND_REDUCE_MSLL ||
+                       op->type == OP_GATHER_FROM_PEERS_MSLL) {
+                Tensor *local_buff = op->outputs[1];
+                std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
+                    op->inputs.begin() + 1, op->inputs.end());
+                LOG(DEBUG, "read_and_reduce_msll/gather_from_peers_msll ",
+                    local_buff->shape, " npeers ", remote_bufs.size());
+                int npeers;
+                int sid;
+                op->args.get(&npeers, 1);
+                op->args.get(&sid, 2);
+                export_tns_sids[local_buff->buf].emplace_back(local_buff, sid);
+                for (int i = 0; i < npeers; i++) {
+                    int peer_rank = i < this->rank ? i : i + 1;
+                    this->buf_infos.emplace_back(peer_rank,
+                                                 remote_bufs[i]->shape_bytes(),
+                                                 remote_bufs[i]->buf, sid, 0);
+                }
+            } else if (op->type == OP_PUT_PACKET_MSLL) {
+                Tensor *scratch = op->inputs[1];
+                Tensor *recvbuf = op->inputs[2];
+                int dst_rank;
+                int sid;
+                op->args.get(&sid, 0);
+                op->args.get(&dst_rank, 2);
+                // import the recvbuf, the recvbuf should be allocated on the
+                // receiver GPU
+                this->buf_infos.emplace_back(dst_rank, recvbuf->shape_bytes(),
+                                             recvbuf->buf, sid, 0);
+                export_tns_sids[scratch->buf].emplace_back(scratch, sid);
+            } else if (op->type == OP_REDUCE_AND_WRITE_PACKET_MSLL) {
+                Tensor *scratch = op->inputs[1];
+                std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
+                    op->inputs.begin() + 2, op->inputs.end());
+                int sid;
+                op->args.get(&sid, 0);
+                export_tns_sids[scratch->buf].emplace_back(scratch, sid);
+                for (int i = 0; i < (int)remote_bufs.size(); i++) {
+                    int peer_rank = i < this->rank ? i : i + 1;
+                    this->buf_infos.emplace_back(peer_rank,
+                                                 remote_bufs[i]->shape_bytes(),
+                                                 remote_bufs[i]->buf, sid, 0);
+                }
             }
         }
     }
@@ -541,6 +601,14 @@ std::vector<std::string> DefaultScheduler::gen_code() {
 
     this->codegen->def_sync_stream(code, 0);
     this->codegen->def_sync_stream(code, 1);
+
+    if (get_env().use_msll) {
+        int num_proxy_chans =
+            this->ctx->get_comm_sw()->get_proxy_channels_num();
+        this->codegen->def_proxy_channels(code, num_proxy_chans);
+        int num_sm_chans = this->ctx->get_comm_sw()->get_sm_channels_num();
+        this->codegen->def_sm_channels(code, num_sm_chans);
+    }
 
     std::map<std::string, int> uop_map;
     for (auto &opseq : this->opseqs) {

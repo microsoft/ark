@@ -101,6 +101,10 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_CUDA_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
+    if (get_env().use_msll) {
+        args.emplace_back("--define-macro=ARK_USE_MSLL=1");
+        args.emplace_back("-I" + get_env().msll_include_dir);
+    }
     args.emplace_back("-gencode arch=compute_" + cc + ",code=sm_" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
@@ -125,6 +129,10 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
+    if (get_env().use_msll) {
+        args.emplace_back("--define-macro=ARK_USE_MSLL=1");
+        args.emplace_back("-I" + get_env().msll_include_dir);
+    }
     args.emplace_back("--offload-arch=gfx" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
@@ -181,7 +189,6 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             const std::string compile_cmd =
                 gpu_compile_command(code_file_path, ark_root, arch, max_reg_cnt,
                                     item.second + ".cubin");
-
             double start = cpu_timer();
             LOG(INFO, "Compiling: ", code_file_path);
             LOG(DEBUG, compile_cmd);
@@ -198,7 +205,7 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, "\n", exec_print_str, "\n");
+                LOG(ERROR, "\n", compile_cmd, "\n", exec_print_str, "\n");
             }
             LOG(INFO, "Compile succeed: ", code_file_path, " (",
                 cpu_timer() - start, " seconds)");

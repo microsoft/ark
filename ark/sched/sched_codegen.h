@@ -45,6 +45,11 @@ class CodeGenerator {
 
     std::ostream &sched(std::ostream &os, Sched &sched) const;
 
+    std::ostream &def_proxy_channels(std::ostream &os,
+                                     size_t num_channels) const;
+
+    std::ostream &def_sm_channels(std::ostream &os, size_t num_channels) const;
+
    protected:
     size_t get_tensor_offset(const Tensor *tensor) const;
 

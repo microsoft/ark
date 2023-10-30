@@ -28,6 +28,9 @@ bool SchedOpSeq::is_send() const {
         if (ot == OP_SEND) {
             continue;
         }
+        if (ot == OP_SEND_MSLL) {
+            continue;
+        }
         return false;
     }
     return true;
@@ -40,6 +43,9 @@ bool SchedOpSeq::is_send_done() const {
         }
         const OpType &ot = sop.get_op()->type;
         if (ot == OP_SEND_DONE) {
+            continue;
+        }
+        if (ot == OP_SEND_DONE_MSLL) {
             continue;
         }
         return false;
@@ -56,13 +62,31 @@ bool SchedOpSeq::is_recv() const {
         if (ot == OP_RECV) {
             continue;
         }
+        if (ot == OP_RECV_MSLL) {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
+bool SchedOpSeq::is_sync() const {
+    for (auto &sop : this->seq) {
+        if (sop.is_virtual()) {
+            continue;
+        }
+        const OpType &ot = sop.get_op()->type;
+        if (ot == OP_DEVICE_SYNC_MSLL) {
+            continue;
+        }
         return false;
     }
     return true;
 }
 
 bool SchedOpSeq::is_comm() const {
-    return this->is_send() || this->is_send_done() || this->is_recv();
+    return this->is_send() || this->is_send_done() || this->is_recv() ||
+           this->is_sync();
 }
 
 bool SchedOpSeq::append(const Op *op, const OpConfig *cfg) {

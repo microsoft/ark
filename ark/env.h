@@ -35,6 +35,12 @@ struct Env {
     bool ignore_binary_cache;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
+    // Use MSLL.
+    bool use_msll;
+    // MSLL include directory path.
+    std::string msll_include_dir;
+    // MSLL bootstrap port.
+    int msll_port;
 };
 
 // Get the global Env.
