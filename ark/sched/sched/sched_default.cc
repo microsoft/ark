@@ -403,8 +403,8 @@ void DefaultScheduler::configure_gpu_buf(
                                 " vs ", op_tns->ldims);
                         }
                     } else {
-                        LOG(ERROR, padding_error_msg, " ", tns->ldims, " vs ",
-                            orig_ldims);
+                        LOG(ERROR, padding_error_msg, " ", tns->name,
+                            tns->ldims, " vs ", op_tns->name, orig_ldims);
                     }
                 }
             }
