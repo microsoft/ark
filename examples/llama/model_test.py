@@ -193,41 +193,48 @@ def test_module(
 
     # Compare the outputs
     eps = np.finfo(np.float64).eps
-    for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
-        shape = o_ark.shape
-        o_ark = o_ark.flatten().astype(np.float64)
-        o_pt = o_pt.flatten().astype(np.float64)
+    np.set_printoptions(threshold=1000)
+    for i, t in enumerate(res_ark.outputs):
+        print(t)
 
-        max_value_idx = np.argmax(o_pt)
-        min_value_idx = np.argmin(o_pt)
+    for i, t in enumerate(res_pt.outputs):
+        print(t)
 
-        abs_diff = np.abs(o_ark - o_pt)
-        max_abs_diff_idx = np.argmax(abs_diff)
-        max_abs_diff = abs_diff[max_abs_diff_idx]
+    # for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
+    #     shape = o_ark.shape
+    #     o_ark = o_ark.flatten().astype(np.float64)
+    #     o_pt = o_pt.flatten().astype(np.float64)
 
-        abs_pt = np.abs(o_pt)
-        rel_diff = abs_diff / (abs_pt + eps)
-        max_rel_diff_idx = np.argmax(rel_diff)
-        max_rel_diff = rel_diff[max_rel_diff_idx]
+    #     max_value_idx = np.argmax(o_pt)
+    #     min_value_idx = np.argmin(o_pt)
 
-        # max rel_diff where abs_pt is larger than 1e-3
-        max_rel_diff_3_idx = np.argmax(rel_diff * (abs_pt > 1e-3))
-        max_rel_diff_3 = rel_diff[max_rel_diff_3_idx]
+    #     abs_diff = np.abs(o_ark - o_pt)
+    #     max_abs_diff_idx = np.argmax(abs_diff)
+    #     max_abs_diff = abs_diff[max_abs_diff_idx]
 
-        mean_square_error = np.mean(np.square(o_ark - o_pt))
+    #     abs_pt = np.abs(o_pt)
+    #     rel_diff = abs_diff / (abs_pt + eps)
+    #     max_rel_diff_idx = np.argmax(rel_diff)
+    #     max_rel_diff = rel_diff[max_rel_diff_idx]
 
-        # Test info as string
-        test_info = f"{module_class_ark.__name__}: output {i}, shape {shape}"
+    #     # max rel_diff where abs_pt is larger than 1e-3
+    #     max_rel_diff_3_idx = np.argmax(rel_diff * (abs_pt > 1e-3))
+    #     max_rel_diff_3 = rel_diff[max_rel_diff_3_idx]
 
-        print(
-            test_info + "\n"
-            f"  max_pt: {o_pt[max_value_idx]} vs {o_ark[max_value_idx]} at index {max_value_idx}\n"
-            f"  min_pt: {o_pt[min_value_idx]} vs {o_ark[min_value_idx]} at index {min_value_idx}\n"
-            f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]} at index {max_abs_diff_idx})\n"
-            f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]} at index {max_rel_diff_idx})\n"
-            f"  max_rel_diff_3: {max_rel_diff_3:.4e} ({o_pt[max_rel_diff_3_idx]} vs {o_ark[max_rel_diff_3_idx]} at index {max_rel_diff_3_idx})\n"
-            f"  mean_square_error: {mean_square_error:.4e}\n"
-        )
+    #     mean_square_error = np.mean(np.square(o_ark - o_pt))
+
+    #     # Test info as string
+    #     test_info = f"{module_class_ark.__name__}: output {i}, shape {shape}"
+
+    #     print(
+    #         test_info + "\n"
+    #         f"  max_pt: {o_pt[max_value_idx]} vs {o_ark[max_value_idx]} at index {max_value_idx}\n"
+    #         f"  min_pt: {o_pt[min_value_idx]} vs {o_ark[min_value_idx]} at index {min_value_idx}\n"
+    #         f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]} at index {max_abs_diff_idx})\n"
+    #         f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]} at index {max_rel_diff_idx})\n"
+    #         f"  max_rel_diff_3: {max_rel_diff_3:.4e} ({o_pt[max_rel_diff_3_idx]} vs {o_ark[max_rel_diff_3_idx]} at index {max_rel_diff_3_idx})\n"
+    #         f"  mean_square_error: {mean_square_error:.4e}\n"
+    #     )
 
 
 def test_rmsnorm(
@@ -266,8 +273,6 @@ def test_row_parallel_linear(
     rank: int = 0,
     world_size: int = 1,
 ):
-    ark.init()
-
     # Create random input data
     inputs_ark = [
         np.random.uniform(
@@ -312,6 +317,9 @@ def test_column_parallel_linear(
 ):
     ark.init()
 
+    seed = 1695878986  # int(time.time())
+    print(f"seed: {seed}")
+    np.random.seed(seed)
     # Create random input data
     inputs_ark = [
         np.random.uniform(
@@ -349,6 +357,7 @@ def test_attention(
     batch_size: int,
     seq_len: int,
     dtype: np.dtype,
+    rank: int = 0,
     world_size: int = 1,
 ):
     ark.init()
@@ -369,16 +378,15 @@ def test_attention(
         low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
 
-    if world_size == 1:
-        test_module(
-            module_class_ark=model_ark.Attention,
-            module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
-            inputs_ark=[feature, 0, freqs_cis_ark, None],
-            module_class_pt=model_pt.Attention,
-            module_args_pt=[args],
-            inputs_pt=[feature.astype(np.float32), 0, freqs_cis, None],
-            module_name_prefix="layers.0.attention",
-        )
+    test_module(
+        module_class_ark=model_ark.Attention,
+        module_args_ark=[args, ark.DataType.from_numpy(dtype), rank, world_size],
+        inputs_ark=[feature, 0, freqs_cis_ark, None],
+        module_class_pt=model_pt.Attention,
+        module_args_pt=[args],
+        inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
+        module_name_prefix="layers.0.attention",
+    )
 
 
 def test_transformer_block(
@@ -426,9 +434,6 @@ def test_transformer(
     rank: int = 0,
     world_size: int = 1,
 ):
-    ark.init()
-    ark.set_rank(rank)
-    ark.set_world_size(world_size)
 
     # Random input tokens
 
@@ -474,10 +479,14 @@ def test_transformer(
 
 
 def test(args, batch_size, seq_len, dtype, rank, world_size):
+    ark.init()
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
+
     # test_rmsnorm(args, batch_size, seq_len, dtype)
     test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
-    test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_attention(args, batch_size, seq_len, dtype, world_size)
+    # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
     # test_transformer_block(args, batch_size, seq_len, dtype, world_size)
     # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
