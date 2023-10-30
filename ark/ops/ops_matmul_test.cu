@@ -455,7 +455,7 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 1e-2f);
     }
     {
         ark::Model m;
@@ -466,7 +466,7 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        // UNITTEST_EQ(result.max_diff[0], 0.0f);
+        UNITTEST_TRUE(result.max_err_rate[0] < 1e-2f);
     }
     return ark::unittest::SUCCESS;
 }

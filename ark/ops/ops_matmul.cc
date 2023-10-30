@@ -315,9 +315,9 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_ROCM_90A, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 24672, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
-         {2, 16480, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
-         {1, 8288, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+         {4, 24624, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
+         {2, 16432, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {1, 8240, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
      }},
     {{OP_ARCH_ROCM_90A, "fp32"},
      {

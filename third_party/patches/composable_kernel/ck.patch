@@ -256,6 +256,60 @@ index a5051455b..77f8a0bb0 100644
      static auto MakeArgument(const ADataType* p_a,
                               const BDataType* p_b,
                               CDataType* p_c,
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
+index 7cd0ff72e..1fc7a4566 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
+@@ -82,6 +82,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+     static constexpr auto I1 = Number<1>{};
+     static constexpr auto I2 = Number<2>{};
+ 
++    __host__ __device__
+     static auto MakeAGridDescriptor_AK0_M_AK1(index_t MRaw, index_t KRaw, index_t StrideA)
+     {
+         const auto a_grid_desc_mraw_kraw = [&]() {
+@@ -185,6 +186,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeBGridDescriptor_BK0_N_BK1(index_t KRaw, index_t NRaw, index_t StrideB)
+     {
+         const auto b_grid_desc_nraw_kraw = [&]() {
+@@ -288,6 +290,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeCGridDescriptor_M_N(index_t MRaw, index_t NRaw, index_t StrideC)
+     {
+         const auto c_grid_desc_mraw_nraw = [&]() {
+@@ -400,6 +403,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+     // Argument
+     struct Argument : public BaseArgument
+     {
++        __host__ __device__
+         Argument(const ADataType* p_a_grid,
+                  const BDataType* p_b_grid,
+                  CDataType* p_c_grid,
+@@ -436,6 +440,9 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+             }
+         }
+ 
++        __host__ __device__
++        ~Argument() {}
++
+         //  private:
+         const ADataType* p_a_grid_;
+         const BDataType* p_b_grid_;
+@@ -601,6 +608,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+         return IsSupportedArgument(*dynamic_cast<const Argument*>(p_arg));
+     }
+ 
++    __host__ __device__
+     static auto MakeArgument(const ADataType* p_a,
+                              const BDataType* p_b,
+                              CDataType* p_c,
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
 index 76dd5a366..a613e5ebf 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp

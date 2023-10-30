@@ -147,8 +147,8 @@ ark::unittest::State test_reshape_padded() {
     }
     {
         ark::Model model;
-        ark::Tensor *tns0 =
-            model.tensor({1, 64, 256}, ark::FP32, nullptr, {1, 512, 512}, {0, 128, 128});
+        ark::Tensor *tns0 = model.tensor({1, 64, 256}, ark::FP32, nullptr,
+                                         {1, 512, 512}, {0, 128, 128});
         ark::Tensor *tns1 = model.reshape(tns0, {64, 256});
 
         UNITTEST_EQ(tns1->shape, ark::Dims(64, 256));
