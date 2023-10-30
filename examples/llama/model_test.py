@@ -8,6 +8,8 @@ import os
 import time
 import fairscale
 import argparse
+import multiprocessing as mp
+from pathlib import Path
 
 
 sys.path.append("llama")
@@ -20,7 +22,7 @@ from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
 from generator import precompute_freqs_cis
 
 
-pth_path: str = ""
+ckpt_dir: str = ""
 
 numpy_dtype_to_torch_dtype: dict = {
     np.float16: torch.float16,
@@ -95,12 +97,12 @@ def run_pt(
 
     # Load input data to GPU
     input_tensors = [
-        torch.from_numpy(i).to("cuda:0") if isinstance(i, np.ndarray) else i
+        torch.from_numpy(i).to("cuda") if isinstance(i, np.ndarray) else i
         for i in inputs
     ]
 
     # Load the module to GPU
-    module = module.to("cuda:0")
+    module = module.to("cuda")
 
     start_time = time.time()
 
@@ -128,6 +130,7 @@ def test_module(
     module_name_prefix: str = "",
     test_thru: bool = False,
     test_thru_iterations: int = 100,
+    dtype: np.dtype = np.float16
 ):
     if test_thru:
         print(f"Throughput test (iterations: {test_thru_iterations})")
@@ -140,12 +143,16 @@ def test_module(
     params_dict = module_ark.params_dict()
     param_names = set(params_dict.keys())
 
-    if os.path.exists(pth_path):
+    rank = torch.distributed.get_rank()
+    world_size = torch.distributed.get_world_size()
+    checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+    ckpt_path = checkpoints[rank]
+    if os.path.exists(ckpt_path):
         prefix = module_name_prefix + "." if module_name_prefix else ""
         # Load the state_dict from the given path
-        state_dict_pt = torch.load(pth_path)
+        state_dict_pt = torch.load(ckpt_path)
         state_dict_pt = {
-            k[len(prefix) :]: v
+            k[len(prefix) :]: v.to(dtype=numpy_dtype_to_torch_dtype[dtype])
             for k, v in state_dict_pt.items()
             if k[len(prefix) :] in param_names and k.startswith(prefix)
         }
@@ -154,7 +161,7 @@ def test_module(
             for k, v in state_dict_pt.items()
         }
     else:
-        raise ValueError(f"Cannot find the given path: {pth_path}")
+        raise ValueError(f"Cannot find the given path: {ckpt_dir}")
 
     # Run the ARK module
     res_ark = run_ark(
@@ -162,10 +169,13 @@ def test_module(
         state_dict_ark,
         inputs_ark,
         iterations=test_thru_iterations if test_thru else 1,
+        rank=rank,
+        world_size = world_size,
     )
 
     # PyTorch module
     module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
+    module_pt.to(dtype=numpy_dtype_to_torch_dtype[dtype])
 
     # Run the PyTorch module
     res_pt = run_pt(
@@ -253,6 +263,7 @@ def test_row_parallel_linear(
     batch_size: int,
     seq_len: int,
     dtype: np.dtype,
+    rank: int = 0,
     world_size: int = 1,
 ):
     ark.init()
@@ -265,29 +276,30 @@ def test_row_parallel_linear(
             size=(batch_size, seq_len, args.dim // args.n_heads * args.n_heads),
         ).astype(dtype)
     ]
-    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
+    inputs_pt = [i.astype(dtype) for i in inputs_ark]
 
-    if world_size == 1:
-        test_module(
-            module_class_ark=model_ark.RowParallelLinear,
-            module_args_ark=[
-                args.dim // args.n_heads * args.n_heads,
-                args.dim,
-                ark.DataType.from_numpy(dtype),
-                0,
-                1,
-            ],
-            inputs_ark=inputs_ark,
-            module_class_pt=fairscale.nn.model_parallel.RowParallelLinear,
-            module_args_pt=[
-                args.dim // args.n_heads * args.n_heads,
-                args.dim,
-                False,
-                lambda x: x,
-            ],
-            inputs_pt=inputs_pt,
-            module_name_prefix="layers.0.attention.wo",
-        )
+    test_module(
+        module_class_ark=model_ark.RowParallelLinear,
+        module_args_ark=[
+            args.dim // args.n_heads * args.n_heads,
+            args.dim,
+            ark.DataType.from_numpy(dtype),
+            rank,
+            world_size,
+        ],
+        inputs_ark=inputs_ark,
+        module_class_pt=fairscale.nn.model_parallel.RowParallelLinear,
+        module_args_pt=[
+            args.dim // args.n_heads * args.n_heads,
+            args.dim,
+            False,
+            False,
+            lambda x: x,
+        ],
+        inputs_pt=inputs_pt,
+        module_name_prefix="layers.0.attention.wo",
+        dtype = dtype,
+    )
 
 
 def test_column_parallel_linear(
@@ -409,9 +421,12 @@ def test_transformer(
     batch_size: int,
     seq_len: int,
     dtype: np.dtype,
+    rank: int = 0,
     world_size: int = 1,
 ):
     ark.init()
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
 
     # Random input tokens
 
@@ -446,44 +461,63 @@ def test_transformer(
         mask = np.full((1, 1, seq_len, seq_len), -np.inf, dtype=dtype)
         mask = np.triu(mask, k=start_pos + 1)
 
-    if world_size == 1:
-        test_module(
-            module_class_ark=model_ark.Transformer,
-            module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
-            inputs_ark=[tokens, start_pos, freqs_cis_ark, mask],
-            module_class_pt=model_pt.Transformer,
-            module_args_pt=[args],
-            inputs_pt=[tokens, start_pos],
-        )
+    test_module(
+        module_class_ark=model_ark.Transformer,
+        module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
+        inputs_ark=[tokens, start_pos, freqs_cis_ark, mask],
+        module_class_pt=model_pt.Transformer,
+        module_args_pt=[args],
+        inputs_pt=[tokens, start_pos]
+    )
 
 
-def test(args, batch_size, seq_len, dtype, world_size):
+def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_rmsnorm(args, batch_size, seq_len, dtype)
-    # test_row_parallel_linear(args, batch_size, seq_len, dtype, world_size)
+    test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, world_size)
     # test_attention(args, batch_size, seq_len, dtype, world_size)
     # test_transformer_block(args, batch_size, seq_len, dtype, world_size)
-    test_transformer(args, batch_size, seq_len, dtype, world_size)
+    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
+
+def worker(args: ModelArgs,
+    batch_size: int,
+    seq_len: int,
+    dtype: np.dtype,
+    rank: int = 0,
+    world_size: int = 1):
+    # For torch.distributed
+    os.environ["RANK"] = str(rank)
+    os.environ["LOCAL_RANK"] = str(rank)
+    torch.distributed.init_process_group("nccl")
+    torch.cuda.set_device(rank)
+
+    # For fairscale
+    fairscale.nn.model_parallel.initialize.initialize_model_parallel(
+        world_size
+    )
+    test(args, batch_size, seq_len, dtype, rank, world_size)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pth_path", type=str, required=True)
+    parser.add_argument("--ckpt_dir", type=str, required=True)
+    parser.add_argument("--ngpus", type=int, default=1)
 
-    pth_path = parser.parse_args().pth_path
+    ckpt_dir = parser.parse_args().ckpt_dir
+    ngpus = parser.parse_args().ngpus
 
     # Configurations
     args = ModelArgs7B()
     batch_size = 1
-    seq_len = 1024
-    dtype = np.float32
-    world_size = 1
+    seq_len = 128
+    dtype = np.float16
+    world_size = ngpus
 
     # Default from HuggingFace
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 1024
+    args.max_seq_len = 128
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
@@ -504,5 +538,13 @@ if __name__ == "__main__":
         fairscale.nn.model_parallel.initialize.initialize_model_parallel(
             world_size
         )
+        test(args, batch_size, seq_len, dtype, 0, 1)
+    else:
+        procs = []
+        for i in range(ngpus):
+            p = mp.Process(target=worker, args=(args, batch_size, seq_len, dtype, i, world_size))
+            p.start()
+            procs.append(p)
 
-    test(args, batch_size, seq_len, dtype, world_size)
+        for p in procs:
+            p.join()
