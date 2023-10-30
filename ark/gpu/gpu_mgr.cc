@@ -88,8 +88,8 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
     // Create a GPU context.
     gpuDevice dev;
     GLOG(gpuDeviceGet(&dev, gpu_id_));
-    GLOG(gpuDevicePrimaryCtxRetain(&(this->cuda_ctx), dev));
-    GLOG(gpuCtxSetCurrent(this->cuda_ctx));
+    GLOG(gpuDevicePrimaryCtxRetain(&(this->raw_ctx), dev));
+    GLOG(gpuCtxSetCurrent(this->raw_ctx));
 
     gpu_info.init(gpu_id_);
 }
@@ -97,7 +97,7 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
 //
 GpuMgr::~GpuMgr() {
     this->mgr_ctxs.clear();
-    cuCtxDestroy(this->cuda_ctx);
+    GLOG(gpuCtxDestroy(this->raw_ctx));
 }
 
 //
@@ -137,7 +137,7 @@ void GpuMgr::validate_total_bytes() {
 }
 
 //
-GpuState GpuMgr::set_current() { return gpuCtxSetCurrent(this->cuda_ctx); }
+GpuState GpuMgr::set_current() { return gpuCtxSetCurrent(this->raw_ctx); }
 
 ////////////////////////////////////////////////////////////////////////////////
 

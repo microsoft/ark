@@ -73,7 +73,7 @@ class GpuMgr {
     //
     GpuInfo gpu_info;
     //
-    gpuCtx cuda_ctx;
+    gpuCtx raw_ctx;
     //
     std::list<std::unique_ptr<GpuMgrCtx>> mgr_ctxs;
 };
