@@ -100,7 +100,8 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGet, cuDeviceGet);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetCount, cuDeviceGetCount);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cuDeviceGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRetain, cuDevicePrimaryCtxRetain);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRelease, cuDevicePrimaryCtxRelease);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRelease,
+                          cuDevicePrimaryCtxRelease);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cuCtxSynchronize);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxCreate, cuCtxCreate);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxDestroy, cuCtxDestroy);
@@ -208,7 +209,8 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGet, hipDeviceGet);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetCount, hipGetDeviceCount);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, hipDeviceGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRetain, hipDevicePrimaryCtxRetain);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRelease, hipDevicePrimaryCtxRelease);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRelease,
+                          hipDevicePrimaryCtxRelease);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, hipDeviceSynchronize);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxCreate, hipCtxCreate);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxDestroy, hipCtxDestroy);
