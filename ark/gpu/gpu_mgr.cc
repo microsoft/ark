@@ -97,7 +97,13 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
 //
 GpuMgr::~GpuMgr() {
     this->mgr_ctxs.clear();
-    GLOG(gpuCtxDestroy(this->raw_ctx));
+    gpuDevice dev;
+    gpuError e = gpuDeviceGet(&dev, this->gpu_id);
+    if (e == gpuSuccess) {
+        GLOG(gpuDevicePrimaryCtxRelease(dev));
+    } else if (e != gpuErrorDeinitialized) {
+        GLOG(e);
+    }
 }
 
 //
@@ -153,7 +159,7 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
     // Initialize SCs to ones.
     int *href = (int *)this->sc_rc_mem.href();
     for (int i = 0; i < MAX_NUM_SID; ++i) {
-        href[i] = 1;
+        href[i] = 0;
     }
     // Initialize RCs to zeros.
     for (int i = MAX_NUM_SID; i < 2 * MAX_NUM_SID; ++i) {
