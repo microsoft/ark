@@ -43,6 +43,8 @@ ARK_GPU_DEFINE_TYPE_ALIAS(gpuIpcMemHandle, CUipcMemHandle);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, CUDA_SUCCESS);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotFound, CUDA_ERROR_NOT_FOUND);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotReady, CUDA_ERROR_NOT_READY);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotInitialized,
+                              CUDA_ERROR_NOT_INITIALIZED);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorDeinitialized, CUDA_ERROR_DEINITIALIZED);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorPeerAccessUnsupported,
                               CUDA_ERROR_PEER_ACCESS_UNSUPPORTED);
@@ -123,8 +125,12 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetAddressRange, cuMemGetAddressRange);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoD, cuMemcpyDtoD);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoDAsync, cuMemcpyDtoDAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyHtoD, cuMemcpyHtoD);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyHtoDAsync, cuMemcpyHtoDAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoH, cuMemcpyDtoH);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoHAsync, cuMemcpyDtoHAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32, cuMemsetD32);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32Async, cuMemsetD32Async);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD8Async, cuMemsetD8Async);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, cuPointerSetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreate, cuStreamCreate);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, cuStreamDestroy);
@@ -155,6 +161,7 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, hipSuccess);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotFound, hipErrorNotFound);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotReady, hipErrorNotReady);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorDeinitialized, hipErrorDeinitialized);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotInitialized, hipErrorNotInitialized);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorPeerAccessUnsupported,
                               hipErrorPeerAccessUnsupported);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeComputeCapabilityMajor,
@@ -232,8 +239,12 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetAddressRange, hipMemGetAddressRange);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoD, hipMemcpyDtoD);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoDAsync, hipMemcpyDtoDAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyHtoD, hipMemcpyHtoD);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyHtoDAsync, hipMemcpyHtoDAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoH, hipMemcpyDtoH);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyDtoHAsync, hipMemcpyDtoHAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32, hipMemsetD32);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32Async, hipMemsetD32Async);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD8Async, hipMemsetD8Async);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, hipPointerSetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreate, hipStreamCreateWithFlags);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, hipStreamDestroy);
