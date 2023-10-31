@@ -31,13 +31,6 @@ struct State {
 template <int BlockNum>
 DEVICE void sync_gpu(sync::State &state) {
     constexpr int MaxOldCnt = BlockNum - 1;
-#ifdef ARK_KERNELS_SYNC_CLKS_CNT
-    static_assert(math::is_pow2<ARK_KERNELS_SYNC_CLKS_CNT>::value == 1, "");
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        ARK_CLKS[state.clks_cnt] = clock64();
-        state.clks_cnt = (state.clks_cnt + 1) & (ARK_KERNELS_SYNC_CLKS_CNT - 1);
-    }
-#endif  // ARK_KERNELS_SYNC_CLKS_CNT
     __syncthreads();
     if (BlockNum == 1) {
         return;

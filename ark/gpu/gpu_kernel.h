@@ -16,7 +16,6 @@
 #define ARK_RC_NAME "ARK_RC"
 #define ARK_LSS_NAME "ARK_LOOP_SYNC_STATE"
 #define ARK_REQ_NAME "ARK_REQUEST"
-#define ARK_CLKS_NAME "ARK_CLKS"
 
 namespace ark {
 
@@ -77,9 +76,6 @@ class GpuLoopKernel : public GpuKernel {
     void stop();
 
     float get_elapsed_msec() const { return elapsed_msec; }
-    const long long int *get_clocks() const {
-        return (const long long int *)clocks->href();
-    }
 
    private:
     GpuMgrCtx *ctx;
@@ -89,7 +85,6 @@ class GpuLoopKernel : public GpuKernel {
     int threads_per_warp = -1;
 
     std::unique_ptr<GpuMem> flag;
-    std::unique_ptr<GpuMem> clocks;
 
     volatile int *flag_href;
 
