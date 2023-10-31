@@ -10,6 +10,21 @@
 
 namespace ark {
 
+class GpuMgrV2;
+
+class GpuStreamV2 {
+   public:
+    explicit GpuStreamV2(GpuMgrV2 &gpu_mgr);
+
+    void sync() const;
+
+   private:
+    friend class GpuMgrV2;
+    class Impl;
+    std::shared_ptr<Impl> pimpl_;
+    std::shared_ptr<GpuMgrV2> gpu_mgr_;
+};
+
 class GpuMemV2;
 
 class GpuMgrV2 {
@@ -18,6 +33,13 @@ class GpuMgrV2 {
     ~GpuMgrV2();
 
     std::shared_ptr<GpuMemV2> malloc(size_t bytes, size_t align = 1);
+
+    std::shared_ptr<GpuStreamV2> main_stream() const;
+
+    std::shared_ptr<GpuStreamV2> new_stream();
+
+    struct Info;
+    const Info &info() const;
 
     struct Info {
         int cc_major;
@@ -37,13 +59,13 @@ class GpuMgrV2 {
         std::string arch;
     };
 
-    const Info &info() const;
-
    private:
     friend class GpuMemV2;
 
     class Impl;
     std::shared_ptr<Impl> pimpl_;
+
+    std::shared_ptr<GpuStreamV2> main_stream_;
 
     void set_current() const;
     void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
