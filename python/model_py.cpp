@@ -237,7 +237,7 @@ void register_model(py::module &m) {
         .def("local_all_gather_mscclpp", &ark::Model::local_all_gather_mscclpp,
              "Performs an all-gather operator across all GPUs",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("gpu_id"), py::arg("ngpus_per_node"),
+             py::arg("gpu_id"), py::arg("ngpus_per_node"), py::arg("axis") = 0,
              py::arg("name") = "local_all_gather_mscclpp")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "
@@ -255,15 +255,18 @@ void register_model(py::module &m) {
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
              py::arg("name") = "local_all_reduce_mscclpp")
-        .def("local_reduce_scatter_mscclpp", &ark::Model::local_reduce_scatter_mscclpp,
-             "Performs a reduce-scatter operator across all GPUs in a node, aggregating "
+        .def("local_reduce_scatter_mscclpp",
+             &ark::Model::local_reduce_scatter_mscclpp,
+             "Performs a reduce-scatter operator across all GPUs in a node, "
+             "aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "
              "`gpu_id`, and the total number of GPUs `gpu_num`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("gpu_id"), py::arg("gpu_num"),
              py::arg("name") = "local_all_reduce_mscclpp")
-        .def("local_all_reduce_packet_mscclpp", &ark::Model::local_all_reduce_packet_mscclpp,
+        .def("local_all_reduce_packet_mscclpp",
+             &ark::Model::local_all_reduce_packet_mscclpp,
              "Performs an all-reduce operator across all GPUs, aggregating "
              "the input tensors. Takes the `input` tensor, the current "
              "GPU's "

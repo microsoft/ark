@@ -186,17 +186,30 @@ DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
 }
 
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
-          unsigned int NPeers, unsigned int Rank, unsigned long long ChunkSize>
+          unsigned int NPeers, unsigned int Rank, unsigned long long Stride>
 DEVICE void gather_from_peers_mscclpp(
     size_t ori_offset, size_t target_offset_0, size_t target_offset_1,
     size_t target_offset_2, size_t target_offset_3, size_t target_offset_4,
     size_t target_offset_5, size_t target_offset_6, ark::half *, int uop_idx,
     int) {
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
-    constexpr int total_tiles =
-        math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-    constexpr int total_threads = total_tiles * NumThreads;
-    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    constexpr size_t shape_width = Shape::W * sizeof(ark::half);
+    constexpr size_t output_width = UnitOutDims::W * sizeof(ark::half);
+    const int tid = UnitOp::thread_id();
+    const int tile_hid = UnitOp::uop_idx_h(uop_idx);
+    const int tile_wid = UnitOp::uop_idx_w(uop_idx);
+    const size_t offset_in_width =
+        tile_wid * UnitOutDims::W * sizeof(ark::half);
+    size_t bytes_per_width = UnitOutDims::W * sizeof(ark::half);
+    if (offset_in_width + output_width > shape_width) {
+        bytes_per_width = shape_width - offset_in_width;
+    }
+    // if (tid == 0 && uop_idx == 1) {
+    //   printf("tile hid %d, tile wid %d offset in width %lld bytes per width "
+    //          "%lld output width %lld shape width %lld\n",
+    //          tile_hid, tile_wid, offset_in_width, bytes_per_width, output_width,
+    //          shape_width);
+    // }
     size_t peer_offsets[] = {target_offset_0, target_offset_1, target_offset_2,
                              target_offset_3, target_offset_4, target_offset_5,
                              target_offset_6};
@@ -204,12 +217,21 @@ DEVICE void gather_from_peers_mscclpp(
     for (int i = 0; i < NPeers; ++i) {
         int chan_idx = (Rank + i) % NPeers;
         int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
-        size_t offset = ChunkSize * remote_rank;
-        _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-                                    ori_offset + offset, ChunkSize, tid,
-                                    total_threads);
+        for (int j = tile_hid * UnitOutDims::H;
+             j < tile_hid * UnitOutDims::H + UnitOutDims::H; ++j) {
+          size_t offset =
+              shape_width * remote_rank + j * Stride + offset_in_width;
+        //   if (tid == 0 && uop_idx == 1) {
+        //     printf("chan idx %d, remote rank %d, offset %lld\n", chan_idx,
+        //            remote_rank, offset);
+        //   }
+          _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
+                                      ori_offset + offset, bytes_per_width, tid,
+                                      NumThreads);
+        }
     }
 }
+
 
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
           unsigned int DstRank, unsigned int Rank, unsigned long long DstOffset,

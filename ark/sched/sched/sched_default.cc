@@ -473,8 +473,9 @@ void DefaultScheduler::configure_gpu_buf(
                 export_tns_sids[in->buf].emplace_back(in, sid);
             } else if (op->type == OP_READ_AND_REDUCE_MSCCLPP || op->type == OP_GATHER_FROM_PEERS_MSCCLPP) {
                 Tensor *local_buff = op->outputs[1];
-                std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
-                    op->inputs.begin() + 1, op->inputs.end());
+                int off = op->type == OP_READ_AND_REDUCE_MSCCLPP ? 1 : 0;
+                std::vector<Tensor *> remote_bufs =
+                    std::vector<Tensor *>(op->inputs.begin() + off, op->inputs.end());
                 LOG(DEBUG, "read_and_reduce_mscclpp/gather_from_peers_mscclpp ",
                     local_buff->shape, " npeers ", remote_bufs.size());
                 int npeers;

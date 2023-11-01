@@ -114,6 +114,7 @@ class ColumnParallelLinear(ark.Module):
         in_dim: int,
         out_dim: int,
         dtype: ark.DataType = ark.fp16,
+        gather_output: bool=True,
         local_rank: int = 0,
         world_size: int = 1,
     ):
@@ -123,11 +124,12 @@ class ColumnParallelLinear(ark.Module):
         self.dtype = dtype
         self.local_rank = local_rank
         self.world_size = world_size
+        self.gather_output = gather_output
 
         self.weight = ark.parameter([out_dim // world_size, in_dim], dtype)
 
     def forward(self, x):
-        if self.world_size == 1:
+        if self.world_size == 1 or self.gather_output == False:
             return ark.matmul(x, self.weight, transpose_other=True)
         # We need to concat the output_tensor_shards along the last dimension
         output_tensor = ark.tensor(
@@ -139,10 +141,13 @@ class ColumnParallelLinear(ark.Module):
         local_result = ark.identity(output_tensor_shards[self.local_rank], deps=output_tensor_shards)
         # (batch_size, seq_len, out_dim // world_size)
         local_result = ark.matmul(x, self.weight, local_result, transpose_other=True)
-        gather_result = ark.identity(output_tensor, deps=[local_result])
-        return ark.local_all_gather_mscclpp(
-            gather_result, self.local_rank, self.world_size
+        gather_input = ark.identity(output_tensor, deps=[local_result])
+        # return gather_input
+        gather_reshape = ark.reshape(gather_input, [x.shape()[0] * x.shape()[1], self.out_dim])
+        gather_out = ark.local_all_gather_mscclpp(
+            gather_reshape, self.local_rank, self.world_size, 1
         )
+        return ark.reshape(gather_out, [x.shape()[0], x.shape()[1], self.out_dim])
 
 
 class RowParallelLinear(ark.Module):
@@ -167,6 +172,7 @@ class RowParallelLinear(ark.Module):
         in_dim: int,
         out_dim: int,
         dtype: ark.DataType = ark.fp16,
+        input_is_parallel: bool = False,
         local_rank: int = 0,
         world_size: int = 1,
     ):
@@ -176,6 +182,7 @@ class RowParallelLinear(ark.Module):
         self.dtype = dtype
         self.local_rank = local_rank
         self.world_size = world_size
+        self.input_is_parallel = input_is_parallel
 
         self.weight = ark.parameter([out_dim, in_dim // world_size], dtype)
 
@@ -183,9 +190,13 @@ class RowParallelLinear(ark.Module):
         if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_other=True)
         x_ndims = len(x.shape())
-        x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // self.world_size)
+        if self.input_is_parallel:
+            input_parallel = x
+        else:
+            x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // self.world_size)
+            input_parallel = x_shards[self.local_rank]
         local_result = ark.matmul(
-            x_shards[self.local_rank], self.weight, transpose_other=True
+            input_parallel, self.weight, transpose_other=True
         )
         reduced_result = ark.local_all_reduce_mscclpp(
             local_result, self.local_rank, self.world_size
@@ -299,7 +310,7 @@ class Attention(ark.Module):
         self.n_kv_heads = (
             args.n_heads if args.n_kv_heads is None else args.n_kv_heads
         )
-        model_parallel_size = 1
+        model_parallel_size = world_size
         self.dtype = dtype
         self.n_local_heads = args.n_heads // model_parallel_size
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
@@ -309,6 +320,7 @@ class Attention(ark.Module):
             args.dim,
             args.n_heads * self.head_dim,
             dtype,
+            False,
             local_rank,
             world_size,
         )
@@ -316,6 +328,7 @@ class Attention(ark.Module):
             args.dim,
             self.n_kv_heads * self.head_dim,
             dtype,
+            False,
             local_rank,
             world_size,
         )
@@ -323,6 +336,7 @@ class Attention(ark.Module):
             args.dim,
             self.n_kv_heads * self.head_dim,
             dtype,
+            False,
             local_rank,
             world_size,
         )
@@ -330,6 +344,7 @@ class Attention(ark.Module):
             args.n_heads * self.head_dim,
             args.dim,
             dtype,
+            True,
             local_rank,
             world_size,
         )
@@ -355,6 +370,8 @@ class Attention(ark.Module):
         )
         if freqs_cis is not None:
             xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+        # print(f"freqs_cis shape() is {freqs_cis.shape()}")
+        return xq
         # TODO: enable kv cache later
         keys = xk
         values = xv

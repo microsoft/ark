@@ -539,9 +539,8 @@ class MscclppGatherFromPeersOp : public Op {
    public:
     MscclppGatherFromPeersOp(const std::string &prec_type, Tensor *local_buf,
                              Tensor *trans_region_local,
-                             std::vector<Tensor *> remote_bufs,
-                             Tensor *trans_region_remote, int sid, int rank,
-                             int npeers, size_t chunkBytes,
+                             std::vector<Tensor *> remote_bufs, int sid,
+                             int rank, int npeers, size_t stride,
                              const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;

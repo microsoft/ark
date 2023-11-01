@@ -193,48 +193,49 @@ def test_module(
 
     # Compare the outputs
     eps = np.finfo(np.float64).eps
-    np.set_printoptions(threshold=1000)
-    for i, t in enumerate(res_ark.outputs):
-        print(t)
+    np.set_printoptions(threshold=1000, linewidth=196)
+    if rank == 0:
+        for i, t in enumerate(res_ark.outputs):
+            print(t)
 
-    for i, t in enumerate(res_pt.outputs):
-        print(t)
+        for i, t in enumerate(res_pt.outputs):
+            print(t)
 
-    # for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
-    #     shape = o_ark.shape
-    #     o_ark = o_ark.flatten().astype(np.float64)
-    #     o_pt = o_pt.flatten().astype(np.float64)
+    for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
+        shape = o_ark.shape
+        o_ark = o_ark.flatten().astype(np.float64)
+        o_pt = o_pt.flatten().astype(np.float64)
 
-    #     max_value_idx = np.argmax(o_pt)
-    #     min_value_idx = np.argmin(o_pt)
+        max_value_idx = np.argmax(o_pt)
+        min_value_idx = np.argmin(o_pt)
 
-    #     abs_diff = np.abs(o_ark - o_pt)
-    #     max_abs_diff_idx = np.argmax(abs_diff)
-    #     max_abs_diff = abs_diff[max_abs_diff_idx]
+        abs_diff = np.abs(o_ark - o_pt)
+        max_abs_diff_idx = np.argmax(abs_diff)
+        max_abs_diff = abs_diff[max_abs_diff_idx]
 
-    #     abs_pt = np.abs(o_pt)
-    #     rel_diff = abs_diff / (abs_pt + eps)
-    #     max_rel_diff_idx = np.argmax(rel_diff)
-    #     max_rel_diff = rel_diff[max_rel_diff_idx]
+        abs_pt = np.abs(o_pt)
+        rel_diff = abs_diff / (abs_pt + eps)
+        max_rel_diff_idx = np.argmax(rel_diff)
+        max_rel_diff = rel_diff[max_rel_diff_idx]
 
-    #     # max rel_diff where abs_pt is larger than 1e-3
-    #     max_rel_diff_3_idx = np.argmax(rel_diff * (abs_pt > 1e-3))
-    #     max_rel_diff_3 = rel_diff[max_rel_diff_3_idx]
+        # max rel_diff where abs_pt is larger than 1e-3
+        max_rel_diff_3_idx = np.argmax(rel_diff * (abs_pt > 1e-3))
+        max_rel_diff_3 = rel_diff[max_rel_diff_3_idx]
 
-    #     mean_square_error = np.mean(np.square(o_ark - o_pt))
+        mean_square_error = np.mean(np.square(o_ark - o_pt))
 
-    #     # Test info as string
-    #     test_info = f"{module_class_ark.__name__}: output {i}, shape {shape}"
+        # Test info as string
+        test_info = f"{module_class_ark.__name__}: output {i}, shape {shape}"
 
-    #     print(
-    #         test_info + "\n"
-    #         f"  max_pt: {o_pt[max_value_idx]} vs {o_ark[max_value_idx]} at index {max_value_idx}\n"
-    #         f"  min_pt: {o_pt[min_value_idx]} vs {o_ark[min_value_idx]} at index {min_value_idx}\n"
-    #         f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]} at index {max_abs_diff_idx})\n"
-    #         f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]} at index {max_rel_diff_idx})\n"
-    #         f"  max_rel_diff_3: {max_rel_diff_3:.4e} ({o_pt[max_rel_diff_3_idx]} vs {o_ark[max_rel_diff_3_idx]} at index {max_rel_diff_3_idx})\n"
-    #         f"  mean_square_error: {mean_square_error:.4e}\n"
-    #     )
+        print(
+            test_info + "\n"
+            f"  max_pt: {o_pt[max_value_idx]} vs {o_ark[max_value_idx]} at index {max_value_idx}\n"
+            f"  min_pt: {o_pt[min_value_idx]} vs {o_ark[min_value_idx]} at index {min_value_idx}\n"
+            f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]} at index {max_abs_diff_idx})\n"
+            f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]} at index {max_rel_diff_idx})\n"
+            f"  max_rel_diff_3: {max_rel_diff_3:.4e} ({o_pt[max_rel_diff_3_idx]} vs {o_ark[max_rel_diff_3_idx]} at index {max_rel_diff_3_idx})\n"
+            f"  mean_square_error: {mean_square_error:.4e}\n"
+        )
 
 
 def test_rmsnorm(
@@ -315,8 +316,6 @@ def test_column_parallel_linear(
     rank: int = 0,
     world_size: int = 1,
 ):
-    ark.init()
-
     seed = 1695878986  # int(time.time())
     print(f"seed: {seed}")
     np.random.seed(seed)
@@ -360,8 +359,6 @@ def test_attention(
     rank: int = 0,
     world_size: int = 1,
 ):
-    ark.init()
-
     #
     freqs_cis = precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
@@ -374,6 +371,9 @@ def test_attention(
         .reshape(1, seq_len, 1, args.dim // args.n_heads)
     )
 
+    seed = 1695878986  # int(time.time())
+    print(f"seed: {seed}")
+    np.random.seed(seed)
     feature = np.random.uniform(
         low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
@@ -394,10 +394,9 @@ def test_transformer_block(
     batch_size: int,
     seq_len: int,
     dtype: np.dtype,
+    rank: int = 0,
     world_size: int = 1,
 ):
-    ark.init()
-
     #
     freqs_cis = precompute_freqs_cis(
         args.dim // args.n_heads, args.max_seq_len * 2
@@ -413,17 +412,15 @@ def test_transformer_block(
     feature = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
-
-    if world_size == 1:
-        test_module(
-            module_class_ark=model_ark.TransformerBlock,
-            module_args_ark=[0, args, ark.DataType.from_numpy(dtype), 0, 1],
-            inputs_ark=[feature, 0, freqs_cis_ark, None],
-            module_class_pt=model_pt.TransformerBlock,
-            module_args_pt=[0, args],
-            inputs_pt=[feature.astype(np.float32), 0, freqs_cis, None],
-            module_name_prefix="layers.0",
-        )
+    test_module(
+        module_class_ark=model_ark.TransformerBlock,
+        module_args_ark=[0, args, ark.DataType.from_numpy(dtype), rank, world_size],
+        inputs_ark=[feature, 0, freqs_cis_ark, None],
+        module_class_pt=model_pt.TransformerBlock,
+        module_args_pt=[0, args],
+        inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
+        module_name_prefix="layers.0",
+    )
 
 
 def test_transformer(
@@ -470,7 +467,7 @@ def test_transformer(
 
     test_module(
         module_class_ark=model_ark.Transformer,
-        module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
+        module_args_ark=[args, ark.DataType.from_numpy(dtype), rank, world_size],
         inputs_ark=[tokens, start_pos, freqs_cis_ark, mask],
         module_class_pt=model_pt.Transformer,
         module_args_pt=[args],
@@ -484,10 +481,10 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     ark.set_world_size(world_size)
 
     # test_rmsnorm(args, batch_size, seq_len, dtype)
-    test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer_block(args, batch_size, seq_len, dtype, world_size)
+    test_attention(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
     # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
@@ -518,7 +515,7 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs13B()
+    args = ModelArgs7B()
     batch_size = 1
     seq_len = 128
     dtype = np.float16
