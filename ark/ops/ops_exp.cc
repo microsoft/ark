@@ -38,9 +38,9 @@ std::string ExpOp::function_name(const OpConfig &cfg) const {
                                              input->shape.dims4(),   // InShape
                                              output->ldims.dims4(),  // OutDims
                                              output->shape.dims4(),  // OutShape
-                                             unit_out_dims,       // UnitOutDims
-                                             cfg.num_warps * 32,  // NumThreads
-                                             cfg.smem_bytes,      // SmemBytes
+                                             unit_out_dims,   // UnitOutDims
+                                             cfg.num_warps,   // NumWarps
+                                             cfg.smem_bytes,  // SmemBytes
                                          }});
 }
 

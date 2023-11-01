@@ -31,7 +31,8 @@ __device__ int _ARK_COMM_SW_SEND_LOCK = 0;
 template <unsigned int Rank, unsigned int DstRank, unsigned int Sid,
           unsigned long long int Length>
 DEVICE void send(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp =
+        UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, Arch::ThreadsPerWarp, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
@@ -49,7 +50,8 @@ DEVICE void send(int, int) {
 // Poll SC and reset.
 template <unsigned int Rank, unsigned int DstRank, unsigned int Sid>
 DEVICE void send_done(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp =
+        UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, Arch::ThreadsPerWarp, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
@@ -62,7 +64,8 @@ DEVICE void send_done(int, int) {
 //
 template <unsigned int Rank, unsigned int SrcRank, unsigned int Sid>
 DEVICE void recv(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp =
+        UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, Arch::ThreadsPerWarp, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }

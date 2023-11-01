@@ -53,13 +53,13 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const {
 
     return Op::function_name("ark::comm::sendLL",
                              {{
-                                 m,                   // LDM
-                                 n,                   // LDN
-                                 cfg.num_warps * 32,  // TN
-                                 cfg.smem_bytes,      // SmemBytes
-                                 tile_in.y,           // TDM
-                                 tile_in.x,           // TDN
-                                 1,                   // FLAG
+                                 m,               // LDM
+                                 n,               // LDN
+                                 cfg.num_warps,   // NumWarps
+                                 cfg.smem_bytes,  // SmemBytes
+                                 tile_in.y,       // TDM
+                                 tile_in.x,       // TDN
+                                 1,               // FLAG
                              }});
 }
 
@@ -113,13 +113,13 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const {
 
     return Op::function_name("ark::comm::recvLL",
                              {{
-                                 m,                   // LDM
-                                 n,                   // LDN
-                                 cfg.num_warps * 32,  // TN
-                                 cfg.smem_bytes,      // SmemBytes
-                                 tile_in.y,           // TDM
-                                 tile_in.x,           // TDN
-                                 1,                   // FLAG
+                                 m,               // LDM
+                                 n,               // LDN
+                                 cfg.num_warps,   // NumWarps
+                                 cfg.smem_bytes,  // SmemBytes
+                                 tile_in.y,       // TDM
+                                 tile_in.x,       // TDN
+                                 1,               // FLAG
                              }});
 }
 

@@ -5,6 +5,7 @@
 #define ARK_KERNELS_BROADCAST_H_
 
 #include "common.h"
+#include "load_store.h"
 
 namespace ark {
 
@@ -56,54 +57,47 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, float, float, 4> {
             *out = _IntrinsicType::compute(*in);
         } else {
             longlong2 reg_out;
-            longlong2 reg_in;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_in.x), "=l"(reg_in.y)
-                         : "l"(in)
-                         : "memory");
+            longlong2 reg_in = load_128b((const longlong2 *)in);
             float4 *pout = (float4 *)&reg_out;
             float4 *pin = (float4 *)&reg_in;
             pout->w = _IntrinsicType::compute(pin->w);
             pout->x = _IntrinsicType::compute(pin->x);
             pout->y = _IntrinsicType::compute(pin->y);
             pout->z = _IntrinsicType::compute(pin->z);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(out), "l"(reg_out.x), "l"(reg_out.y)
-                         : "memory");
+            store_128b((longlong2 *)out, reg_out);
         }
     }
 };
 
 template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, half, half, 2> {
-    using InputType = half;
-    using OutputType = half;
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 2> {
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 2;
 
-    static DEVICE void compute(half *out, const half *in) {
+    static DEVICE void compute(fp16 *out, const fp16 *in) {
         if (_InShape::W == 1) {
             *out = _IntrinsicType::compute(*in);
         } else {
-            *(__half2 *)out = _IntrinsicType::compute(*(__half2 *)in);
+            *(fp16x2 *)out = _IntrinsicType::compute(*(fp16x2 *)in);
         }
     }
 };
 
 template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, half, half, 4> {
-    using InputType = half;
-    using OutputType = half;
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 4> {
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 4;
 
-    static DEVICE void compute(half *out, const half *in) {
+    static DEVICE void compute(fp16 *out, const fp16 *in) {
         if (_InShape::W == 1) {
             *out = _IntrinsicType::compute(*in);
         } else {
             uint64_t reg_in = *(uint64_t *)in;
             uint64_t reg_out;
-            __half2 *pin = (__half2 *)&reg_in;
-            __half2 *pout = (__half2 *)&reg_out;
+            fp16x2 *pin = (fp16x2 *)&reg_in;
+            fp16x2 *pout = (fp16x2 *)&reg_out;
             pout[0] = _IntrinsicType::compute(pin[0]);
             pout[1] = _IntrinsicType::compute(pin[1]);
             *(uint64_t *)out = reg_out;
@@ -112,31 +106,24 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, half, half, 4> {
 };
 
 template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, half, half, 8> {
-    using InputType = half;
-    using OutputType = half;
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 8> {
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 8;
 
-    static DEVICE void compute(half *out, const half *in) {
+    static DEVICE void compute(fp16 *out, const fp16 *in) {
         if (_InShape::W == 1) {
             *out = _IntrinsicType::compute(*in);
         } else {
-            longlong2 reg_in;
+            longlong2 reg_in = load_128b((const longlong2 *)in);
             longlong2 reg_out;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_in.x), "=l"(reg_in.y)
-                         : "l"(in)
-                         : "memory");
-            __half2 *pin = (__half2 *)&reg_in;
-            __half2 *pout = (__half2 *)&reg_out;
+            fp16x2 *pin = (fp16x2 *)&reg_in;
+            fp16x2 *pout = (fp16x2 *)&reg_out;
             pout[0] = _IntrinsicType::compute(pin[0]);
             pout[1] = _IntrinsicType::compute(pin[1]);
             pout[2] = _IntrinsicType::compute(pin[2]);
             pout[3] = _IntrinsicType::compute(pin[3]);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(out), "l"(reg_out.x), "l"(reg_out.y)
-                         : "memory");
+            store_128b((longlong2 *)out, reg_out);
         }
     }
 };
@@ -215,12 +202,8 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _IntrinsicType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
-            longlong2 reg_b;
+            longlong2 reg_b = load_128b((const longlong2 *)b);
             longlong2 reg_c;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_b.x), "=l"(reg_b.y)
-                         : "l"(b)
-                         : "memory");
             float4 *pb = (float4 *)&reg_b;
             float4 *pc = (float4 *)&reg_c;
             float v = *a;
@@ -228,17 +211,10 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
             pc->x = _IntrinsicType::compute(v, pb->x);
             pc->y = _IntrinsicType::compute(v, pb->y);
             pc->z = _IntrinsicType::compute(v, pb->z);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
-                         : "memory");
+            store_128b((longlong2 *)c, reg_c);
         } else if (_In1Shape::W == 1) {
-            longlong2 reg_a;
+            longlong2 reg_a = load_128b((const longlong2 *)a);
             longlong2 reg_c;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_a.x), "=l"(reg_a.y)
-                         : "l"(a)
-                         : "memory");
             float4 *pa = (float4 *)&reg_a;
             float4 *pc = (float4 *)&reg_c;
             float v = *b;
@@ -246,22 +222,11 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
             pc->x = _IntrinsicType::compute(pa->x, v);
             pc->y = _IntrinsicType::compute(pa->y, v);
             pc->z = _IntrinsicType::compute(pa->z, v);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
-                         : "memory");
+            store_128b((longlong2 *)c, reg_c);
         } else {
-            longlong2 reg_a;
-            longlong2 reg_b;
+            longlong2 reg_a = load_128b((const longlong2 *)a);
+            longlong2 reg_b = load_128b((const longlong2 *)b);
             longlong2 reg_c;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_a.x), "=l"(reg_a.y)
-                         : "l"(a)
-                         : "memory");
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_b.x), "=l"(reg_b.y)
-                         : "l"(b)
-                         : "memory");
             float4 *pa = (float4 *)&reg_a;
             float4 *pb = (float4 *)&reg_b;
             float4 *pc = (float4 *)&reg_c;
@@ -269,65 +234,60 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
             pc->x = _IntrinsicType::compute(pa->x, pb->x);
             pc->y = _IntrinsicType::compute(pa->y, pb->y);
             pc->z = _IntrinsicType::compute(pa->z, pb->z);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
-                         : "memory");
+            store_128b((longlong2 *)c, reg_c);
         }
     }
 };
 
 template <typename _IntrinsicType, typename _In0Shape, typename _In1Shape>
-struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, half, half,
+struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
                            2> {
-    using InputType = half;
-    using OutputType = half;
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 2;
 
-    static DEVICE void compute(half *c, const half *a, const half *b) {
+    static DEVICE void compute(fp16 *c, const fp16 *a, const fp16 *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _IntrinsicType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
-            __half2 *pb = (__half2 *)b;
-            *(__half2 *)c =
-                _IntrinsicType::compute(__half2half2(*(const __half *)a), *pb);
+            fp16x2 *pb = (fp16x2 *)b;
+            *(fp16x2 *)c = _IntrinsicType::compute(__half2half2(*a), *pb);
         } else if (_In1Shape::W == 1) {
-            __half2 *pa = (__half2 *)a;
-            *(__half2 *)c =
-                _IntrinsicType::compute(*pa, __half2half2(*(const __half *)b));
+            fp16x2 *pa = (fp16x2 *)a;
+            *(fp16x2 *)c = _IntrinsicType::compute(*pa, __half2half2(*b));
         } else {
-            __half2 *pa = (__half2 *)a;
-            __half2 *pb = (__half2 *)b;
-            *(__half2 *)c = _IntrinsicType::compute(*pa, *pb);
+            fp16x2 *pa = (fp16x2 *)a;
+            fp16x2 *pb = (fp16x2 *)b;
+            *(fp16x2 *)c = _IntrinsicType::compute(*pa, *pb);
         }
     }
 };
 
 template <typename _IntrinsicType, typename _In0Shape, typename _In1Shape>
-struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, half, half,
+struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
                            4> {
-    using InputType = half;
-    using OutputType = half;
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 4;
 
-    static DEVICE void compute(half *c, const half *a, const half *b) {
+    static DEVICE void compute(fp16 *c, const fp16 *a, const fp16 *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _IntrinsicType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
             uint64_t reg_b = *(uint64_t *)b;
             uint64_t reg_c;
-            __half2 *pb = (__half2 *)&reg_b;
-            __half2 *pc = (__half2 *)&reg_c;
-            __half2 v = __half2half2(*(const __half *)a);
+            fp16x2 *pb = (fp16x2 *)&reg_b;
+            fp16x2 *pc = (fp16x2 *)&reg_c;
+            fp16x2 v = __half2half2(*a);
             pc[0] = _IntrinsicType::compute(v, pb[0]);
             pc[1] = _IntrinsicType::compute(v, pb[1]);
             *(uint64_t *)c = reg_c;
         } else if (_In1Shape::W == 1) {
             uint64_t reg_a = *(uint64_t *)a;
             uint64_t reg_c;
-            __half2 *pa = (__half2 *)&reg_a;
-            __half2 *pc = (__half2 *)&reg_c;
-            __half2 v = __half2half2(*(const __half *)b);
+            fp16x2 *pa = (fp16x2 *)&reg_a;
+            fp16x2 *pc = (fp16x2 *)&reg_c;
+            fp16x2 v = __half2half2(*b);
             pc[0] = _IntrinsicType::compute(pa[0], v);
             pc[1] = _IntrinsicType::compute(pa[1], v);
             *(uint64_t *)c = reg_c;
@@ -335,9 +295,9 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, half, half,
             uint64_t reg_a = *(uint64_t *)a;
             uint64_t reg_b = *(uint64_t *)b;
             uint64_t reg_c;
-            __half2 *pa = (__half2 *)&reg_a;
-            __half2 *pb = (__half2 *)&reg_b;
-            __half2 *pc = (__half2 *)&reg_c;
+            fp16x2 *pa = (fp16x2 *)&reg_a;
+            fp16x2 *pb = (fp16x2 *)&reg_b;
+            fp16x2 *pc = (fp16x2 *)&reg_c;
             pc[0] = _IntrinsicType::compute(pa[0], pb[0]);
             pc[1] = _IntrinsicType::compute(pa[1], pb[1]);
             *(uint64_t *)c = reg_c;
@@ -346,74 +306,49 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, half, half,
 };
 
 template <typename _IntrinsicType, typename _In0Shape, typename _In1Shape>
-struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, half, half,
+struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
                            8> {
-    using InputType = half;
-    using OutputType = half;
+    using InputType = fp16;
+    using OutputType = fp16;
     static const int NelemPerThread = 8;
 
-    static DEVICE void compute(half *c, const half *a, const half *b) {
+    static DEVICE void compute(fp16 *c, const fp16 *a, const fp16 *b) {
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _IntrinsicType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
-            longlong2 reg_b;
+            longlong2 reg_b = load_128b((const longlong2 *)b);
             longlong2 reg_c;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_b.x), "=l"(reg_b.y)
-                         : "l"(b)
-                         : "memory");
-            __half2 *pb = (__half2 *)&reg_b;
-            __half2 *pc = (__half2 *)&reg_c;
-            __half2 v = __half2half2(*(const __half *)a);
+            fp16x2 *pb = (fp16x2 *)&reg_b;
+            fp16x2 *pc = (fp16x2 *)&reg_c;
+            fp16x2 v = __half2half2(*a);
             pc[0] = _IntrinsicType::compute(v, pb[0]);
             pc[1] = _IntrinsicType::compute(v, pb[1]);
             pc[2] = _IntrinsicType::compute(v, pb[2]);
             pc[3] = _IntrinsicType::compute(v, pb[3]);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
-                         : "memory");
+            store_128b((longlong2 *)c, reg_c);
         } else if (_In1Shape::W == 1) {
-            longlong2 reg_a;
+            longlong2 reg_a = load_128b((const longlong2 *)a);
             longlong2 reg_c;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_a.x), "=l"(reg_a.y)
-                         : "l"(a)
-                         : "memory");
-            __half2 *pa = (__half2 *)&reg_a;
-            __half2 *pc = (__half2 *)&reg_c;
-            __half2 v = __half2half2(*(const __half *)b);
+            fp16x2 *pa = (fp16x2 *)&reg_a;
+            fp16x2 *pc = (fp16x2 *)&reg_c;
+            fp16x2 v = __half2half2(*b);
             pc[0] = _IntrinsicType::compute(pa[0], v);
             pc[1] = _IntrinsicType::compute(pa[1], v);
             pc[2] = _IntrinsicType::compute(pa[2], v);
             pc[3] = _IntrinsicType::compute(pa[3], v);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
-                         : "memory");
+            store_128b((longlong2 *)c, reg_c);
         } else {
-            longlong2 reg_a;
-            longlong2 reg_b;
+            longlong2 reg_a = load_128b((const longlong2 *)a);
+            longlong2 reg_b = load_128b((const longlong2 *)b);
             longlong2 reg_c;
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_a.x), "=l"(reg_a.y)
-                         : "l"(a)
-                         : "memory");
-            asm volatile("ld.global.v2.u64 {%0,%1}, [%2];"
-                         : "=l"(reg_b.x), "=l"(reg_b.y)
-                         : "l"(b)
-                         : "memory");
-            __half2 *pa = (__half2 *)&reg_a;
-            __half2 *pb = (__half2 *)&reg_b;
-            __half2 *pc = (__half2 *)&reg_c;
+            fp16x2 *pa = (fp16x2 *)&reg_a;
+            fp16x2 *pb = (fp16x2 *)&reg_b;
+            fp16x2 *pc = (fp16x2 *)&reg_c;
             pc[0] = _IntrinsicType::compute(pa[0], pb[0]);
             pc[1] = _IntrinsicType::compute(pa[1], pb[1]);
             pc[2] = _IntrinsicType::compute(pa[2], pb[2]);
             pc[3] = _IntrinsicType::compute(pa[3], pb[3]);
-            asm volatile("st.global.v2.u64 [%0], {%1,%2};"
-                         :
-                         : "l"(c), "l"(reg_c.x), "l"(reg_c.y)
-                         : "memory");
+            store_128b((longlong2 *)c, reg_c);
         }
     }
 };
@@ -478,11 +413,10 @@ struct BroadcastShapeChecker2 {
 // Broadcast a unit operator. Follows NumPy-style broadcasting:
 // https://numpy.org/doc/stable/user/basics.broadcasting.html
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename Intrinsic>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename Intrinsic>
 struct Broadcast1 {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
     static const int NelemPerThread = Intrinsic::NelemPerThread;
@@ -503,7 +437,7 @@ struct Broadcast1 {
         int uh = UnitOp::uop_idx_h(uop_idx);
         int uw = UnitOp::uop_idx_w(uop_idx);
 
-        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+        for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
                 ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
@@ -545,11 +479,9 @@ struct Broadcast1 {
 // https://numpy.org/doc/stable/user/basics.broadcasting.html
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
-          typename Intrinsic>
+          typename UnitOutDims, int NumWarps, int SmemBytes, typename Intrinsic>
 struct Broadcast2 {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
     static const int NelemPerThread = Intrinsic::NelemPerThread;
@@ -572,7 +504,7 @@ struct Broadcast2 {
         int uh = UnitOp::uop_idx_h(uop_idx);
         int uw = UnitOp::uop_idx_w(uop_idx);
 
-        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+        for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
                 ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
@@ -633,7 +565,7 @@ struct Broadcast2 {
 // Broadcast2 with a default `NelemPerThread` and the intrinsic template.
 template <typename In0Dims, typename In0Shape, typename In1Dims,
           typename In1Shape, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumThreads, int SmemBytes,
+          typename UnitOutDims, int NumWarps, int SmemBytes,
           typename In0DataType, typename In1DataType, typename OutDataType,
           typename IntrinsicType>
 DEVICE void broadcast2(OutDataType *c, const In0DataType *a,
@@ -644,7 +576,7 @@ DEVICE void broadcast2(OutDataType *c, const In0DataType *a,
             : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast2<
         In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape, UnitOutDims,
-        NumThreads, SmemBytes,
+        NumWarps, SmemBytes,
         Broadcast2Intrinsic<IntrinsicType, In0Shape, In1Shape, In0DataType,
                             OutDataType, NelemPerThread>>::run(c, a, b,
                                                                uop_idx);

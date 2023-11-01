@@ -87,6 +87,6 @@ int main() {
     ark::init();
     UNITTEST(test_layernorm_fp32);
     UNITTEST(test_layernorm_fp16);
-    // UNITTEST(test_layernorm_bf16);
+    UNITTEST(test_layernorm_bf16);
     return ark::unittest::SUCCESS;
 }

@@ -38,7 +38,7 @@ std::string GeluOp::function_name(const OpConfig &cfg) const {
                                  output->ldims.dims4(),  // OutDims
                                  output->shape.dims4(),  // OutShape
                                  unit_out_dims,          // UnitOutDims
-                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.num_warps,          // NumWarps
                                  cfg.smem_bytes,         // SmemBytes
                              }});
 }

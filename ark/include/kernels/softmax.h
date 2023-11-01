@@ -23,11 +23,10 @@ struct SoftmaxShapeChecker {
 
 // Perform layer normalization on input and write the result on output.
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType, int NelemPerThread>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType, int NelemPerThread>
 struct Softmax {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
 
@@ -41,13 +40,14 @@ struct Softmax {
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
-        static_assert((NumThreads * NelemPerThread) % NonReduceDimLength == 0);
+        static_assert(
+            (UnitOp::NumThreads * NelemPerThread) % NonReduceDimLength == 0);
         // If we reshape the input into a 2D matrix (NCH x W), NumThreads
         // threads compute NCH rows, and each row's sum is computed by
         // ThreadsPerRow threads. If ThreadsPerRow is larger than warp size, we
         // need to use shared memory to reduce the result of each warp.
         constexpr int ThreadsPerRow =
-            (NumThreads * NelemPerThread) / NonReduceDimLength;
+            (UnitOp::NumThreads * NelemPerThread) / NonReduceDimLength;
 
         int tid = UnitOp::thread_id();
         int tid_w = (tid * NelemPerThread) % ThreadsPerRow;
@@ -88,34 +88,38 @@ struct Softmax {
         ReduceTypeSum::identity<1>(&cmp);
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
-            DataType val(expf(in[idx_in] - max_input) - cmp);
-            DataType tmp = exp_sum_input + val;
-            cmp = (tmp - exp_sum_input) - val;
+            DataType val = type::Sub::compute(
+                type::Exp::compute(type::Sub::compute(in[idx_in], max_input)),
+                cmp);
+            DataType tmp = type::Add::compute(exp_sum_input, val);
+            cmp =
+                type::Sub::compute(type::Sub::compute(tmp, exp_sum_input), val);
             exp_sum_input = tmp;
         }
         exp_sum_input = warpsReduce<ReduceTypeSum, UnitOp, ThreadsPerRow>(
             exp_sum_input, tid, smem_per_warp);
-        ReduceTypeSum::postReduce<1>(&exp_sum_input, &exp_sum_input);
 
-        DataType r_exp_sum_input = DataType(1) / exp_sum_input;
+        DataType r_exp_sum_input =
+            type::Div::compute(type::Cast::compute<DataType>(1), exp_sum_input);
 
         // the output is
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
-            out[idx_out] =
-                DataType(expf(in[idx_in] - max_input)) * r_exp_sum_input;
+            out[idx_out] = type::Div::compute(
+                type::Exp::compute(type::Sub::compute(in[idx_in], max_input)),
+                exp_sum_input);
         }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
 DEVICE void softmax(DataType *out, DataType *in, int uop_idx,
                     int smem_per_warp) {
     constexpr int NelemPerThread = 1;
-    Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
             SmemBytes, DataType, NelemPerThread>::run(out, in, uop_idx,
                                                       smem_per_warp);
 }
