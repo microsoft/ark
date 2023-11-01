@@ -23,65 +23,6 @@ SchedOp::SchedOp(const Op *op_, const OpConfig *cfg_, const string name)
     //     " smem_bytes ", cfg_->smem_bytes, " #inputs ",
     //     cfg_->input_tiles.size(), " #outputs ", cfg_->output_tiles.size(), "
     //     sync_pre ", cfg_->sync_pre, " sync_post ", cfg_->sync_post);
-
-    // pad the tensor of the SchedOp
-    for (unsigned int i = 0; i < this->op->inputs.size(); ++i) {
-        if (i >= this->cfg->input_tiles.size()) {
-            LOG(DEBUG, "input tensor can not be all padded");
-            break;
-        }
-        // Update pads based on the tile shape. The tiling is applied to the
-        // last two dimensions of the tensor. If the tensor is 1D, the first
-        // dimension of the tile shape should be 1.
-        auto tile = this->cfg->input_tiles[i];
-        if (tile.x < 0) {
-            tile.x = 1;
-        }
-        if (tile.y < 0) {
-            tile.y = 1;
-        }
-        int ndims = this->op->inputs[i]->ndims();
-        vector<DimType> pads;
-        if (ndims == 1) {
-            if (tile.x != 1) {
-                LOG(ERROR, "invalid tile shape for 1D tensor: {", tile.x, ", ",
-                    tile.y, "}");
-            }
-            pads.emplace_back(tile.y);
-        } else {
-            for (int j = 0; j < ndims - 2; ++j) {
-                pads.emplace_back(1);
-            }
-            pads.emplace_back(tile.x);
-            pads.emplace_back(tile.y);
-        }
-        this->op->inputs[i]->update_pads(pads);
-    }
-    for (unsigned int i = 0; i < this->op->outputs.size(); ++i) {
-        auto tile = this->cfg->output_tiles[i];
-        if (tile.x < 0) {
-            tile.x = 1;
-        }
-        if (tile.y < 0) {
-            tile.y = 1;
-        }
-        int ndims = this->op->outputs[i]->ndims();
-        vector<DimType> pads;
-        if (ndims == 1) {
-            if (tile.x != 1) {
-                LOG(ERROR, "invalid tile shape for 1D tensor: {", tile.x, ", ",
-                    tile.y, "}");
-            }
-            pads.emplace_back(tile.y);
-        } else {
-            for (int j = 0; j < ndims - 2; ++j) {
-                pads.emplace_back(1);
-            }
-            pads.emplace_back(tile.x);
-            pads.emplace_back(tile.y);
-        }
-        this->op->outputs[i]->update_pads(pads);
-    }
 }
 
 const string SchedOp::function_name() const {

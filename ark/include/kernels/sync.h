@@ -26,13 +26,6 @@ struct State {
 template <int BlockNum>
 DEVICE void sync_gpu(sync::State &state) {
     constexpr int MaxOldCnt = BlockNum - 1;
-#ifdef ARK_KERNELS_SYNC_CLKS_CNT
-    static_assert(math::is_pow2<ARK_KERNELS_SYNC_CLKS_CNT>::value == 1, "");
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        _ARK_CLKS[state.clks_cnt] = clock64();
-        state.clks_cnt = (state.clks_cnt + 1) & (ARK_KERNELS_SYNC_CLKS_CNT - 1);
-    }
-#endif  // ARK_KERNELS_SYNC_CLKS_CNT
     __syncthreads();
     if (BlockNum == 1) {
         return;
@@ -100,7 +93,10 @@ DEVICE void sync_warps() {
     if (ThreadsPerWarpGroup == 32) {
         __syncwarp();
     } else if (ThreadsPerWarpGroup == 64) {
-        asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6)));
+        static_assert(
+            ARK_THREADS_PER_BLOCK <= 512,
+            "2-warp barrier is not supported for block sizes larger than 512");
+        asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6) + 8));
     } else if (ThreadsPerWarpGroup == 128) {
         asm volatile("barrier.sync %0, 128;" ::"r"((threadIdx.x >> 7) + 8));
     } else if (ThreadsPerWarpGroup == 256) {

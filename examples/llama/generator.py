@@ -182,9 +182,7 @@ def worker(args: argparse.Namespace, rank: int):
     log("Launching generator...")
     gen.launch(args.ckpt_dir, args.tok_path)
 
-    prompt_list = [
-        "Where is the capital of France?",
-    ]
+    prompt_list = ["Where is the capital of France?"]
     for i, prompt in enumerate(prompt_list):
         output = gen.run(prompt)
         if rank == 0:

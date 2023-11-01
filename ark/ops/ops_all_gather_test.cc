@@ -40,11 +40,12 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter) {
             ark::Tensor *data = m.scale(ones, float(gpu_id + 1));
             auto outputs = m.all_gather(data, gpu_id, num_gpus);
 
-            auto ones_data = ark::utils::ones<ark::half_t>(ones->shape.size());
+            std::vector<ark::half_t> ones_vec(ones->shape.size(),
+                                              ark::half_t(1.0f));
             auto result =
                 ark::op_test("all_gather", m, {ones}, outputs,
                              baseline_all_gather<ark::half_t, num_gpus>,
-                             {ones_data.get()}, true, gpu_id, num_gpus);
+                             {ones_vec.data()}, true, gpu_id, num_gpus);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;

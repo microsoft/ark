@@ -12,7 +12,7 @@ namespace ark {
 struct Env {
     Env();
     // Log level.
-    const char *log_level;
+    std::string log_level;
     // Root directory where ARK is installed.
     std::string path_root_dir;
     // Temporary directory.
@@ -21,18 +21,18 @@ struct Env {
     bool keep_tmp;
     // Hostfile.
     std::string hostfile;
-    // PCIe name (domain:bus:slot.function) of the FPGA.
-    std::string fpga_dbsf;
     // Base value of listen socket ports.
     int ipc_listen_port_base;
     // Number of ranks per host.
     int num_ranks_per_host;
     // Disable IB.
     bool disable_ib;
-    // Disable P2P CUDA memcpy.
+    // Disable P2P GPU memcpy.
     bool disable_p2p_memcpy;
     // Disable the heuristic ARK graph optimization.
     bool disable_graph_opt;
+    // Ignore compiled binary cache.
+    bool ignore_binary_cache;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
     // Use MSCCL++.

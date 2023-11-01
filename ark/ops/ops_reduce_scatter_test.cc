@@ -4,7 +4,6 @@
 #include "env.h"
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ipc/ipc_coll.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"

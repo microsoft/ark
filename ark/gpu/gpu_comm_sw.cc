@@ -145,7 +145,6 @@ class GpuCommSw::Impl {
 #endif // ARK_USE_MSCCLPP
     }
 
-  private:
    private:
     //
     const std::string name_;

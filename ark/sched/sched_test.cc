@@ -5,7 +5,6 @@
 
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "logging.h"
 #include "ops/ops_test_common.h"
 #include "unittest/unittest_utils.h"

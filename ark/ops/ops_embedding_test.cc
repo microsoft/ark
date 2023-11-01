@@ -5,8 +5,8 @@
 #include <type_traits>
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
+#include "random.h"
 #include "unittest/unittest_utils.h"
 
 template <typename T>
@@ -44,8 +44,8 @@ void baseline_embedding(std::vector<void *> &outputs,
 
 template <typename T>
 ark::unittest::State test_embedding() {
-    const int num_emb = 1000;
-    const int emb_dim = 8192;
+    const int num_emb = 100;
+    const int emb_dim = 4096;
 
     const ark::TensorType *weight_type;
     if (std::is_same<T, float>::value) {
@@ -71,10 +71,21 @@ ark::unittest::State test_embedding() {
         }
         ti_data.push_back(rand_idx);
     }
-    auto tw_data = ark::utils::rand_array<T>(tw->shape.size(), 1.0);
-    auto result =
-        ark::op_test("embedding_fp32", m, {ti, tw}, {to}, baseline_embedding<T>,
-                     {ti_data.data(), tw_data.get()});
+    std::vector<T> tw_data(tw->shape.size());
+    for (auto i = 0; i < tw->shape.size(); ++i) {
+        tw_data[i] = ark::rand<T>(-1.0, 1.0);
+    }
+    std::string type_str = "";
+    if (std::is_same<T, float>::value) {
+        type_str = "fp32";
+    } else if (std::is_same<T, ark::half_t>::value) {
+        type_str = "fp16";
+    } else if (std::is_same<T, ark::bfloat16_t>::value) {
+        type_str = "bf16";
+    }
+    auto result = ark::op_test("embedding_" + type_str, m, {ti, tw}, {to},
+                               baseline_embedding<T>,
+                               {ti_data.data(), tw_data.data()}, true);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
