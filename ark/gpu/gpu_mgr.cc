@@ -157,7 +157,7 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
       name{name_},
       data_mem{},
       sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)} {
-    // Initialize SCs to ones.
+    // Initialize SCs to zeros.
     int *href = (int *)this->sc_rc_mem.href();
     for (int i = 0; i < MAX_NUM_SID; ++i) {
         href[i] = 0;
