@@ -55,7 +55,6 @@ inline auto blasGemmStridedBatchedEx(
         computeType, CUBLAS_GEMM_DEFAULT);
 }
 
-
 class BlasHandle {
    public:
     BlasHandle() {
@@ -92,16 +91,6 @@ void blas_matmul(int m, int n, int k, const DataType *a, int lda,
     blasOperation optypeA = (blasOperation)BlasOpTypeA;
     blasOperation optypeB = (blasOperation)BlasOpTypeB;
 
-template <int CubOpTypeA, int CubOpTypeB, int CudaDataType, int CubComputeType>
-void cublas_matmul(int m, int n, int k, void *alpha, const void *a, int lda,
-                   const void *b, int ldb, void *beta, void *c, int ldc,
-                   int batch_size = 1) {
-    auto cublasH = get_cublas_handle();
-    cublasStatus_t status;
-    cublasOperation_t optypeA = (cublasOperation_t)CubOpTypeA;
-    cublasOperation_t optypeB = (cublasOperation_t)CubOpTypeB;
-    cudaDataType dtype = (cudaDataType)CudaDataType;
-    cublasComputeType_t ctype = (cublasComputeType_t)CubComputeType;
     using CompType =
         typename std::conditional_t<std::is_same_v<DataType, ark::half_t>,
                                     ark::half_t, float>;
