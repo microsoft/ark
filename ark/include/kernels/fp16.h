@@ -22,17 +22,13 @@ struct Constant;
 template <>
 struct Constant<fp16> {
     static DEVICE fp16 zero() { return __half_raw{0}; }
-    static DEVICE fp16 lowest() {
-        return __half_raw{0xfbff};
-    }
+    static DEVICE fp16 lowest() { return __half_raw{0xfbff}; }
 };
 
 template <>
 struct Constant<fp16x2> {
     static DEVICE fp16x2 zero() { return __half2_raw{0, 0}; }
-    static DEVICE fp16x2 lowest() {
-        return __half2_raw{0xfbff, 0xfbff};
-    }
+    static DEVICE fp16x2 lowest() { return __half2_raw{0xfbff, 0xfbff}; }
 };
 
 template <>
