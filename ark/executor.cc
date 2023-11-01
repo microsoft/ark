@@ -8,7 +8,6 @@
 
 #include "env.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "logging.h"
 #include "sched/sched.h"
 

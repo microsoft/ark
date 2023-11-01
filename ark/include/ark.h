@@ -67,7 +67,7 @@ struct Dims {
 
     const DimType &operator[](int idx) const;
 
-    constexpr Dims &operator=(const Dims &) = default;
+    Dims &operator=(const Dims &) = default;
 
     friend bool operator==(const Dims &a, const Dims &b);
     friend bool operator!=(const Dims &a, const Dims &b);
@@ -267,8 +267,8 @@ class Tensor {
     Dims pads;
     /// Whether this tensor is local and accessed by remote devices.
     bool exported;
-    /// If imported_rank is non-negative, the tensor is imported from another
-    /// GPU and don't need to allocate a TensorBuf for it.
+    /// If `imported_rank` is non-negative, the tensor is imported from another
+    /// rank and don't need to allocate a TensorBuf for it.
     int imported_rank;
     /// Unique id of this tensor
     int id;
@@ -445,10 +445,10 @@ class Model {
     // tensor and the `other` tensor,
     Tensor *div(Tensor *input, Tensor *other, Tensor *output = nullptr,
                 const std::string &name = "div");
-    /// Sends a tensor to a destination GPU (@p dst_rank). Multiple tensors can
-    /// be sent to the same GPU,so an identifier `id` is required to distinguish
-    /// the tensor. Each 'send' operator must have a corresponding 'recv'
-    /// operator that have the same id in another GPU's model.
+    /// Sends a tensor to a destination rank (@p dst_rank). Multiple tensors can
+    /// be sent to the same rank,so an identifier `id` is required to
+    /// distinguish the tensor. Each 'send' operator must have a corresponding
+    /// 'recv' operator that have the same id in another rank's model.
     ///
     /// @param input
     /// @param id
@@ -462,17 +462,17 @@ class Model {
     // specified `id` is completed.
     Tensor *send_done(Tensor *input, int id, int dst_rank,
                       const std::string &name = "send_done");
-    // Receives a tensor from a source GPU (@p src_rank), identified by the `id`
-    // parameter. Blocks the execution until the corresponding 'recv' operator
-    // is completed.
+    // Receives a tensor from a source rank (@p src_rank), identified by the
+    // `id` parameter. Blocks the execution until the corresponding 'recv'
+    // operator is completed.
     Tensor *recv(int id, int src_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
-    // Similar to the 'send_done' function, but implemented using CUDA in-stream
+    // Similar to the 'send_done' function, but implemented using in-stream
     // RDMA copy and Low Latency (LL) protocol.
     Tensor *send_mm(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
                     Tensor *output = nullptr,
                     const std::string &name = "send_mm");
-    // Similar to the 'recv' function, but implemented using CUDA in-stream RDMA
+    // Similar to the 'recv' function, but implemented using in-stream RDMA
     // copy and Low Latency (LL) protocol.
     Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
                     Tensor *output = nullptr,
@@ -493,17 +493,17 @@ class Model {
                             Tensor *recv_buf, int id, int rank, int dst_rank,
                             size_t dst_offset, int flag,
                             const std::string &name = "put_packet_msll");
-    // Performs an all-reduce operator across all GPUs, aggregating the input
-    // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
-    // total number of GPUs `gpu_num`.
-    Tensor *all_reduce(Tensor *input, int gpu_id, int gpu_num,
+    // Performs an all-reduce operator across all ranks, aggregating the input
+    // tensors. Takes the `input` tensor, the current GPU's rank, and the
+    // total number of ranks `rank_num`.
+    Tensor *all_reduce(Tensor *input, int rank, int rank_num,
                        Tensor *output = nullptr,
                        const std::string &name = "all_reduce");
-    // Performs an all-gather operator across all GPUs, aggregating the input
-    // tensors. Takes the `input` tensor, the current GPU's `gpu_id`, and the
-    // total number of GPUs `gpu_num`. Returns a vector of tensors, each
-    // containing the aggregated data from all GPUs.
-    std::vector<Tensor *> all_gather(Tensor *input, int gpu_id, int gpu_num,
+    // Performs an all-gather operator across all ranks, aggregating the input
+    // tensors. Takes the `input` tensor, the current GPU's rank, and the
+    // total number of ranks `rank_num`. Returns a vector of tensors, each
+    // containing the aggregated data from all ranks.
+    std::vector<Tensor *> all_gather(Tensor *input, int rank, int rank_num,
                                      const std::vector<Tensor *> &output = {},
                                      const std::string &name = "all_gather");
     /// Embedding layer.
@@ -563,8 +563,6 @@ class Model {
    private:
     std::unique_ptr<Impl> impl;
 };
-
-class GpuBuf;
 
 /// Convenience class for executing a model.
 class Executor {

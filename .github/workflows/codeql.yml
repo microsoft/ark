@@ -22,7 +22,7 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/ark/ark:base-cuda12.1
+      image: ghcr.io/microsoft/ark/ark:base-dev-cuda12.1
     permissions:
       actions: read
       contents: read
@@ -41,12 +41,6 @@ jobs:
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
-
-    - name: Install cmake
-      run: |
-        curl -L https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-linux-x86_64.tar.gz -o /tmp/cmake-3.26.4-linux-x86_64.tar.gz
-        tar xzf /tmp/cmake-3.26.4-linux-x86_64.tar.gz -C /tmp
-        sudo ln -s /tmp/cmake-3.26.4-linux-x86_64/bin/cmake /usr/bin/cmake
 
     - name: Dubious ownership exception
       run: |

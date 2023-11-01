@@ -47,11 +47,7 @@ class Generator:
 
         self.runtime: ark.Runtime = None
 
-    def launch(
-        self,
-        pth_path: str,
-        tok_path: str,
-    ):
+    def launch(self, pth_path: str, tok_path: str):
         # Load a pretrained tokenizer
         self.tokenizer = Tokenizer(model_path=tok_path)
         self.args.vocab_size = self.tokenizer.n_words
@@ -164,9 +160,7 @@ def worker(args: argparse.Namespace, rank: int):
     log("Launching generator...")
     gen.launch(args.pth_path, args.tok_path)
 
-    prompt_list = [
-        "Where is the capital of France?",
-    ]
+    prompt_list = ["Where is the capital of France?"]
     for i, prompt in enumerate(prompt_list):
         output = gen.run(prompt)
         if rank == 0:

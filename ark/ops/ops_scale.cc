@@ -64,7 +64,7 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
         LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
-        output = this->tensor(input->shape, input->type, input->buf);
+        output = this->tensor(input->shape, input->type);
     } else if (output->shape != input->shape) {
         LOG(ERROR, "invalid output shape: ", output->shape);
     }

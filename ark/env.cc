@@ -3,141 +3,94 @@
 
 #include "env.h"
 
-#include <cassert>
 #include <cstdlib>
-#include <cstring>
-#include <iostream>
+#include <memory>
+#include <type_traits>
 
-using namespace std;
-
+#define DEFAULT_ARK_LOG_LEVEL "INFO"
 #define DEFAULT_ARK_ROOT "/usr/local/ark"
 #define DEFAULT_ARK_TMP "/tmp/ark"
+#define DEFAULT_ARK_KEEP_TMP false
 #define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
+#define DEFAULT_ARK_DISABLE_IB false
+#define DEFAULT_ARK_DISABLE_P2P_MEMCPY false
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
+#define DEFAULT_ARK_IGNORE_BINARY_CACHE false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_USE_MSLL false
 #define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
 #define DEFAULT_ARK_MSLL_PORT 50051
 
+template <typename T>
+T env(const std::string &env_name, const T &default_val) {
+    const char *env_ca = getenv(env_name.c_str());
+    if (env_ca == nullptr) {
+        return default_val;
+    }
+    if constexpr (std::is_same<T, int>::value) {
+        return atoi(env_ca);
+    } else if constexpr (std::is_same<T, bool>::value) {
+        std::string env_str(env_ca);
+        return (env_str == "1");
+    } else {
+        return std::string(env_ca);
+    }
+    // Should not reach here.
+    return T{};
+}
+
 namespace ark {
 
 Env::Env() {
     // Get log level.
-    this->log_level = getenv("ARK_LOG_LEVEL");
+    this->log_level = env<std::string>("ARK_LOG_LEVEL", DEFAULT_ARK_LOG_LEVEL);
     // Check if ARK_ROOT is set.
-    const char *root_ca = getenv("ARK_ROOT");
-    if (root_ca == nullptr) {
-        root_ca = DEFAULT_ARK_ROOT;
-    }
-    this->path_root_dir = root_ca;
+    this->path_root_dir = env<std::string>("ARK_ROOT", DEFAULT_ARK_ROOT);
     // Set temporal directory path.
-    const char *tmp_ca = getenv("ARK_TMP");
-    if (tmp_ca == nullptr) {
-        this->path_tmp_dir = DEFAULT_ARK_TMP;
-    } else {
-        this->path_tmp_dir = tmp_ca;
-    }
+    this->path_tmp_dir = env<std::string>("ARK_TMP", DEFAULT_ARK_TMP);
     // If `ARK_KEEP_TMP=1`, we do not remove temporal files in `ARK_TMP`.
-    const char *keep_tmp_ca = getenv("ARK_KEEP_TMP");
-    if (keep_tmp_ca != nullptr && strncmp(keep_tmp_ca, "1", 2) == 0) {
-        this->keep_tmp = true;
-    } else {
-        this->keep_tmp = false;
-    }
-    // Get the PCIe name (domain:bus:slot.function) of the FPGA.
-    const char *fpga_ca = getenv("ARK_FPGA_DBSF");
-    if (fpga_ca == nullptr) {
-        this->fpga_dbsf = "";
-    } else {
-        this->fpga_dbsf = fpga_ca;
-    }
+    this->keep_tmp = env<bool>("ARK_KEEP_TMP", DEFAULT_ARK_KEEP_TMP);
     // Get the hostfile path.
-    const char *hostfile_ca = getenv("ARK_HOSTFILE");
-    if (hostfile_ca == nullptr) {
-        this->hostfile = this->path_root_dir + "/" + DEFAULT_ARK_HOSTFILE_NAME;
-    } else {
-        this->hostfile = hostfile_ca;
-    }
+    this->hostfile = env<std::string>(
+        "ARK_HOSTFILE", this->path_root_dir + "/" + DEFAULT_ARK_HOSTFILE_NAME);
     // Get the listen socket port.
-    const char *ipc_ca = getenv("ARK_IPC_LISTEN_PORT_BASE");
-    if (ipc_ca == nullptr) {
-        this->ipc_listen_port_base = DEFAULT_ARK_IPC_LISTEN_PORT_BASE;
-    } else {
-        this->ipc_listen_port_base = atoi(ipc_ca);
-    }
+    this->ipc_listen_port_base =
+        env<int>("ARK_IPC_LISTEN_PORT_BASE", DEFAULT_ARK_IPC_LISTEN_PORT_BASE);
     // Get the number of ranks per host.
-    const char *ranks_ca = getenv("ARK_NUM_RANKS_PER_HOST");
-    if (ranks_ca == nullptr) {
-        this->num_ranks_per_host = DEFAULT_ARK_NUM_RANKS_PER_HOST;
-    } else {
-        this->num_ranks_per_host = atoi(ranks_ca);
-    }
+    this->num_ranks_per_host =
+        env<int>("ARK_NUM_RANKS_PER_HOST", DEFAULT_ARK_NUM_RANKS_PER_HOST);
     // If `ARK_DISABLE_IB=1`, we disable IB networking.
-    const char *disable_ib_ca = getenv("ARK_DISABLE_IB");
-    if ((disable_ib_ca != nullptr) && (strncmp(disable_ib_ca, "1", 2) == 0)) {
-        this->disable_ib = true;
-    } else {
-        this->disable_ib = false;
-    }
-    // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P CUDA memcpy.
-    const char *disable_p2p_memcpy_ca = getenv("ARK_DISABLE_P2P_MEMCPY");
-    if ((disable_p2p_memcpy_ca != nullptr) &&
-        (strncmp(disable_p2p_memcpy_ca, "1", 2) == 0)) {
-        this->disable_p2p_memcpy = true;
-    } else {
-        this->disable_p2p_memcpy = false;
-    }
+    this->disable_ib = env<bool>("ARK_DISABLE_IB", DEFAULT_ARK_DISABLE_IB);
+    // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P memcpy between GPUs.
+    this->disable_p2p_memcpy =
+        env<bool>("ARK_DISABLE_P2P_MEMCPY", DEFAULT_ARK_DISABLE_P2P_MEMCPY);
     // If `ARK_DISABLE_GRAPH_OPT=1`, we disable graph optimization.
-    const char *disable_graph_opt_ca = getenv("ARK_DISABLE_GRAPH_OPT");
-    if (disable_graph_opt_ca == nullptr) {
-        this->disable_graph_opt = DEFAULT_ARK_DISABLE_GRAPH_OPT;
-    } else if (strncmp(disable_graph_opt_ca, "1", 2) == 0) {
-        this->disable_graph_opt = true;
-    } else {
-        this->disable_graph_opt = false;
-    }
+    this->disable_graph_opt =
+        env<bool>("ARK_DISABLE_GRAPH_OPT", DEFAULT_ARK_DISABLE_GRAPH_OPT);
+    // If `ARK_IGNORE_BINARY_CACHE=1`, we ignore compiled binary cache.
+    this->ignore_binary_cache =
+        env<bool>("ARK_IGNORE_BINARY_CACHE", DEFAULT_ARK_IGNORE_BINARY_CACHE);
     //
-    const char *shm_name_prefix_ca = getenv("ARK_SHM_NAME_PREFIX");
-    if (shm_name_prefix_ca == nullptr) {
-        this->shm_name_prefix = DEFAULT_ARK_SHM_NAME_PREFIX;
-    } else {
-        this->shm_name_prefix = shm_name_prefix_ca;
-    }
+    this->shm_name_prefix =
+        env<std::string>("ARK_SHM_NAME_PREFIX", DEFAULT_ARK_SHM_NAME_PREFIX);
     // If `ARK_USE_MSLL=1`, we use MSLL.
-    const char *use_msll_ca = getenv("ARK_USE_MSLL");
-    if (use_msll_ca == nullptr) {
-        this->use_msll = DEFAULT_ARK_USE_MSLL;
-    } else if (strncmp(use_msll_ca, "1", 2) == 0) {
-        this->use_msll = true;
-    } else {
-        this->use_msll = false;
-    }
+    this->use_msll = env<bool>("ARK_USE_MSLL", DEFAULT_ARK_USE_MSLL);
     // Get the MSLL include directory path.
-    const char *msll_include_dir_ca = getenv("ARK_MSLL_INCLUDE_DIR");
-    if (msll_include_dir_ca == nullptr) {
-        this->msll_include_dir = DEFAULT_ARK_MSLL_INCLUDE_DIR;
-    } else {
-        this->msll_include_dir = msll_include_dir_ca;
-    }
+    this->msll_include_dir =
+        env<std::string>("ARK_MSLL_INCLUDE_DIR", DEFAULT_ARK_MSLL_INCLUDE_DIR);
     // Get the port number of MSLL.
-    const char *msll_port_ca = getenv("ARK_MSLL_PORT");
-    if (msll_port_ca == nullptr) {
-        this->msll_port = DEFAULT_ARK_MSLL_PORT;
-    } else {
-        this->msll_port = atoi(msll_port_ca);
-    }
+    this->msll_port = env<int>("ARK_MSLL_PORT", DEFAULT_ARK_MSLL_PORT);
 }
 
 // Global Env.
-Env *_ARK_ENV_GLOBAL = nullptr;
+std::shared_ptr<Env> _ARK_ENV_GLOBAL = nullptr;
 
 // Get the global Env.
 const Env &get_env() {
-    if (_ARK_ENV_GLOBAL == nullptr) {
-        _ARK_ENV_GLOBAL = new Env;
-        assert(_ARK_ENV_GLOBAL != nullptr);
+    if (_ARK_ENV_GLOBAL.get() == nullptr) {
+        _ARK_ENV_GLOBAL.reset(new Env);
     }
     return *_ARK_ENV_GLOBAL;
 }

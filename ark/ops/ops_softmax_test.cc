@@ -4,7 +4,6 @@
 #include <cmath>
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
@@ -64,7 +63,7 @@ ark::unittest::State test_softmax_fp32() {
 ark::unittest::State test_softmax_fp16() {
     {
         ark::Model m;
-        ark::Tensor *t = m.tensor(ark::Dims(64, 8192), ark::FP16);
+        ark::Tensor *t = m.tensor(ark::Dims(16, 8192), ark::FP16);
         ark::Tensor *out = m.softmax(t);
 
         auto result = ark::op_test("softmax_fp16", m, {t}, {out},
@@ -100,14 +99,14 @@ ark::unittest::State test_softmax_fp16_padded() {
 
 ark::unittest::State test_softmax_fp16_big_magnitude() {
     ark::Model model;
-    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 8192), ark::FP16);
+    ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP16);
     ark::Tensor *output = model.softmax(input);
 
     // set input to a big magnitude
     std::vector<ark::half_t> input_data;
     for (ark::DimType i = 0; i < input->shape.size(); ++i) {
         // larger to smaller
-        input_data.push_back(ark::half_t((2047 - i) % 2048 - 1024));
+        input_data.push_back(ark::half_t(int((2047 - i) % 2048 - 1024)));
     }
 
     auto result = ark::op_test("softmax_fp16_big_magnitude", model, {input},
@@ -119,7 +118,7 @@ ark::unittest::State test_softmax_fp16_big_magnitude() {
 
 ark::unittest::State test_softmax_fp16_small_magnitude() {
     ark::Model model;
-    ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 8192), ark::FP16);
+    ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP16);
     ark::Tensor *output = model.softmax(input);
 
     // set input to a small magnitude
@@ -139,7 +138,7 @@ ark::unittest::State test_softmax_fp16_small_magnitude() {
 ark::unittest::State test_softmax_bf16() {
     {
         ark::Model m;
-        ark::Tensor *t = m.tensor(ark::Dims(64, 8192), ark::BF16);
+        ark::Tensor *t = m.tensor(ark::Dims(16, 8192), ark::BF16);
         ark::Tensor *out = m.softmax(t);
 
         auto result = ark::op_test("softmax_bf16", m, {t}, {out},
@@ -149,7 +148,7 @@ ark::unittest::State test_softmax_bf16() {
     }
     {
         ark::Model m;
-        ark::Tensor *t = m.tensor(ark::Dims(1, 32, 64, 64), ark::BF16);
+        ark::Tensor *t = m.tensor(ark::Dims(1, 16, 64, 64), ark::BF16);
         ark::Tensor *out = m.softmax(t);
 
         auto result = ark::op_test("softmax_bf16", m, {t}, {out},

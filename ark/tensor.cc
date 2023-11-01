@@ -308,7 +308,7 @@ void *Tensor::read_raw(void *buf) {
             LOG(ERROR, "failed to allocate host buffer");
         }
     }
-    gpu_memcpy(buf, 0, gbuf, this->offset_bytes(0), bytes);
+    gpu_memcpy(buf, 0, gbuf, 0, bytes);
     return buf;
 }
 
