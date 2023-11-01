@@ -4,11 +4,10 @@
 #ifndef ARK_KERNELS_DEVICE_H_
 #define ARK_KERNELS_DEVICE_H_
 
-#if defined(__NVCC__) || (defined(__clang__) && defined(__CUDA__)) || \
-    defined(__CUDACC_RTC__)
+#if defined(ARK_TARGET_CUDA_ARCH)
 #define DEVICE __forceinline__ __device__
 #else
-#define DEVICE inline
+#define DEVICE __device__ inline
 #endif
 
 #endif  // ARK_KERNELS_DEVICE_H_

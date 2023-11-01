@@ -9,6 +9,7 @@
 
 #include "env.h"
 #include "gpu/gpu_kernel.h"
+#include "gpu/gpu_logging.h"
 #include "logging.h"
 #include "random.h"
 #include "unittest/unittest_utils.h"
@@ -22,142 +23,11 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     for (size_t i = 0; i < result.mse.size(); i++) {
         float err_pcnt = result.max_err_rate[i] * 100;
         os << ", mse " << result.mse[i] << ", max_diff " << result.max_diff[i]
-           << ", max_err_rate " << err_pcnt << "%";
+           << ", max_err_rate " << err_pcnt << "%, #diff "
+           << result.num_wrong[i] << "/" << result.num_total[i];
     }
     return os;
 }
-
-/// Calculate the error rate between two values.
-/// @tparam T Type of the values
-/// @param a First value
-/// @param b Second value
-/// @return The error rate
-template <typename T>
-float error_rate(T a, T b) {
-    T diff = abs(a - b);
-    T max = std::max(abs(a), abs(b));
-    if (max == 0) {
-        return 0;
-    }
-    return (float)diff / (float)max;
-}
-
-/// Calculate the error rate between two @ref half_t values.
-/// @param a First value
-/// @param b Second value
-/// @return The error rate
-float error_rate(half_t a, half_t b) { return error_rate<half_t>(a, b); }
-
-/// Calculate the error rate between two floats.
-/// @param a First value
-/// @param b Second value
-/// @return The error rate
-float error_rate(float a, float b) { return error_rate<float>(a, b); }
-
-/// Return mean squared error and max error rate between two tensors.
-/// @tparam T data type of the tensors.
-/// @param ground_truth ground truth data array.
-/// @param res input data array to compare with the ground truth.
-/// @param shape shape of the tensor.
-/// @param print whether to print wrong values.
-/// @return a pair of mean squared error and max error rate.
-template <typename T>
-TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
-                                   bool print = false) {
-    DimType nelem = shape.size();
-    int ndims = shape.ndims();
-    float l2_loss = 0;
-    float max_err = 0;
-    float max_diff = 0;
-    for (DimType i = 0; i < nelem; ++i) {
-        float diff = (float)(ground_truth[i] - res[i]);
-        if (std::abs(diff) > max_diff) {
-            max_diff = std::abs(diff);
-        }
-        l2_loss += diff * diff;
-
-        float err = error_rate(ground_truth[i], res[i]);
-        if (err > 0.) {
-            if (print) {
-                Dims idx(std::vector<DimType>(ndims, 0));
-                for (int j = 0; j < ndims; ++j) {
-                    DimType vol = 1;
-                    for (int k = j + 1; k < ndims; ++k) {
-                        vol *= shape[k];
-                    }
-                    idx[j] = (i / vol) % shape[j];
-                }
-                std::cout << idx << " expected " << ground_truth[i]
-                          << ", actually " << res[i] << " (err: " << err << ")"
-                          << std::endl;
-            }
-            if (err > max_err) {
-                max_err = err;
-            }
-        }
-    }
-    TensorCompareResult result;
-    result.mse = l2_loss / nelem;
-    result.max_diff = max_diff;
-    result.max_error_rate = max_err;
-    return result;
-}
-
-/// Return mean squared error and max error rate between two @ref half_t
-/// tensors.
-/// @param ground_truth ground truth data array.
-/// @param res input data array to compare with the ground truth.
-/// @param shape shape of the tensor.
-/// @param print whether to print wrong values.
-/// @return a pair of mean squared error and max error rate.
-TensorCompareResult tensor_compare(half_t *ground_truth, half_t *res,
-                                   Dims shape, bool print) {
-    return tensor_compare<half_t>(ground_truth, res, shape, print);
-}
-
-/// Return mean squared error and max error rate between two float tensors.
-/// @param ground_truth ground truth data array.
-/// @param res input data array to compare with the ground truth.
-/// @param shape shape of the tensor.
-/// @param print whether to print wrong values.
-/// @return a pair of mean squared error and max error rate.
-TensorCompareResult tensor_compare(float *ground_truth, float *res, Dims shape,
-                                   bool print) {
-    return tensor_compare<float>(ground_truth, res, shape, print);
-}
-
-/// Return mean squared error and max error rate between two int tensors.
-/// @param ground_truth ground truth data array.
-/// @param res input data array to compare with the ground truth.
-/// @param shape shape of the tensor.
-/// @param print whether to print wrong values.
-/// @return a pair of mean squared error and max error rate.
-TensorCompareResult tensor_compare(int *ground_truth, int *res, Dims shape,
-                                   bool print) {
-    return tensor_compare<int>(ground_truth, res, shape, print);
-}
-
-/// Return mean squared error and max error rate between two byte tensors.
-/// @param ground_truth ground truth data array.
-/// @param res input data array to compare with the ground truth.
-/// @param shape shape of the tensor.
-/// @param print whether to print wrong values.
-/// @return a pair of mean squared error and max error rate.
-TensorCompareResult tensor_compare(uint8_t *ground_truth, uint8_t *res,
-                                   Dims shape, bool print) {
-    return tensor_compare<uint8_t>(ground_truth, res, shape, print);
-}
-
-#define CUDA_CHECK(status)                                              \
-    do {                                                                \
-        cudaError_t error = status;                                     \
-        if (error != cudaSuccess) {                                     \
-            std::ostringstream oss;                                     \
-            oss << "Got bad cuda status: " << cudaGetErrorString(error) \
-                << " at line: " << __LINE__;                            \
-            throw std::runtime_error(oss.str());                        \
-        }                                                               \
-    } while (0);
 
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
@@ -180,23 +50,35 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
             UNITTEST_NE(buf, (void *)nullptr);
 
             if (t->type == FP32) {
-                ::memcpy(buf, utils::rand_floats(t->shape.size(), 0.1).get(),
-                         t->shape_bytes());
+                std::vector<float> data(t->shape.size());
+                for (size_t i = 0; i < data.size(); ++i) {
+                    data[i] = ark::rand<float>(-0.1, 0.1);
+                }
+                ::memcpy(buf, data.data(), t->shape_bytes());
             } else if (t->type == FP16) {
-                ::memcpy(buf, utils::rand_halfs(t->shape.size(), 0.1).get(),
-                         t->shape_bytes());
+                std::vector<ark::half_t> data(t->shape.size());
+                for (size_t i = 0; i < data.size(); ++i) {
+                    data[i] = ark::rand<ark::half_t>(-0.1, 0.1);
+                }
+                ::memcpy(buf, data.data(), t->shape_bytes());
             } else if (t->type == BF16) {
-                ::memcpy(
-                    buf,
-                    utils::rand_array<bfloat16_t>(t->shape.size(), 0.1).get(),
-                    t->shape_bytes());
+                std::vector<ark::bfloat16_t> data(t->shape.size());
+                for (size_t i = 0; i < data.size(); ++i) {
+                    data[i] = ark::rand<ark::bfloat16_t>(-0.1, 0.1);
+                }
+                ::memcpy(buf, data.data(), t->shape_bytes());
             } else if (t->type == INT32) {
-                ::memcpy(buf,
-                         utils::rand_array<int>(t->shape.size(), 10000).get(),
-                         t->shape_bytes());
+                std::vector<int> data(t->shape.size());
+                for (size_t i = 0; i < data.size(); ++i) {
+                    data[i] = ark::rand<int>(-10000, 10000);
+                }
+                ::memcpy(buf, data.data(), t->shape_bytes());
             } else if (t->type == BYTE) {
-                ::memcpy(buf, utils::rand_bytes(t->shape.size()).get(),
-                         t->shape_bytes());
+                std::vector<uint8_t> data(t->shape.size());
+                for (size_t i = 0; i < data.size(); ++i) {
+                    data[i] = ark::rand<uint8_t>(0, 255);
+                }
+                ::memcpy(buf, data.data(), t->shape_bytes());
             } else {
                 LOG(ERROR, "Unsupported data type: ", t->type);
             }
@@ -291,6 +173,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         result.mse.push_back(comp.mse);
         result.max_diff.push_back(comp.max_diff);
         result.max_err_rate.push_back(comp.max_error_rate);
+        result.num_wrong.push_back(comp.num_wrong);
+        result.num_total.push_back(comp.num_total);
     }
 
     CUDA_CHECK(cudaDeviceSynchronize());

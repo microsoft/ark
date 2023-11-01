@@ -6,13 +6,12 @@
 #include "env.h"
 #include "gpu/gpu_logging.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ipc/ipc_hosts.h"
 #include "ipc/ipc_socket.h"
 #include "unittest/unittest_utils.h"
 
 ark::unittest::State test_gpu_mem() {
-    int pid = ark::utils::proc_spawn([] {
+    int pid = ark::unittest::spawn_process([] {
         ark::unittest::Timeout timeout{5};
 
         // Create a CUDA context of GPU 0.
@@ -54,17 +53,16 @@ ark::unittest::State test_gpu_mem() {
             UNITTEST_EQ(href1[i], 9);
         }
 
-        return 0;
+        return ark::unittest::SUCCESS;
     });
     UNITTEST_NE(pid, -1);
 
-    int ret = ark::utils::proc_wait(pid);
-    UNITTEST_EQ(ret, 0);
+    ark::unittest::wait_all_processes();
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_gpu_mem_ipc() {
-    int pid0 = ark::utils::proc_spawn([] {
+    int pid0 = ark::unittest::spawn_process([] {
         ark::unittest::Timeout timeout{5};
 
         int port_base = ark::get_env().ipc_listen_port_base;
@@ -104,11 +102,11 @@ ark::unittest::State test_gpu_mem_ipc() {
         // Set data on the remote GPU 1.
         CULOG(cuMemsetD32(mem1.ref(), 9, 1024));
 
-        return 0;
+        return ark::unittest::SUCCESS;
     });
     UNITTEST_NE(pid0, -1);
 
-    int pid1 = ark::utils::proc_spawn([] {
+    int pid1 = ark::unittest::spawn_process([] {
         ark::unittest::Timeout timeout{5};
 
         int port_base = ark::get_env().ipc_listen_port_base;
@@ -148,12 +146,11 @@ ark::unittest::State test_gpu_mem_ipc() {
             }
         }
 
-        return 0;
+        return ark::unittest::SUCCESS;
     });
     UNITTEST_NE(pid1, -1);
 
-    int ret = ark::utils::proc_wait({pid0, pid1});
-    UNITTEST_EQ(ret, 0);
+    ark::unittest::wait_all_processes();
     return ark::unittest::SUCCESS;
 }
 

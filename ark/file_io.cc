@@ -178,7 +178,10 @@ void write_file(const string &path, const string &data) {
 
 int remove_file(const string &path) {
     LOG(DEBUG, "remove file: ", path);
-    return remove(path.c_str());
+    if (remove(path.c_str()) == 0) {
+        return 0;
+    }
+    return errno;
 }
 
 string get_dir(const string &path) {

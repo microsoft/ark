@@ -7,34 +7,13 @@ from . import _ark_core
 
 
 _REGISTRY_DATA_TYPE = {
-    "fp32": {
-        "np": numpy.float32,
-        "doc": """32-bit floating point.""",
-    },
-    "fp16": {
-        "np": numpy.float16,
-        "doc": """16-bit floating point.""",
-    },
-    "bf16": {
-        "np": None,
-        "doc": """bfloat16 floating point.""",
-    },
-    "int32": {
-        "np": numpy.int32,
-        "doc": """32-bit signed integer.""",
-    },
-    "uint32": {
-        "np": numpy.uint32,
-        "doc": """32-bit unsigned integer.""",
-    },
-    "int8": {
-        "np": numpy.int8,
-        "doc": """8-bit signed integer.""",
-    },
-    "uint8": {
-        "np": numpy.uint8,
-        "doc": """8-bit unsigned integer.""",
-    },
+    "fp32": {"np": numpy.float32, "doc": """32-bit floating point."""},
+    "fp16": {"np": numpy.float16, "doc": """16-bit floating point."""},
+    "bf16": {"np": None, "doc": """bfloat16 floating point."""},
+    "int32": {"np": numpy.int32, "doc": """32-bit signed integer."""},
+    "uint32": {"np": numpy.uint32, "doc": """32-bit unsigned integer."""},
+    "int8": {"np": numpy.int8, "doc": """8-bit signed integer."""},
+    "uint8": {"np": numpy.uint8, "doc": """8-bit unsigned integer."""},
     "byte": {
         "np": numpy.ubyte,
         "doc": """

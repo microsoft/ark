@@ -139,7 +139,6 @@ class GpuCommSw::Impl {
     }
 
    private:
-   private:
     //
     const std::string name_;
     //

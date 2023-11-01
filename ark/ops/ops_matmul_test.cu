@@ -6,7 +6,6 @@
 #include <cassert>
 #include <type_traits>
 
-#include "ark_utils.h"
 #include "ops_test_common.h"
 
 cublasHandle_t globalCublasHandle = nullptr;

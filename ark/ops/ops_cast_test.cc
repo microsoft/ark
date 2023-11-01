@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
@@ -66,7 +65,7 @@ ark::unittest::State test_cast_fp16_to_int32() {
 
     std::vector<ark::half_t> input_data(t->shape.size());
     for (size_t i = 0; i < input_data.size(); ++i) {
-        input_data[i] = ark::half_t((i + 1) % 1000);
+        input_data[i] = ark::half_t(int((i + 1) % 1000));
     }
 
     auto result =
