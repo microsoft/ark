@@ -29,6 +29,17 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     return os;
 }
 
+#define CUDA_CHECK(status)                                              \
+    do {                                                                \
+        cudaError_t error = status;                                     \
+        if (error != cudaSuccess) {                                     \
+            std::ostringstream oss;                                     \
+            oss << "Got bad cuda status: " << cudaGetErrorString(error) \
+                << " at line: " << __LINE__;                            \
+            throw std::runtime_error(oss.str());                        \
+        }                                                               \
+    } while (0);
+
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
                       const std::vector<Tensor *> &outputs,
