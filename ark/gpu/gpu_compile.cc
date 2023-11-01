@@ -164,7 +164,7 @@ const string gpu_compile(const vector<string> &codes,
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, endl, exec_cmd.str(), endl, exec_print_str, endl);
+                LOG(ERROR, "\n", exec_cmd.str(), "\n", exec_print_str, "\n");
             }
             LOG(INFO, "Compile succeed: ", cu_file_path, " (",
                 cpu_timer() - start, " seconds)");
