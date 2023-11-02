@@ -270,13 +270,13 @@ class FeedForward(ark.Module):
         )
 
         self.w1 = ColumnParallelLinear(
-            dim, hidden_dim, dtype, local_rank, world_size
+            dim, hidden_dim, dtype, False, local_rank, world_size
         )
         self.w2 = RowParallelLinear(
-            hidden_dim, dim, dtype, local_rank, world_size
+            hidden_dim, dim, dtype, True, local_rank, world_size
         )
         self.w3 = ColumnParallelLinear(
-            dim, hidden_dim, dtype, local_rank, world_size
+            dim, hidden_dim, dtype, False, local_rank, world_size
         )
 
     def forward(self, x):
@@ -371,7 +371,6 @@ class Attention(ark.Module):
         if freqs_cis is not None:
             xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
         # print(f"freqs_cis shape() is {freqs_cis.shape()}")
-        return xq
         # TODO: enable kv cache later
         keys = xk
         values = xv
