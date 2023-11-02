@@ -418,6 +418,9 @@ class Model {
     // ReLU activation
     Tensor *relu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");
+    // Copy the `input` tensor to `output` tensor
+    Tensor *copy(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "copy");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.
