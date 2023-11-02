@@ -96,7 +96,15 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
     }
 }
 
+// Helper for `Tensor::update_pads()`.
 static Dims calc_pads(const Dims &tile, const Dims &ldims) {
+    // 1. Match the number of dimensions. If `tile` has more dimensions than
+    // `ldims`, remove the leading 1s. If `tile` has less dimensions than
+    // `ldims`, add 1s to the leading dimensions.
+    //
+    // 2. Replace -1 in `tile` with 1.
+    //
+
     int ndims = ldims.ndims();
     Dims tile_copy = tile;
     while (tile_copy.ndims() > ndims) {
@@ -117,19 +125,83 @@ static Dims calc_pads(const Dims &tile, const Dims &ldims) {
 }
 
 //
-void Tensor::update_pads(const Dims &tile, const Dims &ref_ldims) {
-    Dims new_tile = tile;
+void Tensor::update_pads(const Dims &tile, const Dims &ref_ldims,
+                         const Dims &ref_padded_ldims) {
+    Dims new_pads;
     if (!ref_ldims.is_no_dim()) {
+        // `tile` is supposed to be applied for `ref_ldims`, not ldims of
+        // this tensor.
+
+        // calculate pads according to `ref_ldims`.
         auto ref_pads = calc_pads(tile, ref_ldims);
-        for (int i = 1; i < tile.ndims() + 1; ++i) {
-            if (ref_ldims[-i] % ref_pads[-i] == 0) {
-                new_tile[-i] = 1;
-            } else {
-                // TODO: need a better way to handle this case
+
+        // initialize `new_pads`.
+        new_pads = std::vector<DimType>(this->ldims.ndims(), 1);
+
+        // note `ref_pads`, `ref_ldims`, and `ref_padded_ldims` are in
+        // the same number of dimensions.
+        int ref_ndims = ref_ldims.ndims();
+        for (int i = ref_ndims - 1; i >= 0; --i) {
+            if ((ref_ldims[i] % ref_pads[i]) == 0) {
+                // this does not change the current padding. skip.
+                continue;
             }
+            // calculate the stride where the new padding will be inserted by
+            // this update.
+            DimType stride = 1;
+            for (int j = i; j < ref_ndims; ++j) {
+                stride *= ref_ldims[j];
+            }
+            // check if this new stride is feasible for ldims of this tensor.
+            int dim_idx = -1;
+            for (int j = this->ldims.ndims() - 1; j >= 0; --j) {
+                if (stride == this->ldims[j]) {
+                    // maybe feasible. move on to the next check.
+                    dim_idx = j;
+                    break;
+                } else if (stride % this->ldims[j] == 0) {
+                    stride /= this->ldims[j];
+                } else {
+                    LOG(ERROR, "invalid tile ", tile, " for ldims ",
+                        this->ldims, " and ref_ldims ", ref_ldims);
+                }
+            }
+            if (dim_idx == -1) {
+                // cannot reach here.
+                LOG(ERROR, "unexpected error");
+            }
+            // check if `ref_padded_ldims` is feasible for this tensor.
+            if ((ref_padded_ldims[i] % this->pads[dim_idx]) != 0) {
+                // paddings conflict.
+                // TODO: we may be able to resolve this conflict by updating
+                // the padding of other tensors.
+                LOG(ERROR, "the current padding ", this->pads,
+                    " is not feasible for ldims ", this->ldims,
+                    " and ref_padded_ldims ", ref_padded_ldims);
+            }
+            if (ref_padded_ldims[i] < this->ldims[dim_idx]) {
+                // cannot reach here.
+                LOG(ERROR, "unexpected error");
+            }
+
+            // the new stride is feasible. calculate the new padding for
+            // matching `ref_padded_ldims`.
+
+            DimType a = ref_padded_ldims[i] / this->pads[dim_idx];
+            DimType b = this->ldims[dim_idx] / this->pads[dim_idx];
+            // `k` is the smallest divisor of `a` such that `b` is in range
+            // (a - k, a]. The new padding is `k * this->pads[dim_idx]`.
+            DimType k = a - b + 1;
+            for (; k <= a; ++k) {
+                if (a % k == 0) break;
+            }
+            DimType new_pad = k * this->pads[dim_idx];
+            new_pads[dim_idx] = new_pad;
         }
+    } else {
+        // `tile` is supposed to be directly applied for ldims of this tensor.
+        new_pads = calc_pads(tile, this->ldims);
     }
-    Dims new_pads = calc_pads(new_tile, this->ldims);
     for (int i = 0; i < this->ldims.ndims(); ++i) {
         DimType new_udim = math::lcm(this->pads[i], new_pads[i]);
         this->pads[i] = new_udim;
