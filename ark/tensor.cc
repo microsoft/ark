@@ -96,18 +96,41 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
     }
 }
 
-//
-void Tensor::update_pads(const std::vector<DimType> &pads_) {
-    int ndims = this->ldims.ndims();
+static Dims calc_pads(const Dims &tile, const Dims &ldims) {
+    int ndims = ldims.ndims();
+    Dims tile_copy = tile;
+    while (tile_copy.ndims() > ndims) {
+        if (tile_copy[0] == 1) {
+            tile_copy.erase(0);
+        } else {
+            LOG(ERROR, "invalid tile ", tile, " for ldims ", ldims);
+        }
+    }
     std::vector<DimType> tmp;
-    for (int i = 0; i < ndims - (int)pads_.size(); ++i) {
+    for (int i = 0; i < ndims - tile_copy.ndims(); ++i) {
         tmp.emplace_back(1);
     }
-    for (int i = 0; i < (int)pads_.size(); ++i) {
-        tmp.emplace_back(pads_[i] == -1 ? 1 : pads_[i]);
+    for (int i = 0; i < tile_copy.ndims(); ++i) {
+        tmp.emplace_back((tile_copy[i] == -1) ? 1 : tile_copy[i]);
     }
-    Dims new_pads{tmp};
-    for (int i = 0; i < ndims; ++i) {
+    return Dims(tmp);
+}
+
+//
+void Tensor::update_pads(const Dims &tile, const Dims &ref_ldims) {
+    Dims new_tile = tile;
+    if (!ref_ldims.is_no_dim()) {
+        auto ref_pads = calc_pads(tile, ref_ldims);
+        for (int i = 1; i < tile.ndims() + 1; ++i) {
+            if (ref_ldims[-i] % ref_pads[-i] == 0) {
+                new_tile[-i] = 1;
+            } else {
+                // TODO: need a better way to handle this case
+            }
+        }
+    }
+    Dims new_pads = calc_pads(new_tile, this->ldims);
+    for (int i = 0; i < this->ldims.ndims(); ++i) {
         DimType new_udim = math::lcm(this->pads[i], new_pads[i]);
         this->pads[i] = new_udim;
         this->ldims[i] = math::pad(this->ldims[i], new_udim);

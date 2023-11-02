@@ -3,6 +3,8 @@
 
 #include "sched/sched.h"
 
+#include <algorithm>
+
 #include "logging.h"
 #include "math.h"
 
@@ -111,8 +113,8 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
         gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     Dims shape4 = output->shape.dims4();
     Dims ldims4 = output->ldims.dims4();
-    std::vector<const OpConfig *> config_candidates;
-    std::vector<const OpConfig *> high_priority_candidates;
+    std::vector<std::pair<const OpConfig *, int>> config_candidates;
+    std::vector<std::pair<const OpConfig *, int>> high_priority_candidates;
     for (auto &cfg : feasible_configs) {
         assert(cfg->output_tiles.size() > 0);
         const OpTile &ot = cfg->output_tiles[0];
@@ -129,12 +131,12 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
         num_tiles *= math::div_up(shape_y, ot_y);
 
         // This config is OK to use
-        config_candidates.push_back(cfg);
+        config_candidates.emplace_back(cfg, num_tiles);
 
         // magic condition
         if ((shape_y * 2 > ot_y) && (shape_x * 2 > ot_x) &&
             ((num_tiles * cfg->num_warps) >= (min_wps * gpu_info.num_sm / 2))) {
-            high_priority_candidates.push_back(cfg);
+            high_priority_candidates.emplace_back(cfg, num_tiles);
         }
     }
     if (config_candidates.empty()) {
@@ -157,9 +159,16 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     }
     const OpConfig *cfg;
     if (high_priority_candidates.empty()) {
-        cfg = config_candidates[0];
+        // sort by the total number of warps needed
+        std::sort(config_candidates.begin(), config_candidates.end(),
+                  [](const std::pair<const OpConfig *, int> &a,
+                     const std::pair<const OpConfig *, int> &b) {
+                      return a.first->num_warps * a.second >
+                             b.first->num_warps * b.second;
+                  });
+        cfg = config_candidates.back().first;
     } else {
-        cfg = high_priority_candidates[0];
+        cfg = high_priority_candidates.back().first;
     }
     return cfg;
 }
