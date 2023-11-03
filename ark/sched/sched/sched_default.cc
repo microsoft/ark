@@ -387,7 +387,7 @@ void DefaultScheduler::configure_gpu_buf(
                 for (auto tns : bufs[op_tns->buf]) {
                     if (tns == op_tns) continue;
                     if (tns->ldims_bytes() == orig_ldims_bytes) {
-                        tns->update_pads(tile_dims, orig_ldims);
+                        tns->update_pads(tile_dims, orig_ldims, op_tns->ldims);
                         if (tns->ldims_bytes() != op_tns->ldims_bytes()) {
                             LOG(ERROR, padding_error_msg,
                                 " op=", sop.get_op()->name,

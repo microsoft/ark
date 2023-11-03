@@ -276,7 +276,8 @@ class Tensor {
     const std::string name;
 
    protected:
-    void update_pads(const Dims &tile, const Dims &ref_ldims = {});
+    void update_pads(const Dims &tile, const Dims &ref_ldims = {},
+                     const Dims &ref_padded_ldims = {});
 
     friend class DefaultScheduler;
     friend class SchedOp;

@@ -44,7 +44,7 @@ void test_all_gather_4gpus_internal(size_t nelem, int iter) {
                                               ark::half_t(1.0f));
             auto result =
                 ark::op_test("all_gather", m, {ones}, outputs,
-                             baseline_all_gather<ark::half_t, num_gpus>,
+                             baseline_all_gather<ark::half_t, 4>,
                              {ones_vec.data()}, true, gpu_id, num_gpus);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
@@ -68,7 +68,7 @@ void test_all_gather_8gpus_internal_msll(size_t nelem, int iter) {
             auto outputs = m.local_all_gather_msll(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_gather", m, {data}, {outputs},
-                             baseline_all_gather_msll<ark::half_t, num_gpus>,
+                             baseline_all_gather_msll<ark::half_t, 8>,
                              {data_buf.data()}, true, gpu_id, num_gpus, 16);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
