@@ -216,7 +216,7 @@ static Dims elem_to_bytes(const Dims &elem, const TensorType &type) {
 }
 
 //
-void Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
+bool Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
                          const Dims &ref_orig_ldims) {
     Dims orig_ldims = this->ldims;
     Dims orig_bldims = elem_to_bytes(orig_ldims, this->type);
@@ -232,15 +232,18 @@ void Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
             int ref_bytes = ref_tensor->type.bytes();
             if (this_bytes > ref_bytes) {
                 if (this_bytes % ref_bytes != 0) {
-                    LOG(ERROR, "unexpected error");
+                    LOG(WARN, "unexpected error");
+                    return false;
                 }
                 tile_copy[-1] *= this_bytes / ref_bytes;
             } else {
                 if (ref_bytes % this_bytes != 0) {
-                    LOG(ERROR, "unexpected error");
+                    LOG(WARN, "unexpected error");
+                    return false;
                 }
                 if (tile_copy[-1] % (ref_bytes / this_bytes) != 0) {
-                    LOG(ERROR, "unexpected error");
+                    LOG(WARN, "unexpected error");
+                    return false;
                 }
                 tile_copy[-1] /= (ref_bytes / this_bytes);
             }
@@ -254,17 +257,18 @@ void Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
         PADDING_DEBUG("updated pads: tile ", tile_copy, " orig_ldims ",
                       orig_ldims, " new_pads ", new_pads, " new_ldims ",
                       this->ldims);
-        return;
+        return true;
     }
 
     // `tile` is supposed to be applied for `ref_tensor`, not this tensor.
 
     if ((orig_ldims.size() != ref_orig_ldims.size()) ||
         (ref_tensor->ldims.size() < orig_ldims.size())) {
-        LOG(ERROR, "unexpected error.");
+        LOG(WARN, "unexpected error.");
+        return false;
     } else if (ref_tensor->ldims == ref_orig_ldims) {
         // ldims of `ref_tensor` is not changed; nothing to do here
-        return;
+        return true;
     }
 
     // calculate what the ldims of this tensor would be if we reshape a tensor
@@ -280,21 +284,25 @@ void Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
        << " orig_bldims=" << orig_bldims;
     if (!tensor_reshape_helper(ref_orig_bldims, ref_bldims, ref_boffs,
                                orig_bldims, target_bldims, target_boffs)) {
-        LOG(ERROR, ss.str());
+        LOG(WARN, ss.str());
+        return false;
     } else if (target_bldims[-1] % this->type.bytes() != 0) {
-        LOG(ERROR, ss.str());
+        LOG(WARN, ss.str());
+        return false;
     }
     Dims target_ldims = target_bldims;
     target_ldims[-1] /= this->type_bytes();
     if (target_ldims.ndims() != this->ldims.ndims()) {
-        LOG(ERROR, "unexpected error");
+        LOG(WARN, "unexpected error");
+        return false;
     }
     // check if `target_ldims` is feasible for this tensor.
     for (int i = 0; i < this->ldims.ndims(); ++i) {
         if (target_ldims[i] % this->pads[i] != 0) {
-            LOG(ERROR, "the current padding ", this->pads,
+            LOG(WARN, "the current padding ", this->pads,
                 " is not feasible for ldims ", this->ldims,
                 " and target_ldims ", target_ldims);
+            return false;
         }
     }
     this->ldims = target_ldims;
@@ -303,6 +311,7 @@ void Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
                   " ref_ldims ", ref_tensor->ldims, " ref_offs ",
                   ref_tensor->offs, " orig_shape ", this->shape, " orig_ldims ",
                   orig_ldims, " new_ldims ", target_ldims);
+    return true;
 }
 
 // Offset to the element [i0][i1][i2][i3] of this tensor in the TensorBuf.
