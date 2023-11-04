@@ -267,7 +267,7 @@ void Tensor::update_pads(const Dims &tile, const Tensor *ref_tensor,
         return;
     }
 
-    // calcualte what the ldims of this tensor would be if we reshape a tensor
+    // calculate what the ldims of this tensor would be if we reshape a tensor
     // with shape `ref_orig_ldims` and ldims `ref_tensor->ldims` into another
     // shape `this->ldims`.
     Dims ref_bldims = elem_to_bytes(ref_tensor->ldims, ref_tensor->type);
