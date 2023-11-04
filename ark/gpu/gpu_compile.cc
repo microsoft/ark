@@ -122,8 +122,8 @@ static const std::string gpu_compile_command(
     // TODO: use the compiler found by cmake.
     args.emplace_back("/usr/bin/hipcc");
     args.emplace_back("--genco");
-#if (ARK_DEBUG_KERNEL != 0)
-    args.emplace_back("-O3");
+#if (ARK_DEBUG_KERNEL)
+    args.emplace_back("-O0");
 #endif  // (ARK_DEBUG_KERNEL)
     args.emplace_back("-std=c++17");
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);

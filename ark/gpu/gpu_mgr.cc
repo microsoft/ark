@@ -407,6 +407,10 @@ GpuPtr GpuMgrCtx::get_request_ref() const {
 //
 GpuCommSw *GpuMgrCtx::get_comm_sw() const { return this->comm_sw.get(); }
 
+const GpuInfo &GpuMgrCtx::get_gpu_info() const {
+    return this->gpu_mgr->get_gpu_info();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Global GpuMgr vector.

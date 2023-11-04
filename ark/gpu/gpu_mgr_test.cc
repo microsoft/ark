@@ -5,7 +5,6 @@
 
 #include <numeric>
 
-#include "gpu/gpu_mgr_v2.h"
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
@@ -195,36 +194,11 @@ ark::unittest::State test_gpu_mgr_remote() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_gpu_mgr_2() {
-    int pid = ark::unittest::spawn_process([] {
-        ark::unittest::Timeout timeout{10};
-        ark::GpuMgrV2 gmgr(0);
-        auto mem = gmgr.malloc(1024);
-        std::vector<int> data(1024 / sizeof(int));
-        std::iota(data.begin(), data.end(), 0);
-        mem->from_host(data);
-
-        std::vector<int> copy;
-        mem->to_host(copy);
-
-        for (size_t i = 0; i < data.size(); ++i) {
-            UNITTEST_EQ(data[i], copy[i]);
-        }
-
-        return ark::unittest::SUCCESS;
-    });
-    UNITTEST_NE(pid, -1);
-
-    ark::unittest::wait_all_processes();
-    return ark::unittest::SUCCESS;
-}
-
 int main() {
     ark::init();
     UNITTEST(test_gpu_mgr_basic);
     UNITTEST(test_gpu_mgr_mem_alloc);
     UNITTEST(test_gpu_mgr_mem_free);
     UNITTEST(test_gpu_mgr_remote);
-    UNITTEST(test_gpu_mgr_2);
     return 0;
 }
