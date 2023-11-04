@@ -1,18 +1,17 @@
 trigger:
 - main
 
-# pr:
-#   branches:
-#     include:
-#     - main
-#   drafts: false
-pr: none
+pr:
+  branches:
+    include:
+    - main
+  drafts: false
 
 jobs:
 - job: UnitTest
   timeoutInMinutes: 30
   pool:
-    name: msll
+    name: mscclpp
   strategy:
     matrix:
       cuda11:
@@ -85,7 +84,7 @@ jobs:
     inputs:
       targetType: 'inline'
       script: |
-        cd build && ARK_ROOT=$PWD ctest --verbose
+        cd build && ARK_ROOT=$PWD ctest --verbose --schedule-random --stop-time=$(date -Iminutes)
       workingDirectory: '$(System.DefaultWorkingDirectory)'
 
   - task: Bash@3

@@ -377,27 +377,12 @@ void DefaultScheduler::configure_gpu_buf(
                 auto op_tns = tns_vec[i];
                 if (tile.x < 0) tile.x = 1;
                 if (tile.y < 0) tile.y = 1;
-                std::vector<DimType> tmp;
-                tmp.emplace_back(tile.x);
-                tmp.emplace_back(tile.y);
-                Dims tile_dims(tmp);
-                auto orig_ldims = op_tns->ldims;
-                auto orig_ldims_bytes = op_tns->ldims_bytes();
+                Dims tile_dims(tile.x, tile.y);
+                Dims orig_ldims = op_tns->ldims;
                 op_tns->update_pads(tile_dims);
                 for (auto tns : bufs[op_tns->buf]) {
                     if (tns == op_tns) continue;
-                    if (tns->ldims_bytes() == orig_ldims_bytes) {
-                        tns->update_pads(tile_dims, orig_ldims, op_tns->ldims);
-                        if (tns->ldims_bytes() != op_tns->ldims_bytes()) {
-                            LOG(ERROR, padding_error_msg,
-                                " op=", sop.get_op()->name,
-                                ", tile=", tile_dims, ", ldims ", tns->ldims,
-                                " vs ", op_tns->ldims);
-                        }
-                    } else {
-                        LOG(ERROR, padding_error_msg, " ", tns->name,
-                            tns->ldims, " vs ", op_tns->name, orig_ldims);
-                    }
+                    tns->update_pads(tile_dims, op_tns, orig_ldims);
                 }
             }
         }
