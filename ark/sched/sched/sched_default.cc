@@ -374,38 +374,15 @@ void DefaultScheduler::configure_gpu_buf(
                            sop.get_op()->outputs.end());
             for (size_t i = 0; i < tns_vec.size(); ++i) {
                 auto tile = tile_vec[i];
+                auto op_tns = tns_vec[i];
                 if (tile.x < 0) tile.x = 1;
                 if (tile.y < 0) tile.y = 1;
-                std::vector<DimType> pads;
-                if (tns_vec[i]->ndims() == 1) {
-                    if (tile.x != 1) {
-                        LOG(ERROR, "invalid tile shape for 1D tensor: {",
-                            tile.x, ", ", tile.y, "}");
-                    }
-                    pads.emplace_back(tile.y);
-                } else {
-                    for (int j = 0; j < tns_vec[i]->ndims() - 2; ++j) {
-                        pads.emplace_back(1);
-                    }
-                    pads.emplace_back(tile.x);
-                    pads.emplace_back(tile.y);
-                }
-                auto op_tns = tns_vec[i];
-                auto orig_ldims = op_tns->ldims;
-                auto orig_ldims_bytes = op_tns->ldims_bytes();
-                op_tns->update_pads(pads);
+                Dims tile_dims(tile.x, tile.y);
+                Dims orig_ldims = op_tns->ldims;
+                op_tns->update_pads(tile_dims);
                 for (auto tns : bufs[op_tns->buf]) {
                     if (tns == op_tns) continue;
-                    if (tns->ldims_bytes() == orig_ldims_bytes) {
-                        tns->update_pads(pads);
-                        if (tns->ldims_bytes() != op_tns->ldims_bytes()) {
-                            LOG(ERROR, padding_error_msg, " ", tns->ldims,
-                                " vs ", op_tns->ldims);
-                        }
-                    } else {
-                        LOG(ERROR, padding_error_msg, " ", tns->name,
-                            tns->ldims, " vs ", op_tns->name, orig_ldims);
-                    }
+                    tns->update_pads(tile_dims, op_tns, orig_ldims);
                 }
             }
         }
