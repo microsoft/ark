@@ -142,6 +142,7 @@ ostream &operator<<(ostream &os, const OpType &s) {
     case OP_RMSNORM:       os << "OP_RMSNORM";       break;
     case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
     case OP_RELU:          os << "OP_RELU";          break;
+    case OP_COPY:          os << "OP_COPY";          break;
     case OP_SIGMOID:       os << "OP_SIGMOID";       break;
     case OP_GELU:          os << "OP_GELU";          break;
     case OP_EXP:           os << "OP_EXP";           break;
@@ -509,6 +510,8 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
         case OP_RELU:
             return static_cast<const ReluOp *>(this)->function_name(cfg);
+        case OP_COPY:
+            return static_cast<const CopyOp *>(this)->function_name(cfg);
         case OP_SIGMOID:
             return static_cast<const SigmoidOp *>(this)->function_name(cfg);
         case OP_GELU:

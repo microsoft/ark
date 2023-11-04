@@ -39,7 +39,7 @@ void test_all_reduce_4gpus_internal(size_t nelem, int iter) {
                                               ark::half_t(1.0f));
             auto result =
                 ark::op_test("all_reduce", m, {ones}, {output},
-                             baseline_all_reduce<ark::half_t, num_gpus>,
+                             baseline_all_reduce<ark::half_t, 4>,
                              {ones_vec.data()}, false, gpu_id, num_gpus);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
@@ -64,7 +64,7 @@ void test_local_all_reduce_8gpus_internel(size_t nelem, int iter) {
                 m.local_all_reduce_msll(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_reduce", m, {data}, {output},
-                             baseline_all_reduce<ark::half_t, num_gpus>,
+                             baseline_all_reduce<ark::half_t, 8>,
                              {data_buf.data()}, true, gpu_id, num_gpus, 16);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
@@ -89,7 +89,7 @@ void test_local_all_reduce_packet_8gpus_internel(size_t nelem, int iter) {
                 m.local_all_reduce_packet_msll(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_reduce_packet", m, {data}, {output},
-                             baseline_all_reduce<ark::half_t, num_gpus>,
+                             baseline_all_reduce<ark::half_t, 8>,
                              {data_buf.data()}, false, gpu_id, num_gpus, 16);
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
