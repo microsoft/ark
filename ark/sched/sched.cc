@@ -158,17 +158,18 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
             output->shape, ", available tiles: ", configs_str.str());
     }
     const OpConfig *cfg;
-    auto &candidates = high_priority_candidates.empty()
-                           ? config_candidates
-                           : high_priority_candidates;
-    // sort by the total number of warps needed
-    std::sort(candidates.begin(), candidates.end(),
-              [](const std::pair<const OpConfig *, int> &a,
-                 const std::pair<const OpConfig *, int> &b) {
-                  return a.first->num_warps * a.second >
-                         b.first->num_warps * b.second;
-              });
-    cfg = candidates.back().first;
+    if (high_priority_candidates.empty()) {
+        // sort by the total number of warps needed
+        std::sort(config_candidates.begin(), config_candidates.end(),
+                  [](const std::pair<const OpConfig *, int> &a,
+                     const std::pair<const OpConfig *, int> &b) {
+                      return a.first->num_warps * a.second >
+                             b.first->num_warps * b.second;
+                  });
+        cfg = config_candidates.back().first;
+    } else {
+        cfg = high_priority_candidates.back().first;
+    }
     return cfg;
 }
 
