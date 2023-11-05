@@ -4,10 +4,10 @@
 #include "ops_common.h"
 
 #include <algorithm>
+#include <cassert>
 #include <ostream>
 
 #include "include/ark.h"
-#include "json.h"
 #include "logging.h"
 
 using namespace std;
@@ -108,60 +108,6 @@ const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
         return search->second;
     }
     return NoneConfigs;
-}
-
-ostream &operator<<(ostream &os, const OpType &s) {
-    // clang-format off
-    switch (s) {
-    case OP_UNKNOWN:       os << "OP_UNKNOWN";       break;
-    case OP_TENSOR:        os << "OP_TENSOR";        break;
-    case OP_REFER:         os << "OP_REFER";         break;
-    case OP_RESHAPE:       os << "OP_RESHAPE";       break;
-    case OP_MERGE:         os << "OP_MERGE";         break;
-    case OP_REDUCE_E_SUM:  os << "OP_REDUCE_E_SUM";  break;
-    case OP_REDUCE_E_MEAN: os << "OP_REDUCE_E_MEAN"; break;
-    case OP_REDUCE_E_MAX:  os << "OP_REDUCE_E_MAX";  break;
-    case OP_REDUCE_W_SUM:  os << "OP_REDUCE_W_SUM";  break;
-    case OP_REDUCE_W_MEAN: os << "OP_REDUCE_W_MEAN"; break;
-    case OP_REDUCE_W_MAX:  os << "OP_REDUCE_W_MAX";  break;
-    case OP_SCALE:         os << "OP_SCALE";         break;
-    case OP_MATMUL:        os << "OP_MATMUL";        break;
-    case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
-    case OP_ADD:           os << "OP_ADD";           break;
-    case OP_SUB:           os << "OP_SUB";           break;
-    case OP_MUL:           os << "OP_MUL";           break;
-    case OP_DIV:           os << "OP_DIV";           break;
-    case OP_IM2COL:        os << "OP_IM2COL";        break;
-    case OP_TRANSPOSE:     os << "OP_TRANSPOSE";     break;
-    case OP_SEND:          os << "OP_SEND";          break;
-    case OP_SEND_DONE:     os << "OP_SEND_DONE";     break;
-    case OP_SEND_MM:       os << "OP_SEND_MM";       break;
-    case OP_RECV:          os << "OP_RECV";          break;
-    case OP_RECV_MM:       os << "OP_RECV_MM";       break;
-    case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
-    case OP_RMSNORM:       os << "OP_RMSNORM";       break;
-    case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
-    case OP_RELU:          os << "OP_RELU";          break;
-    case OP_COPY:          os << "OP_COPY";          break;
-    case OP_SIGMOID:       os << "OP_SIGMOID";       break;
-    case OP_GELU:          os << "OP_GELU";          break;
-    case OP_EXP:           os << "OP_EXP";           break;
-    case OP_SQRT:          os << "OP_SQRT";          break;
-    case OP_SEND_MSLL:      os << "OP_SEND_MSLL";  break;
-    case OP_SEND_DONE_MSLL: os << "OP_SEND_DONE_MSLL"; break;
-    case OP_RECV_MSLL:      os << "OP_RECV_MSLL";  break;
-    case OP_ROPE:          os << "OP_ROPE";          break;
-    case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
-    case OP_CAST:          os << "OP_CAST";          break;
-    case OP_DEVICE_SYNC_MSLL:       os << "OP_DEVICE_SYNC_MSLL";       break;
-    case OP_READ_AND_REDUCE_MSLL:   os << "OP_READ_AND_REDUCE_MSLL";   break;
-    case OP_GATHER_FROM_PEERS_MSLL: os << "OP_GATHER_FROM_PEERS_MSLL"; break;
-    case OP_PUT_PACKET_MSLL:        os << "OP_PUT_PACKET_MSLL";        break;
-    case OP_REDUCE_AND_WRITE_PACKET_MSLL: os << "OP_REDUCE_AND_WRITE_PACKET_MSLL"; break;
-    case OP_GET_FROM_PACKET_MSLL:  os << "OP_GET_FROM_PACKET_MSLL";   break;
-    }
-    // clang-format on
-    return os;
 }
 
 OpArg::OpArg(int arg) : type{OP_ARG_INT}, val{new int{arg}} {
