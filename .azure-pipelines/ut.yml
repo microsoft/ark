@@ -84,7 +84,7 @@ jobs:
     inputs:
       targetType: 'inline'
       script: |
-        cd build && ARK_ROOT=$PWD ctest --verbose
+        cd build && ARK_ROOT=$PWD ctest --verbose --schedule-random --stop-time=$(date -Iminutes)
       workingDirectory: '$(System.DefaultWorkingDirectory)'
 
   - task: Bash@3
