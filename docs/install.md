@@ -12,9 +12,11 @@
 
 * CMake >= 3.25.0 and Python >= 3.8
 
-* GPUs with CUDA compute capability 7.0 (CUDA >= 11.1) / 8.0 (CUDA >= 11.1) / 9.0 (CUDA >= 12.0)
-
-    - Compute capability 9.0 support will be added in the future.
+* Supported GPUs
+    - NVIDIA GPUs: Volta (CUDA >= 11.1) / Ampere (CUDA >= 11.1) / Hopper (CUDA >= 12.0)
+        - Hopper support will be added in the future.
+    - AMD GPUs: CDNA2 (ROCm >= 5.0) / CDNA3
+        - CDNA3 support will be added in the future.
 
 * Mellanox OFED
 
@@ -22,14 +24,17 @@
 
 We currently provide only *base images* for ARK, which contain all the dependencies for ARK but do not contain ARK itself (no [`gpudma`](https://github.com/microsoft/ark/blob/main/docs/install.md#install-gpudma) as well, which should be installed on the host side). The ARK-installed images will be provided in the future.
 
-You can pull a base image via:
+You can pull a base image as follows.
 ```
-docker pull ghcr.io/microsoft/ark/ark:base-cuda12.1
+# For NVIDIA GPUs
+docker pull ghcr.io/microsoft/ark/ark:base-dev-cuda12.1
+# For AMD GPUs
+docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.7
 ```
 
 Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
-To run ARK in a Docker container, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Specifically, add `--privileged -v /dev:/dev -v /lib/modules:/lib/modules` in the `docker run` command. The following is an example.
+To run ARK in a Docker container with NVIDIA GPUs, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Specifically, add `--privileged -v /dev:/dev -v /lib/modules:/lib/modules` in the `docker run` command. The following is an example.
 ```
 docker run \
     --privileged \
@@ -45,9 +50,11 @@ docker run \
     -it --name [Container Name] [Image Name] bash
 ```
 
-## Install `gpudma`
+AMD GPUs do not need `gpudma` driver, so you don't need to mount `/dev` and `/lib/modules` into the container.
 
-**NOTE: if you are using a Docker container, the steps in this section should be done on the host.**
+## Install `gpudma` (NVIDIA GPUs only)
+
+**NOTE: if you are using a CUDA Docker container, the steps in this section should be done on the host.**
 
 1. Pull submodules.
 
@@ -123,9 +130,9 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     make -j ut
     ```
 
-    **NOTE:** currently unit tests require at least 4 GPUs in the system for communication tests. GPUs also need to be peer-to-peer accessible (e.g., on the same PCIe switch or using NVLink).
+    **NOTE:** currently unit tests require at least 4 GPUs in the system for communication tests. GPUs also need to be peer-to-peer accessible (e.g., on the same PCIe switch or using NVLink/xGMI).
 
-    Lock GPU clock frequency for stable test results:
+    Lock GPU clock frequency for stable test results. For example, on NVIDIA GPUs:
 
     ```bash
     sudo nvidia-smi -pm 1
