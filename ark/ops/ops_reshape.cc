@@ -6,6 +6,7 @@
 
 #include "logging.h"
 #include "model.h"
+#include "tensor.h"
 
 namespace ark {
 
@@ -54,10 +55,6 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
     }
     Dims new_shape{inferred_shape};
 
-    // Infer the new ldims and offs
-    std::vector<DimType> reverse_ldims;
-    std::vector<DimType> reverse_offs;
-
     std::stringstream ss;
     ss << "reshape failed as the ldims of the input tensor is incompatible "
           "with the new shape. A workaround is copying the input tensor to a "
@@ -66,77 +63,12 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
        << ", new shape " << new_shape;
     auto incompatible_ldims_error = ss.str();
 
-    int orig_idx = input->shape.ndims() - 1;
-    int new_idx = new_shape.ndims() - 1;
-    DimType orig_shape_stack = input->shape[orig_idx];
-    DimType new_shape_stack = new_shape[new_idx];
-    DimType orig_ldim_stack = input->ldims[orig_idx];
-    DimType div_stack = 1;
-    while (orig_idx >= 0 && new_idx >= 0) {
-        if (orig_shape_stack == new_shape_stack) {
-            if (orig_ldim_stack % div_stack != 0) {
-                LOG(ERROR, incompatible_ldims_error);
-            }
-            DimType new_off = input->offs[orig_idx];
-            for (auto i = orig_idx + 1; i < input->ldims.ndims(); i++) {
-                new_off *= input->ldims[i];
-            }
-            std::for_each(reverse_ldims.begin(), reverse_ldims.end(),
-                          [&new_off](DimType d) { new_off /= d; });
-
-            reverse_ldims.push_back(orig_ldim_stack / div_stack);
-            reverse_offs.push_back(new_off);
-            div_stack = 1;
-            new_idx--;
-            orig_idx--;
-            if (new_idx >= 0) {
-                new_shape_stack = new_shape[new_idx];
-            }
-            if (orig_idx >= 0) {
-                orig_shape_stack = input->shape[orig_idx];
-                orig_ldim_stack = input->ldims[orig_idx];
-            }
-        } else if (orig_shape_stack > new_shape_stack) {
-            div_stack *= new_shape[new_idx];
-            reverse_ldims.push_back(new_shape[new_idx]);
-            reverse_offs.push_back(0);
-            new_idx--;
-            if (new_idx >= 0) {
-                new_shape_stack *= new_shape[new_idx];
-            }
-        } else {
-            if (input->ldims[orig_idx] != input->shape[orig_idx] ||
-                input->offs[orig_idx] != 0) {
-                LOG(ERROR, incompatible_ldims_error);
-            }
-            orig_idx--;
-            if (orig_idx >= 0) {
-                orig_shape_stack *= input->shape[orig_idx];
-                orig_ldim_stack *= input->ldims[orig_idx];
-            }
-        }
-    }
-    while (new_idx >= 0 && new_shape[new_idx] == 1) {
-        reverse_ldims.push_back(1);
-        reverse_offs.push_back(0);
-        new_idx--;
-    }
-    while (orig_idx >= 0 && input->shape[orig_idx] == 1) {
-        if (input->ldims[orig_idx] != input->shape[orig_idx] ||
-            input->offs[orig_idx] != 0) {
-            LOG(ERROR, incompatible_ldims_error);
-        }
-        orig_idx--;
-    }
-    if (orig_idx >= 0 || new_idx >= 0) {
+    Dims new_ldims;
+    Dims new_offs;
+    if (!tensor_reshape_helper(input->shape, input->ldims, input->offs,
+                               new_shape, new_ldims, new_offs)) {
         LOG(ERROR, incompatible_ldims_error);
     }
-
-    std::reverse(reverse_ldims.begin(), reverse_ldims.end());
-    std::reverse(reverse_offs.begin(), reverse_offs.end());
-    Dims new_ldims{reverse_ldims};
-    Dims new_offs{reverse_offs};
-
     if (output != nullptr) {
         // Verfiy given `output`
         if (input->type != output->type) {

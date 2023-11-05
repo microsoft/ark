@@ -366,45 +366,28 @@ void DefaultScheduler::configure_gpu_buf(
 
     for (auto &opseq : this->opseqs) {
         for (auto &sop : opseq->get_sched_ops()) {
-            auto tile_vec = sop.get_cfg()->input_tiles;
-            auto tns_vec = sop.get_op()->inputs;
-            tile_vec.insert(tile_vec.end(), sop.get_cfg()->output_tiles.begin(),
-                            sop.get_cfg()->output_tiles.end());
-            tns_vec.insert(tns_vec.end(), sop.get_op()->outputs.begin(),
-                           sop.get_op()->outputs.end());
+            auto op = sop.get_op();
+            auto cfg = sop.get_cfg();
+            auto tile_vec = cfg->input_tiles;
+            auto tns_vec = op->inputs;
+            tile_vec.insert(tile_vec.end(), cfg->output_tiles.begin(),
+                            cfg->output_tiles.end());
+            tns_vec.insert(tns_vec.end(), op->outputs.begin(),
+                           op->outputs.end());
             for (size_t i = 0; i < tns_vec.size(); ++i) {
                 auto tile = tile_vec[i];
+                auto op_tns = tns_vec[i];
                 if (tile.x < 0) tile.x = 1;
                 if (tile.y < 0) tile.y = 1;
-                std::vector<DimType> pads;
-                if (tns_vec[i]->ndims() == 1) {
-                    if (tile.x != 1) {
-                        LOG(ERROR, "invalid tile shape for 1D tensor: {",
-                            tile.x, ", ", tile.y, "}");
-                    }
-                    pads.emplace_back(tile.y);
-                } else {
-                    for (int j = 0; j < tns_vec[i]->ndims() - 2; ++j) {
-                        pads.emplace_back(1);
-                    }
-                    pads.emplace_back(tile.x);
-                    pads.emplace_back(tile.y);
+                Dims tile_dims(tile.x, tile.y);
+                Dims orig_ldims = op_tns->ldims;
+                if (!op_tns->update_pads(tile_dims)) {
+                    LOG(ERROR, padding_error_msg, " Op name: ", op->name);
                 }
-                auto op_tns = tns_vec[i];
-                auto orig_ldims = op_tns->ldims;
-                auto orig_ldims_bytes = op_tns->ldims_bytes();
-                op_tns->update_pads(pads);
                 for (auto tns : bufs[op_tns->buf]) {
                     if (tns == op_tns) continue;
-                    if (tns->ldims_bytes() == orig_ldims_bytes) {
-                        tns->update_pads(pads);
-                        if (tns->ldims_bytes() != op_tns->ldims_bytes()) {
-                            LOG(ERROR, padding_error_msg, " ", tns->ldims,
-                                " vs ", op_tns->ldims);
-                        }
-                    } else {
-                        LOG(ERROR, padding_error_msg, " ", tns->name,
-                            tns->ldims, " vs ", op_tns->name, orig_ldims);
+                    if (!tns->update_pads(tile_dims, op_tns, orig_ldims)) {
+                        LOG(ERROR, padding_error_msg, " Op name: ", op->name);
                     }
                 }
             }
