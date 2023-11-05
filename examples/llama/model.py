@@ -87,7 +87,7 @@ class RMSNorm(ark.Module):
         super().__init__()
         self.eps = eps
         self.dtype = dtype
-        self.weight = ark.parameter([dim], ark.fp32)
+        self.weight = ark.parameter([1, 1, dim], ark.fp32)
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
@@ -96,7 +96,7 @@ class RMSNorm(ark.Module):
     def forward(self, x):
         x = ark.cast(x, ark.fp32)
         output = self._norm(x)
-        output = ark.mul(output, ark.reshape(self.weight, [1, 1, -1]))
+        output = ark.mul(output, self.weight)
         return ark.cast(output, self.dtype)
 
 
