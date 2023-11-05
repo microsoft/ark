@@ -338,7 +338,7 @@ std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const {
        << "threadIdx.x / " << opseq->get_num_warps() * 32 << " + " << sched.beta
        << ");\n";
     os << "    "
-       << "ark::sync_warps<" << opseq->get_num_warps() * 32 << ">();\n";
+       << "ark::sync_warps<" << opseq->get_num_warps() << ">();\n";
     os << "  }\n"
        << " }\n";
     return os;

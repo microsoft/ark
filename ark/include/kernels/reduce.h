@@ -6,7 +6,11 @@
 
 #include <type_traits>
 
+#include "arch.h"
 #include "ewise.h"
+#include "shfl.h"
+#include "type_intrinsics.h"
+#include "vector_type.h"
 
 namespace ark {
 
@@ -20,7 +24,7 @@ typedef enum {
 // Shared memory for reduction.
 template <typename DataType>
 struct ReduceSharedStorage {
-    DataType storage[32];
+    DataType storage[Arch::ThreadsPerWarp];
 };
 
 // Reduce single-precision `val` within a single warp.
@@ -28,70 +32,46 @@ template <typename ReduceType, int LanesNum, typename DataType>
 DEVICE DataType warpReduce(DataType val) {
     DataType res = val;
     DataType tmp;
-    if (LanesNum >= 32) {
-        tmp = __shfl_xor_sync(0xffffffff, res, 16, 32);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 8, 16);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 4, 8);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 2, 4);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-        tmp = __shfl_xor_sync(0xffffffff, res, 1, 2);
-        ReduceType::reduce<1>(&res, &res, &tmp);
-    } else {
-        if (LanesNum > 16) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 16, 32);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 8) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 8, 16);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 4) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 4, 8);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 2) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 2, 4);
-            ReduceType::reduce<1>(&res, &res, &tmp);
-        }
-        if (LanesNum > 1) {
-            tmp = __shfl_xor_sync(0xffffffff, res, 1, 2);
-            ReduceType::reduce<1>(&res, &res, &tmp);
+    constexpr int iter =
+        math::log2_up<math::min<LanesNum, Arch::ThreadsPerWarp>::value>::value;
+    if constexpr (iter > 0) {
+#pragma unroll
+        for (int i = (1 << (iter - 1)); i > 0; i /= 2) {
+            tmp = SHFL_XOR(res, i, i * 2);
+            ReduceType::template reduce<1>(&res, &res, &tmp);
         }
     }
     return res;
 }
 
-// Reduce bfloat16 `val` within a single warp.
+// Reduce bf16 `val` within a single warp.
 template <typename ReduceType, int LanesNum>
-DEVICE bfloat16 warpReduce(bfloat16 val) {
-    float tmp(val);
+DEVICE bf16 warpReduce(bf16 val) {
+    float tmp = type::Cast::compute<float>(val);
     tmp = warpReduce<ReduceType, LanesNum, float>(tmp);
-    return bfloat16(tmp);
+    return type::Cast::compute<bf16>(tmp);
 }
 
 // Reduce single-precision `val` within multiple warps.
 template <typename ReduceType, typename UnitOp, int LanesNum, typename DataType>
 DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp) {
     val = warpReduce<ReduceType, LanesNum>(val);
-    if (LanesNum > 32) {
+    if (LanesNum > Arch::ThreadsPerWarp) {
         ReduceSharedStorage<DataType> *shared =
             UnitOp::template shared_memory<ReduceSharedStorage<DataType>>(
                 smem_per_warp);
-        int laneId = tid & 31;
-        int warpId = tid >> 5;
+        int laneId = tid & (Arch::ThreadsPerWarp - 1);
+        int warpId = tid >> math::log2_up<Arch::ThreadsPerWarp>::value;
         if (laneId == 0) {
             shared->storage[warpId] = val;
         }
         UnitOp::sync_threads();
-        if (laneId < (LanesNum >> 5)) {
+        if (laneId < (LanesNum >> math::log2_up<Arch::ThreadsPerWarp>::value)) {
             val = shared->storage[laneId];
         } else {
-            ReduceType::identity<1>(&val);
+            ReduceType::template identity<1>(&val);
         }
-        val = warpReduce<ReduceType, 32>(val);
+        val = warpReduce<ReduceType, Arch::ThreadsPerWarp>(val);
     }
     return val;
 }
@@ -124,218 +104,224 @@ struct ReduceShapeChecker {
 struct ReduceTypeSum {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
+                type::Constant<typename type::Vtype<DataType, 4>::type>::zero();
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
+                type::Constant<typename type::Vtype<DataType, 2>::type>::zero();
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            v[elem] = type::Constant<DataType>::zero();
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                v[elem] = type::Constant<DataType>::zero();
+            }
         }
     }
 
     template <int NelemPerThread, typename DataType>
     static DEVICE void reduce(DataType *out, const DataType *in0,
                               const DataType *in1) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
+                type::Add::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in0),
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in1));
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
+                type::Add::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in0),
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in1));
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            out[elem] = type::Add::compute(in0[elem], in1[elem]);
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                out[elem] = type::Add::compute(in0[elem], in1[elem]);
+            }
         }
     }
 
     template <int NelemPerThread, typename DataType>
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
+                *reinterpret_cast<
+                    const typename type::Vtype<DataType, 4>::type *>(in);
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
+                *reinterpret_cast<
+                    const typename type::Vtype<DataType, 2>::type *>(in);
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            out[elem] = in[elem];
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                out[elem] = in[elem];
+            }
         }
     }
-
-    // template <>
-    // static DEVICE void identity<2, half>(half *v) {
-    //     *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
-    // }
-
-    // template <>
-    // static DEVICE void reduce<2, half>(half *out, const half *in0,
-    //                                    const half *in1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    //     const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    //     *out2 = type::Add::compute(*in02, *in12);
-    // }
-
-    // template <>
-    // static DEVICE void postReduce<2, half>(half *out, const half *in,
-    //                                        int nelem = 1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    //     *out2 = *in2;
-    // }
 };
-
-template <>
-DEVICE void ReduceTypeSum::identity<2, half>(half *v) {
-    *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
-}
-
-template <>
-DEVICE void ReduceTypeSum::reduce<2, half>(half *out, const half *in0,
-                                           const half *in1) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    *out2 = type::Add::compute(*in02, *in12);
-}
-
-template <>
-DEVICE void ReduceTypeSum::postReduce<2, half>(half *out, const half *in,
-                                               int nelem) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    *out2 = *in2;
-}
 
 struct ReduceTypeMax {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
+                type::Constant<
+                    typename type::Vtype<DataType, 4>::type>::lowest();
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
+                type::Constant<
+                    typename type::Vtype<DataType, 2>::type>::lowest();
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            v[elem] = type::Constant<DataType>::lowest();
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                v[elem] = type::Constant<DataType>::lowest();
+            }
         }
     }
 
     template <int NelemPerThread, typename DataType>
     static DEVICE void reduce(DataType *out, const DataType *in0,
                               const DataType *in1) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
+                type::Max::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in0),
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in1));
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
+                type::Max::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in0),
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in1));
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            out[elem] = type::Max::compute(in0[elem], in1[elem]);
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                out[elem] = type::Max::compute(in0[elem], in1[elem]);
+            }
         }
     }
 
     template <int NelemPerThread, typename DataType>
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
+                *reinterpret_cast<
+                    const typename type::Vtype<DataType, 4>::type *>(in);
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
+                *reinterpret_cast<
+                    const typename type::Vtype<DataType, 2>::type *>(in);
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            out[elem] = in[elem];
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                out[elem] = in[elem];
+            }
         }
     }
-
-    // template <>
-    // static DEVICE void identity<2, half>(half *v) {
-    //     *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::lowest();
-    // }
-
-    // template <>
-    // static DEVICE void reduce<2, half>(half *out, const half *in0, const half
-    // *in1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    //     const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    //     *out2 = type::Max::compute(*in02, *in12);
-    // }
-
-    // template <>
-    // static DEVICE void postReduce<2, half>(half *out, const half *in,
-    //                               int nelem = 1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    //     *out2 = *in2;
-    // }
 };
-
-template <>
-DEVICE void ReduceTypeMax::identity<2, half>(half *v) {
-    *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::lowest();
-}
-
-template <>
-DEVICE void ReduceTypeMax::reduce<2, half>(half *out, const half *in0,
-                                           const half *in1) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    *out2 = type::Max::compute(*in02, *in12);
-}
-
-template <>
-DEVICE void ReduceTypeMax::postReduce<2, half>(half *out, const half *in,
-                                               int nelem) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    *out2 = *in2;
-}
 
 struct ReduceTypeMean {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
+                type::Constant<typename type::Vtype<DataType, 4>::type>::zero();
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
+                type::Constant<typename type::Vtype<DataType, 2>::type>::zero();
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            v[elem] = type::Constant<DataType>::zero();
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                v[elem] = type::Constant<DataType>::zero();
+            }
         }
     }
 
     template <int NelemPerThread, typename DataType>
     static DEVICE void reduce(DataType *out, const DataType *in0,
                               const DataType *in1) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
+                type::Add::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in0),
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in1));
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
+                type::Add::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in0),
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in1));
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            out[elem] = type::Add::compute(in0[elem], in1[elem]);
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                out[elem] = type::Add::compute(in0[elem], in1[elem]);
+            }
         }
     }
 
     template <int NelemPerThread, typename DataType>
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
+        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
+                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+            int4 nelem4 = make_int4(nelem, nelem, nelem, nelem);
+            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
+                type::Div::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 4>::type *>(in),
+                    nelem4);
+        } else if constexpr ((NelemPerThread == 2) &&
+                             type::VtypeExists<
+                                 type::Vtype<DataType, 2>>::value) {
+            int2 nelem2 = make_int2(nelem, nelem);
+            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
+                type::Div::compute(
+                    *reinterpret_cast<
+                        const typename type::Vtype<DataType, 2>::type *>(in),
+                    nelem2);
+        } else {
 #pragma unroll
-        for (int elem = 0; elem < NelemPerThread; ++elem) {
-            out[elem] = type::Div::compute(in[elem], DataType(nelem));
+            for (int elem = 0; elem < NelemPerThread; ++elem) {
+                out[elem] = type::Div::compute(
+                    in[elem], type::Cast::compute<DataType>(nelem));
+            }
         }
     }
-
-    // template <>
-    // static DEVICE void identity<2, half>(half *v) {
-    //     *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
-    // }
-
-    // template <>
-    // static DEVICE void reduce<2, half>(half *out, const half *in0,
-    //                           const half *in1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    //     const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    //     *out2 = type::Add::compute(*in02, *in12);
-    // }
-
-    // template <>
-    // static DEVICE void postReduce<2, half>(half *out, const half *in,
-    //                               int nelem = 1) {
-    //     __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    //     const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    //     *out2 = type::Div::compute(*in2, __float2half2_rn((float)nelem));
-    // }
 };
-
-template <>
-DEVICE void ReduceTypeMean::identity<2, half>(half *v) {
-    *reinterpret_cast<__half2 *>(v) = type::Constant<__half2>::zero();
-}
-
-template <>
-DEVICE void ReduceTypeMean::reduce<2, half>(half *out, const half *in0,
-                                            const half *in1) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in02 = reinterpret_cast<const __half2 *>(in0);
-    const __half2 *in12 = reinterpret_cast<const __half2 *>(in1);
-    *out2 = type::Add::compute(*in02, *in12);
-}
-
-template <>
-DEVICE void ReduceTypeMean::postReduce<2, half>(half *out, const half *in,
-                                                int nelem) {
-    __half2 *out2 = reinterpret_cast<__half2 *>(out);
-    const __half2 *in2 = reinterpret_cast<const __half2 *>(in);
-    *out2 = type::Div::compute(*in2, __float2half2_rn((float)nelem));
-}
 
 template <typename InDims, typename InShape, typename OutDims,
           typename ReduceType, typename _DataType, int _NelemPerThread,
@@ -356,14 +342,14 @@ struct EwiseReduceCompType<InDims, InShape, OutDims, ReduceType, _DataType,
         int idx_in = idx_c * InDims::HW + idx_h * InDims::W + idx_w;
         DataType reduced[NelemPerThread];
 
-        ReduceType::identity<NelemPerThread>(reduced);
+        ReduceType::template identity<NelemPerThread>(reduced);
 #pragma unroll
         for (int i = 0; i < InShape::N; ++i) {
-            ReduceType::reduce<NelemPerThread>(reduced, reduced,
-                                               &in[idx_in + i * InDims::CHW]);
+            ReduceType::template reduce<NelemPerThread>(
+                reduced, reduced, &in[idx_in + i * InDims::CHW]);
         }
-        ReduceType::postReduce<NelemPerThread>(&out[idx_out], reduced,
-                                               InShape::N);
+        ReduceType::template postReduce<NelemPerThread>(&out[idx_out], reduced,
+                                                        InShape::N);
     }
 };
 
@@ -381,14 +367,14 @@ struct EwiseReduceCompType<InDims, InShape, OutDims, ReduceType, _DataType,
         int idx_in = idx_n * InDims::CHW + idx_h * InDims::W + idx_w;
         DataType reduced[NelemPerThread];
 
-        ReduceType::identity<NelemPerThread>(reduced);
+        ReduceType::template identity<NelemPerThread>(reduced);
 #pragma unroll
         for (int i = 0; i < InShape::C; ++i) {
-            ReduceType::reduce<NelemPerThread>(reduced, reduced,
-                                               &in[idx_in + i * InDims::HW]);
+            ReduceType::template reduce<NelemPerThread>(
+                reduced, reduced, &in[idx_in + i * InDims::HW]);
         }
-        ReduceType::postReduce<NelemPerThread>(&out[idx_out], reduced,
-                                               InShape::C);
+        ReduceType::template postReduce<NelemPerThread>(&out[idx_out], reduced,
+                                                        InShape::C);
     }
 };
 
@@ -406,14 +392,14 @@ struct EwiseReduceCompType<InDims, InShape, OutDims, ReduceType, _DataType,
         int idx_in = idx_n * InDims::CHW + idx_c * InDims::HW + idx_w;
         DataType reduced[NelemPerThread];
 
-        ReduceType::identity<NelemPerThread>(reduced);
+        ReduceType::template identity<NelemPerThread>(reduced);
 #pragma unroll
         for (int i = 0; i < InShape::H; ++i) {
-            ReduceType::reduce<NelemPerThread>(reduced, reduced,
-                                               &in[idx_in + i * InDims::W]);
+            ReduceType::template reduce<NelemPerThread>(
+                reduced, reduced, &in[idx_in + i * InDims::W]);
         }
-        ReduceType::postReduce<NelemPerThread>(&out[idx_out], reduced,
-                                               InShape::H);
+        ReduceType::template postReduce<NelemPerThread>(&out[idx_out], reduced,
+                                                        InShape::H);
     }
 };
 
@@ -433,30 +419,30 @@ struct EwiseReduceCompType<InDims, InShape, OutDims, ReduceType, _DataType,
             idx_n * InDims::CHW + idx_c * InDims::HW + idx_h * InDims::W;
         DataType reduced[NelemPerThread];
 
-        ReduceType::identity<NelemPerThread>(reduced);
+        ReduceType::template identity<NelemPerThread>(reduced);
 #pragma unroll
         for (int i = 0; i < InShape::W; ++i) {
-            ReduceType::reduce<NelemPerThread>(reduced, reduced,
-                                               &in[idx_in + i]);
+            ReduceType::template reduce<NelemPerThread>(reduced, reduced,
+                                                        &in[idx_in + i]);
         }
 
         DataType finalSum;
-        ReduceType::identity<1>(&finalSum);
+        ReduceType::template identity<1>(&finalSum);
 #pragma unroll
         for (int i = 0; i < NelemPerThread; ++i) {
-            ReduceType::reduce<1>(&finalSum, &finalSum, &reduced[i]);
+            ReduceType::template reduce<1>(&finalSum, &finalSum, &reduced[i]);
         }
-        ReduceType::postReduce<1>(&out[idx_out], &finalSum, InShape::W);
+        ReduceType::template postReduce<1>(&out[idx_out], &finalSum,
+                                           InShape::W);
     }
 };
 
 // Reduce one dimension of input into output.
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename ReduceType, int NelemPerThread, int Axis>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename ReduceType, int NelemPerThread, int Axis>
 struct EwiseReduce {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static_assert(UnitOutDims::W % NelemPerThread == 0,
@@ -476,7 +462,7 @@ struct EwiseReduce {
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
 
         Ewise1<
-            OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
+            OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
             EwiseReduceCompType<InDims, InShape, OutDims, ReduceType, DataType,
                                 NelemPerThread, Axis>>::run(out, in, uop_idx);
     }
@@ -484,11 +470,10 @@ struct EwiseReduce {
 
 // Warp-wise reduction. Only support reduction along the W dimension.
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename ReduceType, int NelemPerThread, int Axis>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename ReduceType, int NelemPerThread, int Axis>
 struct WwiseReduce {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static_assert(UnitOutDims::W % NelemPerThread == 0,
@@ -512,13 +497,14 @@ struct WwiseReduce {
             UnitOutDims::N * UnitOutDims::C * UnitOutDims::H;
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
-        static_assert((NumThreads * NelemPerThread) % NonReduceDimLength == 0);
+        static_assert(
+            (UnitOp::NumThreads * NelemPerThread) % NonReduceDimLength == 0);
         // If we reshape the input into a 2D matrix (NCH x W), NumThreads
         // threads compute NCH rows, and each row's sum is computed by
         // ThreadsPerRow threads. If ThreadsPerRow is larger than warp size, we
         // need to use shared memory to reduce the result of each warp.
         constexpr int ThreadsPerRow =
-            (NumThreads * NelemPerThread) / NonReduceDimLength;
+            (UnitOp::NumThreads * NelemPerThread) / NonReduceDimLength;
         int tid = UnitOp::thread_id();
         int tid_w = (tid * NelemPerThread) % ThreadsPerRow;
         int tid_h = ((tid * NelemPerThread) / ThreadsPerRow) % UnitOutDims::H;
@@ -539,19 +525,18 @@ struct WwiseReduce {
 
         DataType reduced[NelemPerThread];
 
-        ReduceType::identity<NelemPerThread>(reduced);
-#pragma unroll
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            ReduceType::reduce<NelemPerThread>(reduced, reduced, &in[idx_in]);
+        ReduceType::template identity<NelemPerThread>(reduced);
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            ReduceType::template reduce<NelemPerThread>(reduced, reduced,
+                                                        &in[idx_in]);
         }
 
         DataType finalSum;
-        ReduceType::identity<1>(&finalSum);
+        ReduceType::template identity<1>(&finalSum);
 #pragma unroll
         for (int i = 0; i < NelemPerThread; ++i) {
-            ReduceType::reduce<1>(&finalSum, &finalSum, &reduced[i]);
+            ReduceType::template reduce<1>(&finalSum, &finalSum, &reduced[i]);
         }
 
         UnitOp::sync_threads();
@@ -562,61 +547,62 @@ struct WwiseReduce {
 
         // write the result to output.
         if (tid % ThreadsPerRow == 0) {
-            ReduceType::postReduce<1>(&out[idx_out], &finalSum, InShape::W);
+            ReduceType::template postReduce<1>(&out[idx_out], &finalSum,
+                                               InShape::W);
         }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int Axis, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int Axis, typename DataType>
 DEVICE void reduce_e_sum(DataType *out, DataType *in, int uop_idx, int) {
-    EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeSum, 1, Axis>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int Axis, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int Axis, typename DataType>
 DEVICE void reduce_e_mean(DataType *out, DataType *in, int uop_idx, int) {
-    EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeMean, 1, Axis>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int Axis, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int Axis, typename DataType>
 DEVICE void reduce_e_max(DataType *out, DataType *in, int uop_idx, int) {
-    EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    EwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeMax, 1, Axis>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int Axis, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int Axis, typename DataType>
 DEVICE void reduce_w_sum(DataType *out, DataType *in, int uop_idx,
                          int smem_per_warp) {
-    WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeSum, 1, Axis>::runW(out, in, uop_idx,
                                                          smem_per_warp);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int Axis, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int Axis, typename DataType>
 DEVICE void reduce_w_mean(DataType *out, DataType *in, int uop_idx,
                           int smem_per_warp) {
-    WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeMean, 1, Axis>::runW(out, in, uop_idx,
                                                           smem_per_warp);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int Axis, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int Axis, typename DataType>
 DEVICE void reduce_w_max(DataType *out, DataType *in, int uop_idx,
                          int smem_per_warp) {
-    WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeMax, 1, Axis>::runW(out, in, uop_idx,
                                                          smem_per_warp);
 }

@@ -8,14 +8,14 @@
 
 namespace ark {
 
-extern const OpConfigMap ScaleConfigMap;
+extern const OpConfigMap EwiseConfigMap;
 
-ScaleOp::ScaleOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                 float val, const std::string &name)
-    : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
-         name,     &ScaleConfigMap, -1,      true} {}
+CopyOp::CopyOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               const std::string &name)
+    : Op{OP_COPY, prec_type,       {input}, {output}, {},
+         name,    &EwiseConfigMap, -1,      true} {}
 
-std::string ScaleOp::function_name(const OpConfig &cfg) const {
+std::string CopyOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -31,7 +31,7 @@ std::string ScaleOp::function_name(const OpConfig &cfg) const {
     }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
-    return Op::function_name("ark::scale",
+    return Op::function_name("ark::copy",
                              {{
                                  input->ldims.dims4(),   // InDims
                                  input->shape.dims4(),   // InShape
@@ -43,36 +43,28 @@ std::string ScaleOp::function_name(const OpConfig &cfg) const {
                              }});
 }
 
-OpArgs ScaleOp::function_call_args(const OpConfig &) const {
-    OpArgs opargs;
-    std::vector<Tensor *> deps = this->outputs;
-    deps.insert(deps.end(), this->inputs.begin(), this->inputs.end());
-    for (Tensor *tns : deps) {
-        opargs.put(tns);
-    }
-    float val;
-    this->args.get(&val, 0);
-    opargs.put(val);
-    return opargs;
-}
-
-// Multiply `input` by `val`.
-Tensor *Model::scale(Tensor *input, float val, Tensor *output,
-                     const std::string &name) {
+Tensor *Model::copy(Tensor *input, Tensor *output, const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
         LOG(ERROR, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
-        output = this->tensor(input->shape, input->type);
+        output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOG(ERROR, "invalid output shape: ", output->shape);
+        Dims osh = output->shape.dims4();
+        Dims ish = input->shape.dims4();
+        if ((osh[0] != ish[0] && ish[0] != 1) ||
+            (osh[1] != ish[1] && ish[1] != 1) ||
+            (osh[2] != ish[2] && ish[2] != 1) ||
+            (osh[3] != ish[3] && ish[3] != 1)) {
+            LOG(ERROR, "invalid output shape: ", output->shape);
+        }
     }
-    ScaleOp op{output->type.name(), input, output, val, name};
+    CopyOp op{output->type.name(), input, output, name};
     return this->impl->add_op(op)[0];
 }
 
-const OpConfigMap ScaleConfigMap = {
+const OpConfigMap EwiseConfigMap = {
     {{OP_ARCH_CUDA_ANY, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost

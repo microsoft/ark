@@ -114,8 +114,8 @@ std::ostream &operator<<(std::ostream &os, const TensorType &type);
     const TensorType_##_type_name _type_name;
 
 REGISTER_TENSOR_TYPE(FP32, 4, "float")
-REGISTER_TENSOR_TYPE(FP16, 2, "ark::half")
-REGISTER_TENSOR_TYPE(BF16, 2, "ark::bfloat16")
+REGISTER_TENSOR_TYPE(FP16, 2, "ark::fp16")
+REGISTER_TENSOR_TYPE(BF16, 2, "ark::bf16")
 REGISTER_TENSOR_TYPE(INT32, 4, "int32_t")
 REGISTER_TENSOR_TYPE(UINT32, 4, "uint32_t")
 REGISTER_TENSOR_TYPE(INT8, 1, "int8_t")
@@ -419,6 +419,9 @@ class Model {
     // ReLU activation
     Tensor *relu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");
+    // Copy the `input` tensor to `output` tensor
+    Tensor *copy(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "copy");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.

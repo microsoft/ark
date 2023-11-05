@@ -107,6 +107,7 @@ typedef enum {
     OP_SOFTMAX,
     OP_SCALE,
     OP_RELU,
+    OP_COPY,
     OP_GELU,
     OP_SIGMOID,
     OP_EXP,
@@ -422,6 +423,13 @@ class ReduceEMeanOp : public ReduceOp {
 class ReluOp : public Op {
    public:
     ReluOp(const std::string &prec_type, Tensor *input, Tensor *output,
+           const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class CopyOp : public Op {
+   public:
+    CopyOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
