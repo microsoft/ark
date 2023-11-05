@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_KERNELS_GEMM_H_
-#define ARK_KERNELS_GEMM_H_
+#ifndef ARK_KERNELS_GEMM_CUTLASS_H_
+#define ARK_KERNELS_GEMM_CUTLASS_H_
 
 // clang-format off
 #include "cutlass/cutlass.h"
@@ -900,7 +900,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           typename DataTypeB, int LeadingDimB, bool IsColumnB,
           typename DataTypeC, int LeadingDimC, int ProblemSizeM,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
-          int TileSizeK, typename UnitOp, int NumThreads, int SmemBytes>
+          int TileSizeK, typename UnitOp>
 DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                       int smem_per_warp) {
 #if (ARK_TARGET_CUDA_ARCH == 60)
@@ -929,8 +929,8 @@ DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         cutlass::gemm::GemmShape<TileSizeM, TileSizeN,
                                  TileSizeK>>::Gemm::GemmKernel;
 
-    IsEq<GemmKernel::kThreadCount, NumThreads>();
-    IsEq<sizeof(GemmKernel::SharedStorage), SmemBytes>();
+    IsEq<GemmKernel::kThreadCount, UnitOp::NumThreads>();
+    IsEq<sizeof(GemmKernel::SharedStorage), UnitOp::SmemBytes>();
 
     LayoutA layout_a(LeadingDimA);
     LayoutB layout_b(LeadingDimB);
@@ -968,7 +968,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           typename DataTypeB, int LeadingDimB, bool IsColumnB,
           typename DataTypeC, int LeadingDimC, int ProblemSizeM,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
-          int TileSizeK, typename UnitOp, int NumThreads, int SmemBytes>
+          int TileSizeK, typename UnitOp>
 DEVICE void gemm_cuda_90(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                          int smem_per_warp) {
 #if 1
@@ -997,8 +997,8 @@ DEVICE void gemm_cuda_90(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         cutlass::gemm::GemmShape<TileSizeM, TileSizeN, TileSizeK>>;
     using GemmKernel = typename GemmConfig::Gemm::GemmKernel;
 
-    IsEq<GemmKernel::MaxThreadsPerBlock, NumThreads>();
-    IsEq<GemmKernel::SharedStorageSize, SmemBytes>();
+    IsEq<GemmKernel::MaxThreadsPerBlock, UnitOp::NumThreads>();
+    IsEq<GemmKernel::SharedStorageSize, UnitOp::SmemBytes>();
 
     // Construct params
 
@@ -1100,82 +1100,46 @@ DEVICE void gemm_cuda_90(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
 }
 
 /// Row-major GeMM.
-template <typename OutDims, typename NCA, typename NCB, typename Shape,
-          typename ProblemSize, typename LeadingDims, int InnerLdimA,
-          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumThreads,
-          int SmemBytes, typename DataTypeA, typename DataTypeB,
-          typename DataTypeC, typename AccumulateType>
-DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
-                 int smem_per_warp) {
-    static_assert(NCA::D2 == 1 && NCA::D3 == 1,
-                  "NCA should be two dimensional.");
-    static_assert(NCB::D2 == 1 && NCB::D3 == 1,
-                  "NCB should be two dimensional.");
-    static_assert(Shape::D3 == 1, "Shape should be three dimensional.");
-    static_assert(ProblemSize::D3 == 1,
-                  "ProblemSize should be three dimensional.");
+template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
+          typename DataTypeB, int LeadingDimB, bool IsColumnB,
+          typename DataTypeC, int LeadingDimC, int ProblemSizeM,
+          int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
+          int TileSizeK, typename UnitOp>
+DEVICE void gemm_cutlass(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
+                         int smem_per_warp) {
+    using CutDataTypeA = typename cutlass::platform::conditional<
+        std::is_same<DataTypeA, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeA, bf16>::value, cutlass::bfloat16_t,
+            DataTypeA>::type>::type;
 
-    // N dimension of C is max(N dimension of A, N dimension of B)
-    constexpr int NC = (NCA::D0 > NCB::D0) ? NCA::D0 : NCB::D0;
-    // C dimension of C is max(C dimension of A, C dimension of B)
-    constexpr int CC = (NCA::D1 > NCB::D1) ? NCA::D1 : NCB::D1;
+    using CutDataTypeB = typename cutlass::platform::conditional<
+        std::is_same<DataTypeB, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeB, bf16>::value, cutlass::bfloat16_t,
+            DataTypeB>::type>::type;
 
-    using OutShape = Vec<NC, CC, ProblemSize::D0, ProblemSize::D1>;
-    using UnitOutDims = Vec<1, 1, Shape::D0, Shape::D1>;
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using CutDataTypeC = typename cutlass::platform::conditional<
+        std::is_same<DataTypeC, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeC, bf16>::value, cutlass::bfloat16_t,
+            DataTypeC>::type>::type;
 
-    constexpr int LeadingDimA = LeadingDims::D0;
-    constexpr int LeadingDimB = LeadingDims::D3;
-    constexpr int LeadingDimC = LeadingDims::D1;
-    constexpr int ProblemSizeM = ProblemSize::D0;
-    constexpr int ProblemSizeN = ProblemSize::D1;
-    constexpr int ProblemSizeK = ProblemSize::D2;
-    constexpr int TileSizeM = Shape::D0;
-    constexpr int TileSizeN = Shape::D1;
-    constexpr int TileSizeK = Shape::D2;
-
-    constexpr int SizeA = math::mul<OutDims::H, InnerLdimA>::value;
-    constexpr int SizeB = math::mul<OutDims::W, InnerLdimB>::value;
-    constexpr int SizeC = math::mul<OutDims::H, OutDims::W>::value;
-
-    int un = UnitOp::uop_idx_n(uop_idx);
-    int uc = UnitOp::uop_idx_c(uop_idx);
-
-    // Broadcasting
-    DataTypeA *pA;
-    DataTypeB *pB;
-    DataTypeC *pC = &C[un * math::mul<CC, SizeC>::value + uc * SizeC];
-    if constexpr (NCA::D0 == 1 && NCA::D1 == 1) {
-        pA = A;
-    } else if constexpr (NCA::D0 == 1) {
-        pA = &A[uc * SizeA];
-    } else if constexpr (NCA::D1 == 1) {
-        pA = &A[un * SizeA];
-    } else {
-        pA = &A[un * math::mul<CC, SizeA>::value + uc * SizeA];
-    }
-    if constexpr (NCB::D0 == 1 && NCB::D1 == 1) {
-        pB = B;
-    } else if constexpr (NCB::D0 == 1) {
-        pB = &B[uc * SizeB];
-    } else if constexpr (NCB::D1 == 1) {
-        pB = &B[un * SizeB];
-    } else {
-        pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
-    }
+    CutDataTypeC *pC = reinterpret_cast<CutDataTypeC *>(C);
+    CutDataTypeA *pA = reinterpret_cast<CutDataTypeA *>(A);
+    CutDataTypeB *pB = reinterpret_cast<CutDataTypeB *>(B);
 
 #if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
      ARK_TARGET_CUDA_ARCH == 80)
-    gemm_cuda<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
-              IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-              ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp, NumThreads,
-              SmemBytes>(pC, pA, pB, uop_idx, smem_per_warp);
+    gemm_cuda<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB, LeadingDimB,
+              IsColumnB, CutDataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
+              ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
+        pC, pA, pB, uop_idx, smem_per_warp);
 #elif (ARK_TARGET_CUDA_ARCH == 90)
-    gemm_cuda_90<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
-                 IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-                 ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp,
-                 NumThreads, SmemBytes>(pC, pA, pB, uop_idx, smem_per_warp);
+    gemm_cuda_90<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
+                 LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
+                 ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM, TileSizeN,
+                 TileSizeK, UnitOp>(pC, pA, pB, uop_idx, smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif
@@ -1183,4 +1147,4 @@ DEVICE void gemm(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
 
 }  // namespace ark
 
-#endif  // ARK_KERNELS_GEMM_H_
+#endif  // ARK_KERNELS_GEMM_CUTLASS_H_

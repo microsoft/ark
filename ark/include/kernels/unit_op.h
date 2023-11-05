@@ -27,11 +27,11 @@ namespace ark {
 /// provides no mechanism for informing unit operators whether they are
 /// operating on the boundary of the data or not. Instead, it should be managed
 /// by the underlying implementation.
-/// @tparam _NumThreads Number of threads that a unit operator is using.
+/// @tparam _NumWarps Number of warps that a unit operator is using.
 /// @tparam _SmemBytes Bytes of shared memory that a unit operator is using.
 ///
 template <typename _OutDims, typename _OutShape, typename _UnitOutDims,
-          int _NumThreads, int _SmemBytes>
+          int _NumWarps, int _SmemBytes>
 struct UnitOp {
     static_assert(_OutDims::N >= _OutShape::N,
                   "Dimension N is smaller than tensor shape");
@@ -60,7 +60,7 @@ struct UnitOp {
     static_assert(_OutDims::W % _UnitOutDims::W == 0,
                   "Dimension W is not divisible by the unit dimension");
 
-    static_assert(_NumThreads > 0, "# of threads is not positive");
+    static_assert(_NumWarps > 0, "# of warps is not positive");
     static_assert(_SmemBytes >= 0, "Bytes of shared memory is negative");
 
     // Number of unit operators in each dimension.
@@ -69,8 +69,9 @@ struct UnitOp {
                            math::div_up<_OutShape::H, _UnitOutDims::H>::value,
                            math::div_up<_OutShape::W, _UnitOutDims::W>::value>;
 
-    static const int NumThreads = _NumThreads;
-    static const int SmemBytes = _SmemBytes;
+    static constexpr int NumWarps = _NumWarps;
+    static constexpr int NumThreads = _NumWarps * Arch::ThreadsPerWarp;
+    static constexpr int SmemBytes = _SmemBytes;
 
     /// Do not use `threadIdx` and use this function instead.
     static DEVICE int thread_id() { return math::mod<NumThreads>(threadIdx.x); }
@@ -106,11 +107,11 @@ struct UnitOp {
     static DEVICE T *shared_memory(int smem_per_warp) {
         static_assert(sizeof(T) <= SmemBytes,
                       "Shared memory is not large enough");
-        return SharedMemory<T, NumThreads>::get(smem_per_warp);
+        return SharedMemory<T, _NumWarps>::get(smem_per_warp);
     }
 
     /// Do not use `__syncthreads()` and use this function instead.
-    static DEVICE void sync_threads() { sync_warps<NumThreads>(); }
+    static DEVICE void sync_threads() { sync_warps<_NumWarps>(); }
 };
 
 }  // namespace ark

@@ -5,6 +5,7 @@
 #define ARK_KERNELS_IM2COL_H_
 
 #include "ewise.h"
+#include "sync.h"
 
 namespace ark {
 
@@ -18,12 +19,12 @@ template <typename _InShape, typename _InDims, typename _OutDims,
           typename _UnitOutDims, int KernelHeight, int KernelWidth,
           int StrideHeight, int StrideWidth, int PadHeight, int PadWidth,
           int DilationHeight, int DilationWidth>
-struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
+struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, fp16, 2, KernelHeight,
               KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
               DilationHeight, DilationWidth> {
     using InDims = _InDims;
     using OutDims = _OutDims;
-    using DataType = half;
+    using DataType = fp16;
     static const int NelemPerThread = 2;
 
     static const int InN = InDims::HW;
@@ -68,7 +69,7 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
     // This function reads a half value while avoiding 2-byte misaligned access.
     // Return the value as a float for efficiency.
     // CAUTION: This function assumes that `x` address is 4-byte aligned.
-    static DEVICE float read_elem(half *x, int midx, int nidx) {
+    static DEVICE float read_elem(fp16 *x, int midx, int nidx) {
         int elem_width = math::mod<PatchNumWidth>(midx) * StrideWidth +
                          math::mod<KernelWidth>(nidx) - PadWidth;
         int elem_height = math::div<PatchNumWidth>(midx) * StrideHeight +
@@ -82,11 +83,11 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
 
         int idx = elem_width + elem_height * Width + math::div<KHW>(nidx) * InN;
 
-        float2 fx = __half22float2(((__half2 *)x)[idx >> 1]);
+        float2 fx = __half22float2(((fp16x2 *)x)[idx >> 1]);
         return ((float *)&fx)[idx & 1];
     }
 
-    static DEVICE void compute(half *out, half *in, int idx_n, int idx_c,
+    static DEVICE void compute(fp16 *out, fp16 *in, int idx_n, int idx_c,
                                int idx_h, int idx_w) {
         out += idx_n * OutDims::CHW + idx_c * OutDims::HW + idx_h * OutDims::W +
                idx_w;
@@ -104,24 +105,23 @@ struct Im2Col<_InShape, _InDims, _OutDims, _UnitOutDims, half, 2, KernelHeight,
                 f2 = read_elem(in, midx + 1, nidx);
             }
         }
-        __syncwarp();
-        *(__half2 *)out = __floats2half2_rn(f1, f2);
+        sync_warps<1>();
+        *(fp16x2 *)out = __floats2half2_rn(f1, f2);
     }
 };
 
 // Half-precision image to column operation.
 // TODO: support dilation.
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, int KernelHeight, int KernelWidth, int StrideHeight,
-          int StrideWidth, int PadHeight, int PadWidth, int DilationHeight,
-          int DilationWidth>
-DEVICE void im2col(half *y, half *x, int uop_idx, int) {
-    Ewise1<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes,
-           Im2Col<InShape, InDims, OutDims, UnitOutDims, half, 2, KernelHeight,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          int KernelHeight, int KernelWidth, int StrideHeight, int StrideWidth,
+          int PadHeight, int PadWidth, int DilationHeight, int DilationWidth>
+DEVICE void im2col(fp16 *y, fp16 *x, int uop_idx, int) {
+    Ewise1<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
+           Im2Col<InShape, InDims, OutDims, UnitOutDims, fp16, 2, KernelHeight,
                   KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
                   DilationHeight, DilationWidth>>::run(y, x, uop_idx);
-    sync_warps<NumThreads>();
+    sync_warps<NumWarps>();
 }
 
 }  // namespace ark

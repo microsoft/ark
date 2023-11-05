@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifdef __CUDACC__
+#if defined(ARK_TARGET_CUDA_ARCH)
+
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
@@ -12,6 +13,7 @@
 #include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
+#include "copy.h"
 #include "comm.h"
 #include "comm_mm.h"
 #ifdef ARK_USE_MSLL
@@ -27,4 +29,5 @@
 #include "transpose.h"
 
 #endif  // ARK_KERNELS_H_
-#endif  // __CUDACC__
+
+#endif

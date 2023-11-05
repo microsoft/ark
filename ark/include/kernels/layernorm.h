@@ -23,11 +23,10 @@ struct LayerNormShapeChecker {
 
 // Perform layer normalization on input and write the result on output.
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType, int NelemPerThread>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType, int NelemPerThread>
 struct LayerNorm {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
@@ -37,13 +36,14 @@ struct LayerNorm {
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
-        static_assert((NumThreads * NelemPerThread) % NonReduceDimLength == 0);
+        static_assert(
+            (UnitOp::NumThreads * NelemPerThread) % NonReduceDimLength == 0);
         // If we reshape the input into a 2D matrix (NCH x W), NumThreads
         // threads compute NCH rows, and each row's sum is computed by
         // ThreadsPerRow threads. If ThreadsPerRow is larger than warp size, we
         // need to use shared memory to reduce the result of each warp.
         constexpr int ThreadsPerRow =
-            (NumThreads * NelemPerThread) / NonReduceDimLength;
+            (UnitOp::NumThreads * NelemPerThread) / NonReduceDimLength;
 
         int tid = UnitOp::thread_id();
         int tid_w = (tid * NelemPerThread) % ThreadsPerRow;
@@ -63,46 +63,61 @@ struct LayerNorm {
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
-        DataType reduced;
-        ReduceTypeMean::identity<1>(&reduced);
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            ReduceTypeMean::reduce<1>(&reduced, &reduced, &in[idx_in]);
+        DataType mean;
+        DataType cmp;
+        ReduceTypeMean::template identity<1>(&mean);
+        ReduceTypeMean::template identity<1>(&cmp);
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            DataType in_val = in[idx_in];
+            DataType val = type::Sub::compute(in_val, cmp);
+            DataType tmp = type::Add::compute(mean, val);
+            cmp = type::Sub::compute(type::Sub::compute(tmp, mean), val);
+            mean = tmp;
         }
         // final reduction on shared memory using warp shuffle.
-        reduced = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
-            reduced, tid, smem_per_warp);
+        mean = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
+            mean, tid, smem_per_warp);
         // get the average result.
-        ReduceTypeMean::postReduce<1>(&reduced, &reduced, UnitOutDims::W);
+        ReduceTypeMean::template postReduce<1>(&mean, &mean, UnitOutDims::W);
         DataType variance;
-        ReduceTypeMean::identity<1>(&variance);
+        ReduceTypeMean::template identity<1>(&variance);
+        ReduceTypeMean::template identity<1>(&cmp);
         // get the variance
-        // TODO: Kahan sum
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
-            variance += (in[idx_in] - reduced) * (in[idx_in] - reduced);
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
+            DataType in_val = in[idx_in];
+            DataType val = type::Sub::compute(
+                type::Mul::compute(type::Sub::compute(in_val, mean),
+                                   type::Sub::compute(in_val, mean)),
+                cmp);
+            DataType tmp = type::Add::compute(variance, val);
+            cmp = type::Sub::compute(type::Sub::compute(tmp, variance), val);
+            variance = tmp;
         }
         variance = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             variance, tid, smem_per_warp);
-        ReduceTypeMean::postReduce<1>(&variance, &variance, UnitOutDims::W);
+        ReduceTypeMean::template postReduce<1>(&variance, &variance,
+                                               UnitOutDims::W);
+        variance = type::Rsqrt::compute(
+            type::Add::compute(variance, type::Cast::compute<DataType>(1e-5f)));
         // the output is (input - mean) / sqrt(variance)
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
-            out[idx_out] = (in[idx_in] - reduced) * rsqrtf(variance + 1e-5f);
+            out[idx_out] = type::Mul::compute(
+                type::Sub::compute(in[idx_in], mean), variance);
         }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
 DEVICE void layernorm(DataType *out, const DataType *in, int uop_idx,
                       int smem_per_warp) {
     constexpr int NelemPerThread = 1;
-    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
               SmemBytes, DataType, NelemPerThread>::run(out, in, uop_idx,
                                                         smem_per_warp);
 }
@@ -110,11 +125,10 @@ DEVICE void layernorm(DataType *out, const DataType *in, int uop_idx,
 // Perform RMS normalization on input and write the result on output.
 // Root Mean Square Layer Normalization: https://arxiv.org/pdf/1910.07467.pdf
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType, int NelemPerThread>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType, int NelemPerThread>
 struct RMSNorm {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
     static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
@@ -124,13 +138,14 @@ struct RMSNorm {
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         // The reduction dimension of the final stage.
         // Assume this division is always exact.
-        static_assert((NumThreads * NelemPerThread) % NonReduceDimLength == 0);
+        static_assert(
+            (UnitOp::NumThreads * NelemPerThread) % NonReduceDimLength == 0);
         // If we reshape the input into a 2D matrix (NCH x W), NumThreads
         // threads compute NCH rows, and each row's sum is computed by
         // ThreadsPerRow threads. If ThreadsPerRow is larger than warp size, we
         // need to use shared memory to reduce the result of each warp.
         constexpr int ThreadsPerRow =
-            (NumThreads * NelemPerThread) / NonReduceDimLength;
+            (UnitOp::NumThreads * NelemPerThread) / NonReduceDimLength;
 
         int tid = UnitOp::thread_id();
         int tid_w = (tid * NelemPerThread) % ThreadsPerRow;
@@ -153,38 +168,39 @@ struct RMSNorm {
         // calculate mean square
         DataType mean_square;
         DataType cmp;
-        ReduceTypeMean::identity<1>(&mean_square);
-        ReduceTypeMean::identity<1>(&cmp);
-        for (int idx_in_w = tid_w; idx_in_w < InShape::W;
-             idx_in_w += ThreadsPerRow) {
-            int idx_in = idx_in_base + idx_in_w;
+        ReduceTypeMean::template identity<1>(&mean_square);
+        ReduceTypeMean::template identity<1>(&cmp);
+        for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
+            int idx_in = idx_in_base + idx_w;
             DataType in_val = in[idx_in];
-            DataType val = in_val * in_val - cmp;
-            DataType tmp = mean_square + val;
-            cmp = (tmp - mean_square) - val;
+            DataType val =
+                type::Sub::compute(type::Mul::compute(in_val, in_val), cmp);
+            DataType tmp = type::Add::compute(mean_square, val);
+            cmp = type::Sub::compute(type::Sub::compute(tmp, mean_square), val);
             mean_square = tmp;
         }
         mean_square = warpsReduce<ReduceTypeMean, UnitOp, ThreadsPerRow>(
             mean_square, tid, smem_per_warp);
-        ReduceTypeMean::postReduce<1>(&mean_square, &mean_square,
-                                      UnitOutDims::W);
+        ReduceTypeMean::template postReduce<1>(&mean_square, &mean_square,
+                                               UnitOutDims::W);
         // the output is (input - mean) / sqrt(mean_square)
-        DataType rrms(rsqrtf(mean_square + 1e-5f));
+        DataType rrms = type::Cast::compute<DataType>(type::Rsqrt::compute(
+            type::Cast::compute<float>(mean_square) + 1e-5f));
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
-            out[idx_out] = (in[idx_in]) * rrms;
+            out[idx_out] = type::Mul::compute(in[idx_in], rrms);
         }
     }
 };
 
 template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumThreads,
-          int SmemBytes, typename DataType>
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
 DEVICE void rmsnorm(DataType *out, const DataType *in, int uop_idx,
                     int smem_per_warp) {
     constexpr int NelemPerThread = 1;
-    RMSNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumThreads,
+    RMSNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
             SmemBytes, DataType, NelemPerThread>::run(out, in, uop_idx,
                                                       smem_per_warp);
 }
