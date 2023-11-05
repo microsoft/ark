@@ -10,20 +10,19 @@ on:
 
 jobs:
   UnitTest:
-    runs-on: [ self-hosted, A100 ]
+    runs-on: [ self-hosted, MI250X ]
     defaults:
       run:
         shell: bash
-    timeout-minutes: 300
     strategy:
       matrix:
-        rocm: [ rocm5.7 ]
+        rocm: [ rocm5.6, rocm5.7 ]
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.rocm }}
       cancel-in-progress: true
     container:
       image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.rocm }}"
-      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
+      options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
 
     steps:
       - name: Checkout

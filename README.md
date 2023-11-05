@@ -10,6 +10,9 @@ A GPU-driven system framework for scalable AI applications.
 | Pipelines         | Build Status      |
 |-------------------|-------------------|
 | Unit Tests (CUDA) | [![Build Status](https://dev.azure.com/binyli/HPC/_apis/build/status%2Fark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main) |
+| Unit Tests (ROCm) | [![Unit Tests (ROCm)](https://github.com/microsoft/ark/actions/workflows/ut-rocm.yml/badge.svg?branch=main)](https://github.com/microsoft/ark/actions/workflows/ut-rocm.yml) |
+
+*NOTE (Nov 2023): ROCm unit tests will be replaced into an Azure pipeline in the future.*
 
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
