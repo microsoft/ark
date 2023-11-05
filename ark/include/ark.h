@@ -594,6 +594,16 @@ class Executor {
     std::unique_ptr<Impl> impl_;
 };
 
+class InvalidUsageError : public std::runtime_error {
+   public:
+    InvalidUsageError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class UnitTestError : public std::runtime_error {
+   public:
+    UnitTestError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
 }  // namespace ark
 
 #endif  // ARK_H

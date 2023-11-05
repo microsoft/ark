@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "include/ark.h"
-#include "json.h"
 #include "logging.h"
 
 namespace ark {
@@ -16,15 +15,15 @@ Dims::Dims(DimType d0, DimType d1, DimType d2, DimType d3) {
     this->data[2] = d2;
     this->data[3] = d3;
     if (this->is_invalid()) {
-        LOG(ERROR, "invalid dims given: <", d0, ", ", d1, ", ", d2, ", ", d3,
-            ">");
+        ERR(InvalidUsageError, "invalid dims given: <", d0, ", ", d1, ", ", d2,
+            ", ", d3, ">");
     }
 }
 
 // Copy another Dims object.
 Dims::Dims(const Dims &dims_) {
     if (dims_.is_invalid()) {
-        LOG(ERROR, "invalid dims given");
+        ERR(InvalidUsageError, "invalid dims given");
     }
     for (int i = 0; i < DIMS_LEN; ++i) {
         this->data[i] = dims_.data[i];
@@ -36,14 +35,21 @@ Dims::Dims(const Dims &dims_) {
 Dims::Dims(const std::vector<DimType> &vec) {
     int ds = (int)vec.size();
     if (ds > DIMS_LEN) {
-        LOG(ERROR, "only support dims with size <= ", DIMS_LEN,
+        ERR(InvalidUsageError, "only support dims with size <= ", DIMS_LEN,
             ". Given: ", *this);
     }
     int i = 0;
+    bool invalid_seen = false;
     for (; i < ds; ++i) {
         const DimType &v = vec[i];
+        if (invalid_seen && v >= 0) {
+            ERR(InvalidUsageError,
+                "NO_DIM should not appear before a valid dimension.");
+        }
         if (v < 0 && v != NO_DIM) {
-            LOG(ERROR, "invalid dims given at index ", i, ": ", v);
+            ERR(InvalidUsageError, "invalid dims given at index ", i, ": ", v);
+        } else if (v < 0) {
+            invalid_seen = true;
         }
         this->data[i] = v;
     }
@@ -85,10 +91,6 @@ int Dims::ndims() const {
 Dims Dims::dims4() const {
     const DimType *v = this->data;
     int nd = this->ndims();
-    if (nd > DIMS_LEN) {
-        LOG(ERROR, "only support dims with size <= ", DIMS_LEN,
-            ". Given: ", nd);
-    }
     Dims ret;
     for (int i = 0; i < DIMS_LEN - nd; ++i) {
         ret.data[i] = 1;
@@ -134,7 +136,7 @@ bool Dims::is_invalid() const {
 DimType Dims::erase(int idx) {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {
-        LOG(ERROR, "invalid index given: ", idx, " for ", *this);
+        ERR(InvalidUsageError, "invalid index given: ", idx, " for ", *this);
     }
     if (idx < 0) {
         idx += nd;
@@ -150,7 +152,7 @@ DimType Dims::erase(int idx) {
 DimType &Dims::operator[](int idx) {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {
-        LOG(ERROR, "invalid index given: ", idx, " for ", *this);
+        ERR(InvalidUsageError, "invalid index given: ", idx, " for ", *this);
     }
     if (idx < 0) {
         idx += nd;
@@ -161,7 +163,7 @@ DimType &Dims::operator[](int idx) {
 const DimType &Dims::operator[](int idx) const {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {
-        LOG(ERROR, "invalid index given: ", idx, " for ", *this);
+        ERR(InvalidUsageError, "invalid index given: ", idx, " for ", *this);
     }
     if (idx < 0) {
         idx += nd;
@@ -180,20 +182,9 @@ bool operator==(const Dims &a, const Dims &b) {
 
 bool operator!=(const Dims &a, const Dims &b) { return !(a == b); }
 
-void to_json(nlohmann::json &j, const Dims &dims) {
-    j.clear();
-    for (int i = 0; i < dims.ndims(); ++i) {
-        j.push_back(dims.data[i]);
-    }
-}
-
-void from_json(const nlohmann::json &j, Dims &dims) {
-    dims = Dims{j.get<std::vector<DimType>>()};
-}
-
 std::ostream &operator<<(std::ostream &os, const Dims &dims) {
     if (dims.is_invalid()) {
-        LOG(ERROR, "invalid dims given");
+        ERR(InvalidUsageError, "invalid dims given");
     }
     os << '<';
     if (dims.data[0] != NO_DIM) {
