@@ -1,9 +1,12 @@
-FROM rocm/dev-ubuntu-20.04:5.7-complete
+ARG BASE_IMAGE=ghcr.io/microsoft/ark/ark:base-cuda12.1
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="ARK"
 LABEL org.opencontainers.image.source https://github.com/microsoft/ark
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+RUN rm -rf /opt/nvidia
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -41,14 +44,15 @@ RUN cd /tmp && \
     wget -q https://download.open-mpi.org/release/open-mpi/v${ompi_v_parsed}/openmpi-${OPENMPI_VERSION}.tar.gz && \
     tar xzf openmpi-${OPENMPI_VERSION}.tar.gz && \
     cd openmpi-${OPENMPI_VERSION} && \
-    ./configure --prefix=/usr/local/mpi --enable-orterun-prefix-by-default --enable-mca-no-build=btl-uct && \
+    ./configure --prefix=/usr/local/mpi && \
     make -j && \
     make install && \
     cd .. && \
     rm -rf /tmp/openmpi-${OPENMPI_VERSION}*
 
+ARG EXTRA_LD_PATH=/usr/local/cuda-12.1/compat:/usr/local/cuda-12.1/lib64
 ENV PATH="/usr/local/mpi/bin:${PATH}" \
-    LD_LIBRARY_PATH="/usr/local/mpi/lib:/opt/rocm/lib:${LD_LIBRARY_PATH}"
+    LD_LIBRARY_PATH="/usr/local/mpi/lib:${EXTRA_LD_PATH}:${LD_LIBRARY_PATH}"
 
 RUN echo PATH="${PATH}" > /etc/environment && \
     echo LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" >> /etc/environment
