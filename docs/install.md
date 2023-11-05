@@ -16,6 +16,7 @@
     - NVIDIA GPUs: Volta (CUDA >= 11.1) / Ampere (CUDA >= 11.1) / Hopper (CUDA >= 12.0)
         - Hopper support will be added in the future.
     - AMD GPUs: CDNA2 (ROCm >= 5.0) / CDNA3
+        - Multi-GPU execution is not yet supported for AMD GPUs and will be supported by a future release.
         - CDNA3 support will be added in the future.
 
 * Mellanox OFED
