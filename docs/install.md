@@ -29,19 +29,17 @@ You can pull a base image as follows.
 # For NVIDIA GPUs
 docker pull ghcr.io/microsoft/ark/ark:base-dev-cuda12.1
 # For AMD GPUs
-docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.7
+docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.6
 ```
 
 Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
 To run ARK in a Docker container with NVIDIA GPUs, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Specifically, add `--privileged -v /dev:/dev -v /lib/modules:/lib/modules` in the `docker run` command. The following is an example.
 ```
+# Run a container for NVIDIA GPUs
 docker run \
     --privileged \
-    --cap-add=ALL \
-    --shm-size=1g \
-    --ulimit memlock=-1 \
-    --ulimit stack=67108864 \
+    --ulimit memlock=-1:-1 \
     --net=host \
     --ipc=host \
     --gpus all \
@@ -50,7 +48,17 @@ docker run \
     -it --name [Container Name] [Image Name] bash
 ```
 
-AMD GPUs do not need `gpudma` driver, so you don't need to mount `/dev` and `/lib/modules` into the container.
+AMD GPUs do not need `gpudma` driver, so you don't need to mount `/dev` and `/lib/modules` into the container. The following is an example.
+```
+# Run a container for AMD GPUs
+docker run \
+    --privileged \
+    --ulimit memlock=-1:-1 \
+    --net=host \
+    --ipc=host \
+    --security-opt seccomp=unconfined --group-add video \
+    -it --name [Container Name] [Image Name] bash
+```
 
 ## Install `gpudma` (NVIDIA GPUs only)
 
