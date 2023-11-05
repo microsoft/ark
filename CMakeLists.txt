@@ -173,4 +173,6 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ark)
 # Utils
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)
 add_custom_target(lint_and_ut)
-add_dependencies(lint_and_ut cpplint-autofix ut)
+if(CLANG_FORMAT)
+    add_dependencies(lint_and_ut cpplint-autofix ut)
+endif()
