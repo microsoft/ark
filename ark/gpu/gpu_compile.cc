@@ -24,123 +24,11 @@
 #include "include/ark.h"
 #include "random.h"
 
-#define ARK_USE_NVRTC 0
 #define ARK_DEBUG_KERNEL 0
-
-#if (ARK_USE_NVRTC)
-#include <nvrtc.h>
-#endif  // (ARK_USE_NVRTC)
 
 using namespace std;
 
 namespace ark {
-
-#if (ARK_USE_NVRTC)
-const string nvrtc_compile(const string &ark_root, const string &arch,
-                           const string &code, unsigned int max_reg_cnt) {
-    nvrtcProgram prog;
-    NVRTCLOG(nvrtcCreateProgram(&prog, code.c_str(), nullptr, 0, 0, 0));
-    string opt_arch = "-arch=compute_" + arch;
-    string opt_arch_def = "--define-macro=ARK_TARGET_CUDA_ARCH=" + arch;
-    string opt_reg = "-maxrregcount=" + to_string(max_reg_cnt);
-    string opt_inc_0 = "-I" + ark_root + "/include";
-    string opt_inc_1 = "-I" + ark_root + "/include/kernels";
-    string opt_inc_2 = "-I" + ark_root + "/include/kernels/nvrtc";
-    const char *opts[] = {
-        opt_arch.c_str(),
-        "-std=c++17",
-        "-default-device",
-#if (ARK_DEBUG_KERNEL)
-        "--device-debug",
-        "--generate-line-info",
-#endif  // (ARK_DEBUG_KERNEL)
-        opt_reg.c_str(),
-        opt_arch_def.c_str(),
-        opt_inc_0.c_str(),
-        opt_inc_1.c_str(),
-        opt_inc_2.c_str(),
-        "-I/usr/local/cuda/include",
-    };
-    // Print compile options for debugging.
-    stringstream ss;
-    for (size_t i = 0; i < sizeof(opts) / sizeof(opts[0]); ++i) {
-        ss << opts[i] << " ";
-    }
-    LOG(DEBUG, ss.str());
-    // Compile.
-    nvrtcResult compileResult =
-        nvrtcCompileProgram(prog, sizeof(opts) / sizeof(opts[0]), opts);
-    // Obtain compilation log from the program.
-    size_t log_size;
-    NVRTCLOG(nvrtcGetProgramLogSize(prog, &log_size));
-    if (log_size > 1) {
-        char *log = new char[log_size];
-        NVRTCLOG(nvrtcGetProgramLog(prog, log));
-        // LOG(ERROR, endl, log, endl);
-        LOG(DEBUG, endl, log, endl);
-        delete[] log;
-    }
-    NVRTCLOG(compileResult);
-    // Obtain PTX from the program.
-    size_t ptx_size;
-    NVRTCLOG(nvrtcGetPTXSize(prog, &ptx_size));
-    char *ptx = new char[ptx_size];
-    NVRTCLOG(nvrtcGetPTX(prog, ptx));
-    NVRTCLOG(nvrtcDestroyProgram(&prog));
-    // Write the result PTX file.
-    return string(ptx);
-}
-
-const string link(const vector<string> &ptxs) {
-    unsigned int buflen = 8192;
-    char *infobuf = new char[buflen];
-    char *errbuf = new char[buflen];
-    assert(infobuf != nullptr);
-    assert(errbuf != nullptr);
-    int enable = 1;
-    int num_opts = 5;
-    CUjit_option *opts = new CUjit_option[num_opts];
-    void **optvals = new void *[num_opts];
-    assert(opts != nullptr);
-    assert(optvals != nullptr);
-
-    opts[0] = CU_JIT_INFO_LOG_BUFFER;
-    optvals[0] = (void *)infobuf;
-
-    opts[1] = CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES;
-    optvals[1] = (void *)(long)buflen;
-
-    opts[2] = CU_JIT_ERROR_LOG_BUFFER;
-    optvals[2] = (void *)errbuf;
-
-    opts[3] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
-    optvals[3] = (void *)(long)buflen;
-
-    opts[4] = CU_JIT_GENERATE_DEBUG_INFO;
-    optvals[4] = (void *)(long)enable;
-
-    CUlinkState lstate;
-    CULOG(cuLinkCreate(num_opts, opts, optvals, &lstate));
-    for (const auto &ptx : ptxs) {
-        CULOG(cuLinkAddData(lstate, CU_JIT_INPUT_PTX, (void *)ptx.c_str(),
-                            ptx.size() + 1, 0, 0, 0, 0));
-    }
-    char **cubin = nullptr;
-    size_t cubin_size;
-    CUresult res = cuLinkComplete(lstate, (void **)cubin, &cubin_size);
-    if (res != CUDA_SUCCESS) {
-        LOG(DEBUG, errbuf);
-        CULOG(res);
-    }
-    assert(cubin != nullptr);
-    string ret{*cubin};
-    CULOG(cuLinkDestroy(lstate));
-    delete[] infobuf;
-    delete[] errbuf;
-    return ret;
-}
-
-#endif  // (ARK_USE_NVRTC)
 
 template <typename ItemType>
 static void para_exec(std::vector<ItemType> &items, int max_num_threads,
@@ -242,14 +130,19 @@ const string gpu_compile(const vector<string> &codes,
             if (max_reg_cnt > 0) {
                 exec_cmd << "-maxrregcount " << max_reg_cnt << " ";
             }
+            stringstream define_args;
             stringstream include_args;
             // clang-format off
+            define_args << "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
+                        << "--define-macro=ARK_COMM_SW=1 ";
             include_args << "-I" << ark_root << "/include "
                          << "-I" << ark_root << "/include/kernels ";
+            if (get_env().use_msll) {
+                define_args << "-DARK_USE_MSLL=1 ";
+                include_args << "-I" << get_env().msll_include_dir << " ";
+            }
             exec_cmd << "-ccbin g++ -std c++17 -lcuda "
-                "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
-                "--define-macro=ARK_COMM_SW=1 " <<
-                include_args.str() <<
+                << define_args.str() << include_args.str() <<
                 "-gencode arch=compute_" << arch
                 << ",code=sm_" << arch << " "
                 "-o " << item.second << ".cubin "
@@ -271,7 +164,7 @@ const string gpu_compile(const vector<string> &codes,
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, endl, exec_print_str, endl);
+                LOG(ERROR, "\n", exec_cmd.str(), "\n", exec_print_str, "\n");
             }
             LOG(INFO, "Compile succeed: ", cu_file_path, " (",
                 cpu_timer() - start, " seconds)");

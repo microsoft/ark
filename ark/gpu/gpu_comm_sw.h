@@ -39,6 +39,20 @@ class GpuCommSw {
 
     GpuPtr get_request_ref() const;
 
+    bool is_using_ib() const;
+
+    const void *get_proxy_channels_ref() const;
+
+    int get_proxy_channels_bytes() const;
+
+    int get_proxy_channels_num() const;
+
+    int get_sm_channels_num() const;
+
+    const void *get_sm_channels_ref() const;
+
+    int get_sm_channels_bytes() const;
+
    protected:
     class Impl;
     std::unique_ptr<Impl> impl;

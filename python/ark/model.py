@@ -194,9 +194,7 @@ def reshape(
 
 @register_op
 def identity(
-    input: Tensor,
-    deps: List[Tensor] = [],
-    name: str = "identity",
+    input: Tensor, deps: List[Tensor] = [], name: str = "identity"
 ) -> Tensor:
     """
     Returns an identical tensor of `input` with execution dependencies `deps`.
@@ -214,10 +212,7 @@ def identity(
 
 @register_op
 def sharding(
-    input: Tensor,
-    axis: int,
-    dim_per_shard: int,
-    name: str = "sharding",
+    input: Tensor, axis: int, dim_per_shard: int, name: str = "sharding"
 ) -> List[Tensor]:
     """
     Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
@@ -239,10 +234,7 @@ def sharding(
 
 @register_op
 def reduce_sum(
-    input: Tensor,
-    axis: int,
-    output: Tensor = None,
-    name: str = "reduce_sum",
+    input: Tensor, axis: int, output: Tensor = None, name: str = "reduce_sum"
 ) -> Tensor:
     """
     Performs reduction along the `axis` of the `input` tensor and
@@ -260,10 +252,7 @@ def reduce_sum(
 
 @register_op
 def reduce_mean(
-    input: Tensor,
-    axis: int,
-    output: Tensor = None,
-    name: str = "reduce_mean",
+    input: Tensor, axis: int, output: Tensor = None, name: str = "reduce_mean"
 ) -> Tensor:
     """
     Performs reduction along the `axis` of the `input` tensor and
@@ -279,10 +268,7 @@ def reduce_mean(
 
 @register_op
 def reduce_max(
-    input: Tensor,
-    axis: int,
-    output: Tensor = None,
-    name: str = "reduce_max",
+    input: Tensor, axis: int, output: Tensor = None, name: str = "reduce_max"
 ) -> Tensor:
     """
     Performs reduction along the `axis` of the `input` tensor and
@@ -298,9 +284,7 @@ def reduce_max(
 
 @register_op
 def layernorm(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "layernorm",
+    input: Tensor, output: Tensor = None, name: str = "layernorm"
 ) -> Tensor:
     """
     Applies layer normalization to the `input` tensor and returns
@@ -316,9 +300,7 @@ def layernorm(
 
 @register_op
 def rmsnorm(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "rmsnorm",
+    input: Tensor, output: Tensor = None, name: str = "rmsnorm"
 ) -> Tensor:
     """
     Applies RMS (Root Mean Square Layer Normalization) normalization
@@ -334,9 +316,7 @@ def rmsnorm(
 
 @register_op
 def softmax(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "softmax",
+    input: Tensor, output: Tensor = None, name: str = "softmax"
 ) -> Tensor:
     """
     Applies softmax  to the `input` tensor on the last dimension.
@@ -351,10 +331,7 @@ def softmax(
 
 @register_op
 def transpose(
-    input: Tensor,
-    perm: list,
-    output: Tensor = None,
-    name: str = "transpose",
+    input: Tensor, perm: list, output: Tensor = None, name: str = "transpose"
 ) -> Tensor:
     """
     Transposes the `input` tensor according to the given `perm` permutation.
@@ -453,10 +430,7 @@ def im2col(
 
 @register_op
 def scale(
-    input: Tensor,
-    val: float,
-    output: Tensor = None,
-    name: str = "scale",
+    input: Tensor, val: float, output: Tensor = None, name: str = "scale"
 ) -> Tensor:
     """
     Multiplies the `input` tensor by a scalar `val`, element-wise.
@@ -465,21 +439,12 @@ def scale(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().scale(
-        input._tensor,
-        val,
-        output,
-        name,
-    )
+    _tensor = Model.get_model().scale(input._tensor, val, output, name)
     return Tensor(_tensor)
 
 
 @register_op
-def exp(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "exp",
-) -> Tensor:
+def exp(input: Tensor, output: Tensor = None, name: str = "exp") -> Tensor:
     """
     Calculates the exponential of the `input` tensor, element-wise.
     Usage:
@@ -492,11 +457,7 @@ def exp(
 
 
 @register_op
-def sqrt(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "sqrt",
-) -> Tensor:
+def sqrt(input: Tensor, output: Tensor = None, name: str = "sqrt") -> Tensor:
     """
     Calculates the square root of the `input` tensor, element-wise.
     Usage:
@@ -510,10 +471,7 @@ def sqrt(
 
 @register_op
 def rope(
-    input: Tensor,
-    other: Tensor,
-    output: Tensor = None,
-    name: str = "rope",
+    input: Tensor, other: Tensor, output: Tensor = None, name: str = "rope"
 ) -> Tensor:
     """
     Performs rotary position embedding (RoPE) on the `input` tensor
@@ -527,11 +485,7 @@ def rope(
 
 
 @register_op
-def relu(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "relu",
-) -> Tensor:
+def relu(input: Tensor, output: Tensor = None, name: str = "relu") -> Tensor:
     """
     Applies the ReLU activation function to the `input` tensor,
     element-wise.
@@ -545,11 +499,7 @@ def relu(
 
 
 @register_op
-def gelu(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "gelu",
-) -> Tensor:
+def gelu(input: Tensor, output: Tensor = None, name: str = "gelu") -> Tensor:
     """
     Applies the Gaussian Error Linear Unit (GELU) activation
     function to the `input` tensor, element-wise. GELU is a smooth
@@ -566,9 +516,7 @@ def gelu(
 
 @register_op
 def sigmoid(
-    input: Tensor,
-    output: Tensor = None,
-    name: str = "sigmoid",
+    input: Tensor, output: Tensor = None, name: str = "sigmoid"
 ) -> Tensor:
     """
     Applies the Sigmoid activation function to the `input` tensor,
@@ -584,10 +532,7 @@ def sigmoid(
 
 @register_op
 def add(
-    input: Tensor,
-    other: Tensor,
-    output: Tensor = None,
-    name: str = "add",
+    input: Tensor, other: Tensor, output: Tensor = None, name: str = "add"
 ) -> Tensor:
     """
     Performs an element-wise addition operator between the `input`
@@ -603,10 +548,7 @@ def add(
 
 @register_op
 def sub(
-    input: Tensor,
-    other: Tensor,
-    output: Tensor = None,
-    name: str = "sub",
+    input: Tensor, other: Tensor, output: Tensor = None, name: str = "sub"
 ) -> Tensor:
     """
     Performs an element-wise addition operator between the `input`
@@ -622,10 +564,7 @@ def sub(
 
 @register_op
 def mul(
-    input: Tensor,
-    other: Tensor,
-    output: Tensor = None,
-    name: str = "mul",
+    input: Tensor, other: Tensor, output: Tensor = None, name: str = "mul"
 ) -> Tensor:
     """
     Performs an element-wise multiplication operator between the
@@ -641,10 +580,7 @@ def mul(
 
 @register_op
 def div(
-    input: Tensor,
-    other: Tensor,
-    output: Tensor = None,
-    name: str = "div",
+    input: Tensor, other: Tensor, output: Tensor = None, name: str = "div"
 ) -> Tensor:
     """
     Performs an element-wise division operator between the
@@ -660,11 +596,7 @@ def div(
 
 @register_op
 def send(
-    input: Tensor,
-    id: int,
-    dst_rank: int,
-    bytes: int = 0,
-    name: str = "send",
+    input: Tensor, id: int, dst_rank: int, bytes: int = 0, name: str = "send"
 ) -> Tensor:
     """
     Sends a tensor to a destination GPU (`dst_rank`). Multiple
@@ -679,33 +611,19 @@ def send(
     # on GPU1:
     tns = ark.recv(1, 0, bytes)
     """
-    _tensor = Model.get_model().send(
-        input._tensor,
-        id,
-        dst_rank,
-        bytes,
-        name,
-    )
+    _tensor = Model.get_model().send(input._tensor, id, dst_rank, bytes, name)
     return Tensor(_tensor)
 
 
 @register_op
 def send_done(
-    input: Tensor,
-    id: int,
-    dst_rank: int,
-    name: str = "send_done",
+    input: Tensor, id: int, dst_rank: int, name: str = "send_done"
 ) -> Tensor:
     """
     Blocks the execution until the corresponding 'send' operator
     with the specified `id` is completed.
     """
-    _tensor = Model.get_model().send_done(
-        input._tensor,
-        id,
-        dst_rank,
-        name,
-    )
+    _tensor = Model.get_model().send_done(input._tensor, id, dst_rank, name)
     return Tensor(_tensor)
 
 
@@ -724,13 +642,7 @@ def recv(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().recv(
-        id,
-        src_rank,
-        bytes,
-        output,
-        name,
-    )
+    _tensor = Model.get_model().recv(id, src_rank, bytes, output, name)
     return Tensor(_tensor)
 
 
@@ -756,12 +668,7 @@ def send_mm(
         output = output._tensor
 
     _tensor = Model.get_model().send_mm(
-        input._tensor,
-        id,
-        gpu_dst,
-        bytes,
-        output,
-        name,
+        input._tensor, id, gpu_dst, bytes, output, name
     )
     return Tensor(_tensor)
 
@@ -782,9 +689,78 @@ def recv_mm(
     if output is not None:
         output = output._tensor
     _tensor = Model.get_model().recv_mm(
+        input._tensor, id, gpu_src, bytes, output, name
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def send_msll(
+    input: Tensor,
+    sid: int,
+    dst_rank: int,
+    bytes: int = 0,
+    name: str = "send_msll",
+) -> Tensor:
+    """
+    Sends a tensor to a destination GPU (`dst_rank`). Multiple
+    tensors can be sent to the same GPU, so an identifier `id` is
+    required to distinguish the tensor. Each 'send' operator must
+    have a corresponding 'recv' operator that have the same id in
+    another GPU's model.
+    Usage:
+    # on GPU0:
+    ark.send(tensor_send, 1, 1)
+    ark.send_done(tensor_send, 1, 1)
+    # on GPU1:
+    ark.recv(1, 0, 0, tensor_recv)
+    """
+    _tensor = Model.get_model().send_msll(
         input._tensor,
-        id,
-        gpu_src,
+        sid,
+        dst_rank,
+        bytes,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def send_done_msll(
+    input: Tensor,
+    dst_rank: int,
+    name: str = "send_done_msll",
+) -> Tensor:
+    """
+    Blocks the execution until the corresponding 'send' operator
+    with the specified `id` is completed.
+    """
+    _tensor = Model.get_model().send_done_msll(
+        input._tensor,
+        dst_rank,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def recv_msll(
+    sid: int,
+    src_rank: int,
+    bytes: int,
+    output: Tensor = None,
+    name: str = "recv",
+) -> Tensor:
+    """
+    Receives a tensor from a source GPU (`src_rank`), identified by
+    the `id` parameter. Blocks the execution until the corresponding
+    'recv' operator is completed.
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().recv_msll(
+        sid,
+        src_rank,
         bytes,
         output,
         name,
@@ -825,13 +801,57 @@ def all_gather(
     """
     output = [output_shard._tensor for output_shard in output]
     tensor_shards = Model.get_model().all_gather(
-        input._tensor,
-        rank,
-        world_size,
-        output,
-        name,
+        input._tensor, rank, world_size, output, name
     )
     return [Tensor(_tensor) for _tensor in tensor_shards]
+
+
+@register_op
+def local_all_gather_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_gather_msll",
+) -> Tensor:
+    """
+    Performs an all-gather operator across local node GPUs.
+    Usage:
+    # all-gather
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allgather_result = ark.local_all_gather_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_gather_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_reduce_scatter_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_reduce_scatter_msll",
+) -> Tensor:
+    """
+    Performs an reduce-scatter operator across local node GPUs.
+    Usage:
+    # reduce-scatter
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    reduce_scatter_result = ark.local_reduce_scatter_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_reduce_scatter_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
 
 
 @register_op
@@ -854,10 +874,56 @@ def all_reduce(
     if output is not None:
         output = output._tensor
     _tensor = Model.get_model().all_reduce(
+        input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_all_reduce_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_reduce_msll",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across local GPUs, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs in a node`ranks_per_node`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.local_all_reduce_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_reduce_msll(
         input._tensor,
         rank,
-        world_size,
-        output,
+        ranks_per_node,
+        name,
+    )
+    return Tensor(_tensor)
+
+
+@register_op
+def local_all_reduce_packet_msll(
+    input: Tensor,
+    rank: int,
+    ranks_per_node: int,
+    name: str = "local_all_reduce_msll",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across local GPUs with LL algo, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs in a node`ranks_per_node`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.local_all_reduce_packet_msll(input_tensor, rank, ranks_per_node)
+    """
+    _tensor = Model.get_model().local_all_reduce_packet_msll(
+        input._tensor,
+        rank,
+        ranks_per_node,
         name,
     )
     return Tensor(_tensor)
@@ -874,28 +940,17 @@ def embedding(
     if output is not None:
         output = output._tensor
     _tensor = Model.get_model().embedding(
-        input._tensor,
-        weight._tensor,
-        output,
-        name,
+        input._tensor, weight._tensor, output, name
     )
     return Tensor(_tensor)
 
 
 @register_op
 def cast(
-    input: Tensor,
-    dtype: DataType,
-    output: Tensor = None,
-    name: str = "cast",
+    input: Tensor, dtype: DataType, output: Tensor = None, name: str = "cast"
 ) -> Tensor:
     """Type casting."""
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().cast(
-        input._tensor,
-        dtype.ttype(),
-        output,
-        name,
-    )
+    _tensor = Model.get_model().cast(input._tensor, dtype.ttype(), output, name)
     return Tensor(_tensor)

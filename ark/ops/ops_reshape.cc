@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <algorithm>
 #include <cassert>
 
 #include "logging.h"
 #include "model.h"
+#include "tensor.h"
 
 namespace ark {
 
@@ -53,6 +55,20 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
     }
     Dims new_shape{inferred_shape};
 
+    std::stringstream ss;
+    ss << "reshape failed as the ldims of the input tensor is incompatible "
+          "with the new shape. A workaround is copying the input tensor to a "
+          "new tensor, so that the data becomes sequential in memory. ";
+    ss << "Input shape " << input->shape << ", ldims " << input->ldims
+       << ", new shape " << new_shape;
+    auto incompatible_ldims_error = ss.str();
+
+    Dims new_ldims;
+    Dims new_offs;
+    if (!tensor_reshape_helper(input->shape, input->ldims, input->offs,
+                               new_shape, new_ldims, new_offs)) {
+        LOG(ERROR, incompatible_ldims_error);
+    }
     if (output != nullptr) {
         // Verfiy given `output`
         if (input->type != output->type) {
@@ -62,10 +78,9 @@ static Tensor *_reshape(Model *model, Tensor *input, const Dims &shape,
             LOG(ERROR, "shape sizes mismatch: input ", input->shape,
                 ", output ", output->shape);
         }
-    }
-
-    if (output == nullptr) {
-        output = model->tensor(new_shape, input->type, input->buf);
+    } else {
+        output = model->tensor(new_shape, input->type, input->buf, new_ldims,
+                               new_offs);
     }
     return output;
 }

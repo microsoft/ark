@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
@@ -12,7 +11,7 @@ template <typename T>
 void baseline_scale(std::vector<void *> &outputs,
                     const std::vector<ark::Dims> &output_shapes,
                     const std::vector<void *> &inputs,
-                    const std::vector<ark::Dims> &) {
+                    const std::vector<ark::Dims> &, int) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];

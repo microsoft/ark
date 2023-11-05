@@ -76,6 +76,11 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const {
     CHECK(tile_in0.y == tile_in1.x);
     Dims shape{tile_out.x, tile_out.y, tile_in0.y};
 
+    // Re-calculate the problem size to be a multiple of tile size.
+    problem_size[0] = math::pad(problem_size[0], tile_out.x);
+    problem_size[1] = math::pad(problem_size[1], tile_out.y);
+    problem_size[2] = math::pad(problem_size[2], tile_in0.y);
+
     return Op::function_name("ark::matmul",
                              {{
                                  mat_y->ldims.dims4(),  // OutDims
@@ -88,7 +93,7 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const {
                                  in_ldim_b,             // InnerLdimB
                                  is_column_a,           // IsColumnA
                                  is_column_b,           // IsColumnB
-                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.num_warps,         // NumWarps
                                  cfg.smem_bytes,        // SmemBytes
                              }});
 }

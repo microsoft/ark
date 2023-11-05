@@ -1,12 +1,11 @@
 trigger:
 - main
 
-# pr:
-#   branches:
-#     include:
-#     - main
-#   drafts: false
-pr: none
+pr:
+  branches:
+    include:
+    - main
+  drafts: false
 
 jobs:
 - job: UnitTest
@@ -16,9 +15,9 @@ jobs:
   strategy:
     matrix:
       cuda11:
-        containerImage: ghcr.io/microsoft/ark/ark:base-cuda11.8
+        containerImage: ghcr.io/microsoft/ark/ark:base-dev-cuda11.8
       cuda12:
-        containerImage: ghcr.io/microsoft/ark/ark:base-cuda12.1
+        containerImage: ghcr.io/microsoft/ark/ark:base-dev-cuda12.1
 
   container:
     image: $[ variables['containerImage'] ]
@@ -43,6 +42,8 @@ jobs:
     inputs:
       targetType: 'inline'
       script: |
+        git submodule foreach --recursive git reset --hard  
+        git submodule foreach --recursive git clean -fdx
         git submodule update --init --recursive
 
   - task: Bash@3
@@ -54,18 +55,6 @@ jobs:
         cd third_party && make gpudma
         sudo insmod ./gpudma/module/gpumem.ko
         sudo chmod 666 /dev/gpumem
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-
-  - task: Bash@3
-    name: InstallCMake
-    displayName: Install CMake
-    inputs:
-      targetType: 'inline'
-      script: |
-        curl -L https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-linux-x86_64.tar.gz -o /tmp/cmake-3.26.4-linux-x86_64.tar.gz
-        tar xzf /tmp/cmake-3.26.4-linux-x86_64.tar.gz -C /tmp
-        sudo ln -s /tmp/cmake-3.26.4-linux-x86_64/bin/cmake /usr/bin/cmake
-        sudo ln -s /tmp/cmake-3.26.4-linux-x86_64/bin/ctest /usr/bin/ctest
       workingDirectory: '$(System.DefaultWorkingDirectory)'
 
   - task: Bash@3
@@ -85,17 +74,8 @@ jobs:
     inputs:
       targetType: 'inline'
       script: |
-        cd build && ARK_ROOT=$PWD ctest --verbose
+        cd build && ARK_ROOT=$PWD ctest --verbose --schedule-random --stop-time=$(date -Iminutes)
       workingDirectory: '$(System.DefaultWorkingDirectory)'
-
-  - task: Bash@3
-    name: InstallLcov
-    displayName: Install lcov
-    inputs:
-      targetType: 'inline'
-      script: |
-        sudo apt-get update
-        sudo apt-get install -y lcov
 
   - task: Bash@3
     name: ReportCoverage

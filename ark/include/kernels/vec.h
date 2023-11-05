@@ -8,7 +8,7 @@
 
 namespace ark {
 
-using DimType = int;
+using DimType = long long int;
 
 template <DimType _D0 = 1, DimType _D1 = 1, DimType _D2 = 1, DimType _D3 = 1>
 struct Vec {
@@ -45,6 +45,18 @@ struct Vec {
     static const DimType CH = math::mul<C, H>::value;
     static const DimType CW = math::mul<C, W>::value;
     static const DimType HW = math::mul<H, W>::value;
+
+    static_assert(NCHW >= 0, "");
+    static_assert(NCH >= 0, "");
+    static_assert(NCW >= 0, "");
+    static_assert(NHW >= 0, "");
+    static_assert(CHW >= 0, "");
+    static_assert(NC >= 0, "");
+    static_assert(NH >= 0, "");
+    static_assert(NW >= 0, "");
+    static_assert(CH >= 0, "");
+    static_assert(CW >= 0, "");
+    static_assert(HW >= 0, "");
 };
 
 template <typename Vec1, typename Vec2>

@@ -2,13 +2,14 @@
 
 A GPU-driven system framework for scalable AI applications.
 
+[![Latest Release](https://img.shields.io/github/release/microsoft/ark.svg)](https://github.com/microsoft/ark/releases/latest)
 [![License](https://img.shields.io/github/license/microsoft/ark.svg)](LICENSE)
 [![CodeQL](https://github.com/microsoft/ark/actions/workflows/codeql.yml/badge.svg)](https://github.com/microsoft/ark/actions/workflows/codeql.yml)
-[![Unit Tests (CUDA)](https://github.com/microsoft/ark/actions/workflows/ut-cuda.yml/badge.svg?branch=main)](https://github.com/microsoft/ark/actions/workflows/ut-cuda.yml)
-[![Build Status](https://dev.azure.com/binyli/HPC/_apis/build/status%2Fark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main)
 [![codecov](https://codecov.io/gh/microsoft/ark/graph/badge.svg?token=XmMOK85GOB)](https://codecov.io/gh/microsoft/ark)
 
-*NOTE (Oct 2023): Azure pipelines are currently down due to resource migration.*
+| Pipelines         | Build Status      |
+|-------------------|-------------------|
+| Unit Tests (CUDA) | [![Build Status](https://dev.azure.com/binyli/HPC/_apis/build/status%2Fark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main) |
 
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
@@ -59,8 +60,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

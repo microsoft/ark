@@ -10,10 +10,9 @@ namespace ark {
 
 /// Element-wise computation operator with a single input.
 template <typename OutDims, typename OutShape, typename UnitOutDims,
-          int NumThreads, int SmemBytes, typename CompType>
+          int NumWarps, int SmemBytes, typename CompType>
 struct Ewise1 {
-    using UnitOp =
-        UnitOp<OutDims, OutShape, UnitOutDims, NumThreads, SmemBytes>;
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
     using DataType = typename CompType::DataType;
     static const int NelemPerThread = CompType::NelemPerThread;
 
@@ -32,7 +31,7 @@ struct Ewise1 {
         int uh = UnitOp::uop_idx_h(uop_idx);
         int uw = UnitOp::uop_idx_w(uop_idx);
 
-        for (int tid = UnitOp::thread_id();; tid += NumThreads) {
+        for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
                 ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;

@@ -5,6 +5,7 @@
 
 #include <sys/mman.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cerrno>
 #include <list>
@@ -14,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "cpu_timer.h"
@@ -24,6 +26,12 @@
 #include "ipc/ipc_hosts.h"
 #include "ipc/ipc_socket.h"
 #include "net/net_ib.h"
+
+#ifdef ARK_USE_MSLL
+#include <msll/core.hpp>
+#include <msll/proxy_channel.hpp>
+#include <msll/sm_channel.hpp>
+#endif  // ARK_USE_MSLL
 
 using namespace std;
 
@@ -80,6 +88,56 @@ class GpuCommSw::Impl {
     GpuPtr get_request_ref() const;
     bool is_using_ib() const { return net_ib_mgr_ != nullptr; }
 
+    const void *get_proxy_channels_ref() const {
+#ifdef ARK_USE_MSLL
+        return this->proxy_channels.data();
+#else
+        return nullptr;
+#endif  // ARK_USE_MSLL
+    }
+
+    int get_proxy_channels_bytes() const {
+#ifdef ARK_USE_MSLL
+        return this->proxy_channels.size() *
+               sizeof(msll::DeviceHandle<msll::SimpleProxyChannel>);
+#else
+        return 0;
+#endif  // ARK_USE_MSLL
+    }
+
+    int get_proxy_channels_num() const {
+#ifdef ARK_USE_MSLL
+        return this->proxy_channels.size();
+#else
+        return 0;
+#endif  // ARK_USE_MSLL
+    }
+
+    int get_sm_channels_num() const {
+#ifdef ARK_USE_MSLL
+        return this->sm_channel_handles.size();
+#else
+        return 0;
+#endif  // ARK_USE_MSLL
+    }
+
+    const void *get_sm_channels_ref() const {
+#ifdef ARK_USE_MSLL
+        return this->sm_channel_handles.data();
+#else
+        return nullptr;
+#endif  // ARK_USE_MSLL
+    }
+
+    int get_sm_channels_bytes() const {
+#ifdef ARK_USE_MSLL
+        return this->sm_channel_handles.size() *
+               sizeof(msll::DeviceHandle<msll::SmChannel>);
+#else
+        return 0;
+#endif  // ARK_USE_MSLL
+    }
+
    private:
     //
     const std::string name_;
@@ -108,6 +166,14 @@ class GpuCommSw::Impl {
     std::map<int, NetIbQp *> qps_;
     std::vector<GpuSendRecvInfo> send_recv_infos_;
     std::map<int, std::vector<NetIbMr::Info>> mris_;
+#ifdef ARK_USE_MSLL
+    std::shared_ptr<msll::TcpBootstrap> bootstrap;
+    std::shared_ptr<msll::Communicator> comm;
+    std::shared_ptr<msll::ProxyService> proxy_service;
+    std::vector<msll::DeviceHandle<msll::SimpleProxyChannel>> proxy_channels;
+    std::vector<msll::SmChannel> sm_channels;
+    std::vector<msll::DeviceHandle<msll::SmChannel>> sm_channel_handles;
+#endif  // ARK_USE_MSLL
 };
 
 //
@@ -146,6 +212,19 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
         net_ib_mgr_ = get_net_ib_mgr(ib_dev_id);
         sid_mrs_.resize(MAX_NUM_SID, nullptr);
     }
+
+#ifdef ARK_USE_MSLL
+    if (get_env().use_msll) {
+        std::stringstream ip_port;
+        ip_port << get_host(0) << ":" << get_env().msll_port;
+
+        this->bootstrap =
+            std::make_shared<msll::TcpBootstrap>(rank, world_size);
+        this->bootstrap->initialize(ip_port.str());
+        this->comm = std::make_shared<msll::Communicator>(this->bootstrap);
+        this->proxy_service = std::make_shared<msll::ProxyService>();
+    }
+#endif  // ARK_USE_MSLL
 }
 
 GpuCommSw::Impl::~Impl() {
@@ -307,7 +386,6 @@ void GpuCommSw::Impl::configure(
         if (ret != 0) {
             LOG(ERROR, "NetIbQp::rts failed");
         }
-
         auto &mri_vec = mris_[remote_rank];
         mri_vec.resize(MAX_NUM_SID);
         for (size_t sid = 0; sid < mri_vec.size(); ++sid) {
@@ -338,11 +416,108 @@ void GpuCommSw::Impl::configure(
         }
     }
 
+#ifdef ARK_USE_MSLL
+    if (get_env().use_msll && data_mem->get_bytes() > 0) {
+        // need to setup registered memory for the communicator
+        int num_ranks_per_node = get_env().num_ranks_per_host;
+        const int thisNode = rank_ / num_ranks_per_node;
+        auto rankToNode = [&](int rank) { return rank / num_ranks_per_node; };
+
+        msll::Transport IBs[] = {msll::Transport::IB0, msll::Transport::IB1,
+                                 msll::Transport::IB2, msll::Transport::IB3,
+                                 msll::Transport::IB4, msll::Transport::IB5,
+                                 msll::Transport::IB6, msll::Transport::IB7};
+
+        const msll::Transport ibTransport = IBs[gpu_id_];
+        std::vector<msll::NonblockingFuture<std::shared_ptr<msll::Connection>>>
+            connectionFutures;
+        const msll::TransportFlags all_transports =
+            msll::Transport::CudaIpc | ibTransport;
+        msll::RegisteredMemory local_reg_memory = this->comm->registerMemory(
+            (void *)(data_mem->ref()), data_mem->get_bytes(), all_transports);
+        std::vector<msll::NonblockingFuture<msll::RegisteredMemory>>
+            remote_reg_memories;
+        for (int r = 0; r < this->world_size_; ++r) {
+            if (r == rank_) {
+                continue;
+            }
+            msll::Transport transport;
+            if (rankToNode(r) == thisNode) {
+                transport = msll::Transport::CudaIpc;
+            } else {
+                transport = ibTransport;
+            }
+            // order is matter, we need to connect first and then send memory
+            connectionFutures.push_back(
+                this->comm->connectOnSetup(r, 0, transport));
+            this->comm->sendMemoryOnSetup(local_reg_memory, r, 0);
+            auto remote_memory = this->comm->recvMemoryOnSetup(r, 0);
+            remote_reg_memories.push_back(remote_memory);
+        }
+        this->comm->setup();
+        std::vector<std::shared_ptr<msll::Connection>> connections;
+        std::transform(
+            connectionFutures.begin(), connectionFutures.end(),
+            std::back_inserter(connections),
+            [](const msll::NonblockingFuture<std::shared_ptr<msll::Connection>>
+                   &future) { return future.get(); });
+        for (size_t i = 0; i < connections.size(); ++i) {
+            LOG(INFO, "Rank ", rank_, " connected to rank ", i);
+            this->proxy_channels.push_back(
+                msll::deviceHandle(msll::SimpleProxyChannel(
+                    this->proxy_service->proxyChannel(
+                        this->proxy_service->buildAndAddSemaphore(
+                            *(this->comm), connections[i])),
+                    this->proxy_service->addMemory(
+                        remote_reg_memories[i].get()),
+                    this->proxy_service->addMemory(local_reg_memory))));
+        }
+        this->comm->setup();
+
+        // setup for sm channel
+        std::unordered_map<size_t,
+                           std::shared_ptr<msll::SmDevice2DeviceSemaphore>>
+            sm_semaphores;
+        for (size_t cid = 0; cid < connections.size(); ++cid) {
+            if (connections[cid]->transport() == msll::Transport::CudaIpc) {
+                sm_semaphores.emplace(
+                    cid, std::make_shared<msll::SmDevice2DeviceSemaphore>(
+                             *this->comm, connections[cid]));
+            }
+        }
+        this->comm->setup();
+
+        for (size_t cid = 0; cid < connections.size(); ++cid) {
+            if (connections[cid]->transport() == msll::Transport::CudaIpc) {
+                this->sm_channels.emplace_back(
+                    sm_semaphores[cid], remote_reg_memories[cid].get(),
+                    local_reg_memory.data(), nullptr);
+            }
+        }
+        auto getChannelDeviceHandle =
+            [](const std::vector<msll::SmChannel> &in,
+               std::vector<msll::DeviceHandle<msll::SmChannel>> &out) {
+                return std::transform(in.begin(), in.end(), out.begin(),
+                                      [](const msll::SmChannel &smChannel) {
+                                          return msll::deviceHandle(smChannel);
+                                      });
+            };
+        this->sm_channel_handles.resize(this->sm_channels.size());
+        getChannelDeviceHandle(this->sm_channels, this->sm_channel_handles);
+    }
+#endif  // ARK_USE_MSLL
+
     LOG(DEBUG, "RANK ", rank_, " config done");
 }
 
 //
 void GpuCommSw::Impl::launch_request_loop() {
+#ifdef ARK_USE_MSLL
+    if (get_env().use_msll) {
+        this->proxy_service->startProxy();
+        return;
+    }
+#endif  // ARK_USE_MSLL
     if (request_loop_thread_ == nullptr) {
         run_request_loop_thread_ = true;
         request_loop_thread_ = new thread([&, gid = gpu_id_] {
@@ -512,6 +687,12 @@ void GpuCommSw::Impl::request_loop() {
 
 //
 void GpuCommSw::Impl::stop_request_loop() {
+#ifdef ARK_USE_MSLL
+    if (get_env().use_msll) {
+        this->proxy_service->stopProxy();
+        return;
+    }
+#endif  // ARK_USE_MSLL
     run_request_loop_thread_ = false;
     if (request_loop_thread_ != nullptr) {
         if (request_loop_thread_->joinable()) {
@@ -612,4 +793,29 @@ GpuPtr GpuCommSw::get_request_ref() const {
     return this->impl->get_request_ref();
 }
 
+bool GpuCommSw::is_using_ib() const { return this->impl->is_using_ib(); }
+
+const void *GpuCommSw::get_proxy_channels_ref() const {
+    return this->impl->get_proxy_channels_ref();
+}
+
+int GpuCommSw::get_proxy_channels_bytes() const {
+    return this->impl->get_proxy_channels_bytes();
+}
+
+int GpuCommSw::get_proxy_channels_num() const {
+    return this->impl->get_proxy_channels_num();
+}
+
+const void *GpuCommSw::get_sm_channels_ref() const {
+    return this->impl->get_sm_channels_ref();
+}
+
+int GpuCommSw::get_sm_channels_num() const {
+    return this->impl->get_sm_channels_num();
+}
+
+int GpuCommSw::get_sm_channels_bytes() const {
+    return this->impl->get_sm_channels_bytes();
+}
 }  // namespace ark

@@ -102,7 +102,10 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
 }
 
 //
-GpuMgr::~GpuMgr() {}
+GpuMgr::~GpuMgr() {
+    this->mgr_ctxs.clear();
+    cuCtxDestroy(this->cuda_ctx);
+}
 
 //
 GpuMgrCtx *GpuMgr::create_context(const std::string &name, int rank,
@@ -154,10 +157,10 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
       name{name_},
       data_mem{},
       sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)} {
-    // Initialize SCs to ones.
+    // Initialize SCs to zeros.
     int *href = (int *)this->sc_rc_mem.href();
     for (int i = 0; i < MAX_NUM_SID; ++i) {
-        href[i] = 1;
+        href[i] = 0;
     }
     // Initialize RCs to zeros.
     for (int i = MAX_NUM_SID; i < 2 * MAX_NUM_SID; ++i) {
@@ -270,6 +273,8 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align) {
     }
     this->bufs.emplace_back(std::make_unique<GpuBuf>(
         this->gpu_mgr->gpu_id, &this->data_mem, id, off, bytes));
+    LOG(DEBUG, "Allocated ", bytes, " bytes of GPU memory at offset ", off,
+        " rank ", rank);
     return this->bufs.back().get();
 }
 
@@ -357,7 +362,6 @@ void GpuMgrCtx::freeze(bool expose) {
 
     //
     this->comm_sw->configure(this->export_sid_offs, this->import_gid_bufs);
-    this->comm_sw->launch_request_loop();
 }
 
 //

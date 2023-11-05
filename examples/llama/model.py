@@ -9,6 +9,7 @@ import ark
 import math
 from dataclasses import dataclass
 from typing import Optional
+import os
 
 
 @dataclass
@@ -86,7 +87,7 @@ class RMSNorm(ark.Module):
         super().__init__()
         self.eps = eps
         self.dtype = dtype
-        self.weight = ark.parameter([dim], ark.fp32)
+        self.weight = ark.parameter([1, 1, dim], ark.fp32)
 
     def _norm(self, x):
         # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
@@ -95,7 +96,7 @@ class RMSNorm(ark.Module):
     def forward(self, x):
         x = ark.cast(x, ark.fp32)
         output = self._norm(x)
-        output = ark.mul(output, ark.reshape(self.weight, [1, 1, -1]))
+        output = ark.mul(output, self.weight)
         return ark.cast(output, self.dtype)
 
 
@@ -130,28 +131,45 @@ class ColumnParallelLinear(ark.Module):
         if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_other=True)
         # (batch_size, seq_len, out_dim // world_size)
-        output_tensor_shard = ark.matmul(x, self.weight, transpose_other=True)
-        all_gather_tensor_shards = ark.all_gather(
-            output_tensor_shard, self.local_rank, self.world_size
-        )
-        # We need to concat the output_tensor_shards along the last dimension
-        assert len(all_gather_tensor_shards) == self.world_size
-        output_tensor = ark.tensor(
-            [x.shape[0], x.shape[1], self.out_dim], self.dtype
-        )
-        output_tensor_shards = ark.sharding(
-            output_tensor, 2, self.out_dim // self.world_size
-        )
-        output_dependency = []
-        # Copy all the all_gather_tensor_shards to output_tensor_shards
-        for i in range(self.world_size):
-            output_tensor_shard = ark.scale(
-                all_gather_tensor_shards[i], 1.0, output_tensor_shards[i]
+        local_result = ark.matmul(x, self.weight, transpose_other=True)
+        if os.environ.get("ARK_USE_MSLL", "0") == "1":
+            output_tensor = ark.tensor(
+                [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
             )
-            output_dependency.append(output_tensor_shard)
-        # The output_tensor should depend on the scale operators
-        output_tensor = ark.identity(output_tensor, output_dependency)
-        return output_tensor
+            output_tensor_shards = ark.sharding(
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
+            )
+            shard = ark.scale(
+                local_result, 1.0, output_tensor_shards[self.local_rank]
+            )
+            gather_result = ark.identity(output_tensor, deps=[shard])
+            return ark.local_all_gather_msll(
+                gather_result, self.local_rank, self.world_size
+            )
+        else:
+            gathered_list = ark.all_gather(
+                local_result, self.local_rank, self.world_size
+            )
+            # We need to concat the output_tensor_shards along the last dimension
+            output_tensor = ark.tensor(
+                [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
+            )
+            output_tensor_shards = ark.sharding(
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
+            )
+            deps = []
+            # Copy all tensors in gathered_list to output_tensor_shards
+            for i in range(self.world_size):
+                shard = ark.scale(
+                    gathered_list[i], 1.0, output_tensor_shards[i]
+                )
+                deps.append(shard)
+            # The output_tensor should depend on the scale operators
+            return ark.identity(output_tensor, deps=deps)
 
 
 class RowParallelLinear(ark.Module):
@@ -191,27 +209,20 @@ class RowParallelLinear(ark.Module):
     def forward(self, x):
         if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_other=True)
-        x_ndims = len(x.shape)
+        x_ndims = len(x.shape())
         x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // self.world_size)
-        output_parallel = ark.matmul(
+        local_result = ark.matmul(
             x_shards[self.local_rank], self.weight, transpose_other=True
         )
-        # allreduce the output_parallel, currently we only support allreduce on 1D tensor,
-        # so we need to reshape the output_parallel to 1D
-        output_shape = output_parallel.shape
-        # multiply the output_shape list
-        output_shape_bytes = 1
-        for i in range(len(output_shape)):
-            output_shape_bytes *= output_shape[i]
-        output_parallel_reshape = ark.reshape(
-            output_parallel,
-            [output_shape_bytes],
-        )
-        output_reshape = ark.all_reduce(
-            output_parallel_reshape, self.local_rank, self.world_size
-        )
-        output = ark.reshape(output_reshape, output_shape)
-        return output
+        if os.environ.get("ARK_USE_MSLL", "0") == "1":
+            reduced_result = ark.local_all_reduce_msll(
+                local_result, self.local_rank, self.world_size
+            )
+        else:
+            reduced_result = ark.all_reduce(
+                local_result, self.local_rank, self.world_size
+            )
+        return reduced_result
 
 
 class ParallelEmbedding(ark.Module):
@@ -473,8 +484,9 @@ class Transformer(ark.Module):
             )
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps, dtype=dtype)
+        # TODO: parallize
         self.output = ColumnParallelLinear(
-            params.dim, params.vocab_size, dtype, local_rank, world_size
+            params.dim, params.vocab_size, dtype, 0, 1
         )
 
     def forward(

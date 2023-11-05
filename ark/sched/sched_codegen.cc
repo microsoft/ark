@@ -338,9 +338,33 @@ std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const {
        << "threadIdx.x / " << opseq->get_num_warps() * 32 << " + " << sched.beta
        << ");\n";
     os << "    "
-       << "ark::sync_warps<" << opseq->get_num_warps() * 32 << ">();\n";
+       << "ark::sync_warps<" << opseq->get_num_warps() << ">();\n";
     os << "  }\n"
        << " }\n";
+    return os;
+}
+
+std::ostream &CodeGenerator::def_proxy_channels(std::ostream &os,
+                                                size_t num_channels) const {
+    if (num_channels == 0) {
+        return os;
+    }
+    os << "#include <msll/proxy_channel_device.hpp>\n"
+          "__constant__ msll::SimpleProxyChannelDeviceHandle "
+          "_ARK_PROXY_CHANS["
+       << num_channels << "];\n";
+    return os;
+}
+
+std::ostream &CodeGenerator::def_sm_channels(std::ostream &os,
+                                             size_t num_channels) const {
+    if (num_channels == 0) {
+        return os;
+    }
+    os << "#include <msll/sm_channel_device.hpp>\n"
+          "__constant__ msll::SmChannelDeviceHandle "
+          "_ARK_SM_CHANS["
+       << num_channels << "];\n";
     return os;
 }
 

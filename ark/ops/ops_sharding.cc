@@ -46,10 +46,10 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
             shard_pads[axis] = 1;
         }
         shard_shape[axis] = dim;
-        Tensor *shard =
-            this->identity(this->tensor(shard_shape, input->type, input->buf,
-                                        input->ldims, shard_offs, shard_pads),
-                           {input}, name + "/shard_" + std::to_string(i));
+        Tensor *shard = this->tensor(
+            shard_shape, input->type, input->buf, input->ldims, shard_offs,
+            shard_pads, {input}, input->exported, input->imported_rank,
+            name + "/shard_" + std::to_string(i));
         shards.emplace_back(shard);
         shard_offs[axis] += dim;
     }

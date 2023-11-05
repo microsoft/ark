@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 #include <cassert>
+#include <numeric>
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
@@ -12,7 +12,8 @@ template <typename T>
 void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes) {
+                               const std::vector<ark::Dims> &input_shapes,
+                               int) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -39,7 +40,8 @@ template <typename T>
 void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes) {
+                               const std::vector<ark::Dims> &input_shapes,
+                               int) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -66,7 +68,8 @@ template <typename T>
 void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes) {
+                               const std::vector<ark::Dims> &input_shapes,
+                               int) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -94,7 +97,8 @@ template <typename T>
 void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
-                               const std::vector<ark::Dims> &input_shapes) {
+                               const std::vector<ark::Dims> &input_shapes,
+                               int) {
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
 
@@ -162,7 +166,7 @@ ark::unittest::State test_reduce_axis3() {
     auto result = ark::op_test("reduce_axis3", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
     return ark::unittest::SUCCESS;
 }
 
@@ -176,7 +180,7 @@ ark::unittest::State test_reduce_axis3_padded() {
     auto result = ark::op_test("reduce_axis3_padded", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    UNITTEST_TRUE(result.max_err_rate[0] < 1e-4f);
     return ark::unittest::SUCCESS;
 }
 
@@ -204,13 +208,19 @@ ark::unittest::State test_reduce_fp16() {
 }
 
 ark::unittest::State test_reduce_bf16() {
+    std::vector<ark::bfloat16_t> data_vec(7 * 2 * 4 * 1024);
+    for (size_t i = 0; i < data_vec.size(); ++i) {
+        data_vec[i] = ark::bfloat16_t((i % 1000) * 1e-4f);
+    }
+
     {
         ark::Model m;
         ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor *out = m.reduce_sum(t, /*axis=*/0);
 
         auto result = ark::op_test("reduce_bf16_axis0", m, {t}, {out},
-                                   baseline_reduce_sum_axis0<ark::bfloat16_t>);
+                                   baseline_reduce_sum_axis0<ark::bfloat16_t>,
+                                   {data_vec.data()});
         UNITTEST_LOG(result);
         UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
     }
@@ -220,7 +230,8 @@ ark::unittest::State test_reduce_bf16() {
         ark::Tensor *out = m.reduce_sum(t, /*axis=*/3);
 
         auto result = ark::op_test("reduce_bf16_axis3", m, {t}, {out},
-                                   baseline_reduce_sum_axis3<ark::bfloat16_t>);
+                                   baseline_reduce_sum_axis3<ark::bfloat16_t>,
+                                   {data_vec.data()});
         UNITTEST_LOG(result);
     }
     return ark::unittest::SUCCESS;

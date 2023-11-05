@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <numeric>
+
+#include "env.h"
 #include "gpu/gpu_kernel.h"
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ipc/ipc_coll.h"
 #include "logging.h"
+#include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
 void test_sendrecv_internal() {
@@ -28,9 +31,7 @@ void test_sendrecv_internal() {
 
             if (gpu_id == 0) {
                 std::vector<ark::half_t> data(1024);
-                for (int i = 0; i < 1024; ++i) {
-                    data[i] = ark::half_t(i + 1);
-                }
+                std::iota(data.begin(), data.end(), 1.0f);
                 tns_x->write(data.data());
             }
             exe.launch();
@@ -49,12 +50,31 @@ void test_sendrecv_internal() {
                     UNITTEST_EQ(data[i], ark::half_t(i + 1));
                 }
             }
-
             return ark::unittest::SUCCESS;
         });
     }
 
     ark::unittest::wait_all_processes();
+}
+
+ark::unittest::State test_device_sync() {
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id]() {
+            ark::Model model{gpu_id};
+            ark::Tensor *tns = model.tensor({1}, ark::FP16);
+            model.device_sync_msll(tns, 2);
+            ark::Executor exe{gpu_id, 2, model, "test_device_sync"};
+            exe.compile();
+
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_sendrecv() {
@@ -65,5 +85,8 @@ ark::unittest::State test_sendrecv() {
 int main() {
     ark::init();
     UNITTEST(test_sendrecv);
+    // if (ark::get_env().use_msll) {
+    //     UNITTEST(test_device_sync);
+    // }
     return ark::unittest::SUCCESS;
 }

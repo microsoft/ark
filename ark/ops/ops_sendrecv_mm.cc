@@ -53,13 +53,13 @@ std::string SendMMOp::function_name(const OpConfig &cfg) const {
 
     return Op::function_name("ark::comm::sendLL",
                              {{
-                                 m,                   // LDM
-                                 n,                   // LDN
-                                 cfg.num_warps * 32,  // TN
-                                 cfg.smem_bytes,      // SmemBytes
-                                 tile_in.y,           // TDM
-                                 tile_in.x,           // TDN
-                                 1,                   // FLAG
+                                 m,               // LDM
+                                 n,               // LDN
+                                 cfg.num_warps,   // NumWarps
+                                 cfg.smem_bytes,  // SmemBytes
+                                 tile_in.y,       // TDM
+                                 tile_in.x,       // TDN
+                                 1,               // FLAG
                              }});
 }
 
@@ -113,13 +113,13 @@ std::string RecvMMOp::function_name(const OpConfig &cfg) const {
 
     return Op::function_name("ark::comm::recvLL",
                              {{
-                                 m,                   // LDM
-                                 n,                   // LDN
-                                 cfg.num_warps * 32,  // TN
-                                 cfg.smem_bytes,      // SmemBytes
-                                 tile_in.y,           // TDM
-                                 tile_in.x,           // TDN
-                                 1,                   // FLAG
+                                 m,               // LDM
+                                 n,               // LDN
+                                 cfg.num_warps,   // NumWarps
+                                 cfg.smem_bytes,  // SmemBytes
+                                 tile_in.y,       // TDM
+                                 tile_in.x,       // TDN
+                                 1,               // FLAG
                              }});
 }
 
@@ -218,9 +218,7 @@ const OpConfigMap SendRecvMMConfigMap = {
          {2, 0, {{32, 64}, {32, 64}, {1, 1}}, {{32, 64}}, false, false},
          {1, 0, {{16, 64}, {16, 64}, {1, 1}}, {{16, 64}}, false, false},
          {1, 0, {{8, 64}, {8, 64}, {1, 1}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}, {2, 128}, {1, 1}}, {{2, 128}}, false, false},
          {1, 0, {{4, 64}, {4, 64}, {1, 1}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}, {2, 64}, {1, 1}}, {{2, 64}}, false, false},
      }},
 };
 

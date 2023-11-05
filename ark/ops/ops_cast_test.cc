@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "include/ark.h"
-#include "include/ark_utils.h"
 #include "ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
@@ -10,7 +9,7 @@ template <typename FromType, typename ToType>
 void baseline_cast(std::vector<void *> &outputs,
                    const std::vector<ark::Dims> &output_shapes,
                    const std::vector<void *> &inputs,
-                   const std::vector<ark::Dims> &) {
+                   const std::vector<ark::Dims> &, int) {
     ToType *out = static_cast<ToType *>(outputs[0]);
     FromType *input = static_cast<FromType *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
@@ -23,7 +22,7 @@ template <typename ToType>
 void baseline_cast_from_byte(std::vector<void *> &outputs,
                              const std::vector<ark::Dims> &output_shapes,
                              const std::vector<void *> &inputs,
-                             const std::vector<ark::Dims> &) {
+                             const std::vector<ark::Dims> &, int) {
     ToType *out = static_cast<ToType *>(outputs[0]);
     // input is a byte array, but force read it as ToType.
     ToType *input = reinterpret_cast<ToType *>(inputs[0]);
@@ -37,7 +36,7 @@ template <typename FromType>
 void baseline_cast_to_byte(std::vector<void *> &outputs,
                            const std::vector<ark::Dims> &,
                            const std::vector<void *> &inputs,
-                           const std::vector<ark::Dims> &input_shapes) {
+                           const std::vector<ark::Dims> &input_shapes, int) {
     // output is a byte array, but force write it as FromType.
     FromType *out = reinterpret_cast<FromType *>(outputs[0]);
     FromType *input = static_cast<FromType *>(inputs[0]);
@@ -66,7 +65,7 @@ ark::unittest::State test_cast_fp16_to_int32() {
 
     std::vector<ark::half_t> input_data(t->shape.size());
     for (size_t i = 0; i < input_data.size(); ++i) {
-        input_data[i] = ark::half_t((i + 1) % 1000);
+        input_data[i] = ark::half_t(int((i + 1) % 1000));
     }
 
     auto result =
