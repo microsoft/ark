@@ -19,13 +19,6 @@ using namespace std;
 //
 #define MAX_LOOP_COUNTER 10000000
 
-// TODO: remove this.
-#if defined(ARK_CUDA)
-#define WARP_SIZE 32
-#elif defined(ARK_ROCM)
-#define WARP_SIZE 64
-#endif
-
 namespace ark {
 
 //
