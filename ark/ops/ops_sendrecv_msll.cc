@@ -122,7 +122,7 @@ Tensor *Model::send_msll(Tensor *input, int sid, int dst_rank,
                          std::size_t bytes, const std::string &name) {
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
+        ERR(InvalidUsageError, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
@@ -148,14 +148,14 @@ Tensor *Model::recv_msll(int sid, int src_rank, size_t bytes, Tensor *output,
                          const std::string &name) {
     if (output == nullptr) {
         if (bytes == 0) {
-            LOG(ERROR, "receive bytes cannot be 0");
+            ERR(InvalidUsageError, "receive bytes cannot be 0");
         }
         output = this->tensor({DimType(bytes)}, BYTE);
     }
     output->exported = true;
     size_t max_bytes = output->shape_bytes();
     if (max_bytes < bytes) {
-        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
+        ERR(InvalidUsageError, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;

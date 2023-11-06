@@ -50,10 +50,10 @@ Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
     assert(input != nullptr);
     assert(weight != nullptr);
     if (input->shape.ndims() > 3) {
-        LOG(ERROR, "input shape ndims > 3: ", input->shape);
+        ERR(InvalidUsageError, "input shape ndims > 3: ", input->shape);
     }
     if (weight->shape.ndims() != 2) {
-        LOG(ERROR, "weight shape ndims != 2: ", weight->shape);
+        ERR(InvalidUsageError, "weight shape ndims != 2: ", weight->shape);
     }
     auto emb_dim = weight->shape[-1];
 

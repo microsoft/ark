@@ -73,10 +73,38 @@ ark::unittest::State test_rope_bf16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_rope_invalid() {
+    {
+        ark::Model model;
+        ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::BF16);
+        ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+        UNITTEST_THROW(model.rope(input, other), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+        ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+        ark::Tensor *output =
+            model.tensor(ark::Dims(1, 32, 32, 256), ark::FP16);
+        UNITTEST_THROW(model.rope(input, other, output),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *input = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+        ark::Tensor *other = model.tensor(ark::Dims(1, 32, 32, 256), ark::FP32);
+        ark::Tensor *output = model.tensor(ark::Dims(1, 32, 32, 32), ark::FP32);
+        UNITTEST_THROW(model.rope(input, other, output),
+                       ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_rope_fp32);
     UNITTEST(test_rope_fp16);
     UNITTEST(test_rope_bf16);
+    UNITTEST(test_rope_invalid);
     return ark::unittest::SUCCESS;
 }

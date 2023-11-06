@@ -19,7 +19,7 @@ Tensor *Model::max_pool(Tensor *input, DimType kernel_size, DimType stride,
                         Tensor *output, const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     const Dims &is = input->shape;
     Dims os{{is[0], (is[1] + stride - 1) / stride,

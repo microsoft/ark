@@ -53,17 +53,17 @@ Tensor *Model::div(Tensor *input, Tensor *other, Tensor *output,
     assert(input != nullptr);
     assert(other != nullptr);
     if (input->type != other->type) {
-        LOG(ERROR, "input data types mismatch: ", input->type, ", ",
+        ERR(InvalidUsageError, "input data types mismatch: ", input->type, ", ",
             other->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     Dims output_shape = broadcast(input->shape, other->shape);
     if (output == nullptr) {
         output = this->tensor(output_shape, input->type);
     } else if (output->shape != output_shape) {
-        LOG(ERROR, "invalid output shape: ", output->shape);
+        ERR(InvalidUsageError, "invalid output shape: ", output->shape);
     } else if (output == input) {
         output = this->identity(output);
     }

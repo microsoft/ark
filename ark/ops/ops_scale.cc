@@ -61,12 +61,12 @@ Tensor *Model::scale(Tensor *input, float val, Tensor *output,
                      const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type);
     } else if (output->shape != input->shape) {
-        LOG(ERROR, "invalid output shape: ", output->shape);
+        ERR(InvalidUsageError, "invalid output shape: ", output->shape);
     }
     ScaleOp op{output->type.name(), input, output, val, name};
     return this->impl->add_op(op)[0];

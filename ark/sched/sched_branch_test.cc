@@ -467,10 +467,43 @@ ark::unittest::State test_sched_branch_clear() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_branch_errors() {
+    {
+        ark::SchedBranch sb;
+        // negative uop_id
+        UNITTEST_THROW(sb.add(0, -1, 0, 0, 1), ark::SchedulerError);
+        // negative sm_id
+        UNITTEST_THROW(sb.add(0, 0, -1, 0, 1), ark::SchedulerError);
+        // negative warp_id_begin
+        UNITTEST_THROW(sb.add(0, 0, 0, -1, 1), ark::SchedulerError);
+        // negative warp_id_end
+        UNITTEST_THROW(sb.add(0, 0, 0, 0, -1), ark::SchedulerError);
+        // warp_id_begin >= warp_id_end
+        UNITTEST_THROW(sb.add(0, 0, 0, 1, 1), ark::SchedulerError);
+
+        sb.add(0, 0, 0, 0, 1);
+        // duplicate uop_id
+        UNITTEST_THROW(sb.add(0, 0, 0, 0, 1), ark::SchedulerError);
+
+        sb.add(0, 1, 0, 0, 1);
+        // duplicate uop_id
+        UNITTEST_THROW(sb.add(0, 1, 0, 0, 1), ark::SchedulerError);
+    }
+    {
+        // Different number of warps per uop
+        ark::SchedBranch sb;
+        sb.add(0, 0, 0, 0, 1);
+        sb.add(0, 1, 0, 1, 3);
+        UNITTEST_THROW(sb.get_branches({}), ark::SchedulerError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_sched_branch_single_opseq);
     UNITTEST(test_sched_branch_multi_opseq);
     UNITTEST(test_sched_branch_clear);
+    UNITTEST(test_sched_branch_errors);
     return 0;
 }

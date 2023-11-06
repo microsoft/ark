@@ -46,7 +46,7 @@ void Executor::Impl::launch() {
     glk_->load();
     GpuState ret = glk_->launch(stream_, false);
     if (ret != 0) {
-        LOG(ERROR, "failed to launch this executor.");
+        ERR(ExecutorError, "failed to launch this executor.");
     }
 }
 

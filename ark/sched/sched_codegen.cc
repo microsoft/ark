@@ -54,7 +54,7 @@ std::ostream &CodeGenerator::def_sync_stream(std::ostream &os,
 std::ostream &CodeGenerator::sync_stream(std::ostream &os, int stream_id,
                                          int sm_id_begin, int sm_id_end) const {
     if (sm_id_begin >= sm_id_end) {
-        LOG(ERROR, "invalid SM range");
+        ERR(SchedulerError, "invalid SM range");
     }
     if (sm_id_begin == 0) {
         os << "if (blockIdx.x < " << sm_id_end << ") {";
@@ -97,7 +97,7 @@ std::ostream &CodeGenerator::def_oparg(std::ostream &os, const OpArg &arg,
     } else if (arg.type == OP_ARG_UINT64) {
         os << "uint64_t " << name;
     } else {
-        LOG(ERROR, "Not implemented");
+        ERR(SchedulerError, "Not implemented");
     }
     return os;
 }
@@ -128,7 +128,7 @@ std::ostream &CodeGenerator::oparg(std::ostream &os, const OpArg &arg) const {
         arg.get(&val);
         os << val;
     } else {
-        LOG(ERROR, "Not implemented");
+        ERR(SchedulerError, "Not implemented");
     }
     return os;
 }

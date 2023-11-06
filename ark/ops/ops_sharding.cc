@@ -15,7 +15,7 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
                                       const std::string &name) {
     assert(input != nullptr);
     if (axis >= DIMS_LEN) {
-        LOG(ERROR, "invlaid axis value: ", axis);
+        ERR(InvalidUsageError, "invlaid axis value: ", axis);
     }
     if ((input->shape[axis] % dim_per_shard) != 0) {
         // If the total dimension is not divided by the per-shard size,
@@ -26,7 +26,8 @@ std::vector<Tensor *> Model::sharding(Tensor *input, DimType axis,
         // the tensor has adjacent data.
         DimType pdim = math::pad(input->shape[axis], input->pads[axis]);
         if (pdim < input->ldims[axis]) {
-            LOG(ERROR, "the dimension of axis ", axis, " (", input->shape[axis],
+            ERR(InvalidUsageError, "the dimension of axis ", axis, " (",
+                input->shape[axis],
                 ") is not divided by the dimension per shard (", dim_per_shard,
                 ") and this tensor cannot be padded.");
         }

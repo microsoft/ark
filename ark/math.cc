@@ -3,6 +3,7 @@
 
 #include "math.h"
 
+#include "include/ark.h"
 #include "logging.h"
 
 namespace ark {
@@ -11,7 +12,7 @@ namespace math {
 // Calculate the ceiling of x / div.
 size_t div_up(size_t x, size_t div) {
     if (div == 0) {
-        LOG(ERROR, "division by zero");
+        ERR(InvalidUsageError, "division by zero");
     }
     if (x == 0) {
         return 0;
@@ -33,7 +34,7 @@ bool is_pow2(size_t x) {
 // Return the log base 2 of x. x must be a power of 2.
 unsigned int ilog2(unsigned int x) {
     if (x == 0) {
-        LOG(ERROR, "log of zero is undefined");
+        ERR(InvalidUsageError, "log of zero is undefined");
     }
     return (sizeof(unsigned int) * 8) - __builtin_clz(x) - 1;
 }
