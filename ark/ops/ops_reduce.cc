@@ -124,7 +124,7 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
                       const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     Dims reduced_shape{input->shape};
     reduced_shape[axis] = 1;
@@ -132,12 +132,12 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
         output = this->tensor(reduced_shape, input->type);
     } else {
         if (output->shape != reduced_shape) {
-            LOG(ERROR, "invalid output shape ", output->shape,
+            ERR(InvalidUsageError, "invalid output shape ", output->shape,
                 " with input shape ", input->shape, " and reduction axis ",
                 axis);
         }
         if (output == input) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "output tensor cannot be the same as input tensor for "
                 "reduce_sum op");
         }

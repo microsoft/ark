@@ -20,7 +20,7 @@ std::vector<Tensor *> Model::all_gather(Tensor *input, int gpu_id, int gpu_num,
             "not contiguous");
     }
     if (!output.empty() && output.size() != (size_t)gpu_num) {
-        LOG(ERROR, "all_gather output size should be 0 or gpu_num");
+        ERR(InvalidUsageError, "all_gather output size should be 0 or gpu_num");
     }
     CHECK(gpu_num > 1);
 

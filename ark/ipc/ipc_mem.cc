@@ -13,6 +13,7 @@
 
 #include "cpu_timer.h"
 #include "env.h"
+#include "include/ark.h"
 #include "ipc/ipc_shm.h"
 #include "logging.h"
 
@@ -49,7 +50,7 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
             // Succeed.
             int r = ftruncate(fd, sizeof(IpcLock));
             if (r != 0) {
-                LOG(ERROR, "ftruncate failed (errno ", r, ")");
+                ERR(SystemError, "ftruncate failed (errno ", r, ")");
             }
             create = true;
         } else if (create) {
@@ -57,7 +58,7 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
             assert(fd != -1);
             int r = ftruncate(fd, sizeof(IpcLock));
             if (r != 0) {
-                LOG(ERROR, "ftruncate failed (errno ", r, ")");
+                ERR(SystemError, "ftruncate failed (errno ", r, ")");
             }
         }
     }
@@ -69,7 +70,7 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
         for (;;) {
             int r = fstat(fd, &s);
             if (r != 0) {
-                LOG(ERROR, "fstat failed (errno ", r, ")");
+                ERR(SystemError, "fstat failed (errno ", r, ")");
             }
             if (s.st_size > 0) {
                 assert(s.st_size == sizeof(IpcLock));
@@ -88,12 +89,12 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
         // Initialize and acquire the lock.
         int r = ipc_lock_init(lock_);
         if (r != 0) {
-            LOG(ERROR, "ipc_lock_init failed (errno ", r, ")");
+            ERR(SystemError, "ipc_lock_init failed (errno ", r, ")");
         }
         // Release the lock immediately.
         r = ipc_lock_release(lock_);
         if (r != 0) {
-            LOG(ERROR, "ipc_lock_release failed (errno ", r, ")");
+            ERR(SystemError, "ipc_lock_release failed (errno ", r, ")");
         }
     } else {
         // Wait until the lock is initialized.
@@ -134,7 +135,7 @@ void IpcMem::lock() {
     assert(!locked_);
     int r = ipc_lock_acquire(lock_);
     if (r != 0) {
-        LOG(ERROR, "ipc_lock_acquire failed (errno ", r, ")");
+        ERR(SystemError, "ipc_lock_acquire failed (errno ", r, ")");
     }
     locked_ = true;
 }
@@ -144,7 +145,7 @@ void IpcMem::unlock() {
     assert(locked_);
     int r = ipc_lock_release(lock_);
     if (r != 0) {
-        LOG(ERROR, "ipc_lock_release failed (errno ", r, ")");
+        ERR(SystemError, "ipc_lock_release failed (errno ", r, ")");
     }
     locked_ = false;
 }
@@ -171,21 +172,23 @@ void *IpcMem::alloc(size_t bytes) {
         if (fd == -1) {
             fd = ipc_shm_open(data_name);
             if (fd == -1) {
-                LOG(ERROR, "ipc_shm_open: ", strerror(errno), " (", errno, ")");
+                ERR(SystemError, "ipc_shm_open: ", strerror(errno), " (", errno,
+                    ")");
             }
         }
     } else if (create_) {
         // Open the existing data file.
         fd = ipc_shm_open(data_name);
         if (fd == -1) {
-            LOG(ERROR, "ipc_shm_open: ", strerror(errno), " (", errno, ")");
+            ERR(SystemError, "ipc_shm_open: ", strerror(errno), " (", errno,
+                ")");
         }
     } else {
         // Wait until the data file appears.
         fd = ipc_shm_open_blocking(data_name);
         if (fd == -1) {
-            LOG(ERROR, "ipc_shm_open_blocking: ", strerror(errno), " (", errno,
-                ")");
+            ERR(SystemError, "ipc_shm_open_blocking: ", strerror(errno), " (",
+                errno, ")");
         }
     }
     if (create_) {
@@ -193,7 +196,7 @@ void *IpcMem::alloc(size_t bytes) {
         // Truncate the file size.
         int r = ftruncate(fd, bytes);
         if (r != 0) {
-            LOG(ERROR, "ftruncate failed (errno ", r, ")");
+            ERR(SystemError, "ftruncate failed (errno ", r, ")");
         }
     } else {
         // Wait until the file size becomes equal to or larger than `bytes`.
@@ -205,7 +208,7 @@ void *IpcMem::alloc(size_t bytes) {
         for (;;) {
             int r = fstat(fd, &s);
             if (r != 0) {
-                LOG(ERROR, "fstat failed (errno ", r, ")");
+                ERR(SystemError, "fstat failed (errno ", r, ")");
             }
             if ((bytes == 0) && (s.st_size > 0)) {
                 bytes = s.st_size;

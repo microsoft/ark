@@ -71,11 +71,11 @@ void GpuInfo::init(const int gpu_id) {
     // E.g.: "gfx90a:sramecc+:xnack-"
     std::string gcn_arch_name = prop.gcnArchName;
     if (gcn_arch_name.substr(0, 3) != "gfx") {
-        LOG(ERROR, "unexpected GCN architecture name: ", gcn_arch_name);
+        ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
     }
     size_t pos_e = gcn_arch_name.find(":");
     if (pos_e == std::string::npos) {
-        LOG(ERROR, "unexpected GCN architecture name: ", gcn_arch_name);
+        ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
     }
     // E.g.: "90a"
     this->arch = "rocm_" + gcn_arch_name.substr(3, pos_e - 3);
@@ -111,7 +111,7 @@ GpuMgrCtx *GpuMgr::create_context(const std::string &name, int rank,
                                   int world_size) {
     for (auto &ctx : this->mgr_ctxs) {
         if (ctx->get_name() == name) {
-            LOG(ERROR, "GpuMgrCtx ", name, " already exists.");
+            ERR(InvalidUsageError, "GpuMgrCtx ", name, " already exists.");
         }
     }
     GpuMgrCtx *ctx = new GpuMgrCtx{this, rank, world_size, name};
@@ -137,7 +137,8 @@ void GpuMgr::validate_total_bytes() {
         total_bytes += mgr_ctx->get_total_bytes();
     }
     if (total_bytes > this->gpu_info.gmem_total) {
-        LOG(ERROR, "out of GPU memory. Requested ", total_bytes, " bytes");
+        ERR(SystemError, "out of GPU memory. Requested ", total_bytes,
+            " bytes");
     }
     LOG(DEBUG, "Requested ", total_bytes, " bytes");
 }
@@ -184,7 +185,7 @@ GpuMgrCtx::~GpuMgrCtx() {
 GpuStream GpuMgrCtx::create_stream() {
     GpuStream s;
     if (this->gpu_mgr->set_current() != gpuSuccess) {
-        LOG(ERROR, "gpuCtxSetCurrent() failed.");
+        ERR(ExecutorError, "gpuCtxSetCurrent() failed.");
     }
     GLOG(gpuStreamCreate(&s, gpuStreamNonBlocking));
     this->streams.emplace_back(s);
@@ -287,11 +288,11 @@ GpuBuf *GpuMgrCtx::mem_alloc(size_t bytes, int align) {
 void GpuMgrCtx::mem_free(GpuBuf *buf) {
     int id = buf->get_id();
     if ((size_t)id >= this->usage.size()) {
-        LOG(ERROR, "GpuBuf ID ", id, " has never been allocated");
+        ERR(ExecutorError, "GpuBuf ID ", id, " has never been allocated");
     }
     auto search = this->id_in_use.find(id);
     if (search == this->id_in_use.end()) {
-        LOG(ERROR, "GpuBuf ID ", id, " is already freed");
+        ERR(ExecutorError, "GpuBuf ID ", id, " is already freed");
     }
     this->id_in_use.erase(search);
     size_t b = this->usage[id].b;
@@ -325,7 +326,7 @@ void GpuMgrCtx::mem_free(GpuBuf *buf) {
 //
 void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid) {
     if (sid >= MAX_NUM_SID) {
-        LOG(ERROR, "invalid SID ", sid);
+        ERR(ExecutorError, "invalid SID ", sid);
     }
     // TODO: Check if `buf` is created by this context.
     this->export_sid_offs.emplace_back(sid, buf->get_offset() + offset);
@@ -334,7 +335,7 @@ void GpuMgrCtx::mem_export(GpuBuf *buf, size_t offset, int sid) {
 //
 GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid) {
     if (sid >= MAX_NUM_SID) {
-        LOG(ERROR, "invalid SID ", sid);
+        ERR(ExecutorError, "invalid SID ", sid);
     }
     GpuMem *dm = this->comm_sw->get_data_mem(gid);
     this->bufs.emplace_back(std::make_unique<GpuBuf>(gid, dm, sid, 0, bytes));
@@ -419,13 +420,13 @@ vector<unique_ptr<GpuMgr>> ARK_GPU_MGR_GLOBAL;
 // Return a pointer to a global GpuMgr.
 GpuMgr *get_gpu_mgr(const int gpu_id) {
     if (gpu_id < 0) {
-        LOG(ERROR, "invalid GPU ID ", gpu_id);
+        ERR(InvalidUsageError, "invalid GPU ID ", gpu_id);
     }
     if (ARK_GPU_MGR_GLOBAL.size() == 0) {
         gpu_init();
         int ngpu = gpu_num();
         if (ngpu <= 0) {
-            LOG(ERROR, "No GPU is detected.");
+            ERR(SystemError, "No GPU is detected.");
         }
         ARK_GPU_MGR_GLOBAL.resize(ngpu);
         for (auto &mgr : ARK_GPU_MGR_GLOBAL) {
@@ -433,7 +434,7 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
         }
     }
     if ((unsigned int)gpu_id >= ARK_GPU_MGR_GLOBAL.size()) {
-        LOG(ERROR, "invalid GPU ID ", gpu_id);
+        ERR(ExecutorError, "invalid GPU ID ", gpu_id);
     }
     GpuMgr *mgr = ARK_GPU_MGR_GLOBAL[gpu_id].get();
     if (mgr == nullptr) {
@@ -448,7 +449,7 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     const size_t &bytes = buf->get_bytes();
     assert(bytes >= 4);
     if ((bytes >> 2) < num) {
-        LOG(ERROR,
+        ERR(InvalidUsageError,
             "memset requests too many elements. Expected <= ", bytes >> 2,
             ", given ", num);
     }
@@ -495,7 +496,7 @@ void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
         GLOG(gpuMemcpyDtoH(dst->href(dst_offset), src->ref(src_offset), bytes));
     } else {
         // ::memcpy(dst->href(), src->href(), bytes);
-        LOG(ERROR, "Unexpected case.");
+        ERR(ExecutorError, "Unexpected case.");
     }
 }
 

@@ -454,6 +454,8 @@ def test_transformer(
             module_class_pt=model_pt.Transformer,
             module_args_pt=[args],
             inputs_pt=[tokens, start_pos],
+            test_thru=True,
+            test_thru_iterations=10,
         )
 
 

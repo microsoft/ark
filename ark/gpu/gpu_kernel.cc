@@ -13,6 +13,7 @@
 #include "env.h"
 #include "gpu/gpu_compile.h"
 #include "gpu/gpu_logging.h"
+#include "include/ark.h"
 
 using namespace std;
 
@@ -42,7 +43,7 @@ GpuKernel::GpuKernel(const string &name_, const vector<string> &codes_,
       params{new void *[num_params]},
       gpubin{gpubin_} {
     if (this->name.size() == 0) {
-        LOG(ERROR, "Invalid kernel name: ", this->name);
+        ERR(InvalidUsageError, "Invalid kernel name: ", this->name);
     }
     assert(this->params != nullptr);
     // Default offset zero.
@@ -104,7 +105,7 @@ void GpuKernel::compile(const GpuInfo &gpu_info) {
 //
 GpuState GpuKernel::launch(GpuStream stream) {
     if (!this->is_compiled()) {
-        LOG(ERROR, "Kernel is not compiled yet.");
+        ERR(InvalidUsageError, "Kernel is not compiled yet.");
     }
     auto it_ptr = this->ptr_args.begin();
     auto it_off = this->buf_offs.begin();
@@ -123,7 +124,7 @@ GpuState GpuKernel::launch(GpuStream stream) {
 
 int GpuKernel::get_function_attribute(gpuFunctionAttribute attr) const {
     if (this->kernel == nullptr) {
-        LOG(ERROR, "Kernel is not compiled yet.");
+        ERR(InvalidUsageError, "Kernel is not compiled yet.");
     }
     int ret;
     GLOG(gpuFuncGetAttribute(&ret, attr, this->kernel));
@@ -150,7 +151,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
       timer_begin{ctx_->create_event(false)},
       timer_end{ctx_->create_event(false)} {
     if (ctx_->set_current() != gpuSuccess) {
-        LOG(ERROR, "Failed to set the context.");
+        ERR(ExecutorError, "Failed to set the context.");
     }
     this->flag = make_unique<GpuMem>(sizeof(int));
     this->flag_href = (volatile int *)this->flag->href(0);
@@ -212,7 +213,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
 
 void GpuLoopKernel::compile(const GpuInfo &gpu_info) {
     if (this->ctx->set_current() != gpuSuccess) {
-        LOG(ERROR, "Failed to set the context.");
+        ERR(ExecutorError, "Failed to set the context.");
     }
     if (this->is_compiled()) {
         return;
@@ -223,11 +224,11 @@ void GpuLoopKernel::compile(const GpuInfo &gpu_info) {
 
 void GpuLoopKernel::load() {
     if (this->ctx->set_current() != gpuSuccess) {
-        LOG(ERROR, "Failed to set the context.");
+        ERR(ExecutorError, "Failed to set the context.");
     }
     //
     if (!this->is_compiled()) {
-        LOG(ERROR, "Need to compile first before initialization.");
+        ERR(InvalidUsageError, "Need to compile first before initialization.");
     }
     if (this->stream != nullptr) {
         // Wait until previous works finish.
@@ -309,15 +310,15 @@ void GpuLoopKernel::load() {
 GpuState GpuLoopKernel::launch(gpuStream stream, bool disable_timing) {
     this->elapsed_msec = -1;
     if (!this->is_compiled()) {
-        LOG(ERROR, "Need to compile first before initialization.");
+        ERR(InvalidUsageError, "Need to compile first before initialization.");
     } else if (stream == nullptr) {
-        LOG(ERROR, "Given an invalid stream.");
+        ERR(InvalidUsageError, "Given an invalid stream.");
     } else if (this->stream != nullptr) {
         if (this->stream == stream) {
             LOG(WARN, "Ignore launching twice.");
             return gpuSuccess;
         } else {
-            LOG(ERROR, "This loop kernel is already running.");
+            ERR(InvalidUsageError, "This loop kernel is already running.");
         }
     }
     if (!disable_timing) {

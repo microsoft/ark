@@ -78,7 +78,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                 }
                 ::memcpy(buf, data.data(), t->shape_bytes());
             } else {
-                LOG(ERROR, "Unsupported data type: ", t->type);
+                ERR(UnitTestError, "Unsupported data type: ", t->type);
             }
             t->write(buf);
             inputs_data_storages.push_back(buf);
@@ -166,7 +166,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                                   static_cast<uint8_t *>(res[i]),
                                   outputs[i]->shape.dims4(), print_on_error);
         } else {
-            LOG(ERROR, "Unsupported data type: ", outputs[i]->type);
+            ERR(UnitTestError, "Unsupported data type: ", outputs[i]->type);
         }
         result.mse.push_back(comp.mse);
         result.max_diff.push_back(comp.max_diff);

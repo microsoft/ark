@@ -13,6 +13,7 @@
 #include <string>
 
 #include "gpu/gpu_logging.h"
+#include "include/ark.h"
 
 #define GPU_PAGE_SHIFT 16
 #define GPU_PAGE_SIZE (1ULL << GPU_PAGE_SHIFT)
@@ -49,7 +50,7 @@ struct ExposalInfo {
 // Expose GPU memory space into CPU memory.
 static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     if (!is_gpumem_loaded()) {
-        LOG(ERROR, "gpumem driver is not loaded");
+        ERR(SystemError, "gpumem driver is not loaded");
     }
 
     // Convert virtual into physical address.
@@ -67,7 +68,7 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     uint64_t npage = bytes >> GPU_PAGE_SHIFT;
     // +1 can happen as we alloc 64KB more for safe alignment.
     if (npage != lock.page_count && npage + 1 != lock.page_count) {
-        LOG(ERROR, "Unexpected number of pages: ", npage, " vs ",
+        ERR(ExecutorError, "Unexpected number of pages: ", npage, " vs ",
             lock.page_count);
     }
     npage = lock.page_count;
@@ -99,11 +100,13 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     int tmp1;
     GLOG(gpuMemcpyDtoH(&tmp1, addr, 4));
     if (tmp1 != 77) {
-        LOG(ERROR, "mmap test failed: GPU reads ", tmp1, ", expected 77");
+        ERR(ExecutorError, "mmap test failed: GPU reads ", tmp1,
+            ", expected 77");
     }
     GLOG(gpuMemsetD32(addr, 55, 1));
     if (*tmp0 != 55) {
-        LOG(ERROR, "mmap test failed: CPU reads ", *tmp0, ", expected 55");
+        ERR(ExecutorError, "mmap test failed: CPU reads ", *tmp0,
+            ", expected 55");
     }
     // Reset the tested address.
     *tmp0 = 0;
@@ -116,11 +119,11 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
 static void *map_pa_to_va(uint64_t pa, uint64_t bytes) {
     int fd = open(GPUMEM_DRIVER_PATH, O_RDWR, 0);
     if (fd < 0) {
-        LOG(ERROR, "open: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "open: ", strerror(errno), " (", errno, ")");
     }
     void *map = mmap(0, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, pa);
     if (map == MAP_FAILED) {
-        LOG(ERROR, "mmap: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "mmap: ", strerror(errno), " (", errno, ")");
         close(fd);
     }
     close(fd);
@@ -138,7 +141,7 @@ GpuMem::GpuMem(const GpuMem::Info &info) { this->init(info); }
 //
 void GpuMem::init(size_t bytes, bool expose) {
     if (bytes == 0) {
-        LOG(ERROR, "Tried to allocate zero byte.");
+        ERR(InvalidUsageError, "Tried to allocate zero byte.");
     }
 
 #if defined(ARK_CUDA)
@@ -158,7 +161,7 @@ void GpuMem::init(size_t bytes, bool expose) {
     size_t base_size;  // unused
     GLOG(gpuMemGetAddressRange(&base_ptr, &base_size, raw_addr_));
     if (raw_addr_ != base_ptr) {
-        LOG(ERROR, "Unexpected error.");
+        ERR(ExecutorError, "Unexpected error.");
     }
 
     // Aligned address.
@@ -173,7 +176,7 @@ void GpuMem::init(size_t bytes, bool expose) {
     if (expose) {
         int err = mem_expose(&exp_info, addr_, bytes + GPU_PAGE_SIZE);
         if (err != 0) {
-            LOG(ERROR, "mem_expose() failed with errno ", err);
+            ERR(ExecutorError, "mem_expose() failed with errno ", err);
         }
     } else {
         exp_info.npage = 0;
@@ -213,7 +216,7 @@ void GpuMem::init(const GpuMem::Info &info) {
     gpuError res = gpuIpcOpenMemHandle(&raw_addr_, info.ipc_hdl,
                                        gpuIpcMemLazyEnablePeerAccess);
     if (res == gpuErrorPeerAccessUnsupported) {
-        LOG(ERROR, "The GPU does not support peer access.");
+        ERR(SystemError, "The GPU does not support peer access.");
     } else if (res != gpuSuccess) {
         // Unexpected error.
         GLOG(res);
@@ -227,7 +230,7 @@ void GpuMem::init(const GpuMem::Info &info) {
 #if defined(ARK_CUDA)
         mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
         if (mmap_ == nullptr) {
-            LOG(ERROR, "map_pa_to_va failed");
+            ERR(ExecutorError, "map_pa_to_va failed");
         }
 #elif defined(ARK_ROCM)
         mmap_ = reinterpret_cast<void *>(info.phys_addr);

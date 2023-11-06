@@ -82,11 +82,11 @@ inline void _err(const std::string &file, int line, T value, Args... args) {
         break;                                                          \
     } while (0)
 
-#define CHECK(cond)                                 \
-    do {                                            \
-        if (!(cond)) {                              \
-            LOG(ERROR, "failed condition: " #cond); \
-        }                                           \
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        if (!(cond)) {                                               \
+            ERR(ark::InvalidUsageError, "failed condition: " #cond); \
+        }                                                            \
     } while (0)
 
 }  // namespace ark

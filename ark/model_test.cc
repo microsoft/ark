@@ -4,10 +4,6 @@
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
-#define ITERATION 1
-
-using namespace std;
-
 ark::unittest::State test_simple_mm() {
     // Hidden dimension of the dense layer.
     unsigned int units = 1024;
@@ -23,13 +19,13 @@ ark::unittest::State test_simple_mm() {
     ark::Tensor *weight = m.tensor({in_dim, units}, ark::FP16);
     m.matmul(input, weight);
 
+    UNITTEST_TRUE(m.verify());
+
     return ark::unittest::SUCCESS;
 }
 
 int main() {
     ark::init();
-    for (int i = 0; i < ITERATION; ++i) {
-        UNITTEST(test_simple_mm);
-    }
+    UNITTEST(test_simple_mm);
     return 0;
 }

@@ -71,7 +71,7 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name) {
 
 const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     if (op == nullptr || op->outputs.size() == 0) {
-        LOG(ERROR, "unexpected error");
+        ERR(SchedulerError, "unexpected error");
     }
     Tensor *output = op->outputs[0];
     if (output == nullptr || op->cfg_map == nullptr) {
@@ -80,19 +80,19 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
     OpArchType arch_type = op_arch_from_string(gpu_info.arch);
     if (arch_type == OP_ARCH_UNKNOWN) {
-        LOG(ERROR, "unsupported GPU architecture ", gpu_info.arch,
+        ERR(SchedulerError, "unsupported GPU architecture ", gpu_info.arch,
             " for op: ", op->name);
     }
     auto &configs = op->cfg_map->get({arch_type, op->prec_type});
     if (configs.empty()) {
-        LOG(ERROR, "no config found for op: ", op->name,
+        ERR(SchedulerError, "no config found for op: ", op->name,
             ", arch_type: ", arch_type, ", prec_type: ", op->prec_type);
     }
     if (op->gran_lev >= 0) {
         if (configs.size() > (unsigned int)op->gran_lev) {
             return &configs[op->gran_lev];
         }
-        LOG(ERROR, "invalid granularity level: ", op->gran_lev);
+        ERR(SchedulerError, "invalid granularity level: ", op->gran_lev);
     }
     std::vector<const OpConfig *> feasible_configs;
     for (auto &cfg : configs) {
@@ -149,7 +149,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
             configs_str << ", { " << ot_x << ", " << ot_y << " }";
         }
         configs_str << ".";
-        LOG(ERROR, "no valid tile configuration found. Output shape ",
+        ERR(SchedulerError, "no valid tile configuration found. Output shape ",
             output->shape, ", available tiles: ", configs_str.str());
     }
     auto &candidates = high_priority_candidates.empty()

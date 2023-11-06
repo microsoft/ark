@@ -13,6 +13,7 @@
 #include <map>
 
 #include "file_io.h"
+#include "include/ark.h"
 #include "logging.h"
 
 namespace ark {
@@ -42,7 +43,7 @@ NetIbQp::NetIbQp(void *qp_, int port_)
     struct ibv_context *ctx = ((struct ibv_qp *)qp_)->context;
     struct ibv_port_attr port_attr;
     if (ibv_query_port(ctx, port_, &port_attr) != 0) {
-        LOG(ERROR, "failed to query IB port: %d", port_);
+        ERR(SystemError, "failed to query IB port: %d", port_);
     }
     this->info.lid = port_attr.lid;
     this->info.port = port_;
@@ -54,13 +55,13 @@ NetIbQp::NetIbQp(void *qp_, int port_)
         this->info.is_grh) {
         union ibv_gid gid;
         if (ibv_query_gid(ctx, port_, 0, &gid) != 0) {
-            LOG(ERROR, "failed to query GID");
+            ERR(SystemError, "failed to query GID");
         }
         this->info.spn = gid.global.subnet_prefix;
         this->info.iid = gid.global.interface_id;
     }
     if (this->init() != 0) {
-        LOG(ERROR, "failed to modify QP to INIT");
+        ERR(SystemError, "failed to modify QP to INIT");
     }
     std::memset(this->wrs, 0,
                 sizeof(struct ibv_send_wr) * ARK_NET_IB_MAX_SENDS);
@@ -213,14 +214,14 @@ NetIbMgr::NetIbMgr(int ib_dev_id, bool sep_sc_rc_)
     int num;
     struct ibv_device **devices = ibv_get_device_list(&num);
     if (ib_dev_id >= num) {
-        LOG(ERROR, "ib_dev_id=", ib_dev_id, " num=", num);
+        ERR(SystemError, "ib_dev_id=", ib_dev_id, " num=", num);
     }
     this->device_name = ibv_get_device_name(devices[ib_dev_id]);
     struct ibv_context *ctx_ = ibv_open_device(devices[ib_dev_id]);
     std::string ibdev_path(devices[ib_dev_id]->ibdev_path);
     ibv_free_device_list(devices);
     if (ctx_ == nullptr) {
-        LOG(ERROR, "failed to open IB device: ", this->device_name);
+        ERR(SystemError, "failed to open IB device: ", this->device_name);
     }
     this->ctx = ctx_;
     // Get the NUMA node
@@ -237,7 +238,7 @@ NetIbMgr::NetIbMgr(int ib_dev_id, bool sep_sc_rc_)
     // Check available ports
     struct ibv_device_attr devAttr;
     if (ibv_query_device(ctx_, &devAttr) != 0) {
-        LOG(ERROR, "failed to query IB device: ", this->device_name);
+        ERR(SystemError, "failed to query IB device: ", this->device_name);
     }
     for (int port = 1; port <= devAttr.phys_port_cnt; port++) {
         struct ibv_port_attr portAttr;
@@ -351,7 +352,7 @@ NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size) {
                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE |
                        IBV_ACCESS_REMOTE_READ | IBV_ACCESS_RELAXED_ORDERING);
     if (mr == nullptr) {
-        LOG(ERROR, "ibv_reg_mr failed (errno ", errno,
+        ERR(SystemError, "ibv_reg_mr failed (errno ", errno,
             "). num_registered_pages ", this->num_registered_pages, " pd ",
             std::hex, this->pd, " addr ", (void *)addr, std::dec, " size ",
             size, " pages ", pages, " pageSize ", pageSize);
@@ -363,7 +364,8 @@ NetIbMr *NetIbMgr::reg_mr(void *buffer, size_t size) {
 
 int NetIbMgr::poll_cq() {
     if (this->sep_sc_rc) {
-        LOG(ERROR, "poll_cq not supported for separate send/recv CQs");
+        ERR(InvalidUsageError,
+            "poll_cq not supported for separate send/recv CQs");
     }
     int ret = ibv_poll_cq((struct ibv_cq *)this->cq, ARK_NET_IB_CQ_POLL_NUM,
                           (struct ibv_wc *)this->wcs);
@@ -377,7 +379,8 @@ int NetIbMgr::poll_cq() {
 
 int NetIbMgr::poll_scq() {
     if (!this->sep_sc_rc) {
-        LOG(ERROR, "poll_scq not supported for single send/recv CQ");
+        ERR(InvalidUsageError,
+            "poll_scq not supported for single send/recv CQ");
     }
     int ret = ibv_poll_cq((struct ibv_cq *)this->scq, ARK_NET_IB_CQ_POLL_NUM,
                           (struct ibv_wc *)this->wcs);
@@ -391,7 +394,8 @@ int NetIbMgr::poll_scq() {
 
 int NetIbMgr::poll_rcq() {
     if (!this->sep_sc_rc) {
-        LOG(ERROR, "poll_rcq not supported for single send/recv CQ");
+        ERR(InvalidUsageError,
+            "poll_rcq not supported for single send/recv CQ");
     }
     int ret = ibv_poll_cq((struct ibv_cq *)this->rcq, ARK_NET_IB_CQ_POLL_NUM,
                           (struct ibv_wc *)this->wcs);
