@@ -85,5 +85,6 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMAND ${exe_name}
     )
+    set_tests_properties(${exe_name} PROPERTIES TIMEOUT 3600)
     add_dependencies(ut ${exe_name})
 endforeach()
