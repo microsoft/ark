@@ -44,9 +44,9 @@ DEVICE void send(int, int) {
     constexpr unsigned long long int invalid = (unsigned long long int)-1;
     while (atomicCAS(&_ARK_COMM_SW_SEND_LOCK, 0, 1) != 0) {
     }
-    while (*_ARK_REQUEST != invalid) {
+    while (*ARK_REQUEST != invalid) {
     }
-    *_ARK_REQUEST = dbval;
+    *ARK_REQUEST = dbval;
     atomicExch(&_ARK_COMM_SW_SEND_LOCK, 0);
 }
 
@@ -58,8 +58,7 @@ DEVICE void send_done(int, int) {
     if (UnitOp::thread_id() != 0) {
         return;
     }
-    volatile unsigned int *done = &(_ARK_SC[Sid]);
-    uint64_t spin_cnt = 0;
+    volatile unsigned int *done = &(ARK_SC[Sid]);
     while (!(*done)) {
         if (spin_cnt++ == 1000000) {
             __assert_fail("send_done is stuck", __FILE__, __LINE__, __PRETTY_FUNCTION__);
@@ -76,8 +75,7 @@ DEVICE void recv(int, int) {
     if (UnitOp::thread_id() != 0) {
         return;
     }
-    volatile unsigned int *len = &(_ARK_RC[Sid]);
-    uint64_t spin_cnt = 0;
+    volatile unsigned int *len = &(ARK_RC[Sid]);
     while (!(*len)) {
         if (spin_cnt++ == 10000000) {
             __assert_fail("recv is stuck", __FILE__, __LINE__, __PRETTY_FUNCTION__);

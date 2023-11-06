@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.8.0-devel-ubuntu20.04
+ARG BASE_IMAGE=nvidia/cuda:12.1.1-devel-ubuntu20.04
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="ARK"
 LABEL org.opencontainers.image.source https://github.com/microsoft/ark
@@ -49,8 +50,9 @@ RUN cd /tmp && \
     cd .. && \
     rm -rf /tmp/openmpi-${OPENMPI_VERSION}*
 
+ARG EXTRA_LD_PATH=/usr/local/cuda-12.1/compat:/usr/local/cuda-12.1/lib64
 ENV PATH="/usr/local/mpi/bin:${PATH}" \
-    LD_LIBRARY_PATH="/usr/local/mpi/lib:/usr/local/cuda-11.8/lib64:${LD_LIBRARY_PATH}"
+    LD_LIBRARY_PATH="/usr/local/mpi/lib:${EXTRA_LD_PATH}:${LD_LIBRARY_PATH}"
 
 RUN echo PATH="${PATH}" > /etc/environment && \
     echo LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" >> /etc/environment

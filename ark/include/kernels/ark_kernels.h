@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#if defined(ARK_TARGET_CUDA_ARCH)
+#if defined(ARK_TARGET_CUDA_ARCH) || defined(ARK_TARGET_ROCM_ARCH)
 
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_

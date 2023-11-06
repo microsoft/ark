@@ -162,6 +162,7 @@ class GpuCommSw::Impl {
     //
     std::vector<std::vector<GpuPtr>> addr_table_;
     //
+    GpuPtr dev_one_;
     Request *request_ = nullptr;
     std::thread *request_loop_thread_ = nullptr;
     volatile bool run_request_loop_thread_ = false;
@@ -193,8 +194,11 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
       world_size_{world_size},
       request_{new Request} {
     // Register `request_` as a mapped & pinned address.
-    CULOG(cuMemHostRegister((void *)request_, sizeof(request_),
-                            CU_MEMHOSTREGISTER_DEVICEMAP));
+    GLOG(gpuHostRegister((void *)request_, sizeof(request_),
+                         gpuHostRegisterMapped));
+
+    GLOG(gpuMemAlloc(&dev_one_, sizeof(int)));
+    GLOG(gpuMemsetD32(dev_one_, 1, 1));
 
     // Reserve entries for GPU communication stack information.
     // Power of 2 larger than `gpu_id_` and at least 8.
@@ -238,7 +242,9 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
 GpuCommSw::Impl::~Impl() {
     this->stop_request_loop();
     if (request_ != nullptr) {
-        cuMemHostUnregister((void *)request_);
+        if (gpuHostUnregister((void *)request_) != gpuSuccess) {
+            LOG(WARN, "gpuHostUnregister() failed.");
+        }
         delete request_;
     }
 }
@@ -535,11 +541,11 @@ void GpuCommSw::Impl::launch_request_loop()
         request_loop_thread_ = new thread([&, gid = gpu_id_] {
             //
             GpuState ret = get_gpu_mgr(gid)->set_current();
-            if (ret == CUDA_SUCCESS) {
+            if (ret == gpuSuccess) {
                 //
                 this->request_loop();
-            } else if (ret != CUDA_ERROR_DEINITIALIZED) {
-                CULOG(ret);
+            } else if (ret != gpuErrorDeinitialized) {
+                GLOG(ret);
             }
         });
         assert(request_loop_thread_ != nullptr);
@@ -550,6 +556,9 @@ void GpuCommSw::Impl::launch_request_loop()
 
 //
 void GpuCommSw::Impl::request_loop() {
+    gpuStream loop_stream;
+    GLOG(gpuStreamCreate(&loop_stream, gpuStreamNonBlocking));
+
     const size_t sc_offset = 0;
     const size_t rc_offset = MAX_NUM_SID * sizeof(int);
 
@@ -640,10 +649,11 @@ void GpuCommSw::Impl::request_loop() {
         //
         GpuPtr src = addr_table_[gpu_id_][db.fields.sid];
         if (src == 0) {
-            LOG(ERROR, "Invalid SRC SID ", db.fields.sid, " in GPU ", gpu_id_);
+            LOG(ERROR, "Invalid SRC SID ", (uint64_t)db.fields.sid, " in GPU ",
+                gpu_id_);
         }
-        REQUEST_DEBUG("Request SRC: RANK ", rank_, ", sid ", db.fields.sid,
-                      ", ", (void *)src);
+        REQUEST_DEBUG("Request SRC: RANK ", rank_, ", sid ",
+                      (uint64_t)db.fields.sid, ", ", (void *)src);
         GpuPtr dst = 0;
         // TODO: generalize converting rank to GPU ID.
         int nrph = get_env().num_ranks_per_host;
@@ -651,32 +661,31 @@ void GpuCommSw::Impl::request_loop() {
         if ((db.fields.rank / nrph) != (rank_ / nrph)) {
             // This GPU is not in this machine.
             gid_dst = -1;
-            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                          db.fields.sid, ", remote");
+            REQUEST_DEBUG("Request DST: RANK ", (uint64_t)db.fields.rank,
+                          ", sid ", (uint64_t)db.fields.sid, ", remote");
         } else {
             dst = addr_table_[gid_dst][db.fields.sid];
             if (dst == 0) {
-                LOG(ERROR, "Invalid DST SID ", db.fields.sid, " in GPU ",
-                    gid_dst);
+                LOG(ERROR, "Invalid DST SID ", (uint64_t)db.fields.sid,
+                    " in GPU ", gid_dst);
             }
-            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                          db.fields.sid, ", ", (void *)dst);
+            REQUEST_DEBUG("Request DST: RANK ", (uint64_t)db.fields.rank,
+                          ", sid ", (uint64_t)db.fields.sid, ", ", (void *)dst);
         }
-        REQUEST_DEBUG("Request LEN: ", db.fields.len);
+        REQUEST_DEBUG("Request LEN: ", (uint64_t)db.fields.len);
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {
-            CULOG(cuMemcpyDtoD(dst, src, db.fields.len));
+            GLOG(gpuMemcpyDtoDAsync(dst, src, (long unsigned int)db.fields.len,
+                                    loop_stream));
             GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
-            volatile int *rc_array = (volatile int *)mem->href(rc_offset);
-            if (rc_array != nullptr) {
-                rc_array[db.fields.sid] = 1;
-            } else {
-                GpuPtr rc_ref =
-                    mem->ref(rc_offset + db.fields.sid * sizeof(int));
-                CULOG(cuMemsetD32(rc_ref, 1, 1));
-            }
-            sc_href[db.fields.sid] = 1;
+            GLOG(gpuMemcpyDtoDAsync(
+                mem->ref(rc_offset + db.fields.sid * sizeof(int)), dev_one_,
+                sizeof(int), loop_stream));
+            GLOG(gpuMemcpyDtoDAsync(
+                this->get_sc_rc_mem(gpu_id_)->ref(sc_offset +
+                                                  db.fields.sid * sizeof(int)),
+                dev_one_, sizeof(int), loop_stream));
         } else {
             NetIbQp *qp = qps_[db.fields.rank];
             int ret = qp->stage_send(
@@ -695,6 +704,8 @@ void GpuCommSw::Impl::request_loop() {
         is_idle = false;
         busy_counter = 0;
     }
+    GLOG(gpuStreamSynchronize(loop_stream));
+    GLOG(gpuStreamDestroy(loop_stream));
 }
 
 //
@@ -769,7 +780,7 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid) {
 //
 GpuPtr GpuCommSw::Impl::get_request_ref() const {
     GpuPtr ref;
-    CULOG(cuMemHostGetDevicePointer(&ref, request_, 0));
+    GLOG(gpuHostGetDevicePointer(&ref, request_, 0));
     return ref;
 }
 

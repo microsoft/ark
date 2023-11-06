@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "gpu/gpu_mem.h"
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -10,11 +12,7 @@
 #include <fstream>
 #include <string>
 
-#include "gpumemioctl.h"
-#define GPUMEM_DRIVER_PATH "/dev/" GPUMEM_DRIVER_NAME
-
 #include "gpu/gpu_logging.h"
-#include "gpu/gpu_mem.h"
 
 #define GPU_PAGE_SHIFT 16
 #define GPU_PAGE_SIZE (1ULL << GPU_PAGE_SHIFT)
@@ -22,6 +20,11 @@
 #define GPU_PAGE_MASK (~GPU_PAGE_OFFSET)
 
 namespace ark {
+
+#if defined(ARK_CUDA)
+
+#include "gpumemioctl.h"
+#define GPUMEM_DRIVER_PATH "/dev/" GPUMEM_DRIVER_NAME
 
 bool is_gpumem_loaded() {
     std::ifstream file("/proc/modules");
@@ -94,11 +97,11 @@ static int mem_expose(ExposalInfo *info, GpuPtr addr, uint64_t bytes) {
     int *tmp0 = (int *)info->mmap;
     *tmp0 = 77;
     int tmp1;
-    CULOG(cuMemcpyDtoH(&tmp1, addr, 4));
+    GLOG(gpuMemcpyDtoH(&tmp1, addr, 4));
     if (tmp1 != 77) {
         LOG(ERROR, "mmap test failed: GPU reads ", tmp1, ", expected 77");
     }
-    CULOG(cuMemsetD32(addr, 55, 1));
+    GLOG(gpuMemsetD32(addr, 55, 1));
     if (*tmp0 != 55) {
         LOG(ERROR, "mmap test failed: CPU reads ", *tmp0, ", expected 55");
     }
@@ -124,6 +127,8 @@ static void *map_pa_to_va(uint64_t pa, uint64_t bytes) {
     return map;
 }
 
+#endif  // defined(ARK_CUDA)
+
 //
 GpuMem::GpuMem(size_t bytes) { this->init(bytes); }
 
@@ -136,24 +141,34 @@ void GpuMem::init(size_t bytes, bool expose) {
         LOG(ERROR, "Tried to allocate zero byte.");
     }
 
+#if defined(ARK_CUDA)
     // Allocate more to align the bytes by 64KB.
-    CULOG(cuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
+    GLOG(gpuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
+#elif defined(ARK_ROCM)
+    if (expose) {
+        GLOG(hipExtMallocWithFlags(&raw_addr_, bytes + GPU_PAGE_SIZE,
+                                   hipDeviceMallocUncached));
+    } else {
+        GLOG(gpuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
+    }
+#endif
 
     // Make sure it is a base pointer.
     GpuPtr base_ptr;
     size_t base_size;  // unused
-    CULOG(cuMemGetAddressRange(&base_ptr, &base_size, raw_addr_));
+    GLOG(gpuMemGetAddressRange(&base_ptr, &base_size, raw_addr_));
     if (raw_addr_ != base_ptr) {
         LOG(ERROR, "Unexpected error.");
     }
 
     // Aligned address.
     addr_ =
-        (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+        (gpuDeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     int one = 1;
-    CULOG(cuPointerSetAttribute(&one, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, addr_));
+    GLOG(gpuPointerSetAttribute(&one, gpuPointerAttributeSyncMemops, addr_));
 
+#if defined(ARK_CUDA)
     ExposalInfo exp_info;
     if (expose) {
         int err = mem_expose(&exp_info, addr_, bytes + GPU_PAGE_SIZE);
@@ -167,9 +182,19 @@ void GpuMem::init(size_t bytes, bool expose) {
     }
     npage_ = exp_info.npage;
     mmap_ = exp_info.mmap;
-
-    CULOG(cuIpcGetMemHandle(&info_.ipc_hdl, raw_addr_));
     info_.phys_addr = exp_info.phys;
+#elif defined(ARK_ROCM)
+    // Alignment diff.
+    uint64_t diff = (uint64_t)addr_ - (uint64_t)raw_addr_;
+    npage_ = (bytes - diff + GPU_PAGE_SIZE) >> GPU_PAGE_SHIFT;
+    mmap_ = addr_;
+    // Just set to virtual address.
+    info_.phys_addr = reinterpret_cast<uint64_t>(addr_);
+#endif
+
+#if defined(ARK_CUDA) || (defined(ARK_ROCM) && (HIP_VERSION >= 50700000))
+    GLOG(gpuIpcGetMemHandle(&info_.ipc_hdl, raw_addr_));
+#endif
     info_.bytes = bytes;
 
     is_remote_ = false;
@@ -185,24 +210,28 @@ void GpuMem::init(const GpuMem::Info &info) {
     info_.phys_addr = info.phys_addr;
     info_.bytes = info.bytes;
 
-    CUresult res = cuIpcOpenMemHandle(&raw_addr_, info.ipc_hdl,
-                                      CU_IPC_MEM_LAZY_ENABLE_PEER_ACCESS);
-    if (res == CUDA_ERROR_PEER_ACCESS_UNSUPPORTED) {
+    gpuError res = gpuIpcOpenMemHandle(&raw_addr_, info.ipc_hdl,
+                                       gpuIpcMemLazyEnablePeerAccess);
+    if (res == gpuErrorPeerAccessUnsupported) {
         LOG(ERROR, "The GPU does not support peer access.");
-    } else if (res != CUDA_SUCCESS) {
+    } else if (res != gpuSuccess) {
         // Unexpected error.
-        CULOG(res);
+        GLOG(res);
     }
 
     // Aligned address.
     addr_ =
-        (CUdeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
+        (gpuDeviceptr)(((uint64_t)raw_addr_ + GPU_PAGE_OFFSET) & GPU_PAGE_MASK);
 
     if (info.phys_addr != 0) {
+#if defined(ARK_CUDA)
         mmap_ = map_pa_to_va(info.phys_addr, info.bytes);
         if (mmap_ == nullptr) {
             LOG(ERROR, "map_pa_to_va failed");
         }
+#elif defined(ARK_ROCM)
+        mmap_ = reinterpret_cast<void *>(info.phys_addr);
+#endif
     } else {
         mmap_ = nullptr;
     }
@@ -220,21 +249,33 @@ GpuMem::~GpuMem() {
     if (addr_ == 0) {
         return;
     }
-    size_t mapped_bytes;
     if (is_remote_) {
-        cuIpcCloseMemHandle(raw_addr_);
-        mapped_bytes = info_.bytes;
+        if (gpuIpcCloseMemHandle(raw_addr_) != gpuSuccess) {
+            LOG(WARN, "gpuIpcCloseMemHandle() failed.");
+        }
     } else {
-        cuMemFree(raw_addr_);
-        mapped_bytes = npage_ << GPU_PAGE_SHIFT;
+        if (gpuMemFree(raw_addr_) != gpuSuccess) {
+            LOG(WARN, "gpuMemFree() failed.");
+        }
     }
+#if defined(ARK_CUDA)
     if (mmap_ != nullptr) {
+        size_t mapped_bytes;
+        if (is_remote_) {
+            mapped_bytes = info_.bytes;
+        } else {
+            mapped_bytes = npage_ << GPU_PAGE_SHIFT;
+        }
         munmap(mmap_, mapped_bytes);
     }
+#endif
 }
 
 // GPU-side virtual address.
-GpuPtr GpuMem::ref(size_t offset) const { return addr_ + offset; }
+GpuPtr GpuMem::ref(size_t offset) const {
+    return reinterpret_cast<GpuPtr>(
+        reinterpret_cast<long long unsigned int>(addr_) + offset);
+}
 
 // GPU-side physical address.
 uint64_t GpuMem::pref(size_t offset) const { return info_.phys_addr + offset; }

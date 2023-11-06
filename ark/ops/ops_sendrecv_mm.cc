@@ -211,7 +211,7 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
 }
 
 const OpConfigMap SendRecvMMConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
+    {{OP_ARCH_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},

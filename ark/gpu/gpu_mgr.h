@@ -4,8 +4,6 @@
 #ifndef ARK_GPU_MGR_H_
 #define ARK_GPU_MGR_H_
 
-#include <cuda.h>
-
 #include <list>
 #include <map>
 #include <set>
@@ -13,18 +11,10 @@
 #include <thread>
 #include <vector>
 
+#include "gpu/gpu.h"
 #include "gpu/gpu_comm_sw.h"
 
 namespace ark {
-
-// Types of GPU architectures.
-typedef enum {
-    GPU_ARCH_UNKNOWN = -1,
-    GPU_ARCH_CUDA_60,
-    GPU_ARCH_CUDA_70,
-    GPU_ARCH_CUDA_80,
-    GPU_ARCH_CUDA_90,
-} GpuArchType;
 
 // Details of a GPU device.
 struct GpuInfo {
@@ -38,25 +28,24 @@ struct GpuInfo {
     int smem_block_total;
     int num_sm;
     int clk_rate;
-    GpuArchType arch;
-    std::string arch_str;
-    // PCIe "Domain:Bus:Slot.Function"
-    std::string dbsf;
-    //
-    const unsigned int threads_per_warp = 32;
-    const unsigned int max_registers_per_thread = 256;
-    const unsigned int max_registers_per_block = 65536;
-    const unsigned int min_threads_per_block =
+    int threads_per_warp;
+    int max_registers_per_block;
+    int max_threads_per_block;
+    // TODO: how to get this?
+    int max_registers_per_thread = 256;
+    int min_threads_per_block =
         max_registers_per_block / max_registers_per_thread;
-    const unsigned int max_threads_per_block = 1024;
-    const unsigned int smem_align = 128;
+    // TODO: how to get this?
+    int smem_align = 128;
+
+    std::string arch;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
-typedef CUstream GpuStream;
-typedef CUevent GpuEvent;
+typedef gpuStream GpuStream;
+typedef gpuEvent GpuEvent;
 
 //
 class GpuMgrCtx;
@@ -83,8 +72,8 @@ class GpuMgr {
    private:
     //
     GpuInfo gpu_info;
-    // CUDA context of this GPU.
-    CUcontext cuda_ctx;
+    //
+    gpuCtx raw_ctx;
     //
     std::list<std::unique_ptr<GpuMgrCtx>> mgr_ctxs;
 };
@@ -128,6 +117,8 @@ class GpuMgrCtx {
     GpuPtr get_request_ref() const;
     //
     GpuCommSw *get_comm_sw() const;
+
+    const GpuInfo &get_gpu_info() const;
 
    private:
     //

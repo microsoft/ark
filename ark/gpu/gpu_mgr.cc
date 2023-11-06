@@ -4,7 +4,6 @@
 #include "gpu/gpu_mgr.h"
 
 #include <fcntl.h>
-#include <nvml.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -25,78 +24,72 @@ namespace ark {
 
 // Initialize APIs.
 static void gpu_init() {
-    // Initialize CUDA driver APIs.
-    CULOG(cuInit(0));
-    // Initialize NVML APIs.
-    NVMLLOG(nvmlInit());
+    // Initialize GPU APIs.
+    GLOG(gpuInit(0));
 }
 
 // Return the number of GPUs in the system.
 static int gpu_num() {
     int n;
-    CULOG(cuDeviceGetCount(&n));
+    GLOG(gpuDeviceGetCount(&n));
     return n;
 }
 
 //
 void GpuInfo::init(const int gpu_id) {
-    CUdevice dev;
-    CULOG(cuDeviceGet(&dev, gpu_id));
+    gpuDevice dev;
+    GLOG(gpuDeviceGet(&dev, gpu_id));
     //
     size_t gmem_free;
-    CULOG(cuMemGetInfo(&gmem_free, &(this->gmem_total)));
+    GLOG(gpuMemGetInfo(&gmem_free, &(this->gmem_total)));
     //
-    CULOG(cuDeviceGetAttribute(
-        &(this->cc_major), CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, dev));
-    CULOG(cuDeviceGetAttribute(
-        &(this->cc_minor), CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, dev));
-    CULOG(cuDeviceGetAttribute(&(this->num_sm),
-                               CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev));
-    CULOG(cuDeviceGetAttribute(
-        &(this->smem_total),
-        CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR, dev));
-    CULOG(cuDeviceGetAttribute(
-        &(this->smem_block_total),
-        CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN, dev));
-    CULOG(cuDeviceGetAttribute(&(this->clk_rate),
-                               CU_DEVICE_ATTRIBUTE_CLOCK_RATE, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->cc_major),
+                               gpuDeviceAttributeComputeCapabilityMajor, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->cc_minor),
+                               gpuDeviceAttributeComputeCapabilityMinor, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->num_sm),
+                               gpuDeviceAttributeMultiprocessorCount, dev));
+    GLOG(gpuDeviceGetAttribute(
+        &(this->smem_total), gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
+        dev));
+    GLOG(gpuDeviceGetAttribute(&(this->smem_block_total),
+                               gpuDeviceAttributeSharedMemPerBlockOptin, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->clk_rate), gpuDeviceAttributeClockRate,
+                               dev));
+    GLOG(gpuDeviceGetAttribute(&(this->threads_per_warp),
+                               gpuDeviceAttributeWarpSize, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->max_registers_per_block),
+                               gpuDeviceAttributeMaxRegistersPerBlock, dev));
+    GLOG(gpuDeviceGetAttribute(&(this->max_threads_per_block),
+                               gpuDeviceAttributeMaxThreadsPerBlock, dev));
 
-    this->arch_str = to_string(this->cc_major * 10 + this->cc_minor);
-    if (this->arch_str == "60") {
-        this->arch = GPU_ARCH_CUDA_60;
-    } else if (this->arch_str == "70") {
-        this->arch = GPU_ARCH_CUDA_70;
-    } else if (this->arch_str == "80") {
-        this->arch = GPU_ARCH_CUDA_80;
-    } else if (this->arch_str == "90") {
-        this->arch = GPU_ARCH_CUDA_90;
-    } else {
-        this->arch = GPU_ARCH_UNKNOWN;
+#if defined(ARK_CUDA)
+    this->arch = "cuda_" + std::to_string(this->cc_major * 10 + this->cc_minor);
+#elif defined(ARK_ROCM)
+    hipDeviceProp_t prop;
+    GLOG(hipGetDeviceProperties(&prop, gpu_id));
+    // E.g.: "gfx90a:sramecc+:xnack-"
+    std::string gcn_arch_name = prop.gcnArchName;
+    if (gcn_arch_name.substr(0, 3) != "gfx") {
+        LOG(ERROR, "unexpected GCN architecture name: ", gcn_arch_name);
     }
-    // Get PCIe info.
-    int pci_domain;
-    int pci_bus;
-    int pci_device;
-    CULOG(cuDeviceGetAttribute(&pci_domain, CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID,
-                               dev));
-    CULOG(cuDeviceGetAttribute(&pci_bus, CU_DEVICE_ATTRIBUTE_PCI_BUS_ID, dev));
-    CULOG(cuDeviceGetAttribute(&pci_device, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID,
-                               dev));
-    stringstream dbsf_s;
-    dbsf_s << hex << setfill('0') << setw(4) << pci_domain << ":"
-           << setfill('0') << setw(2) << pci_bus << ":" << setfill('0')
-           << setw(2) << pci_device << ".0";
-    this->dbsf = dbsf_s.str();
+    size_t pos_e = gcn_arch_name.find(":");
+    if (pos_e == std::string::npos) {
+        LOG(ERROR, "unexpected GCN architecture name: ", gcn_arch_name);
+    }
+    // E.g.: "90a"
+    this->arch = "rocm_" + gcn_arch_name.substr(3, pos_e - 3);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
-    // Create a CUDA context.
-    CUdevice dev;
-    CULOG(cuDeviceGet(&dev, gpu_id_));
-    CULOG(cuDevicePrimaryCtxRetain(&(this->cuda_ctx), dev));
-    CULOG(cuCtxSetCurrent(this->cuda_ctx));
+    // Create a GPU context.
+    gpuDevice dev;
+    GLOG(gpuDeviceGet(&dev, gpu_id_));
+    GLOG(gpuDevicePrimaryCtxRetain(&(this->raw_ctx), dev));
+    GLOG(gpuCtxSetCurrent(this->raw_ctx));
 
     gpu_info.init(gpu_id_);
 }
@@ -105,7 +98,13 @@ GpuMgr::GpuMgr(const int gpu_id_) : gpu_id{gpu_id_} {
 GpuMgr::~GpuMgr()
 {
     this->mgr_ctxs.clear();
-    cuCtxDestroy(this->cuda_ctx);
+    gpuDevice dev;
+    gpuError e = gpuDeviceGet(&dev, this->gpu_id);
+    if (e == gpuSuccess) {
+        GLOG(gpuDevicePrimaryCtxRelease(dev));
+    } else if (e != gpuErrorDeinitialized) {
+        GLOG(e);
+    }
 }
 
 //
@@ -145,7 +144,7 @@ void GpuMgr::validate_total_bytes() {
 }
 
 //
-GpuState GpuMgr::set_current() { return cuCtxSetCurrent(this->cuda_ctx); }
+GpuState GpuMgr::set_current() { return gpuCtxSetCurrent(this->raw_ctx); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -176,15 +175,19 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
 GpuMgrCtx::~GpuMgrCtx() {
     //
     for (GpuStream s : this->streams) {
-        cuStreamDestroy(s);
+        if (gpuStreamDestroy(s) != gpuSuccess) {
+            LOG(WARN, "gpuStreamDestroy() failed.");
+        }
     }
 }
 
 //
 GpuStream GpuMgrCtx::create_stream() {
     GpuStream s;
-    CULOG(this->gpu_mgr->set_current());
-    CULOG(cuStreamCreate(&s, CU_STREAM_NON_BLOCKING));
+    if (this->gpu_mgr->set_current() != gpuSuccess) {
+        LOG(ERROR, "gpuCtxSetCurrent() failed.");
+    }
+    GLOG(gpuStreamCreate(&s, gpuStreamNonBlocking));
     this->streams.emplace_back(s);
     return s;
 }
@@ -194,7 +197,9 @@ void GpuMgrCtx::destroy_stream(const GpuStream &s) {
     auto it = this->streams.begin();
     for (; it != this->streams.end(); ++it) {
         if (*it == s) {
-            cuStreamDestroy(s);
+            if (gpuStreamDestroy(s) != gpuSuccess) {
+                LOG(WARN, "gpuStreamDestroy() failed.");
+            }
             this->streams.erase(it);
             break;
         }
@@ -206,9 +211,9 @@ GpuEvent GpuMgrCtx::create_event(bool disable_timing) {
     GpuEvent cuda_event;
     unsigned int flags = 0;
     if (disable_timing) {
-        flags |= CU_EVENT_DISABLE_TIMING;
+        flags |= gpuEventDisableTiming;
     }
-    CULOG(cuEventCreate(&cuda_event, flags));
+    GLOG(gpuEventCreate(&cuda_event, flags));
     return cuda_event;
 }
 
@@ -349,7 +354,7 @@ void GpuMgrCtx::reg_sendrecv(int sid, int remote_gpu_id, size_t bytes,
 
 //
 void GpuMgrCtx::freeze(bool expose) {
-    CULOG(this->gpu_mgr->set_current());
+    GLOG(this->gpu_mgr->set_current());
     //
     this->gpu_mgr->validate_total_bytes();
 
@@ -358,7 +363,7 @@ void GpuMgrCtx::freeze(bool expose) {
         LOG(INFO, "Allocating ", total_bytes, " bytes of GPU memory");
         this->data_mem.init(total_bytes, expose);
         // init the data mem
-        CULOG(cuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
+        GLOG(gpuMemsetD32(this->data_mem.ref(), 0, total_bytes >> 2));
     }
 
     //
@@ -403,6 +408,10 @@ GpuPtr GpuMgrCtx::get_request_ref() const {
 //
 GpuCommSw *GpuMgrCtx::get_comm_sw() const { return this->comm_sw.get(); }
 
+const GpuInfo &GpuMgrCtx::get_gpu_info() const {
+    return this->gpu_mgr->get_gpu_info();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Global GpuMgr vector.
@@ -417,7 +426,7 @@ GpuMgr *get_gpu_mgr(const int gpu_id) {
         gpu_init();
         int ngpu = gpu_num();
         if (ngpu <= 0) {
-            LOG(ERROR, "No CUDA-capable GPU is detected.");
+            LOG(ERROR, "No GPU is detected.");
         }
         ARK_GPU_MGR_GLOBAL.resize(ngpu);
         for (auto &mgr : ARK_GPU_MGR_GLOBAL) {
@@ -448,9 +457,9 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
     if (pb != 0) {
         // TODO: the set_current below seems to be necessary but returns
         // `CUDA_ERROR_INVALID_VALUE`.
-        // CULOG(get_gpu_mgr(buf->get_gpu_id())->set_current());
+        // GLOG(get_gpu_mgr(buf->get_gpu_id())->set_current());
         assert((reinterpret_cast<long long unsigned int>(pb) % 4) == 0);
-        CULOG(cuMemsetD32(pb, val, num));
+        GLOG(gpuMemsetD32(pb, val, num));
     } else {
         int *phb = (int *)buf->href(offset);
         assert(phb != nullptr);
@@ -462,29 +471,29 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
 
 void gpu_memcpy(GpuBuf *dst, size_t dst_offset, void *src, size_t src_offset,
                 size_t bytes) {
-    CULOG(get_gpu_mgr(dst->get_gpu_id())->set_current());
+    GLOG(get_gpu_mgr(dst->get_gpu_id())->set_current());
     src = static_cast<char *>(src) + src_offset;
-    CULOG(cuMemcpyHtoD(dst->ref(dst_offset), src, bytes));
+    GLOG(gpuMemcpyHtoD(dst->ref(dst_offset), src, bytes));
 }
 
 void gpu_memcpy(void *dst, size_t dst_offset, const GpuBuf *src,
                 size_t src_offset, size_t bytes) {
-    CULOG(get_gpu_mgr(src->get_gpu_id())->set_current());
+    GLOG(get_gpu_mgr(src->get_gpu_id())->set_current());
     dst = static_cast<char *>(dst) + dst_offset;
-    CULOG(cuMemcpyDtoH(dst, src->ref(src_offset), bytes));
+    GLOG(gpuMemcpyDtoH(dst, src->ref(src_offset), bytes));
 }
 
 void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
                 size_t src_offset, size_t bytes) {
-    CULOG(get_gpu_mgr(src->get_gpu_id())->set_current());
+    GLOG(get_gpu_mgr(src->get_gpu_id())->set_current());
     GpuPtr rd = dst->ref(dst_offset);
     GpuPtr rs = src->ref(src_offset);
     if ((rd != 0) && (rs != 0)) {
-        CULOG(cuMemcpyDtoD(dst->ref(dst_offset), src->ref(src_offset), bytes));
+        GLOG(gpuMemcpyDtoD(dst->ref(dst_offset), src->ref(src_offset), bytes));
     } else if (rd != 0) {
-        CULOG(cuMemcpyHtoD(dst->ref(dst_offset), src->href(src_offset), bytes));
+        GLOG(gpuMemcpyHtoD(dst->ref(dst_offset), src->href(src_offset), bytes));
     } else if (rs != 0) {
-        CULOG(cuMemcpyDtoH(dst->href(dst_offset), src->ref(src_offset), bytes));
+        GLOG(gpuMemcpyDtoH(dst->href(dst_offset), src->ref(src_offset), bytes));
     } else {
         // ::memcpy(dst->href(), src->href(), bytes);
         LOG(ERROR, "Unexpected case.");

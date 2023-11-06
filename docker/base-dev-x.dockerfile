@@ -1,4 +1,5 @@
-FROM ghcr.io/microsoft/ark/ark:base-cuda12.1
+ARG BASE_IMAGE=ghcr.io/microsoft/ark/ark:base-cuda12.1
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="ARK"
 LABEL org.opencontainers.image.source https://github.com/microsoft/ark

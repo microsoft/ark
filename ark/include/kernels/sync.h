@@ -4,6 +4,10 @@
 #ifndef ARK_KERNELS_SYNC_H_
 #define ARK_KERNELS_SYNC_H_
 
+#if defined(ARK_TARGET_ROCM_ARCH)
+#include <hip/hip_runtime.h>
+#endif  // ARK_TARGET_ROCM_ARCH
+
 #include "arch.h"
 #include "device.h"
 #include "static_math.h"
@@ -56,6 +60,8 @@ DEVICE void sync_gpu(sync::State &state) {
     __syncthreads();
 }
 
+ARCH_ALIAS_FUNC(sync_warp, __syncwarp, __builtin_amdgcn_wave_barrier);
+
 // Synchronize a group of warps.
 // This function replaces `__syncthreads()` of legacy kernel implementations.
 // It is needed because in normal practices to implement a kernel, each thread
@@ -69,6 +75,7 @@ DEVICE void sync_gpu(sync::State &state) {
 template <int NumWarps>
 DEVICE void sync_warps() {
     static_assert(math::is_pow2<NumWarps>::value == 1, "");
+#if defined(ARK_TARGET_CUDA_ARCH)
     static_assert(Arch::ThreadsPerWarp == 32, "");
     if constexpr (NumWarps == 1) {
         __syncwarp();
@@ -90,6 +97,15 @@ DEVICE void sync_warps() {
         // just use barrier 8.
         asm volatile("barrier.sync 8, 1024;");
     }
+#elif defined(ARK_TARGET_ROCM_ARCH)
+    static_assert(Arch::ThreadsPerWarp == 64, "");
+    if constexpr (NumWarps == 1) {
+        __builtin_amdgcn_wave_barrier();
+    } else {
+        // TODO:
+        __syncthreads();
+    }
+#endif
 }
 
 }  // namespace ark
