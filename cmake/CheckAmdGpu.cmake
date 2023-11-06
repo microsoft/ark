@@ -4,6 +4,9 @@
 set(AMD_FOUND "FALSE")
 
 set(CMAKE_PREFIX_PATH "/opt/rocm;${CMAKE_PREFIX_PATH}")
+# Temporal fix for rocm5.6
+set(ENV{amd_comgr_DIR} "/opt/rocm/lib/cmake/amd_comgr")
+set(ENV{AMDDeviceLibs_DIR} "/opt/rocm/lib/cmake/AMDDeviceLibs")
 
 find_package(hip QUIET)
 
