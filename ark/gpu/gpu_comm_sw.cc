@@ -666,16 +666,33 @@ void GpuCommSw::Impl::request_loop() {
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {
-            GLOG(gpuMemcpyDtoDAsync(dst, src, (long unsigned int)db.fields.len,
-                                    loop_stream));
+#if 0
+            // TODO: fix this.
+            // GLOG(gpuMemcpyDtoDAsync(dst, src, (long unsigned
+            // int)db.fields.len,
+            //                         loop_stream));
+            // GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
+            // GLOG(gpuMemcpyDtoDAsync(
+            //     mem->ref(rc_offset + db.fields.sid * sizeof(int)), dev_one_,
+            //     sizeof(int), loop_stream));
+            // GLOG(gpuMemcpyDtoDAsync(
+            //     this->get_sc_rc_mem(gpu_id_)->ref(sc_offset +
+            //                                       db.fields.sid *
+            //                                       sizeof(int)),
+            //     dev_one_, sizeof(int), loop_stream));
+#else
+            GLOG(gpuMemcpyDtoD(dst, src, (long unsigned int)db.fields.len));
             GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
-            GLOG(gpuMemcpyDtoDAsync(
-                mem->ref(rc_offset + db.fields.sid * sizeof(int)), dev_one_,
-                sizeof(int), loop_stream));
-            GLOG(gpuMemcpyDtoDAsync(
-                this->get_sc_rc_mem(gpu_id_)->ref(sc_offset +
-                                                  db.fields.sid * sizeof(int)),
-                dev_one_, sizeof(int), loop_stream));
+            volatile int *rc_array = (volatile int *)mem->href(rc_offset);
+            if (rc_array != nullptr) {
+                rc_array[db.fields.sid] = 1;
+            } else {
+                GpuPtr rc_ref =
+                    mem->ref(rc_offset + db.fields.sid * sizeof(int));
+                GLOG(gpuMemsetD32(rc_ref, 1, 1));
+            }
+            sc_href[db.fields.sid] = 1;
+#endif
         } else {
             NetIbQp *qp = qps_[db.fields.rank];
             int ret = qp->stage_send(
