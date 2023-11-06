@@ -89,6 +89,24 @@ endif()
 
 # Code coverage from https://github.com/codecov/example-cpp11-cmake
 add_library(coverage_config INTERFACE)
+if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # Add required flags (GCC & LLVM/Clang)
+    target_compile_options(coverage_config INTERFACE
+        -O0        # no optimization
+        -g         # generate debug info
+        --coverage # sets all required flags
+    )
+    target_link_options(coverage_config INTERFACE --coverage)
+endif()
+
+# Find ibverbs
+include(FindIBVerbs)
+
+# Find NUMA
+include(FindNUMA)
+
+# Code coverage from https://github.com/codecov/example-cpp11-cmake
+add_library(coverage_config INTERFACE)
 # if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 #     # Add required flags (GCC & LLVM/Clang)
 #     target_compile_options(coverage_config INTERFACE
@@ -173,4 +191,6 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ark)
 # Utils
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)
 add_custom_target(lint_and_ut)
-add_dependencies(lint_and_ut cpplint-autofix ut)
+if(CLANG_FORMAT)
+    add_dependencies(lint_and_ut cpplint-autofix ut)
+endif()

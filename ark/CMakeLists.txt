@@ -8,7 +8,7 @@ list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 
 if(USE_ROCM)
     file(GLOB_RECURSE CU_SOURCES CONFIGURE_DEPENDS *.cu)
-    set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE HIP)
+    set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
 set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
@@ -85,5 +85,6 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMAND ${exe_name}
     )
+    set_tests_properties(${exe_name} PROPERTIES TIMEOUT 3600)
     add_dependencies(ut ${exe_name})
 endforeach()

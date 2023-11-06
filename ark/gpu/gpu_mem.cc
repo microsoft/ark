@@ -192,7 +192,9 @@ void GpuMem::init(size_t bytes, bool expose) {
     info_.phys_addr = reinterpret_cast<uint64_t>(addr_);
 #endif
 
+#if defined(ARK_CUDA) || (defined(ARK_ROCM) && (HIP_VERSION >= 50700000))
     GLOG(gpuIpcGetMemHandle(&info_.ipc_hdl, raw_addr_));
+#endif
     info_.bytes = bytes;
 
     is_remote_ = false;

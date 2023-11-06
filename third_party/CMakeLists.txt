@@ -38,7 +38,10 @@ if(USE_CUDA)
         GIT_TAG v3.2.1
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cutlass
     )
-    FetchContent_MakeAvailable(cutlass)
+    FetchContent_GetProperties(cutlass)
+    if (NOT cutlass_POPULATED)
+        FetchContent_Populate(cutlass)
+    endif()
 
     # Patch CUTLASS
     add_custom_target(tp-cutlass
@@ -58,7 +61,10 @@ if(USE_ROCM)
         GIT_TAG rocm-5.7.1
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel
     )
-    FetchContent_MakeAvailable(ck)
+    FetchContent_GetProperties(ck)
+    if (NOT ck_POPULATED)
+        FetchContent_Populate(ck)
+    endif()
 
     # Patch CK
     add_custom_target(tp-ck

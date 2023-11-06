@@ -118,6 +118,8 @@ class GpuMgrCtx {
     //
     GpuCommSw *get_comm_sw() const;
 
+    const GpuInfo &get_gpu_info() const;
+
    private:
     //
     struct Chunk {
