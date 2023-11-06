@@ -41,7 +41,6 @@ if(USE_CUDA)
     FetchContent_GetProperties(cutlass)
     if (NOT cutlass_POPULATED)
         FetchContent_Populate(cutlass)
-        # Don't need to build CUTLASS
     endif()
 
     # Patch CUTLASS
@@ -62,7 +61,10 @@ if(USE_ROCM)
         GIT_TAG rocm-5.7.1
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel
     )
-    FetchContent_MakeAvailable(ck)
+    FetchContent_GetProperties(ck)
+    if (NOT ck_POPULATED)
+        FetchContent_Populate(ck)
+    endif()
 
     # Patch CK
     add_custom_target(tp-ck
