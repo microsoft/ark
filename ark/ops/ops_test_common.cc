@@ -3,8 +3,6 @@
 
 #include "ops_test_common.h"
 
-#include <cuda_runtime.h>
-
 #include <cstring>
 
 #include "env.h"
@@ -28,17 +26,6 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     }
     return os;
 }
-
-#define CUDA_CHECK(status)                                              \
-    do {                                                                \
-        cudaError_t error = status;                                     \
-        if (error != cudaSuccess) {                                     \
-            std::ostringstream oss;                                     \
-            oss << "Got bad cuda status: " << cudaGetErrorString(error) \
-                << " at line: " << __LINE__;                            \
-            throw std::runtime_error(oss.str());                        \
-        }                                                               \
-    } while (0);
 
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
@@ -188,7 +175,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         result.num_total.push_back(comp.num_total);
     }
 
-    CUDA_CHECK(cudaDeviceSynchronize());
+    GLOG(gpuDeviceSynchronize());
 
     // Throughput test.
     if (world_size > 1) {
@@ -265,19 +252,24 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
 }
 
 OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size) {
-    CUDA_CHECK(cudaMalloc(&this->gpu_ptr_, size));
+    GLOG(gpuMemAlloc(reinterpret_cast<gpuDeviceptr *>(&this->gpu_ptr_), size));
 }
 
-OpsTestGpuMem::~OpsTestGpuMem() { cudaFree(this->gpu_ptr_); }
+OpsTestGpuMem::~OpsTestGpuMem() {
+    if (gpuMemFree(reinterpret_cast<gpuDeviceptr>(this->gpu_ptr_)) !=
+        gpuSuccess) {
+        LOG(WARN, "gpuMemFree() failed.");
+    }
+}
 
 void *OpsTestGpuMem::get() const { return this->gpu_ptr_; }
 
 size_t OpsTestGpuMem::size() const { return this->size_; }
 
-OpsTestGpuMem to_gpu(const void *host_ptr, size_t size) {
+OpsTestGpuMem to_gpu(void *host_ptr, size_t size) {
     OpsTestGpuMem gpu_mem(size);
-    CUDA_CHECK(
-        cudaMemcpy(gpu_mem.get(), host_ptr, size, cudaMemcpyHostToDevice));
+    GLOG(gpuMemcpyHtoD(reinterpret_cast<gpuDeviceptr>(gpu_mem.get()), host_ptr,
+                       size));
     return gpu_mem;
 }
 
@@ -285,11 +277,12 @@ void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr) {
     if (host_ptr == nullptr) {
         host_ptr = ::malloc(test_gpu_mem.size());
     }
-    CUDA_CHECK(cudaMemcpy(host_ptr, test_gpu_mem.get(), test_gpu_mem.size(),
-                          cudaMemcpyDeviceToHost));
+    GLOG(gpuMemcpyDtoH(host_ptr,
+                       reinterpret_cast<gpuDeviceptr>(test_gpu_mem.get()),
+                       test_gpu_mem.size()));
     return host_ptr;
 }
 
-void sync_gpu() { CUDA_CHECK(cudaDeviceSynchronize()); }
+void sync_gpu() { GLOG(gpuDeviceSynchronize()); }
 
 }  // namespace ark

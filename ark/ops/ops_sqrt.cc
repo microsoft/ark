@@ -60,7 +60,7 @@ Tensor *Model::sqrt(Tensor *input, Tensor *output, const string &name) {
 }
 
 const OpConfigMap MathConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "fp32"},
+    {{OP_ARCH_ANY, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},
@@ -77,7 +77,7 @@ const OpConfigMap MathConfigMap = {
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
          {1, 0, {{1, 32}}, {{1, 32}}, false, false},
      }},
-    {{OP_ARCH_CUDA_ANY, "fp16"},
+    {{OP_ARCH_ANY, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},
@@ -92,7 +92,7 @@ const OpConfigMap MathConfigMap = {
          {1, 0, {{2, 64}}, {{2, 64}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
      }},
-    {{OP_ARCH_CUDA_ANY, "bf16"},
+    {{OP_ARCH_ANY, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},

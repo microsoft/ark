@@ -4,7 +4,11 @@
 #ifndef ARK_KERNELS_MATMUL_H_
 #define ARK_KERNELS_MATMUL_H_
 
+#if defined(ARK_TARGET_CUDA_ARCH)
 #include "gemm_cutlass.h"
+#elif defined(ARK_TARGET_ROCM_ARCH)
+#include "gemm_ck.h"
+#endif
 #include "unit_op.h"
 
 namespace ark {
@@ -97,10 +101,17 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
     }
 
+#if defined(ARK_TARGET_CUDA_ARCH)
     gemm_cutlass<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
                  IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
                  ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
         pC, pA, pB, uop_idx, smem_per_warp);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+    gemm_ck<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
+            IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
+            ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
+        pC, pA, pB, uop_idx, smem_per_warp);
+#endif
 }
 
 }  // namespace ark

@@ -75,10 +75,18 @@ struct Cast {
             return __int2half_rn(input);
         } else if constexpr (std::is_same<CastType, int>::value &&
                              std::is_same<DataType, bf16>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __bfloat162int_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<int>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, bf16>::value &&
                              std::is_same<DataType, int>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __int2bfloat16_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<bf16>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, unsigned int>::value &&
                              std::is_same<DataType, float>::value) {
             return (unsigned int)(input);
@@ -93,10 +101,18 @@ struct Cast {
             return __uint2half_rn(input);
         } else if constexpr (std::is_same<CastType, unsigned int>::value &&
                              std::is_same<DataType, bf16>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __bfloat162uint_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<unsigned int>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, bf16>::value &&
                              std::is_same<DataType, unsigned int>::value) {
+#if defined(ARK_TARGET_CUDA_ARCH)
             return __uint2bfloat16_rn(input);
+#elif defined(ARK_TARGET_ROCM_ARCH)
+            return Cast::compute<bf16>(Cast::compute<float>(input));
+#endif
         } else if constexpr (std::is_same<CastType, int2>::value &&
                              std::is_same<DataType, fp16x2>::value) {
             int2 output;

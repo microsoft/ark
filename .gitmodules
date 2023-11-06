@@ -9,3 +9,7 @@
 [submodule "examples/llama/llama"]
 	path = examples/llama/llama
 	url = https://github.com/facebookresearch/llama
+
+[submodule "third_party/composable_kernel"]
+	path = third_party/composable_kernel
+	url = https://github.com/ROCmSoftwarePlatform/composable_kernel

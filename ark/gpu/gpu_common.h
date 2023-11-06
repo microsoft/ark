@@ -4,9 +4,9 @@
 #ifndef ARK_GPU_COMMON_H_
 #define ARK_GPU_COMMON_H_
 
-#include <cuda.h>
-
 #include <cstdint>
+
+#include "gpu/gpu.h"
 
 #define ARK_GPU_NAME_PREFIX "gpu."
 #define ARK_GPU_DATA_NAME ARK_GPU_NAME_PREFIX "data."
@@ -31,7 +31,7 @@ union alignas(8) Request {
 };
 
 //
-typedef CUresult GpuState;
+typedef gpuError GpuState;
 
 }  // namespace ark
 

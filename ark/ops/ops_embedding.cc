@@ -71,7 +71,7 @@ Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
 }
 
 const OpConfigMap EmbeddingConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{1, 1}, {1, -1}}, {{1, -1}}, true, false},

@@ -4,19 +4,19 @@
 #ifndef ARK_GPU_MEM_H_
 #define ARK_GPU_MEM_H_
 
-#include <cuda.h>
-
 #include <memory>
+
+#include "gpu/gpu.h"
 
 namespace ark {
 
-typedef CUdeviceptr GpuPtr;
+typedef gpuDeviceptr GpuPtr;
 
 class GpuMem {
    public:
     struct Info {
         // IPC handle.
-        CUipcMemHandle ipc_hdl;
+        gpuIpcMemHandle ipc_hdl;
         // Physical address of GPU pointer.
         uint64_t phys_addr = 0;
         // Data size.

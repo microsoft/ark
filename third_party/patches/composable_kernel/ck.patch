@@ -1,0 +1,1826 @@
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp
+index 8b1b7be11..ba0cba5f6 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp
+@@ -152,7 +152,7 @@ struct BlockwiseGemmDl_A_BK0_BM_BK1_B_BK0_BN_BK1_C_BM0_BM1_BN0_BN1_pipeline_BM0_
+     public:
+     __device__ BlockwiseGemmDl_A_BK0_BM_BK1_B_BK0_BN_BK1_C_BM0_BM1_BN0_BN1_pipeline_BM0_2_BN0_2()
+         : c_thread_origin_data_idx_{CalculateCThreadOriginOnBlock_BM0_BM1_BN0_BN1(
+-              get_thread_local_1d_id())},
++              get_thread_local_1d_id(BlockSize))},
+           a_thread_copy_{
+               make_tuple(0, c_thread_origin_data_idx_[I0], c_thread_origin_data_idx_[I1], 0)},
+           b_thread_copy_{
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp
+index 33120bd86..6b380714f 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp
+@@ -145,7 +145,7 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v2r2_pipeline_2x2
+     public:
+     __device__ BlockwiseGemmDlops_km_kn_m0m1n0n1_v2r2_pipeline_2x2()
+         : c_thread_origin_data_idx_{CalculateCM0M1N0N1ThreadOriginOnBlock(
+-              get_thread_local_1d_id())},
++              get_thread_local_1d_id(BlockSize))},
+           a_thread_copy_{
+               make_tuple(0, c_thread_origin_data_idx_[I0], c_thread_origin_data_idx_[I1])},
+           b_thread_copy_{
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp
+index f45655721..1be49e6d0 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp
+@@ -55,7 +55,7 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3
+         Number<KPerThreadLoop>{}, Number<1>{}, Number<HoPerThread>{}, Number<WoPerThread>{}));
+ 
+     __device__ BlockwiseGemmDlops_km_kn_m0m1n0n1_v3()
+-        : c_thread_origin_data_idx_{GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id())},
++        : c_thread_origin_data_idx_{GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id(BlockSize))},
+           a_thread_copy_{make_tuple(0, c_thread_origin_data_idx_[I0] * KPerThread, 0)}
+     {
+         static_assert(ABlockDesc_E1_K1_E2::IsKnownAtCompileTime() &&
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
+index aa814ab00..c1927bc3a 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
+@@ -56,7 +56,7 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1r1
+ 
+     __device__ static auto GetWaveIdx()
+     {
+-        const index_t thread_id = get_thread_local_1d_id();
++        const index_t thread_id = get_thread_local_1d_id(BlockSize);
+ 
+         constexpr auto threadid_to_wave_idx_adaptor = make_single_stage_tensor_adaptor(
+             make_tuple(make_merge_transform(make_tuple(MWaves, NWaves, WaveSize))),
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp b/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
+index 03e4d42d3..53da453bb 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
+@@ -63,10 +63,10 @@ struct BlockwiseTensorSliceTransfer_v5r1
+                       "wrong! BlockSize too small");
+ 
+         if(BlockSize == thread_cluster_desc_.GetElementSize() or
+-           get_thread_local_1d_id() < thread_cluster_desc_.GetElementSize())
++           get_thread_local_1d_id(BlockSize) < thread_cluster_desc_.GetElementSize())
+         {
+             const auto thread_cluster_idx = thread_cluster_desc_.CalculateBottomIndex(
+-                make_multi_index(get_thread_local_1d_id()));
++                make_multi_index(get_thread_local_1d_id(BlockSize)));
+ 
+             const auto thread_data_idx_begin = thread_cluster_idx * ThreadSliceLengths{};
+ 
+@@ -81,7 +81,7 @@ struct BlockwiseTensorSliceTransfer_v5r1
+     __device__ void RunRead(const SrcDesc& src_desc, const SrcBuffer& src_buf)
+     {
+         if(BlockSize == thread_cluster_desc_.GetElementSize() or
+-           get_thread_local_1d_id() < thread_cluster_desc_.GetElementSize())
++           get_thread_local_1d_id(BlockSize) < thread_cluster_desc_.GetElementSize())
+         {
+             threadwise_transfer_.RunRead(src_desc, src_buf);
+         }
+@@ -91,7 +91,7 @@ struct BlockwiseTensorSliceTransfer_v5r1
+     __device__ void RunWrite(const DstDesc& dst_desc, DstBuffer& dst_buf)
+     {
+         if(BlockSize == thread_cluster_desc_.GetElementSize() or
+-           get_thread_local_1d_id() < thread_cluster_desc_.GetElementSize())
++           get_thread_local_1d_id(BlockSize) < thread_cluster_desc_.GetElementSize())
+         {
+             threadwise_transfer_.RunWrite(dst_desc, dst_buf);
+         }
+@@ -100,7 +100,7 @@ struct BlockwiseTensorSliceTransfer_v5r1
+     __device__ void MoveSrcSliceWindow(const SrcDesc& src_desc, const Index& step)
+     {
+         if(BlockSize == thread_cluster_desc_.GetElementSize() or
+-           get_thread_local_1d_id() < thread_cluster_desc_.GetElementSize())
++           get_thread_local_1d_id(BlockSize) < thread_cluster_desc_.GetElementSize())
+         {
+             threadwise_transfer_.MoveSrcSliceWindow(src_desc, step);
+         }
+@@ -114,7 +114,7 @@ struct BlockwiseTensorSliceTransfer_v5r1
+                        const SrcMoveSliceWindowStepHack& src_move_slice_window_step_hack)
+     {
+         if(BlockSize == thread_cluster_desc_.GetElementSize() or
+-           get_thread_local_1d_id() < thread_cluster_desc_.GetElementSize())
++           get_thread_local_1d_id(BlockSize) < thread_cluster_desc_.GetElementSize())
+         {
+             threadwise_transfer_.MoveSrcSliceWindow(
+                 src_desc, step, src_move_slice_window_step_hack);
+@@ -124,7 +124,7 @@ struct BlockwiseTensorSliceTransfer_v5r1
+     __device__ void MoveDstSliceWindow(const DstDesc& dst_desc, const Index& step)
+     {
+         if(BlockSize == thread_cluster_desc_.GetElementSize() or
+-           get_thread_local_1d_id() < thread_cluster_desc_.GetElementSize())
++           get_thread_local_1d_id(BlockSize) < thread_cluster_desc_.GetElementSize())
+         {
+             threadwise_transfer_.MoveDstSliceWindow(dst_desc, step);
+         }
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp b/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
+index 316508651..8699ec348 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
+@@ -55,7 +55,7 @@ struct BlockwiseWelford
+         constexpr auto cluster_len_shift = get_shift<BufferLength_K>();
+ 
+         const auto thread_cluster_idx =
+-            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id()));
++            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id(BlockSize)));
+ 
+         const auto thread_m_cluster_id = thread_cluster_idx[Number<0>{}];
+         const auto thread_k_cluster_id = thread_cluster_idx[Number<1>{}];
+diff --git a/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp b/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
+index 2163ad323..9cff14993 100644
+--- a/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
++++ b/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
+@@ -49,7 +49,7 @@ struct PartitionedBlockwiseReduction
+         constexpr auto cluster_len_shift = get_shift<BufferLength_K>();
+ 
+         const auto thread_cluster_idx =
+-            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id()));
++            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id(BlockSize)));
+ 
+         const auto thread_m_cluster_id = thread_cluster_idx[Number<0>{}];
+         const auto thread_k_cluster_id = thread_cluster_idx[Number<1>{}];
+@@ -121,7 +121,7 @@ struct PartitionedBlockwiseReduction_v2
+         constexpr auto cluster_len_shift = get_shift<BufferLength_K>();
+ 
+         const auto thread_cluster_idx =
+-            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id()));
++            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id(BlockSize)));
+ 
+         const auto thread_m_cluster_id = thread_cluster_idx[Number<0>{}];
+         const auto thread_k_cluster_id = thread_cluster_idx[Number<1>{}];
+@@ -202,7 +202,7 @@ struct PartitionedBlockwiseReductionWithIndex
+         constexpr auto cluster_len_shift = get_shift<BufferLength_K>();
+ 
+         const auto thread_cluster_idx =
+-            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id()));
++            thread_cluster_desc.CalculateBottomIndex(make_multi_index(get_thread_local_1d_id(BlockSize)));
+ 
+         const auto thread_m_cluster_id = thread_cluster_idx[Number<0>{}];
+         const auto thread_k_cluster_id = thread_cluster_idx[Number<1>{}];
+diff --git a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp
+index eb5f589a4..caaeb58b8 100644
+--- a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp
++++ b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp
+@@ -84,7 +84,7 @@ struct ThreadGroupTensorSliceTransfer_v6r3
+            ThreadGroup::GetThreadId() < thread_cluster_desc_.GetElementSize())
+         {
+             const auto thread_cluster_idx = thread_cluster_desc_.CalculateBottomIndex(
+-                make_multi_index(get_thread_local_1d_id()));
++                make_multi_index(ThreadGroup::GetThreadId()));
+ 
+             const auto thread_data_idx_begin = thread_cluster_idx * thread_slice_lengths;
+ 
+diff --git a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp
+index 3bd780638..4ab37f66e 100644
+--- a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp
++++ b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp
+@@ -96,7 +96,7 @@ struct ThreadGroupTensorSliceTransfer_v7
+            ThreadGroup::GetThreadId() < thread_cluster_desc_.GetElementSize())
+         {
+             const auto thread_cluster_idx = thread_cluster_desc_.CalculateBottomIndex(
+-                make_multi_index(get_thread_local_1d_id()));
++                make_multi_index(ThreadGroup::GetThreadId()));
+ 
+             const auto thread_data_idx_begin = thread_cluster_idx * thread_slice_lengths;
+ 
+diff --git a/include/ck/tensor_operation/gpu/device/device_base.hpp b/include/ck/tensor_operation/gpu/device/device_base.hpp
+index 5946daf21..00e2b6f02 100644
+--- a/include/ck/tensor_operation/gpu/device/device_base.hpp
++++ b/include/ck/tensor_operation/gpu/device/device_base.hpp
+@@ -14,11 +14,11 @@ namespace device {
+ 
+ struct BaseArgument
+ {
+-    BaseArgument()                    = default;
+-    BaseArgument(const BaseArgument&) = default;
+-    BaseArgument& operator=(const BaseArgument&) = default;
++    __host__ __device__ BaseArgument()                    = default;
++    __host__ __device__ BaseArgument(const BaseArgument&) = default;
++    __host__ __device__ BaseArgument& operator=(const BaseArgument&) = default;
+ 
+-    virtual ~BaseArgument() {}
++    __host__ __device__ virtual ~BaseArgument() {}
+ 
+     void* p_workspace_ = nullptr;
+ };
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
+index a5051455b..77f8a0bb0 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
+@@ -75,6 +75,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+ 
+     static constexpr auto K1Number = Number<K1>{};
+ 
++    __host__ __device__
+     static auto MakeAGridDescriptor_K0_M_K1(index_t M, index_t K, index_t StrideA)
+     {
+         const index_t K0 = K / K1;
+@@ -112,6 +113,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeBGridDescriptor_K0_N_K1(index_t K, index_t N, index_t StrideB)
+     {
+         const index_t K0 = K / K1;
+@@ -149,6 +151,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeCGridDescriptor_M_N(index_t M, index_t N, index_t StrideC)
+     {
+         const auto c_grid_desc_m_n = [&]() {
+@@ -235,6 +238,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+     // Argument
+     struct Argument : public BaseArgument
+     {
++        __host__ __device__
+         Argument(const ADataType* p_a_grid,
+                  const BDataType* p_b_grid,
+                  CDataType* p_c_grid,
+@@ -281,6 +285,9 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+             }
+         }
+ 
++        __host__ __device__
++        ~Argument() {}
++
+         //  private:
+         const ADataType* p_a_grid_;
+         const BDataType* p_b_grid_;
+@@ -458,6 +465,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
+         return IsSupportedArgument(*dynamic_cast<const Argument*>(p_arg));
+     }
+ 
++    __host__ __device__
+     static auto MakeArgument(const ADataType* p_a,
+                              const BDataType* p_b,
+                              CDataType* p_c,
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
+index 7cd0ff72e..1fc7a4566 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
+@@ -82,6 +82,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+     static constexpr auto I1 = Number<1>{};
+     static constexpr auto I2 = Number<2>{};
+ 
++    __host__ __device__
+     static auto MakeAGridDescriptor_AK0_M_AK1(index_t MRaw, index_t KRaw, index_t StrideA)
+     {
+         const auto a_grid_desc_mraw_kraw = [&]() {
+@@ -185,6 +186,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeBGridDescriptor_BK0_N_BK1(index_t KRaw, index_t NRaw, index_t StrideB)
+     {
+         const auto b_grid_desc_nraw_kraw = [&]() {
+@@ -288,6 +290,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+         }
+     }
+ 
++    __host__ __device__
+     static auto MakeCGridDescriptor_M_N(index_t MRaw, index_t NRaw, index_t StrideC)
+     {
+         const auto c_grid_desc_mraw_nraw = [&]() {
+@@ -400,6 +403,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+     // Argument
+     struct Argument : public BaseArgument
+     {
++        __host__ __device__
+         Argument(const ADataType* p_a_grid,
+                  const BDataType* p_b_grid,
+                  CDataType* p_c_grid,
+@@ -436,6 +440,9 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+             }
+         }
+ 
++        __host__ __device__
++        ~Argument() {}
++
+         //  private:
+         const ADataType* p_a_grid_;
+         const BDataType* p_b_grid_;
+@@ -601,6 +608,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
+         return IsSupportedArgument(*dynamic_cast<const Argument*>(p_arg));
+     }
+ 
++    __host__ __device__
+     static auto MakeArgument(const ADataType* p_a,
+                              const BDataType* p_b,
+                              CDataType* p_c,
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
+index 76dd5a366..a613e5ebf 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
+@@ -437,7 +437,7 @@ struct DeviceGroupedContractionMultipleD_Xdl_CShuffle
+             return default_block_2_etile_map_.ValidCTileIndex(c_tile_idx, c_tile_dim);
+         }
+ 
+-        __host__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
++        __host__ __device__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
+         {
+             return default_block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
+         }
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
+index d424f2992..dffee7e2d 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
+@@ -372,7 +372,7 @@ struct DeviceGroupedGemmMultipleD_Dl : public DeviceGroupedGemm<ALayout,
+             return block_2_etile_map_.ValidCTileIndex(c_tile_idx, c_tile_dim);
+         }
+ 
+-        __host__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
++        __host__ __device__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
+         {
+             return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
+         }
+diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
+index e3795060b..cc0463897 100644
+--- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
++++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
+@@ -313,7 +313,7 @@ struct DeviceGroupedGemm_Xdl : public DeviceGroupedGemm<ALayout,
+             return block_2_etile_map_.ValidCTileIndex(c_tile_idx, c_tile_dim);
+         }
+ 
+-        __host__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
++        __host__ __device__ bool CheckValidity(const EGridDesc_M_N& e_grid_desc_m_n) const
+         {
+             return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
+         }
+diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
+index a72a4ee06..ad0c96ead 100644
+--- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
++++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
+@@ -170,7 +170,8 @@ struct GridwiseReduceSecondHalfBatchNormBackwardFinal
+                                const DyElementwiseOp dy_elementwise_op,
+                                DxDataType* const __restrict__ p_dx,
+                                DscaleDbiasDataType* const __restrict__ p_dscale,
+-                               DscaleDbiasDataType* const __restrict__ p_dbias)
++                               DscaleDbiasDataType* const __restrict__ p_dbias,
++                               index_t block_1d_id)
+     {
+         __shared__ AccDataType p_reduce_work_buffer[BlockSize];
+ 
+@@ -197,8 +198,8 @@ struct GridwiseReduceSecondHalfBatchNormBackwardFinal
+             inv_var_thread_buf;
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> scale_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const index_t blkgroup_id     = block_global_id / blkgroup_size;
+         const index_t block_local_id  = block_global_id % blkgroup_size;
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
+index 08cb0dd19..ae0cbc9e5 100644
+--- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
++++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
+@@ -103,7 +103,8 @@ struct GridwiseMultiblockWelfordFirstHalf
+                                const XDataType* const __restrict__ p_x,
+                                MeanVarDataType* const p_welford_mean,
+                                MeanVarDataType* const p_welford_variance,
+-                               int32_t* const p_welford_count)
++                               int32_t* const p_welford_count,
++                               index_t block_1d_id)
+     {
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize * KThreadSliceSize, true>
+             x_thread_buf;
+@@ -117,8 +118,8 @@ struct GridwiseMultiblockWelfordFirstHalf
+ 
+         const index_t blkgroup_size = mean_var_count_grid_desc_m_g.GetLength(I1);
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const index_t blkgroup_id     = block_global_id / blkgroup_size;
+         const index_t block_local_id  = block_global_id % blkgroup_size;
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp
+index 548d7fd40..c72c64ea5 100644
+--- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp
++++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp
+@@ -168,7 +168,8 @@ struct GridwiseWelfordSecondHalfBatchNormForwardFinal
+                                MeanVarDataType* const __restrict__ resultRunningVariance,
+                                bool saveMeanInvVariance,
+                                MeanVarDataType* const __restrict__ resultSaveMean,
+-                               MeanVarDataType* const __restrict__ resultSaveInvVariance)
++                               MeanVarDataType* const __restrict__ resultSaveInvVariance,
++                               index_t block_1d_id)
+ 
+     {
+         using ck::math::sqrt;
+@@ -195,8 +196,8 @@ struct GridwiseWelfordSecondHalfBatchNormForwardFinal
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> scale_thread_buf;
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> bias_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const index_t blkgroup_id     = block_global_id / blkgroup_size;
+         const index_t block_local_id  = block_global_id % blkgroup_size;
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
+index 42b7e172b..b310cdad8 100644
+--- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
++++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
+@@ -175,7 +175,8 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
+                                const XDataType* const __restrict__ p_x,
+                                const DyDataType* const __restrict__ p_dy,
+                                DscaleDbiasDataType* const __restrict__ p_reduce_dscale,
+-                               DscaleDbiasDataType* const __restrict__ p_reduce_dbias)
++                               DscaleDbiasDataType* const __restrict__ p_reduce_dbias,
++                               index_t block_1d_id)
+     {
+         __shared__ AccDataType p_reduce_work_buffer[BlockSize];
+ 
+@@ -215,8 +216,8 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true>
+             reduce_dbias_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const index_t blkgroup_id     = block_global_id / blkgroup_size;
+         const index_t block_local_id  = block_global_id % blkgroup_size;
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
+index 9bd860f39..73f4c1bda 100644
+--- a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
++++ b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
+@@ -58,7 +58,7 @@ struct BlockToCTileMap_M00_N0_M01
+             return true;
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         if constexpr(DeviceCTileIndexCheck)
+             return true; // validity check moved to kernel
+@@ -209,7 +209,7 @@ struct BlockToCTileMap_M00_N0_M01Adapt
+         return true; // always valid provided that user gets grid size from CalculateGridSize()
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
+ 
+     private:
+     index_t M01_;
+@@ -279,7 +279,7 @@ struct BlockToCTileMap_KSplit_M00_N0_M01Adapt
+         return true; // always valid provided that user gets grid size from CalculateGridSize()
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const { return true; }
+ 
+     private:
+     index_t M01_;
+@@ -337,7 +337,7 @@ struct BlockToCTileMap_M00_N00_M01_N01
+             return true;
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         if constexpr(DeviceCTileIndexCheck)
+             return true; // validity check moved to kernel
+@@ -449,7 +449,7 @@ struct BlockToCTileMap_KSplit_M00_N00_M01_N01
+             return true;
+     }
+ 
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         if constexpr(DeviceCTileIndexCheck)
+             return true; // validity check moved to kernel
+@@ -572,7 +572,7 @@ struct OffsettedBlockToCTileMap
+     }
+ 
+     template <typename CGridDesc_M_N>
+-    __host__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& c_grid_desc_m_n) const
+     {
+         return block_to_ctile_map_.CheckValidity(c_grid_desc_m_n);
+     }
+@@ -629,7 +629,7 @@ struct BlockToCTileMap_3DGrid_KSplit
+     }
+ 
+     template <typename CGridDesc_M_N>
+-    __host__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const
++    __host__ __device__ bool CheckValidity(const CGridDesc_M_N& /* c_grid_desc_m_n */) const
+     {
+         return true;
+     }
+diff --git a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
+index aa34cfbf8..c32d72de1 100644
+--- a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
+@@ -386,7 +386,8 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
+             mean_var_grid_desc_mblock_mperblock_nblock,
+         const CountGridDescriptor_MBlock_MPerBlock_NBlock& count_grid_desc_mblock_mperblock_nblock,
+         const Block2ETileMap& block_2_etile_map,
+-        index_t NRaw)
++        index_t NRaw,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -416,7 +417,7 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_etile_map.ValidCTileIndex(
+                block_work_idx,
+@@ -757,7 +758,7 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
+ 
+             const auto post_shuffle_thread_cluster_idx =
+                 post_shuffle_thread_cluster_desc.CalculateBottomIndex(
+-                    make_multi_index(get_thread_local_1d_id()));
++                    make_multi_index(ThisThreadBlock::GetThreadId()));
+ 
+             const auto post_shuffle_thread_data_idx_begin =
+                 post_shuffle_thread_cluster_idx * PostShuffleThreadSliceSize_M_N;
+diff --git a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
+index fbe89e7e5..8dbc68a01 100644
+--- a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
+@@ -101,11 +101,12 @@ struct GridwiseWelfordSecondHalfLayernorm2d
+                                index_t numMeanVarCountBlockTileIteration_N,
+                                index_t NBlockClusterLength,
+                                ComputeDataType epsilon,
+-                               HElementwiseOperation h_element_op)
++                               HElementwiseOperation h_element_op,
++                               index_t block_1d_id)
+     {
+         // Thread/Block id
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const auto block_work_idx     = make_tuple(block_global_id / NBlockClusterLength,
+                                                block_global_id % NBlockClusterLength);
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
+index bdebe3816..b38fe5c4a 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
+@@ -128,7 +128,8 @@ struct GridwiseMultipleReduction_mk_to_m_multiblock
+                                Array<AccDataType, NumReduction> alpha_values,
+                                const InDataType* const __restrict__ p_in_value_global,
+                                Array<AccDataType, NumReduction> beta_values,
+-                               OutDataTypePointerTuple p_out_value_global_tuple)
++                               OutDataTypePointerTuple p_out_value_global_tuple,
++                               index_t block_global_id)
+     {
+         const auto identityVal = ReduceOperation::template GetIdentityValue<AccDataType>();
+ 
+@@ -174,8 +175,7 @@ struct GridwiseMultipleReduction_mk_to_m_multiblock
+                 [&](auto J) { accu_value_buf_tuple(iR)(J) = identityVal; });
+         });
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
+         const index_t blkgroup_id     = block_global_id / block_group_size;
+         const index_t block_local_id  = block_global_id % block_group_size;
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp
+index 6836a6604..1f1022143 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp
+@@ -145,7 +145,8 @@ struct GridwiseReduction_mk_to_m_multiblock
+                                AccDataType alpha,
+                                const InDataType* const __restrict__ p_in_value_global,
+                                AccDataType beta,
+-                               OutDataType* const __restrict__ p_out_value_global)
++                               OutDataType* const __restrict__ p_out_value_global,
++                               index_t block_global_id)
+     {
+         const auto identityVal = ReduceOperation::template GetIdentityValue<AccDataType>();
+ 
+@@ -169,8 +170,7 @@ struct GridwiseReduction_mk_to_m_multiblock
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) { accu_value_buf(I) = identityVal; });
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
+         const index_t blkgroup_id     = block_global_id / block_group_size;
+         const index_t block_local_id  = block_global_id % block_group_size;
+ 
+@@ -312,7 +312,8 @@ struct GridwiseReduction_mk_to_m_multiblock
+                                         const IndexDataType* const __restrict__ p_in_index_global,
+                                         AccDataType beta,
+                                         OutDataType* const __restrict__ p_out_value_global,
+-                                        IndexDataType* const __restrict__ p_out_index_global)
++                                        IndexDataType* const __restrict__ p_out_index_global,
++                                        index_t block_global_1d_id)
+     {
+         using BlockwiseReduceWithIndex =
+             PartitionedBlockwiseReductionWithIndex<AccDataType,
+@@ -364,8 +365,7 @@ struct GridwiseReduction_mk_to_m_multiblock
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> accu_value_buf;
+         StaticBuffer<AddressSpaceEnum::Vgpr, IndexDataType, MThreadSliceSize, true> accu_index_buf;
+ 
+-        const index_t thread_local_id    = get_thread_local_1d_id();
+-        const index_t block_global_1d_id = get_block_1d_id();
++        const index_t thread_local_id    = get_thread_local_1d_id(BlockSize);
+ 
+         const auto thread_cluster_idx =
+             thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp
+index 6c5bd29f9..aa8cb5c95 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp
+@@ -104,7 +104,8 @@ struct GridwiseReduction_mk_to_m_threadwise
+                                AccDataType alpha,
+                                const InDataType* const __restrict__ p_in_value_global,
+                                AccDataType beta,
+-                               OutDataType* const __restrict__ p_out_value_global)
++                               OutDataType* const __restrict__ p_out_value_global,
++                               index_t block_1d_id)
+     {
+         using ThreadwiseReduce = ThreadwiseReduction<AccDataType,
+                                                      ThreadReduceSrcDesc_M_K,
+@@ -134,7 +135,7 @@ struct GridwiseReduction_mk_to_m_threadwise
+         constexpr auto thread_buffer_desc = make_naive_tensor_descriptor_packed(
+             make_tuple(Number<MThreadSliceSize>{}, Number<KThreadSliceSize>{}));
+ 
+-        index_t thread_global_1d_id = get_block_1d_id() * BlockSize + get_thread_local_1d_id();
++        index_t thread_global_1d_id = block_1d_id * BlockSize + get_thread_local_1d_id(BlockSize);
+ 
+         auto threadwise_src_val_load =
+             ThreadwiseTensorSliceTransfer_v2<InDataType,
+@@ -242,7 +243,8 @@ struct GridwiseReduction_mk_to_m_threadwise
+                                         const IndexDataType* const __restrict__ p_in_index_global,
+                                         AccDataType beta,
+                                         OutDataType* const __restrict__ p_out_value_global,
+-                                        IndexDataType* const __restrict__ p_out_index_global)
++                                        IndexDataType* const __restrict__ p_out_index_global,
++                                        index_t block_1d_id)
+     {
+         using ThreadwiseReduceWithIndex = ThreadwiseReductionWithIndex<AccDataType,
+                                                                        IndexDataType,
+@@ -290,7 +292,7 @@ struct GridwiseReduction_mk_to_m_threadwise
+         constexpr auto thread_buffer_desc = make_naive_tensor_descriptor_packed(
+             make_tuple(Number<MThreadSliceSize>{}, Number<KThreadSliceSize>{}));
+ 
+-        index_t thread_global_1d_id = get_block_1d_id() * BlockSize + get_thread_local_1d_id();
++        index_t thread_global_1d_id = block_1d_id * BlockSize + get_thread_local_1d_id(BlockSize);
+ 
+         auto threadwise_src_val_load =
+             ThreadwiseTensorSliceTransfer_v2<InDataType,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
+index fccb127d0..9102f6df1 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
+@@ -338,7 +338,8 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+                                const B1GridDesc_BK0_N_BK1& b1_grid_desc_bk0_n_bk1,
+                                const CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    c_grid_desc_mblock_mperblock_nblock_nperblock,
+-                               const Block2CTileMap& block_2_ctile_map)
++                               const Block2CTileMap& block_2_ctile_map,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -351,7 +352,7 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
+index b9f4a3080..89be57256 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
+@@ -142,7 +142,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+ 
+     __device__ static auto GetGemm0WaveIdx()
+     {
+-        const index_t thread_id = get_thread_local_1d_id();
++        const index_t thread_id = ThisThreadBlock::GetThreadId();
+ 
+         constexpr auto threadid_to_wave_idx_adaptor = make_single_stage_tensor_adaptor(
+             make_tuple(make_merge_transform(make_tuple(Gemm0MWaves, Gemm0NWaves, WaveSize))),
+@@ -515,7 +515,8 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+                                    d1s_grid_desc_mblock_mperblock_nblock_nperblock,
+                                const E1GridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    e1_grid_desc_mblock_mperblock_nblock_nperblock,
+-                               const Block2E1TileMap& block_2_e1tile_map)
++                               const Block2E1TileMap& block_2_e1tile_map,
++                               index_t block_1d_id)
+     {
+         const auto a0_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a0_grid, a0_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -542,7 +543,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_e1tile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_e1tile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_e1tile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
+index 6a6f19d71..f9027d7cf 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
+@@ -302,7 +302,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+ 
+     __device__ static auto GetGemm0WaveIdx()
+     {
+-        const index_t thread_id = get_thread_local_1d_id();
++        const index_t thread_id = ThisThreadBlock::GetThreadId();
+         constexpr auto WaveSize = MfmaSelector<FloatAB, MPerXdl, NPerXdl>::selected_mfma.wave_size;
+ 
+         constexpr auto threadid_to_wave_idx_adaptor = make_single_stage_tensor_adaptor(
+@@ -433,7 +433,8 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+                                const D0sGridDescriptor_M0_N0_M1_N1_M2_N2_M3_N3_N4_N5&
+                                    d0s_griddesc_m0_n0_m1_n1_m2_n2_m3_n3_n4_n5,
+                                const Block2CTileMap& block_2_ctile_map,
+-                               const C0MatrixMask& c0_matrix_mask)
++                               const C0MatrixMask& c0_matrix_mask,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -453,7 +454,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
+index d6d205111..003e3628b 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
+@@ -359,7 +359,8 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+                                const CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    c_grid_desc_mblock_mperblock_nblock_nperblock,
+                                const Block2CTileMap& block_2_ctile_map,
+-                               const C0MatrixMask& c0_matrix_mask)
++                               const C0MatrixMask& c0_matrix_mask,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -372,7 +373,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
+index ede6a96dc..5c48b298e 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
+@@ -180,7 +180,8 @@ struct GridwiseBatchNormBackwardWithBlockwiseWelford
+                                const DyElementwiseOp dy_elementwise_op,
+                                DxDataType* const __restrict__ p_dx,
+                                DscaleDbiasDataType* const __restrict__ p_dscale,
+-                               DscaleDbiasDataType* const __restrict__ p_dbias)
++                               DscaleDbiasDataType* const __restrict__ p_dbias,
++                               index_t block_1d_id)
+     {
+         using ck::math::sqrt;
+ 
+@@ -212,8 +213,8 @@ struct GridwiseBatchNormBackwardWithBlockwiseWelford
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> dscale_thread_buf;
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> dbias_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+ 
+         const auto thread_cluster_idx =
+             thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
+index 33c45a0f0..de0b3c56c 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
+@@ -153,7 +153,8 @@ struct GridwiseBatchNormForwardWithBlockwiseWelford
+                                MeanVarDataType* const __restrict__ resultRunningVariance,
+                                bool saveMeanInvVariance,
+                                MeanVarDataType* const __restrict__ resultSaveMean,
+-                               MeanVarDataType* const __restrict__ resultSaveInvVariance)
++                               MeanVarDataType* const __restrict__ resultSaveInvVariance,
++                               index_t block_1d_id)
+     {
+         using ck::math::sqrt;
+ 
+@@ -170,8 +171,8 @@ struct GridwiseBatchNormForwardWithBlockwiseWelford
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> mean_thread_buf;
+         StaticBuffer<AddressSpaceEnum::Vgpr, AccDataType, MThreadSliceSize, true> var_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+ 
+         const auto thread_cluster_idx =
+             thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp
+index 2369f5179..bcd09bf53 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp
+@@ -330,7 +330,8 @@ struct GridwiseContractionDlops_A_GK0_GM0_GM1_GK1_B_GK0_GN0_GN1_GK1_C_GM0_GM1_GN
+         const CGridDesc_GM10_BM0_BM1_GN10_BN0_BN1& c_grid_desc_gm10_bm0_bm1_gn10_bn0_bn1,
+         const CGridBlockCluster_BlockId_To_GM10_GN10& c_grid_block_cluster_blockid_to_gm10_gn10,
+         integral_constant<bool, HasMainKBlockLoop>,
+-        integral_constant<bool, HasDoubleTailKBlockLoop>)
++        integral_constant<bool, HasDoubleTailKBlockLoop>,
++        index_t block_1d_id)
+     {
+         const auto a_global_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_gk0_gm0_gm10_gm11_gk1.GetElementSpaceSize());
+@@ -344,7 +345,7 @@ struct GridwiseContractionDlops_A_GK0_GM0_GM1_GK1_B_GK0_GN0_GN1_GK1_C_GM0_GM1_GN
+         // divide block work by [GM10, GN10]
+         const auto c_gm10_gn10_block_cluster_idx =
+             c_grid_block_cluster_blockid_to_gm10_gn10.CalculateBottomIndex(
+-                make_multi_index(get_block_1d_id()));
++                make_multi_index(block_1d_id));
+ 
+         // HACK: this force index data into SGPR
+         const index_t igm10 = __builtin_amdgcn_readfirstlane(c_gm10_gn10_block_cluster_idx[I0]);
+@@ -623,7 +624,7 @@ struct GridwiseContractionDlops_A_GK0_GM0_GM1_GK1_B_GK0_GN0_GN1_GK1_C_GM0_GM1_GN
+ 
+             const auto c_thread_origin_on_block_bm0_bm1_bn0_bn1 =
+                 blockwise_gemm.CalculateCThreadOriginOnBlock_BM0_BM1_BN0_BN1(
+-                    get_thread_local_1d_id());
++                    get_thread_local_1d_id(BlockSize));
+ 
+             ThreadwiseTensorSliceTransfer_v1r3<
+                 FloatAcc,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp
+index b09a73590..c5cc8fe9d 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp
+@@ -124,15 +124,16 @@ struct GridwiseElementwiseLayernormWelfordVariance_mk_to_mk
+                                const BetaDataType* const __restrict__ p_beta_global,
+                                YDataType* const __restrict__ p_y_global,
+                                const XElementwiseOperation x_elementwise_op,
+-                               const YElementwiseOperation y_elementwise_op)
++                               const YElementwiseOperation y_elementwise_op,
++                               index_t block_1d_id)
+     {
+         if constexpr(SweepOnce)
+         {
+             num_k_block_tile_iteration = 1;
+         }
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const index_t grid_size       = get_grid_size();
+ 
+         auto in_global_buf_tuple = generate_tuple(
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
+index bebcdceb4..9a11a1bc3 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
+@@ -385,7 +385,8 @@ struct GridwiseGemmBiasAddReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+         const C1GridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+             c1_grid_desc_mblock_mperblock_nblock_nperblock,
+         const ReduceGridDescriptor_MBlock_MPerBlock& reduce_grid_desc_mblock_mperblock,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -400,7 +401,7 @@ struct GridwiseGemmBiasAddReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+@@ -746,7 +747,7 @@ struct GridwiseGemmBiasAddReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             const auto c_reduce_thread_cluster_idx =
+                 c_reduce_thread_cluster_desc.CalculateBottomIndex(
+-                    make_multi_index(get_thread_local_1d_id()));
++                    make_multi_index(get_thread_local_1d_id(BlockSize)));
+ 
+             const auto c_reduce_thread_data_idx_begin =
+                 c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
+index 9c68b4f5c..6e730add8 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
+@@ -262,7 +262,8 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+         const CGridDesc_M0_M10_M11_N0_N10_N11& c_grid_desc_m0_m10_m11_n0_n10_n11,
+         const Block2CTileMap& block_2_ctile_map,
+         integral_constant<bool, HasMainKBlockLoop>,
+-        integral_constant<bool, HasDoubleTailKBlockLoop>)
++        integral_constant<bool, HasDoubleTailKBlockLoop>,
++        index_t block_1d_id)
+     {
+         const auto a_global_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_k0_m0_m1_k1.GetElementSpaceSize());
+@@ -273,7 +274,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+ 
+         // divide block work by [M, N]
+         const auto c_m0_n0_block_cluster_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         // HACK: this force index data into SGPR
+         const index_t im0 = __builtin_amdgcn_readfirstlane(c_m0_n0_block_cluster_idx[I0]);
+@@ -540,7 +541,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+ 
+             const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
+                 blockwise_gemm.CalculateCThreadOriginOnBlock_BM0_BM1_BN0_BN1(
+-                    get_thread_local_1d_id());
++                    get_thread_local_1d_id(BlockSize));
+ 
+             const auto ds_grid_buf = generate_tuple(
+                 [&](auto i) {
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
+index d46aea5e2..f661d1f10 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
+@@ -261,7 +261,8 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+         const CGridDesc_M0_M10_M11_N0_N10_N11& c_grid_desc_m0_m10_m11_n0_n10_n11,
+         const Block2CTileMap& block_2_ctile_map,
+         integral_constant<bool, HasMainKBlockLoop>,
+-        integral_constant<bool, HasDoubleTailKBlockLoop>)
++        integral_constant<bool, HasDoubleTailKBlockLoop>,
++        index_t block_1d_id)
+     {
+         const auto a_global_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_k0_m0_m1_k1.GetElementSpaceSize());
+@@ -272,7 +273,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+ 
+         // divide block work by [M, N]
+         const auto c_m0_n0_block_cluster_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         // HACK: this force index data into SGPR
+         const index_t im0 = __builtin_amdgcn_readfirstlane(c_m0_n0_block_cluster_idx[I0]);
+@@ -538,7 +539,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+ 
+             const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
+                 blockwise_gemm.CalculateCThreadOriginOnBlock_BM0_BM1_BN0_BN1(
+-                    get_thread_local_1d_id());
++                    get_thread_local_1d_id(BlockSize));
+ 
+             ThreadwiseTensorSliceTransfer_v1r3<
+                 FloatAcc,
+@@ -788,7 +789,8 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+         const CGridDesc_M0_M10_M11_N0_N10_N11& c_grid_desc_m0_m10_m11_n0_n10_n11,
+         const CBlockClusterAdaptor& c_block_cluster_adaptor,
+         integral_constant<bool, HasMainKBlockLoop>,
+-        integral_constant<bool, HasDoubleTailKBlockLoop>)
++        integral_constant<bool, HasDoubleTailKBlockLoop>,
++        index_t block_1d_id)
+     {
+         const auto a_global_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_b_k0_m0_m1_k1.GetElementSpaceSize());
+@@ -799,7 +801,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         const index_t k_batch_id = block_work_idx[I0];
+ 
+@@ -1080,7 +1082,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+ 
+             const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
+                 blockwise_gemm.CalculateCThreadOriginOnBlock_BM0_BM1_BN0_BN1(
+-                    get_thread_local_1d_id());
++                    get_thread_local_1d_id(BlockSize));
+ 
+             ThreadwiseTensorSliceTransfer_v1r3<
+                 FloatAcc,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v1r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v1r2.hpp
+index 84e033e1e..fc17ad797 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v1r2.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v1r2.hpp
+@@ -269,7 +269,8 @@ struct GridwiseGemmDlops_km_kn_mn_v1r2
+         const CM0M10M11N0N10N11GridDesc& c_m0_m10_m11_n0_n10_n11_grid_desc,
+         const CBlockIdToM0N0BlockClusterAdaptor& cblockid_to_m0_n0_block_cluster_adaptor,
+         integral_constant<bool, HasMainKBlockLoop>,
+-        integral_constant<bool, HasDoubleTailKBlockLoop>)
++        integral_constant<bool, HasDoubleTailKBlockLoop>,
++        index_t block_1d_id)
+     {
+         const auto a_global_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_k_m0_m1_grid_desc.GetElementSpaceSize());
+@@ -283,7 +284,7 @@ struct GridwiseGemmDlops_km_kn_mn_v1r2
+         // divide block work by [M, N]
+         const auto c_m0_n0_block_cluster_idx =
+             cblockid_to_m0_n0_block_cluster_adaptor.CalculateBottomIndex(
+-                make_multi_index(get_block_1d_id()));
++                make_multi_index(block_1d_id));
+ 
+         // HACK: this force index data into SGPR
+         const index_t im0 = __builtin_amdgcn_readfirstlane(c_m0_n0_block_cluster_idx[I0]);
+@@ -569,7 +570,7 @@ struct GridwiseGemmDlops_km_kn_mn_v1r2
+                                Number<c_m10_m11_n10_n11_thread_tensor_lengths[I3]>{}));
+ 
+             const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
+-                blockwise_gemm.CalculateCM0M1N0N1ThreadOriginOnBlock(get_thread_local_1d_id());
++                blockwise_gemm.CalculateCM0M1N0N1ThreadOriginOnBlock(get_thread_local_1d_id(BlockSize));
+ 
+             ThreadwiseTensorSliceTransfer_v1r3<
+                 FloatAcc,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v2.hpp
+index b1dfb0c73..fcc57c98b 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v2.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v2.hpp
+@@ -80,7 +80,8 @@ struct GridwiseGemmDlops_km_kn_mn_v3
+                         FloatC* __restrict__ p_c_global,
+                         FloatAB* __restrict__ p_shared_block,
+                         integral_constant<bool, HasMainKBlockLoop>,
+-                        integral_constant<bool, HasDoubleTailKBlockLoop>) const
++                        integral_constant<bool, HasDoubleTailKBlockLoop>,
++                        index_t block_1d_id) const
+     {
+         constexpr auto I0 = Number<0>{};
+         constexpr auto I1 = Number<1>{};
+@@ -109,8 +110,8 @@ struct GridwiseGemmDlops_km_kn_mn_v3
+         const auto wo_block_work_num  = Wo / Number<WoPerBlock>{};
+         const auto hwo_block_work_num = ho_block_work_num * wo_block_work_num;
+ 
+-        const index_t k_block_work_id   = get_block_1d_id() / hwo_block_work_num;
+-        const index_t hwo_block_work_id = get_block_1d_id() - k_block_work_id * hwo_block_work_num;
++        const index_t k_block_work_id   = block_1d_id / hwo_block_work_num;
++        const index_t hwo_block_work_id = block_1d_id - k_block_work_id * hwo_block_work_num;
+ 
+         const index_t ho_block_work_id = hwo_block_work_id / wo_block_work_num;
+         const index_t wo_block_work_id = hwo_block_work_id - ho_block_work_id * wo_block_work_num;
+@@ -121,8 +122,8 @@ struct GridwiseGemmDlops_km_kn_mn_v3
+         const index_t hwo_block_work_num = ho_block_work_num * wo_block_work_num;
+ 
+         const index_t k_block_work_id =
+-            __builtin_amdgcn_readfirstlane(get_block_1d_id() / hwo_block_work_num);
+-        const index_t hwo_block_work_id = get_block_1d_id() - k_block_work_id * hwo_block_work_num;
++            __builtin_amdgcn_readfirstlane(block_1d_id / hwo_block_work_num);
++        const index_t hwo_block_work_id = block_1d_id - k_block_work_id * hwo_block_work_num;
+ 
+         const index_t ho_block_work_id =
+             __builtin_amdgcn_readfirstlane(hwo_block_work_id / wo_block_work_num);
+@@ -166,7 +167,7 @@ struct GridwiseGemmDlops_km_kn_mn_v3
+                                                  ABlockTransferSrcScalarPerVector,
+                                                  ABlockTransferDstScalarPerVector_K>{};
+ 
+-        auto c_thread_mtx_index = blockwise_gemm.GetBeginOfThreadMatrixC(get_thread_local_1d_id());
++        auto c_thread_mtx_index = blockwise_gemm.GetBeginOfThreadMatrixC(get_thread_local_1d_id(BlockSize));
+ 
+         const auto k_thread_id  = c_thread_mtx_index.k;
+         const auto ho_thread_id = c_thread_mtx_index.h;
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v3.hpp
+index ace844338..9e863b574 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v3.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dlops_v3.hpp
+@@ -525,17 +525,18 @@ struct GridwiseGemmDlops_km_kn_mn_v3
+     {
+         auto blockwise_gemm = GetBlockWiseGemm();
+         auto c_thread_mtx_index =
+-            blockwise_gemm.GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id());
++            blockwise_gemm.GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id(BlockSize));
+ 
+         return c_thread_mtx_index;
+     };
+ 
+     __device__ static constexpr auto GetCBlockIndex(
+-        const CBlockIdToBlockClusterAdaptor_K_N_H_W& cblockid_to_k_n_h_w_block_cluster_adaptor)
++        const CBlockIdToBlockClusterAdaptor_K_N_H_W& cblockid_to_k_n_h_w_block_cluster_adaptor,
++        index_t block_1d_id)
+     {
+         const auto c_k_n_h_w_block_cluster_idx =
+             cblockid_to_k_n_h_w_block_cluster_adaptor.CalculateBottomIndex(
+-                make_multi_index(get_block_1d_id()));
++                make_multi_index(block_1d_id));
+         return c_k_n_h_w_block_cluster_idx;
+     }
+ 
+@@ -955,7 +956,7 @@ struct GridwiseGemmDlops_km_kn_mn_v3
+                                                  decltype(c_k1_n_h2_w2_thread_gemm_desc),
+                                                  EPerThread,
+                                                  K2>{};
+-        // blockwise_gemm.GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id());
++        // blockwise_gemm.GetBeginOfCThreadDesc_K_N_Ho_Wo(get_thread_local_1d_id(BlockSize));
+ 
+         const auto ho_thread_id = c_thread_idx[I2];
+         const auto wo_thread_id = c_thread_idx[I3];
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
+index 578665ea8..af7187972 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
+@@ -339,7 +339,8 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+         const StaticallyIndexedArray<RGridDescriptor_MBlock_MPerBlock,
+                                      NumRTensor>&
+             rs_grid_desc_mblock_mperblock, // FIXME: Rs desc may be of different
+-        const Block2ETileMap& block_2_etile_map)
++        const Block2ETileMap& block_2_etile_map,
++        index_t block_1d_id)
+     {
+         // FIXME - Share code with other gemm kernel
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+@@ -368,7 +369,7 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_etile_map.ValidCTileIndex(
+                block_work_idx,
+@@ -712,7 +713,7 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             const auto c_reduce_thread_cluster_idx =
+                 c_reduce_thread_cluster_desc.CalculateBottomIndex(
+-                    make_multi_index(get_thread_local_1d_id()));
++                    make_multi_index(ThisThreadBlock::GetThreadId()));
+ 
+             const auto c_reduce_thread_data_idx_begin =
+                 c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
+index d3f81566e..8e1dccf07 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
+@@ -588,7 +588,8 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+                                const AElementwiseOperation& a_element_op,
+                                const BElementwiseOperation& b_element_op,
+                                const CDEElementwiseOperation& cde_element_op,
+-                               const Block2CTileMap& block_2_ctile_map)
++                               const Block2CTileMap& block_2_ctile_map,
++                               index_t block_1d_id)
+     {
+         // printf("safe entry");
+         // clang-format off
+@@ -610,7 +611,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+ 
+ /*******************************************************************************/
+ // BlockIdx.x -> [BlockId.m, BlockId.n]
+-        const auto block_work_idx = block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++        const auto block_work_idx = block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+                make_tuple(e_grid_desc_mblock_mperblock_nblock_nperblock.GetLength(I0),
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
+index 98a71a7c2..678f4a4f0 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
+@@ -351,7 +351,8 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
+                                    ds_grid_desc_mblock_mperblock_nblock_nperblock,
+                                const EGridDesc_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    e_grid_desc_mblock_mperblock_nblock_nperblock,
+-                               const Block2ETileMap& block_2_etile_map)
++                               const Block2ETileMap& block_2_etile_map,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -372,7 +373,7 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_etile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
+index a3f532471..9c98860d5 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
+@@ -344,7 +344,8 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+         const CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+             c_grid_desc_mblock_mperblock_nblock_nperblock,
+         const ReduceGridDescriptor_MBlock_MPerBlock& reduce_grid_desc_mblock_mperblock,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -355,7 +356,7 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+@@ -727,7 +728,7 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             const auto c_reduce_thread_cluster_idx =
+                 c_reduce_thread_cluster_desc.CalculateBottomIndex(
+-                    make_multi_index(get_thread_local_1d_id()));
++                    make_multi_index(ThisThreadBlock::GetThreadId()));
+ 
+             const auto c_reduce_thread_data_idx_begin =
+                 c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
+index aa89bff9e..7edc49374 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
+@@ -403,10 +403,11 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+                                    ds_grid_desc_mblock_mperblock_nblock_nperblock,
+                                const EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    e_grid_desc_mblock_mperblock_nblock_nperblock,
+-                               const Block2ETileMap& block_2_etile_map)
++                               const Block2ETileMap& block_2_etile_map,
++                               index_t block_1d_id)
+     {
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(block_work_idx[Number<0>{}] == 0)
+         {
+@@ -457,7 +458,8 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+                                     ds_grid_desc_mblock_mperblock_nblock_nperblock,
+                                 const EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                     e_grid_desc_mblock_mperblock_nblock_nperblock,
+-                                const Block2ETileMap& block_2_etile_map)
++                                const Block2ETileMap& block_2_etile_map,
++                                index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_akb_ak0_m_ak1.GetElementSpaceSize());
+@@ -478,7 +480,7 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_etile_map.ValidCTileIndex(
+                make_tuple(block_work_idx[I1], block_work_idx[I2]),
+@@ -889,7 +891,8 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+                                 const DsGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&,
+                                 const EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                     e_grid_desc_mblock_mperblock_nblock_nperblock,
+-                                const Block2ETileMap& block_2_etile_map)
++                                const Block2ETileMap& block_2_etile_map,
++                                index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_akb_ak0_m_ak1.GetElementSpaceSize());
+@@ -902,7 +905,7 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_etile_map.ValidCTileIndex(
+                make_tuple(block_work_idx[I1], block_work_idx[I2]),
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
+index 397ae1c1b..643e6c49e 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
+@@ -325,7 +325,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+                                const AElementwiseOperation& a_element_op,
+                                const BElementwiseOperation& b_element_op,
+                                const CElementwiseOperation& c_element_op,
+-                               const Block2CTileMap& block_2_ctile_map)
++                               const Block2CTileMap& block_2_ctile_map,
++                               index_t block_1d_id)
+     {
+         // clang-format off
+ /*******************************************************************************/
+@@ -339,7 +340,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+ 
+ /*******************************************************************************/
+ // BlockIdx.x -> [BlockId.m, BlockId.n]
+-        const auto block_work_idx = block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++        const auto block_work_idx = block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+                make_tuple(c_grid_desc_mblock_mperblock_nblock_nperblock.GetLength(I0),
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
+index 1213cdc26..e180db1ec 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
+@@ -290,7 +290,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                const BGridDesc_BK0_N_BK1& b_grid_desc_bk0_n_bk1,
+                                const CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    c_grid_desc_mblock_mperblock_nblock_nperblock,
+-                               const Block2CTileMap& block_2_ctile_map)
++                               const Block2CTileMap& block_2_ctile_map,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -301,7 +302,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
+index 2d4ebe707..391431692 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
+@@ -373,7 +373,8 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+         const CGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+             c_grid_desc_mblock_mperblock_nblock_nperblock,
+         const C0GridDescriptor_NBlock_NPerBlock& c0_grid_desc_nblock_nperblock,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -393,7 +394,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+@@ -783,7 +784,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             const auto c_reduce_thread_cluster_idx =
+                 c_reduce_thread_cluster_desc.CalculateBottomIndex(
+-                    make_multi_index(get_thread_local_1d_id()));
++                    make_multi_index(ThisThreadBlock::GetThreadId()));
+ 
+             const auto c_reduce_thread_data_idx_begin =
+                 c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
+index acece0fbb..a664b5bdb 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
+@@ -78,18 +78,20 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+     static constexpr auto AK0PerBlock = Number<KPerBlock / AK1Value>{};
+     static constexpr auto BK0PerBlock = Number<KPerBlock / BK1Value>{};
+ 
++    static constexpr auto TotalThreadGroupSize = TileLoadThreadGroupSize + TileMathThreadGroupSize;
++
+     struct TileLoadThreadGroup
+     {
+         __device__ static constexpr index_t GetNumOfThread() { return TileLoadThreadGroupSize; }
+ 
+         __device__ static constexpr bool IsBelong()
+         {
+-            return (get_thread_local_1d_id() >= TileLoadThreadGroupSize);
++            return (get_thread_local_1d_id(TotalThreadGroupSize) >= TileLoadThreadGroupSize);
+         }
+ 
+         __device__ static index_t GetThreadId()
+         {
+-            return get_thread_local_1d_id() - TileMathThreadGroupSize;
++            return get_thread_local_1d_id(TotalThreadGroupSize) - TileMathThreadGroupSize;
+         }
+     };
+ 
+@@ -99,10 +101,10 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+ 
+         __device__ static constexpr bool IsBelong()
+         {
+-            return get_thread_local_1d_id() < TileMathThreadGroupSize;
++            return get_thread_local_1d_id(TotalThreadGroupSize) < TileMathThreadGroupSize;
+         }
+ 
+-        __device__ static index_t GetThreadId() { return get_thread_local_1d_id(); }
++        __device__ static index_t GetThreadId() { return get_thread_local_1d_id(TotalThreadGroupSize); }
+     };
+ 
+     using CShuffleBlockTransferThreadGroup = ThisThreadBlock<TileMathThreadGroupSize>;
+@@ -351,7 +353,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+                                const BGridDesc_BK0_N_BK1& b_grid_desc_bk0_n_bk1,
+                                const EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
+                                    e_grid_desc_mblock_mperblock_nblock_nperblock,
+-                               const Block2ETileMap& block_2_etile_map)
++                               const Block2ETileMap& block_2_etile_map,
++                               index_t block_1d_id)
+     {
+         // build loadWave and MathWave pipelines
+         // loadWave and MathWave synchronized through LDS
+@@ -385,7 +388,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_etile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_etile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         // HACK: this force m/n_block_data_idx_on_grid into SGPR
+         const index_t m_block_data_idx_on_grid =
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
+index 1979331d0..a8b48ee5e 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
+@@ -621,7 +621,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_bwd_weight
+                                const AElementwiseOperation& a_element_op,
+                                const BElementwiseOperation& b_element_op,
+                                const CElementwiseOperation& c_element_op,
+-                               const CBlockClusterAdaptor& c_block_cluster_adaptor)
++                               const CBlockClusterAdaptor& c_block_cluster_adaptor,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_b_k0_m_k1_grid_desc.GetElementSpaceSize());
+@@ -634,7 +635,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_bwd_weight
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         const index_t k_batch_id = block_work_idx[I0];
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
+index 8d86f3c1d..bd862963b 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
+@@ -252,7 +252,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+ 
+     __device__ static auto GetWaveIdx()
+     {
+-        const index_t thread_id = get_thread_local_1d_id();
++        const index_t thread_id = ThisThreadBlock::GetThreadId();
+ 
+         constexpr auto threadid_to_wave_idx_adaptor = make_single_stage_tensor_adaptor(
+             make_tuple(make_merge_transform(make_tuple(MWaves, NWaves, WaveSize))),
+@@ -375,7 +375,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+         const AElementwiseOperation& a_element_op,
+         const BElementwiseOperation& b_element_op,
+         const CElementwiseOperation& c_element_op,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
+@@ -388,7 +389,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         // HACK: this force m/n_block_data_idx_on_grid into SGPR
+         const index_t m_block_data_idx_on_grid =
+@@ -457,7 +458,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+ 
+ #if 0
+         const index_t block_id  = get_block_1d_id();
+-        const index_t thread_id = get_thread_local_1d_id();
++        const index_t thread_id = ThisThreadBlock::GetThreadId();
+         printf("block id: %d  m blockid: %d n block id: %d ,thread id: %d, wave id :{%d %d %d} "
+                "kn id: {%d %d}\n",
+                block_id,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
+index 775b77118..73f1ae8da 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
+@@ -329,7 +329,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
+         const AElementwiseOperation& a_element_op,
+         const BElementwiseOperation& b_element_op,
+         const CElementwiseOperation& c_element_op,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
+@@ -342,7 +343,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
+index 55f465a03..79bce459f 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
+@@ -290,7 +290,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
+                                const AElementwiseOperation& a_element_op,
+                                const BElementwiseOperation& b_element_op,
+                                const CElementwiseOperation& c_element_op,
+-                               const CBlockClusterAdaptor& c_block_cluster_adaptor)
++                               const CBlockClusterAdaptor& c_block_cluster_adaptor,
++                               index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_b_k0_m_k1_grid_desc.GetElementSpaceSize());
+@@ -303,7 +304,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            c_block_cluster_adaptor.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!c_block_cluster_adaptor.ValidCTileIndex(
+                make_tuple(block_work_idx[I1], block_work_idx[I2]),
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
+index b393c4897..66ec99f16 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
+@@ -498,7 +498,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
+               typename Block2CTileMap>
+     __device__ static void Run(const Argument& karg,
+                                void* __restrict__ p_shared_block,
+-                               const Block2CTileMap& block_2_ctile_map)
++                               const Block2CTileMap& block_2_ctile_map,
++                               index_t block_1d_id)
+     {
+         const FloatAB* p_a_grid          = karg.p_a_grid;
+         const FloatAB* p_b_grid          = karg.p_b_grid;
+@@ -525,7 +526,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
+ 
+         // divide block work by [KBatch, M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
+index 8259927fe..dcd391e14 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
+@@ -335,7 +335,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1
+         const AElementwiseOperation& a_element_op,
+         const BElementwiseOperation& b_element_op,
+         const CElementwiseOperation& c_element_op,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_ak0_m_ak1.GetElementSpaceSize());
+@@ -348,7 +349,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
+index 5d5fdae17..06ec53a59 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
+@@ -351,7 +351,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r2
+         const AElementwiseOperation& a_element_op,
+         const BElementwiseOperation& b_element_op,
+         const CElementwiseOperation& c_element_op,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
+@@ -370,7 +371,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r2
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
+index dc83f8e98..cfa758e74 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
+@@ -367,7 +367,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r3
+         const AElementwiseOperation& a_element_op,
+         const BElementwiseOperation& b_element_op,
+         const CElementwiseOperation& c_element_op,
+-        const Block2CTileMap& block_2_ctile_map)
++        const Block2CTileMap& block_2_ctile_map,
++        index_t block_1d_id)
+     {
+         const auto a_grid_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_a_grid, a_grid_desc_k0_m_k1.GetElementSpaceSize());
+@@ -390,7 +391,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r3
+ 
+         // divide block work by [M, N]
+         const auto block_work_idx =
+-            block_2_ctile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_ctile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         if(!block_2_ctile_map.ValidCTileIndex(
+                block_work_idx,
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp
+index 792ffabcb..1545d98ad 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp
+@@ -104,7 +104,8 @@ struct GridwiseNormalizationNaiveVariance_mk_to_mk
+                                const GammaDataType* const __restrict__ p_gamma_global,
+                                const BetaDataType* const __restrict__ p_beta_global,
+                                YDataType* const __restrict__ p_y_global,
+-                               const YElementwiseOperation y_elementwise_op)
++                               const YElementwiseOperation y_elementwise_op,
++                               index_t block_1d_id)
+     {
+         // LDS
+         __shared__ ComputeDataType p_reduce_work_buffer[BlockSize];
+@@ -153,8 +154,8 @@ struct GridwiseNormalizationNaiveVariance_mk_to_mk
+         StaticBuffer<AddressSpaceEnum::Vgpr, ComputeDataType, MThreadSliceSize, true>&
+             var_thread_buf = mean_square_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+ 
+         const auto thread_cluster_idx =
+             thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp
+index 3a7ae459e..1078bf475 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp
+@@ -120,7 +120,8 @@ struct GridwiseNormalizationWelfordVariance_mk_to_mk
+                                const GammaDataType* const __restrict__ p_gamma_global,
+                                const BetaDataType* const __restrict__ p_beta_global,
+                                YDataType* const __restrict__ p_y_global,
+-                               const YElementwiseOperation y_elementwise_op)
++                               const YElementwiseOperation y_elementwise_op,
++                               index_t block_1d_id)
+     {
+         auto y_global_val_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_y_global, y_grid_desc_m_k.GetElementSpaceSize());
+@@ -151,8 +152,8 @@ struct GridwiseNormalizationWelfordVariance_mk_to_mk
+         StaticBuffer<AddressSpaceEnum::Vgpr, ComputeDataType, MThreadSliceSize, true>
+             var_thread_buf;
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+ 
+         const auto thread_cluster_idx =
+             thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
+index de1ae9159..b36799c27 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
+@@ -207,7 +207,8 @@ struct GridwisePermute
+                                OutDataType* p_out_global,
+                                void* __restrict__ p_shared,
+                                const ElementwiseOperation elementwise_op,
+-                               const Block2TileMap& block_2_tile_map)
++                               const Block2TileMap& block_2_tile_map,
++                               index_t block_1d_id)
+     {
+         auto in_global_buf = make_dynamic_buffer<AddressSpaceEnum::Global>(
+             p_in_global, in_grid_desc.GetElementSpaceSize());
+@@ -217,7 +218,7 @@ struct GridwisePermute
+ 
+         // each workgroup handles an [NPerBlock, HPerBlock, WPerBLock] slice-transpose problem
+         const auto block_work_idx =
+-            block_2_tile_map.CalculateBottomIndex(make_multi_index(get_block_1d_id()));
++            block_2_tile_map.CalculateBottomIndex(make_multi_index(block_1d_id));
+ 
+         const index_t n_block_data_idx_on_grid =
+             __builtin_amdgcn_readfirstlane(block_work_idx[I0] * NPerBlock);
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp
+index 901e7aee9..52d129a9a 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp
+@@ -19,7 +19,7 @@ __global__ void kernel_buffer_set_value(const Grid1dBufferDescType grid_1d_buffe
+ 
+     constexpr auto I0 = Number<0>{};
+ 
+-    const index_t thread_local_id = get_thread_local_1d_id();
++    const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
+     const index_t block_global_id = get_block_1d_id();
+ 
+     const index_t thread_global_id = block_global_id * BlockSize + thread_local_id;
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
+index 0344e6830..0b87d4686 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
+@@ -91,7 +91,8 @@ struct GridwiseSoftmax_mk_to_mk
+                                AccDataType alpha,
+                                const InDataType* const __restrict__ p_in_value_global,
+                                AccDataType beta,
+-                               OutDataType* const __restrict__ p_out_value_global)
++                               OutDataType* const __restrict__ p_out_value_global,
++                               index_t block_1d_id)
+     {
+         if constexpr(SweepOnce)
+         {
+@@ -125,8 +126,8 @@ struct GridwiseSoftmax_mk_to_mk
+             accu_value_buf(I) = reduce::Add::template GetIdentityValue<AccDataType>();
+         });
+ 
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+         const index_t blkgroup_id     = block_global_id / block_group_size;
+         const index_t block_local_id  = block_global_id % block_group_size;
+ 
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
+index ff2511fa6..487c7315d 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
+@@ -96,10 +96,11 @@ struct GridwiseSparseEmbeddingsForwardLayernorm
+                                const BetaDataType* p_beta,
+                                const OutGridDesc,
+                                const AccDataType epsilon,
+-                               const EmbElementwiseOperation emb_elementwise_op)
++                               const EmbElementwiseOperation emb_elementwise_op,
++                               index_t block_1d_id)
+     {
+-        const index_t thread_local_id = get_thread_local_1d_id();
+-        const index_t block_global_id = get_block_1d_id();
++        const index_t thread_local_id = get_thread_local_1d_id(BlockSize);
++        const index_t block_global_id = block_1d_id;
+ 
+         constexpr auto thread_cluster_desc =
+             make_cluster_descriptor(Sequence<DimClusterSize, RowClusterSize>{}, Sequence<0, 1>{});
+diff --git a/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp b/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
+index 0672bf8e5..e8373fce2 100644
+--- a/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
++++ b/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
+@@ -459,7 +459,7 @@ struct WmmaGemm
+         }
+     }
+ 
+-    __device__ static auto GetLaneId() { return get_thread_local_1d_id() % wmma_instr.wave_size; }
++    __device__ static auto GetLaneId() { return get_thread_local_1d_id(BlockSize) % wmma_instr.wave_size; }
+ 
+     __device__ static auto GetSubGroupId()
+     {
+diff --git a/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp b/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp
+index 319487bc0..0f70d8eb7 100644
+--- a/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp
++++ b/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp
+@@ -811,7 +811,7 @@ struct XdlopsGemm
+         });
+     }
+ 
+-    __device__ static auto GetLaneId() { return get_thread_local_1d_id() % mfma_instr.wave_size; }
++    __device__ static auto GetLaneId() { return get_lane_local_1d_id(); }
+ 
+     __device__ static auto GetBlkIdx()
+     {
+diff --git a/include/ck/utility/get_id.hpp b/include/ck/utility/get_id.hpp
+index 44ff43815..689d44930 100644
+--- a/include/ck/utility/get_id.hpp
++++ b/include/ck/utility/get_id.hpp
+@@ -13,12 +13,14 @@ __host__ __device__ constexpr index_t get_warp_size()
+     return warpSize;
+ }
+ 
+-__device__ index_t get_thread_local_1d_id() { return threadIdx.x; }
++__device__ index_t get_thread_local_1d_id(index_t BlockSize) { return threadIdx.x % BlockSize; }
+ 
+ __device__ index_t get_thread_global_1d_id() { return blockIdx.x * blockDim.x + threadIdx.x; }
+ 
+ __device__ index_t get_warp_local_1d_id() { return threadIdx.x / get_warp_size(); }
+ 
++__device__ index_t get_lane_local_1d_id() { return threadIdx.x % get_warp_size(); }
++
+ __device__ index_t get_block_1d_id() { return blockIdx.x; }
+ 
+ __device__ index_t get_grid_size() { return gridDim.x; }
+diff --git a/include/ck/utility/thread_group.hpp b/include/ck/utility/thread_group.hpp
+index d469dec89..08db3ddee 100644
+--- a/include/ck/utility/thread_group.hpp
++++ b/include/ck/utility/thread_group.hpp
+@@ -16,7 +16,7 @@ struct ThisThreadBlock
+ 
+     __device__ static constexpr bool IsBelong() { return true; }
+ 
+-    __device__ static index_t GetThreadId() { return get_thread_local_1d_id(); }
++    __device__ static index_t GetThreadId() { return get_thread_local_1d_id(ThreadPerBlock); }
+ };
+ 
+ } // namespace ck

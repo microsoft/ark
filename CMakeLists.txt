@@ -11,12 +11,81 @@ set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 option(USE_MSLL "Use USE_MSLL" OFF)
 
 cmake_minimum_required(VERSION 3.25)
-project(ark LANGUAGES CXX CUDA)
+enable_language(CXX)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+option(USE_CUDA "Use NVIDIA/CUDA." OFF)
+option(USE_ROCM "Use AMD/ROCm." OFF)
+option(BYPASS_GPU_CHECK "Bypass GPU check." OFF)
+
+if(BYPASS_GPU_CHECK)
+    if(USE_CUDA)
+        message("Bypassing GPU check: using NVIDIA/CUDA.")
+        find_package(CUDAToolkit REQUIRED)
+    elseif(USE_ROCM)
+        message("Bypassing GPU check: using AMD/ROCm.")
+        set(CMAKE_PREFIX_PATH "/opt/rocm;${CMAKE_PREFIX_PATH}")
+        find_package(hip REQUIRED)        
+    else()
+        message(FATAL_ERROR "Bypassing GPU check: neither NVIDIA/CUDA nor AMD/ROCm is specified.")
+    endif()
+else()
+    # Detect GPUs
+    include(CheckNvidiaGpu)
+    include(CheckAmdGpu)
+    if(NVIDIA_FOUND AND AMD_FOUND)
+        message("Detected NVIDIA/CUDA and AMD/ROCm: prioritizing NVIDIA/CUDA.")
+        set(USE_CUDA ON)
+        set(USE_ROCM OFF)
+    elseif(NVIDIA_FOUND)
+        message("Detected NVIDIA/CUDA.")
+        set(USE_CUDA ON)
+        set(USE_ROCM OFF)
+    elseif(AMD_FOUND)
+        message("Detected AMD/ROCm.")
+        set(USE_CUDA OFF)
+        set(USE_ROCM ON)
+    else()
+        message(FATAL_ERROR "Neither NVIDIA/CUDA nor AMD/ROCm is found.")
+    endif()
+endif()
+
+# Declare project
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wall,-Wextra")
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-deprecated-declarations")
+if(USE_CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wall,-Wextra")
+    project(ark LANGUAGES CXX CUDA)
+
+    # CUDA 11 or higher is required
+    if(CUDAToolkit_VERSION_MAJOR LESS 11)
+        message(FATAL_ERROR "CUDA 11 or higher is required but detected ${CUDAToolkit_VERSION}")
+    endif()
+
+    # Set CUDA architectures
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70 80)
+    endif()
+
+    # Hopper architecture
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
+        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 90)
+    endif()
+else()  # USE_ROCM
+    set(CMAKE_HIP_STANDARD 17)
+    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -Wall -Wextra")
+    project(ark LANGUAGES CXX HIP)
+endif()
+
+# Find MSLL
+if(USE_MSLL)
+    include(${PROJECT_SOURCE_DIR}/cmake/FindMSLL.cmake)
+    if (NOT MSLL_FOUND)
+        message(FATAL_ERROR "MSLL not found")
+    endif()
+endif()
 
 # Code coverage from https://github.com/codecov/example-cpp11-cmake
 add_library(coverage_config INTERFACE)
@@ -31,34 +100,10 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang
 endif()
 
 # Find ibverbs
-include(${PROJECT_SOURCE_DIR}/cmake/FindIBVerbs.cmake)
+include(FindIBVerbs)
 
 # Find NUMA
-include(${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake)
-
-# Find MSLL
-if(USE_MSLL)
-    include(${PROJECT_SOURCE_DIR}/cmake/FindMSLL.cmake)
-    if (NOT MSLL_FOUND)
-        message(FATAL_ERROR "MSLL not found")
-    endif()
-endif()
-
-# Find CUDAToolkit
-find_package(CUDAToolkit REQUIRED)
-if(CUDAToolkit_FOUND)
-    if(CUDAToolkit_VERSION_MAJOR LESS 11)
-        message(FATAL_ERROR "CUDA 11 or higher is required but detected ${CUDAToolkit_VERSION}")
-    endif()
-
-    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
-        set(CMAKE_CUDA_ARCHITECTURES 60 70 80)
-    endif()
-
-    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
-        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 90)
-    endif()
-endif()
+include(FindNUMA)
 
 # Third party libraries
 add_subdirectory(third_party)
@@ -71,15 +116,17 @@ set_target_properties(ark_obj PROPERTIES
     VERSION ${ARK_VERSION}
     SOVERSION ${ARK_SOVERSION}
 )
-add_dependencies(ark_obj tp-cutlass)
+add_dependencies(ark_obj ${TP_TARGETS})
 target_link_libraries(ark_obj PUBLIC coverage_config)
 
 # Build
 add_custom_target(build)
 add_dependencies(build ark_obj)
 add_custom_command(TARGET build POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/ark/include ${BUILD_DIR}/include
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/third_party/cutlass/include ${BUILD_DIR}/include/kernels
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/ark/include ${CMAKE_CURRENT_BINARY_DIR}/include
+)
+add_custom_command(TARGET build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${TP_KERNELS} ${CMAKE_CURRENT_BINARY_DIR}/include/kernels
 )
 
 # ARK shared library
@@ -121,7 +168,11 @@ else()
 endif()
 
 # Install header files
-install(DIRECTORY ${BUILD_DIR}/include DESTINATION ark)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ark)
 
 # Utils
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)
+add_custom_target(lint_and_ut)
+if(CLANG_FORMAT)
+    add_dependencies(lint_and_ut cpplint-autofix ut)
+endif()
