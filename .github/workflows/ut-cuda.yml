@@ -59,7 +59,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --verbose --schedule-random --stop-time=$(date -Iminutes)
+          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
         run: |

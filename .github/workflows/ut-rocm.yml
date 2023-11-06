@@ -43,7 +43,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --verbose --schedule-random --stop-time=$(date -Iminutes) -E ".*all_gather.*" -E ".*all_reduce.*" -E ".*reduce_scatter.*" -E ".*sendrecv.*" -E "sched_test"
+          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random -E "sched_test|sendrecv|all_reduce|all_gather|reduce_scatter|gpu_mem|gpu_mgr"
 
       - name: ReportCoverage
         run: |
