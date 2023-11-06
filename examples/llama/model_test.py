@@ -465,6 +465,7 @@ def test_transformer(
         mask = np.full((1, 1, seq_len, seq_len), -np.inf, dtype=dtype)
         mask = np.triu(mask, k=start_pos + 1)
 
+<<<<<<< HEAD
     test_module(
         module_class_ark=model_ark.Transformer,
         module_args_ark=[args, ark.DataType.from_numpy(dtype), rank, world_size],
@@ -473,6 +474,19 @@ def test_transformer(
         module_args_pt=[args],
         inputs_pt=[tokens, start_pos]
     )
+=======
+    if world_size == 1:
+        test_module(
+            module_class_ark=model_ark.Transformer,
+            module_args_ark=[args, ark.DataType.from_numpy(dtype), 0, 1],
+            inputs_ark=[tokens, start_pos, freqs_cis_ark, mask],
+            module_class_pt=model_pt.Transformer,
+            module_args_pt=[args],
+            inputs_pt=[tokens, start_pos],
+            test_thru=True,
+            test_thru_iterations=10,
+        )
+>>>>>>> a8b8ebf... Improve error handling (#163)
 
 
 def test(args, batch_size, seq_len, dtype, rank, world_size):
