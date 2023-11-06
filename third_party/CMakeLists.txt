@@ -38,7 +38,11 @@ if(USE_CUDA)
         GIT_TAG v3.2.1
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cutlass
     )
-    FetchContent_MakeAvailable(cutlass)
+    FetchContent_GetProperties(cutlass)
+    if (NOT cutlass_POPULATED)
+        FetchContent_Populate(cutlass)
+        # Don't need to build CUTLASS
+    endif()
 
     # Patch CUTLASS
     add_custom_target(tp-cutlass
