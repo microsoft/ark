@@ -61,7 +61,7 @@ docker run \
     -it --name [Container Name] [Image Name] bash
 ```
 
-## Install `gpudma` (NVIDIA GPUs only)
+## Install `gpudma` (NVIDIA GPUs Only)
 
 **NOTE: if you are using a CUDA Docker container, the steps in this section should be done on the host.**
 
