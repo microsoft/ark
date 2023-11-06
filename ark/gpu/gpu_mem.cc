@@ -14,10 +14,6 @@
 
 #include "gpu/gpu_logging.h"
 
-#if defined(ARK_ROCM)
-#include <rocm-core/rocm_version.h>
-#endif  // defined(ARK_ROCM)
-
 #define GPU_PAGE_SHIFT 16
 #define GPU_PAGE_SIZE (1ULL << GPU_PAGE_SHIFT)
 #define GPU_PAGE_OFFSET (GPU_PAGE_SIZE - 1)
@@ -196,9 +192,7 @@ void GpuMem::init(size_t bytes, bool expose) {
     info_.phys_addr = reinterpret_cast<uint64_t>(addr_);
 #endif
 
-#if defined(ARK_CUDA) || (defined(ARK_ROCM) && (ROCM_VERSION_MAJOR == 5 &&  \
-                                                ROCM_VERSION_MINOR >= 7) || \
-                          (ROCM_VERSION_MAJOR > 5))
+#if defined(ARK_CUDA) || (defined(ARK_ROCM) && (HIP_VERSION >= 50700000))
     GLOG(gpuIpcGetMemHandle(&info_.ipc_hdl, raw_addr_));
 #endif
     info_.bytes = bytes;
