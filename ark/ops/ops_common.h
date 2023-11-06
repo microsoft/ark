@@ -274,8 +274,6 @@ class Op {
                                      const OpArgs &template_args);
 };
 
-std::ostream &operator<<(std::ostream &os, const OpType &s);
-
 /// List all operator classes below.
 
 class AddOp : public Op {

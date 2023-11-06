@@ -92,9 +92,20 @@ ark::unittest::State test_all_gather_mscclpp() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_all_gather_invalid() {
+    ark::Model m;
+    ark::Tensor *data = m.tensor(ark::Dims(1024), ark::FP16);
+    ark::Tensor *out0 = m.tensor(ark::Dims(1024), ark::FP16);
+    ark::Tensor *out1 = m.tensor(ark::Dims(1024), ark::FP16);
+    std::vector<ark::Tensor *> outputs = {out0, out1};
+    UNITTEST_THROW(m.all_gather(data, 0, 4, outputs), ark::InvalidUsageError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_all_gather_4gpus);
     UNITTEST(test_all_gather_mscclpp);
+    UNITTEST(test_all_gather_invalid);
     return ark::unittest::SUCCESS;
 }

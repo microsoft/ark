@@ -46,7 +46,7 @@ std::string CopyOp::function_name(const OpConfig &cfg) const {
 Tensor *Model::copy(Tensor *input, Tensor *output, const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
@@ -57,7 +57,7 @@ Tensor *Model::copy(Tensor *input, Tensor *output, const std::string &name) {
             (osh[1] != ish[1] && ish[1] != 1) ||
             (osh[2] != ish[2] && ish[2] != 1) ||
             (osh[3] != ish[3] && ish[3] != 1)) {
-            LOG(ERROR, "invalid output shape: ", output->shape);
+            ERR(InvalidUsageError, "invalid output shape: ", output->shape);
         }
     }
     CopyOp op{output->type.name(), input, output, name};

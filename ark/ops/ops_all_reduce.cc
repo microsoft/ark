@@ -21,7 +21,7 @@ Tensor *Model::all_reduce(Tensor *input, int gpu_id, int gpu_num,
                           Tensor *output, const std::string &) {
     assert(input != nullptr);
     if (output != nullptr) {
-        LOG(ERROR, "all_reduce output is not supported");
+        ERR(InvalidUsageError, "all_reduce output is not supported");
     }
     if (!input->is_sequential()) {
         LOG(WARN,
@@ -75,7 +75,7 @@ Tensor *Model::local_all_reduce_packet_mscclpp(Tensor *input, int gpu_id,
     assert(input != nullptr);
     // We only support out-of-place all_reduce
     if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
     if (!input->is_sequential()) {
         LOG(WARN,

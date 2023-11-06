@@ -47,9 +47,26 @@ ark::unittest::State test_sigmoid_bf16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sigmoid_invalid() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+        UNITTEST_THROW(m.sigmoid(t, out), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(4, 4, 1024), ark::BF16);
+        UNITTEST_THROW(m.sigmoid(t, out), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_sigmoid_fp32);
     UNITTEST(test_sigmoid_bf16);
+    UNITTEST(test_sigmoid_invalid);
     return ark::unittest::SUCCESS;
 }

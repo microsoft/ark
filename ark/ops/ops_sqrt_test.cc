@@ -33,8 +33,27 @@ ark::unittest::State test_sqrt_fp32() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sqrt_invalid() {
+    {
+        ark::Model model;
+        ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP32);
+        ark::Tensor *output =
+            model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP16);
+        UNITTEST_THROW(model.sqrt(input, output), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP32);
+        ark::Tensor *output =
+            model.tensor(ark::Dims(1, 3, 16, 1024), ark::FP32);
+        UNITTEST_THROW(model.sqrt(input, output), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_sqrt_fp32);
+    UNITTEST(test_sqrt_invalid);
     return ark::unittest::SUCCESS;
 }

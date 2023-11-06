@@ -54,7 +54,7 @@ const string SchedOp::serialize() const {
         } else if (arg.type == OP_ARG_UINT64) {
             ss << "uint64_t";
         } else {
-            LOG(ERROR, "Not implemented");
+            ERR(SchedulerError, "Not implemented");
         }
         ss << ",";
     }

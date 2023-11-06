@@ -237,6 +237,57 @@ ark::unittest::State test_reduce_bf16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_reduce_invalid() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(7, 2, 4, 1), ark::FP32);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(1, 2, 4, 512), ark::BF16);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(7, 1, 4, 1), ark::BF16);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(3, 2, 4, 1024), ark::BF16);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor *out = m.tensor(ark::Dims(7, 2, 4, 3), ark::BF16);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(7, 2, 4, 1), ark::BF16);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, t), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_reduce_axis0);
@@ -246,5 +297,6 @@ int main() {
     UNITTEST(test_reduce_axis3_padded);
     UNITTEST(test_reduce_fp16);
     UNITTEST(test_reduce_bf16);
+    UNITTEST(test_reduce_invalid);
     return ark::unittest::SUCCESS;
 }

@@ -14,6 +14,7 @@
 #include <fstream>
 #include <sstream>
 
+#include "include/ark.h"
 #include "logging.h"
 
 using namespace std;
@@ -22,14 +23,14 @@ static bool get_stat(const char *path, struct stat *st) {
     if (stat(path, st) == -1) {
         switch (errno) {
             case EACCES:
-                LOG(ark::ERROR, "permission denied: ", path);
+                ERR(ark::SystemError, "permission denied: ", path);
             case EFAULT:
-                LOG(ark::ERROR, "bad address: ", path);
+                ERR(ark::SystemError, "bad address: ", path);
             case ENOENT:
             case ENOTDIR:
                 return false;
             default:
-                LOG(ark::ERROR, "stat() for file path ", path,
+                ERR(ark::SystemError, "stat() for file path ", path,
                     " failed with errno ", errno);
         };
     }

@@ -92,7 +92,7 @@ Tensor *Model::put_packet_mscclpp(Tensor *input, Tensor *local_tmp_buf,
     CHECK(recv_buf != nullptr);
     CHECK(input->is_sequential());
     if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
 
     std::string pt = "none";
@@ -172,7 +172,7 @@ Tensor *Model::reduce_and_write_packet_mscclpp(
     CHECK(input->is_sequential());
     CHECK(output->is_sequential());
     if (input->ndims() > 1 || output->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
 
     std::string pt = "none";
@@ -306,7 +306,7 @@ Tensor *Model::get_packet_mscclpp(Tensor *input, Tensor *output,
     CHECK(input->is_sequential());
     CHECK(output->is_sequential());
     if (input->ndims() > 1 || output->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
 
     MscclppGetFromPacketOp op{"none",     input,    output, src_offset,
