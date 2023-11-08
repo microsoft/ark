@@ -101,16 +101,11 @@ Tensor *Model::read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
     Dims shape = {(long long)bytes / input->type_bytes()};
     // These two tensors are not actually used, just give hint to scheduler to
     // split to correct tiles
-    Tensor *cal_region_local = this->tensor(shape, input->type, input->buf);
-    MscclppReadAndReduceOp op{pt,
-                              input,
-                              cal_region_local,
-                              remote_bufs,
-                              sid,
-                              this->impl->rank,
-                              npeers,
-                              offset,
-                              bytes,
+    Tensor *cal_region_local =
+        this->tensor(shape, input->type, input->buf, input->ldims);
+    MscclppReadAndReduceOp op{pt,          input,  cal_region_local,
+                              remote_bufs, sid,    this->impl->rank,
+                              npeers,      offset, bytes,
                               name};
     return this->impl->add_op(op)[1];
 }

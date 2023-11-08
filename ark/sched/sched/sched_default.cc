@@ -370,6 +370,8 @@ void DefaultScheduler::configure_gpu_buf(
             auto cfg = sop.get_cfg();
             auto tile_vec = cfg->input_tiles;
             auto tns_vec = op->inputs;
+            // For case which tns_vec contains less elements than tile_vec
+            tile_vec.resize(tns_vec.size());
             tile_vec.insert(tile_vec.end(), cfg->output_tiles.begin(),
                             cfg->output_tiles.end());
             tns_vec.insert(tns_vec.end(), op->outputs.begin(),

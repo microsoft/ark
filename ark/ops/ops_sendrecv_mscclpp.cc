@@ -195,7 +195,7 @@ const OpConfigMap MscclppConfigMap = {
     {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, true, true},
+         {1, 0, {{-1, -1}}, {{-1, -1}}, true, true},
      }},
 };
 

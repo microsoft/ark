@@ -154,7 +154,7 @@ template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
 DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
                                     size_t src_offset_2, size_t src_offset_3,
                                     size_t src_offset_4, size_t src_offset_5,
-                                    size_t src_offset_6, ark::half *src,
+                                    size_t src_offset_6, ark::fp16 *src,
                                     int uop_idx, int) {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
@@ -190,17 +190,17 @@ template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
 DEVICE void gather_from_peers_mscclpp(
     size_t ori_offset, size_t target_offset_0, size_t target_offset_1,
     size_t target_offset_2, size_t target_offset_3, size_t target_offset_4,
-    size_t target_offset_5, size_t target_offset_6, ark::half *, int uop_idx,
+    size_t target_offset_5, size_t target_offset_6, ark::fp16 *, int uop_idx,
     int) {
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
-    constexpr size_t shape_width = Shape::W * sizeof(ark::half);
-    constexpr size_t output_width = UnitOutDims::W * sizeof(ark::half);
+    constexpr size_t shape_width = Shape::W * sizeof(ark::fp16);
+    constexpr size_t output_width = UnitOutDims::W * sizeof(ark::fp16);
     const int tid = UnitOp::thread_id();
     const int tile_hid = UnitOp::uop_idx_h(uop_idx);
     const int tile_wid = UnitOp::uop_idx_w(uop_idx);
     const size_t offset_in_width =
-        tile_wid * UnitOutDims::W * sizeof(ark::half);
-    size_t bytes_per_width = UnitOutDims::W * sizeof(ark::half);
+        tile_wid * UnitOutDims::W * sizeof(ark::fp16);
+    size_t bytes_per_width = UnitOutDims::W * sizeof(ark::fp16);
     if (offset_in_width + output_width > shape_width) {
         bytes_per_width = shape_width - offset_in_width;
     }
@@ -253,7 +253,7 @@ template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
           unsigned long long RemoteDstOffset, unsigned long long ScratchOffset,
           int Flag>
 DEVICE void reduce_and_write_packet_mscclpp(
-    ark::half *dst, ark::half *src, void *scratch, size_t peer_offset_0,
+    ark::fp16 *dst, ark::fp16 *src, void *scratch, size_t peer_offset_0,
     size_t peer_offset_1, size_t peer_offset_2, size_t peer_offset_3,
     size_t peer_offset_4, size_t peer_offset_5, size_t peer_offset_6,
     int uop_idx, int) {
@@ -263,7 +263,7 @@ DEVICE void reduce_and_write_packet_mscclpp(
         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
     constexpr int total_threads = total_tiles * NumThreads;
     constexpr int npackets_per_rank =
-        NElemsPerRank * sizeof(ark::half) / (sizeof(mscclpp::LLPacket) / 2);
+        NElemsPerRank * sizeof(ark::fp16) / (sizeof(mscclpp::LLPacket) / 2);
     uint8_t *scratch_base = (uint8_t *)scratch + ScratchOffset;
     const int tid = uop_idx * NumThreads + UnitOp::thread_id();
     size_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
