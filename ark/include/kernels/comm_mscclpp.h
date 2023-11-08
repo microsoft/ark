@@ -195,6 +195,7 @@ DEVICE void gather_from_peers_mscclpp(
     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
     constexpr size_t shape_width = Shape::W * sizeof(ark::fp16);
     constexpr size_t output_width = UnitOutDims::W * sizeof(ark::fp16);
+    constexpr size_t stride = Dims::W * sizeof(ark::fp16);
     const int tid = UnitOp::thread_id();
     const int tile_hid = UnitOp::uop_idx_h(uop_idx);
     const int tile_wid = UnitOp::uop_idx_w(uop_idx);
@@ -220,7 +221,7 @@ DEVICE void gather_from_peers_mscclpp(
         for (int j = tile_hid * UnitOutDims::H;
              j < tile_hid * UnitOutDims::H + UnitOutDims::H; ++j) {
           size_t offset =
-              shape_width * remote_rank + j * Stride + offset_in_width;
+              shape_width * remote_rank + j * stride + offset_in_width;
         //   if (tid == 0 && uop_idx == 1) {
         //     printf("chan idx %d, remote rank %d, offset %lld\n", chan_idx,
         //            remote_rank, offset);

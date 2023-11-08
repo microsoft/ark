@@ -208,14 +208,33 @@ class ParallelEmbedding(ark.Module):
     """Embedding layer."""
 
     # TODO: support parallelism
-    def __init__(self, vocab_size: int, dim: int, dtype: ark.DataType):
+    def __init__(self, vocab_size: int, dim: int, dtype: ark.DataType, local_rank: int = 0, world_size: int = 1):
         super().__init__()
         self.vocab_size = vocab_size
         self.dim = dim
-        self.weight = ark.parameter([vocab_size, dim], dtype)
+        self.weight = ark.parameter([vocab_size, dim // world_size], dtype)
+        self.out_dim = dim
+        self.dtype = dtype
+        self.world_size = world_size
+        self.local_rank = local_rank
 
     def forward(self, x):
-        return ark.embedding(x, self.weight)
+        if self.world_size == 1:
+            return ark.embedding(x, self.weight)
+        output_tensor = ark.tensor(
+            [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
+        )
+        output_tensor_shards = ark.sharding(
+            output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
+        )
+        local_result = ark.identity(output_tensor_shards[self.local_rank], deps=output_tensor_shards)
+        local_result = ark.embedding(x, self.weight, local_result)
+        gather_input = ark.identity(output_tensor, deps=[local_result])
+        gather_reshape = ark.reshape(gather_input, [x.shape()[0] * x.shape()[1], self.out_dim])
+        gather_out = ark.local_all_gather_mscclpp(
+            gather_reshape, self.local_rank, self.world_size, 1
+        )
+        return ark.reshape(gather_out, [x.shape()[0], x.shape()[1], self.out_dim])
 
 
 class Linear(ark.Module):
@@ -456,7 +475,7 @@ class Transformer(ark.Module):
         self.n_layers = params.n_layers
 
         self.tok_embeddings = ParallelEmbedding(
-            params.vocab_size, params.dim, dtype
+            params.vocab_size, params.dim, dtype, local_rank, world_size
         )
 
         self.layers = []
@@ -468,9 +487,8 @@ class Transformer(ark.Module):
             )
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps, dtype=dtype)
-        # TODO: parallize
         self.output = ColumnParallelLinear(
-            params.dim, params.vocab_size, dtype, 0, 1
+            params.dim, params.vocab_size, dtype, True, local_rank, world_size
         )
 
     def forward(
