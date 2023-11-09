@@ -143,7 +143,7 @@ DEVICE void device_sync_mscclpp(int, int) {
         _ARK_SM_CHANS[i].signal();
     }
     for (int i = 0; i < NRanks - 1; ++i) {
-        _ARK_SM_CHANS[i].wait();
+        _ARK_SM_CHANS[i].wait(-1);
     }
 }
 

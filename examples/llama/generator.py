@@ -115,19 +115,6 @@ class Generator:
             for k, v in state_dict.items()
             if k in param_names
         }
-        embeddings = []
-        output = []
-        for ckp in checkpoints:
-            dict = torch.load(ckp)
-            emb = dict["tok_embeddings.weight"]
-            out = dict["output.weight"]
-            embeddings.append(emb)
-            output.append(out)
-
-        concat_embedding = torch.cat(embeddings, dim=1)
-        state_dict["tok_embeddings.weight"] = concat_embedding.float().numpy().astype(self.dtype)
-        concat_output = torch.cat(output, dim=0)
-        state_dict["output.weight"] = concat_output.float().numpy().astype(self.dtype)
 
         # Initiate runtime
         self.runtime = ark.Runtime()
