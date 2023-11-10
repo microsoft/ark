@@ -64,12 +64,12 @@ class ModelArgs70B(ModelArgs):
     dim: int = 8192
     n_layers: int = 80
     n_heads: int = 64
-    n_kv_heads: Optional[int] = None
+    n_kv_heads: Optional[int] = 8
     vocab_size: int = -1
     multiple_of: int = (
-        256  # make SwiGLU hidden layer size multiple of large power of 2
+        4096  # make SwiGLU hidden layer size multiple of large power of 2
     )
-    ffn_dim_multiplier: Optional[float] = None
+    ffn_dim_multiplier: Optional[float] = 1.3
     norm_eps: float = 1e-5
     max_batch_size: int = 32
     max_seq_len: int = 4096
