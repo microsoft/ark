@@ -46,7 +46,7 @@ std::string RMSnormOp::function_name(const OpConfig &cfg) const {
 Tensor *Model::rmsnorm(Tensor *input, Tensor *output, const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type);

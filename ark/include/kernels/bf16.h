@@ -4,7 +4,11 @@
 #ifndef ARK_KERNELS_BF16_H_
 #define ARK_KERNELS_BF16_H_
 
+#if defined(ARK_TARGET_CUDA_ARCH)
 #include <cuda_bf16.h>
+#elif defined(ARK_TARGET_ROCM_ARCH)
+#include <hip/hip_bf16.h>
+#endif
 
 #include "arch.h"
 #include "device.h"
@@ -12,9 +16,9 @@
 
 namespace ark {
 
-using bf16 = __nv_bfloat16;
-using bf16x2 = __nv_bfloat162;
-using bf16_raw = __nv_bfloat16_raw;
+ARCH_ALIAS_TYPE(bf16, __nv_bfloat16, __hip_bfloat16);
+ARCH_ALIAS_TYPE(bf16x2, __nv_bfloat162, __hip_bfloat162);
+ARCH_ALIAS_TYPE(bf16_raw, __nv_bfloat16_raw, __hip_bfloat16);
 
 namespace type {
 

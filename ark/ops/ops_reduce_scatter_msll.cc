@@ -114,7 +114,7 @@ Tensor *Model::local_reduce_scatter_msll(Tensor *input, int gpu_id,
                                          const std::string &name) {
     assert(input != nullptr);
     if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
     if (!input->is_sequential()) {
         LOG(WARN,

@@ -14,30 +14,30 @@ ark::unittest::State test_gpu_mem() {
     int pid = ark::unittest::spawn_process([] {
         ark::unittest::Timeout timeout{5};
 
-        // Create a CUDA context of GPU 0.
-        CULOG(cuInit(0));
-        CUdevice dev0;
-        CUcontext ctx0;
-        CULOG(cuDeviceGet(&dev0, 0));
-        CULOG(cuCtxCreate(&ctx0, 0, dev0));
-        CULOG(cuCtxSetCurrent(ctx0));
+        // Create a context of GPU 0.
+        GLOG(ark::gpuInit(0));
+        ark::gpuDevice dev0;
+        ark::gpuCtx ctx0;
+        GLOG(ark::gpuDeviceGet(&dev0, 0));
+        GLOG(ark::gpuCtxCreate(&ctx0, 0, dev0));
+        GLOG(ark::gpuCtxSetCurrent(ctx0));
 
         // Local memory in GPU 0.
         ark::GpuMem mem0{4096};
 
-        // Create a CUDA context of GPU 1.
-        CUdevice dev1;
-        CUcontext ctx1;
-        CULOG(cuDeviceGet(&dev1, 1));
-        CULOG(cuCtxCreate(&ctx1, 0, dev1));
-        CULOG(cuCtxSetCurrent(ctx1));
+        // Create a context of GPU 1.
+        ark::gpuDevice dev1;
+        ark::gpuCtx ctx1;
+        GLOG(ark::gpuDeviceGet(&dev1, 1));
+        GLOG(ark::gpuCtxCreate(&ctx1, 0, dev1));
+        GLOG(ark::gpuCtxSetCurrent(ctx1));
 
         // Remote memory in GPU 1.
         ark::GpuMem mem1{4096};
 
         // Set data on GPU 0.
-        CULOG(cuCtxSetCurrent(ctx0));
-        CULOG(cuMemsetD32(mem0.ref(), 7, 1024));
+        GLOG(ark::gpuCtxSetCurrent(ctx0));
+        GLOG(ark::gpuMemsetD32(mem0.ref(), 7, 1024));
         // Check data on GPU 0.
         volatile int *href0 = (volatile int *)mem0.href();
         for (int i = 0; i < 1024; ++i) {
@@ -45,8 +45,8 @@ ark::unittest::State test_gpu_mem() {
         }
 
         // Set data on GPU 1.
-        CULOG(cuCtxSetCurrent(ctx1));
-        CULOG(cuMemsetD32(mem1.ref(), 9, 1024));
+        GLOG(ark::gpuCtxSetCurrent(ctx1));
+        GLOG(ark::gpuMemsetD32(mem1.ref(), 9, 1024));
         // Check data on GPU 1.
         volatile int *href1 = (volatile int *)mem1.href();
         for (int i = 0; i < 1024; ++i) {
@@ -68,13 +68,13 @@ ark::unittest::State test_gpu_mem_ipc() {
         int port_base = ark::get_env().ipc_listen_port_base;
         ark::IpcSocket is{ark::get_host(0), port_base};
 
-        // Create a CUDA context of GPU 0.
-        CULOG(cuInit(0));
-        CUdevice dev;
-        CUcontext ctx;
-        CULOG(cuDeviceGet(&dev, 0));
-        CULOG(cuCtxCreate(&ctx, 0, dev));
-        CULOG(cuCtxSetCurrent(ctx));
+        // Create a context of GPU 0.
+        GLOG(ark::gpuInit(0));
+        ark::gpuDevice dev;
+        ark::gpuCtx ctx;
+        GLOG(ark::gpuDeviceGet(&dev, 0));
+        GLOG(ark::gpuCtxCreate(&ctx, 0, dev));
+        GLOG(ark::gpuCtxSetCurrent(ctx));
 
         // Local memory in GPU 0.
         ark::GpuMem mem0{4096};
@@ -100,7 +100,7 @@ ark::unittest::State test_gpu_mem_ipc() {
         }
 
         // Set data on the remote GPU 1.
-        CULOG(cuMemsetD32(mem1.ref(), 9, 1024));
+        GLOG(ark::gpuMemsetD32(mem1.ref(), 9, 1024));
 
         return ark::unittest::SUCCESS;
     });
@@ -112,13 +112,13 @@ ark::unittest::State test_gpu_mem_ipc() {
         int port_base = ark::get_env().ipc_listen_port_base;
         ark::IpcSocket is{ark::get_host(0), port_base + 1};
 
-        // Create a CUDA context of GPU 1.
-        CULOG(cuInit(0));
-        CUdevice dev;
-        CUcontext ctx;
-        CULOG(cuDeviceGet(&dev, 1));
-        CULOG(cuCtxCreate(&ctx, 0, dev));
-        CULOG(cuCtxSetCurrent(ctx));
+        // Create a context of GPU 1.
+        GLOG(ark::gpuInit(0));
+        ark::gpuDevice dev;
+        ark::gpuCtx ctx;
+        GLOG(ark::gpuDeviceGet(&dev, 1));
+        GLOG(ark::gpuCtxCreate(&ctx, 0, dev));
+        GLOG(ark::gpuCtxSetCurrent(ctx));
 
         // Local memory in GPU 1.
         ark::GpuMem mem1{4096};
@@ -137,7 +137,7 @@ ark::unittest::State test_gpu_mem_ipc() {
         ark::GpuMem mem0{mem0_info};
 
         // Set data on the remote GPU 0.
-        CULOG(cuMemsetD32(mem0.ref(), 7, 1024));
+        GLOG(ark::gpuMemsetD32(mem0.ref(), 7, 1024));
 
         // Wait until another process writes data on the local GPU 1.
         volatile int *href = (volatile int *)mem1.href();

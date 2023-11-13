@@ -136,8 +136,17 @@ ark::unittest::State test_im2col() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_im2col_invalid() {
+    ark::Model model;
+    ark::Tensor *tns_x = model.tensor({100}, ark::FP16);
+    UNITTEST_THROW(model.im2col(tns_x, 3, 3, 1, 1, 0, 0, 1, 1),
+                   ark::InvalidUsageError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_im2col);
+    UNITTEST(test_im2col_invalid);
     return ark::unittest::SUCCESS;
 }

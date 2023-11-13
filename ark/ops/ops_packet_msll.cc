@@ -90,7 +90,7 @@ Tensor *Model::put_packet_msll(Tensor *input, Tensor *local_tmp_buf,
     CHECK(recv_buf != nullptr);
     CHECK(input->is_sequential());
     if (input->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
 
     std::string pt = "none";
@@ -169,7 +169,7 @@ Tensor *Model::reduce_and_write_packet_msll(
     CHECK(input->is_sequential());
     CHECK(output->is_sequential());
     if (input->ndims() > 1 || output->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
 
     std::string pt = "none";
@@ -298,7 +298,7 @@ Tensor *Model::get_packet_msll(Tensor *input, Tensor *output, size_t src_offset,
     CHECK(input->is_sequential());
     CHECK(output->is_sequential());
     if (input->ndims() > 1 || output->ndims() > 1) {
-        LOG(ERROR, "supports only 1D input");
+        ERR(InvalidUsageError, "supports only 1D input");
     }
 
     MsllGetFromPacketOp op{"none",     input,    output, src_offset,

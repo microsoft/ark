@@ -23,6 +23,7 @@
 #include "gpu/gpu_common.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_mgr.h"
+#include "include/ark.h"
 #include "ipc/ipc_hosts.h"
 #include "ipc/ipc_socket.h"
 #include "net/net_ib.h"
@@ -155,6 +156,7 @@ class GpuCommSw::Impl {
     //
     std::vector<std::vector<GpuPtr>> addr_table_;
     //
+    GpuPtr dev_one_;
     Request *request_ = nullptr;
     std::thread *request_loop_thread_ = nullptr;
     volatile bool run_request_loop_thread_ = false;
@@ -185,8 +187,11 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
       world_size_{world_size},
       request_{new Request} {
     // Register `request_` as a mapped & pinned address.
-    CULOG(cuMemHostRegister((void *)request_, sizeof(request_),
-                            CU_MEMHOSTREGISTER_DEVICEMAP));
+    GLOG(gpuHostRegister((void *)request_, sizeof(request_),
+                         gpuHostRegisterMapped));
+
+    GLOG(gpuMemAlloc(&dev_one_, sizeof(int)));
+    GLOG(gpuMemsetD32(dev_one_, 1, 1));
 
     // Reserve entries for GPU communication stack information.
     // Power of 2 larger than `gpu_id_` and at least 8.
@@ -230,7 +235,9 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
 GpuCommSw::Impl::~Impl() {
     this->stop_request_loop();
     if (request_ != nullptr) {
-        cuMemHostUnregister((void *)request_);
+        if (gpuHostUnregister((void *)request_) != gpuSuccess) {
+            LOG(WARN, "gpuHostUnregister() failed.");
+        }
         delete request_;
     }
 }
@@ -292,7 +299,7 @@ void GpuCommSw::Impl::configure(
     auto state = ipc_socket_->add_item("comm_mem_info", &comm_mem_info,
                                        sizeof(comm_mem_info));
     if (state != IpcSocket::State::SUCCESS) {
-        LOG(ERROR, "Failed to post comm_mem_info");
+        ERR(ExecutorError, "Failed to post comm_mem_info");
     }
     int num_ranks_per_host = get_env().num_ranks_per_host;
     int my_host_id = rank_ / num_ranks_per_host;
@@ -310,7 +317,8 @@ void GpuCommSw::Impl::configure(
                                         "comm_mem_info", &remote_comm_mem_info,
                                         sizeof(remote_comm_mem_info), true);
         if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to query comm_mem_info from GPU ", gpu_id);
+            ERR(ExecutorError, "Failed to query comm_mem_info from GPU ",
+                gpu_id);
         }
 
         // Initialize the remote GPU memory space.
@@ -336,7 +344,7 @@ void GpuCommSw::Impl::configure(
         if (it == qps_.end()) {
             NetIbQp *qp = net_ib_mgr_->create_qp();
             if (qp == nullptr) {
-                LOG(ERROR, "create_qp failed");
+                ERR(SystemError, "create_qp failed");
             }
             qps_[srinfo.remote_rank] = qp;
         }
@@ -356,7 +364,7 @@ void GpuCommSw::Impl::configure(
         state = ipc_socket_->add_item(item_name, &comm_ib_info,
                                       sizeof(comm_ib_info));
         if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to post ", item_name);
+            ERR(ExecutorError, "Failed to post ", item_name);
         }
     }
     for (int remote_rank : remote_ranks) {
@@ -372,19 +380,19 @@ void GpuCommSw::Impl::configure(
                                         item_name, &remote_comm_ib_info,
                                         sizeof(remote_comm_ib_info), true);
         if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to query ", item_name);
+            ERR(ExecutorError, "Failed to query ", item_name);
         }
 
         NetIbQp *qp = qps_[remote_rank];
         int ret = qp->rtr(&remote_comm_ib_info.qp_info);
         if (ret != 0) {
-            LOG(ERROR, "NetIbQp::rtr failed");
+            ERR(SystemError, "NetIbQp::rtr failed");
         }
         LOG(DEBUG, "RANK ", rank_, " QP ", qp->get_info().qpn, " <--> RANK ",
             remote_rank, " QP ", remote_comm_ib_info.qp_info.qpn);
         ret = qp->rts();
         if (ret != 0) {
-            LOG(ERROR, "NetIbQp::rts failed");
+            ERR(SystemError, "NetIbQp::rts failed");
         }
         auto &mri_vec = mris_[remote_rank];
         mri_vec.resize(MAX_NUM_SID);
@@ -399,7 +407,7 @@ void GpuCommSw::Impl::configure(
         std::string item_name = "comm_ib_done_" + std::to_string(remote_rank);
         state = ipc_socket_->add_item(item_name, &dummy, sizeof(dummy));
         if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to add ", item_name);
+            ERR(ExecutorError, "Failed to add ", item_name);
         }
     }
     for (int remote_rank : remote_ranks) {
@@ -412,7 +420,7 @@ void GpuCommSw::Impl::configure(
         state = ipc_socket_->query_item(get_host(remote_host_id), port,
                                         item_name, &dummy, sizeof(dummy), true);
         if (state != IpcSocket::State::SUCCESS) {
-            LOG(ERROR, "Failed to query ", item_name);
+            ERR(ExecutorError, "Failed to query ", item_name);
         }
     }
 
@@ -523,11 +531,11 @@ void GpuCommSw::Impl::launch_request_loop() {
         request_loop_thread_ = new thread([&, gid = gpu_id_] {
             //
             GpuState ret = get_gpu_mgr(gid)->set_current();
-            if (ret == CUDA_SUCCESS) {
+            if (ret == gpuSuccess) {
                 //
                 this->request_loop();
-            } else if (ret != CUDA_ERROR_DEINITIALIZED) {
-                CULOG(ret);
+            } else if (ret != gpuErrorDeinitialized) {
+                GLOG(ret);
             }
         });
         assert(request_loop_thread_ != nullptr);
@@ -538,6 +546,9 @@ void GpuCommSw::Impl::launch_request_loop() {
 
 //
 void GpuCommSw::Impl::request_loop() {
+    gpuStream loop_stream;
+    GLOG(gpuStreamCreate(&loop_stream, gpuStreamNonBlocking));
+
     const size_t sc_offset = 0;
     const size_t rc_offset = MAX_NUM_SID * sizeof(int);
 
@@ -554,7 +565,7 @@ void GpuCommSw::Impl::request_loop() {
         if (qp != nullptr) {
             int ret = qp->post_recv(((uint64_t)r * MAX_NUM_SID) + 1);
             if (ret != 0) {
-                LOG(ERROR, "post_recv() returns ", ret);
+                ERR(SystemError, "post_recv() returns ", ret);
             }
         }
     }
@@ -563,7 +574,7 @@ void GpuCommSw::Impl::request_loop() {
     const bool is_using_p2p_memcpy = !get_env().disable_p2p_memcpy;
     const bool is_using_ib = this->is_using_ib();
     if (!is_using_p2p_memcpy && !is_using_ib) {
-        LOG(ERROR, "no method for transport");
+        ERR(InvalidUsageError, "no method for transport");
     }
     bool is_idle = false;
     unsigned int busy_counter = 0;
@@ -580,7 +591,7 @@ void GpuCommSw::Impl::request_loop() {
             for (int i = 0; i < wcn; ++i) {
                 int status = net_ib_mgr_->get_wc_status(i);
                 if (status != 0) {
-                    LOG(ERROR, "get_wc_status() returns ", status, ": ",
+                    ERR(SystemError, "get_wc_status() returns ", status, ": ",
                         net_ib_mgr_->get_wc_status_str(i));
                 }
                 uint64_t wr_id = net_ib_mgr_->get_wc_wr_id(i);
@@ -590,11 +601,11 @@ void GpuCommSw::Impl::request_loop() {
                     rc_href[sid_dst] = 1;
                     NetIbQp *qp = qps_[wr_id / MAX_NUM_SID];
                     if (qp == nullptr) {
-                        LOG(ERROR, "Unexpected error");
+                        ERR(SystemError, "Unexpected error");
                     }
                     int ret = qp->post_recv(wr_id);
                     if (ret != 0) {
-                        LOG(ERROR, "post_recv() returns ", ret);
+                        ERR(SystemError, "post_recv() returns ", ret);
                     }
                     LOG(DEBUG, "RC DST: ", sid_dst);
                 } else {
@@ -606,7 +617,7 @@ void GpuCommSw::Impl::request_loop() {
             }
             is_idle = false;
         } else if (wcn < 0) {
-            LOG(ERROR, "poll_cq() returns ", wcn);
+            ERR(SystemError, "poll_cq() returns ", wcn);
         }
         uint64_t v = *db_val;
         if (v == (uint64_t)REQUEST_INVALID) {
@@ -628,10 +639,11 @@ void GpuCommSw::Impl::request_loop() {
         //
         GpuPtr src = addr_table_[gpu_id_][db.fields.sid];
         if (src == 0) {
-            LOG(ERROR, "Invalid SRC SID ", db.fields.sid, " in GPU ", gpu_id_);
+            ERR(RuntimeError, "Invalid SRC SID ", (uint64_t)db.fields.sid,
+                " in GPU ", gpu_id_);
         }
-        REQUEST_DEBUG("Request SRC: RANK ", rank_, ", sid ", db.fields.sid,
-                      ", ", (void *)src);
+        REQUEST_DEBUG("Request SRC: RANK ", rank_, ", sid ",
+                      (uint64_t)db.fields.sid, ", ", (void *)src);
         GpuPtr dst = 0;
         // TODO: generalize converting rank to GPU ID.
         int nrph = get_env().num_ranks_per_host;
@@ -639,22 +651,37 @@ void GpuCommSw::Impl::request_loop() {
         if ((db.fields.rank / nrph) != (rank_ / nrph)) {
             // This GPU is not in this machine.
             gid_dst = -1;
-            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                          db.fields.sid, ", remote");
+            REQUEST_DEBUG("Request DST: RANK ", (uint64_t)db.fields.rank,
+                          ", sid ", (uint64_t)db.fields.sid, ", remote");
         } else {
             dst = addr_table_[gid_dst][db.fields.sid];
             if (dst == 0) {
-                LOG(ERROR, "Invalid DST SID ", db.fields.sid, " in GPU ",
-                    gid_dst);
+                ERR(RuntimeError, "Invalid DST SID ", (uint64_t)db.fields.sid,
+                    " in GPU ", gid_dst);
             }
-            REQUEST_DEBUG("Request DST: RANK ", db.fields.rank, ", sid ",
-                          db.fields.sid, ", ", (void *)dst);
+            REQUEST_DEBUG("Request DST: RANK ", (uint64_t)db.fields.rank,
+                          ", sid ", (uint64_t)db.fields.sid, ", ", (void *)dst);
         }
-        REQUEST_DEBUG("Request LEN: ", db.fields.len);
+        REQUEST_DEBUG("Request LEN: ", (uint64_t)db.fields.len);
 
         // Transfer data.
         if (is_using_p2p_memcpy && (gid_dst != -1)) {
-            CULOG(cuMemcpyDtoD(dst, src, db.fields.len));
+#if 0
+            // TODO: fix this.
+            // GLOG(gpuMemcpyDtoDAsync(dst, src, (long unsigned
+            // int)db.fields.len,
+            //                         loop_stream));
+            // GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
+            // GLOG(gpuMemcpyDtoDAsync(
+            //     mem->ref(rc_offset + db.fields.sid * sizeof(int)), dev_one_,
+            //     sizeof(int), loop_stream));
+            // GLOG(gpuMemcpyDtoDAsync(
+            //     this->get_sc_rc_mem(gpu_id_)->ref(sc_offset +
+            //                                       db.fields.sid *
+            //                                       sizeof(int)),
+            //     dev_one_, sizeof(int), loop_stream));
+#else
+            GLOG(gpuMemcpyDtoD(dst, src, (long unsigned int)db.fields.len));
             GpuMem *mem = this->get_sc_rc_mem(db.fields.rank);
             volatile int *rc_array = (volatile int *)mem->href(rc_offset);
             if (rc_array != nullptr) {
@@ -662,20 +689,21 @@ void GpuCommSw::Impl::request_loop() {
             } else {
                 GpuPtr rc_ref =
                     mem->ref(rc_offset + db.fields.sid * sizeof(int));
-                CULOG(cuMemsetD32(rc_ref, 1, 1));
+                GLOG(gpuMemsetD32(rc_ref, 1, 1));
             }
             sc_href[db.fields.sid] = 1;
+#endif
         } else {
             NetIbQp *qp = qps_[db.fields.rank];
             int ret = qp->stage_send(
                 sid_mrs_[db.fields.sid], &mris_[db.fields.rank][db.fields.sid],
                 db.fields.len, (db.fields.sid * MAX_NUM_SID), db.fields.sid);
             if (ret != 1) {
-                LOG(ERROR, "stage_send() returns ", ret);
+                ERR(SystemError, "stage_send() returns ", ret);
             }
             ret = qp->post_send();
             if (ret != 0) {
-                LOG(ERROR, "post_send() returns ", ret);
+                ERR(SystemError, "post_send() returns ", ret);
             }
         }
         REQUEST_DEBUG("Request processed.");
@@ -683,6 +711,8 @@ void GpuCommSw::Impl::request_loop() {
         is_idle = false;
         busy_counter = 0;
     }
+    GLOG(gpuStreamSynchronize(loop_stream));
+    GLOG(gpuStreamDestroy(loop_stream));
 }
 
 //
@@ -756,7 +786,7 @@ GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid) {
 //
 GpuPtr GpuCommSw::Impl::get_request_ref() const {
     GpuPtr ref;
-    CULOG(cuMemHostGetDevicePointer(&ref, request_, 0));
+    GLOG(gpuHostGetDevicePointer(&ref, request_, 0));
     return ref;
 }
 

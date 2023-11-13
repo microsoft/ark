@@ -112,10 +112,10 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     int ndims_b = shp_b.ndims();
 
     if (ndims_a < 1) {
-        LOG(ERROR, "mat_a has an empty shape: ", shp_a);
+        ERR(InvalidUsageError, "mat_a has an empty shape: ", shp_a);
     }
     if (ndims_b < 1) {
-        LOG(ERROR, "mat_b has an empty shape: ", shp_b);
+        ERR(InvalidUsageError, "mat_b has an empty shape: ", shp_b);
     }
 
     // m: the number of rows of output matrix (row-major)
@@ -141,15 +141,15 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         k2 = tmp;
     }
     if (k != k2) {
-        LOG(ERROR, "inner dimensions mismatch: ", k, " and ", k2);
+        ERR(InvalidUsageError, "inner dimensions mismatch: ", k, " and ", k2);
     }
 
     if (mat_a->type != mat_b->type) {
-        LOG(ERROR, "input data types mismatch: ", mat_a->type, ", ",
+        ERR(InvalidUsageError, "input data types mismatch: ", mat_a->type, ", ",
             mat_b->type);
     }
     if (mat_y != nullptr && mat_a->type != mat_b->type) {
-        LOG(ERROR, "invalid output data type: ", mat_y->type);
+        ERR(InvalidUsageError, "invalid output data type: ", mat_y->type);
     }
 
     // N and C dimensions of matrix A
@@ -172,10 +172,12 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
 
     // Verify broadcasting
     if (nca[0] != ncb[0] && nca[0] != 1 && ncb[0] != 1) {
-        LOG(ERROR, "N dimension mismatch: ", nca[0], " and ", ncb[0]);
+        ERR(InvalidUsageError, "N dimension mismatch: ", nca[0], " and ",
+            ncb[0]);
     }
     if (nca[1] != ncb[1] && nca[1] != 1 && ncb[1] != 1) {
-        LOG(ERROR, "C dimension mismatch: ", nca[1], " and ", ncb[1]);
+        ERR(InvalidUsageError, "C dimension mismatch: ", nca[1], " and ",
+            ncb[1]);
     }
 
     // N and C dimension of output matrix
@@ -195,12 +197,12 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         mat_y = this->tensor(output_shape, mat_a->type);
     } else {
         if (mat_y->type != mat_a->type) {
-            LOG(ERROR, "output data type mismatch: ", mat_y->type, " and ",
-                mat_a->type);
+            ERR(InvalidUsageError, "output data type mismatch: ", mat_y->type,
+                " and ", mat_a->type);
         }
         if (mat_y->shape != output_shape) {
-            LOG(ERROR, "output shape mismatch: ", mat_y->shape, " and ",
-                output_shape);
+            ERR(InvalidUsageError, "output shape mismatch: ", mat_y->shape,
+                " and ", output_shape);
         }
     }
 
@@ -225,7 +227,8 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
             problem_size,       leading_dims, trans_a, trans_b, name, gran_lev};
         return this->impl->add_op(op)[0];
     } else if (split_k > k) {
-        LOG(ERROR, "Split-K given larger than the K dimension size.");
+        ERR(InvalidUsageError,
+            "Split-K given larger than the K dimension size.");
     }
 
     // Split the inner dimension.
@@ -304,6 +307,27 @@ const OpConfigMap MatmulConfigMap = {
          {8, 147456, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
          {4, 98304, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
          {4, 49152, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_ROCM_90A, "fp16"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 24672, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
+         {2, 16480, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {1, 8288, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_ROCM_90A, "bf16"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 24624, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
+         {2, 16432, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
+         {1, 8240, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
+     }},
+    {{OP_ARCH_ROCM_90A, "fp32"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 24672, {{128, 16}, {16, 256}}, {{128, 256}}, true, false},
+         {2, 16480, {{128, 16}, {16, 128}}, {{128, 128}}, true, false},
+         {1, 8288, {{64, 16}, {16, 64}}, {{64, 64}}, true, false},
      }},
 };
 

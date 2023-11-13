@@ -41,7 +41,7 @@ static int calc_num_tiles(const Op &op, const OpTile &tile) {
     if (ndims > 1) {
         num_tiles *= math::div_up(s[ndims - 2], tile.x);
     } else if (tile.x != 1) {
-        LOG(ERROR, "The tile is 2D, but the output is 1D.");
+        ERR(SchedulerError, "The tile is 2D, but the output is 1D.");
     }
     // The remaining dimensions are not tiled.
     int remain_dims = ndims - 2;
@@ -65,14 +65,14 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
                                                  const GpuInfo &gpu_info,
                                                  int num_sm) {
     if (matmul_op.type != OP_MATMUL) {
-        LOG(ERROR, "This is not a matmul op.");
+        ERR(SchedulerError, "This is not a matmul op.");
     }
     if (matmul_op.gran_lev != -1) {
         // `gran_lev` is manually set. Do not optimize.
         return;
     }
     if (num_sm > gpu_info.num_sm) {
-        LOG(ERROR,
+        ERR(SchedulerError,
             "The total number of SMs (%d) is less than the number of SMs "
             "requested (%d).",
             gpu_info.num_sm, num_sm);
@@ -81,7 +81,7 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     assert(cfg->output_tiles.size() == 1);
     int num_tiles = calc_num_tiles(matmul_op, cfg->output_tiles[0]);
     if (num_tiles == 0) {
-        LOG(ERROR, "This matmul has no output tiles.");
+        ERR(SchedulerError, "This matmul has no output tiles.");
     }
 
     // Heuristically select a split_k value. If split_k is larger than 1, split
@@ -196,7 +196,7 @@ void DefaultScheduler::schedule() {
     this->configure_gpu_buf(this->model->impl->get_tensors());
 
     if (this->comp_stream.size() != this->comm_stream.size()) {
-        LOG(ERROR, "unexpected error");
+        ERR(SchedulerError, "unexpected error");
     }
 }
 
@@ -215,7 +215,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
     bool sync_comp = false;
     for (auto &node : nodes) {
         if (node->ops.size() == 0) {
-            LOG(ERROR, "unexpected error: empty OpNode");
+            ERR(SchedulerError, "unexpected error: empty OpNode");
         }
         Op *op = node->ops[0];
         const OpConfig *cfg = this->sched_op_config(op);
@@ -269,8 +269,8 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 
         auto p = seen_nodes.emplace(node);
         if (!p.second) {
-            LOG(ERROR, "unexpected error: already seen node ", node->get_name(),
-                " (", node->ops.size(), " ops)");
+            ERR(SchedulerError, "unexpected error: already seen node ",
+                node->get_name(), " (", node->ops.size(), " ops)");
         }
 
         // Align shared memory size
@@ -284,11 +284,11 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         item.num_warps_per_uop = opseq->get_num_warps();
         item.smem_bytes_per_uop = aligned_smem_bytes;
         if (item.num_uops <= 0) {
-            LOG(ERROR, "unexpected error: num_uops <= 0");
+            ERR(SchedulerError, "unexpected error: num_uops <= 0");
         } else if (item.num_warps_per_uop <= 0) {
-            LOG(ERROR, "unexpected error: num_warps_per_uop <= 0");
+            ERR(SchedulerError, "unexpected error: num_warps_per_uop <= 0");
         } else if (item.smem_bytes_per_uop < 0) {
-            LOG(ERROR, "unexpected error: smem_bytes_per_uop < 0");
+            ERR(SchedulerError, "unexpected error: smem_bytes_per_uop < 0");
         }
         if (op->is_comm()) {
             comm_items.emplace_back(item);
@@ -382,12 +382,13 @@ void DefaultScheduler::configure_gpu_buf(
                 Dims tile_dims(tile.x, tile.y);
                 Dims orig_ldims = op_tns->ldims;
                 if (!op_tns->update_pads(tile_dims)) {
-                    LOG(ERROR, padding_error_msg, " Op name: ", op->name);
+                    ERR(ModelError, padding_error_msg, " Op name: ", op->name);
                 }
                 for (auto tns : bufs[op_tns->buf]) {
                     if (tns == op_tns) continue;
                     if (!tns->update_pads(tile_dims, op_tns, orig_ldims)) {
-                        LOG(ERROR, padding_error_msg, " Op name: ", op->name);
+                        ERR(ModelError, padding_error_msg,
+                            " Op name: ", op->name);
                     }
                 }
             }
@@ -401,7 +402,7 @@ void DefaultScheduler::configure_gpu_buf(
             if (buf_bytes == -1) {
                 buf_bytes = tns->ldims_bytes();
             } else if (buf_bytes != tns->ldims_bytes()) {
-                LOG(ERROR, padding_error_msg);
+                ERR(ModelError, padding_error_msg);
             }
         }
         // Store the size.
@@ -620,8 +621,10 @@ std::vector<std::string> DefaultScheduler::gen_code() {
         auto comp_streams = this->comp_stream[i]->get_streams();
         for (size_t j = 0; j < comp_streams.size(); ++j) {
             auto &stream = comp_streams[j];
+            int prev_sm_id_end = -1;
             for (auto &branch : stream.branches) {
-                this->codegen->branch(code, branch);
+                this->codegen->branch(code, branch, prev_sm_id_end);
+                prev_sm_id_end = branch.sm_id_end;
             }
             if (!stream.branches.empty() && j != comp_streams.size() - 1) {
                 code << "  ";
@@ -631,8 +634,10 @@ std::vector<std::string> DefaultScheduler::gen_code() {
         auto comm_streams = this->comm_stream[i]->get_streams();
         for (size_t j = 0; j < comm_streams.size(); ++j) {
             auto &stream = comm_streams[j];
+            int prev_sm_id_end = -1;
             for (auto &branch : stream.branches) {
-                this->codegen->branch(code, branch);
+                this->codegen->branch(code, branch, prev_sm_id_end);
+                prev_sm_id_end = branch.sm_id_end;
             }
             if (!stream.branches.empty() && j != comm_streams.size() - 1) {
                 code << "  ";

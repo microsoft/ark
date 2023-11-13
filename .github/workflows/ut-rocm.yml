@@ -1,0 +1,67 @@
+name: "Unit Tests (ROCm)"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  UnitTest:
+    runs-on: [ self-hosted, MI250X ]
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        rocm: [ rocm5.6, rocm5.7 ]
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.rocm }}
+      cancel-in-progress: true
+    container:
+      image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.rocm }}"
+      options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: UpdateSubmodules
+        run: |
+          git config --global --add safe.directory /__w/ark/ark
+          git submodule foreach --recursive git reset --hard
+          git submodule foreach --recursive git clean -fdx
+          git submodule update --init --recursive
+  
+      - name: Build
+        run: |
+          mkdir build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          make -j ut
+
+      - name: RunUT
+        run: |
+          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random -E "sched_test|sendrecv|all_reduce|all_gather|reduce_scatter|gpu_mem|gpu_mgr"
+
+      - name: ReportCoverage
+        run: |
+          cd build
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info \
+              '/usr/*' \
+              '/tmp/*' \
+              '*/third_party/*' \
+              '*/ark/*_test.*' \
+              '*/examples/*' \
+              '*/python/*' \
+              '*/ark/unittest/unittest_utils.cc' \
+              --output-file coverage.info
+          lcov --list coverage.info
+          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+
+      - name: BuildPython
+        run: |
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install .

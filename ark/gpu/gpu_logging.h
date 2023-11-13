@@ -4,38 +4,21 @@
 #ifndef ARK_GPU_LOGGING_H_
 #define ARK_GPU_LOGGING_H_
 
-#include <cuda.h>
-
-#include <sstream>
-
+#include "gpu/gpu.h"
+#include "include/ark.h"
 #include "logging.h"
 
-#define CULOG(cmd)                                                \
-    do {                                                          \
-        CUresult _e = cmd;                                        \
-        if (_e != CUDA_SUCCESS) {                                 \
-            const char *_estr;                                    \
-            cuGetErrorString(_e, &_estr);                         \
-            LOG(ark::ERROR, "CUDA error ", _e, " '", _estr, "'"); \
-        }                                                         \
-    } while (0)
-
-#define NVMLLOG(cmd)                                                      \
-    do {                                                                  \
-        nvmlReturn_t _e = cmd;                                            \
-        if (_e != NVML_SUCCESS) {                                         \
-            LOG(ark::ERROR, "NVML error ", _e, " '", nvmlErrorString(_e), \
-                "'");                                                     \
-        }                                                                 \
-    } while (0)
-
-#define NVRTCLOG(cmd)                                                          \
-    do {                                                                       \
-        nvrtcResult _e = cmd;                                                  \
-        if (_e != NVRTC_SUCCESS) {                                             \
-            LOG(ark::ERROR, "NVRTC error ", _e, " '", nvrtcGetErrorString(_e), \
-                "'");                                                          \
-        }                                                                      \
+#define GLOG(cmd)                                                        \
+    do {                                                                 \
+        ark::gpuError _e = cmd;                                          \
+        if (_e != ark::gpuSuccess) {                                     \
+            const char *_estr;                                           \
+            if (ark::gpuGetErrorString(_e, &_estr) == ark::gpuSuccess) { \
+                ERR(ark::GpuError, _e, " '", _estr, "'");                \
+            } else {                                                     \
+                ERR(ark::GpuError, _e);                                  \
+            }                                                            \
+        }                                                                \
     } while (0)
 
 #endif  // ARK_GPU_LOGGING_H_

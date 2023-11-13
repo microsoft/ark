@@ -159,11 +159,88 @@ ark::unittest::State test_reshape_padded() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_reshape_invalid() {
+    {
+        ark::Model model;
+        std::vector<ark::DimType> new_shape = {64, 256};
+        UNITTEST_THROW(model.reshape(nullptr, new_shape),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        std::vector<ark::DimType> new_shape = {64, -1, -1, 256};
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        std::vector<ark::DimType> new_shape = {128, -3};
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        std::vector<ark::DimType> new_shape = {32, -1, 0};
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        std::vector<ark::DimType> new_shape = {32, -1, 0};
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        std::vector<ark::DimType> new_shape = {3, -1};
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        std::vector<ark::DimType> new_shape = {1024};
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        UNITTEST_THROW(model.reshape(nullptr, ark::Dims(64, 256)),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        UNITTEST_THROW(model.reshape(tns, ark::Dims()), ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns =
+            model.tensor({64, 256}, ark::FP32, nullptr, {64, 512});
+        UNITTEST_THROW(model.reshape(tns, ark::Dims(16384)), ark::ModelError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        ark::Tensor *out = model.tensor({16384}, ark::FP16);
+        UNITTEST_THROW(model.reshape(tns, ark::Dims(16384), false, out),
+                       ark::InvalidUsageError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor *tns = model.tensor({64, 256}, ark::FP32);
+        ark::Tensor *out = model.tensor({1024}, ark::FP32);
+        UNITTEST_THROW(model.reshape(tns, ark::Dims(16384), false, out),
+                       ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_reshape);
     UNITTEST(test_reshape_infer);
     UNITTEST(test_reshape_allowzero);
     UNITTEST(test_reshape_padded);
+    UNITTEST(test_reshape_invalid);
     return ark::unittest::SUCCESS;
 }

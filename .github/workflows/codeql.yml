@@ -46,8 +46,10 @@ jobs:
       run: |
         git config --global --add safe.directory /__w/ark/ark
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
+    - name: Build
+      run: |
+        cmake -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON .
+        make -j build
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2

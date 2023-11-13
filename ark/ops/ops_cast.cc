@@ -53,7 +53,8 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
         if (input->type == BYTE) {
             // Casting BYTE to other types is considered as a reshape.
             if (input->shape_bytes() < ttype.bytes()) {
-                LOG(ERROR, "input tensor is too small to be casted to ", ttype);
+                ERR(InvalidUsageError,
+                    "input tensor is too small to be casted to ", ttype);
             }
             // The last greater-than-1 dimension of the input tensor should be
             // divisible by the size of the output type.
@@ -64,7 +65,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
                 }
             }
             if ((input->shape[last_dim] % ttype.bytes()) != 0) {
-                LOG(ERROR,
+                ERR(InvalidUsageError,
                     "the last greater-than-1 dimension of the "
                     "input tensor shape ",
                     input->shape[last_dim],
@@ -73,7 +74,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
                     ttype.bytes(), ")");
             }
             if ((input->ldims[last_dim] % ttype.bytes()) != 0) {
-                LOG(ERROR,
+                ERR(InvalidUsageError,
                     "the last greater-than-1 dimension of the "
                     "input tensor ldims ",
                     input->ldims[last_dim],
@@ -82,7 +83,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
                     ttype.bytes(), ")");
             }
             if ((input->offs[last_dim] % ttype.bytes()) != 0) {
-                LOG(ERROR,
+                ERR(InvalidUsageError,
                     "the last greater-than-1 dimension of the "
                     "input tensor offs ",
                     input->offs[last_dim],
@@ -93,7 +94,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
             if (input->pads[last_dim] > 1) {
                 // we can ignore pads if it is 1
                 if ((input->pads[last_dim] % ttype.bytes()) != 0) {
-                    LOG(ERROR,
+                    ERR(InvalidUsageError,
                         "the last greater-than-1 dimension of the "
                         "input tensor pads ",
                         input->pads[last_dim],
@@ -136,16 +137,16 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
         output = this->tensor(input->shape, ttype);
     } else {
         if (output->type != ttype) {
-            LOG(ERROR, "invalid output data type: ", output->type);
+            ERR(InvalidUsageError, "invalid output data type: ", output->type);
         }
         if (output->shape != input->shape) {
-            LOG(ERROR, "invalid output shape: ", output->shape);
+            ERR(InvalidUsageError, "invalid output shape: ", output->shape);
         }
         if (input->type == ttype) {
-            LOG(ERROR, "casting to the same type: ", ttype);
+            ERR(InvalidUsageError, "casting to the same type: ", ttype);
         }
         if (ttype == BYTE) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "casting to BYTE with a specified output tensor is not "
                 "supported as it implies a memory copy.");
         }
@@ -155,7 +156,7 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
 }
 
 const OpConfigMap CastConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
+    {{OP_ARCH_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}}, {{128, 256}}, false, false},

@@ -140,18 +140,18 @@ Tensor *Model::send_mm(Tensor *input, int id, int gpu_dst, size_t bytes,
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
+        ERR(InvalidUsageError, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
     }
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOG(ERROR, "invalid output shape: ", output->shape);
+        ERR(InvalidUsageError, "invalid output shape: ", output->shape);
     }
     Dims recvbuf_shape = input->shape;
     int ndims = recvbuf_shape.ndims();
@@ -176,7 +176,7 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     assert(input != nullptr);
     size_t max_bytes = input->ldims_bytes();
     if (max_bytes < bytes) {
-        LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
+        ERR(InvalidUsageError, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
     if (bytes == 0) {
         bytes = max_bytes;
@@ -184,12 +184,12 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
     input->exported = true;
 
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type, input->buf);
     } else if (output->shape != input->shape) {
-        LOG(ERROR, "invalid output shape: ", output->shape);
+        ERR(InvalidUsageError, "invalid output shape: ", output->shape);
     }
     // use a tensor as recvbuf to store the received data, the size of the
     // recvbuf is twice of the input
@@ -211,7 +211,7 @@ Tensor *Model::recv_mm(Tensor *input, int id, int gpu_src, size_t bytes,
 }
 
 const OpConfigMap SendRecvMMConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
+    {{OP_ARCH_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {4, 0, {{64, 64}, {64, 64}, {1, 1}}, {{64, 64}}, false, false},

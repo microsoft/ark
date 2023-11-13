@@ -73,34 +73,88 @@ static std::string fnv1a_hash(const std::string &str) {
     return ss.str();
 }
 
-const string gpu_compile(const vector<string> &codes,
-                         const GpuArchType &arch_type,
-                         unsigned int max_reg_cnt) {
-    const string &ark_root = get_env().path_root_dir;
-    string arch;
-    if (arch_type == GPU_ARCH_CUDA_60) {
-        arch = "60";
-    } else if (arch_type == GPU_ARCH_CUDA_70) {
-        arch = "70";
-    } else if (arch_type == GPU_ARCH_CUDA_80) {
-        arch = "80";
-    } else if (arch_type == GPU_ARCH_CUDA_90) {
-        arch = "90";
-    } else {
-        arch = "";
+static const std::string gpu_compile_command(
+    const std::string &code_file_path, const std::string &ark_root,
+    const std::string &arch, [[maybe_unused]] unsigned int max_reg_cnt,
+    const std::string &output_file_path) {
+#if defined(ARK_CUDA)
+    // Remove prepending "cuda_" from arch to get the compute capability
+    if (arch.size() < 5 || arch.substr(0, 5) != "cuda_") {
+        ERR(InvalidUsageError, "Invalid architecture: ", arch);
     }
+    std::string cc = arch.substr(5);
 
-#if (ARK_USE_NVRTC)
-    vector<string> ptxs;
-    for (auto &code : codes) {
-        ptxs.emplace_back(nvrtc_compile(ark_root, arch, code, max_reg_cnt));
+    std::vector<std::string> args;
+
+    // TODO: use the compiler found by cmake.
+    args.emplace_back("/usr/local/cuda/bin/nvcc");
+    args.emplace_back("-cubin");
+#if (ARK_DEBUG_KERNEL)
+    args.emplace_back("-G");
+#endif  // (ARK_DEBUG_KERNEL)
+    if (max_reg_cnt > 0) {
+        args.emplace_back("-maxrregcount " + std::to_string(max_reg_cnt));
     }
-    // return link(ark_root, ptxs);
-    return ptxs[0];
-#else
-    // assert(false);
-    // return "";
-    vector<pair<string, string> > items;
+    args.emplace_back("-ccbin g++");
+    args.emplace_back("-std c++17");
+    args.emplace_back("-lcuda");
+    args.emplace_back("--define-macro=ARK_TARGET_CUDA_ARCH=" + cc);
+    args.emplace_back("-I" + ark_root + "/include");
+    args.emplace_back("-I" + ark_root + "/include/kernels");
+    if (get_env().use_msll) {
+        args.emplace_back("--define-macro=ARK_USE_MSLL=1");
+        args.emplace_back("-I" + get_env().msll_include_dir);
+    }
+    args.emplace_back("-gencode arch=compute_" + cc + ",code=sm_" + cc);
+    args.emplace_back("-o " + output_file_path);
+    args.emplace_back(code_file_path);
+    args.emplace_back("2>&1");
+
+#elif defined(ARK_ROCM)
+    // Remove prepending "rocm_" from arch to get the compute capability
+    if (arch.size() < 5 || arch.substr(0, 5) != "rocm_") {
+        ERR(InvalidUsageError, "Invalid architecture: ", arch);
+    }
+    std::string cc = arch.substr(5);
+
+    std::vector<std::string> args;
+
+    // TODO: use the compiler found by cmake.
+    args.emplace_back("/usr/bin/hipcc");
+    args.emplace_back("--genco");
+#if (ARK_DEBUG_KERNEL)
+    args.emplace_back("-O0");
+#endif  // (ARK_DEBUG_KERNEL)
+    args.emplace_back("-std=c++17");
+    args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
+    args.emplace_back("-I" + ark_root + "/include");
+    args.emplace_back("-I" + ark_root + "/include/kernels");
+    if (get_env().use_msll) {
+        args.emplace_back("--define-macro=ARK_USE_MSLL=1");
+        args.emplace_back("-I" + get_env().msll_include_dir);
+    }
+    args.emplace_back("--offload-arch=gfx" + cc);
+    args.emplace_back("-o " + output_file_path);
+    args.emplace_back(code_file_path);
+    args.emplace_back("2>&1");
+#endif
+
+    // Compile command.
+    std::stringstream compile_cmd;
+    compile_cmd << args[0];
+    for (size_t i = 1; i < args.size(); ++i) {
+        compile_cmd << " " << args[i];
+    }
+    return compile_cmd.str();
+}
+
+const std::string gpu_compile(const std::vector<std::string> &codes,
+                              const std::string &arch,
+                              unsigned int max_reg_cnt) {
+    const std::string &ark_root = get_env().path_root_dir;
+
+    // (code, file name prefix) pairs
+    std::vector<std::pair<std::string, std::string> > items;
     items.reserve(codes.size());
     srand();
     for (auto &code : codes) {
@@ -108,70 +162,58 @@ const string gpu_compile(const vector<string> &codes,
         items.emplace_back(code, "/tmp/ark_" + hash_str);
     }
     assert(items.size() == 1);
-    para_exec<pair<string, string> >(
-        items, 20, [&arch, &ark_root, max_reg_cnt](pair<string, string> &item) {
-            string cu_file_path = item.second + ".cu";
-            string cubin_file_path = item.second + ".cubin";
-            if (is_exist(cu_file_path) && is_exist(cubin_file_path)) {
-                LOG(INFO, "Reusing cached binary for ", cu_file_path);
-                return;
+    para_exec<std::pair<std::string, std::string> >(
+        items, 20,
+        [&arch, &ark_root,
+         max_reg_cnt](std::pair<std::string, std::string> &item) {
+            std::string code_file_path = item.second + ".cu";
+            std::string bin_file_path = item.second + ".cubin";
+            if (is_exist(code_file_path) && is_exist(bin_file_path)) {
+                if (!get_env().ignore_binary_cache) {
+                    LOG(INFO, "Reusing cached binary for ", code_file_path);
+                    return;
+                }
+                // Remove the cached binary.
+                int err = remove_file(bin_file_path);
+                if (err != 0) {
+                    ERR(SystemError,
+                        "Failed to remove a cache file: ", bin_file_path,
+                        " (errno ", err, ")");
+                }
             }
-            // Write CUDA code file.
+            // Write GPU kernel code file.
             {
-                ofstream cu_file(cu_file_path, ios::out | ios::trunc);
-                cu_file << item.first;
+                std::ofstream code_file(code_file_path,
+                                        std::ios::out | std::ios::trunc);
+                code_file << item.first;
             }
-            // Compile command using NVCC.
-            stringstream exec_cmd;
-            exec_cmd << "/usr/local/cuda/bin/nvcc -cubin ";
-#if (ARK_DEBUG_KERNEL)
-            exec_cmd << "-G ";
-#endif  // (ARK_DEBUG_KERNEL)
-            if (max_reg_cnt > 0) {
-                exec_cmd << "-maxrregcount " << max_reg_cnt << " ";
-            }
-            stringstream define_args;
-            stringstream include_args;
-            // clang-format off
-            define_args << "--define-macro=ARK_TARGET_CUDA_ARCH=" << arch << " "
-                        << "--define-macro=ARK_COMM_SW=1 ";
-            include_args << "-I" << ark_root << "/include "
-                         << "-I" << ark_root << "/include/kernels ";
-            if (get_env().use_msll) {
-                define_args << "-DARK_USE_MSLL=1 ";
-                include_args << "-I" << get_env().msll_include_dir << " ";
-            }
-            exec_cmd << "-ccbin g++ -std c++17 -lcuda "
-                << define_args.str() << include_args.str() <<
-                "-gencode arch=compute_" << arch
-                << ",code=sm_" << arch << " "
-                "-o " << item.second << ".cubin "
-                << cu_file_path << " 2>&1";
-            // clang-format on
+            const std::string compile_cmd =
+                gpu_compile_command(code_file_path, ark_root, arch, max_reg_cnt,
+                                    item.second + ".cubin");
             double start = cpu_timer();
-            LOG(INFO, "Compiling: ", cu_file_path);
-            LOG(DEBUG, exec_cmd.str());
+            LOG(INFO, "Compiling: ", code_file_path);
+            LOG(DEBUG, compile_cmd);
             // Run the command.
             array<char, 4096> buffer;
             stringstream exec_print;
             unique_ptr<FILE, decltype(&pclose)> pipe(
-                popen(exec_cmd.str().c_str(), "r"), pclose);
+                popen(compile_cmd.c_str(), "r"), pclose);
             if (!pipe) {
-                LOG(ERROR, "popen() failed");
+                ERR(SystemError, "popen() failed");
             }
             while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
                 exec_print << buffer.data();
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, "\n", exec_cmd.str(), "\n", exec_print_str, "\n");
+                ERR(ExecutorError, "\n", compile_cmd, "\n", exec_print_str,
+                    "\n");
             }
-            LOG(INFO, "Compile succeed: ", cu_file_path, " (",
+            LOG(INFO, "Compile succeed: ", code_file_path, " (",
                 cpu_timer() - start, " seconds)");
         });
-    string cubin_file_path = items[0].second + ".cubin";
-    return read_file(cubin_file_path);
-#endif  // (ARK_USE_NVRTC)
+    string gpubin_file_path = items[0].second + ".cubin";
+    return read_file(gpubin_file_path);
 }
 
 }  // namespace ark

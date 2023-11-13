@@ -124,7 +124,7 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
                       const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     Dims reduced_shape{input->shape};
     reduced_shape[axis] = 1;
@@ -132,12 +132,12 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
         output = this->tensor(reduced_shape, input->type);
     } else {
         if (output->shape != reduced_shape) {
-            LOG(ERROR, "invalid output shape ", output->shape,
+            ERR(InvalidUsageError, "invalid output shape ", output->shape,
                 " with input shape ", input->shape, " and reduction axis ",
                 axis);
         }
         if (output == input) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "output tensor cannot be the same as input tensor for "
                 "reduce_sum op");
         }
@@ -174,7 +174,7 @@ Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
 }
 
 const OpConfigMap ReduceEConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
@@ -204,6 +204,18 @@ const OpConfigMap ReduceWConfigMap = {
          {1, 128, {{1, 1}}, {{1, 1}}, true, false},
          {4, 128, {{1, 1}}, {{1, 1}}, true, false},
          {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+     }},
+    {{OP_ARCH_ROCM_ANY, "any"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 256, {{32, 1}}, {{32, 1}}, true, false},
+         {1, 256, {{16, 1}}, {{16, 1}}, true, false},
+         {1, 256, {{8, 1}}, {{8, 1}}, true, false},
+         {1, 256, {{4, 1}}, {{4, 1}}, true, false},
+         {1, 256, {{2, 1}}, {{2, 1}}, true, false},
+         {1, 256, {{1, 1}}, {{1, 1}}, true, false},
+         {4, 256, {{1, 1}}, {{1, 1}}, true, false},
+         {8, 256, {{1, 1}}, {{1, 1}}, true, false},
      }},
 };
 

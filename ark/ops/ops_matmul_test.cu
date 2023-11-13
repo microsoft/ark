@@ -12,6 +12,8 @@
         return func(std::forward<Args>(args)...); \
     }
 
+#if defined(ARK_CUDA)
+
 #include <cublas_v2.h>
 
 typedef cublasHandle_t blasHandle;
@@ -55,6 +57,54 @@ inline auto blasGemmStridedBatchedEx(
         computeType, CUBLAS_GEMM_DEFAULT);
 }
 
+#elif defined(ARK_ROCM)
+
+#include <rocblas/rocblas.h>
+
+typedef rocblas_handle blasHandle;
+typedef rocblas_status blasStatus;
+typedef rocblas_operation blasOperation;
+typedef rocblas_datatype blasDataType;
+typedef rocblas_datatype blasComputeType;
+constexpr auto blasSuccess = rocblas_status_success;
+constexpr auto BLAS_OP_N = rocblas_operation_none;
+constexpr auto BLAS_OP_T = rocblas_operation_transpose;
+constexpr auto BLAS_R_32F = rocblas_datatype_f32_r;
+constexpr auto BLAS_R_16F = rocblas_datatype_f16_r;
+constexpr auto BLAS_R_16BF = rocblas_datatype_bf16_r;
+constexpr auto BLAS_COMPUTE_32F = rocblas_datatype_f32_r;
+[[maybe_unused]] constexpr auto BLAS_COMPUTE_32F_FAST_TF32 =
+    rocblas_datatype_f32_r;
+[[maybe_unused]] constexpr auto BLAS_COMPUTE_16F = rocblas_datatype_f16_r;
+
+ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, rocblas_create_handle);
+ARK_GPU_DEFINE_FUNC_ALIAS(blasDestroy, rocblas_destroy_handle);
+
+inline auto blasGemmEx(blasHandle handle, blasOperation transA,
+                       blasOperation transB, int m, int n, int k,
+                       const void *alpha, const void *A, blasDataType Atype,
+                       int lda, const void *B, blasDataType Btype, int ldb,
+                       const void *beta, void *C, blasDataType Ctype, int ldc,
+                       blasComputeType computeType) {
+    return rocblas_gemm_ex(handle, transA, transB, m, n, k, alpha, A, Atype,
+                           lda, B, Btype, ldb, beta, C, Ctype, ldc, C, Ctype,
+                           ldc, computeType, rocblas_gemm_algo_standard, 0, 0);
+}
+
+inline auto blasGemmStridedBatchedEx(
+    blasHandle handle, blasOperation transA, blasOperation transB, int m, int n,
+    int k, const void *alpha, const void *A, blasDataType Atype, int lda,
+    int strideA, const void *B, blasDataType Btype, int ldb, int strideB,
+    const void *beta, void *C, blasDataType Ctype, int ldc, int strideC,
+    int batchCount, blasComputeType computeType) {
+    return rocblas_gemm_strided_batched_ex(
+        handle, transA, transB, m, n, k, alpha, A, Atype, lda, strideA, B,
+        Btype, ldb, strideB, beta, C, Ctype, ldc, strideC, C, Ctype, ldc,
+        strideC, batchCount, computeType, rocblas_gemm_algo_standard, 0, 0);
+}
+
+#endif
+
 class BlasHandle {
    public:
     BlasHandle() {
@@ -91,6 +141,7 @@ void blas_matmul(int m, int n, int k, const DataType *a, int lda,
     blasOperation optypeA = (blasOperation)BlasOpTypeA;
     blasOperation optypeB = (blasOperation)BlasOpTypeB;
 
+#if defined(ARK_CUDA)
     using CompType =
         typename std::conditional_t<std::is_same_v<DataType, ark::half_t>,
                                     ark::half_t, float>;
@@ -99,6 +150,11 @@ void blas_matmul(int m, int n, int k, const DataType *a, int lda,
             ? BLAS_COMPUTE_32F_FAST_TF32
             : (std::is_same_v<DataType, ark::half_t> ? BLAS_COMPUTE_16F
                                                      : BLAS_COMPUTE_32F);
+#elif defined(ARK_ROCM)
+    // CK uses only fp32 compute type for fp16/bf16
+    using CompType = float;
+    blasComputeType ctype = BLAS_COMPUTE_32F;
+#endif
     CompType alpha = 1;
     CompType beta = 0;
 

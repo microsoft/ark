@@ -47,7 +47,7 @@ Tensor *Model::layernorm(Tensor *input, Tensor *output,
                          const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     if (output == nullptr) {
         output = this->tensor(input->shape, input->type);
@@ -66,6 +66,18 @@ const OpConfigMap LayernormConfigMap = {
          {2, 128, {{1, -1}}, {{1, -1}}, true, false},
          {4, 128, {{1, -1}}, {{1, -1}}, true, false},
          {8, 128, {{1, -1}}, {{1, -1}}, true, false},
+     }},
+    {{OP_ARCH_ROCM_ANY, "any"},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 256, {{32, -1}}, {{32, -1}}, true, false},
+         {1, 256, {{16, -1}}, {{16, -1}}, true, false},
+         {1, 256, {{8, -1}}, {{8, -1}}, true, false},
+         {1, 256, {{4, -1}}, {{4, -1}}, true, false},
+         {1, 256, {{2, -1}}, {{2, -1}}, true, false},
+         {1, 256, {{1, -1}}, {{1, -1}}, true, false},
+         {4, 256, {{1, -1}}, {{1, -1}}, true, false},
+         {8, 256, {{1, -1}}, {{1, -1}}, true, false},
      }},
 };
 

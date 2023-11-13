@@ -57,7 +57,7 @@ bfloat16_t& bfloat16_t::operator=(float const& x) {
 bool signbit(ark::bfloat16_t const& h) { return h.signbit(); }
 
 ark::bfloat16_t abs(ark::bfloat16_t const& h) {
-    return ark::bfloat16_t::bitcast(h.raw() & 0x7fffffff);
+    return ark::bfloat16_t::bitcast(h.raw() & 0x7fff);
 }
 
 bool isnan(ark::bfloat16_t const& h) {

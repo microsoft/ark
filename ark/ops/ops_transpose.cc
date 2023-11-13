@@ -24,7 +24,7 @@ std::string TransposeOp::function_name(const OpConfig &cfg) const {
         tp_type_str = "0" + tp_type_str;
     }
     if (tp_type_str.size() != DIMS_LEN) {
-        LOG(ERROR, "Unexpected error");
+        ERR(ModelError, "Unexpected error");
     }
 
     Tensor *input = this->inputs[0];
@@ -50,7 +50,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     int input_ndims = input->ndims();
     Dims in_shape{1, 1, 1, 1};
     if (input_ndims < 2 || input_ndims > 4) {
-        LOG(ERROR,
+        ERR(InvalidUsageError,
             "Invalid # of input dimensions. Expected 2, 3, or 4, but given ",
             input_ndims);
     }
@@ -58,7 +58,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
         in_shape[4 - input_ndims + i] = input->shape[i];
     }
     if (perm.ndims() != input_ndims) {
-        LOG(ERROR,
+        ERR(InvalidUsageError,
             "Permutation should have the same number of dimensions as the "
             "one of input. Given input shape: ",
             input->shape, ", permutation: ", perm);
@@ -69,13 +69,13 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
     }
     for (int i = 0; i < input_ndims; ++i) {
         if (perm[i] >= input_ndims) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "Each value in permutation should be less than the number "
                 "of input dimensions. Given permutation: ",
                 perm);
         }
         if (count[perm[i]] > 0) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "Each value in permutation should be unique. Given "
                 "permutation: ",
                 perm);
@@ -95,7 +95,7 @@ Tensor *Model::transpose(Tensor *input, Dims perm, Tensor *output,
 }
 
 const OpConfigMap TransposeConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "fp32"},
+    {{OP_ARCH_ANY, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},
@@ -104,7 +104,7 @@ const OpConfigMap TransposeConfigMap = {
          {4, 0, {{1, 1}}, {{64, 64}}, true, false},
          {2, 0, {{1, 1}}, {{32, 32}}, true, false},
      }},
-    {{OP_ARCH_CUDA_ANY, "fp16"},
+    {{OP_ARCH_ANY, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},
@@ -116,7 +116,7 @@ const OpConfigMap TransposeConfigMap = {
          {1, 0, {{1, 1}}, {{8, 16}}, true, false},
          {1, 0, {{1, 1}}, {{4, 8}}, true, false},
      }},
-    {{OP_ARCH_CUDA_ANY, "bf16"},
+    {{OP_ARCH_ANY, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{1, 1}}, {{128, 128}}, true, false},

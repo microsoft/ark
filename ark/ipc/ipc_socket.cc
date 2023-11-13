@@ -11,6 +11,7 @@
 
 #include <cstring>
 
+#include "include/ark.h"
 #include "logging.h"
 
 #define MAX_LISTEN_LEN 4096
@@ -30,44 +31,45 @@ IpcSocket::IpcSocket(const std::string &ip_, int port_, bool create_)
     ret = setsockopt(this->sock_listen, SOL_SOCKET, SO_REUSEADDR, &opt,
                      sizeof(int));
     if (ret != 0) {
-        LOG(ERROR, "setsockopt: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "setsockopt: ", strerror(errno), " (", errno, ")");
     }
     int flags = fcntl(this->sock_listen, F_GETFL, 0);
     if (flags == -1) {
-        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     if (fcntl(this->sock_listen, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     LOG(DEBUG, "listen ", ip_, ":", port_);
     ret = bind(this->sock_listen, (struct sockaddr *)&addr, sizeof(addr));
     if (ret != 0) {
-        LOG(ERROR, "bind(", ip_, ":", port_, "): ", strerror(errno), " (",
+        ERR(SystemError, "bind(", ip_, ":", port_, "): ", strerror(errno), " (",
             errno, ")");
     }
     ret = listen(this->sock_listen, MAX_LISTEN_LEN);
     if (ret != 0) {
-        LOG(ERROR, "listen: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "listen: ", strerror(errno), " (", errno, ")");
     }
     this->run_server = true;
     this->server = std::thread([&] {
         int epfd = epoll_create1(0);
         if (epfd == -1) {
-            LOG(ERROR, "epoll_create1: ", strerror(errno), " (", errno, ")");
+            ERR(SystemError, "epoll_create1: ", strerror(errno), " (", errno,
+                ")");
         }
         struct epoll_event ev;
         ev.events = EPOLLIN;
         ev.data.fd = this->sock_listen;
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, this->sock_listen, &ev) == -1) {
-            LOG(ERROR, "epoll_ctl: ", strerror(errno), " (", errno, ")");
+            ERR(SystemError, "epoll_ctl: ", strerror(errno), " (", errno, ")");
         }
         struct epoll_event events[MAX_LISTEN_LEN];
         while (this->run_server) {
             int num = epoll_wait(epfd, events, MAX_LISTEN_LEN, 100);
             if (num == -1) {
                 if (errno != EINTR) {
-                    LOG(ERROR, "epoll_wait: ", strerror(errno), " (", errno,
-                        ")");
+                    ERR(SystemError, "epoll_wait: ", strerror(errno), " (",
+                        errno, ")");
                 }
             } else if (num > 0) {
                 this->serve_item();
@@ -92,7 +94,7 @@ IpcSocket::~IpcSocket() {
 IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
                                      int size) {
     if (name.size() > MAX_ITEM_NAME_LEN) {
-        LOG(ERROR, "name too long");
+        ERR(InvalidUsageError, "name too long");
     }
     void *copy;
     if ((data == nullptr) || (size == 0)) {
@@ -137,7 +139,8 @@ IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
             break;
         } else if (block) {
             if ((errno != EINTR) && (errno != ECONNREFUSED)) {
-                LOG(ERROR, "connect: ", strerror(errno), " (", errno, ")");
+                ERR(SystemError, "connect: ", strerror(errno), " (", errno,
+                    ")");
             }
             sched_yield();
         } else {
@@ -147,10 +150,10 @@ IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
     }
     int flags = fcntl(sock, F_GETFL, 0);
     if (flags == -1) {
-        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     ret = this->send_all(sock, name.c_str(), name.size());
     if (ret != 0) {
@@ -190,10 +193,10 @@ IpcSocket::State IpcSocket::serve_item() {
     }
     int flags = fcntl(sock, F_GETFL, 0);
     if (flags == -1) {
-        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
-        LOG(ERROR, "fcntl: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "fcntl: ", strerror(errno), " (", errno, ")");
     }
     // TODO: need a better way to make sure the whole name is received
     char name[MAX_ITEM_NAME_LEN + 1];

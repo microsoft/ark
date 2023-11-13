@@ -4,10 +4,10 @@
 #include "ops_common.h"
 
 #include <algorithm>
+#include <cassert>
 #include <ostream>
 
 #include "include/ark.h"
-#include "json.h"
 #include "logging.h"
 
 using namespace std;
@@ -27,12 +27,27 @@ Dims broadcast(const Dims &dims1, const Dims &dims2) {
         } else if (d2 == 1) {
             output_dims_reversed.push_back(d1);
         } else {
-            LOG(ERROR, "input and other cannot be broadcasted: ", dims1, ", ",
-                dims2);
+            ERR(InvalidUsageError,
+                "input and other cannot be broadcasted: ", dims1, ", ", dims2);
         }
     }
     std::reverse(output_dims_reversed.begin(), output_dims_reversed.end());
     return Dims{output_dims_reversed};
+}
+
+OpArchType op_arch_from_string(const std::string &arch) {
+    if (arch == "cuda_60") {
+        return OP_ARCH_CUDA_60;
+    } else if (arch == "cuda_70") {
+        return OP_ARCH_CUDA_70;
+    } else if (arch == "cuda_80") {
+        return OP_ARCH_CUDA_80;
+    } else if (arch == "cuda_90") {
+        return OP_ARCH_CUDA_90;
+    } else if (arch == "rocm_90a") {
+        return OP_ARCH_ROCM_90A;
+    }
+    return OP_ARCH_UNKNOWN;
 }
 
 bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2) {
@@ -65,69 +80,34 @@ const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
     if (search != this->cfg_map.end()) {
         return search->second;
     }
+#if defined(ARK_CUDA)
     search = this->cfg_map.find({OP_ARCH_CUDA_ANY, key.prec_type});
     if (search != this->cfg_map.end()) {
         return search->second;
     }
     search = this->cfg_map.find({OP_ARCH_CUDA_ANY, "any"});
-    if (search == this->cfg_map.end()) {
-        return NoneConfigs;
+    if (search != this->cfg_map.end()) {
+        return search->second;
     }
-    return search->second;
-}
-
-ostream &operator<<(ostream &os, const OpType &s) {
-    // clang-format off
-    switch (s) {
-    case OP_UNKNOWN:       os << "OP_UNKNOWN";       break;
-    case OP_TENSOR:        os << "OP_TENSOR";        break;
-    case OP_REFER:         os << "OP_REFER";         break;
-    case OP_RESHAPE:       os << "OP_RESHAPE";       break;
-    case OP_MERGE:         os << "OP_MERGE";         break;
-    case OP_REDUCE_E_SUM:  os << "OP_REDUCE_E_SUM";  break;
-    case OP_REDUCE_E_MEAN: os << "OP_REDUCE_E_MEAN"; break;
-    case OP_REDUCE_E_MAX:  os << "OP_REDUCE_E_MAX";  break;
-    case OP_REDUCE_W_SUM:  os << "OP_REDUCE_W_SUM";  break;
-    case OP_REDUCE_W_MEAN: os << "OP_REDUCE_W_MEAN"; break;
-    case OP_REDUCE_W_MAX:  os << "OP_REDUCE_W_MAX";  break;
-    case OP_SCALE:         os << "OP_SCALE";         break;
-    case OP_MATMUL:        os << "OP_MATMUL";        break;
-    case OP_MAX_POOL:      os << "OP_MAX_POOL";      break;
-    case OP_ADD:           os << "OP_ADD";           break;
-    case OP_SUB:           os << "OP_SUB";           break;
-    case OP_MUL:           os << "OP_MUL";           break;
-    case OP_DIV:           os << "OP_DIV";           break;
-    case OP_IM2COL:        os << "OP_IM2COL";        break;
-    case OP_TRANSPOSE:     os << "OP_TRANSPOSE";     break;
-    case OP_SEND:          os << "OP_SEND";          break;
-    case OP_SEND_DONE:     os << "OP_SEND_DONE";     break;
-    case OP_SEND_MM:       os << "OP_SEND_MM";       break;
-    case OP_RECV:          os << "OP_RECV";          break;
-    case OP_RECV_MM:       os << "OP_RECV_MM";       break;
-    case OP_LAYERNORM:     os << "OP_LAYERNORM";     break;
-    case OP_RMSNORM:       os << "OP_RMSNORM";       break;
-    case OP_SOFTMAX:       os << "OP_SOFTMAX";       break;
-    case OP_RELU:          os << "OP_RELU";          break;
-    case OP_COPY:          os << "OP_COPY";          break;
-    case OP_SIGMOID:       os << "OP_SIGMOID";       break;
-    case OP_GELU:          os << "OP_GELU";          break;
-    case OP_EXP:           os << "OP_EXP";           break;
-    case OP_SQRT:          os << "OP_SQRT";          break;
-    case OP_SEND_MSLL:      os << "OP_SEND_MSLL";  break;
-    case OP_SEND_DONE_MSLL: os << "OP_SEND_DONE_MSLL"; break;
-    case OP_RECV_MSLL:      os << "OP_RECV_MSLL";  break;
-    case OP_ROPE:          os << "OP_ROPE";          break;
-    case OP_EMBEDDING:     os << "OP_EMBEDDING";     break;
-    case OP_CAST:          os << "OP_CAST";          break;
-    case OP_DEVICE_SYNC_MSLL:       os << "OP_DEVICE_SYNC_MSLL";       break;
-    case OP_READ_AND_REDUCE_MSLL:   os << "OP_READ_AND_REDUCE_MSLL";   break;
-    case OP_GATHER_FROM_PEERS_MSLL: os << "OP_GATHER_FROM_PEERS_MSLL"; break;
-    case OP_PUT_PACKET_MSLL:        os << "OP_PUT_PACKET_MSLL";        break;
-    case OP_REDUCE_AND_WRITE_PACKET_MSLL: os << "OP_REDUCE_AND_WRITE_PACKET_MSLL"; break;
-    case OP_GET_FROM_PACKET_MSLL:  os << "OP_GET_FROM_PACKET_MSLL";   break;
+#elif defined(ARK_ROCM)
+    search = this->cfg_map.find({OP_ARCH_ROCM_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
     }
-    // clang-format on
-    return os;
+    search = this->cfg_map.find({OP_ARCH_ROCM_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+#endif
+    search = this->cfg_map.find({OP_ARCH_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    return NoneConfigs;
 }
 
 OpArg::OpArg(int arg) : type{OP_ARG_INT}, val{new int{arg}} {
@@ -167,7 +147,7 @@ OpArg::OpArg(const OpArg &arg) : type{arg.type} {
     } else if (this->type == OP_ARG_TENSOR) {
         this->val = arg.val;
     } else {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
 }
 OpArg::~OpArg() {
@@ -189,49 +169,49 @@ OpArg::~OpArg() {
 }
 void OpArg::get(int *arg) const {
     if (this->type != OP_ARG_INT) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = *static_cast<int *>(this->val);
 }
 
 void OpArg::get(long long int *arg) const {
     if (this->type != OP_ARG_INT64) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = *static_cast<long long int *>(this->val);
 }
 
 void OpArg::get(uint64_t *arg) const {
     if (this->type != OP_ARG_UINT64) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = *static_cast<uint64_t *>(this->val);
 }
 
 void OpArg::get(bool *arg) const {
     if (this->type != OP_ARG_BOOL) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = *static_cast<bool *>(this->val);
 }
 
 void OpArg::get(float *arg) const {
     if (this->type != OP_ARG_FLOAT) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = *static_cast<float *>(this->val);
 }
 
 void OpArg::get(Dims *arg) const {
     if (this->type != OP_ARG_DIMS) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = *static_cast<Dims *>(this->val);
 }
 
 void OpArg::get(Tensor **arg) const {
     if (this->type != OP_ARG_TENSOR) {
-        LOG(ERROR, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type);
     }
     *arg = static_cast<Tensor *>(this->val);
 }
@@ -300,70 +280,77 @@ void OpArgs::put(const OpArg &arg) { this->args.emplace_back(arg); }
 
 void OpArgs::get(int *arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_INT) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<int *>(this->args[idx].val);
 }
 
 void OpArgs::get(long long int *arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_INT64) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<long long int *>(this->args[idx].val);
 }
 
 void OpArgs::get(uint64_t *arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_UINT64) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<uint64_t *>(this->args[idx].val);
 }
 
 void OpArgs::get(bool *arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_BOOL) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<bool *>(this->args[idx].val);
 }
 
 void OpArgs::get(float *arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_FLOAT) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<float *>(this->args[idx].val);
 }
 
 void OpArgs::get(Dims *arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_DIMS) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = *static_cast<Dims *>(this->args[idx].val);
 }
 
 void OpArgs::get(Tensor **arg, size_t idx) const {
     if (this->args.size() <= idx) {
-        LOG(ERROR, "invalid argument index ", idx, " size ", this->args.size());
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
     }
     if (this->args[idx].type != OP_ARG_TENSOR) {
-        LOG(ERROR, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
     }
     *arg = static_cast<Tensor *>(this->args[idx].val);
 }
@@ -409,12 +396,12 @@ Op::Op(const OpType &type_, const std::string &prec_type_,
       force_inline{force_inline_} {
     for (auto &tns : inputs_) {
         if (tns == nullptr) {
-            LOG(ERROR, "input tensor is null");
+            ERR(ModelError, "input tensor is null");
         }
     }
     for (auto &tns : output_refs_) {
         if (tns == nullptr) {
-            LOG(ERROR, "output reference tensor is null");
+            ERR(ModelError, "output reference tensor is null");
         }
     }
 }
@@ -511,7 +498,7 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const MsllGetFromPacketOp *>(this)
                 ->function_name(cfg);
         default:
-            LOG(ERROR, "invalid op type ", this->type);
+            ERR(ModelError, "invalid op type ", this->type);
             return "";
     }
     // Never reach here.
@@ -599,9 +586,9 @@ std::string Op::function_name(const std::string &kernel_name,
         } else if (arg.type == OP_ARG_BOOL) {
             bool val;
             template_args.get(&val, i);
-            ss << val;
+            ss << (val ? "true" : "false");
         } else if (arg.type == OP_ARG_FLOAT) {
-            LOG(ERROR, "float template args are not supported");
+            ERR(ModelError, "float template args are not supported");
         } else if (arg.type == OP_ARG_DIMS) {
             Dims val;
             template_args.get(&val, i);

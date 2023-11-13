@@ -50,10 +50,10 @@ Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
     assert(input != nullptr);
     assert(weight != nullptr);
     if (input->shape.ndims() > 3) {
-        LOG(ERROR, "input shape ndims > 3: ", input->shape);
+        ERR(InvalidUsageError, "input shape ndims > 3: ", input->shape);
     }
     if (weight->shape.ndims() != 2) {
-        LOG(ERROR, "weight shape ndims != 2: ", weight->shape);
+        ERR(InvalidUsageError, "weight shape ndims != 2: ", weight->shape);
     }
     auto emb_dim = weight->shape[-1];
 
@@ -71,7 +71,7 @@ Tensor *Model::embedding(Tensor *input, Tensor *weight, Tensor *output,
 }
 
 const OpConfigMap EmbeddingConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{1, 1}, {1, -1}}, {{1, -1}}, true, false},

@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 
+#include "include/ark.h"
 #include "logging.h"
 #include "math.h"
 #include "sched_branch.h"
@@ -57,11 +58,12 @@ SchedStream::Impl::~Impl() {}
 void SchedStream::Impl::add_items(const std::vector<SchedItem> &items) {
     for (auto &item : items) {
         if (item.num_warps_per_uop > this->num_warps_per_sm) {
-            LOG(ERROR, "uop requires more warps (", item.num_warps_per_uop,
-                ") than available on SM (", this->num_warps_per_sm, ")");
+            ERR(SchedulerError, "uop requires more warps (",
+                item.num_warps_per_uop, ") than available on SM (",
+                this->num_warps_per_sm, ")");
         }
         if (item.smem_bytes_per_uop > this->smem_bytes_per_sm) {
-            LOG(ERROR, "uop requires more shared memory (",
+            ERR(SchedulerError, "uop requires more shared memory (",
                 item.smem_bytes_per_uop, ") than available on SM (",
                 this->smem_bytes_per_sm, ")");
         }
@@ -164,7 +166,7 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items) {
                     current_warp_idx + item.num_warps_per_uop);
                 if (current_warp_idx + item.num_warps_per_uop >
                     this->num_warps_per_sm) {
-                    LOG(ERROR, "unexpected error");
+                    ERR(SchedulerError, "unexpected error");
                 }
                 n_remaining_warps[current_sm_idx - this->sm_id_begin] -=
                     item.num_warps_per_uop;
