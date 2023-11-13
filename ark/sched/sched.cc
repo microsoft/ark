@@ -102,20 +102,16 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
         }
     }
     // Heuristic auto-selection of granularity level
-    unsigned int min_wps =
-        gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
     Dims shape4 = output->shape.dims4();
     Dims ldims4 = output->ldims.dims4();
+    DimType shape_x = shape4[2];
+    DimType shape_y = shape4[3];
     std::vector<std::tuple<const OpConfig *, Dims, int>> config_candidates;
-    std::vector<std::tuple<const OpConfig *, Dims, int>>
-        high_priority_candidates;
     for (auto &cfg : feasible_configs) {
         assert(cfg->output_tiles.size() > 0);
         const OpTile &ot = cfg->output_tiles[0];
         DimType ot_x = (ot.x == -1) ? ldims4[2] : ot.x;
         DimType ot_y = (ot.y == -1) ? ldims4[3] : ot.y;
-        DimType shape_x = shape4[2];
-        DimType shape_y = shape4[3];
         if (output->shape.ndims() == 1 && ot_x != 1) {
             // Output is 1D, but tile is 2D. Cannot use this tile shape.
             continue;
@@ -126,13 +122,6 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
 
         // This config is OK to use
         config_candidates.emplace_back(cfg, Dims(ot_x, ot_y), num_tiles);
-
-        // magic condition
-        if ((shape_y * 2 > ot_y) && (shape_x * 2 > ot_x) &&
-            ((num_tiles * cfg->num_warps) >= (min_wps * gpu_info.num_sm / 2))) {
-            high_priority_candidates.emplace_back(cfg, Dims(ot_x, ot_y),
-                                                  num_tiles);
-        }
     }
     if (config_candidates.empty()) {
         stringstream configs_str;
@@ -152,14 +141,33 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
         ERR(SchedulerError, "no valid tile configuration found. Output shape ",
             output->shape, ", available tiles: ", configs_str.str());
     }
+    std::vector<std::tuple<const OpConfig *, Dims, int>>
+        high_priority_candidates;
+    int min_wps = gpu_info.min_threads_per_block / gpu_info.threads_per_warp;
+    int target_concurrent_num_warps = min_wps * gpu_info.num_sm;
+    for (auto &c : config_candidates) {
+        auto &cfg = std::get<0>(c);
+        auto &tile = std::get<1>(c);
+        auto &num_tiles = std::get<2>(c);
+
+        if ((shape_x < tile[0]) || (shape_y < tile[1])) {
+            // too large tile.
+            continue;
+        }
+        auto num_total_warps = num_tiles * cfg->num_warps;
+        if (num_total_warps >= target_concurrent_num_warps / 2) {
+            high_priority_candidates.push_back(c);
+        }
+    }
     auto &candidates = high_priority_candidates.empty()
                            ? config_candidates
                            : high_priority_candidates;
-    // prefer smaller tiles here to minimize paddings
+
     std::sort(candidates.begin(), candidates.end(),
               [](const std::tuple<const OpConfig *, Dims, int> &a,
                  const std::tuple<const OpConfig *, Dims, int> &b) {
-                  return std::get<1>(a).size() < std::get<1>(b).size();
+                  return std::get<2>(a) * std::get<0>(a)->num_warps <
+                         std::get<2>(b) * std::get<0>(b)->num_warps;
               });
     return std::get<0>(candidates[0]);
 }
