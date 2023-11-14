@@ -621,10 +621,8 @@ std::vector<std::string> DefaultScheduler::gen_code() {
         auto comp_streams = this->comp_stream[i]->get_streams();
         for (size_t j = 0; j < comp_streams.size(); ++j) {
             auto &stream = comp_streams[j];
-            int prev_sm_id_end = -1;
             for (auto &branch : stream.branches) {
-                this->codegen->branch(code, branch, prev_sm_id_end);
-                prev_sm_id_end = branch.sm_id_end;
+                this->codegen->branch(code, branch);
             }
             if (!stream.branches.empty() && j != comp_streams.size() - 1) {
                 code << "  ";
@@ -634,10 +632,8 @@ std::vector<std::string> DefaultScheduler::gen_code() {
         auto comm_streams = this->comm_stream[i]->get_streams();
         for (size_t j = 0; j < comm_streams.size(); ++j) {
             auto &stream = comm_streams[j];
-            int prev_sm_id_end = -1;
             for (auto &branch : stream.branches) {
-                this->codegen->branch(code, branch, prev_sm_id_end);
-                prev_sm_id_end = branch.sm_id_end;
+                this->codegen->branch(code, branch);
             }
             if (!stream.branches.empty() && j != comm_streams.size() - 1) {
                 code << "  ";

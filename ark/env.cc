@@ -19,6 +19,7 @@
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
+#define DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH ""
 #define DEFAULT_ARK_USE_MSLL false
 #define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
 #define DEFAULT_ARK_MSLL_PORT 50051
@@ -75,6 +76,9 @@ Env::Env() {
     //
     this->shm_name_prefix =
         env<std::string>("ARK_SHM_NAME_PREFIX", DEFAULT_ARK_SHM_NAME_PREFIX);
+    //
+    this->enforce_kernel_code_path = env<std::string>(
+        "ARK_ENFORCE_KERNEL_CODE_PATH", DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH);
     // If `ARK_USE_MSLL=1`, we use MSLL.
     this->use_msll = env<bool>("ARK_USE_MSLL", DEFAULT_ARK_USE_MSLL);
     // Get the MSLL include directory path.
