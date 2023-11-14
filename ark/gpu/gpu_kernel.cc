@@ -11,6 +11,7 @@
 
 #include "cpu_timer.h"
 #include "env.h"
+#include "file_io.h"
 #include "gpu/gpu_compile.h"
 #include "gpu/gpu_logging.h"
 #include "include/ark.h"
@@ -158,7 +159,11 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
 
     *(GpuPtr *)this->params[0] = this->flag->ref(0);
 
-    if (codes_body.size() > 0) {
+    auto &code_path = get_env().enforce_kernel_code_path;
+    if (!code_path.empty()) {
+        LOG(INFO, "Enforce kernel code path: ", code_path);
+        this->codes.emplace_back(read_file(code_path));
+    } else if (codes_body.size() > 0) {
         const string *ark_loop_body_code = nullptr;
         for (auto &code : codes_body) {
             if (code.find("ark_loop_body") == string::npos) {

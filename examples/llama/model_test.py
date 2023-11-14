@@ -130,7 +130,8 @@ def test_module(
     module_name_prefix: str = "",
     test_thru: bool = False,
     test_thru_iterations: int = 100,
-    dtype: np.dtype = np.float16
+    dtype: np.dtype = np.float16,
+    test_thru_ark_only: bool = False,
 ):
     if test_thru:
         print(f"Throughput test (iterations: {test_thru_iterations})")
@@ -173,33 +174,36 @@ def test_module(
         world_size = world_size,
     )
 
-    # PyTorch module
-    module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
-    module_pt.to(dtype=numpy_dtype_to_torch_dtype[dtype])
+    if not test_thru_ark_only:
+        # PyTorch module
+        module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
 
-    # Run the PyTorch module
-    res_pt = run_pt(
-        module_pt,
-        state_dict_pt,
-        inputs_pt,
-        iterations=test_thru_iterations if test_thru else 1,
-    )
-
-    if test_thru:
-        print(
-            f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+        # Run the PyTorch module
+        res_pt = run_pt(
+            module_pt,
+            state_dict_pt,
+            inputs_pt,
+            iterations=test_thru_iterations if test_thru else 1,
         )
+
+        if test_thru:
+            print(
+                f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+            )
+            return
+    elif test_thru:
+        print(f"  ARK: {res_ark.runtime:.4f} seconds")
         return
 
     # Compare the outputs
     eps = np.finfo(np.float64).eps
     np.set_printoptions(threshold=1000, linewidth=196)
-    if rank == 0:
-        for i, t in enumerate(res_ark.outputs):
-            print(t)
+    # if rank == 0:
+    #     for i, t in enumerate(res_ark.outputs):
+    #         print(t)
 
-        for i, t in enumerate(res_pt.outputs):
-            print(t)
+    #     for i, t in enumerate(res_pt.outputs):
+    #         print(t)
 
     for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
         shape = o_ark.shape
