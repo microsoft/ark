@@ -128,6 +128,7 @@ def test_module(
     module_name_prefix: str = "",
     test_thru: bool = False,
     test_thru_iterations: int = 100,
+    test_thru_ark_only: bool = False,
 ):
     if test_thru:
         print(f"Throughput test (iterations: {test_thru_iterations})")
@@ -164,21 +165,25 @@ def test_module(
         iterations=test_thru_iterations if test_thru else 1,
     )
 
-    # PyTorch module
-    module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
+    if not test_thru_ark_only:
+        # PyTorch module
+        module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
 
-    # Run the PyTorch module
-    res_pt = run_pt(
-        module_pt,
-        state_dict_pt,
-        inputs_pt,
-        iterations=test_thru_iterations if test_thru else 1,
-    )
-
-    if test_thru:
-        print(
-            f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+        # Run the PyTorch module
+        res_pt = run_pt(
+            module_pt,
+            state_dict_pt,
+            inputs_pt,
+            iterations=test_thru_iterations if test_thru else 1,
         )
+
+        if test_thru:
+            print(
+                f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+            )
+            return
+    elif test_thru:
+        print(f"  ARK: {res_ark.runtime:.4f} seconds")
         return
 
     # Compare the outputs
@@ -454,8 +459,6 @@ def test_transformer(
             module_class_pt=model_pt.Transformer,
             module_args_pt=[args],
             inputs_pt=[tokens, start_pos],
-            test_thru=True,
-            test_thru_iterations=10,
         )
 
 
