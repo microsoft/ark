@@ -377,8 +377,8 @@ std::vector<Branch> SchedBranch::Impl::get_branches(
             (branches.back().smem_bytes_per_warp == info.smem_bytes_per_warp ||
              branches.back().smem_bytes_per_warp * info.smem_bytes_per_warp ==
                  0)) {
-            Branch &branch = branches.back();
-            // Merge with the previous branch.
+            Branch &prev_branch = branches.back();
+            // Merge with the previous branch `if (? <= blockIdx.x <= ?) {...}`.
             BranchOp branch_op;
             branch_op.opseq_id = info.opseq_id;
             branch_op.uop_id_begin = info.uop_id_begin;
@@ -387,26 +387,23 @@ std::vector<Branch> SchedBranch::Impl::get_branches(
             branch_op.num_uops_per_sm =
                 (info.warp_id_end - info.warp_id_begin) /
                 info.num_warps_per_uop;
-            if (branch.smem_bytes_per_warp != info.smem_bytes_per_warp) {
-                branch.smem_bytes_per_warp = std::max(
-                    branch.smem_bytes_per_warp, info.smem_bytes_per_warp);
+            if (prev_branch.smem_bytes_per_warp != info.smem_bytes_per_warp) {
+                prev_branch.smem_bytes_per_warp = std::max(
+                    prev_branch.smem_bytes_per_warp, info.smem_bytes_per_warp);
             }
-            WarpBranch &warp_branch = branch.warp_branches.back();
-            if (warp_branch.warp_id_begin == info.warp_id_begin &&
-                warp_branch.warp_id_end == info.warp_id_end) {
-                // Merge with the previous warp branch.
-                warp_branch.branch_ops.emplace_back(std::move(branch_op));
-            } else if (warp_branch.warp_id_end <= info.warp_id_begin ||
-                       info.warp_id_begin == 0) {
+            WarpBranch &prev_warp_branch = prev_branch.warp_branches.back();
+            if (prev_warp_branch.warp_id_begin == info.warp_id_begin &&
+                prev_warp_branch.warp_id_end == info.warp_id_end) {
+                // Merge with the previous warp branch
+                // `if (? <= threadIdx.x <= ?) {...}`.
+                prev_warp_branch.branch_ops.emplace_back(std::move(branch_op));
+            } else {
                 // Add a new warp branch.
                 WarpBranch warp_branch;
                 warp_branch.warp_id_begin = info.warp_id_begin;
                 warp_branch.warp_id_end = info.warp_id_end;
                 warp_branch.branch_ops.emplace_back(std::move(branch_op));
-                branch.warp_branches.emplace_back(std::move(warp_branch));
-            } else {
-                // This may be not possible.
-                ERR(SchedulerError, "unexpected error");
+                prev_branch.warp_branches.emplace_back(std::move(warp_branch));
             }
         } else {
             // Add a new branch.
