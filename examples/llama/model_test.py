@@ -177,6 +177,7 @@ def test_module(
     if not test_thru_ark_only:
         # PyTorch module
         module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
+        module_pt.to(dtype=numpy_dtype_to_torch_dtype[dtype])
 
         # Run the PyTorch module
         res_pt = run_pt(
@@ -198,12 +199,12 @@ def test_module(
     # Compare the outputs
     eps = np.finfo(np.float64).eps
     np.set_printoptions(threshold=1000, linewidth=196)
-    # if rank == 0:
-    #     for i, t in enumerate(res_ark.outputs):
-    #         print(t)
+    if rank == 0:
+        for i, t in enumerate(res_ark.outputs):
+            print(t)
 
-    #     for i, t in enumerate(res_pt.outputs):
-    #         print(t)
+        for i, t in enumerate(res_pt.outputs):
+            print(t)
 
     for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
         shape = o_ark.shape
@@ -253,7 +254,7 @@ def test_rmsnorm(
             low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
         ).astype(dtype)
     ]
-    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
+    inputs_pt = [i.astype(dtype) for i in inputs_ark]
 
     test_module(
         module_class_ark=model_ark.RMSNorm,
@@ -478,8 +479,8 @@ def test_transformer(
         module_class_pt=model_pt.Transformer,
         module_args_pt=[args],
         inputs_pt=[tokens, start_pos],
-        # test_thru = True,
-        # test_thru_iterations = 200,
+        test_thru = True,
+        test_thru_iterations = 200,
     )
 
 
@@ -523,9 +524,9 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs70B()
+    args = ModelArgs13B()
     batch_size = 1
-    seq_len = 128
+    seq_len = 512
     dtype = np.float16
     world_size = ngpus
 
@@ -533,7 +534,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 128
+    args.max_seq_len = 512
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
