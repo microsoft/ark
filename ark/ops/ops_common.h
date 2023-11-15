@@ -587,9 +587,8 @@ class MsllGetFromPacketOp : public Op {
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class SoftmaxOp : public Op
-{
-  public:
+class SoftmaxOp : public Op {
+   public:
     SoftmaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
               const std::string &name);
     std::string function_name(const OpConfig &cfg) const;

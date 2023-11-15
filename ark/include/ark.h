@@ -537,7 +537,7 @@ class Model {
         const std::string &name = "read_and_reduce_msll");
     // gather from peers
     Tensor *gather_from_peers_msll(
-        Tensor *input, int sid, int npeers, size_t chunkBytes,
+        Tensor *input, Tensor *tile, int sid, int npeers, size_t stride,
         const std::string &name = "gather_from_peers_msll");
 
     Tensor *local_all_reduce_msll(
