@@ -292,6 +292,47 @@ ark::unittest::State test_sched_parallel_matmul() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_graph_opt() {
+    ark::Model m;
+    ark::Tensor *ones = m.tensor({128, 8192}, ark::FP32);
+    ark::Tensor *ppp_ones = m.scale(ones, 0.001);
+    ark::Tensor *w = m.tensor({8192, 256}, ark::FP32);
+
+    ark::Tensor *y = m.matmul(ppp_ones, w);
+    ark::Tensor *ones2 = m.tensor({128, 256}, ark::FP32);
+    ark::Tensor *y_plus_one = m.add(y, ones2);
+
+    ark::Executor exe{0, 1, m, "sched_graph_opt"};
+    exe.compile();
+
+    std::vector<float> ones_data(ones->shape.size(), 1.0f);
+    std::vector<float> ones2_data(ones2->shape.size(), 1.0f);
+    std::vector<float> w_data(w->shape.size(), 1.0f);
+    ones->write(ones_data.data());
+    ones2->write(ones2_data.data());
+    w->write(w_data.data());
+
+    exe.launch();
+    exe.run(1);
+    exe.stop();
+
+    std::vector<float> output_y(y->shape.size());
+    y->read(output_y.data());
+
+    for (float v : output_y) {
+        UNITTEST_EQ(int(v * 100), 819);
+    }
+
+    std::vector<float> output_y_plus_one(y_plus_one->shape.size());
+    y_plus_one->read(output_y_plus_one.data());
+
+    for (float v : output_y_plus_one) {
+        UNITTEST_EQ(int(v * 100), 919);
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     // UNITTEST(test_sched_mm_add);
@@ -300,5 +341,6 @@ int main() {
     UNITTEST(test_sched_many_comm_ops);
     UNITTEST(test_sched_mixed_precision);
     UNITTEST(test_sched_parallel_matmul);
+    // UNITTEST(test_sched_graph_opt);
     return 0;
 }
