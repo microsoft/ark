@@ -114,7 +114,7 @@ class ColumnParallelLinear(ark.Module):
         in_dim: int,
         out_dim: int,
         dtype: ark.DataType = ark.fp16,
-        gather_output: bool=True,
+        gather_output: bool = True,
         local_rank: int = 0,
         world_size: int = 1,
     ):
@@ -138,16 +138,24 @@ class ColumnParallelLinear(ark.Module):
         output_tensor_shards = ark.sharding(
             output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
         )
-        local_result = ark.identity(output_tensor_shards[self.local_rank], deps=output_tensor_shards)
+        local_result = ark.identity(
+            output_tensor_shards[self.local_rank], deps=output_tensor_shards
+        )
         # (batch_size, seq_len, out_dim // world_size)
-        local_result = ark.matmul(x, self.weight, local_result, transpose_other=True)
+        local_result = ark.matmul(
+            x, self.weight, local_result, transpose_other=True
+        )
         gather_input = ark.identity(output_tensor, deps=[local_result])
         # return gather_input
-        gather_reshape = ark.reshape(gather_input, [x.shape()[0] * x.shape()[1], self.out_dim])
+        gather_reshape = ark.reshape(
+            gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
+        )
         gather_out = ark.local_all_gather_mscclpp(
             gather_reshape, self.local_rank, self.world_size, 1
         )
-        return ark.reshape(gather_out, [x.shape()[0], x.shape()[1], self.out_dim])
+        return ark.reshape(
+            gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
+        )
 
 
 class RowParallelLinear(ark.Module):
@@ -193,7 +201,9 @@ class RowParallelLinear(ark.Module):
         if self.input_is_parallel:
             input_parallel = x
         else:
-            x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // self.world_size)
+            x_shards = ark.sharding(
+                x, x_ndims - 1, self.in_dim // self.world_size
+            )
             input_parallel = x_shards[self.local_rank]
         local_result = ark.matmul(
             input_parallel, self.weight, transpose_other=True
@@ -208,7 +218,14 @@ class ParallelEmbedding(ark.Module):
     """Embedding layer."""
 
     # TODO: support parallelism
-    def __init__(self, vocab_size: int, dim: int, dtype: ark.DataType, local_rank: int = 0, world_size: int = 1):
+    def __init__(
+        self,
+        vocab_size: int,
+        dim: int,
+        dtype: ark.DataType,
+        local_rank: int = 0,
+        world_size: int = 1,
+    ):
         super().__init__()
         self.vocab_size = vocab_size
         self.dim = dim
@@ -227,14 +244,20 @@ class ParallelEmbedding(ark.Module):
         output_tensor_shards = ark.sharding(
             output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
         )
-        local_result = ark.identity(output_tensor_shards[self.local_rank], deps=output_tensor_shards)
+        local_result = ark.identity(
+            output_tensor_shards[self.local_rank], deps=output_tensor_shards
+        )
         local_result = ark.embedding(x, self.weight, local_result)
         gather_input = ark.identity(output_tensor, deps=[local_result])
-        gather_reshape = ark.reshape(gather_input, [x.shape()[0] * x.shape()[1], self.out_dim])
+        gather_reshape = ark.reshape(
+            gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
+        )
         gather_out = ark.local_all_gather_mscclpp(
             gather_reshape, self.local_rank, self.world_size, 1
         )
-        return ark.reshape(gather_out, [x.shape()[0], x.shape()[1], self.out_dim])
+        return ark.reshape(
+            gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
+        )
 
 
 class Linear(ark.Module):

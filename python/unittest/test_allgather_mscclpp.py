@@ -52,7 +52,7 @@ def test_allgather2D_mscclpp_internal(world_size, height, width):
     np_inputs = []
     for i in range(num_processes):
         input = np.zeros((height, width), dtype=np.float16)
-        input[:, shard_width * i: shard_width * (i + 1)] = sharded_input[i]
+        input[:, shard_width * i : shard_width * (i + 1)] = sharded_input[i]
         np_inputs.append(input)
     for i in range(num_processes):
         process = multiprocessing.Process(

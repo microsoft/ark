@@ -171,7 +171,7 @@ def test_module(
         inputs_ark,
         iterations=test_thru_iterations if test_thru else 1,
         rank=rank,
-        world_size = world_size,
+        world_size=world_size,
     )
 
     if not test_thru_ark_only:
@@ -310,7 +310,9 @@ def test_row_parallel_linear(
         ],
         inputs_pt=inputs_pt,
         module_name_prefix="layers.0.attention.wo",
-        dtype = dtype,
+        dtype=dtype,
+        # test_thru = True,
+        # test_thru_iterations = 200,
     )
 
 
@@ -354,7 +356,7 @@ def test_column_parallel_linear(
         ],
         inputs_pt=inputs_pt,
         module_name_prefix="layers.0.attention.wq",
-        dtype = dtype
+        dtype=dtype,
     )
 
 
@@ -387,7 +389,12 @@ def test_attention(
 
     test_module(
         module_class_ark=model_ark.Attention,
-        module_args_ark=[args, ark.DataType.from_numpy(dtype), rank, world_size],
+        module_args_ark=[
+            args,
+            ark.DataType.from_numpy(dtype),
+            rank,
+            world_size,
+        ],
         inputs_ark=[feature, 0, freqs_cis_ark, None],
         module_class_pt=model_pt.Attention,
         module_args_pt=[args],
@@ -421,7 +428,13 @@ def test_transformer_block(
     ).astype(dtype)
     test_module(
         module_class_ark=model_ark.TransformerBlock,
-        module_args_ark=[0, args, ark.DataType.from_numpy(dtype), rank, world_size],
+        module_args_ark=[
+            0,
+            args,
+            ark.DataType.from_numpy(dtype),
+            rank,
+            world_size,
+        ],
         inputs_ark=[feature, 0, freqs_cis_ark, None],
         module_class_pt=model_pt.TransformerBlock,
         module_args_pt=[0, args],
@@ -438,7 +451,6 @@ def test_transformer(
     rank: int = 0,
     world_size: int = 1,
 ):
-
     # Random input tokens
 
     seed = 1695878986  # int(time.time())
@@ -474,13 +486,18 @@ def test_transformer(
 
     test_module(
         module_class_ark=model_ark.Transformer,
-        module_args_ark=[args, ark.DataType.from_numpy(dtype), rank, world_size],
+        module_args_ark=[
+            args,
+            ark.DataType.from_numpy(dtype),
+            rank,
+            world_size,
+        ],
         inputs_ark=[tokens, start_pos, freqs_cis_ark, mask],
         module_class_pt=model_pt.Transformer,
         module_args_pt=[args],
         inputs_pt=[tokens, start_pos],
-        test_thru = True,
-        test_thru_iterations = 200,
+        test_thru=True,
+        test_thru_iterations=200,
     )
 
 
@@ -490,19 +507,21 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     ark.set_world_size(world_size)
 
     # test_rmsnorm(args, batch_size, seq_len, dtype)
-    # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
+    test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
     # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
-    test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
-def worker(args: ModelArgs,
+def worker(
+    args: ModelArgs,
     batch_size: int,
     seq_len: int,
     dtype: np.dtype,
     rank: int = 0,
-    world_size: int = 1):
+    world_size: int = 1,
+):
     # For torch.distributed
     os.environ["RANK"] = str(rank)
     os.environ["LOCAL_RANK"] = str(rank)
@@ -510,10 +529,9 @@ def worker(args: ModelArgs,
     torch.cuda.set_device(rank)
 
     # For fairscale
-    fairscale.nn.model_parallel.initialize.initialize_model_parallel(
-        world_size
-    )
+    fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
     test(args, batch_size, seq_len, dtype, rank, world_size)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -559,7 +577,10 @@ if __name__ == "__main__":
     else:
         procs = []
         for i in range(ngpus):
-            p = mp.Process(target=worker, args=(args, batch_size, seq_len, dtype, i, world_size))
+            p = mp.Process(
+                target=worker,
+                args=(args, batch_size, seq_len, dtype, i, world_size),
+            )
             p.start()
             procs.append(p)
 
