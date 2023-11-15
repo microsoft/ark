@@ -37,12 +37,12 @@ struct Env {
     std::string shm_name_prefix;
     // Enforce to compile a specific kernel code file.
     std::string enforce_kernel_code_path;
-    // Use MSCCL++.
-    bool use_mscclpp;
-    // MSCCL++ include directory path.
-    std::string mscclpp_include_dir;
-    // MSCCL++ bootstrap port.
-    int mscclpp_port;
+    // Use MSLL.
+    bool use_msll;
+    // MSLL include directory path.
+    std::string msll_include_dir;
+    // MSLL bootstrap port.
+    int msll_port;
 };
 
 // Get the global Env.

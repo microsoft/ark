@@ -8,7 +8,7 @@ set(ARK_PATCH "0")
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
-option(USE_MSCCLPP "Use MSCCL++" ON)
+option(USE_MSLL "Use USE_MSLL" OFF)
 
 cmake_minimum_required(VERSION 3.25)
 enable_language(CXX)
@@ -79,6 +79,14 @@ else()  # USE_ROCM
     project(ark LANGUAGES CXX HIP)
 endif()
 
+# Find MSLL
+if(USE_MSLL)
+    include(${PROJECT_SOURCE_DIR}/cmake/FindMSLL.cmake)
+    if (NOT MSLL_FOUND)
+        message(FATAL_ERROR "MSLL not found")
+    endif()
+endif()
+
 # Code coverage from https://github.com/codecov/example-cpp11-cmake
 add_library(coverage_config INTERFACE)
 if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -94,13 +102,8 @@ endif()
 # Find ibverbs
 include(FindIBVerbs)
 
-# Find MSCCL++
-if(USE_MSCCLPP)
-    include(${PROJECT_SOURCE_DIR}/cmake/FindMSCCLPP.cmake)
-    if (NOT MSCCLPP_FOUND)
-        message(FATAL_ERROR "MSCCL++ not found")
-    endif()
-endif()
+# Find NUMA
+include(FindNUMA)
 
 # Find NUMA
 include(FindNUMA)

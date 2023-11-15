@@ -12,8 +12,8 @@ if(USE_ROCM)
 endif()
 
 set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
-if (USE_MSCCLPP)
-    set(COMMON_LIBS ${COMMON_LIBS} ARK::mscclpp)
+if (USE_MSLL)
+    set(COMMON_LIBS ${COMMON_LIBS} ARK::msll)
 endif()
 
 # ARK object
@@ -44,12 +44,12 @@ if(USE_ROCM)
     target_compile_definitions(ark_obj PUBLIC ARK_ROCM)
 endif()
 
-if (USE_MSCCLPP)
+if (USE_MSLL)
     target_include_directories(ark_obj SYSTEM PRIVATE
-        ${MSCCLPP_INCLUDE_DIRS}
+        ${MSLL_INCLUDE_DIRS}
     )
-    target_compile_definitions(ark_obj PRIVATE ARK_USE_MSCCLPP=1)
-    target_compile_definitions(ark_obj PRIVATE ARK_MSCCLPP_INCLUDE_DIR=${MSCCLPP_INCLUDE_DIRS})
+    target_compile_definitions(ark_obj PRIVATE ARK_USE_MSLL=1)
+    target_compile_definitions(ark_obj PRIVATE ARK_MSLL_INCLUDE_DIR=${MSLL_INCLUDE_DIRS})
 endif()
 
 target_sources(ark_obj PRIVATE ${SOURCES})

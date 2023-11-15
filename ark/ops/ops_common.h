@@ -126,17 +126,17 @@ typedef enum {
     OP_RECV,
     OP_SEND_MM,
     OP_RECV_MM,
-    OP_SEND_MSCCLPP,
-    OP_SEND_DONE_MSCCLPP,
-    OP_RECV_MSCCLPP,
+    OP_SEND_MSLL,
+    OP_SEND_DONE_MSLL,
+    OP_RECV_MSLL,
     OP_EMBEDDING,
-    OP_DEVICE_SYNC_MSCCLPP,
-    OP_READ_AND_REDUCE_MSCCLPP,
-    OP_GATHER_FROM_PEERS_MSCCLPP,
+    OP_DEVICE_SYNC_MSLL,
+    OP_READ_AND_REDUCE_MSLL,
+    OP_GATHER_FROM_PEERS_MSLL,
     OP_CAST,
-    OP_PUT_PACKET_MSCCLPP,
-    OP_REDUCE_AND_WRITE_PACKET_MSCCLPP,
-    OP_GET_FROM_PACKET_MSCCLPP,
+    OP_PUT_PACKET_MSLL,
+    OP_REDUCE_AND_WRITE_PACKET_MSLL,
+    OP_GET_FROM_PACKET_MSLL,
 } OpType;
 
 /// Type of hardware architecture support.
@@ -501,90 +501,88 @@ class RecvOp : public Op {
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppSendOp : public Op {
+class MsllSendOp : public Op {
    public:
-    MscclppSendOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
-                  int sid, int rank, int dst_rank, size_t bytes,
-                  const std::string &name);
+    MsllSendOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
+               int sid, int rank, int dst_rank, size_t bytes,
+               const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     // The args determined by the scheduler.
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppRecvOp : public Op {
+class MsllRecvOp : public Op {
    public:
-    MscclppRecvOp(const std::string &prec_type, Tensor *output,
-                  int sid, int rank, int src_rank, size_t bytes,
-                  const std::string &name);
+    MsllRecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
+               int src_rank, size_t bytes, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppSendDoneOp : public Op {
+class MsllSendDoneOp : public Op {
    public:
-    MscclppSendDoneOp(const std::string &prec_type, Tensor *input, int rank,
-                      int dst_rank, const std::string &name);
+    MsllSendDoneOp(const std::string &prec_type, Tensor *input, int rank,
+                   int dst_rank, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppDeviceSyncOp : public Op {
+class MsllDeviceSyncOp : public Op {
    public:
-    MscclppDeviceSyncOp(const std::string &prec_type, Tensor *input,
-                        Tensor *output, int nranks, const std::string &name);
+    MsllDeviceSyncOp(const std::string &prec_type, Tensor *input,
+                     Tensor *output, int nranks, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppReadAndReduceOp : public Op {
+class MsllReadAndReduceOp : public Op {
    public:
-    MscclppReadAndReduceOp(const std::string &prec_type, Tensor *local_buf,
-                           Tensor *cal_region_local,
-                           std::vector<Tensor *> remote_bufs, int sid, int rank,
-                           int npeers, size_t offset, size_t bytes,
-                           const std::string &name);
+    MsllReadAndReduceOp(const std::string &prec_type, Tensor *local_buf,
+                        Tensor *cal_region_local,
+                        std::vector<Tensor *> remote_bufs, int sid, int rank,
+                        int npeers, size_t offset, size_t bytes,
+                        const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppGatherFromPeersOp : public Op {
+class MsllGatherFromPeersOp : public Op {
    public:
-    MscclppGatherFromPeersOp(const std::string &prec_type, Tensor *local_buf,
-                             Tensor *trans_region_local,
-                             std::vector<Tensor *> remote_bufs, int sid,
-                             int rank, int npeers, size_t stride,
-                             const std::string &name);
+    MsllGatherFromPeersOp(const std::string &prec_type, Tensor *local_buf,
+                          Tensor *trans_region_local,
+                          std::vector<Tensor *> remote_bufs, int sid, int rank,
+                          int npeers, size_t stride, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppPutPacketOp : public Op {
+class MsllPutPacketOp : public Op {
    public:
-    MscclppPutPacketOp(const std::string &prec_type, Tensor *input,
-                       Tensor *local_tmp_buf, Tensor *recv_buf, int id,
-                       int rank, int dst_rank, size_t dst_offset, int flag,
-                       const std::string &name);
+    MsllPutPacketOp(const std::string &prec_type, Tensor *input,
+                    Tensor *local_tmp_buf, Tensor *recv_buf, int id, int rank,
+                    int dst_rank, size_t dst_offset, int flag,
+                    const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppReduceAndWritePacketOp : public Op {
+class MsllReduceAndWritePacketOp : public Op {
    public:
-    MscclppReduceAndWritePacketOp(const std::string &prec_type,
-                                  std::vector<Tensor *> inputs, Tensor *output,
-                                  int id, int rank, int npeers,
-                                  size_t elems_per_rank, size_t scratch_offset,
-                                  size_t remote_dst_offset, int flag,
-                                  const std::string &name);
+    MsllReduceAndWritePacketOp(const std::string &prec_type,
+                               std::vector<Tensor *> inputs, Tensor *output,
+                               int id, int rank, int npeers,
+                               size_t elems_per_rank, size_t scratch_offset,
+                               size_t remote_dst_offset, int flag,
+                               const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MscclppGetFromPacketOp : public Op {
+class MsllGetFromPacketOp : public Op {
    public:
-    MscclppGetFromPacketOp(const std::string &prec_type, Tensor *input,
-                           Tensor *output, size_t src_offset, size_t dst_offset,
-                           size_t npackets, int flag, const std::string &name);
+    MsllGetFromPacketOp(const std::string &prec_type, Tensor *input,
+                        Tensor *output, size_t src_offset, size_t dst_offset,
+                        size_t npackets, int flag, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

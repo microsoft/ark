@@ -20,9 +20,9 @@
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH ""
-#define DEFAULT_ARK_USE_MSCCLPP false
-#define DEFAULT_ARK_MSCCLPP_INCLUDE_DIR "/usr/local/mscclpp/include"
-#define DEFAULT_ARK_MSCCLPP_PORT 50051
+#define DEFAULT_ARK_USE_MSLL false
+#define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
+#define DEFAULT_ARK_MSLL_PORT 50051
 
 template <typename T>
 T env(const std::string &env_name, const T &default_val) {
@@ -79,13 +79,13 @@ Env::Env() {
     //
     this->enforce_kernel_code_path = env<std::string>(
         "ARK_ENFORCE_KERNEL_CODE_PATH", DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH);
-    // If `ARK_USE_MSCCLPP=1`, we use MSCCL++.
-    this->use_mscclpp = env<bool>("ARK_USE_MSCCLPP", DEFAULT_ARK_USE_MSCCLPP);
-    // Get the MSCCL++ include directory path.
-    this->mscclpp_include_dir =
-        env<std::string>("ARK_MSCCLPP_INCLUDE_DIR", DEFAULT_ARK_MSCCLPP_INCLUDE_DIR);
+    // If `ARK_USE_MSLL=1`, we use MSLL.
+    this->use_msll = env<bool>("ARK_USE_MSLL", DEFAULT_ARK_USE_MSLL);
+    // Get the MSLL include directory path.
+    this->msll_include_dir =
+        env<std::string>("ARK_MSLL_INCLUDE_DIR", DEFAULT_ARK_MSLL_INCLUDE_DIR);
     // Get the port number of MSLL.
-    this->mscclpp_port = env<int>("ARK_MSCCLPP_PORT", DEFAULT_ARK_MSCCLPP_PORT);
+    this->msll_port = env<int>("ARK_MSLL_PORT", DEFAULT_ARK_MSLL_PORT);
 }
 
 // Global Env.
