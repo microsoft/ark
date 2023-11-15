@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <algorithm>
 #include "gpu/gpu_comm_sw.h"
 
 #include <sys/mman.h>
@@ -16,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 #include <unordered_map>
 
