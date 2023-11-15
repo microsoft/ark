@@ -199,12 +199,12 @@ def test_module(
     # Compare the outputs
     eps = np.finfo(np.float64).eps
     np.set_printoptions(threshold=1000, linewidth=196)
-    if rank == 0:
-        for i, t in enumerate(res_ark.outputs):
-            print(t)
+    # if rank == 0:
+    #     for i, t in enumerate(res_ark.outputs):
+    #         print(t)
 
-        for i, t in enumerate(res_pt.outputs):
-            print(t)
+    #     for i, t in enumerate(res_pt.outputs):
+    #         print(t)
 
     for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
         shape = o_ark.shape
