@@ -269,6 +269,8 @@ class ParallelEmbedding(ark.Module):
     def forward(self, x):
         if self.world_size == 1:
             return ark.embedding(x, self.weight)
+        if os.environ.get("ARK_USE_MSLL", "0") == "0":
+            raise NotImplementedError("Do not support parallel embedding without MSLL")
         output_tensor = ark.tensor(
             [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
         )
@@ -283,7 +285,7 @@ class ParallelEmbedding(ark.Module):
         gather_reshape = ark.reshape(
             gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
         )
-        gather_out = ark.local_all_gather_mscclpp(
+        gather_out = ark.local_all_gather_msll(
             gather_reshape, self.local_rank, self.world_size, 1
         )
         return ark.reshape(
