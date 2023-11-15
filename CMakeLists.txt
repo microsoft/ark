@@ -105,9 +105,6 @@ include(FindIBVerbs)
 # Find NUMA
 include(FindNUMA)
 
-# Find NUMA
-include(FindNUMA)
-
 # Third party libraries
 add_subdirectory(third_party)
 
