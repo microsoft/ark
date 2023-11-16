@@ -3,7 +3,7 @@
 
 set(ARK_MAJOR "0")
 set(ARK_MINOR "4")
-set(ARK_PATCH "0")
+set(ARK_PATCH "1")
 
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
@@ -26,7 +26,7 @@ if(BYPASS_GPU_CHECK)
     elseif(USE_ROCM)
         message("Bypassing GPU check: using AMD/ROCm.")
         set(CMAKE_PREFIX_PATH "/opt/rocm;${CMAKE_PREFIX_PATH}")
-        find_package(hip REQUIRED)        
+        find_package(hip REQUIRED)
     else()
         message(FATAL_ERROR "Bypassing GPU check: neither NVIDIA/CUDA nor AMD/ROCm is specified.")
     endif()
