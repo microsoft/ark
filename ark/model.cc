@@ -104,7 +104,7 @@ std::vector<Tensor *> Model::Impl::add_op(Op &op) {
         this->tns_to_users[output_tensor] = {};
 
         // The current Op becomes a user (not producer) of the given output
-        // tensor.
+        // reference tensor.
         this->tns_to_users[tns].insert(op_ptr);
 
         output_tensors.push_back(output_tensor);
@@ -162,6 +162,67 @@ void Model::Impl::delete_op(Op *op) {
         // If there are multiple operators with the same name, we do not
         // decrease the counter to avoid conflicts when creating new operators
         // with the same name.
+    }
+}
+
+/// Replace a @ref Tensor with another @ref Tensor.
+/// @param tns the @ref Tensor to be replaced.
+/// @param new_tns the new @ref Tensor.
+void Model::Impl::replace_tensor(Tensor *tns, Tensor *new_tns) {
+    for (auto &user : this->tns_to_users[tns]) {
+        for (auto &input : user->inputs) {
+            if (input == tns) {
+                input = new_tns;
+            }
+        }
+        for (auto &output_ref : user->output_refs) {
+            if (output_ref == tns) {
+                output_ref = new_tns;
+            }
+        }
+        this->tns_to_users[new_tns].insert(user);
+    }
+    this->tns_to_users.erase(tns);
+
+    if (this->tns_to_producer.find(tns) != this->tns_to_producer.end()) {
+        Op *producer = this->tns_to_producer[tns];
+        for (auto &output : producer->outputs) {
+            if (output == tns) {
+                output = new_tns;
+            }
+        }
+        this->tns_to_producer[new_tns] = producer;
+        this->tns_to_producer.erase(tns);
+    }
+}
+
+/// Delete a @ref Tensor from the model.
+/// @param tns the @ref Tensor to be deleted.
+void Model::Impl::delete_tensor(Tensor *tns) {
+    // Should not delete if there is any user of this tensor.
+    if (!this->is_no_user(tns)) {
+        ERR(ModelError,
+            "Cannot delete a tensor that has users. Use "
+            "replace_tensor() first to replace the tensor with another one.");
+    }
+    // Should not delete if the producer still exists.
+    if (this->get_producer(tns) != nullptr) {
+        ERR(ModelError,
+            "Cannot delete a tensor that has a producer. Use "
+            "replace_tensor() or delete_op() first to delete the producer.");
+    }
+    // Remove the tensor from the model.
+    bool is_found = false;
+    auto it = this->tns_storage.begin();
+    for (; it != this->tns_storage.end(); ++it) {
+        if (it->get() == tns) {
+            this->tns_storage.erase(it);
+            is_found = true;
+            break;
+        }
+    }
+    if (!is_found) {
+        ERR(ModelError, "the given Tensor is not found");
     }
 }
 

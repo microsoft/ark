@@ -135,9 +135,11 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     model_impl->delete_op(&matmul_op);
 
     // Create a new matmul op with the optimized split_k.
-    Tensor *new_output = model.matmul(input_a, input_b, output_ref, split_k,
-                                      is_column_a, is_column_b, matmul_name);
-    // TODO: WIP
+    Tensor *tmp = model.matmul(input_a, input_b, output_ref, split_k,
+                               is_column_a, is_column_b, matmul_name);
+
+    model_impl->replace_tensor(tmp, output);
+    model_impl->delete_tensor(tmp);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized

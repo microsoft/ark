@@ -71,6 +71,15 @@ class Model::Impl {
     /// @param op the existing @ref Op to be deleted.
     void delete_op(Op *op);
 
+    /// Replace a @ref Tensor with another @ref Tensor.
+    /// @param tns the @ref Tensor to be replaced.
+    /// @param new_tns the new @ref Tensor.
+    void replace_tensor(Tensor *tns, Tensor *new_tns);
+
+    /// Delete a @ref Tensor from the model.
+    /// @param tns the @ref Tensor to be deleted.
+    void delete_tensor(Tensor *tns);
+
     /// Get references to all @ref TensorBuf objects.
     /// @return a list of @ref TensorBuf pointers.
     std::list<TensorBuf *> get_tensor_bufs() const;
