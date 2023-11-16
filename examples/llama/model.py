@@ -138,7 +138,9 @@ class ColumnParallelLinear(ark.Module):
                 [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
             )
             output_tensor_shards = ark.sharding(
-                output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
             )
             local_result = ark.identity(
                 output_tensor_shards[self.local_rank], deps=output_tensor_shards
@@ -270,7 +272,9 @@ class ParallelEmbedding(ark.Module):
         if self.world_size == 1:
             return ark.embedding(x, self.weight)
         if os.environ.get("ARK_USE_MSLL", "0") == "0":
-            raise NotImplementedError("Do not support parallel embedding without MSLL")
+            raise NotImplementedError(
+                "Do not support parallel embedding without MSLL"
+            )
         output_tensor = ark.tensor(
             [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
         )
