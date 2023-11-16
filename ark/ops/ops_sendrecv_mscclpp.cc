@@ -180,8 +180,8 @@ Tensor *Model::recv_mscclpp(int sid, int src_rank, size_t bytes, Tensor *output,
     if (bytes == 0) {
         bytes = max_bytes;
     }
-    MscclppRecvOp op{"none",               output, sid,
-                     this->impl->rank, src_rank, bytes,  name};
+    MscclppRecvOp op{"none",   output, sid, this->impl->rank,
+                     src_rank, bytes,  name};
     return this->impl->add_op(op)[0];
 }
 

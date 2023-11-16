@@ -65,8 +65,7 @@ void test_all_gather_8gpus_internal_mscclpp(size_t nelem, int iter) {
             for (size_t i = 0; i < nelem; ++i) {
                 data_buf[i] = ark::half_t(gpu_id + 1);
             }
-            auto outputs =
-                m.local_all_gather_mscclpp(data, gpu_id, num_gpus);
+            auto outputs = m.local_all_gather_mscclpp(data, gpu_id, num_gpus);
             auto result =
                 ark::op_test("all_gather", m, {data}, {outputs},
                              baseline_all_gather_mscclpp<ark::half_t, num_gpus>,

@@ -513,8 +513,8 @@ class MscclppSendOp : public Op {
 
 class MscclppRecvOp : public Op {
    public:
-    MscclppRecvOp(const std::string &prec_type, Tensor *output,
-                  int sid, int rank, int src_rank, size_t bytes,
+    MscclppRecvOp(const std::string &prec_type, Tensor *output, int sid,
+                  int rank, int src_rank, size_t bytes,
                   const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
@@ -589,9 +589,8 @@ class MscclppGetFromPacketOp : public Op {
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class SoftmaxOp : public Op
-{
-  public:
+class SoftmaxOp : public Op {
+   public:
     SoftmaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
               const std::string &name);
     std::string function_name(const OpConfig &cfg) const;

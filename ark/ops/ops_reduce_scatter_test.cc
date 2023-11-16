@@ -14,8 +14,7 @@ template <typename T, int NumGpus>
 void baseline_reduce_scatter(std::vector<void *> &outputs,
                              const std::vector<ark::Dims> &output_shapes,
                              const std::vector<void *> &,
-                             const std::vector<ark::Dims> &, int rank)
-{
+                             const std::vector<ark::Dims> &, int rank) {
     // Calculate sum from 1 to NumGpus.
     T expected = 0;
     for (int i = 1; i <= NumGpus; ++i) {
@@ -34,8 +33,7 @@ void baseline_reduce_scatter(std::vector<void *> &outputs,
     }
 }
 
-void test_reduce_scatter_internal(size_t nelem, int iter)
-{
+void test_reduce_scatter_internal(size_t nelem, int iter) {
     constexpr int num_gpus = 8;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem, iter]() {
@@ -62,14 +60,12 @@ void test_reduce_scatter_internal(size_t nelem, int iter)
     ark::unittest::wait_all_processes();
 }
 
-ark::unittest::State test_reduce_scatter()
-{
-    test_reduce_scatter_internal(1024*1024*32, 1);
+ark::unittest::State test_reduce_scatter() {
+    test_reduce_scatter_internal(1024 * 1024 * 32, 1);
     return ark::unittest::SUCCESS;
 }
 
-int main()
-{
+int main() {
     ark::init();
     UNITTEST(test_reduce_scatter);
     return ark::unittest::SUCCESS;

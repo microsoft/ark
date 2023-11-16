@@ -18,7 +18,7 @@
 #include "comm_mm.h"
 #ifdef ARK_USE_MSCCLPP
 #include "comm_mscclpp.h"
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
 #include "embedding.h"
 #include "im2col.h"
 #include "layernorm.h"

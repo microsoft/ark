@@ -70,8 +70,7 @@ bool SchedOpSeq::is_recv() const {
     return true;
 }
 
-bool SchedOpSeq::is_sync() const
-{
+bool SchedOpSeq::is_sync() const {
     for (auto &sop : this->seq) {
         if (sop.is_virtual()) {
             continue;
@@ -85,9 +84,9 @@ bool SchedOpSeq::is_sync() const
     return true;
 }
 
-bool SchedOpSeq::is_comm() const
-{
-    return this->is_send() || this->is_send_done() || this->is_recv() || this->is_sync();
+bool SchedOpSeq::is_comm() const {
+    return this->is_send() || this->is_send_done() || this->is_recv() ||
+           this->is_sync();
 }
 
 bool SchedOpSeq::append(const Op *op, const OpConfig *cfg) {

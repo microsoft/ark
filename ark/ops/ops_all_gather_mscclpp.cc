@@ -17,8 +17,8 @@ MscclppGatherFromPeersOp::MscclppGatherFromPeersOp(
     std::vector<Tensor *> remote_bufs, int sid, int rank, int npeers,
     size_t stride, const std::string &name)
     : Op(OP_GATHER_FROM_PEERS_MSCCLPP, prec_type, remote_bufs,
-         {trans_region_local, local_buf}, {{rank, npeers, sid, stride}},
-         name, &MscclppGatherFromPeersConfigMap, -1, true) {}
+         {trans_region_local, local_buf}, {{rank, npeers, sid, stride}}, name,
+         &MscclppGatherFromPeersConfigMap, -1, true) {}
 
 std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const {
     Tensor *dst_buff = this->outputs[0];
@@ -94,21 +94,14 @@ Tensor *Model::gather_from_peers_mscclpp(Tensor *input, Tensor *tile, int sid,
     if (input->type == FP16) {
         pt = "fp16";
     }
-    MscclppGatherFromPeersOp op{pt,
-                                input,
-                                tile,
-                                remote_bufs,
-                                sid,
-                                this->impl->rank,
-                                npeers,
-                                stride,
-                                name};
+    MscclppGatherFromPeersOp op{pt,          input,  tile,
+                                remote_bufs, sid,    this->impl->rank,
+                                npeers,      stride, name};
     return this->impl->add_op(op)[1];
 }
 
 Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id,
-                                        int ngpus_per_node,
-                                        int axis,
+                                        int ngpus_per_node, int axis,
                                         const std::string &name) {
     assert(input != nullptr);
     if (!input->is_sequential()) {
@@ -124,7 +117,8 @@ Tensor *Model::local_all_gather_mscclpp(Tensor *input, int gpu_id,
     Tensor *tensor = this->device_sync_mscclpp(input, ngpus_per_node);
     // seems we can change the offset of input for the input based on gpu id
     assert(tensor->shape.size() % ngpus_per_node == 0);
-    std::vector<Tensor*> shards = this->sharding(tensor, axis, tensor->shape[axis] / ngpus_per_node);
+    std::vector<Tensor *> shards =
+        this->sharding(tensor, axis, tensor->shape[axis] / ngpus_per_node);
     size_t stride = tensor->shape[tensor->ndims() - 1] * tensor->type_bytes();
     if (tensor->ndims() == 1) {
         stride = tensor->shape_bytes() / ngpus_per_node;

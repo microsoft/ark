@@ -72,7 +72,8 @@ DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
 #pragma unroll
     for (int i = 0; i < 4; ++i) {
         union {
-            __half2 h2; uint32_t u32;
+            __half2 h2;
+            uint32_t u32;
         } d, s;
         d.h2 = pd[i];
         s.h2 = ps[i];
@@ -164,14 +165,15 @@ DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
     constexpr int total_threads = total_tiles * NumThreads;
     constexpr size_t nInt4 = Length / sizeof(int4);
     const int tid = uop_idx * NumThreads + UnitOp::thread_id();
-    BytesPack<16> *dst = reinterpret_cast<BytesPack<16> *>(
-        (uint8_t *)src + Offset);
+    BytesPack<16> *dst =
+        reinterpret_cast<BytesPack<16> *>((uint8_t *)src + Offset);
     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
                              src_offset_3, src_offset_4, src_offset_5,
                              src_offset_6};
     for (int i = 0; i < NPeers; ++i) {
         int chan_idx = (Rank + i) % NPeers;
-        const size_t index_offset4 = (peer_offsets[chan_idx] + Offset) / sizeof(int4);
+        const size_t index_offset4 =
+            (peer_offsets[chan_idx] + Offset) / sizeof(int4);
         union {
             BytesPack<16> data;
             int4 val;
@@ -208,8 +210,8 @@ DEVICE void gather_from_peers_mscclpp(
     // if (tid == 0 && uop_idx == 1) {
     //   printf("tile hid %d, tile wid %d offset in width %lld bytes per width "
     //          "%lld output width %lld shape width %lld\n",
-    //          tile_hid, tile_wid, offset_in_width, bytes_per_width, output_width,
-    //          shape_width);
+    //          tile_hid, tile_wid, offset_in_width, bytes_per_width,
+    //          output_width, shape_width);
     // }
     size_t peer_offsets[] = {target_offset_0, target_offset_1, target_offset_2,
                              target_offset_3, target_offset_4, target_offset_5,
@@ -220,19 +222,19 @@ DEVICE void gather_from_peers_mscclpp(
         int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
         for (int j = tile_hid * UnitOutDims::H;
              j < tile_hid * UnitOutDims::H + UnitOutDims::H; ++j) {
-          size_t offset =
-              shape_width * remote_rank + j * stride + offset_in_width;
-        //   if (tid == 0 && uop_idx == 1) {
-        //     printf("chan idx %d, remote rank %d, offset %lld\n", chan_idx,
-        //            remote_rank, offset);
-        //   }
-          _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-                                      ori_offset + offset, bytes_per_width, tid,
-                                      NumThreads);
+            size_t offset =
+                shape_width * remote_rank + j * stride + offset_in_width;
+            //   if (tid == 0 && uop_idx == 1) {
+            //     printf("chan idx %d, remote rank %d, offset %lld\n",
+            //     chan_idx,
+            //            remote_rank, offset);
+            //   }
+            _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
+                                        ori_offset + offset, bytes_per_width,
+                                        tid, NumThreads);
         }
     }
 }
-
 
 template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
           unsigned int DstRank, unsigned int Rank, unsigned long long DstOffset,
@@ -288,7 +290,8 @@ DEVICE void reduce_and_write_packet_mscclpp(
             mscclpp::LLPacket *dst_pkt =
                 (mscclpp::LLPacket *)((char *)_ARK_SM_CHANS[index].dst_ +
                                       peer_offsets[index] + RemoteDstOffset);
-            dst_pkt[idx + Rank * npackets_per_rank].write(data.u32[0], data.u32[1], Flag);
+            dst_pkt[idx + Rank * npackets_per_rank].write(data.u32[0],
+                                                          data.u32[1], Flag);
         }
     }
 }

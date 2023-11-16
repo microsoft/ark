@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <algorithm>
 #include "gpu/gpu_comm_sw.h"
 
 #include <sys/mman.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cerrno>
 #include <list>
@@ -15,8 +15,8 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "cpu_timer.h"
 #include "env.h"
@@ -32,8 +32,7 @@
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
-#endif // ARK_USE_MSCCLPP
-
+#endif  // ARK_USE_MSCCLPP
 
 using namespace std;
 
@@ -90,60 +89,54 @@ class GpuCommSw::Impl {
     GpuPtr get_request_ref() const;
     bool is_using_ib() const { return net_ib_mgr_ != nullptr; }
 
-    const void *get_proxy_channels_ref() const
-    {
+    const void *get_proxy_channels_ref() const {
 #ifdef ARK_USE_MSCCLPP
         return this->proxy_channels.data();
 #else
         return nullptr;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     }
 
-    int get_proxy_channels_bytes() const
-    {
+    int get_proxy_channels_bytes() const {
 #ifdef ARK_USE_MSCCLPP
         return this->proxy_channels.size() *
                sizeof(mscclpp::DeviceHandle<mscclpp::SimpleProxyChannel>);
 #else
         return 0;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     }
 
-    int get_proxy_channels_num() const
-    {
+    int get_proxy_channels_num() const {
 #ifdef ARK_USE_MSCCLPP
         return this->proxy_channels.size();
 #else
         return 0;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     }
 
-    int get_sm_channels_num() const
-    {
+    int get_sm_channels_num() const {
 #ifdef ARK_USE_MSCCLPP
         return this->sm_channel_handles.size();
 #else
         return 0;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     }
 
-    const void *get_sm_channels_ref() const
-    {
+    const void *get_sm_channels_ref() const {
 #ifdef ARK_USE_MSCCLPP
         return this->sm_channel_handles.data();
 #else
         return nullptr;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     }
 
-    int get_sm_channels_bytes() const
-    {
+    int get_sm_channels_bytes() const {
 #ifdef ARK_USE_MSCCLPP
         return this->sm_channel_handles.size() *
                sizeof(mscclpp::DeviceHandle<mscclpp::SmChannel>);
 #else
         return 0;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     }
 
    private:
@@ -183,7 +176,7 @@ class GpuCommSw::Impl {
         proxy_channels;
     std::vector<mscclpp::SmChannel> sm_channels;
     std::vector<mscclpp::DeviceHandle<mscclpp::SmChannel>> sm_channel_handles;
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
 };
 
 //
@@ -237,7 +230,7 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
         this->comm = std::make_shared<mscclpp::Communicator>(this->bootstrap);
         this->proxy_service = std::make_shared<mscclpp::ProxyService>();
     }
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
 }
 
 GpuCommSw::Impl::~Impl() {
@@ -466,7 +459,8 @@ void GpuCommSw::Impl::configure(
                 transport = ibTransport;
             }
             // order is matter, we need to connect first and then send memory
-            connectionFutures.push_back(this->comm->connectOnSetup(r, 0, transport));
+            connectionFutures.push_back(
+                this->comm->connectOnSetup(r, 0, transport));
             this->comm->sendMemoryOnSetup(local_reg_memory, r, 0);
             auto remote_memory = this->comm->recvMemoryOnSetup(r, 0);
             remote_reg_memories.push_back(remote_memory);
@@ -515,29 +509,28 @@ void GpuCommSw::Impl::configure(
         auto getChannelDeviceHandle =
             [](const std::vector<mscclpp::SmChannel> &in,
                std::vector<mscclpp::DeviceHandle<mscclpp::SmChannel>> &out) {
-                return std::transform(in.begin(), in.end(), out.begin(),
-                                      [](const mscclpp::SmChannel &smChannel) {
-                                          return mscclpp::deviceHandle(
-                                              smChannel);
-                                      });
+                return std::transform(
+                    in.begin(), in.end(), out.begin(),
+                    [](const mscclpp::SmChannel &smChannel) {
+                        return mscclpp::deviceHandle(smChannel);
+                    });
             };
         this->sm_channel_handles.resize(this->sm_channels.size());
         getChannelDeviceHandle(this->sm_channels, this->sm_channel_handles);
     }
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
 
     LOG(DEBUG, "RANK ", rank_, " config done");
 }
 
 //
-void GpuCommSw::Impl::launch_request_loop()
-{
+void GpuCommSw::Impl::launch_request_loop() {
 #ifdef ARK_USE_MSCCLPP
     if (get_env().use_mscclpp) {
         this->proxy_service->startProxy();
         return;
     }
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     if (request_loop_thread_ == nullptr) {
         run_request_loop_thread_ = true;
         request_loop_thread_ = new thread([&, gid = gpu_id_] {
@@ -728,14 +721,13 @@ void GpuCommSw::Impl::request_loop() {
 }
 
 //
-void GpuCommSw::Impl::stop_request_loop()
-{
+void GpuCommSw::Impl::stop_request_loop() {
 #ifdef ARK_USE_MSCCLPP
     if (get_env().use_mscclpp) {
         this->proxy_service->stopProxy();
         return;
     }
-#endif // ARK_USE_MSCCLPP
+#endif  // ARK_USE_MSCCLPP
     run_request_loop_thread_ = false;
     if (request_loop_thread_ != nullptr) {
         if (request_loop_thread_->joinable()) {
@@ -836,40 +828,29 @@ GpuPtr GpuCommSw::get_request_ref() const {
     return this->impl->get_request_ref();
 }
 
-bool GpuCommSw::is_using_ib() const
-{
-    return this->impl->is_using_ib();
-}
+bool GpuCommSw::is_using_ib() const { return this->impl->is_using_ib(); }
 
-const void *GpuCommSw::get_proxy_channels_ref() const
-{
+const void *GpuCommSw::get_proxy_channels_ref() const {
     return this->impl->get_proxy_channels_ref();
 }
 
-int GpuCommSw::get_proxy_channels_bytes() const
-{
+int GpuCommSw::get_proxy_channels_bytes() const {
     return this->impl->get_proxy_channels_bytes();
 }
 
-int GpuCommSw::get_proxy_channels_num() const
-{
+int GpuCommSw::get_proxy_channels_num() const {
     return this->impl->get_proxy_channels_num();
 }
 
-const void *GpuCommSw::get_sm_channels_ref() const
-{
+const void *GpuCommSw::get_sm_channels_ref() const {
     return this->impl->get_sm_channels_ref();
 }
 
-
-int GpuCommSw::get_sm_channels_num() const
-{
+int GpuCommSw::get_sm_channels_num() const {
     return this->impl->get_sm_channels_num();
-
 }
 
-int GpuCommSw::get_sm_channels_bytes() const
-{
+int GpuCommSw::get_sm_channels_bytes() const {
     return this->impl->get_sm_channels_bytes();
 }
-}// namespace ark
+}  // namespace ark

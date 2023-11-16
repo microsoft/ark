@@ -82,8 +82,8 @@ Env::Env() {
     // If `ARK_USE_MSCCLPP=1`, we use MSCCL++.
     this->use_mscclpp = env<bool>("ARK_USE_MSCCLPP", DEFAULT_ARK_USE_MSCCLPP);
     // Get the MSCCL++ include directory path.
-    this->mscclpp_include_dir =
-        env<std::string>("ARK_MSCCLPP_INCLUDE_DIR", DEFAULT_ARK_MSCCLPP_INCLUDE_DIR);
+    this->mscclpp_include_dir = env<std::string>(
+        "ARK_MSCCLPP_INCLUDE_DIR", DEFAULT_ARK_MSCCLPP_INCLUDE_DIR);
     // Get the port number of MSLL.
     this->mscclpp_port = env<int>("ARK_MSCCLPP_PORT", DEFAULT_ARK_MSCCLPP_PORT);
 }

@@ -3,10 +3,9 @@
 
 #include <cassert>
 
+#include "env.h"
 #include "logging.h"
 #include "model.h"
-#include "env.h"
-#include <cassert>
 
 namespace ark {
 
@@ -109,8 +108,7 @@ OpArgs RecvOp::function_call_args(const OpConfig &) const { return {}; }
 
 //
 Tensor *Model::send(Tensor *input, int id, int dst_rank, size_t bytes,
-                    const std::string &name)
-{
+                    const std::string &name) {
     if (get_env().use_mscclpp) {
         return this->send_mscclpp(input, id, dst_rank, bytes, name);
     }

@@ -186,7 +186,10 @@ def worker(args: argparse.Namespace, rank: int):
             logprobs=False,
             echo=False,
         )
-        output_text = [{"generation": generator.tokenizer.decode(t)} for t in generation_tokens]
+        output_text = [
+            {"generation": generator.tokenizer.decode(t)}
+            for t in generation_tokens
+        ]
         if rank == 0:
             log(f"{output_text}")
         return

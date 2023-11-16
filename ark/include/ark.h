@@ -483,7 +483,8 @@ class Model {
                     const std::string &name = "recv_mm");
     //
     Tensor *send_mscclpp(Tensor *input, int sid, int dst_rank,
-                         std::size_t bytes = 0, const std::string &name = "send_mscclpp");
+                         std::size_t bytes = 0,
+                         const std::string &name = "send_mscclpp");
     //
     Tensor *send_done_mscclpp(Tensor *input, int dst_rank,
                               const std::string &name = "send_done_mscclpp");
@@ -528,13 +529,12 @@ class Model {
 
     // local all gather
     Tensor *local_all_gather_mscclpp(
-        Tensor *input, int gpu_id, int ngpus_per_node,
-        int axis = 0,
+        Tensor *input, int gpu_id, int ngpus_per_node, int axis = 0,
         const std::string &name = "local_all_gather_mscclpp");
     // read data from remote and reduce to current buffer
-    Tensor *read_and_reduce_mscclpp(Tensor *input, int sid, int npeers,
-                                    size_t offset, size_t bytes,
-                                    const std::string &name="read_and_reduce_mscclpp");
+    Tensor *read_and_reduce_mscclpp(
+        Tensor *input, int sid, int npeers, size_t offset, size_t bytes,
+        const std::string &name = "read_and_reduce_mscclpp");
     // gather from peers
     Tensor *gather_from_peers_mscclpp(
         Tensor *input, Tensor *tile, int sid, int npeers, size_t chunkBytes,

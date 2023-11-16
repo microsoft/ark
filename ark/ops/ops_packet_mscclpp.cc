@@ -3,8 +3,8 @@
 
 #include <cassert>
 
-#include "model.h"
 #include "logging.h"
+#include "model.h"
 
 #ifdef ARK_USE_MSCCLPP
 #include <mscclpp/packet.hpp>
@@ -13,8 +13,7 @@ constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
 constexpr int MSCCLPP_PACKET_SIZE = 16;
 #endif
 
-
-namespace ark{
+namespace ark {
 
 extern const OpConfigMap MscclppPacketConfigMap;
 constexpr int MAX_PEER_NUM = 7;
@@ -139,8 +138,7 @@ std::string MscclppReduceAndWritePacketOp::function_name(
     this->args.get(&remote_dst_offset, 5);
     this->args.get(&flag, 6);
 
-    Dims shape_dims = {1, 1, 1,
-                       static_cast<ark::DimType>(elems_per_rank)};
+    Dims shape_dims = {1, 1, 1, static_cast<ark::DimType>(elems_per_rank)};
     const OpTile &tile_out = cfg.output_tiles[0];
     size_t nelems_per_tile = tile_out.x * tile_out.y > shape_dims.size()
                                  ? shape_dims.size()
@@ -283,8 +281,7 @@ std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
                              }});
 }
 
-OpArgs MscclppGetFromPacketOp::function_call_args(
-    const OpConfig &) const {
+OpArgs MscclppGetFromPacketOp::function_call_args(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -333,4 +330,4 @@ const OpConfigMap MscclppPacketConfigMap = {
        false}}},
 };
 
-} // namespace ark
+}  // namespace ark
