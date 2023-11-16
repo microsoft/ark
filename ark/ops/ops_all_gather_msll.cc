@@ -17,8 +17,8 @@ MsllGatherFromPeersOp::MsllGatherFromPeersOp(
     std::vector<Tensor *> remote_bufs, int sid, int rank, int npeers,
     size_t stride, const std::string &name)
     : Op(OP_GATHER_FROM_PEERS_MSLL, prec_type, remote_bufs,
-         {trans_region_local, local_buf}, {{rank, npeers, sid, stride}},
-         name, &MsllGatherFromPeersConfigMap, -1, true) {}
+         {trans_region_local, local_buf}, {{rank, npeers, sid, stride}}, name,
+         &MsllGatherFromPeersConfigMap, -1, true) {}
 
 std::string MsllGatherFromPeersOp::function_name(const OpConfig &cfg) const {
     Tensor *dst_buff = this->outputs[0];

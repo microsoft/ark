@@ -6,8 +6,6 @@
 #include "env.h"
 #include "logging.h"
 #include "model.h"
-#include "env.h"
-#include <cassert>
 
 namespace ark {
 

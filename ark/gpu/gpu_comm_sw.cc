@@ -15,8 +15,8 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "cpu_timer.h"
 #include "env.h"

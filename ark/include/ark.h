@@ -528,8 +528,7 @@ class Model {
 
     // local all gather
     Tensor *local_all_gather_msll(
-        Tensor *input, int gpu_id, int ngpus_per_node,
-        int axis = 0,
+        Tensor *input, int gpu_id, int ngpus_per_node, int axis = 0,
         const std::string &name = "local_all_gather_msll");
     // read data from remote and reduce to current buffer
     Tensor *read_and_reduce_msll(

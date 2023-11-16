@@ -10,7 +10,6 @@
 #include "gpu/gpu_logging.h"
 #include "logging.h"
 #include "random.h"
-#include "env.h"
 #include "unittest/unittest_utils.h"
 
 namespace ark {
