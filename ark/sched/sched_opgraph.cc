@@ -135,8 +135,10 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
     OPGRAPH_DEBUG("remove virtual ops");
     std::list<OpNode *> new_boundary_nodes;
     for (auto &boundary_node : boundary_nodes) {
-        if (boundary_node->ops.size() != 1) {
-            ERR(SchedulerError, "unexpected error");
+        if (boundary_node->ops.size() == 0) {
+            ERR(SchedulerError, "unexpected error: empty OpNode");
+        } else if (boundary_node->ops.size() > 1) {
+            ERR(SchedulerError, "unexpected error: multiple Ops in OpNode");
         }
         OPGRAPH_DEBUG("  boundary node");
         OPGRAPH_DEBUG("    op: ", boundary_node->get_name());

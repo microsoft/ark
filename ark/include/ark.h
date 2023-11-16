@@ -132,7 +132,7 @@ class TensorBuf {
 
     DimType bytes;
     int id;
-    bool immutable = false;
+    bool immutable = true;
 
    protected:
     void *buf = nullptr;
