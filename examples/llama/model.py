@@ -95,9 +95,13 @@ class RMSNorm(ark.Module):
 
     def forward(self, x):
         x = ark.cast(x, ark.fp32)
-        output = self._norm(x)
-        output = ark.mul(output, self.weight)
-        return ark.cast(output, self.dtype)
+        # output = self._norm(x)
+        x2 = ark.mul(x, x)
+        mean = ark.reduce_mean(x2, axis=-1)
+        rrms = ark.rsqrt(mean)
+        x = ark.mul(x, rrms)
+        x = ark.mul(x, self.weight, x)
+        return ark.cast(x, self.dtype)
 
 
 class ColumnParallelLinear(ark.Module):

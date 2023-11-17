@@ -473,6 +473,8 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const ExpOp *>(this)->function_name(cfg);
         case OP_SQRT:
             return static_cast<const SqrtOp *>(this)->function_name(cfg);
+        case OP_RSQRT:
+            return static_cast<const RsqrtOp *>(this)->function_name(cfg);
         case OP_ROPE:
             return static_cast<const RopeOp *>(this)->function_name(cfg);
         case OP_EMBEDDING:

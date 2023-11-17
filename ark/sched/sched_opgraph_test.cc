@@ -130,22 +130,19 @@ ark::unittest::State test_sched_opgraph() {
 
     // OpNode graph (parentheses indicate a OpNode):
     //
-    //              +----------------------+
-    //              |                      |
-    //   (AddOp,) --+--> (AddOp,ReluOp,) --+--> (AddOp,)
+    //   (AddOp,AddOp,ReluOp,AddOp,)
     //
 
     graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
+    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
 
     auto nodes_iter = graph.get_nodes().begin();
     node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->outputs[0], t3);
-    UNITTEST_EQ(node->ops[1]->outputs[0], t4);
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->outputs[0], t5);
+    UNITTEST_EQ(node->ops[1]->outputs[0], t3);
+    UNITTEST_EQ(node->ops[2]->outputs[0], t4);
+    UNITTEST_EQ(node->ops[3]->outputs[0], t5);
 
     // Test an Op that uses outputs from multiple previous Ops.
     // Model graph (omit leftmost part):
@@ -175,11 +172,9 @@ ark::unittest::State test_sched_opgraph() {
 
     // OpNode graph (parentheses indicate a OpNode):
     //
-    //              +----------------------+
-    //              |                      |
-    //   (AddOp,) --+--> (AddOp,ReluOp,) --+--> (AddOp,) --+
-    //                                                     |
-    //                                          (AddOp,) --+--> (AddOp,)
+    //   (AddOp,) --> (AddOp,ReluOp,AddOp,) --+
+    //                                        |
+    //                             (AddOp,) --+--> (AddOp,)
     //
 
     graph = ark::OpGraph(model);

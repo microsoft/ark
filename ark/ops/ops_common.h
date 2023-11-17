@@ -112,6 +112,7 @@ typedef enum {
     OP_SIGMOID,
     OP_EXP,
     OP_SQRT,
+    OP_RSQRT,
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
@@ -318,10 +319,27 @@ class ExpOp : public Op {
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class SqrtOp : public Op {
+class MathOp : public Op {
+   public:
+    MathOp(const OpType &type, const std::string &prec_type, Tensor *input,
+           Tensor *output, const std::string &name);
+
+   protected:
+    std::string function_name(const OpConfig &cfg,
+                              const std::string &type) const;
+};
+
+class SqrtOp : public MathOp {
    public:
     SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class RsqrtOp : public MathOp {
+   public:
+    RsqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
+            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 

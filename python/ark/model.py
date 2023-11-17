@@ -470,6 +470,19 @@ def sqrt(input: Tensor, output: Tensor = None, name: str = "sqrt") -> Tensor:
 
 
 @register_op
+def rsqrt(input: Tensor, output: Tensor = None, name: str = "rsqrt") -> Tensor:
+    """
+    Calculates the square root of the `input` tensor, element-wise.
+    Usage:
+    tensor_rsqrt = ark.rsqrt(tensor)
+    """
+    if output is not None:
+        output = output._tensor
+    _tensor = Model.get_model().rsqrt(input._tensor, output, name)
+    return Tensor(_tensor)
+
+
+@register_op
 def rope(
     input: Tensor, other: Tensor, output: Tensor = None, name: str = "rope"
 ) -> Tensor:

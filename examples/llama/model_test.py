@@ -167,6 +167,7 @@ def test_module(
 
     if not test_thru_ark_only:
         # PyTorch module
+        torch.set_default_dtype(torch.float16)
         module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
 
         # Run the PyTorch module
@@ -179,11 +180,12 @@ def test_module(
 
         if test_thru:
             print(
-                f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+                f"  PyTorch: {res_pt.runtime:.4f} seconds ({(res_pt.runtime / test_thru_iterations):.6f} seconds/iter)\n"
+                f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
             )
             return
     elif test_thru:
-        print(f"  ARK: {res_ark.runtime:.4f} seconds")
+        print(f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)")
         return
 
     # Compare the outputs
@@ -236,7 +238,7 @@ def test_rmsnorm(
             low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
         ).astype(dtype)
     ]
-    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
+    inputs_pt = [i.astype(np.float16) for i in inputs_ark]
 
     test_module(
         module_class_ark=model_ark.RMSNorm,
@@ -270,7 +272,7 @@ def test_row_parallel_linear(
             size=(batch_size, seq_len, args.dim // args.n_heads * args.n_heads),
         ).astype(dtype)
     ]
-    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
+    inputs_pt = [i.astype(np.float16) for i in inputs_ark]
 
     if world_size == 1:
         test_module(
@@ -310,7 +312,7 @@ def test_column_parallel_linear(
             low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
         ).astype(dtype)
     ]
-    inputs_pt = [i.astype(np.float32) for i in inputs_ark]
+    inputs_pt = [i.astype(np.float16) for i in inputs_ark]
 
     if world_size == 1:
         test_module(
@@ -367,7 +369,7 @@ def test_attention(
             inputs_ark=[feature, 0, freqs_cis_ark, None],
             module_class_pt=model_pt.Attention,
             module_args_pt=[args],
-            inputs_pt=[feature.astype(np.float32), 0, freqs_cis, None],
+            inputs_pt=[feature, 0, freqs_cis, None],
             module_name_prefix="layers.0.attention",
         )
 
@@ -404,7 +406,7 @@ def test_transformer_block(
             inputs_ark=[feature, 0, freqs_cis_ark, None],
             module_class_pt=model_pt.TransformerBlock,
             module_args_pt=[0, args],
-            inputs_pt=[feature.astype(np.float32), 0, freqs_cis, None],
+            inputs_pt=[feature, 0, freqs_cis, None],
             module_name_prefix="layers.0",
         )
 

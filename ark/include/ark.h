@@ -410,12 +410,19 @@ class Model {
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
+    //
+    template <typename MathOpType>
+    Tensor *math(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "math");
     // Calculates the exponential of the `input` tensor, element-wise.
     Tensor *exp(Tensor *input, Tensor *output = nullptr,
                 const std::string &name = "exp");
     // Calculates the square root of the `input` tensor, element-wise.
     Tensor *sqrt(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "sqrt");
+    // Calculates the reverse square root of the `input` tensor, element-wise.
+    Tensor *rsqrt(Tensor *input, Tensor *output = nullptr,
+                  const std::string &name = "rsqrt");
     // ReLU activation
     Tensor *relu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");

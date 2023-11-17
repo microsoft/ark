@@ -9,34 +9,45 @@
 
 namespace ark {
 
-template <typename _IntrinsicType, typename _InShape, typename _InputType,
-          typename _OutputType, int _NelemPerThread>
+template <typename _IntrinsicType, typename _InShape, bool _IsHConsec,
+          typename _InputType, typename _OutputType, int _NelemPerThread>
 struct Broadcast1Intrinsic {
     using InputType = _InputType;
     using OutputType = _OutputType;
     static const int NelemPerThread = _NelemPerThread;
+    static const bool BroadcastInput =
+        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
 
     static DEVICE void compute(OutputType *out, const InputType *in) {
-        if (_InShape::W == 1) {
-            *out = _IntrinsicType::compute(*in);
+        *out = _IntrinsicType::compute(*in);
+        if constexpr (BroadcastInput) {
+#pragma unroll
+            for (int i = 1; i < NelemPerThread; ++i) {
+                out[i] = _IntrinsicType::compute(*in);
+            }
         } else {
 #pragma unroll
-            for (int i = 0; i < NelemPerThread; ++i) {
+            for (int i = 1; i < NelemPerThread; ++i) {
                 out[i] = _IntrinsicType::compute(in[i]);
             }
         }
     }
 };
 
-template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, float, float, 2> {
+template <typename _IntrinsicType, typename _InShape, bool _IsHConsec>
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, _IsHConsec, float, float,
+                           2> {
     using InputType = float;
     using OutputType = float;
     static const int NelemPerThread = 2;
+    static const bool BroadcastInput =
+        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
 
     static DEVICE void compute(float *out, const float *in) {
-        if (_InShape::W == 1) {
-            *out = _IntrinsicType::compute(*in);
+        if constexpr (BroadcastInput) {
+            float2 *pout = (float2 *)out;
+            pout->x = _IntrinsicType::compute(*in);
+            pout->y = _IntrinsicType::compute(*in);
         } else {
             float2 *pout = (float2 *)out;
             float2 *pin = (float2 *)in;
@@ -46,53 +57,72 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, float, float, 2> {
     }
 };
 
-template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, float, float, 4> {
+template <typename _IntrinsicType, typename _InShape, bool _IsHConsec>
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, _IsHConsec, float, float,
+                           4> {
     using InputType = float;
     using OutputType = float;
     static const int NelemPerThread = 4;
+    static const bool BroadcastInput =
+        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
 
     static DEVICE void compute(float *out, const float *in) {
-        if (_InShape::W == 1) {
-            *out = _IntrinsicType::compute(*in);
+        if constexpr (BroadcastInput) {
+            longlong2 reg_out;
+            float4 *pout = (float4 *)&reg_out;
+            pout->x = _IntrinsicType::compute(*in);
+            pout->y = _IntrinsicType::compute(*in);
+            pout->z = _IntrinsicType::compute(*in);
+            pout->w = _IntrinsicType::compute(*in);
+            store_128b((longlong2 *)out, reg_out);
         } else {
             longlong2 reg_out;
             longlong2 reg_in = load_128b((const longlong2 *)in);
             float4 *pout = (float4 *)&reg_out;
             float4 *pin = (float4 *)&reg_in;
-            pout->w = _IntrinsicType::compute(pin->w);
             pout->x = _IntrinsicType::compute(pin->x);
             pout->y = _IntrinsicType::compute(pin->y);
             pout->z = _IntrinsicType::compute(pin->z);
+            pout->w = _IntrinsicType::compute(pin->w);
             store_128b((longlong2 *)out, reg_out);
         }
     }
 };
 
-template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 2> {
+template <typename _IntrinsicType, typename _InShape, bool _IsHConsec>
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, _IsHConsec, fp16, fp16,
+                           2> {
     using InputType = fp16;
     using OutputType = fp16;
     static const int NelemPerThread = 2;
+    static const bool BroadcastInput =
+        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
 
     static DEVICE void compute(fp16 *out, const fp16 *in) {
-        if (_InShape::W == 1) {
-            *out = _IntrinsicType::compute(*in);
+        if constexpr (BroadcastInput) {
+            *(fp16x2 *)out = _IntrinsicType::compute(__half2half2(*in));
         } else {
             *(fp16x2 *)out = _IntrinsicType::compute(*(fp16x2 *)in);
         }
     }
 };
 
-template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 4> {
+template <typename _IntrinsicType, typename _InShape, bool _IsHConsec>
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, _IsHConsec, fp16, fp16,
+                           4> {
     using InputType = fp16;
     using OutputType = fp16;
     static const int NelemPerThread = 4;
+    static const bool BroadcastInput =
+        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
 
     static DEVICE void compute(fp16 *out, const fp16 *in) {
-        if (_InShape::W == 1) {
-            *out = _IntrinsicType::compute(*in);
+        if constexpr (BroadcastInput) {
+            uint64_t reg_out;
+            fp16x2 *pout = (fp16x2 *)&reg_out;
+            pout[0] = _IntrinsicType::compute(__half2half2(*in));
+            pout[1] = _IntrinsicType::compute(__half2half2(*in));
+            *(uint64_t *)out = reg_out;
         } else {
             uint64_t reg_in = *(uint64_t *)in;
             uint64_t reg_out;
@@ -105,15 +135,24 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 4> {
     }
 };
 
-template <typename _IntrinsicType, typename _InShape>
-struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 8> {
+template <typename _IntrinsicType, typename _InShape, bool _IsHConsec>
+struct Broadcast1Intrinsic<_IntrinsicType, _InShape, _IsHConsec, fp16, fp16,
+                           8> {
     using InputType = fp16;
     using OutputType = fp16;
     static const int NelemPerThread = 8;
+    static const bool BroadcastInput =
+        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
 
     static DEVICE void compute(fp16 *out, const fp16 *in) {
-        if (_InShape::W == 1) {
-            *out = _IntrinsicType::compute(*in);
+        if constexpr (BroadcastInput) {
+            longlong2 reg_out;
+            fp16x2 *pout = (fp16x2 *)&reg_out;
+            pout[0] = _IntrinsicType::compute(__half2half2(*in));
+            pout[1] = _IntrinsicType::compute(__half2half2(*in));
+            pout[2] = _IntrinsicType::compute(__half2half2(*in));
+            pout[3] = _IntrinsicType::compute(__half2half2(*in));
+            store_128b((longlong2 *)out, reg_out);
         } else {
             longlong2 reg_in = load_128b((const longlong2 *)in);
             longlong2 reg_out;
@@ -358,17 +397,13 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
 // Static checker if InShape can be broadcasted into OutShape.
 template <typename InShape, typename OutShape>
 struct BroadcastShapeChecker1 {
-    static_assert(InShape::N == 1 || OutShape::N == 1 ||
-                      InShape::N == OutShape::N,
+    static_assert(InShape::N == 1 || InShape::N == OutShape::N,
                   "Cannot broadcast dimension N of the input");
-    static_assert(InShape::C == 1 || OutShape::C == 1 ||
-                      InShape::C == OutShape::C,
+    static_assert(InShape::C == 1 || InShape::C == OutShape::C,
                   "Cannot broadcast dimension C of the input");
-    static_assert(InShape::H == 1 || OutShape::H == 1 ||
-                      InShape::H == OutShape::H,
+    static_assert(InShape::H == 1 || InShape::H == OutShape::H,
                   "Cannot broadcast dimension H of the input");
-    static_assert(InShape::W == 1 || OutShape::W == 1 ||
-                      InShape::W == OutShape::W,
+    static_assert(InShape::W == 1 || InShape::W == OutShape::W,
                   "Cannot broadcast dimension W of the input");
 
     // Derived OutShape.
@@ -419,11 +454,14 @@ struct Broadcast1 {
     using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
-    static const int NelemPerThread = Intrinsic::NelemPerThread;
+    static constexpr int NelemPerThread = Intrinsic::NelemPerThread;
+    static constexpr bool IsHConsec = (OutDims::W == 1 && UnitOutDims::W == 1);
+    static constexpr int ConsecutiveDimLen =
+        IsHConsec ? UnitOutDims::H : UnitOutDims::W;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static_assert(UnitOutDims::W % NelemPerThread == 0,
-                  "UnitOutDims::W must be divisible by NelemPerThread");
+    static_assert(ConsecutiveDimLen % NelemPerThread == 0,
+                  "ConsecutiveDimLen must be divisible by NelemPerThread");
 
     /// Conduct computation on one input and broadcast the result to output.
     /// @param out Output data.
@@ -438,12 +476,19 @@ struct Broadcast1 {
         int uw = UnitOp::uop_idx_w(uop_idx);
 
         for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
-            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
-            int tid_h =
-                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
             int tid_c =
                 ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
-            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
+            int tid_h;
+            int tid_w;
+            if constexpr (IsHConsec) {
+                tid_h = (tid * NelemPerThread) % UnitOutDims::H;
+                tid_w = 0;
+            } else {
+                tid_h =
+                    ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+                tid_w = (tid * NelemPerThread) % UnitOutDims::W;
+            }
 
             if (tid_n >= UnitOutDims::N) {
                 break;
@@ -559,6 +604,35 @@ struct Broadcast2 {
         }
     }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename OutDims, typename OutDataType, typename UnitOutDims>
+struct DefaultNelemPerThread {
+    static constexpr int ConsecutiveDimLen =
+        (OutDims::W == 1 && UnitOutDims::W == 1) ? UnitOutDims::H
+                                                 : UnitOutDims::W;
+
+    static const int value =
+        (sizeof(OutDataType) <= 2 && ConsecutiveDimLen % 8 == 0)
+            ? 8
+            : (ConsecutiveDimLen % 4 == 0)
+                  ? 4
+                  : (ConsecutiveDimLen % 2 == 0) ? 2 : 1;
+};
+
+template <typename InDims, typename InShape, typename InDataType,
+          typename OutDims, typename OutShape, typename OutDataType,
+          typename IntrinsicType, typename UnitOutDims, int NumWarps,
+          int SmemBytes>
+struct DefaultBroadcast1
+    : public Broadcast1<
+          InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
+          Broadcast1Intrinsic<IntrinsicType, InShape,
+                              (OutDims::W == 1 && UnitOutDims::W == 1),
+                              InDataType, OutDataType,
+                              DefaultNelemPerThread<OutDims, OutDataType,
+                                                    UnitOutDims>::value>> {};
 
 ////////////////////////////////////////////////////////////////////////////////
 

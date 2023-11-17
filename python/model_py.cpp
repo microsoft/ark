@@ -129,6 +129,11 @@ void register_model(py::module &m) {
              "Calculates the square root of the `input` tensor, element-wise.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "sqrt")
+        .def("rsqrt", &ark::Model::rsqrt,
+             "Calculates the reverse square root of the `input` tensor, "
+             "element-wise.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "rsqrt")
         .def("rope", &ark::Model::rope,
              "Performs rotary position embedding (RoPE) on the `input` "
              "tensor",
