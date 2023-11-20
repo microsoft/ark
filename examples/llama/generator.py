@@ -170,7 +170,7 @@ def worker(args: argparse.Namespace, rank: int):
         generator = Llama.build(
             ckpt_dir=args.ckpt_dir,
             tokenizer_path=args.tok_path,
-            max_seq_len=1024,
+            max_seq_len=512,
             max_batch_size=1,
         )
         generation_tokens = generator.generate(
@@ -180,7 +180,7 @@ def worker(args: argparse.Namespace, rank: int):
                 )
                 for prompt in prompt_list
             ],
-            max_gen_len=1024,
+            max_gen_len=512,
             temperature=0,
             top_p=0.9,
             logprobs=False,
@@ -198,7 +198,7 @@ def worker(args: argparse.Namespace, rank: int):
         ModelArgs13B(**params),
         local_rank=rank,
         world_size=args.ngpus,
-        seq_len=1024,
+        seq_len=512,
     )
     if rank == 0:
         log(f"gen.args {gen.args}")

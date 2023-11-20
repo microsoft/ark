@@ -496,8 +496,8 @@ def test_transformer(
         module_class_pt=model_pt.Transformer,
         module_args_pt=[args],
         inputs_pt=[tokens, start_pos],
-        test_thru=True,
-        test_thru_iterations=200,
+        # test_thru=True,
+        # test_thru_iterations=200,
     )
 
 
@@ -507,11 +507,11 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     ark.set_world_size(world_size)
 
     # test_rmsnorm(args, batch_size, seq_len, dtype)
-    test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
     # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
+    test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
 def worker(
@@ -542,7 +542,7 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs13B()
+    args = ModelArgs70B()
     batch_size = 1
     seq_len = 512
     dtype = np.float16
