@@ -166,8 +166,16 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     std::sort(candidates.begin(), candidates.end(),
               [](const std::tuple<const OpConfig *, Dims, int> &a,
                  const std::tuple<const OpConfig *, Dims, int> &b) {
-                  return std::get<2>(a) * std::get<0>(a)->num_warps <
-                         std::get<2>(b) * std::get<0>(b)->num_warps;
+                  int num_tiles_a = std::get<2>(a) * std::get<0>(a)->num_warps;
+                  int num_tiles_b = std::get<2>(b) * std::get<0>(b)->num_warps;
+                  if (num_tiles_a == num_tiles_b) {
+                      return std::get<0>(a)->output_tiles[0].x *
+                                 std::get<0>(a)->output_tiles[0].y <
+                             std::get<0>(b)->output_tiles[0].x *
+                                 std::get<0>(b)->output_tiles[0].y;
+                  }
+                  return (std::get<2>(a) * std::get<0>(a)->num_warps <
+                          std::get<2>(b) * std::get<0>(b)->num_warps);
               });
     return std::get<0>(candidates[0]);
 }
