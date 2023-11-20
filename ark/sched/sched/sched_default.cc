@@ -123,7 +123,8 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 
     Tensor *input_a = matmul_op.inputs[0];
     Tensor *input_b = matmul_op.inputs[1];
-    Tensor *output = matmul_op.output_refs[0];
+    Tensor *output_ref = matmul_op.output_refs[0];
+    Tensor *output = matmul_op.outputs[0];
     bool is_column_a;
     bool is_column_b;
     matmul_op.args.get(&is_column_a, 4);
@@ -134,8 +135,11 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
     model_impl->delete_op(&matmul_op);
 
     // Create a new matmul op with the optimized split_k.
-    model.matmul(input_a, input_b, output, split_k, is_column_a, is_column_b,
-                 matmul_name);
+    Tensor *tmp = model.matmul(input_a, input_b, output_ref, split_k,
+                               is_column_a, is_column_b, matmul_name);
+
+    model_impl->replace_tensor(tmp, output);
+    model_impl->delete_tensor(tmp);
 }
 
 /// Heuristically optimize the model. Overwrite the model with an optimized
@@ -507,8 +511,9 @@ void DefaultScheduler::configure_gpu_buf(
             } else if (op->type == OP_READ_AND_REDUCE_MSLL ||
                        op->type == OP_GATHER_FROM_PEERS_MSLL) {
                 Tensor *local_buff = op->outputs[1];
+                int off = op->type == OP_READ_AND_REDUCE_MSLL ? 1 : 0;
                 std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
-                    op->inputs.begin() + 1, op->inputs.end());
+                    op->inputs.begin() + off, op->inputs.end());
                 LOG(DEBUG, "read_and_reduce_msll/gather_from_peers_msll ",
                     local_buff->shape, " npeers ", remote_bufs.size());
                 int npeers;
