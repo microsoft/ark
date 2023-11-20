@@ -829,6 +829,7 @@ def local_all_gather_msll(
     input: Tensor,
     rank: int,
     ranks_per_node: int,
+    axis: int,
     name: str = "local_all_gather_msll",
 ) -> Tensor:
     """
@@ -843,6 +844,7 @@ def local_all_gather_msll(
         input._tensor,
         rank,
         ranks_per_node,
+        axis,
         name,
     )
     return Tensor(_tensor)

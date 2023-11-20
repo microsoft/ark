@@ -237,7 +237,7 @@ void register_model(py::module &m) {
         .def("local_all_gather_msll", &ark::Model::local_all_gather_msll,
              "Performs an all-gather operator across all GPUs",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("gpu_id"), py::arg("ngpus_per_node"),
+             py::arg("gpu_id"), py::arg("ngpus_per_node"), py::arg("axis") = 0,
              py::arg("name") = "local_all_gather_msll")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "
