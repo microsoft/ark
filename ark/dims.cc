@@ -133,6 +133,23 @@ bool Dims::is_invalid() const {
     return false;
 }
 
+void Dims::insert(int idx, DimType dim) {
+    int nd = this->ndims();
+    if (nd >= DIMS_LEN) {
+        ERR(InvalidUsageError, "too many dimensions: ", *this);
+    }
+    if (idx > nd || -idx > nd + 1) {
+        ERR(InvalidUsageError, "invalid index given: ", idx, " for ", *this);
+    }
+    if (idx < 0) {
+        idx += nd + 1;
+    }
+    for (int i = nd; i > idx; --i) {
+        this->data[i] = this->data[i - 1];
+    }
+    this->data[idx] = dim;
+}
+
 DimType Dims::erase(int idx) {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {

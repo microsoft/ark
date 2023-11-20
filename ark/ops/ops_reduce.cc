@@ -25,6 +25,11 @@ std::string ReduceOp::function_name(const OpConfig &cfg,
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
+    int axis;
+    bool keepdims;
+    this->args.get(&axis, 0);
+    this->args.get(&keepdims, 1);
+
     int ndims = output->shape.ndims();
     OpTile tile_out = cfg.output_tiles[0];
     if (tile_out.x < 0) tile_out.x = output->ldims.dims4()[2];
@@ -37,8 +42,6 @@ std::string ReduceOp::function_name(const OpConfig &cfg,
     }
 
     Dims shp_in = input->shape;
-    int axis;
-    this->args.get(&axis, 0);
 
     // Translate the axis value into 4D representation.
     axis += 4 - shp_in.ndims();
@@ -47,18 +50,24 @@ std::string ReduceOp::function_name(const OpConfig &cfg,
         // Warp-wise reduction is supported only for the last axis.
         CHECK(axis == 3);
     }
+    Dims outdims = output->ldims;
+    Dims outshape = output->shape;
+    if (!keepdims) {
+        outdims.insert(axis, 1);
+        outshape.insert(axis, 1);
+    }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
     return Op::function_name("ark::reduce_" + type,
                              {{
-                                 input->ldims.dims4(),   // InDims
-                                 input->shape.dims4(),   // InShape
-                                 output->ldims.dims4(),  // OutDims
-                                 output->shape.dims4(),  // OutShape
-                                 unit_out_dims,          // UnitOutDims
-                                 cfg.num_warps,          // NumWarps
-                                 cfg.smem_bytes,         // SmemBytes
-                                 axis,                   // Axis
+                                 input->ldims.dims4(),  // InDims
+                                 input->shape.dims4(),  // InShape
+                                 outdims.dims4(),       // OutDims
+                                 outshape.dims4(),      // OutShape
+                                 unit_out_dims,         // UnitOutDims
+                                 cfg.num_warps,         // NumWarps
+                                 cfg.smem_bytes,        // SmemBytes
+                                 axis,                  // Axis
                              }});
 }
 
@@ -66,75 +75,91 @@ extern const OpConfigMap ReduceWConfigMap;
 extern const OpConfigMap ReduceEConfigMap;
 
 ReduceWSumOp::ReduceWSumOp(const std::string &prec_type, Tensor *input,
-                           Tensor *output, int axis, const std::string &name)
-    : ReduceOp{OP_REDUCE_W_SUM, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceWConfigMap, -1} {}
+                           Tensor *output, int axis, bool keepdims,
+                           const std::string &name)
+    : ReduceOp{OP_REDUCE_W_SUM,    prec_type, {input},           {output},
+               {{axis, keepdims}}, name,      &ReduceWConfigMap, -1} {}
 
 std::string ReduceWSumOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "w_sum");
 }
 
 ReduceESumOp::ReduceESumOp(const std::string &prec_type, Tensor *input,
-                           Tensor *output, int axis, const std::string &name)
-    : ReduceOp{OP_REDUCE_E_SUM, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceEConfigMap, -1} {}
+                           Tensor *output, int axis, bool keepdims,
+                           const std::string &name)
+    : ReduceOp{OP_REDUCE_E_SUM,    prec_type, {input},           {output},
+               {{axis, keepdims}}, name,      &ReduceEConfigMap, -1} {}
 
 std::string ReduceESumOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_sum");
 }
 
 ReduceWMaxOp::ReduceWMaxOp(const std::string &prec_type, Tensor *input,
-                           Tensor *output, int axis, const std::string &name)
-    : ReduceOp{OP_REDUCE_W_MAX, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceWConfigMap, -1} {}
+                           Tensor *output, int axis, bool keepdims,
+                           const std::string &name)
+    : ReduceOp{OP_REDUCE_W_MAX,    prec_type, {input},           {output},
+               {{axis, keepdims}}, name,      &ReduceWConfigMap, -1} {}
 
 std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "w_max");
 }
 
 ReduceEMaxOp::ReduceEMaxOp(const std::string &prec_type, Tensor *input,
-                           Tensor *output, int axis, const std::string &name)
-    : ReduceOp{OP_REDUCE_E_MAX, prec_type, {input},           {output},
-               {{axis}},        name,      &ReduceEConfigMap, -1} {}
+                           Tensor *output, int axis, bool keepdims,
+                           const std::string &name)
+    : ReduceOp{OP_REDUCE_E_MAX,    prec_type, {input},           {output},
+               {{axis, keepdims}}, name,      &ReduceEConfigMap, -1} {}
 
 std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_max");
 }
 
 ReduceWMeanOp::ReduceWMeanOp(const std::string &prec_type, Tensor *input,
-                             Tensor *output, int axis, const std::string &name)
-    : ReduceOp{OP_REDUCE_W_MEAN, prec_type, {input},           {output},
-               {{axis}},         name,      &ReduceWConfigMap, -1} {}
+                             Tensor *output, int axis, bool keepdims,
+                             const std::string &name)
+    : ReduceOp{OP_REDUCE_W_MEAN,   prec_type, {input},           {output},
+               {{axis, keepdims}}, name,      &ReduceWConfigMap, -1} {}
 
 std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "w_mean");
 }
 
 ReduceEMeanOp::ReduceEMeanOp(const std::string &prec_type, Tensor *input,
-                             Tensor *output, int axis, const std::string &name)
-    : ReduceOp{OP_REDUCE_E_MEAN, prec_type, {input},           {output},
-               {{axis}},         name,      &ReduceEConfigMap, -1} {}
+                             Tensor *output, int axis, bool keepdims,
+                             const std::string &name)
+    : ReduceOp{OP_REDUCE_E_MEAN,   prec_type, {input},           {output},
+               {{axis, keepdims}}, name,      &ReduceEConfigMap, -1} {}
 
 std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_mean");
 }
 
 template <typename ReduceOpType>
-Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
+Tensor *Model::reduce(Tensor *input, int axis, bool keepdims, Tensor *output,
                       const std::string &name) {
     assert(input != nullptr);
     if (output != nullptr && input->type != output->type) {
         ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     Dims reduced_shape{input->shape};
-    reduced_shape[axis] = 1;
+    if (axis < 0) {
+        axis += reduced_shape.ndims();
+    }
+    if (axis < 0 || axis >= reduced_shape.ndims()) {
+        ERR(InvalidUsageError, "invalid reduction axis ", axis);
+    }
+    if (keepdims) {
+        reduced_shape[axis] = 1;
+    } else {
+        reduced_shape.erase(axis);
+    }
     if (output == nullptr) {
         output = this->tensor(reduced_shape, input->type);
     } else {
         if (output->shape != reduced_shape) {
             ERR(InvalidUsageError, "invalid output shape ", output->shape,
-                " with input shape ", input->shape, " and reduction axis ",
-                axis);
+                " with input shape ", input->shape, ", reduction axis ", axis,
+                ", and keepdims ", keepdims);
         }
         if (output == input) {
             ERR(InvalidUsageError,
@@ -142,34 +167,34 @@ Tensor *Model::reduce(Tensor *input, int axis, Tensor *output,
                 "reduce_sum op");
         }
     }
-    ReduceOpType op{output->type.name(), input, output, axis, name};
+    ReduceOpType op{output->type.name(), input, output, axis, keepdims, name};
     return this->impl->add_op(op)[0];
 }
 
-Tensor *Model::reduce_sum(Tensor *input, int axis, Tensor *output,
-                          const std::string &name) {
-    if (axis == input->shape.ndims() - 1) {
-        return reduce<ReduceWSumOp>(input, axis, output, name);
+Tensor *Model::reduce_sum(Tensor *input, int axis, bool keepdims,
+                          Tensor *output, const std::string &name) {
+    if (axis == input->shape.ndims() - 1 || axis == -1) {
+        return reduce<ReduceWSumOp>(input, axis, keepdims, output, name);
     } else {
-        return reduce<ReduceESumOp>(input, axis, output, name);
+        return reduce<ReduceESumOp>(input, axis, keepdims, output, name);
     }
 }
 
-Tensor *Model::reduce_mean(Tensor *input, int axis, Tensor *output,
-                           const std::string &name) {
-    if (axis == input->shape.ndims() - 1) {
-        return reduce<ReduceWMeanOp>(input, axis, output, name);
+Tensor *Model::reduce_mean(Tensor *input, int axis, bool keepdims,
+                           Tensor *output, const std::string &name) {
+    if (axis == input->shape.ndims() - 1 || axis == -1) {
+        return reduce<ReduceWMeanOp>(input, axis, keepdims, output, name);
     } else {
-        return reduce<ReduceEMeanOp>(input, axis, output, name);
+        return reduce<ReduceEMeanOp>(input, axis, keepdims, output, name);
     }
 }
 
-Tensor *Model::reduce_max(Tensor *input, int axis, Tensor *output,
-                          const std::string &name) {
-    if (axis == input->shape.ndims() - 1) {
-        return reduce<ReduceWMaxOp>(input, axis, output, name);
+Tensor *Model::reduce_max(Tensor *input, int axis, bool keepdims,
+                          Tensor *output, const std::string &name) {
+    if (axis == input->shape.ndims() - 1 || axis == -1) {
+        return reduce<ReduceWMaxOp>(input, axis, keepdims, output, name);
     } else {
-        return reduce<ReduceEMaxOp>(input, axis, output, name);
+        return reduce<ReduceEMaxOp>(input, axis, keepdims, output, name);
     }
 }
 

@@ -9,6 +9,7 @@ import ark
 import math
 from dataclasses import dataclass
 from typing import Optional
+import os
 
 
 @dataclass
@@ -208,16 +209,20 @@ class RowParallelLinear(ark.Module):
         local_result = ark.matmul(
             input_parallel, self.weight, transpose_other=True
         )
-        reduced_result = ark.local_all_reduce_mscclpp(
-            local_result, self.local_rank, self.world_size
-        )
+        if os.environ.get("ARK_USE_MSLL", "0") == "1":
+            reduced_result = ark.local_all_reduce_mscclpp(
+                local_result, self.local_rank, self.world_size
+            )
+        else:
+            reduced_result = ark.all_reduce(
+                local_result, self.local_rank, self.world_size
+            )
         return reduced_result
 
 
 class ParallelEmbedding(ark.Module):
     """Embedding layer."""
 
-    # TODO: support parallelism
     def __init__(
         self,
         vocab_size: int,
@@ -238,6 +243,10 @@ class ParallelEmbedding(ark.Module):
     def forward(self, x):
         if self.world_size == 1:
             return ark.embedding(x, self.weight)
+        if os.environ.get("ARK_USE_MSCCLPP", "0") == "0":
+            raise NotImplementedError(
+                "Do not support parallel embedding without MSCCLPP"
+            )
         output_tensor = ark.tensor(
             [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
         )

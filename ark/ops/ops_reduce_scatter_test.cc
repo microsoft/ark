@@ -67,6 +67,8 @@ ark::unittest::State test_reduce_scatter() {
 
 int main() {
     ark::init();
-    UNITTEST(test_reduce_scatter);
+    if (ark::get_env().use_mscclpp) {
+        UNITTEST(test_reduce_scatter);
+    }
     return ark::unittest::SUCCESS;
 }

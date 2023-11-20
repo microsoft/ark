@@ -33,13 +33,11 @@ def worker(args: argparse.Namespace, rank: int):
         echo=False,
     )
     output_text = [
-        {"generation": generator.tokenizer.decode(t)}
-        for t in generation_tokens
+        {"generation": generator.tokenizer.decode(t)} for t in generation_tokens
     ]
     if rank == 0:
         log(f"{output_text}")
     return
-
 
 
 if __name__ == "__main__":
