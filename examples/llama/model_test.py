@@ -153,7 +153,7 @@ def test_module(
         # Load the state_dict from the given path
         state_dict_pt = torch.load(ckpt_path)
         state_dict_pt = {
-            k[len(prefix) :]: v.to(dtype=numpy_dtype_to_torch_dtype[dtype])
+            k[len(prefix) :]: v
             for k, v in state_dict_pt.items()
             if k[len(prefix) :] in param_names and k.startswith(prefix)
         }
