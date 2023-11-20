@@ -7,6 +7,11 @@
 #include <cassert>
 #include <type_traits>
 
+// TODO: temporal until CK officially supports gfx941/942
+#if defined(__gfx941__) || defined(__gfx942__)
+#define __gfx940__
+#endif
+
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp"
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp"
 #include "common.h"
@@ -86,6 +91,8 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
     static constexpr auto NPerXdl = MPerXdl;
     static constexpr bool IsColA = std::is_same<LayoutA, Col>::value;
     static constexpr bool IsColB = std::is_same<LayoutB, Col>::value;
+    static constexpr auto AK1 = 8;  // or (!IsColA) ? 8 : 2;
+    static constexpr auto BK1 = 8;  // or IsColB ? 8 : 2;
     static constexpr auto MNXdlPerWave =
         Is_16 ? (TileSizeM * TileSizeN / 4 / NumThreads)
               : (TileSizeM * TileSizeN / 16 / NumThreads);
@@ -97,8 +104,19 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
                                 : 1 << (LogMNXdlPerWave - LogMNXdlPerWave / 2);
     static constexpr auto NXdlPerWave = MNXdlPerWave / MXdlPerWave;
 
+    static constexpr bool Is_256x256x128 =
+        NumThreads == 256 && TileSizeM == 256 && TileSizeN == 128;
+    static constexpr bool Is_256x128x256 =
+        NumThreads == 256 && TileSizeM == 128 && TileSizeN == 256;
+    static constexpr bool Is_256x64x128 =
+        NumThreads == 256 && TileSizeM == 64 && TileSizeN == 128;
+    static constexpr bool Is_256x128x64 =
+        NumThreads == 256 && TileSizeM == 128 && TileSizeN == 64;
+
     static constexpr bool Is_128x128x64 =
         NumThreads == 128 && TileSizeM == 128 && TileSizeN == 64;
+    static constexpr bool Is_128x128x32 =
+        NumThreads == 128 && TileSizeM == 128 && TileSizeN == 32;
 
     static constexpr bool Is_128x32x256 =
         NumThreads == 128 && TileSizeM == 32 && TileSizeN == 256;
@@ -114,6 +132,20 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
         NumThreads == 128 && TileSizeM == 32 && TileSizeN == 64;
     static constexpr bool Is_64x32x32 =
         NumThreads == 64 && TileSizeM == 32 && TileSizeN == 32;
+
+    static constexpr auto A_Lengths_K0 =
+        (!IsColA || AK1 == 8 || Is_256x256x128 || Is_128x128x128 ||
+         Is_128x128x64)
+            ? 4
+        : Is_256x64x128 ? 16
+                        : 8;
+
+    static constexpr auto B_Lengths_K0 =
+        (IsColB || BK1 == 8 || Is_256x128x256 || Is_128x128x128 ||
+         Is_128x64x128)
+            ? 4
+        : Is_256x128x64 ? 16
+                        : 8;
 
     using ImplXdl = ck::tensor_operation::device::DeviceGemmXdl<
         F16, F16, F16, F32, LayoutA, LayoutB, Row, PassThrough, PassThrough,
@@ -134,6 +166,33 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
                             ? 4
                             : (Is_128x32x64 || Is_64x32x32) ? 2 : NXdlPerWave),
         8, true, 7, 1, 1, LoopSched, PipelineVer>;
+
+    using ImplXdlCShuffle =
+        ck::tensor_operation::device::DeviceGemm_Xdl_CShuffle<
+            LayoutA, LayoutB, Row, F16, F16, F16, F32, F16, PassThrough,
+            PassThrough, PassThrough, GemmDefault, 1, NumThreads, TileSizeM,
+            TileSizeN, 32, AK1, BK1, 32, 32, MXdlPerWave, NXdlPerWave,
+            S<A_Lengths_K0, (NumThreads / A_Lengths_K0), 1>,
+            typename std::conditional<IsColA, S<0, 2, 1>, S<1, 0, 2>>::type,
+            typename std::conditional<IsColA, S<0, 2, 1>, S<1, 0, 2>>::type,
+            (IsColA ? 1 : 2),
+            (!IsColA                       ? 8
+             : (AK1 == 2 || Is_128x128x64) ? 4
+                                           : MXdlPerWave),
+            AK1, (AK1 == 8), S<B_Lengths_K0, (NumThreads / B_Lengths_K0), 1>,
+            typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
+            typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
+            (IsColB ? 2 : 1),
+            (IsColB ? 8
+             : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 || Is_128x64x128)
+                 ? 4
+                 : NXdlPerWave),
+            BK1, (BK1 == 8), 1, 1,
+            S<1,
+              (Is_128x128x128 || Is_128x64x128 || NumThreads == 64) ? 16 : 32,
+              1,
+              ((Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 4 : 8)>,
+            8>;
 };
 
 template <typename LayoutA, typename LayoutB, int NumThreads, int TileSizeM,

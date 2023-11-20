@@ -13,9 +13,9 @@
 #include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
-#include "copy.h"
 #include "comm.h"
 #include "comm_mm.h"
+#include "copy.h"
 #ifdef ARK_USE_MSLL
 #include "comm_msll.h"
 #endif  // ARK_USE_MSLL
