@@ -194,7 +194,9 @@ def test_module(
             )
             return
     elif test_thru:
-        print(f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)")
+        print(
+            f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
+        )
         return
 
     # Compare the outputs
