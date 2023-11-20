@@ -137,15 +137,13 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
         (!IsColA || AK1 == 8 || Is_256x256x128 || Is_128x128x128 ||
          Is_128x128x64)
             ? 4
-        : Is_256x64x128 ? 16
-                        : 8;
+            : Is_256x64x128 ? 16 : 8;
 
     static constexpr auto B_Lengths_K0 =
         (IsColB || BK1 == 8 || Is_256x128x256 || Is_128x128x128 ||
          Is_128x64x128)
             ? 4
-        : Is_256x128x64 ? 16
-                        : 8;
+            : Is_256x128x64 ? 16 : 8;
 
     using ImplXdl = ck::tensor_operation::device::DeviceGemmXdl<
         F16, F16, F16, F32, LayoutA, LayoutB, Row, PassThrough, PassThrough,
@@ -176,17 +174,16 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
             typename std::conditional<IsColA, S<0, 2, 1>, S<1, 0, 2>>::type,
             typename std::conditional<IsColA, S<0, 2, 1>, S<1, 0, 2>>::type,
             (IsColA ? 1 : 2),
-            (!IsColA                       ? 8
-             : (AK1 == 2 || Is_128x128x64) ? 4
-                                           : MXdlPerWave),
-            AK1, (AK1 == 8), S<B_Lengths_K0, (NumThreads / B_Lengths_K0), 1>,
+            (!IsColA ? 8 : (AK1 == 2 || Is_128x128x64) ? 4 : MXdlPerWave), AK1,
+            (AK1 == 8), S<B_Lengths_K0, (NumThreads / B_Lengths_K0), 1>,
             typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
             typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
             (IsColB ? 2 : 1),
             (IsColB ? 8
-             : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 || Is_128x64x128)
-                 ? 4
-                 : NXdlPerWave),
+                    : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 ||
+                       Is_128x64x128)
+                          ? 4
+                          : NXdlPerWave),
             BK1, (BK1 == 8), 1, 1,
             S<1,
               (Is_128x128x128 || Is_128x64x128 || NumThreads == 64) ? 16 : 32,
