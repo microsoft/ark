@@ -3,7 +3,7 @@
 
 set(ARK_MAJOR "0")
 set(ARK_MINOR "4")
-set(ARK_PATCH "0")
+set(ARK_PATCH "1")
 
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")

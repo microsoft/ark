@@ -385,42 +385,42 @@ class ReduceOp : public Op {
 class ReduceWSumOp : public ReduceOp {
    public:
     ReduceWSumOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                 int axis, const std::string &name);
+                 int axis, bool keepdims, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceESumOp : public ReduceOp {
    public:
     ReduceESumOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                 int axis, const std::string &name);
+                 int axis, bool keepdims, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceWMaxOp : public ReduceOp {
    public:
     ReduceWMaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                 int axis, const std::string &name);
+                 int axis, bool keepdims, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceEMaxOp : public ReduceOp {
    public:
     ReduceEMaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                 int axis, const std::string &name);
+                 int axis, bool keepdims, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceWMeanOp : public ReduceOp {
    public:
     ReduceWMeanOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                  int axis, const std::string &name);
+                  int axis, bool keepdims, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
 class ReduceEMeanOp : public ReduceOp {
    public:
     ReduceEMeanOp(const std::string &prec_type, Tensor *input, Tensor *output,
-                  int axis, const std::string &name);
+                  int axis, bool keepdims, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
