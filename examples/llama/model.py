@@ -250,7 +250,6 @@ class RowParallelLinear(ark.Module):
 class ParallelEmbedding(ark.Module):
     """Embedding layer."""
 
-    # TODO: support parallelism
     def __init__(
         self,
         vocab_size: int,
@@ -449,7 +448,6 @@ class Attention(ark.Module):
         )
         if freqs_cis is not None:
             xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
-        # print(f"freqs_cis shape() is {freqs_cis.shape()}")
         # TODO: enable kv cache later
         keys = xk
         values = xv
@@ -547,7 +545,6 @@ class Transformer(ark.Module):
             )
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps, dtype=dtype)
-        # TODO: parallize
         self.output = ColumnParallelLinear(
             params.dim, params.vocab_size, dtype, True, local_rank, world_size
         )

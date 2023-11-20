@@ -18,7 +18,7 @@ import model as model_ark
 import numpy as np
 from typing import Dict, List
 from dataclasses import dataclass
-from model import ModelArgs, ModelArgs7B, ModelArgs13B, ModelArgs70B
+from model import ModelArgs, ModelArgs7B
 from generator import precompute_freqs_cis
 
 
@@ -176,8 +176,8 @@ def test_module(
 
     if not test_thru_ark_only:
         # PyTorch module
+        torch.set_default_dtype(numpy_dtype_to_torch_dtype[dtype])
         module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
-        module_pt.to(dtype=numpy_dtype_to_torch_dtype[dtype])
 
         # Run the PyTorch module
         res_pt = run_pt(
@@ -198,13 +198,6 @@ def test_module(
 
     # Compare the outputs
     eps = np.finfo(np.float64).eps
-    np.set_printoptions(threshold=1000, linewidth=196)
-    # if rank == 0:
-    #     for i, t in enumerate(res_ark.outputs):
-    #         print(t)
-
-    #     for i, t in enumerate(res_pt.outputs):
-    #         print(t)
 
     for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
         shape = o_ark.shape
@@ -542,7 +535,7 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs70B()
+    args = ModelArgs7B()
     batch_size = 1
     seq_len = 512
     dtype = np.float16
