@@ -84,7 +84,7 @@ Env::Env() {
     // Get the MSCCL++ include directory path.
     this->mscclpp_include_dir = env<std::string>(
         "ARK_MSCCLPP_INCLUDE_DIR", DEFAULT_ARK_MSCCLPP_INCLUDE_DIR);
-    // Get the port number of MSLL.
+    // Get the port number of MSCCLPP.
     this->mscclpp_port = env<int>("ARK_MSCCLPP_PORT", DEFAULT_ARK_MSCCLPP_PORT);
 }
 

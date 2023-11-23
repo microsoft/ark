@@ -26,7 +26,7 @@ MscclppDeviceSyncOp::MscclppDeviceSyncOp(const std::string &prec_type,
 std::string MscclppDeviceSyncOp::function_name(const OpConfig &) const {
     int nranks;
     this->args.get(&nranks, 0);
-    return Op::function_name("ark::comm::device_sync_msll", {{nranks}});
+    return Op::function_name("ark::comm::device_sync_mscclpp", {{nranks}});
 }
 
 OpArgs MscclppDeviceSyncOp::function_call_args(const OpConfig &) const {
@@ -43,7 +43,7 @@ const OpConfigMap MscclppDeviceSyncConfigMap = {
     {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, false, true},
+         {1, 0, {{-1, -1}}, {{-1, -1}}, false, true},
      }},
 };
 

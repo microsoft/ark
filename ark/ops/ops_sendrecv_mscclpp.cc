@@ -10,7 +10,6 @@
 namespace ark {
 
 extern const OpConfigMap MscclppConfigMap;
-extern const OpConfigMap MscclppSyncConfigMap;
 
 MscclppSendOp::MscclppSendOp(const std::string &prec_type, Tensor *input,
                              Tensor *recvbuf, int sid, int rank, int dst_rank,
@@ -173,15 +172,7 @@ const OpConfigMap MscclppConfigMap = {
     {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{-1, -1}}, {{-1, -1}}, true, true},
-     }},
-};
-
-const OpConfigMap MscclppSyncConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, false, true},
+         {1, 0, {{-1, -1}, {-1, -1}}, {{-1, -1}}, true, true},
      }},
 };
 

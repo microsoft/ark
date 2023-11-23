@@ -133,30 +133,57 @@ class ColumnParallelLinear(ark.Module):
         if self.world_size == 1 or self.gather_output == False:
             return ark.matmul(x, self.weight, transpose_other=True)
         # We need to concat the output_tensor_shards along the last dimension
-        output_tensor = ark.tensor(
-            [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
-        )
-        output_tensor_shards = ark.sharding(
-            output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
-        )
-        local_result = ark.identity(
-            output_tensor_shards[self.local_rank], deps=output_tensor_shards
-        )
-        # (batch_size, seq_len, out_dim // world_size)
-        local_result = ark.matmul(
-            x, self.weight, local_result, transpose_other=True
-        )
-        gather_input = ark.identity(output_tensor, deps=[local_result])
-        # return gather_input
-        gather_reshape = ark.reshape(
-            gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
-        )
-        gather_out = ark.local_all_gather_mscclpp(
-            gather_reshape, self.local_rank, self.world_size, 1
-        )
-        return ark.reshape(
-            gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
-        )
+        if os.environ.get("ARK_USE_MSCCLPP", "0") == "1":
+            output_tensor = ark.tensor(
+                [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
+            )
+            output_tensor_shards = ark.sharding(
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
+            )
+            local_result = ark.identity(
+                output_tensor_shards[self.local_rank], deps=output_tensor_shards
+            )
+            # (batch_size, seq_len, out_dim // world_size)
+            local_result = ark.matmul(
+                x, self.weight, local_result, transpose_other=True
+            )
+            gather_input = ark.identity(output_tensor, deps=[local_result])
+            # return gather_input
+            gather_reshape = ark.reshape(
+                gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
+            )
+            gather_out = ark.local_all_gather_mscclpp(
+                gather_reshape, self.local_rank, self.world_size, 1
+            )
+            return ark.reshape(
+                gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
+            )
+        else:
+            # (batch_size, seq_len, out_dim // world_size)
+            local_result = ark.matmul(x, self.weight, transpose_other=True)
+            gathered_list = ark.all_gather(
+                local_result, self.local_rank, self.world_size
+            )
+            # We need to concat the output_tensor_shards along the last dimension
+            output_tensor = ark.tensor(
+                [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
+            )
+            output_tensor_shards = ark.sharding(
+                output_tensor,
+                axis=2,
+                dim_per_shard=self.out_dim // self.world_size,
+            )
+            deps = []
+            # Copy all tensors in gathered_list to output_tensor_shards
+            for i in range(self.world_size):
+                shard = ark.scale(
+                    gathered_list[i], 1.0, output_tensor_shards[i]
+                )
+                deps.append(shard)
+            # The output_tensor should depend on the scale operators
+            return ark.identity(output_tensor, deps=deps)
 
 
 class RowParallelLinear(ark.Module):
@@ -209,7 +236,7 @@ class RowParallelLinear(ark.Module):
         local_result = ark.matmul(
             input_parallel, self.weight, transpose_other=True
         )
-        if os.environ.get("ARK_USE_MSLL", "0") == "1":
+        if os.environ.get("ARK_USE_MSCCLPP", "0") == "1":
             reduced_result = ark.local_all_reduce_mscclpp(
                 local_result, self.local_rank, self.world_size
             )
@@ -421,7 +448,6 @@ class Attention(ark.Module):
         )
         if freqs_cis is not None:
             xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
-        # print(f"freqs_cis shape() is {freqs_cis.shape()}")
         # TODO: enable kv cache later
         keys = xk
         values = xv

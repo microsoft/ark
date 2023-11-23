@@ -73,6 +73,11 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "bitset": "cpp",
+        "cfenv": "cpp",
+        "complex": "cpp",
+        "optional": "cpp",
+        "future": "cpp"
     },
 }

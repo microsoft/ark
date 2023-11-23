@@ -3,13 +3,13 @@
 
 #include <cassert>
 
+#include "env.h"
 #include "logging.h"
 #include "model.h"
 
 namespace ark {
 
 extern const OpConfigMap MscclppReadAndReduceConfigMap;
-constexpr int MAX_PEER_NUM = 7;
 
 // currently only support in single node
 MscclppReadAndReduceOp::MscclppReadAndReduceOp(
@@ -37,10 +37,10 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
     this->args.get(&bytes, 4);
 
     const OpTile &tile_out = cfg.output_tiles[0];
-    size_t eles_per_tile = tile_out.x * tile_out.y > dst_buff->shape.size()
-                               ? dst_buff->shape.size()
-                               : tile_out.x * tile_out.y;
-    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(eles_per_tile)};
+    size_t neles_per_tile = tile_out.x * tile_out.y > dst_buff->shape.size()
+                                ? dst_buff->shape.size()
+                                : tile_out.x * tile_out.y;
+    Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(neles_per_tile)};
     Dims shape_dims = {1, 1, 1,
                        static_cast<long long>(bytes) / dst_buff->type_bytes()};
     Dims dims = dst_buff->ldims.dims4();
@@ -67,7 +67,7 @@ OpArgs MscclppReadAndReduceOp::function_call_args(const OpConfig &) const {
 
     OpArgs opargs;
     // read_and_redcue_mscclpp(src_offset...)
-    for (int i = 0; i < MAX_PEER_NUM; i++) {
+    for (int i = 0; i < get_env().num_ranks_per_host - 1; i++) {
         if (i < npeers) {
             CHECK(remote_bufs[i]->buf != nullptr);
             opargs.put((size_t)(remote_bufs[i]->buf->get_buf_offset() +

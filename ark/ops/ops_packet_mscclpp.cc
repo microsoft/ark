@@ -3,6 +3,7 @@
 
 #include <cassert>
 
+#include "env.h"
 #include "logging.h"
 #include "model.h"
 
@@ -16,7 +17,6 @@ constexpr int MSCCLPP_PACKET_SIZE = 16;
 namespace ark {
 
 extern const OpConfigMap MscclppPacketConfigMap;
-constexpr int MAX_PEER_NUM = 7;
 
 MscclppPutPacketOp::MscclppPutPacketOp(const std::string &prec_type,
                                        Tensor *input, Tensor *local_tmp_buf,
@@ -218,7 +218,7 @@ OpArgs MscclppReduceAndWritePacketOp::function_call_args(
     opargs.put(output);
     opargs.put(input);
     opargs.put(scratch);
-    for (int i = 0; i < MAX_PEER_NUM; i++) {
+    for (int i = 0; i < get_env().num_ranks_per_host - 1; i++) {
         if (i < npeers) {
             CHECK(peer_bufs[i]->buf != nullptr);
             opargs.put((size_t)(peer_bufs[i]->buf->get_buf_offset() +
