@@ -298,7 +298,8 @@ void GpuLoopKernel::load() {
                                     "_ARK_PROXY_CHANS"));
             const void *chans_ref = comm->get_proxy_channels_ref();
             size_t chans_bytes = comm->get_proxy_channels_bytes();
-            GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void*>(chans_ref), chans_bytes));
+            GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
+                               chans_bytes));
         }
         if (get_env().use_mscclpp && comm->get_sm_channels_num() > 0) {
             GpuPtr channel_addr;
@@ -306,7 +307,8 @@ void GpuLoopKernel::load() {
                                     "_ARK_SM_CHANS"));
             const void *chans_ref = comm->get_sm_channels_ref();
             size_t chans_bytes = comm->get_sm_channels_bytes();
-            GLOG(gpuMemcpyHtoD(channel_addr,  const_cast<void*>(chans_ref), chans_bytes));
+            GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
+                               chans_bytes));
         }
 #endif  // ARK_USE_MSCCLPP
     }

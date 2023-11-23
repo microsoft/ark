@@ -207,12 +207,6 @@ DEVICE void gather_from_peers_mscclpp(
     if (offset_in_width + output_width > shape_width) {
         bytes_per_width = shape_width - offset_in_width;
     }
-    // if (tid == 0 && uop_idx == 1) {
-    //   printf("tile hid %d, tile wid %d offset in width %lld bytes per width "
-    //          "%lld output width %lld shape width %lld\n",
-    //          tile_hid, tile_wid, offset_in_width, bytes_per_width,
-    //          output_width, shape_width);
-    // }
     size_t peer_offsets[] = {target_offset_0, target_offset_1, target_offset_2,
                              target_offset_3, target_offset_4, target_offset_5,
                              target_offset_6};
@@ -224,11 +218,6 @@ DEVICE void gather_from_peers_mscclpp(
              j < tile_hid * UnitOutDims::H + UnitOutDims::H; ++j) {
             size_t offset =
                 shape_width * remote_rank + j * stride + offset_in_width;
-            //   if (tid == 0 && uop_idx == 1) {
-            //     printf("chan idx %d, remote rank %d, offset %lld\n",
-            //     chan_idx,
-            //            remote_rank, offset);
-            //   }
             _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
                                         ori_offset + offset, bytes_per_width,
                                         tid, NumThreads);
