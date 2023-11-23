@@ -535,7 +535,7 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs70B()
+    args = ModelArgs7B()
     batch_size = 1
     seq_len = 512
     dtype = np.float16
