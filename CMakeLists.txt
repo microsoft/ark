@@ -95,11 +95,11 @@ endif()
 include(FindIBVerbs)
 
 # Find MSCCL++
-if(USE_MSCCLPP)
-    include(${PROJECT_SOURCE_DIR}/cmake/FindMSCCLPP.cmake)
-    if (NOT MSCCLPP_FOUND)
-        message(FATAL_ERROR "MSCCL++ not found")
-    endif()
+include(${PROJECT_SOURCE_DIR}/cmake/FindMSCCLPP.cmake)
+if(MSCCLPP_FOUND)
+    set(USE_MSCCLPP ON)
+else()
+    set(USE_MSCCLPP OFF)
 endif()
 
 # Find NUMA

@@ -137,7 +137,7 @@ Tensor *Model::local_reduce_scatter_mscclpp(Tensor *input, int gpu_id,
 }
 
 const OpConfigMap MscclppReadAndReduceConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       // TODO: The config for 32MB elements, need to update for other message
       // size

@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_COMM_MSCCLPP_H_
 #define ARK_KERNELS_COMM_MSCCLPP_H_
 
-#include <cuda_runtime.h>
+// #include <cuda_runtime.h>
 
 #include <mscclpp/proxy_channel_device.hpp>
 #include <mscclpp/sm_channel_device.hpp>
@@ -39,31 +39,39 @@ union BytesPack<8> {
 };
 
 DEVICE void load(BytesPack<16> &v, const longlong2 *p) {
-    asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];"
-                 : "=l"(v.u64[0]), "=l"(v.u64[1])
-                 : "l"(p)
-                 : "memory");
+    v.u64[0] = p->x;
+    v.u64[0] = p->y;
+    // asm volatile("ld.volatile.global.v2.b64 {%0,%1}, [%2];"
+    //              : "=l"(v.u64[0]), "=l"(v.u64[1])
+    //              : "l"(p)
+    //              : "memory");
 }
 
 DEVICE void load(BytesPack<8> &v, const uint2 *p) {
-    asm volatile("ld.volatile.global.v2.b32 {%0,%1}, [%2];"
-                 : "=r"(v.u32[0]), "=r"(v.u32[1])
-                 : "l"(p)
-                 : "memory");
+    v.u32[0] = p->x;
+    v.u32[1] = p->y;
+    // asm volatile("ld.volatile.global.v2.b32 {%0,%1}, [%2];"
+    //              : "=r"(v.u32[0]), "=r"(v.u32[1])
+    //              : "l"(p)
+    //              : "memory");
 }
 
 DEVICE void store(longlong2 *p, const BytesPack<16> &v) {
-    asm volatile("st.volatile.global.v2.b64 [%0], {%1,%2};"
-                 :
-                 : "l"(p), "l"(v.u64[0]), "l"(v.u64[1])
-                 : "memory");
+    p->x = v.u64[0];
+    p->y = v.u64[1];
+    // asm volatile("st.volatile.global.v2.b64 [%0], {%1,%2};"
+    //              :
+    //              : "l"(p), "l"(v.u64[0]), "l"(v.u64[1])
+    //              : "memory");
 }
 
 DEVICE void store(uint2 *p, const BytesPack<8> &v) {
-    asm volatile("st.volatile.global.v2.b32 [%0], {%1,%2};"
-                 :
-                 : "l"(p), "r"(v.u32[0]), "r"(v.u32[1])
-                 : "memory");
+    p->x = v.u32[0];
+    p->y = v.u32[1];
+    // asm volatile("st.volatile.global.v2.b32 [%0], {%1,%2};"
+    //              :
+    //              : "l"(p), "r"(v.u32[0]), "r"(v.u32[1])
+    //              : "memory");
 }
 
 DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {

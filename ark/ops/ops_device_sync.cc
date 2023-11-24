@@ -40,7 +40,7 @@ Tensor *Model::device_sync_mscclpp(Tensor *input, int nranks,
 }
 
 const OpConfigMap MscclppDeviceSyncConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
+    {{OP_ARCH_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{-1, -1}}, {{-1, -1}}, false, true},
