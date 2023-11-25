@@ -58,7 +58,7 @@ std::string MscclppPutPacketOp::function_name(const OpConfig &cfg) const {
                                  input->ldims.dims4(),  // Dims
                                  input->shape.dims4(),  // Shape
                                  unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.num_warps,         // NumWarps
                                  dst_rank,              // DstRank
                                  rank,                  // Rank
                                  dst_offset,            // DstOffset
@@ -150,7 +150,7 @@ std::string MscclppReduceAndWritePacketOp::function_name(
                                  input->ldims.dims4(),  // Dims
                                  input->shape.dims4(),  // Shape
                                  unit_out_dims,         // UnitOutDims
-                                 cfg.num_warps * 32,    // NumThreads
+                                 cfg.num_warps,         // NumWarps
                                  npeers,                // NPeers
                                  elems_per_rank,        // NElemsPerRank
                                  rank,                  // Rank
@@ -273,7 +273,7 @@ std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
                                  output->ldims.dims4(),  // Dims
                                  shape_dims,             // Shape
                                  unit_out_dims,          // UnitOutDims
-                                 cfg.num_warps * 32,     // NumThreads
+                                 cfg.num_warps,          // NumWarps
                                  npackets,               // NPacket
                                  dst_offset,             // DstOffset
                                  src_offset,             // SrcOffset
@@ -312,7 +312,7 @@ Tensor *Model::get_packet_mscclpp(Tensor *input, Tensor *output,
 }
 
 const OpConfigMap MscclppPacketConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       {16,
        0,

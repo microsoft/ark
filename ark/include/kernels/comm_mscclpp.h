@@ -10,8 +10,6 @@
 #include <mscclpp/sm_channel_device.hpp>
 
 #include "common.h"
-#include "ewise.h"
-#include "unit_op.h"
 
 extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle _ARK_PROXY_CHANS[];
 extern __constant__ mscclpp::SmChannelDeviceHandle _ARK_SM_CHANS[];
@@ -109,7 +107,7 @@ DEVICE void add_half4(BytesPack<8> &dst, BytesPack<8> &src) {
 template <unsigned int Rank, unsigned int DstRank,
           unsigned long long int Length>
 DEVICE void send_mscclpp(size_t dst_offset, size_t src_offset, int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
@@ -121,7 +119,7 @@ DEVICE void send_mscclpp(size_t dst_offset, size_t src_offset, int, int) {
 // Poll SC and reset.
 template <unsigned int Rank, unsigned int DstRank>
 DEVICE void send_done_mscclpp(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
@@ -133,7 +131,7 @@ DEVICE void send_done_mscclpp(int, int) {
 //
 template <unsigned int Rank, unsigned int DstRank>
 DEVICE void recv_mscclpp(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
@@ -144,7 +142,7 @@ DEVICE void recv_mscclpp(int, int) {
 
 template <unsigned int NRanks>
 DEVICE void device_sync_mscclpp(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 32, 0>;
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
     if (UnitOp::thread_id() != 0) {
         return;
     }
@@ -157,7 +155,7 @@ DEVICE void device_sync_mscclpp(int, int) {
 }
 
 // Do reduce scatter in a single node
-template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
           unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
           unsigned long long Length>
 DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
@@ -167,12 +165,13 @@ DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
                                     int uop_idx, int) {
     // treat channel dst as src since we read from it, and reduce to local
     // memory
-    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
     constexpr int total_tiles =
         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-    constexpr int total_threads = total_tiles * NumThreads;
+    constexpr int num_threads = NumWarps * Arch::ThreadsPerWarp;
+    constexpr int total_threads = total_tiles * num_threads;
     constexpr size_t nInt4 = Length / sizeof(int4);
-    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    const int tid = uop_idx * num_threads + UnitOp::thread_id();
     BytesPack<16> *dst =
         reinterpret_cast<BytesPack<16> *>((uint8_t *)src + Offset);
     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
@@ -195,14 +194,14 @@ DEVICE void read_and_reduce_mscclpp(size_t src_offset_0, size_t src_offset_1,
     }
 }
 
-template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
           unsigned int NPeers, unsigned int Rank, unsigned long long Stride>
 DEVICE void gather_from_peers_mscclpp(
     size_t ori_offset, size_t target_offset_0, size_t target_offset_1,
     size_t target_offset_2, size_t target_offset_3, size_t target_offset_4,
     size_t target_offset_5, size_t target_offset_6, ark::fp16 *, int uop_idx,
     int) {
-    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
     constexpr size_t shape_width = Shape::W * sizeof(ark::fp16);
     constexpr size_t output_width = UnitOutDims::W * sizeof(ark::fp16);
     constexpr size_t stride = Dims::W * sizeof(ark::fp16);
@@ -228,27 +227,28 @@ DEVICE void gather_from_peers_mscclpp(
                 shape_width * remote_rank + j * stride + offset_in_width;
             _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
                                         ori_offset + offset, bytes_per_width,
-                                        tid, NumThreads);
+                                        tid, NumWarps * Arch::ThreadsPerWarp);
         }
     }
 }
 
-template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
           unsigned int DstRank, unsigned int Rank, unsigned long long DstOffset,
           unsigned long long Length, int Flag>
 DEVICE void put_packet_mscclpp(size_t dst_offset, size_t src_offset,
                                int uop_idx, int) {
-    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
     constexpr int total_tiles =
         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-    constexpr int total_threads = total_tiles * NumThreads;
+    constexpr int num_threads = NumWarps * Arch::ThreadsPerWarp;
+    constexpr int total_threads = total_tiles * num_threads;
     constexpr int chan_idx = DstRank < Rank ? DstRank : DstRank - 1;
-    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    const int tid = uop_idx * num_threads + UnitOp::thread_id();
     _ARK_SM_CHANS[chan_idx].putPackets(dst_offset + DstOffset, src_offset,
                                        Length, tid, total_threads, Flag);
 }
 
-template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
           unsigned int NPeers, unsigned int NElemsPerRank, unsigned int Rank,
           unsigned long long RemoteDstOffset, unsigned long long ScratchOffset,
           int Flag>
@@ -258,14 +258,15 @@ DEVICE void reduce_and_write_packet_mscclpp(
     size_t peer_offset_4, size_t peer_offset_5, size_t peer_offset_6,
     int uop_idx, int) {
     // All channels have the same src_, so we can use any channel to get dst
-    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
     constexpr int total_tiles =
         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-    constexpr int total_threads = total_tiles * NumThreads;
+    constexpr int num_threads = NumWarps * Arch::ThreadsPerWarp;
+    constexpr int total_threads = total_tiles * num_threads;
     constexpr int npackets_per_rank =
         NElemsPerRank * sizeof(ark::fp16) / (sizeof(mscclpp::LLPacket) / 2);
     uint8_t *scratch_base = (uint8_t *)scratch + ScratchOffset;
-    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    const int tid = uop_idx * num_threads + UnitOp::thread_id();
     size_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
                              peer_offset_3, peer_offset_4, peer_offset_5,
                              peer_offset_6};
@@ -277,6 +278,9 @@ DEVICE void reduce_and_write_packet_mscclpp(
             mscclpp::LLPacket *pkt = (mscclpp::LLPacket *)(scratch_base) +
                                      remote_rank * npackets_per_rank;
             uint2 val = pkt[idx].read(Flag);
+            // if (tid == 0) {
+            //     printf("rank %d, idx %d, val %d %d\n", Rank, idx, val.x, val.y);
+            // }
             BytesPack<8> packet;
             packet.u32[0] = val.x;
             packet.u32[1] = val.y;
@@ -293,15 +297,16 @@ DEVICE void reduce_and_write_packet_mscclpp(
     }
 }
 
-template <typename Dims, typename Shape, typename UnitOutDims, int NumThreads,
+template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
           int NPacket, unsigned long long DstOffset,
           unsigned long long SrcOffset, int Flag>
 DEVICE void get_from_packet_mscclpp(void *dst, void *src, int uop_idx, int) {
-    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumThreads, 0>;
+    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
     constexpr int total_tiles =
         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-    constexpr int total_threads = total_tiles * NumThreads;
-    const int tid = uop_idx * NumThreads + UnitOp::thread_id();
+    constexpr int num_threads = NumWarps * Arch::ThreadsPerWarp;
+    constexpr int total_threads = total_tiles * num_threads;
+    const int tid = uop_idx * num_threads + UnitOp::thread_id();
     mscclpp::LLPacket *dst_pkt = (mscclpp::LLPacket *)((char *)src + SrcOffset);
     BytesPack<8> packet;
     uint2 *dst_pkt_base = (uint2 *)((char *)dst + DstOffset);

@@ -43,7 +43,7 @@ std::string MscclppGatherFromPeersOp::function_name(const OpConfig &cfg) const {
                              {{dims,                     // Dims
                                dst_buff->shape.dims4(),  // Shape
                                unit_out_dims,            // UnitOutDims
-                               cfg.num_warps * 32,       // NumThreads
+                               cfg.num_warps,            // NumWarps
                                npeers, rank, stride}});
 }
 

@@ -46,10 +46,10 @@ std::string MscclppReadAndReduceOp::function_name(const OpConfig &cfg) const {
     Dims dims = dst_buff->ldims.dims4();
 
     return Op::function_name("ark::comm::read_and_reduce_mscclpp",
-                             {{dims,                // Dims
-                               shape_dims,          // Shape
-                               unit_out_dims,       // UnitOutDims
-                               cfg.num_warps * 32,  // NumThreads
+                             {{dims,           // Dims
+                               shape_dims,     // Shape
+                               unit_out_dims,  // UnitOutDims
+                               cfg.num_warps,  // NumWarps
                                peer_rank, rank, offset, bytes}});
 }
 
