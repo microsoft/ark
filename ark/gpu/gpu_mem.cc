@@ -139,7 +139,7 @@ GpuMem::GpuMem(size_t bytes) { this->init(bytes); }
 GpuMem::GpuMem(const GpuMem::Info &info) { this->init(info); }
 
 //
-void GpuMem::init(size_t bytes, bool expose) {
+void GpuMem::init(size_t bytes, bool expose) { // TODO: do we need expose?
     if (bytes == 0) {
         ERR(InvalidUsageError, "Tried to allocate zero byte.");
     }
@@ -148,12 +148,8 @@ void GpuMem::init(size_t bytes, bool expose) {
     // Allocate more to align the bytes by 64KB.
     GLOG(gpuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
 #elif defined(ARK_ROCM)
-    if (expose) {
-        GLOG(hipExtMallocWithFlags(&raw_addr_, bytes + GPU_PAGE_SIZE,
-                                   hipDeviceMallocUncached));
-    } else {
-        GLOG(gpuMemAlloc(&raw_addr_, bytes + GPU_PAGE_SIZE));
-    }
+    GLOG(hipExtMallocWithFlags(&raw_addr_, bytes + GPU_PAGE_SIZE,
+                               hipDeviceMallocUncached));
 #endif
 
     // Make sure it is a base pointer.
