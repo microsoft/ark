@@ -26,37 +26,33 @@ def reduce_scatter_test(rank, inputs, world_size, nelems, iter=1):
     elapsed = runtime.stop()
 
     host_output = reducesactter_result.to_numpy()
-    expected = inputs[rank]
+    expected = np.copy(inputs[rank])
     nelems_per_rank = nelems // world_size
     for i, input in enumerate(inputs):
         if i != rank:
             tmp = np.zeros(nelems, dtype=np.float16)
-            tmp[nelems_per_rank * i : nelems_per_rank * (i + 1)] = input[nelems_per_rank * i : nelems_per_rank * (i + 1)]
+            tmp[nelems_per_rank * rank : nelems_per_rank * (rank + 1)] = input[nelems_per_rank * rank : nelems_per_rank * (rank + 1)]
             expected += tmp
 
     max_abs_error = np.max(np.abs(host_output - expected))
     mean_abs_error = np.mean(np.abs(host_output - expected))
     # The numeric error of half precision of the machine
-    print(f"rank {rank} input {inputs[rank]}")
-    print(f"rank {rank} host_output {host_output}")
-    print(f"rank {rank} expected {expected}")
-    # numeric_epsilon_half = np.finfo(np.float16).eps
-    # np.testing.assert_allclose(
-    #     host_output, expected, atol=2 * world_size * numeric_epsilon_half
-    # )
-    # print(
-    #     f"reducescatter reduce_scatter_test: world_size {world_size} rank {rank} tensor_len "
-    #     f"<{height},{width}> max_abs_error {max_abs_error:.5f} mean_abs_error "
-    #     f"{mean_abs_error:.5f} elapsed {elapsed:.5f} ms iter {iter} "
-    #     f"elapsed_per_iter {elapsed / iter:.5f} ms"
-    # )
+    numeric_epsilon_half = np.finfo(np.float16).eps
+    np.testing.assert_allclose(
+        host_output, expected, atol=2 * world_size * numeric_epsilon_half
+    )
+    print(
+        f"reducescatter reduce_scatter_test: world_size {world_size} rank {rank} tensor_len "
+        f"<{nelems}> max_abs_error {max_abs_error:.5f} mean_abs_error "
+        f"{mean_abs_error:.5f} elapsed {elapsed:.5f} ms iter {iter} "
+        f"elapsed_per_iter {elapsed / iter:.5f} ms"
+    )
 
 
 def test_reducescatter_mscclpp_internal(world_size, nelems):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
-    expected = np.random.rand(nelems).astype(np.float16)
     np_inputs = []
     for i in range(num_processes):
         np_inputs.append(np.random.rand(nelems).astype(np.float16))
@@ -74,7 +70,7 @@ def test_reducescatter_mscclpp_internal(world_size, nelems):
 
 class TestReducescatter(unittest.TestCase):
     def test_reducescatter_mscclpp(self):
-        test_reducescatter_mscclpp_internal(2, 1024)
+        test_reducescatter_mscclpp_internal(8, 1024 * 1024 * 32)
 
 
 if __name__ == "__main__":

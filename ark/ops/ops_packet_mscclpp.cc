@@ -325,7 +325,7 @@ const OpConfigMap MscclppPacketConfigMap = {
         {-1, -1},
         {-1, -1},
         {-1, -1}},
-       {{-1, -1}},
+       {{1, 4096}},
        false,
        false}}},
 };

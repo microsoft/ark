@@ -88,21 +88,13 @@ DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
 }
 
 DEVICE void add_half4(BytesPack<8> &dst, BytesPack<8> &src) {
-    __half *pd = reinterpret_cast<__half *>(dst.u16);
-    __half *ps = reinterpret_cast<__half *>(src.u16);
+    __half2 *pd = reinterpret_cast<__half2 *>(dst.u32);
+    __half2 *ps = reinterpret_cast<__half2 *>(src.u32);
 #pragma unroll
     for (int i = 0; i < 2; ++i) {
-        __half2 d, s;
-        d.x = pd[i * 2];
-        d.y = pd[i * 2 + 1];
-        s.x = ps[i * 2];
-        s.y = ps[i * 2 + 1];
-        d = __hadd2(d, s);
-        pd[i * 2] = d.x;
-        pd[i * 2 + 1] = d.y;
+        pd[i] = __hadd2(pd[i], ps[i]);
     }
 }
-
 // Send a trigger to proxy to request transaction.
 template <unsigned int Rank, unsigned int DstRank,
           unsigned long long int Length>
