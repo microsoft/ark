@@ -8,7 +8,7 @@
 #include "model.h"
 
 #ifdef ARK_USE_MSCCLPP
-#include <mscclpp/packet.hpp>
+#include <mscclpp/packet_device.hpp>
 constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
 #else
 constexpr int MSCCLPP_PACKET_SIZE = 16;
