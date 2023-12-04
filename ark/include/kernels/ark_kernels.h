@@ -13,7 +13,6 @@
 #include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
-#include "copy.h"
 #include "comm.h"
 #include "comm_mm.h"
 #ifdef ARK_USE_MSCCLPP

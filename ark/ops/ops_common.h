@@ -148,13 +148,14 @@ typedef enum {
     OP_ARCH_CUDA_90 = 0x8,
     OP_ARCH_CUDA_ANY = 0x0f,
     OP_ARCH_ROCM_90A = 0x10,
+    OP_ARCH_ROCM_942 = 0x20,
     OP_ARCH_ROCM_ANY = 0xf0,
     OP_ARCH_ANY = -1,
 } OpArchType;
 
 OpArchType op_arch_from_string(const std::string &arch);
 
-struct Tensor;
+class Tensor;
 
 /// 2-dimensional op tile
 struct OpTile {
