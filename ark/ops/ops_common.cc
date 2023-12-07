@@ -438,12 +438,6 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const Im2colOp *>(this)->function_name(cfg);
         case OP_TRANSPOSE:
             return static_cast<const TransposeOp *>(this)->function_name(cfg);
-        case OP_SEND:
-            return static_cast<const SendOp *>(this)->function_name(cfg);
-        case OP_SEND_DONE:
-            return static_cast<const SendDoneOp *>(this)->function_name(cfg);
-        case OP_RECV:
-            return static_cast<const RecvOp *>(this)->function_name(cfg);
         case OP_SEND_MSCCLPP:
             return static_cast<const MscclppSendOp *>(this)->function_name(cfg);
         case OP_SEND_DONE_MSCCLPP:
@@ -505,13 +499,6 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const {
     switch (this->type) {
         case OP_SCALE:
             return static_cast<const ScaleOp *>(this)->function_call_args(cfg);
-        case OP_SEND:
-            return static_cast<const SendOp *>(this)->function_call_args(cfg);
-        case OP_SEND_DONE:
-            return static_cast<const SendDoneOp *>(this)->function_call_args(
-                cfg);
-        case OP_RECV:
-            return static_cast<const RecvOp *>(this)->function_call_args(cfg);
         case OP_SEND_MSCCLPP:
             return static_cast<const MscclppSendOp *>(this)->function_call_args(
                 cfg);
@@ -597,8 +584,7 @@ std::string Op::function_name(const std::string &kernel_name,
 bool Op::is_virtual() const { return this->cfg_map == nullptr; }
 
 bool Op::is_comm() const {
-    return this->type == OP_SEND || this->type == OP_SEND_DONE ||
-           this->type == OP_RECV || this->type == OP_SEND_MSCCLPP ||
+    return this->type == OP_SEND_MSCCLPP ||
            this->type == OP_SEND_DONE_MSCCLPP ||
            this->type == OP_RECV_MSCCLPP ||
            this->type == OP_DEVICE_SYNC_MSCCLPP;

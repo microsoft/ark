@@ -427,36 +427,7 @@ void DefaultScheduler::configure_gpu_buf(
         for (auto &sop : opseq->get_sched_ops()) {
             const Op *op = sop.get_op();
 
-            if (op->type == OP_SEND) {
-                //
-                Tensor *in = op->inputs[0];
-                int sid;
-                int rank;
-                int dst_rank;
-                size_t bytes;
-                op->args.get(&sid, 0);
-                op->args.get(&rank, 1);
-                op->args.get(&dst_rank, 2);
-                op->args.get(&bytes, 3);
-                size_t off = in->offset() * in->type_bytes();
-                // TODO: generalize converting rank to GPU ID.
-                int nrph = get_env().num_ranks_per_host;
-                int dst_gpu_id = dst_rank % nrph;
-                if ((dst_rank / nrph) == (this->rank / nrph)) {
-                    // Same node.
-                    this->buf_infos.emplace_back(dst_gpu_id, bytes, nullptr,
-                                                 sid, off);
-                }
-                export_tns_sids[in->buf].emplace_back(in, sid);
-                this->send_recv_ops.emplace_back(op);
-            } else if (op->type == OP_RECV) {
-                //
-                Tensor *output = op->outputs[0];
-                int sid;
-                op->args.get(&sid, 0);
-                export_tns_sids[output->buf].emplace_back(output, sid);
-                this->send_recv_ops.emplace_back(op);
-            } else if (op->type == OP_SEND_MSCCLPP) {
+            if (op->type == OP_SEND_MSCCLPP) {
                 Tensor *input = op->inputs[0];
                 Tensor *recvbuf = op->inputs[1];
                 int dst_rank;

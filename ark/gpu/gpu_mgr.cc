@@ -155,20 +155,10 @@ GpuMgrCtx::GpuMgrCtx(GpuMgr *gpu_mgr_, int rank_, int world_size_,
       rank{rank_},
       world_size{world_size_},
       name{name_},
-      data_mem{},
-      sc_rc_mem{2 * MAX_NUM_SID * sizeof(int)} {
-    // Initialize SCs to zeros.
-    int *href = (int *)this->sc_rc_mem.href();
-    for (int i = 0; i < MAX_NUM_SID; ++i) {
-        href[i] = 0;
-    }
-    // Initialize RCs to zeros.
-    for (int i = MAX_NUM_SID; i < 2 * MAX_NUM_SID; ++i) {
-        href[i] = 0;
-    }
+      data_mem{} {
     // Use the CPU-side software communication stack.
-    this->comm_sw = std::make_unique<GpuCommSw>(
-        name_, gpu_mgr_->gpu_id, rank_, world_size_, &data_mem, &sc_rc_mem);
+    this->comm_sw = std::make_unique<GpuCommSw>(name_, gpu_mgr_->gpu_id, rank_,
+                                                world_size_, &data_mem);
 }
 
 //
@@ -347,11 +337,6 @@ GpuBuf *GpuMgrCtx::mem_import(size_t bytes, int sid, int gid) {
     return buf;
 }
 
-void GpuMgrCtx::reg_sendrecv(int sid, int remote_gpu_id, size_t bytes,
-                             bool is_recv) {
-    this->comm_sw->reg_sendrecv(sid, remote_gpu_id, bytes, is_recv);
-}
-
 //
 void GpuMgrCtx::freeze(bool expose) {
     GLOG(this->gpu_mgr->set_current());
@@ -373,36 +358,10 @@ void GpuMgrCtx::freeze(bool expose) {
 //
 GpuState GpuMgrCtx::set_current() { return this->gpu_mgr->set_current(); }
 
-// Get the host memory address of an SC flag.
-volatile int *GpuMgrCtx::get_sc_href(int sid) const {
-    return (volatile int *)this->sc_rc_mem.href(sid * sizeof(int));
-}
-
-// Get the host memory address of an RC flag.
-volatile int *GpuMgrCtx::get_rc_href(int sid) const {
-    return (volatile int *)this->sc_rc_mem.href((MAX_NUM_SID + sid) *
-                                                sizeof(int));
-}
-
 //
 GpuPtr GpuMgrCtx::get_data_ref(int gid) const {
     if (gid == -1) return this->data_mem.ref();
     return this->comm_sw->get_data_mem(gid)->ref();
-}
-
-// Get the GPU memory address of an SC flag.
-GpuPtr GpuMgrCtx::get_sc_ref(int sid) const {
-    return this->sc_rc_mem.ref(sid * sizeof(int));
-}
-
-// Get the GPU memory address of an RC flag.
-GpuPtr GpuMgrCtx::get_rc_ref(int sid) const {
-    return this->sc_rc_mem.ref((MAX_NUM_SID + sid) * sizeof(int));
-}
-
-//
-GpuPtr GpuMgrCtx::get_request_ref() const {
-    return this->comm_sw->get_request_ref();
 }
 
 //

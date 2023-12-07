@@ -21,11 +21,9 @@ class GpuBuf;
 class GpuCommSw {
    public:
     GpuCommSw(const std::string &name, const int gpu_id_, const int rank_,
-              const int world_size_, GpuMem *data_mem, GpuMem *sc_rc_mem);
+              const int world_size_, GpuMem *data_mem);
     ~GpuCommSw();
 
-    void reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
-                      bool is_recv);
     void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
                    const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
 
@@ -33,11 +31,7 @@ class GpuCommSw {
 
     void stop_request_loop();
 
-    void set_request(const Request &db);
-
     GpuMem *get_data_mem(const int gid);
-
-    GpuPtr get_request_ref() const;
 
     const void *get_proxy_channels_ref() const;
 

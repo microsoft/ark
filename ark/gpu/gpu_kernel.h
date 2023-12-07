@@ -12,10 +12,7 @@
 #include "gpu/gpu_mgr.h"
 
 #define ARK_BUF_NAME "ARK_BUF"
-#define ARK_SC_NAME "ARK_SC"
-#define ARK_RC_NAME "ARK_RC"
 #define ARK_LSS_NAME "ARK_LOOP_SYNC_STATE"
-#define ARK_REQ_NAME "ARK_REQUEST"
 
 namespace ark {
 

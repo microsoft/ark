@@ -3,80 +3,40 @@
 
 #include "gpu/gpu_comm_sw.h"
 
-#include <sys/mman.h>
-
-#include <algorithm>
 #include <cassert>
-#include <cerrno>
 #include <list>
-#include <map>
-#include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
-#include <set>
-#include <sstream>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
 
-#include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_common.h"
 #include "gpu/gpu_logging.h"
-#include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "ipc/ipc_hosts.h"
 #include "ipc/ipc_socket.h"
-
-using namespace std;
-
-#define DEBUG_REQUEST 0
-#define REQUEST_DEBUG(...)           \
-    do {                             \
-        if (DEBUG_REQUEST) {         \
-            LOG(DEBUG, __VA_ARGS__); \
-        }                            \
-    } while (0);
 
 namespace ark {
 
 // For peer access between GPUs on the same machine.
 struct GpuCommMemInfo {
     GpuMem::Info data_info;
-    GpuMem::Info sc_rc_info;
     uint64_t sid_offs[MAX_NUM_SID];
-};
-
-//
-struct GpuSendRecvInfo {
-    int sid;
-    int remote_rank;
-    std::size_t bytes;
-    bool is_recv;
 };
 
 class GpuCommSw::Impl {
    public:
     Impl(const std::string &name, const int gpu_id_, const int rank_,
-         const int world_size_, GpuMem *data_mem, GpuMem *sc_rc_mem);
+         const int world_size_, GpuMem *data_mem);
     ~Impl();
 
-    void reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
-                      bool is_recv);
     void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
                    const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
 
-    void request_loop();
     void launch_request_loop();
     void stop_request_loop();
 
-    void set_request(const Request &db);
-
     GpuMem *get_data_mem(const int gid);
-    GpuMem *get_sc_rc_mem(const int gid);
-    GpuPtr get_request_ref() const;
 
     const void *get_proxy_channels_ref() const {
         return this->proxy_channels.data();
@@ -109,22 +69,10 @@ class GpuCommSw::Impl {
     const int world_size_;
     //
     std::list<std::unique_ptr<GpuMem>> remote_data_mems_storage_;
-    std::list<std::unique_ptr<GpuMem>> remote_sc_rc_mems_storage_;
     //
     std::vector<GpuMem *> data_mems_;
     //
-    std::vector<GpuMem *> sc_rc_mems_;
-    //
-    std::vector<std::vector<GpuPtr>> addr_table_;
-    //
-    GpuPtr dev_one_;
-    Request *request_ = nullptr;
-    std::thread *request_loop_thread_ = nullptr;
-    volatile bool run_request_loop_thread_ = false;
-    //
     std::unique_ptr<IpcSocket> ipc_socket_;
-    //
-    std::vector<GpuSendRecvInfo> send_recv_infos_;
 
     std::shared_ptr<mscclpp::TcpBootstrap> bootstrap;
     std::shared_ptr<mscclpp::Communicator> comm;
@@ -136,20 +84,9 @@ class GpuCommSw::Impl {
 };
 
 //
-GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
-                      const int world_size, GpuMem *data_mem, GpuMem *sc_rc_mem)
-    : name_{name},
-      gpu_id_{gpu_id},
-      rank_{rank},
-      world_size_{world_size},
-      request_{new Request} {
-    // Register `request_` as a mapped & pinned address.
-    GLOG(gpuHostRegister((void *)request_, sizeof(request_),
-                         gpuHostRegisterMapped));
-
-    GLOG(gpuMemAlloc(&dev_one_, sizeof(int)));
-    GLOG(gpuMemsetD32(dev_one_, 1, 1));
-
+GpuCommSw::Impl::Impl(const std::string &name, const int gpu_id, const int rank,
+                      const int world_size, GpuMem *data_mem)
+    : name_{name}, gpu_id_{gpu_id}, rank_{rank}, world_size_{world_size} {
     // Reserve entries for GPU communication stack information.
     // Power of 2 larger than `gpu_id_` and at least 8.
     int num_entries = 8;
@@ -157,11 +94,9 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
         num_entries *= 2;
     }
     data_mems_.resize(num_entries, nullptr);
-    sc_rc_mems_.resize(num_entries, nullptr);
 
     // Create the local stack info.
     data_mems_[gpu_id_] = data_mem;
-    sc_rc_mems_[gpu_id_] = sc_rc_mem;
 
     int port = get_env().ipc_listen_port_base + gpu_id_;
     int host_id = rank_ / get_env().num_ranks_per_host;
@@ -176,52 +111,23 @@ GpuCommSw::Impl::Impl(const string &name, const int gpu_id, const int rank,
     this->proxy_service = std::make_shared<mscclpp::ProxyService>();
 }
 
-GpuCommSw::Impl::~Impl() {
-    this->stop_request_loop();
-    if (request_ != nullptr) {
-        if (gpuHostUnregister((void *)request_) != gpuSuccess) {
-            LOG(WARN, "gpuHostUnregister() failed.");
-        }
-        delete request_;
-    }
-}
-
-void GpuCommSw::Impl::reg_sendrecv(int sid, int remote_rank, size_t bytes,
-                                   bool is_recv) {
-    send_recv_infos_.emplace_back(
-        GpuSendRecvInfo{sid, remote_rank, bytes, is_recv});
-}
+GpuCommSw::Impl::~Impl() { this->stop_request_loop(); }
 
 //
 void GpuCommSw::Impl::configure(
     const std::vector<std::pair<int, size_t>> &export_sid_offs,
     const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs) {
-    // Max requested bytes for each SID. Only for IB.
-    std::map<int, size_t> ib_sid_max_bytes;
-    for (auto &srinfo : send_recv_infos_) {
-        ib_sid_max_bytes[srinfo.sid] =
-            max(ib_sid_max_bytes[srinfo.sid], srinfo.bytes);
-    }
-
     //
     GpuMem *data_mem = this->get_data_mem(gpu_id_);
-    GpuMem *sc_rc_mem = this->get_sc_rc_mem(gpu_id_);
     GpuCommMemInfo comm_mem_info;
 
     comm_mem_info.data_info.ipc_hdl = data_mem->get_info().ipc_hdl;
     comm_mem_info.data_info.phys_addr = data_mem->get_info().phys_addr;
     comm_mem_info.data_info.bytes = data_mem->get_info().bytes;
 
-    comm_mem_info.sc_rc_info.ipc_hdl = sc_rc_mem->get_info().ipc_hdl;
-    comm_mem_info.sc_rc_info.phys_addr = sc_rc_mem->get_info().phys_addr;
-    comm_mem_info.sc_rc_info.bytes = sc_rc_mem->get_info().bytes;
-
     for (auto &p : export_sid_offs) {
         int sid = p.first;
         size_t off = p.second;
-        GpuPtr addr = data_mem->ref(off);
-
-        addr_table_[gpu_id_][sid] = addr;
         comm_mem_info.sid_offs[sid] = off;
     }
 
@@ -257,11 +163,8 @@ void GpuCommSw::Impl::configure(
         for (GpuBuf *buf : p.second) {
             int sid = buf->get_id();
             size_t off = remote_comm_mem_info.sid_offs[sid];
-            addr_table_[gpu_id][sid] = mem->ref(off);
             buf->set_offset(off);
         }
-        mem = this->get_sc_rc_mem(gpu_id);
-        mem->init(remote_comm_mem_info.sc_rc_info);
     }
 
     if (data_mem->get_bytes() > 0) {
@@ -369,16 +272,8 @@ void GpuCommSw::Impl::launch_request_loop() {
 void GpuCommSw::Impl::stop_request_loop() { this->proxy_service->stopProxy(); }
 
 //
-void GpuCommSw::Impl::set_request(const Request &db) {
-    if (request_ != nullptr) {
-        *(request_) = db;
-    }
-}
-
-//
 GpuMem *GpuCommSw::Impl::get_data_mem(const int gid) {
     int sz = (int)data_mems_.size();
-    assert(sz == (int)sc_rc_mems_.size());
     if (sz <= gid) {
         while (sz <= gid) {
             sz *= 2;
@@ -391,52 +286,15 @@ GpuMem *GpuCommSw::Impl::get_data_mem(const int gid) {
         dm = remote_data_mems_storage_.back().get();
         data_mems_[gid] = dm;
     }
-    //
-    while (addr_table_.size() < data_mems_.size()) {
-        addr_table_.emplace_back();
-        addr_table_.back().resize(MAX_NUM_SID, 0);
-    }
     return dm;
 }
 
-//
-GpuMem *GpuCommSw::Impl::get_sc_rc_mem(const int gid) {
-    int sz = (int)sc_rc_mems_.size();
-    assert(sz == (int)sc_rc_mems_.size());
-    if (sz <= gid) {
-        while (sz <= gid) {
-            sz *= 2;
-        }
-        sc_rc_mems_.resize(sz, nullptr);
-    }
-    GpuMem *sm = sc_rc_mems_[gid];
-    if (sm == nullptr) {
-        remote_sc_rc_mems_storage_.emplace_back(std::make_unique<GpuMem>());
-        sm = remote_sc_rc_mems_storage_.back().get();
-        sc_rc_mems_[gid] = sm;
-    }
-    return sm;
-}
-
-//
-GpuPtr GpuCommSw::Impl::get_request_ref() const {
-    GpuPtr ref;
-    GLOG(gpuHostGetDevicePointer(&ref, request_, 0));
-    return ref;
-}
-
 GpuCommSw::GpuCommSw(const std::string &name, const int gpu_id_,
-                     const int rank_, const int world_size_, GpuMem *data_mem,
-                     GpuMem *sc_rc_mem)
+                     const int rank_, const int world_size_, GpuMem *data_mem)
     : impl{std::make_unique<GpuCommSw::Impl>(name, gpu_id_, rank_, world_size_,
-                                             data_mem, sc_rc_mem)} {}
+                                             data_mem)} {}
 
 GpuCommSw::~GpuCommSw() {}
-
-void GpuCommSw::reg_sendrecv(int sid, int remote_rank, std::size_t bytes,
-                             bool is_recv) {
-    this->impl->reg_sendrecv(sid, remote_rank, bytes, is_recv);
-}
 
 void GpuCommSw::configure(
     const std::vector<std::pair<int, size_t>> &export_sid_offs,
@@ -448,14 +306,8 @@ void GpuCommSw::launch_request_loop() { this->impl->launch_request_loop(); }
 
 void GpuCommSw::stop_request_loop() { this->impl->stop_request_loop(); }
 
-void GpuCommSw::set_request(const Request &db) { this->impl->set_request(db); }
-
 GpuMem *GpuCommSw::get_data_mem(const int gid) {
     return this->impl->get_data_mem(gid);
-}
-
-GpuPtr GpuCommSw::get_request_ref() const {
-    return this->impl->get_request_ref();
 }
 
 const void *GpuCommSw::get_proxy_channels_ref() const {
