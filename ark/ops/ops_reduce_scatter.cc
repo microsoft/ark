@@ -47,10 +47,10 @@ std::string ReadAndReduceOp::function_name(const OpConfig &cfg) const {
     Dims dims = dst_buff->ldims.dims4();
 
     return Op::function_name("ark::comm::read_and_reduce",
-                             {{dims,                // Dims
-                               shape_dims,          // Shape
-                               unit_out_dims,       // UnitOutDims
-                               cfg.num_warps * 32,  // NumThreads
+                             {{dims,           // Dims
+                               shape_dims,     // Shape
+                               unit_out_dims,  // UnitOutDims
+                               cfg.num_warps,  // NumWarps
                                peer_rank, rank, offset, bytes}});
 }
 
@@ -138,7 +138,7 @@ Tensor *Model::local_reduce_scatter(Tensor *input, int gpu_id,
 }
 
 const OpConfigMap ReadAndReduceConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       // TODO: The config for 32MB elements, need to update for other message
       // size

@@ -29,7 +29,7 @@ Tensor *Model::device_sync(Tensor *input, int nranks, const std::string &name) {
 }
 
 const OpConfigMap DeviceSyncConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "none"},
+    {{OP_ARCH_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {1, 0, {{-1, -1}}, {{-1, -1}}, false, true},

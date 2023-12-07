@@ -96,7 +96,7 @@ std::string GatherFromPeersOp::function_name(const OpConfig &cfg) const {
                              {{dims,                     // Dims
                                dst_buff->shape.dims4(),  // Shape
                                unit_out_dims,            // UnitOutDims
-                               cfg.num_warps * 32,       // NumThreads
+                               cfg.num_warps,            // NumWarps
                                npeers, rank, stride}});
 }
 
@@ -184,7 +184,7 @@ Tensor *Model::local_all_gather(Tensor *input, int gpu_id, int ngpus_per_node,
 }
 
 const OpConfigMap GatherFromPeersConfigMap = {
-    {{OP_ARCH_CUDA_ANY, "any"},
+    {{OP_ARCH_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       // TODO: The config for 32MB elements, need to update for other message
       // size
