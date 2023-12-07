@@ -13,7 +13,8 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG v0.4.1
+    # TODO: change to a tag name when this is merged to main
+    GIT_TAG fb98ddb445937aea5f8f18ecd1dca4cca1ba116b
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 FetchContent_MakeAvailable(mscclpp)

@@ -13,3 +13,7 @@
 [submodule "third_party/composable_kernel"]
 	path = third_party/composable_kernel
 	url = https://github.com/ROCmSoftwarePlatform/composable_kernel
+
+[submodule "third_party/mscclpp"]
+	path = third_party/mscclpp
+	url = https://github.com/microsoft/mscclpp
