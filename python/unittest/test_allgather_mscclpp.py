@@ -16,9 +16,7 @@ def all_gather_test(rank, input, expected, world_size, height, width, iter=1):
 
     input_tensor = ark.tensor([height, width], ark.fp16)
 
-    allgather_result = ark.local_all_gather(
-        input_tensor, rank, world_size, 1
-    )
+    allgather_result = ark.local_all_gather(input_tensor, rank, world_size, 1)
 
     runtime.launch()
     input_tensor.from_numpy(input)

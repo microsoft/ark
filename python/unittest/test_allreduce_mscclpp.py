@@ -53,9 +53,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     input_tensor = ark.tensor([tensor_len], ark.fp16)
 
-    allreduce_result = ark.local_all_reduce(
-        input_tensor, rank, world_size
-    )
+    allreduce_result = ark.local_all_reduce(input_tensor, rank, world_size)
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
