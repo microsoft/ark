@@ -45,7 +45,7 @@ void test_reduce_scatter_internal(size_t nelem, int iter) {
                 data_buf[i] = ark::half_t(gpu_id + 1);
             }
             ark::Tensor *output =
-                model.local_reduce_scatter_mscclpp(data, gpu_id, num_gpus);
+                model.local_reduce_scatter(data, gpu_id, num_gpus);
 
             auto result =
                 ark::op_test("reduce_scatter", model, {data}, {output},

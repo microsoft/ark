@@ -153,7 +153,7 @@ class ColumnParallelLinear(ark.Module):
         gather_reshape = ark.reshape(
             gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
         )
-        gather_out = ark.local_all_gather_mscclpp(
+        gather_out = ark.local_all_gather(
             gather_reshape, self.local_rank, self.world_size, 1
         )
         return ark.reshape(
@@ -211,7 +211,7 @@ class RowParallelLinear(ark.Module):
         local_result = ark.matmul(
             input_parallel, self.weight, transpose_other=True
         )
-        reduced_result = ark.local_all_reduce_mscclpp(
+        reduced_result = ark.local_all_reduce(
             local_result, self.local_rank, self.world_size
         )
         return reduced_result
@@ -255,7 +255,7 @@ class ParallelEmbedding(ark.Module):
         gather_reshape = ark.reshape(
             gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
         )
-        gather_out = ark.local_all_gather_mscclpp(
+        gather_out = ark.local_all_gather(
             gather_reshape, self.local_rank, self.world_size, 1
         )
         return ark.reshape(

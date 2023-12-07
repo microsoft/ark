@@ -11,24 +11,23 @@ constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
 
 namespace ark {
 
-extern const OpConfigMap MscclppPacketConfigMap;
+extern const OpConfigMap PacketConfigMap;
 
-MscclppPutPacketOp::MscclppPutPacketOp(const std::string &prec_type,
-                                       Tensor *input, Tensor *local_tmp_buf,
-                                       Tensor *recv_buf, int id, int rank,
-                                       int dst_rank, size_t dst_offset,
-                                       int flag, const std::string &name)
-    : Op{OP_PUT_PACKET_MSCCLPP,
+PutPacketOp::PutPacketOp(const std::string &prec_type, Tensor *input,
+                         Tensor *local_tmp_buf, Tensor *recv_buf, int id,
+                         int rank, int dst_rank, size_t dst_offset, int flag,
+                         const std::string &name)
+    : Op{OP_PUT_PACKET,
          prec_type,
          {input, local_tmp_buf, recv_buf},
          {input},
          {{id, rank, dst_rank, dst_offset, flag}},
          name,
-         &MscclppPacketConfigMap,
+         &PacketConfigMap,
          -1,
          true} {}
 
-std::string MscclppPutPacketOp::function_name(const OpConfig &cfg) const {
+std::string PutPacketOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
 
     int rank;
@@ -48,7 +47,7 @@ std::string MscclppPutPacketOp::function_name(const OpConfig &cfg) const {
                                  : tile_out.x * tile_out.y;
     Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(nelems_per_tile)};
 
-    return Op::function_name("ark::comm::put_packet_mscclpp",
+    return Op::function_name("ark::comm::put_packet",
                              {{
                                  input->ldims.dims4(),  // Dims
                                  input->shape.dims4(),  // Shape
@@ -62,7 +61,7 @@ std::string MscclppPutPacketOp::function_name(const OpConfig &cfg) const {
                              }});
 }
 
-OpArgs MscclppPutPacketOp::function_call_args(const OpConfig &) const {
+OpArgs PutPacketOp::function_call_args(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     Tensor *recv_buf = this->inputs[2];
 
@@ -77,10 +76,10 @@ OpArgs MscclppPutPacketOp::function_call_args(const OpConfig &) const {
     return opargs;
 }
 
-Tensor *Model::put_packet_mscclpp(Tensor *input, Tensor *local_tmp_buf,
-                                  Tensor *recv_buf, int id, int rank,
-                                  int dst_rank, size_t dst_offset, int flag,
-                                  const std::string &name) {
+Tensor *Model::put_packet(Tensor *input, Tensor *local_tmp_buf,
+                          Tensor *recv_buf, int id, int rank, int dst_rank,
+                          size_t dst_offset, int flag,
+                          const std::string &name) {
     CHECK(input != nullptr);
     CHECK(local_tmp_buf != nullptr);
     CHECK(recv_buf != nullptr);
@@ -95,28 +94,27 @@ Tensor *Model::put_packet_mscclpp(Tensor *input, Tensor *local_tmp_buf,
     }
     local_tmp_buf->exported = true;
     recv_buf->imported_rank = dst_rank;
-    MscclppPutPacketOp op{pt,   input,    local_tmp_buf, recv_buf, id,
-                          rank, dst_rank, dst_offset,    flag,     name};
+    PutPacketOp op{pt,   input,    local_tmp_buf, recv_buf, id,
+                   rank, dst_rank, dst_offset,    flag,     name};
     return this->impl->add_op(op)[0];
 }
 
-MscclppReduceAndWritePacketOp::MscclppReduceAndWritePacketOp(
+ReduceAndWritePacketOp::ReduceAndWritePacketOp(
     const std::string &prec_type, std::vector<Tensor *> inputs, Tensor *output,
     int id, int rank, int npeers, size_t elems_per_rank, size_t scratch_offset,
     size_t remote_dst_offset, int flag, const std::string &name)
-    : Op{OP_REDUCE_AND_WRITE_PACKET_MSCCLPP,
+    : Op{OP_REDUCE_AND_WRITE_PACKET,
          prec_type,
          inputs,
          {output},
          {{id, rank, npeers, elems_per_rank, scratch_offset, remote_dst_offset,
            flag}},
          name,
-         &MscclppPacketConfigMap,
+         &PacketConfigMap,
          -1,
          true} {}
 
-std::string MscclppReduceAndWritePacketOp::function_name(
-    const OpConfig &cfg) const {
+std::string ReduceAndWritePacketOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
 
     int rank;
@@ -140,7 +138,7 @@ std::string MscclppReduceAndWritePacketOp::function_name(
                                  : tile_out.x * tile_out.y;
     Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(nelems_per_tile)};
 
-    return Op::function_name("ark::comm::reduce_and_write_packet_mscclpp",
+    return Op::function_name("ark::comm::reduce_and_write_packet",
                              {{
                                  input->ldims.dims4(),  // Dims
                                  input->shape.dims4(),  // Shape
@@ -155,7 +153,7 @@ std::string MscclppReduceAndWritePacketOp::function_name(
                              }});
 }
 
-Tensor *Model::reduce_and_write_packet_mscclpp(
+Tensor *Model::reduce_and_write_packet(
     Tensor *input, Tensor *scratch, Tensor *output,
     const std::vector<Tensor *> &remote_peer_bufs, int id, int rank, int npeers,
     size_t elems_per_rank, size_t scratch_offset, size_t remote_dst_offset,
@@ -180,22 +178,21 @@ Tensor *Model::reduce_and_write_packet_mscclpp(
     std::vector<Tensor *> inputs = {input, scratch};
     inputs.insert(inputs.end(), remote_peer_bufs.begin(),
                   remote_peer_bufs.end());
-    MscclppReduceAndWritePacketOp op{pt,
-                                     inputs,
-                                     output,
-                                     id,
-                                     rank,
-                                     npeers,
-                                     elems_per_rank,
-                                     scratch_offset,
-                                     remote_dst_offset,
-                                     flag,
-                                     name};
+    ReduceAndWritePacketOp op{pt,
+                              inputs,
+                              output,
+                              id,
+                              rank,
+                              npeers,
+                              elems_per_rank,
+                              scratch_offset,
+                              remote_dst_offset,
+                              flag,
+                              name};
     return this->impl->add_op(op)[0];
 }
 
-OpArgs MscclppReduceAndWritePacketOp::function_call_args(
-    const OpConfig &) const {
+OpArgs ReduceAndWritePacketOp::function_call_args(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     Tensor *scratch = this->inputs[1];
     Tensor *output = this->outputs[0];
@@ -225,23 +222,21 @@ OpArgs MscclppReduceAndWritePacketOp::function_call_args(
     return opargs;
 }
 
-MscclppGetFromPacketOp::MscclppGetFromPacketOp(const std::string &prec_type,
-                                               Tensor *input, Tensor *output,
-                                               size_t src_offset,
-                                               size_t dst_offset,
-                                               size_t npackets, int flag,
-                                               const std::string &name)
-    : Op{OP_GET_FROM_PACKET_MSCCLPP,
+GetFromPacketOp::GetFromPacketOp(const std::string &prec_type, Tensor *input,
+                                 Tensor *output, size_t src_offset,
+                                 size_t dst_offset, size_t npackets, int flag,
+                                 const std::string &name)
+    : Op{OP_GET_FROM_PACKET,
          prec_type,
          {input},
          {output},
          {{src_offset, dst_offset, npackets, flag}},
          name,
-         &MscclppPacketConfigMap,
+         &PacketConfigMap,
          -1,
          true} {}
 
-std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
+std::string GetFromPacketOp::function_name(const OpConfig &cfg) const {
     Tensor *output = this->outputs[0];
 
     size_t src_offset;
@@ -263,7 +258,7 @@ std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
                                  : tile_out.x * tile_out.y;
     Dims unit_out_dims{1, 1, 1, static_cast<ark::DimType>(nelems_per_tile)};
 
-    return Op::function_name("ark::comm::get_from_packet_mscclpp",
+    return Op::function_name("ark::comm::get_from_packet",
                              {{
                                  output->ldims.dims4(),  // Dims
                                  shape_dims,             // Shape
@@ -276,7 +271,7 @@ std::string MscclppGetFromPacketOp::function_name(const OpConfig &cfg) const {
                              }});
 }
 
-OpArgs MscclppGetFromPacketOp::function_call_args(const OpConfig &) const {
+OpArgs GetFromPacketOp::function_call_args(const OpConfig &) const {
     Tensor *input = this->inputs[0];
     Tensor *output = this->outputs[0];
 
@@ -289,10 +284,9 @@ OpArgs MscclppGetFromPacketOp::function_call_args(const OpConfig &) const {
     return opargs;
 }
 
-Tensor *Model::get_packet_mscclpp(Tensor *input, Tensor *output,
-                                  size_t src_offset, size_t dst_offset,
-                                  size_t npackets, int flag,
-                                  const std::string &name) {
+Tensor *Model::get_packet(Tensor *input, Tensor *output, size_t src_offset,
+                          size_t dst_offset, size_t npackets, int flag,
+                          const std::string &name) {
     CHECK(input != nullptr);
     CHECK(output != nullptr);
     CHECK(input->is_sequential());
@@ -301,12 +295,12 @@ Tensor *Model::get_packet_mscclpp(Tensor *input, Tensor *output,
         ERR(InvalidUsageError, "supports only 1D input");
     }
 
-    MscclppGetFromPacketOp op{"none",     input,    output, src_offset,
-                              dst_offset, npackets, flag,   name};
+    GetFromPacketOp op{"none",     input,    output, src_offset,
+                       dst_offset, npackets, flag,   name};
     return this->impl->add_op(op)[0];
 }
 
-const OpConfigMap MscclppPacketConfigMap = {
+const OpConfigMap PacketConfigMap = {
     {{OP_ARCH_CUDA_ANY, "any"},
      {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
       {16,

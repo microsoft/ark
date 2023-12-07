@@ -8,38 +8,27 @@
 #include "model.h"
 
 namespace ark {
-extern const OpConfigMap MscclppDeviceSyncConfigMap;
+extern const OpConfigMap DeviceSyncConfigMap;
 
-MscclppDeviceSyncOp::MscclppDeviceSyncOp(const std::string &prec_type,
-                                         Tensor *input, Tensor *output,
-                                         int nranks, const std::string &name)
-    : Op{OP_DEVICE_SYNC_MSCCLPP,
-         prec_type,
-         {input},
-         {output},
-         {{nranks}},
-         name,
-         &MscclppDeviceSyncConfigMap,
-         -1,
-         true} {}
+DeviceSyncOp::DeviceSyncOp(const std::string &prec_type, Tensor *input,
+                           Tensor *output, int nranks, const std::string &name)
+    : Op{OP_DEVICE_SYNC,       prec_type, {input}, {output}, {{nranks}}, name,
+         &DeviceSyncConfigMap, -1,        true} {}
 
-std::string MscclppDeviceSyncOp::function_name(const OpConfig &) const {
+std::string DeviceSyncOp::function_name(const OpConfig &) const {
     int nranks;
     this->args.get(&nranks, 0);
-    return Op::function_name("ark::comm::device_sync_mscclpp", {{nranks}});
+    return Op::function_name("ark::comm::device_sync", {{nranks}});
 }
 
-OpArgs MscclppDeviceSyncOp::function_call_args(const OpConfig &) const {
-    return {};
-}
+OpArgs DeviceSyncOp::function_call_args(const OpConfig &) const { return {}; }
 
-Tensor *Model::device_sync_mscclpp(Tensor *input, int nranks,
-                                   const std::string &name) {
-    MscclppDeviceSyncOp op{"none", input, input, nranks, name};
+Tensor *Model::device_sync(Tensor *input, int nranks, const std::string &name) {
+    DeviceSyncOp op{"none", input, input, nranks, name};
     return this->impl->add_op(op)[0];
 }
 
-const OpConfigMap MscclppDeviceSyncConfigMap = {
+const OpConfigMap DeviceSyncConfigMap = {
     {{OP_ARCH_CUDA_ANY, "none"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost

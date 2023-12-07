@@ -14,7 +14,7 @@
 #include "arithmetic.h"
 #include "cast.h"
 #include "copy.h"
-#include "comm_mscclpp.h"
+#include "comm.h"
 #include "embedding.h"
 #include "im2col.h"
 #include "layernorm.h"

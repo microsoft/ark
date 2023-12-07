@@ -438,13 +438,12 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const Im2colOp *>(this)->function_name(cfg);
         case OP_TRANSPOSE:
             return static_cast<const TransposeOp *>(this)->function_name(cfg);
-        case OP_SEND_MSCCLPP:
-            return static_cast<const MscclppSendOp *>(this)->function_name(cfg);
-        case OP_SEND_DONE_MSCCLPP:
-            return static_cast<const MscclppSendDoneOp *>(this)->function_name(
-                cfg);
-        case OP_RECV_MSCCLPP:
-            return static_cast<const MscclppRecvOp *>(this)->function_name(cfg);
+        case OP_SEND:
+            return static_cast<const SendOp *>(this)->function_name(cfg);
+        case OP_SEND_DONE:
+            return static_cast<const SendDoneOp *>(this)->function_name(cfg);
+        case OP_RECV:
+            return static_cast<const RecvOp *>(this)->function_name(cfg);
         case OP_LAYERNORM:
             return static_cast<const LayernormOp *>(this)->function_name(cfg);
         case OP_RMSNORM:
@@ -469,24 +468,22 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
         case OP_CAST:
             return static_cast<const CastOp *>(this)->function_name(cfg);
-        case OP_DEVICE_SYNC_MSCCLPP:
-            return static_cast<const MscclppDeviceSyncOp *>(this)
-                ->function_name(cfg);
-        case OP_READ_AND_REDUCE_MSCCLPP:
-            return static_cast<const MscclppReadAndReduceOp *>(this)
-                ->function_name(cfg);
-        case OP_GATHER_FROM_PEERS_MSCCLPP:
-            return static_cast<const MscclppGatherFromPeersOp *>(this)
-                ->function_name(cfg);
-        case OP_PUT_PACKET_MSCCLPP:
-            return static_cast<const MscclppPutPacketOp *>(this)->function_name(
+        case OP_DEVICE_SYNC:
+            return static_cast<const DeviceSyncOp *>(this)->function_name(cfg);
+        case OP_READ_AND_REDUCE:
+            return static_cast<const ReadAndReduceOp *>(this)->function_name(
                 cfg);
-        case OP_REDUCE_AND_WRITE_PACKET_MSCCLPP:
-            return static_cast<const MscclppReduceAndWritePacketOp *>(this)
+        case OP_GATHER_FROM_PEERS:
+            return static_cast<const GatherFromPeersOp *>(this)->function_name(
+                cfg);
+        case OP_PUT_PACKET:
+            return static_cast<const PutPacketOp *>(this)->function_name(cfg);
+        case OP_REDUCE_AND_WRITE_PACKET:
+            return static_cast<const ReduceAndWritePacketOp *>(this)
                 ->function_name(cfg);
-        case OP_GET_FROM_PACKET_MSCCLPP:
-            return static_cast<const MscclppGetFromPacketOp *>(this)
-                ->function_name(cfg);
+        case OP_GET_FROM_PACKET:
+            return static_cast<const GetFromPacketOp *>(this)->function_name(
+                cfg);
         default:
             ERR(ModelError, "invalid op type ", this->type);
             return "";
@@ -499,32 +496,30 @@ OpArgs Op::function_call_args(const OpConfig &cfg) const {
     switch (this->type) {
         case OP_SCALE:
             return static_cast<const ScaleOp *>(this)->function_call_args(cfg);
-        case OP_SEND_MSCCLPP:
-            return static_cast<const MscclppSendOp *>(this)->function_call_args(
+        case OP_SEND:
+            return static_cast<const SendOp *>(this)->function_call_args(cfg);
+        case OP_SEND_DONE:
+            return static_cast<const SendDoneOp *>(this)->function_call_args(
                 cfg);
-        case OP_SEND_DONE_MSCCLPP:
-            return static_cast<const MscclppSendDoneOp *>(this)
-                ->function_call_args(cfg);
-        case OP_RECV_MSCCLPP:
-            return static_cast<const MscclppRecvOp *>(this)->function_call_args(
+        case OP_RECV:
+            return static_cast<const RecvOp *>(this)->function_call_args(cfg);
+        case OP_DEVICE_SYNC:
+            return static_cast<const DeviceSyncOp *>(this)->function_call_args(
                 cfg);
-        case OP_DEVICE_SYNC_MSCCLPP:
-            return static_cast<const MscclppDeviceSyncOp *>(this)
+        case OP_READ_AND_REDUCE:
+            return static_cast<const ReadAndReduceOp *>(this)
                 ->function_call_args(cfg);
-        case OP_READ_AND_REDUCE_MSCCLPP:
-            return static_cast<const MscclppReadAndReduceOp *>(this)
+        case OP_GATHER_FROM_PEERS:
+            return static_cast<const GatherFromPeersOp *>(this)
                 ->function_call_args(cfg);
-        case OP_GATHER_FROM_PEERS_MSCCLPP:
-            return static_cast<const MscclppGatherFromPeersOp *>(this)
+        case OP_PUT_PACKET:
+            return static_cast<const PutPacketOp *>(this)->function_call_args(
+                cfg);
+        case OP_REDUCE_AND_WRITE_PACKET:
+            return static_cast<const ReduceAndWritePacketOp *>(this)
                 ->function_call_args(cfg);
-        case OP_PUT_PACKET_MSCCLPP:
-            return static_cast<const MscclppPutPacketOp *>(this)
-                ->function_call_args(cfg);
-        case OP_REDUCE_AND_WRITE_PACKET_MSCCLPP:
-            return static_cast<const MscclppReduceAndWritePacketOp *>(this)
-                ->function_call_args(cfg);
-        case OP_GET_FROM_PACKET_MSCCLPP:
-            return static_cast<const MscclppGetFromPacketOp *>(this)
+        case OP_GET_FROM_PACKET:
+            return static_cast<const GetFromPacketOp *>(this)
                 ->function_call_args(cfg);
         default:
             OpArgs opargs;
@@ -584,10 +579,8 @@ std::string Op::function_name(const std::string &kernel_name,
 bool Op::is_virtual() const { return this->cfg_map == nullptr; }
 
 bool Op::is_comm() const {
-    return this->type == OP_SEND_MSCCLPP ||
-           this->type == OP_SEND_DONE_MSCCLPP ||
-           this->type == OP_RECV_MSCCLPP ||
-           this->type == OP_DEVICE_SYNC_MSCCLPP;
+    return this->type == OP_SEND || this->type == OP_SEND_DONE ||
+           this->type == OP_RECV || this->type == OP_DEVICE_SYNC;
 }
 
 bool operator<(const Op &op1, const Op &op2) {

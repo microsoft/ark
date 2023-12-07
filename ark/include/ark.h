@@ -466,33 +466,21 @@ class Model {
     /// @param bytes
     /// @param name
     /// @return
-    Tensor *send(Tensor *input, int id, int dst_rank, std::size_t bytes = 0,
+    Tensor *send(Tensor *input, int sid, int dst_rank, std::size_t bytes = 0,
                  const std::string &name = "send");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
-    Tensor *send_done(Tensor *input, int id, int dst_rank,
+    Tensor *send_done(Tensor *input, int sid, int dst_rank,
                       const std::string &name = "send_done");
     // Receives a tensor from a source rank (@p src_rank), identified by the
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
-    Tensor *recv(int id, int src_rank, std::size_t bytes = 0,
+    Tensor *recv(int sid, int src_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
     //
-    Tensor *send_mscclpp(Tensor *input, int sid, int dst_rank,
-                         std::size_t bytes = 0,
-                         const std::string &name = "send_mscclpp");
-    //
-    Tensor *send_done_mscclpp(Tensor *input, int dst_rank,
-                              const std::string &name = "send_done_mscclpp");
-    //
-    Tensor *recv_mscclpp(int sid, int src_rank, std::size_t bytes = 0,
-                         Tensor *output = nullptr,
-                         const std::string &name = "recv_mscclpp");
-    //
-    Tensor *put_packet_mscclpp(Tensor *input, Tensor *local_tmp_buf,
-                               Tensor *recv_buf, int id, int rank, int dst_rank,
-                               size_t dst_offset, int flag,
-                               const std::string &name = "put_packet_mscclpp");
+    Tensor *put_packet(Tensor *input, Tensor *local_tmp_buf, Tensor *recv_buf,
+                       int id, int rank, int dst_rank, size_t dst_offset,
+                       int flag, const std::string &name = "put_packet");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
@@ -514,44 +502,42 @@ class Model {
                  Tensor *output = nullptr, const std::string &name = "cast");
 
     // sync across multi devices
-    Tensor *device_sync_mscclpp(
-        Tensor *input, int npeers,
-        const std::string &name = "device_sync_mscclpp");
+    Tensor *device_sync(Tensor *input, int npeers,
+                        const std::string &name = "device_sync");
 
     // local reduce scatter
-    Tensor *local_reduce_scatter_mscclpp(
+    Tensor *local_reduce_scatter(
         Tensor *input, int gpu_id, int ngpus_per_node,
-        const std::string &name = "local_reduce_scatter_mscclpp");
+        const std::string &name = "local_reduce_scatter");
 
     // local all gather
-    Tensor *local_all_gather_mscclpp(
-        Tensor *input, int gpu_id, int ngpus_per_node, int axis = 0,
-        const std::string &name = "local_all_gather_mscclpp");
+    Tensor *local_all_gather(Tensor *input, int gpu_id, int ngpus_per_node,
+                             int axis = 0,
+                             const std::string &name = "local_all_gather");
     // read data from remote and reduce to current buffer
-    Tensor *read_and_reduce_mscclpp(
-        Tensor *input, int sid, int npeers, size_t offset, size_t bytes,
-        const std::string &name = "read_and_reduce_mscclpp");
+    Tensor *read_and_reduce(Tensor *input, int sid, int npeers, size_t offset,
+                            size_t bytes,
+                            const std::string &name = "read_and_reduce");
     // gather from peers
-    Tensor *gather_from_peers_mscclpp(
-        Tensor *input, Tensor *tile, int sid, int npeers, size_t chunkBytes,
-        const std::string &name = "gather_from_peers_mscclpp");
+    Tensor *gather_from_peers(Tensor *input, Tensor *tile, int sid, int npeers,
+                              size_t chunkBytes,
+                              const std::string &name = "gather_from_peers");
 
-    Tensor *local_all_reduce_mscclpp(
-        Tensor *input, int gpu_id, int gpu_num,
-        const std::string &name = "local_all_reduce");
-    Tensor *local_all_reduce_packet_mscclpp(
+    Tensor *local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
+                             const std::string &name = "local_all_reduce");
+    Tensor *local_all_reduce_packet(
         Tensor *input, int gpu_id, int gpu_num,
         const std::string &name = "local_all_reduce_packet");
 
-    Tensor *reduce_and_write_packet_mscclpp(
+    Tensor *reduce_and_write_packet(
         Tensor *input, Tensor *scratch, Tensor *output,
         const std::vector<Tensor *> &remote_peer_bufs, int id, int rank,
         int npeers, size_t elems_per_rank, size_t scratch_offset,
         size_t remote_dst_offset, int flag,
-        const std::string &name = "reduce_and_write_packet_mscclpp");
-    Tensor *get_packet_mscclpp(Tensor *input, Tensor *output, size_t src_offset,
-                               size_t dst_offset, size_t npackets, int flag,
-                               const std::string &name = "get_packet_mscclpp");
+        const std::string &name = "reduce_and_write_packet");
+    Tensor *get_packet(Tensor *input, Tensor *output, size_t src_offset,
+                       size_t dst_offset, size_t npackets, int flag,
+                       const std::string &name = "get_packet");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
     bool verify() const;

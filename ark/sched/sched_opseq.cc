@@ -25,7 +25,7 @@ bool SchedOpSeq::is_send() const {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
-        if (ot == OP_SEND_MSCCLPP) {
+        if (ot == OP_SEND) {
             continue;
         }
         return false;
@@ -39,7 +39,7 @@ bool SchedOpSeq::is_send_done() const {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
-        if (ot == OP_SEND_DONE_MSCCLPP) {
+        if (ot == OP_SEND_DONE) {
             continue;
         }
         return false;
@@ -53,7 +53,7 @@ bool SchedOpSeq::is_recv() const {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
-        if (ot == OP_RECV_MSCCLPP) {
+        if (ot == OP_RECV) {
             continue;
         }
         return false;
@@ -67,7 +67,7 @@ bool SchedOpSeq::is_sync() const {
             continue;
         }
         const OpType &ot = sop.get_op()->type;
-        if (ot == OP_DEVICE_SYNC_MSCCLPP) {
+        if (ot == OP_DEVICE_SYNC) {
             continue;
         }
         return false;
