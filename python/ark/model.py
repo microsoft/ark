@@ -665,54 +665,6 @@ def recv(
 
 
 @register_op
-def send_mm(
-    input: Tensor,
-    id: int,
-    gpu_dst: int,
-    bytes: int = 0,
-    output: Tensor = None,
-    name: str = "send_mm",
-) -> Tensor:
-    """
-    Similar to the 'send_done' function, but implemented using CUDA
-    in-stream RDMA copy and Low Latency (LL) protocol.
-    Usage:
-    # on GPU0:
-    ark.send_mm(tensor_send, 1, 1)
-    # on GPU1:
-    ark.recv_mm(tensor, 1, 0)
-    """
-    if output is not None:
-        output = output._tensor
-
-    _tensor = Model.get_model().send_mm(
-        input._tensor, id, gpu_dst, bytes, output, name
-    )
-    return Tensor(_tensor)
-
-
-@register_op
-def recv_mm(
-    input: Tensor,
-    id: int,
-    gpu_src: int,
-    bytes: int = 0,
-    output: Tensor = None,
-    name: str = "recv_mm",
-) -> Tensor:
-    """
-    Similar to the 'recv' function, but implemented using CUDA
-    in-stream RDMA copy and Low Latency (LL) protocol.
-    """
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_model().recv_mm(
-        input._tensor, id, gpu_src, bytes, output, name
-    )
-    return Tensor(_tensor)
-
-
-@register_op
 def send_mscclpp(
     input: Tensor,
     sid: int,

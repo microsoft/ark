@@ -196,19 +196,6 @@ void register_model(py::module &m) {
              py::return_value_policy::reference_internal, py::arg("id"),
              py::arg("src_rank"), py::arg("bytes") = 0,
              py::arg("output") = nullptr, py::arg("name") = "recv")
-        .def("send_mm", &ark::Model::send_mm,
-             "Similar to the 'send_done' function, but implemented using "
-             "CUDA "
-             "in-stream RDMA copy and Low Latency (LL) protocol.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("gpu_dst"), py::arg("bytes") = 0,
-             py::arg("output") = nullptr, py::arg("name") = "send_mm")
-        .def("recv_mm", &ark::Model::recv_mm,
-             "Similar to the 'recv' function, but implemented using CUDA "
-             "in-stream RDMA copy and Low Latency (LL) protocol.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("id"), py::arg("gpu_src"), py::arg("bytes") = 0,
-             py::arg("output") = nullptr, py::arg("name") = "recv_mm")
         .def("send_mscclpp", &ark::Model::send_mscclpp,
              "Sends a tensor to a destination GPU (`dst_rank`). Multiple "
              "tensors can be sent to the same GPU,so an identifier `id` is "

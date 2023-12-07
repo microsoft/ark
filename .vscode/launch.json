@@ -48,7 +48,6 @@
         "env": {
             "MSCCLPP_DEBUG": "WARN",
             "MSCCLPP_DEBUG_SUBSYS": "ALL",
-            "ARK_USE_MSCCLPP": "1",
             "ARK_LOG_LEVEL": "INFO"
         },
         "justMyCode": false,
@@ -66,7 +65,6 @@
         "env": {
             "MSCCLPP_DEBUG": "WARN",
             "MSCCLPP_DEBUG_SUBSYS": "ALL",
-            "ARK_USE_MSCCLPP": "1",
             "ARK_LOG_LEVEL": "INFO",
             "ARK_DISABLE_GRAPH_OPT": "1"
         },

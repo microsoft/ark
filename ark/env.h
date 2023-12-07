@@ -25,8 +25,6 @@ struct Env {
     int ipc_listen_port_base;
     // Number of ranks per host.
     int num_ranks_per_host;
-    // Disable IB.
-    bool disable_ib;
     // Disable P2P GPU memcpy.
     bool disable_p2p_memcpy;
     // Disable the heuristic ARK graph optimization.

@@ -150,7 +150,7 @@ If you want to use only the core C++ interfaces, follow the instructions below.
     done
     ```
 
-    Run the tests. If you do want to disable cross-node networking, pass `ARK_DISABLE_IB=1` environment variable to the test command.
+    Run the tests.
 
     ```bash
     ARK_ROOT=$PWD ctest --verbose

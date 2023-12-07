@@ -124,8 +124,6 @@ typedef enum {
     OP_SEND,
     OP_SEND_DONE,
     OP_RECV,
-    OP_SEND_MM,
-    OP_RECV_MM,
     OP_SEND_MSCCLPP,
     OP_SEND_DONE_MSCCLPP,
     OP_RECV_MSCCLPP,

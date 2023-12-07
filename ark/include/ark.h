@@ -477,16 +477,6 @@ class Model {
     // operator is completed.
     Tensor *recv(int id, int src_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
-    // Similar to the 'send_done' function, but implemented using in-stream
-    // RDMA copy and Low Latency (LL) protocol.
-    Tensor *send_mm(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
-                    Tensor *output = nullptr,
-                    const std::string &name = "send_mm");
-    // Similar to the 'recv' function, but implemented using in-stream RDMA
-    // copy and Low Latency (LL) protocol.
-    Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
-                    Tensor *output = nullptr,
-                    const std::string &name = "recv_mm");
     //
     Tensor *send_mscclpp(Tensor *input, int sid, int dst_rank,
                          std::size_t bytes = 0,

@@ -14,7 +14,6 @@
 #define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
-#define DEFAULT_ARK_DISABLE_IB false
 #define DEFAULT_ARK_DISABLE_P2P_MEMCPY false
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE false
@@ -60,8 +59,6 @@ Env::Env() {
     // Get the number of ranks per host.
     this->num_ranks_per_host =
         env<int>("ARK_NUM_RANKS_PER_HOST", DEFAULT_ARK_NUM_RANKS_PER_HOST);
-    // If `ARK_DISABLE_IB=1`, we disable IB networking.
-    this->disable_ib = env<bool>("ARK_DISABLE_IB", DEFAULT_ARK_DISABLE_IB);
     // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P memcpy between GPUs.
     this->disable_p2p_memcpy =
         env<bool>("ARK_DISABLE_P2P_MEMCPY", DEFAULT_ARK_DISABLE_P2P_MEMCPY);
