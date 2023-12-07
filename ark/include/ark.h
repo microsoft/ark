@@ -60,6 +60,8 @@ struct Dims {
     bool is_no_dim() const;
     // Return true if the dimensions are invalid.
     bool is_invalid() const;
+    // Insert a dimension at the given index.
+    void insert(int idx, DimType dim);
     // Erase the dimension at the given index and return the erased dimension.
     DimType erase(int idx);
 
@@ -359,13 +361,17 @@ class Model {
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
     template <typename ReduceOpType>
-    Tensor *reduce(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce(Tensor *input, int axis, bool keepdims = true,
+                   Tensor *output = nullptr,
                    const std::string &name = "reduce");
-    Tensor *reduce_sum(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce_sum(Tensor *input, int axis, bool keepdims = true,
+                       Tensor *output = nullptr,
                        const std::string &name = "reduce_sum");
-    Tensor *reduce_mean(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce_mean(Tensor *input, int axis, bool keepdims = true,
+                        Tensor *output = nullptr,
                         const std::string &name = "reduce_mean");
-    Tensor *reduce_max(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce_max(Tensor *input, int axis, bool keepdims = true,
+                       Tensor *output = nullptr,
                        const std::string &name = "reduce_max");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
@@ -528,7 +534,7 @@ class Model {
 
     // local all gather
     Tensor *local_all_gather_msll(
-        Tensor *input, int gpu_id, int ngpus_per_node,
+        Tensor *input, int gpu_id, int ngpus_per_node, int axis = 0,
         const std::string &name = "local_all_gather_msll");
     // read data from remote and reduce to current buffer
     Tensor *read_and_reduce_msll(
@@ -536,7 +542,7 @@ class Model {
         const std::string &name = "read_and_reduce_msll");
     // gather from peers
     Tensor *gather_from_peers_msll(
-        Tensor *input, int sid, int npeers, size_t chunkBytes,
+        Tensor *input, Tensor *tile, int sid, int npeers, size_t stride,
         const std::string &name = "gather_from_peers_msll");
 
     Tensor *local_all_reduce_msll(

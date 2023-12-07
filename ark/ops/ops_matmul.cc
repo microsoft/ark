@@ -274,7 +274,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         this->identity(output_buffer, shard_outputs, name + "/identity");
     ref = this->reshape(ref, reduce_input_shape);
     mat_y = this->reshape(mat_y, reduce_output_shape);
-    Tensor *red = this->reduce_sum(ref, 0, mat_y, name + "/reduce_sum");
+    Tensor *red = this->reduce_sum(ref, 0, true, mat_y, name + "/reduce_sum");
     if (red->shape != output_shape) {
         return this->reshape(red, output_shape);
     }

@@ -45,19 +45,19 @@ void register_model(py::module &m) {
              "Performs reduction along the `axis` of the `input` tensor and "
              "stores the result in `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("axis"), py::arg("keepdims"), py::arg("output") = nullptr,
              py::arg("name") = "reduce_sum")
         .def("reduce_mean", &ark::Model::reduce_mean,
              "Performs reduction along the `axis` of the `input` tensor and "
              "stores the result in `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("axis"), py::arg("keepdims"), py::arg("output") = nullptr,
              py::arg("name") = "reduce_mean")
         .def("reduce_max", &ark::Model::reduce_max,
              "Performs reduction along the `axis` of the `input` tensor and "
              "stores the result in `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("axis"), py::arg("output") = nullptr,
+             py::arg("axis"), py::arg("keepdims"), py::arg("output") = nullptr,
              py::arg("name") = "reduce_max")
         .def("layernorm", &ark::Model::layernorm,
              "Applies layer normalization to the `input` tensor and returns "
@@ -237,7 +237,7 @@ void register_model(py::module &m) {
         .def("local_all_gather_msll", &ark::Model::local_all_gather_msll,
              "Performs an all-gather operator across all GPUs",
              py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("gpu_id"), py::arg("ngpus_per_node"),
+             py::arg("gpu_id"), py::arg("ngpus_per_node"), py::arg("axis") = 0,
              py::arg("name") = "local_all_gather_msll")
         .def("all_reduce", &ark::Model::all_reduce,
              "Performs an all-reduce operator across all GPUs, aggregating "

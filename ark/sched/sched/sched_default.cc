@@ -511,8 +511,9 @@ void DefaultScheduler::configure_gpu_buf(
             } else if (op->type == OP_READ_AND_REDUCE_MSLL ||
                        op->type == OP_GATHER_FROM_PEERS_MSLL) {
                 Tensor *local_buff = op->outputs[1];
+                int off = op->type == OP_READ_AND_REDUCE_MSLL ? 1 : 0;
                 std::vector<Tensor *> remote_bufs = std::vector<Tensor *>(
-                    op->inputs.begin() + 1, op->inputs.end());
+                    op->inputs.begin() + off, op->inputs.end());
                 LOG(DEBUG, "read_and_reduce_msll/gather_from_peers_msll ",
                     local_buff->shape, " npeers ", remote_bufs.size());
                 int npeers;

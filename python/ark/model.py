@@ -234,7 +234,11 @@ def sharding(
 
 @register_op
 def reduce_sum(
-    input: Tensor, axis: int, output: Tensor = None, name: str = "reduce_sum"
+    input: Tensor,
+    axis: int,
+    keepdims: bool = True,
+    output: Tensor = None,
+    name: str = "reduce_sum",
 ) -> Tensor:
     """
     Performs reduction along the `axis` of the `input` tensor and
@@ -246,13 +250,19 @@ def reduce_sum(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().reduce_sum(input._tensor, axis, output, name)
+    _tensor = Model.get_model().reduce_sum(
+        input._tensor, axis, keepdims, output, name
+    )
     return Tensor(_tensor)
 
 
 @register_op
 def reduce_mean(
-    input: Tensor, axis: int, output: Tensor = None, name: str = "reduce_mean"
+    input: Tensor,
+    axis: int,
+    keepdims: bool = True,
+    output: Tensor = None,
+    name: str = "reduce_mean",
 ) -> Tensor:
     """
     Performs reduction along the `axis` of the `input` tensor and
@@ -262,13 +272,19 @@ def reduce_mean(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().reduce_mean(input._tensor, axis, output, name)
+    _tensor = Model.get_model().reduce_mean(
+        input._tensor, axis, keepdims, output, name
+    )
     return Tensor(_tensor)
 
 
 @register_op
 def reduce_max(
-    input: Tensor, axis: int, output: Tensor = None, name: str = "reduce_max"
+    input: Tensor,
+    axis: int,
+    keepdims: bool = True,
+    output: Tensor = None,
+    name: str = "reduce_max",
 ) -> Tensor:
     """
     Performs reduction along the `axis` of the `input` tensor and
@@ -278,7 +294,9 @@ def reduce_max(
     """
     if output is not None:
         output = output._tensor
-    _tensor = Model.get_model().reduce_max(input._tensor, axis, output, name)
+    _tensor = Model.get_model().reduce_max(
+        input._tensor, axis, keepdims, output, name
+    )
     return Tensor(_tensor)
 
 
@@ -811,6 +829,7 @@ def local_all_gather_msll(
     input: Tensor,
     rank: int,
     ranks_per_node: int,
+    axis: int,
     name: str = "local_all_gather_msll",
 ) -> Tensor:
     """
@@ -825,6 +844,7 @@ def local_all_gather_msll(
         input._tensor,
         rank,
         ranks_per_node,
+        axis,
         name,
     )
     return Tensor(_tensor)
