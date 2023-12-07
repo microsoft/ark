@@ -11,10 +11,7 @@ if(USE_ROCM)
     set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
-set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
-if (USE_MSCCLPP)
-    set(COMMON_LIBS ${COMMON_LIBS} ARK::mscclpp)
-endif()
+set(COMMON_LIBS ARK::numa ARK::ibverbs mscclpp pthread rt)
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -22,6 +19,7 @@ target_include_directories(ark_obj PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(ark_obj SYSTEM PRIVATE
     ${PROJECT_SOURCE_DIR}/third_party/gpudma/module
     ${PROJECT_SOURCE_DIR}/third_party/json
+    ${MSCCLPP_INCLUDE_DIRS}
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
 )
@@ -42,14 +40,6 @@ if(USE_ROCM)
         /opt/rocm/include
     )
     target_compile_definitions(ark_obj PUBLIC ARK_ROCM)
-endif()
-
-if (USE_MSCCLPP)
-    target_include_directories(ark_obj SYSTEM PRIVATE
-        ${MSCCLPP_INCLUDE_DIRS}
-    )
-    target_compile_definitions(ark_obj PRIVATE ARK_USE_MSCCLPP=1)
-    target_compile_definitions(ark_obj PRIVATE ARK_MSCCLPP_INCLUDE_DIR=${MSCCLPP_INCLUDE_DIRS})
 endif()
 
 target_sources(ark_obj PRIVATE ${SOURCES})

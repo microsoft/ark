@@ -290,9 +290,8 @@ void GpuLoopKernel::load() {
                 " data_buf_value=", data_buf_value);
             GLOG(gpuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
         }
-#ifdef ARK_USE_MSCCLPP
         GpuCommSw *comm = this->ctx->get_comm_sw();
-        if (get_env().use_mscclpp && comm->get_proxy_channels_num() > 0) {
+        if (comm->get_proxy_channels_num() > 0) {
             GpuPtr channel_addr;
             GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
                                     "_ARK_PROXY_CHANS"));
@@ -301,7 +300,7 @@ void GpuLoopKernel::load() {
             GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
                                chans_bytes));
         }
-        if (get_env().use_mscclpp && comm->get_sm_channels_num() > 0) {
+        if (comm->get_sm_channels_num() > 0) {
             GpuPtr channel_addr;
             GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
                                     "_ARK_SM_CHANS"));
@@ -310,7 +309,6 @@ void GpuLoopKernel::load() {
             GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
                                chans_bytes));
         }
-#endif  // ARK_USE_MSCCLPP
     }
 }
 

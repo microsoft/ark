@@ -39,8 +39,6 @@ class GpuCommSw {
 
     GpuPtr get_request_ref() const;
 
-    bool is_using_ib() const;
-
     const void *get_proxy_channels_ref() const;
 
     int get_proxy_channels_bytes() const;

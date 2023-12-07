@@ -2,17 +2,12 @@
 // Licensed under the MIT license.
 
 #include <cassert>
+#include <mscclpp/packet_device.hpp>
 
 #include "env.h"
 #include "logging.h"
 #include "model.h"
-
-#ifdef ARK_USE_MSCCLPP
-#include <mscclpp/packet.hpp>
 constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);
-#else
-constexpr int MSCCLPP_PACKET_SIZE = 16;
-#endif
 
 namespace ark {
 

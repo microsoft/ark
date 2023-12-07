@@ -20,8 +20,6 @@
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH ""
-#define DEFAULT_ARK_USE_MSCCLPP false
-#define DEFAULT_ARK_MSCCLPP_INCLUDE_DIR "/usr/local/mscclpp/include"
 #define DEFAULT_ARK_MSCCLPP_PORT 50051
 
 template <typename T>
@@ -79,11 +77,6 @@ Env::Env() {
     //
     this->enforce_kernel_code_path = env<std::string>(
         "ARK_ENFORCE_KERNEL_CODE_PATH", DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH);
-    // If `ARK_USE_MSCCLPP=1`, we use MSCCL++.
-    this->use_mscclpp = env<bool>("ARK_USE_MSCCLPP", DEFAULT_ARK_USE_MSCCLPP);
-    // Get the MSCCL++ include directory path.
-    this->mscclpp_include_dir = env<std::string>(
-        "ARK_MSCCLPP_INCLUDE_DIR", DEFAULT_ARK_MSCCLPP_INCLUDE_DIR);
     // Get the port number of MSCCLPP.
     this->mscclpp_port = env<int>("ARK_MSCCLPP_PORT", DEFAULT_ARK_MSCCLPP_PORT);
 }

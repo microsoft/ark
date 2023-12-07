@@ -127,5 +127,4 @@ class TestAllreduce(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.environ["ARK_USE_MSCCLPP"] = "1"
     unittest.main()

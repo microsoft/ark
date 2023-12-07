@@ -85,8 +85,6 @@ ark::unittest::State test_sendrecv() {
 int main() {
     ark::init();
     UNITTEST(test_sendrecv);
-    if (ark::get_env().use_mscclpp) {
-        UNITTEST(test_device_sync);
-    }
+    UNITTEST(test_device_sync);
     return ark::unittest::SUCCESS;
 }

@@ -1,12 +1,22 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+set(MSCCLPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp/include)
 set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include)
 set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include)
 set(GPUDMA_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/gpudma/module)
 set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 
 include(FetchContent)
+
+# MSCCL++
+FetchContent_Declare(
+    mscclpp
+    GIT_REPOSITORY https://github.com/microsoft/mscclpp
+    GIT_TAG v0.4.1
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
+)
+FetchContent_MakeAvailable(mscclpp)
 
 if(USE_CUDA)
     # Configure GPUDMA
@@ -49,7 +59,7 @@ if(USE_CUDA)
     )
 
     set(TP_TARGETS tp-cutlass PARENT_SCOPE)
-    set(TP_KERNELS ${CUTLASS_INCLUDE_DIRS} PARENT_SCOPE)
+    set(TP_KERNELS ${MSCCLPP_INCLUDE_DIRS} ${CUTLASS_INCLUDE_DIRS} PARENT_SCOPE)
 endif()
 
 
@@ -72,7 +82,7 @@ if(USE_ROCM)
     )
 
     set(TP_TARGETS tp-ck PARENT_SCOPE)
-    set(TP_KERNELS ${CK_INCLUDE_DIRS} PARENT_SCOPE)
+    set(TP_KERNELS ${MSCCLPP_INCLUDE_DIRS}${CK_INCLUDE_DIRS} PARENT_SCOPE)
 endif()
 
 # Clean up

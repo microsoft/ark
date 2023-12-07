@@ -593,13 +593,10 @@ std::vector<std::string> DefaultScheduler::gen_code() {
     this->codegen->def_sync_stream(code, 0);
     this->codegen->def_sync_stream(code, 1);
 
-    if (get_env().use_mscclpp) {
-        int num_proxy_chans =
-            this->ctx->get_comm_sw()->get_proxy_channels_num();
-        this->codegen->def_proxy_channels(code, num_proxy_chans);
-        int num_sm_chans = this->ctx->get_comm_sw()->get_sm_channels_num();
-        this->codegen->def_sm_channels(code, num_sm_chans);
-    }
+    int num_proxy_chans = this->ctx->get_comm_sw()->get_proxy_channels_num();
+    this->codegen->def_proxy_channels(code, num_proxy_chans);
+    int num_sm_chans = this->ctx->get_comm_sw()->get_sm_channels_num();
+    this->codegen->def_sm_channels(code, num_sm_chans);
 
     std::map<std::string, int> uop_map;
     for (auto &opseq : this->opseqs) {

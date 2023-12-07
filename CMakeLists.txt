@@ -8,8 +8,6 @@ set(ARK_PATCH "1")
 set(ARK_VERSION "${ARK_MAJOR}.${ARK_MINOR}.${ARK_PATCH}")
 set(ARK_SOVERSION "${ARK_MAJOR}.${ARK_MINOR}")
 
-option(USE_MSCCLPP "Use MSCCL++" OFF)
-
 cmake_minimum_required(VERSION 3.25)
 enable_language(CXX)
 
@@ -93,14 +91,6 @@ endif()
 
 # Find ibverbs
 include(FindIBVerbs)
-
-# Find MSCCL++
-if(USE_MSCCLPP)
-    include(${PROJECT_SOURCE_DIR}/cmake/FindMSCCLPP.cmake)
-    if (NOT MSCCLPP_FOUND)
-        message(FATAL_ERROR "MSCCL++ not found")
-    endif()
-endif()
 
 # Find NUMA
 include(FindNUMA)

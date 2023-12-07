@@ -85,9 +85,7 @@ ark::unittest::State test_all_gather_4gpus() {
 }
 
 ark::unittest::State test_all_gather_mscclpp() {
-    if (ark::get_env().use_mscclpp) {
-        test_all_gather_8gpus_internal_mscclpp(1024 * 1024 * 32, 1);
-    }
+    test_all_gather_8gpus_internal_mscclpp(1024 * 1024 * 32, 1);
     return ark::unittest::SUCCESS;
 }
 

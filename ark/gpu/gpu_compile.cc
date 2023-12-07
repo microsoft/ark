@@ -101,10 +101,6 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_CUDA_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
-    if (get_env().use_mscclpp) {
-        args.emplace_back("--define-macro=ARK_USE_MSCCLPP=1");
-        args.emplace_back("-I" + get_env().mscclpp_include_dir);
-    }
     args.emplace_back("-gencode arch=compute_" + cc + ",code=sm_" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
@@ -129,10 +125,6 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
-    if (get_env().use_mscclpp) {
-        args.emplace_back("--define-macro=ARK_USE_MSCCLPP=1");
-        args.emplace_back("-I" + get_env().mscclpp_include_dir);
-    }
     args.emplace_back("--offload-arch=gfx" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);

@@ -114,8 +114,6 @@ ark::unittest::State test_all_reduce_mscclpp() {
 int main() {
     ark::init();
     UNITTEST(test_all_reduce_4gpus);
-    if (ark::get_env().use_mscclpp) {
-        UNITTEST(test_all_reduce_mscclpp);
-    }
+    UNITTEST(test_all_reduce_mscclpp);
     return ark::unittest::SUCCESS;
 }
