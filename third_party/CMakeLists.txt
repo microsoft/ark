@@ -9,14 +9,17 @@ set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 include(FetchContent)
 
 # MSCCL++
+# TODO: change the tag if this PR is merged: https://github.com/microsoft/mscclpp/pull/235
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG 1cd8629
+    GIT_TAG 4681de9
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
+# TODO: remove if this PR is merged: https://github.com/microsoft/mscclpp/pull/234
+set(BYPASS_PEERMEM_CHECK ON CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
 FetchContent_MakeAvailable(mscclpp)
 
