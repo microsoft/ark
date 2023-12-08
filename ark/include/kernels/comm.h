@@ -38,6 +38,22 @@ union BytesPack<8> {
     uint64_t u64;
 };
 
+DEVICE void store(ulonglong2 *p, const BytesPack<16> &v) {
+#if defined(ARK_TARGET_CUDA_ARCH)
+    asm volatile("st.volatile.global.v2.b64 [%0], {%1,%2};"
+                 :
+                 : "l"(p), "l"(v.u64[0]), "l"(v.u64[1])
+                 : "memory");
+#else   // !defined(ARK_TARGET_CUDA_ARCH)
+    atomicStoreRelaxed(reinterpret_cast<uint64_t *>(&(p->x)), v.u64[0]);
+    atomicStoreRelaxed(reinterpret_cast<uint64_t *>(&(p->y)), v.u64[1]);
+#endif  // !defined(ARK_TARGET_CUDA_ARCH)
+}
+
+DEVICE void store(uint64_t *p, const BytesPack<8> &v) {
+    atomicStoreRelaxed(p, v.u64);
+}
+
 DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
     __half2 *pd = reinterpret_cast<__half2 *>(dst.u32);
     __half2 *ps = reinterpret_cast<__half2 *>(src.u32);
@@ -154,7 +170,7 @@ DEVICE void read_and_reduce(size_t src_offset_0, size_t src_offset_1,
             BytesPack<16> tmp = dst[idx];
             ret.val = _ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
             add_half8(tmp, ret.data);
-            dst[idx] = tmp;
+            store((ulonglong2 *)&dst[idx], tmp);
         }
     }
 }
@@ -245,7 +261,7 @@ DEVICE void reduce_and_write_packet(ark::fp16 *dst, ark::fp16 *src,
             packet.u64 = *reinterpret_cast<uint64_t *>(&val);
             add_half4(data, packet);
         }
-        *((uint64_t *)src + idx) = data.u64;
+        store((uint64_t *)dst + idx, data);
         for (int index = 0; index < NPeers; index++) {
             mscclpp::LLPacket *dst_pkt =
                 (mscclpp::LLPacket *)((char *)_ARK_SM_CHANS[index].dst_ +
@@ -271,7 +287,7 @@ DEVICE void get_from_packet(void *dst, void *src, int uop_idx, int) {
     for (int idx = tid; idx < NPacket; idx += total_threads) {
         uint2 data = dst_pkt[idx].read(Flag);
         packet.u64 = *reinterpret_cast<uint64_t *>(&data);
-        dst_pkt_base[idx] = packet.u64;
+        store(dst_pkt_base + idx, packet);
     }
 }
 
