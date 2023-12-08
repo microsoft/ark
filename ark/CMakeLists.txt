@@ -11,7 +11,7 @@ if(USE_ROCM)
     set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
-set(COMMON_LIBS ARK::numa ARK::ibverbs mscclpp pthread rt)
+set(COMMON_LIBS ARK::numa ARK::ibverbs mscclpp mscclpp_static pthread rt)
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

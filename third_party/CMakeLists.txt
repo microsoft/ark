@@ -12,9 +12,12 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG 5a9998b
+    GIT_TAG 1cd8629
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
+set(INSTALL_PREFIX "ark")
 FetchContent_MakeAvailable(mscclpp)
 
 if(USE_CUDA)
@@ -32,7 +35,7 @@ if(USE_CUDA)
 
     # Patch CUTLASS
     add_custom_target(tp-cutlass
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass.patch || true
     )
 
     set(TP_TARGETS tp-cutlass PARENT_SCOPE)
@@ -55,7 +58,7 @@ if(USE_ROCM)
 
     # Patch CK
     add_custom_target(tp-ck
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/composable_kernel/ck.patch || true
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/composable_kernel.patch || true
     )
 
     set(TP_TARGETS tp-ck PARENT_SCOPE)
