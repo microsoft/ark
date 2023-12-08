@@ -81,9 +81,7 @@ class GpuLoopKernel : public GpuKernel {
 
     int threads_per_warp = -1;
 
-    std::unique_ptr<GpuMem> flag;
-
-    volatile int *flag_href;
+    int *flag;
 
     GpuStream stream = nullptr;
     bool is_recording = false;

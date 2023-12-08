@@ -21,6 +21,25 @@ using namespace std;
 //
 #define MAX_LOOP_COUNTER 10000000
 
+#if defined(ARK_CUDA)
+#include <cuda/atomic>
+static int atomicLoadRelaxed(int *ptr) {
+    return cuda::atomic_ref<int, cuda::thread_scope_system>{*ptr}.load(
+        cuda::memory_order_relaxed);
+}
+static void atomicStoreRelaxed(int *ptr, int val) {
+    cuda::atomic_ref<int, cuda::thread_scope_system>{*ptr}.store(
+        val, cuda::memory_order_relaxed);
+}
+#elif defined(ARK_ROCM)
+static int atomicLoadRelaxed(int *ptr) {
+    return __atomic_load_n(ptr, __ATOMIC_RELAXED);
+}
+static void atomicStoreRelaxed(int *ptr, int val) {
+    __atomic_store_n(ptr, val, __ATOMIC_RELAXED);
+}
+#endif  // defined(ARK_ROCM)
+
 namespace ark {
 
 //
@@ -154,10 +173,10 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
     if (ctx_->set_current() != gpuSuccess) {
         ERR(ExecutorError, "Failed to set the context.");
     }
-    this->flag = make_unique<GpuMem>(sizeof(int));
-    this->flag_href = (volatile int *)this->flag->href(0);
+    GLOG(gpuHostAlloc((void **)&this->flag, sizeof(int),
+                      (gpuHostAllocMapped | gpuHostAllocWriteCombined)));
 
-    *(GpuPtr *)this->params[0] = this->flag->ref(0);
+    *(int **)this->params[0] = this->flag;
 
     auto &code_path = get_env().enforce_kernel_code_path;
     if (!code_path.empty()) {
@@ -186,12 +205,12 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "__device__ char *" ARK_BUF_NAME ";\n"
         << *ark_loop_body_code <<
         "extern \"C\" __global__ __launch_bounds__(" << this->bd[0] << ", 1)\n"
-        "void " << name_ << "(volatile int *_it)\n"
+        "void " << name_ << "(int *_it)\n"
         "{\n"
         "  for (;;) {\n"
         "    if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
         "      int iter;\n"
-        "      while ((iter = *_it) == 0) {}\n"
+        "      while ((iter = ark::atomicLoadRelaxed(_it)) == 0) {}\n"
         "      _ITER = iter;\n"
         "    }\n"
         "    ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
@@ -203,7 +222,7 @@ GpuLoopKernel::GpuLoopKernel(const string &name_,
         "      ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "    }\n"
         "    if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
-        "      *_it = 0;\n"
+        "      ark::atomicStoreRelaxed(_it, 0);\n"
         "    }\n"
         "    ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "  }\n"
@@ -314,7 +333,7 @@ GpuState GpuLoopKernel::launch(gpuStream stream, bool disable_timing) {
     this->ctx->get_comm_sw()->launch_request_loop();
 
     // Initialize loop flags.
-    *(this->flag_href) = 0;
+    atomicStoreRelaxed(this->flag, 0);
     GpuState res = GpuKernel::launch(stream);
     if (res == gpuSuccess) {
         this->stream = stream;
@@ -328,26 +347,24 @@ GpuState GpuLoopKernel::launch(gpuStream stream, bool disable_timing) {
 
 void GpuLoopKernel::run(int iter) {
     if (iter > 0) {
-        volatile int *href = this->flag_href;
-        while (*href > 0) {
+        while (atomicLoadRelaxed(this->flag) > 0) {
         }
-        *href = iter;
+        atomicStoreRelaxed(this->flag, iter);
     }
 }
 
-bool GpuLoopKernel::poll() { return *(this->flag_href) <= 0; }
+bool GpuLoopKernel::poll() { return atomicLoadRelaxed(this->flag) <= 0; }
 
 void GpuLoopKernel::wait() {
-    volatile int *href = this->flag_href;
     int cnt = MAX_LOOP_COUNTER;
-    while (*href > 0) {
+    while (atomicLoadRelaxed(this->flag) > 0) {
         if (--cnt > 0) {
             continue;
         }
         // Check if the kernel encountered an error.
         gpuError res = gpuStreamQuery(this->stream);
         if (res == gpuSuccess) {
-            if (*href > 0) {
+            if (atomicLoadRelaxed(this->flag) > 0) {
                 LOG(WARN, "Stream is finished but the loop flag is still set.");
                 break;
             } else {
@@ -366,7 +383,7 @@ void GpuLoopKernel::wait() {
 
 void GpuLoopKernel::stop() {
     this->wait();
-    *(this->flag_href) = -1;
+    atomicStoreRelaxed(this->flag, -1);
     GLOG(gpuStreamSynchronize(this->stream));
     if (is_recording) {
         GLOG(gpuEventElapsedTime(&(this->elapsed_msec), this->timer_begin,
