@@ -43,14 +43,6 @@ jobs:
           git submodule foreach --recursive git clean -fdx
           git submodule update --init --recursive
 
-      - name: InstallGPUDMA
-        run: |
-          if ! lsmod | grep gpumem; then
-            cd third_party && make gpudma
-            sudo insmod ./gpudma/module/gpumem.ko
-            sudo chmod 666 /dev/gpumem
-          fi
-  
       - name: Build
         run: |
           mkdir build && cd build

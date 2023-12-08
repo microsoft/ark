@@ -2,10 +2,6 @@
 	path = third_party/cutlass
 	url = https://github.com/NVIDIA/cutlass
 
-[submodule "third_party/gpudma"]
-	path = third_party/gpudma
-	url = https://github.com/karakozov/gpudma
-
 [submodule "examples/llama/llama"]
 	path = examples/llama/llama
 	url = https://github.com/facebookresearch/llama

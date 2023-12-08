@@ -122,7 +122,6 @@ void GpuCommSw::Impl::configure(
     GpuCommMemInfo comm_mem_info;
 
     comm_mem_info.data_info.ipc_hdl = data_mem->get_info().ipc_hdl;
-    comm_mem_info.data_info.phys_addr = data_mem->get_info().phys_addr;
     comm_mem_info.data_info.bytes = data_mem->get_info().bytes;
 
     for (auto &p : export_sid_offs) {

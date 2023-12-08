@@ -23,7 +23,7 @@
 
 ## Docker Images
 
-We currently provide only *base images* for ARK, which contain all the dependencies for ARK but do not contain ARK itself (no [`gpudma`](https://github.com/microsoft/ark/blob/main/docs/install.md#install-gpudma) as well, which should be installed on the host side). The ARK-installed images will be provided in the future.
+We currently provide only *base images* for ARK, which contain all the dependencies for ARK but do not contain ARK itself. The ARK-installed images will be provided in the future.
 
 You can pull a base image as follows.
 ```
@@ -35,7 +35,7 @@ docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.6
 
 Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
-To run ARK in a Docker container with NVIDIA GPUs, we need to mount `/dev` and `/lib/modules` into the container so that the container can use `gpumem` driver. Specifically, add `--privileged -v /dev:/dev -v /lib/modules:/lib/modules` in the `docker run` command. The following is an example.
+The following is an example `docker run` command for NVIDIA GPUs.
 ```
 # Run a container for NVIDIA GPUs
 docker run \
@@ -44,12 +44,10 @@ docker run \
     --net=host \
     --ipc=host \
     --gpus all \
-    -v /dev:/dev \
-    -v /lib/modules:/lib/modules \
     -it --name [Container Name] [Image Name] bash
 ```
 
-AMD GPUs do not need `gpudma` driver, so you don't need to mount `/dev` and `/lib/modules` into the container. The following is an example.
+The following is an example `docker run` command for AMD GPUs.
 ```
 # Run a container for AMD GPUs
 docker run \
@@ -60,37 +58,6 @@ docker run \
     --security-opt seccomp=unconfined --group-add video \
     -it --name [Container Name] [Image Name] bash
 ```
-
-## Install `gpudma` (NVIDIA GPUs Only)
-
-**NOTE: if you are using a CUDA Docker container, the steps in this section should be done on the host.**
-
-1. Pull submodules.
-
-    ```bash
-    git submodule update --init --recursive
-    ```
-
-2. Compile `gpudma`.
-
-    ```bash
-    cd third_party
-    make gpudma
-    ```
-    - This may fail if you don't have a proper `gcc` version, which will be notified by an error message. In that case, [install an alternative version of `gcc`](https://github.com/chhwang/devel-note/wiki/Building-GCC-from-source).
-
-3. Load `gpumem` driver.
-
-    ```bash
-    sudo insmod gpudma/module/gpumem.ko
-    sudo chmod 666 /dev/gpumem
-    ```
-
-4. Check if the `gpumem` driver is running.
-
-    ```bash
-    lsmod | grep gpumem
-    ```
 
 ## Install ARK Python
 

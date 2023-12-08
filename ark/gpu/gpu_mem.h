@@ -17,8 +17,6 @@ class GpuMem {
     struct Info {
         // IPC handle.
         gpuIpcMemHandle ipc_hdl;
-        // Physical address of GPU pointer.
-        uint64_t phys_addr = 0;
         // Data size.
         uint64_t bytes = 0;
     };
@@ -37,12 +35,6 @@ class GpuMem {
     // GPU-side virtual address.
     GpuPtr ref(size_t offset = 0) const;
 
-    // GPU-side physical address.
-    uint64_t pref(size_t offset = 0) const;
-
-    // Host-side mapped address.
-    void *href(size_t offset = 0) const;
-
     // Return allocated number of bytes.
     uint64_t get_bytes() const;
 
@@ -56,10 +48,6 @@ class GpuMem {
     GpuPtr raw_addr_ = 0;
     // Information for exporting.
     Info info_;
-    // Number of mmapped 64KB pages.
-    uint64_t npage_ = 0;
-    // Base address of mmaped pages.
-    void *mmap_ = nullptr;
     // True if this object is constructed from a `GpuMem::Info`.
     bool is_remote_;
 };

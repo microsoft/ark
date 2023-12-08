@@ -47,17 +47,6 @@ jobs:
         git submodule update --init --recursive
 
   - task: Bash@3
-    name: InstallGPUDMA
-    displayName: Install GPUDMA
-    inputs:
-      targetType: 'inline'
-      script: |
-        cd third_party && make gpudma
-        sudo insmod ./gpudma/module/gpumem.ko
-        sudo chmod 666 /dev/gpumem
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-
-  - task: Bash@3
     name: Build
     displayName: Build
     inputs:

@@ -4,7 +4,6 @@
 set(MSCCLPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp/include)
 set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include)
 set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include)
-set(GPUDMA_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/gpudma/module)
 set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 
 include(FetchContent)
@@ -19,28 +18,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(mscclpp)
 
 if(USE_CUDA)
-    # Configure GPUDMA
-    FetchContent_Declare(
-        gpudma
-        GIT_REPOSITORY https://github.com/karakozov/gpudma
-        GIT_TAG 7ecec64
-        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gpudma
-    )
-    FetchContent_MakeAvailable(gpudma)
-
-    # Build GPUDMA
-    add_custom_target(tp-gpudma
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && make gpudma
-    )
-
-    # Insert gpumem module
-    add_custom_target(gpumem
-        COMMENT "Inserting gpumem module..."
-        COMMAND insmod ${PROJECT_SOURCE_DIR}/third_party/gpudma/module/gpumem.ko
-        COMMAND chmod 666 /dev/gpumem
-    )
-    add_dependencies(gpumem tp-gpudma)
-
     # Configure CUTLASS
     FetchContent_Declare(
         cutlass
@@ -85,7 +62,5 @@ if(USE_ROCM)
     set(TP_KERNELS ${MSCCLPP_INCLUDE_DIRS} ${CK_INCLUDE_DIRS} PARENT_SCOPE)
 endif()
 
-# Clean up
-add_custom_target(tp-clean
-    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && make clean
-)
+# TODO: clean up
+add_custom_target(tp-clean)

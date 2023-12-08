@@ -420,11 +420,7 @@ void gpu_memset(GpuBuf *buf, size_t offset, int val, size_t num) {
         assert((reinterpret_cast<long long unsigned int>(pb) % 4) == 0);
         GLOG(gpuMemsetD32(pb, val, num));
     } else {
-        int *phb = (int *)buf->href(offset);
-        assert(phb != nullptr);
-        for (size_t i = 0; i < num; ++i) {
-            phb[i] = val;
-        }
+        ERR(ExecutorError, "Unexpected case.");
     }
 }
 
@@ -449,12 +445,7 @@ void gpu_memcpy(GpuBuf *dst, size_t dst_offset, const GpuBuf *src,
     GpuPtr rs = src->ref(src_offset);
     if ((rd != 0) && (rs != 0)) {
         GLOG(gpuMemcpyDtoD(dst->ref(dst_offset), src->ref(src_offset), bytes));
-    } else if (rd != 0) {
-        GLOG(gpuMemcpyHtoD(dst->ref(dst_offset), src->href(src_offset), bytes));
-    } else if (rs != 0) {
-        GLOG(gpuMemcpyDtoH(dst->href(dst_offset), src->ref(src_offset), bytes));
     } else {
-        // ::memcpy(dst->href(), src->href(), bytes);
         ERR(ExecutorError, "Unexpected case.");
     }
 }
