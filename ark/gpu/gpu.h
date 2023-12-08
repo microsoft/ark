@@ -195,9 +195,9 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDeviceId,
                               hipDeviceAttributePciDeviceId);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuCtxMapHost, hipDeviceMapHost);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostRegisterMapped, hipHostRegisterMapped);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, hipHostAllocMapped);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, hipHostMallocMapped);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocWriteCombined,
-                              hipHostAllocWriteCombined);
+                              hipHostMallocWriteCombined);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuJitInfoLogBuffer, hipJitOptionInfoLogBuffer);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuJitInfoLogBufferSizeBytes,
                               hipJitOptionInfoLogBufferSizeBytes);
