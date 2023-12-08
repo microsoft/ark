@@ -27,6 +27,8 @@ struct Env {
     int num_ranks_per_host;
     // Disable P2P GPU memcpy.
     bool disable_p2p_memcpy;
+    // Disable IB
+    bool disable_ib;
     // Disable the heuristic ARK graph optimization.
     bool disable_graph_opt;
     // Ignore compiled binary cache.

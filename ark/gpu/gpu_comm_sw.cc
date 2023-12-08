@@ -178,7 +178,8 @@ void GpuCommSw::Impl::configure(
             mscclpp::Transport::IB4, mscclpp::Transport::IB5,
             mscclpp::Transport::IB6, mscclpp::Transport::IB7};
 
-        const mscclpp::Transport ibTransport = IBs[gpu_id_];
+        const mscclpp::Transport ibTransport =
+            get_env().disable_ib ? mscclpp::Transport::Unknown : IBs[gpu_id_];
         std::vector<
             mscclpp::NonblockingFuture<std::shared_ptr<mscclpp::Connection>>>
             connectionFutures;
