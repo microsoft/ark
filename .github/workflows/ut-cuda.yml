@@ -23,7 +23,7 @@ jobs:
       cancel-in-progress: true
     container:
       image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.cuda }}"
-      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1 -v /usr/src:/usr/src -v /lib/modules:/lib/modules -v /dev:/dev
+      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
 
     steps:
       - name: Checkout
