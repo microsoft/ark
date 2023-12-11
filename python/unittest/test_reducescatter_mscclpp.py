@@ -31,7 +31,9 @@ def reduce_scatter_test(rank, inputs, world_size, nelems, iter=1):
     for i, input in enumerate(inputs):
         if i != rank:
             tmp = np.zeros(nelems, dtype=np.float16)
-            tmp[nelems_per_rank * rank : nelems_per_rank * (rank + 1)] = input[nelems_per_rank * rank : nelems_per_rank * (rank + 1)]
+            tmp[nelems_per_rank * rank : nelems_per_rank * (rank + 1)] = input[
+                nelems_per_rank * rank : nelems_per_rank * (rank + 1)
+            ]
             expected += tmp
 
     max_abs_error = np.max(np.abs(host_output - expected))
