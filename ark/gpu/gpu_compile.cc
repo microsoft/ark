@@ -116,7 +116,7 @@ static const std::string gpu_compile_command(
     std::vector<std::string> args;
 
     // TODO: use the compiler found by cmake.
-    args.emplace_back("/usr/bin/hipcc");
+    args.emplace_back("LANG=C /usr/bin/hipcc");
     args.emplace_back("--genco");
 #if (ARK_DEBUG_KERNEL)
     args.emplace_back("-O0");
