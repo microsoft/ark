@@ -13,6 +13,7 @@
 #include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
+#include "copy.h"
 #include "comm.h"
 #include "embedding.h"
 #include "im2col.h"
