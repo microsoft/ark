@@ -112,6 +112,7 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
             ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
         pC, pA, pB, uop_idx, smem_per_warp);
 #endif
+    UnitOp::sync_threads();
 }
 
 }  // namespace ark
