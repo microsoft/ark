@@ -132,7 +132,7 @@ class Model::Impl {
     /// Number of assigned EIDs.
     int next_eid = 0;
 
-    /// The flag for msll LL all reduce algorithm
+    /// The flag for mscclpp LL all reduce algorithm
     unsigned int reduce_packet_flag = 1;
 
     friend class Model;

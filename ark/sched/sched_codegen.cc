@@ -417,8 +417,8 @@ std::ostream &CodeGenerator::def_proxy_channels(std::ostream &os,
     if (num_channels == 0) {
         return os;
     }
-    os << "#include <msll/proxy_channel_device.hpp>\n"
-          "__constant__ msll::SimpleProxyChannelDeviceHandle "
+    os << "#include <mscclpp/proxy_channel_device.hpp>\n"
+          "__constant__ mscclpp::SimpleProxyChannelDeviceHandle "
           "_ARK_PROXY_CHANS["
        << num_channels << "];\n";
     return os;
@@ -429,8 +429,8 @@ std::ostream &CodeGenerator::def_sm_channels(std::ostream &os,
     if (num_channels == 0) {
         return os;
     }
-    os << "#include <msll/sm_channel_device.hpp>\n"
-          "__constant__ msll::SmChannelDeviceHandle "
+    os << "#include <mscclpp/sm_channel_device.hpp>\n"
+          "__constant__ mscclpp::SmChannelDeviceHandle "
           "_ARK_SM_CHANS["
        << num_channels << "];\n";
     return os;

@@ -19,12 +19,4 @@ GpuPtr GpuBuf::ref(size_t off) const {
     return this->mem->ref(this->offset + off);
 }
 
-uint64_t GpuBuf::pref(size_t off) const {
-    return this->mem->pref(this->offset + off);
-}
-
-void *GpuBuf::href(size_t off) const {
-    return this->mem->href(this->offset + off);
-}
-
 }  // namespace ark

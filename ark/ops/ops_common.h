@@ -124,19 +124,14 @@ typedef enum {
     OP_SEND,
     OP_SEND_DONE,
     OP_RECV,
-    OP_SEND_MM,
-    OP_RECV_MM,
-    OP_SEND_MSLL,
-    OP_SEND_DONE_MSLL,
-    OP_RECV_MSLL,
     OP_EMBEDDING,
-    OP_DEVICE_SYNC_MSLL,
-    OP_READ_AND_REDUCE_MSLL,
-    OP_GATHER_FROM_PEERS_MSLL,
+    OP_DEVICE_SYNC,
+    OP_READ_AND_REDUCE,
+    OP_GATHER_FROM_PEERS,
     OP_CAST,
-    OP_PUT_PACKET_MSLL,
-    OP_REDUCE_AND_WRITE_PACKET_MSLL,
-    OP_GET_FROM_PACKET_MSLL,
+    OP_PUT_PACKET,
+    OP_REDUCE_AND_WRITE_PACKET,
+    OP_GET_FROM_PACKET,
 } OpType;
 
 /// Type of hardware architecture support.
@@ -148,13 +143,14 @@ typedef enum {
     OP_ARCH_CUDA_90 = 0x8,
     OP_ARCH_CUDA_ANY = 0x0f,
     OP_ARCH_ROCM_90A = 0x10,
+    OP_ARCH_ROCM_942 = 0x20,
     OP_ARCH_ROCM_ANY = 0xf0,
     OP_ARCH_ANY = -1,
 } OpArchType;
 
 OpArchType op_arch_from_string(const std::string &arch);
 
-struct Tensor;
+class Tensor;
 
 /// 2-dimensional op tile
 struct OpTile {
@@ -459,37 +455,13 @@ class ScaleOp : public Op {
     OpArgs function_call_args(const OpConfig &) const;
 };
 
-class SendMMOp : public Op {
-   public:
-    SendMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
-             Tensor *send_ready_flag, Tensor *output, int id, int gpu_dst,
-             size_t bytes, const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class RecvMMOp : public Op {
-   public:
-    RecvMMOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
-             Tensor *send_ready_flag, Tensor *output, int id, int gpu_src,
-             size_t bytes, const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
 class SendOp : public Op {
    public:
-    SendOp(const std::string &prec_type, Tensor *input, int sid, int rank,
-           int dst_rank, size_t bytes, const std::string &name);
+    SendOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
+           int sid, int rank, int dst_rank, size_t bytes,
+           const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class SendDoneOp : public Op {
-   public:
-    SendDoneOp(const std::string &prec_type, Tensor *input, int sid, int rank,
-               int dst_rank, const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
+    // The args determined by the scheduler.
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
@@ -501,88 +473,68 @@ class RecvOp : public Op {
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MsllSendOp : public Op {
+class SendDoneOp : public Op {
    public:
-    MsllSendOp(const std::string &prec_type, Tensor *input, Tensor *recvbuf,
-               int sid, int rank, int dst_rank, size_t bytes,
-               const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-    // The args determined by the scheduler.
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class MsllRecvOp : public Op {
-   public:
-    MsllRecvOp(const std::string &prec_type, Tensor *output, int sid, int rank,
-               int src_rank, size_t bytes, const std::string &name);
+    SendDoneOp(const std::string &prec_type, Tensor *input, int rank,
+               int dst_rank, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MsllSendDoneOp : public Op {
+class DeviceSyncOp : public Op {
    public:
-    MsllSendDoneOp(const std::string &prec_type, Tensor *input, int rank,
-                   int dst_rank, const std::string &name);
+    DeviceSyncOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                 int nranks, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MsllDeviceSyncOp : public Op {
+class ReadAndReduceOp : public Op {
    public:
-    MsllDeviceSyncOp(const std::string &prec_type, Tensor *input,
-                     Tensor *output, int nranks, const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class MsllReadAndReduceOp : public Op {
-   public:
-    MsllReadAndReduceOp(const std::string &prec_type, Tensor *local_buf,
-                        Tensor *cal_region_local,
-                        std::vector<Tensor *> remote_bufs, int sid, int rank,
-                        int npeers, size_t offset, size_t bytes,
-                        const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class MsllGatherFromPeersOp : public Op {
-   public:
-    MsllGatherFromPeersOp(const std::string &prec_type, Tensor *local_buf,
-                          Tensor *trans_region_local,
-                          std::vector<Tensor *> remote_bufs, int sid, int rank,
-                          int npeers, size_t stride, const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-    OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class MsllPutPacketOp : public Op {
-   public:
-    MsllPutPacketOp(const std::string &prec_type, Tensor *input,
-                    Tensor *local_tmp_buf, Tensor *recv_buf, int id, int rank,
-                    int dst_rank, size_t dst_offset, int flag,
+    ReadAndReduceOp(const std::string &prec_type, Tensor *local_buf,
+                    Tensor *cal_region_local, std::vector<Tensor *> remote_bufs,
+                    int sid, int rank, int npeers, size_t offset, size_t bytes,
                     const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MsllReduceAndWritePacketOp : public Op {
+class GatherFromPeersOp : public Op {
    public:
-    MsllReduceAndWritePacketOp(const std::string &prec_type,
-                               std::vector<Tensor *> inputs, Tensor *output,
-                               int id, int rank, int npeers,
-                               size_t elems_per_rank, size_t scratch_offset,
-                               size_t remote_dst_offset, int flag,
-                               const std::string &name);
+    GatherFromPeersOp(const std::string &prec_type, Tensor *local_buf,
+                      Tensor *trans_region_local,
+                      std::vector<Tensor *> remote_bufs, int sid, int rank,
+                      int npeers, size_t stride, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };
 
-class MsllGetFromPacketOp : public Op {
+class PutPacketOp : public Op {
    public:
-    MsllGetFromPacketOp(const std::string &prec_type, Tensor *input,
-                        Tensor *output, size_t src_offset, size_t dst_offset,
-                        size_t npackets, int flag, const std::string &name);
+    PutPacketOp(const std::string &prec_type, Tensor *input,
+                Tensor *local_tmp_buf, Tensor *recv_buf, int id, int rank,
+                int dst_rank, size_t dst_offset, int flag,
+                const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class ReduceAndWritePacketOp : public Op {
+   public:
+    ReduceAndWritePacketOp(const std::string &prec_type,
+                           std::vector<Tensor *> inputs, Tensor *output, int id,
+                           int rank, int npeers, size_t elems_per_rank,
+                           size_t scratch_offset, size_t remote_dst_offset,
+                           int flag, const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+    OpArgs function_call_args(const OpConfig &cfg) const;
+};
+
+class GetFromPacketOp : public Op {
+   public:
+    GetFromPacketOp(const std::string &prec_type, Tensor *input, Tensor *output,
+                    size_t src_offset, size_t dst_offset, size_t npackets,
+                    int flag, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
 };

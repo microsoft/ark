@@ -1,36 +1,29 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+set(MSCCLPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp/include)
 set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include)
 set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include)
-set(GPUDMA_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/gpudma/module)
 set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 
 include(FetchContent)
 
+# MSCCL++
+# TODO: change the tag if this PR is merged: https://github.com/microsoft/mscclpp/pull/235
+FetchContent_Declare(
+    mscclpp
+    GIT_REPOSITORY https://github.com/microsoft/mscclpp
+    GIT_TAG 4681de9
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
+)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
+# TODO: remove if this PR is merged: https://github.com/microsoft/mscclpp/pull/234
+set(BYPASS_PEERMEM_CHECK ON CACHE BOOL "" FORCE)
+set(INSTALL_PREFIX "ark")
+FetchContent_MakeAvailable(mscclpp)
+
 if(USE_CUDA)
-    # Configure GPUDMA
-    FetchContent_Declare(
-        gpudma
-        GIT_REPOSITORY https://github.com/karakozov/gpudma
-        GIT_TAG 7ecec64
-        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gpudma
-    )
-    FetchContent_MakeAvailable(gpudma)
-
-    # Build GPUDMA
-    add_custom_target(tp-gpudma
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && make gpudma
-    )
-
-    # Insert gpumem module
-    add_custom_target(gpumem
-        COMMENT "Inserting gpumem module..."
-        COMMAND insmod ${PROJECT_SOURCE_DIR}/third_party/gpudma/module/gpumem.ko
-        COMMAND chmod 666 /dev/gpumem
-    )
-    add_dependencies(gpumem tp-gpudma)
-
     # Configure CUTLASS
     FetchContent_Declare(
         cutlass
@@ -45,11 +38,11 @@ if(USE_CUDA)
 
     # Patch CUTLASS
     add_custom_target(tp-cutlass
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass/cutlass.patch || true
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/cutlass && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/cutlass.patch || true
     )
 
     set(TP_TARGETS tp-cutlass PARENT_SCOPE)
-    set(TP_KERNELS ${CUTLASS_INCLUDE_DIRS} PARENT_SCOPE)
+    set(TP_KERNELS ${MSCCLPP_INCLUDE_DIRS} ${CUTLASS_INCLUDE_DIRS} PARENT_SCOPE)
 endif()
 
 
@@ -68,14 +61,12 @@ if(USE_ROCM)
 
     # Patch CK
     add_custom_target(tp-ck
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/composable_kernel/ck.patch || true
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel && git reset --hard && patch -sN -p1 --reject-file=/dev/null < ${CMAKE_CURRENT_SOURCE_DIR}/patches/composable_kernel.patch || true
     )
 
     set(TP_TARGETS tp-ck PARENT_SCOPE)
-    set(TP_KERNELS ${CK_INCLUDE_DIRS} PARENT_SCOPE)
+    set(TP_KERNELS ${MSCCLPP_INCLUDE_DIRS} ${CK_INCLUDE_DIRS} PARENT_SCOPE)
 endif()
 
-# Clean up
-add_custom_target(tp-clean
-    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && make clean
-)
+# TODO: clean up
+add_custom_target(tp-clean)

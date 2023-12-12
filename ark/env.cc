@@ -14,15 +14,13 @@
 #define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
-#define DEFAULT_ARK_DISABLE_IB false
 #define DEFAULT_ARK_DISABLE_P2P_MEMCPY false
+#define DEFAULT_ARK_DISABLE_IB false
 #define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE false
 #define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH ""
-#define DEFAULT_ARK_USE_MSLL false
-#define DEFAULT_ARK_MSLL_INCLUDE_DIR "/usr/local/msll/include"
-#define DEFAULT_ARK_MSLL_PORT 50051
+#define DEFAULT_ARK_MSCCLPP_PORT 50051
 
 template <typename T>
 T env(const std::string &env_name, const T &default_val) {
@@ -62,11 +60,11 @@ Env::Env() {
     // Get the number of ranks per host.
     this->num_ranks_per_host =
         env<int>("ARK_NUM_RANKS_PER_HOST", DEFAULT_ARK_NUM_RANKS_PER_HOST);
-    // If `ARK_DISABLE_IB=1`, we disable IB networking.
-    this->disable_ib = env<bool>("ARK_DISABLE_IB", DEFAULT_ARK_DISABLE_IB);
     // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P memcpy between GPUs.
     this->disable_p2p_memcpy =
         env<bool>("ARK_DISABLE_P2P_MEMCPY", DEFAULT_ARK_DISABLE_P2P_MEMCPY);
+    // If `ARK_DISABLE_IB=1`, we disable IB.
+    this->disable_ib = env<bool>("ARK_DISABLE_IB", DEFAULT_ARK_DISABLE_IB);
     // If `ARK_DISABLE_GRAPH_OPT=1`, we disable graph optimization.
     this->disable_graph_opt =
         env<bool>("ARK_DISABLE_GRAPH_OPT", DEFAULT_ARK_DISABLE_GRAPH_OPT);
@@ -79,13 +77,8 @@ Env::Env() {
     //
     this->enforce_kernel_code_path = env<std::string>(
         "ARK_ENFORCE_KERNEL_CODE_PATH", DEFAULT_ARK_ENFORCE_KERNEL_CODE_PATH);
-    // If `ARK_USE_MSLL=1`, we use MSLL.
-    this->use_msll = env<bool>("ARK_USE_MSLL", DEFAULT_ARK_USE_MSLL);
-    // Get the MSLL include directory path.
-    this->msll_include_dir =
-        env<std::string>("ARK_MSLL_INCLUDE_DIR", DEFAULT_ARK_MSLL_INCLUDE_DIR);
-    // Get the port number of MSLL.
-    this->msll_port = env<int>("ARK_MSLL_PORT", DEFAULT_ARK_MSLL_PORT);
+    // Get the port number of MSCCLPP.
+    this->mscclpp_port = env<int>("ARK_MSCCLPP_PORT", DEFAULT_ARK_MSCCLPP_PORT);
 }
 
 // Global Env.

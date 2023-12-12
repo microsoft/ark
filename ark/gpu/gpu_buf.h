@@ -17,9 +17,6 @@ class GpuBuf {
 
     GpuPtr ref(size_t off = 0) const;
 
-    uint64_t pref(size_t off = 0) const;
-    void *href(size_t off = 0) const;
-
     size_t get_offset() const { return offset; }
 
     void set_offset(size_t off) { offset = off; }
