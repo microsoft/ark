@@ -28,6 +28,10 @@
 
     The number of ranks that each host runs. The behavior is undefined if the total number of ranks is not a multiple of `ARK_NUM_RANKS_PER_HOST`.
 
+- `ARK_DISABLE_IB` (Default: `0`; Options: `0`, `1`)
+
+    If set to `1`, disable ibverbs networking (i.e., disable multi-node execution).
+
 - `ARK_DISABLE_P2P_MEMCPY` (Default: `0`; Options: `0`, `1`)
 
     If set to `1`, do not use peer-to-peer memory copy between GPUs (i.e., use ibverbs networking only, even within a single node).
