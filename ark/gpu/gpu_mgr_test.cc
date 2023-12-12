@@ -102,8 +102,6 @@ ark::unittest::State test_gpu_mgr_mem_free() {
         ctx->freeze();
 
         UNITTEST_EQ(buf0->ref(), buf1->ref());
-        UNITTEST_EQ(buf0->href(), buf1->href());
-        UNITTEST_EQ(buf0->pref(), buf1->pref());
 
         int buf0_data = 9;
         ark::gpu_memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
@@ -124,81 +122,10 @@ ark::unittest::State test_gpu_mgr_mem_free() {
     return ark::unittest::SUCCESS;
 }
 
-// Test accessing remote GPU's memory space.
-ark::unittest::State test_gpu_mgr_remote() {
-    int pid0 = ark::unittest::spawn_process([] {
-        ark::unittest::Timeout timeout{10};
-        ark::GpuMgr *mgr = ark::get_gpu_mgr(0);
-        ark::GpuMgrCtx *ctx = mgr->create_context("test", 0, 2);
-
-        ark::GpuBuf *gpu0_eid3 = ctx->mem_alloc(sizeof(int));
-        ark::GpuBuf *gpu0_eid4 = ctx->mem_alloc(sizeof(int));
-        ctx->mem_export(gpu0_eid3, 0, 3);
-        ctx->mem_export(gpu0_eid4, 0, 4);
-
-        ark::GpuBuf *gpu1_eid5 = ctx->mem_import(sizeof(int), 5, 1);
-        ark::GpuBuf *gpu1_eid6 = ctx->mem_import(sizeof(int), 6, 1);
-
-        ctx->freeze(true);
-
-        volatile int *ptr = (volatile int *)gpu0_eid3->href();
-        while (*ptr != 7890) {
-        }
-
-        ark::gpu_memset(gpu1_eid5, 0, 1234, 1);
-
-        ptr = (volatile int *)gpu0_eid4->href();
-        while (*ptr != 3456) {
-        }
-
-        ark::gpu_memset(gpu1_eid6, 0, 5678, 1);
-
-        mgr->destroy_context(ctx);
-        return ark::unittest::SUCCESS;
-    });
-    UNITTEST_NE(pid0, -1);
-
-    int pid1 = ark::unittest::spawn_process([] {
-        ark::unittest::Timeout timeout{10};
-        ark::GpuMgr *mgr = ark::get_gpu_mgr(1);
-        ark::GpuMgrCtx *ctx = mgr->create_context("test", 1, 2);
-
-        ark::GpuBuf *gpu1_eid5 = ctx->mem_alloc(sizeof(int));
-        ark::GpuBuf *gpu1_eid6 = ctx->mem_alloc(sizeof(int));
-        ctx->mem_export(gpu1_eid5, 0, 5);
-        ctx->mem_export(gpu1_eid6, 0, 6);
-
-        ark::GpuBuf *gpu0_eid3 = ctx->mem_import(sizeof(int), 3, 0);
-        ark::GpuBuf *gpu0_eid4 = ctx->mem_import(sizeof(int), 4, 0);
-
-        ctx->freeze(true);
-
-        ark::gpu_memset(gpu0_eid3, 0, 7890, 1);
-
-        volatile int *ptr = (volatile int *)gpu1_eid5->href();
-        while (*ptr != 1234) {
-        }
-
-        ark::gpu_memset(gpu0_eid4, 0, 3456, 1);
-
-        ptr = (volatile int *)gpu1_eid6->href();
-        while (*ptr != 5678) {
-        }
-
-        mgr->destroy_context(ctx);
-        return ark::unittest::SUCCESS;
-    });
-    UNITTEST_NE(pid1, -1);
-
-    ark::unittest::wait_all_processes();
-    return ark::unittest::SUCCESS;
-}
-
 int main() {
     ark::init();
     UNITTEST(test_gpu_mgr_basic);
     UNITTEST(test_gpu_mgr_mem_alloc);
     UNITTEST(test_gpu_mgr_mem_free);
-    UNITTEST(test_gpu_mgr_remote);
     return 0;
 }

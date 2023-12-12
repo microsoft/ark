@@ -31,7 +31,7 @@ ARK is under active development and a part of its features will be added in a fu
 ### New in ARK v0.4 (Latest Release)
 
 * Support AMD GPUs (CDNA2, single-GPU only)
-* Add high-performance AllReduce & AllGather algorithms with MSLL
+* Add high-performance AllReduce & AllGather algorithms with MSCCL++
 * Fix major bugs in the scheduler
 
 See details from https://github.com/microsoft/ark/issues/137.

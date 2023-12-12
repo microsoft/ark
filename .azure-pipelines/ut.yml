@@ -21,7 +21,7 @@ jobs:
 
   container:
     image: $[ variables['containerImage'] ]
-    options: --privileged --shm-size=1g --ipc=host --gpus=all --ulimit memlock=-1:-1 --ulimit stack=67108864 -v /usr/src:/usr/src -v /dev:/dev -v /lib/modules:/lib/modules
+    options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
 
   steps:
   - task: Bash@3
@@ -45,17 +45,6 @@ jobs:
         git submodule foreach --recursive git reset --hard
         git submodule foreach --recursive git clean -fdx
         git submodule update --init --recursive
-
-  - task: Bash@3
-    name: InstallGPUDMA
-    displayName: Install GPUDMA
-    inputs:
-      targetType: 'inline'
-      script: |
-        cd third_party && make gpudma
-        sudo insmod ./gpudma/module/gpumem.ko
-        sudo chmod 666 /dev/gpumem
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
 
   - task: Bash@3
     name: Build

@@ -4,7 +4,7 @@ Llama2 examples over ARK.
 
 ## Quick Start
 
-0. Install `gpudma` and ARK Python following the [ARK Install Instructions](../../docs/install.md).
+0. Install ARK Python following the [ARK Install Instructions](../../docs/install.md).
 
 1. Install Llama2 requirements.
 
@@ -19,7 +19,7 @@ Llama2 examples over ARK.
     ```
 
 3. Install `llama` submodule.
-    
+
     ```bash
     cd llama
     python3 -m pip install -e .

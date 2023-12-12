@@ -16,7 +16,7 @@ def all_reduce_packet_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     input_tensor = ark.tensor([tensor_len], ark.fp16)
 
-    allreduce_result = ark.local_all_reduce_packet_msll(
+    allreduce_result = ark.local_all_reduce_packet(
         input_tensor, rank, world_size
     )
 
@@ -53,7 +53,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
 
     input_tensor = ark.tensor([tensor_len], ark.fp16)
 
-    allreduce_result = ark.local_all_reduce_msll(input_tensor, rank, world_size)
+    allreduce_result = ark.local_all_reduce(input_tensor, rank, world_size)
 
     runtime.launch()
     input_tensor.from_numpy(np_inputs[rank])
@@ -80,7 +80,7 @@ def all_reduce_test(rank, np_inputs, world_size, tensor_len, iter=1):
     )
 
 
-def test_allreduce_msll_packet_internal(world_size, tensor_len):
+def test_allreduce_packet_internal(world_size, tensor_len):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
@@ -99,7 +99,7 @@ def test_allreduce_msll_packet_internal(world_size, tensor_len):
         process.join()
 
 
-def test_allreduce_msll_internal(world_size, tensor_len):
+def test_allreduce_internal(world_size, tensor_len):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
@@ -119,11 +119,10 @@ def test_allreduce_msll_internal(world_size, tensor_len):
 
 
 class TestAllreduce(unittest.TestCase):
-    def test_allreduce_msll(self):
-        test_allreduce_msll_packet_internal(8, 4096)
-        test_allreduce_msll_internal(8, 32 * 1024 * 1024)
+    def test_allreduce(self):
+        test_allreduce_packet_internal(8, 4096)
+        test_allreduce_internal(8, 32 * 1024 * 1024)
 
 
 if __name__ == "__main__":
-    os.environ["ARK_USE_MSLL"] = "1"
     unittest.main()

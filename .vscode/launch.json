@@ -32,6 +32,43 @@
                 "ignoreFailures": true
             }
         ]
+    },
+    {
+        "name": "Python: generator",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/examples/llama/generator.py",
+        "console": "integratedTerminal",
+        "args": [
+            "--ckpt_dir=/mnt/llama/llama-2-13b-chat",
+            "--tok_path=/mnt/llama/tokenizer.model",
+            "--params_path=/mnt/llama/llama-2-13b-chat/params.json",
+            "--ngpu=2"
+        ],
+        "env": {
+            "MSCCLPP_DEBUG": "WARN",
+            "MSCCLPP_DEBUG_SUBSYS": "ALL",
+            "ARK_LOG_LEVEL": "INFO"
+        },
+        "justMyCode": false,
+    },
+    {
+        "name": "Python: model tester",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/examples/llama/model_test.py",
+        "console": "integratedTerminal",
+        "args": [
+            "--ckpt_dir=/mnt/llama/llama-2-13b-chat",
+            "--ngpu=2"
+        ],
+        "env": {
+            "MSCCLPP_DEBUG": "WARN",
+            "MSCCLPP_DEBUG_SUBSYS": "ALL",
+            "ARK_LOG_LEVEL": "INFO",
+            "ARK_DISABLE_GRAPH_OPT": "1"
+        },
+        "justMyCode": false,
     }
     ]
 }

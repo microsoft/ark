@@ -6,12 +6,6 @@
 
 #include "ops_test_common.h"
 
-#define ARK_GPU_DEFINE_FUNC_ALIAS(alias, func)    \
-    template <typename... Args>                   \
-    inline auto alias(Args &&... args) {          \
-        return func(std::forward<Args>(args)...); \
-    }
-
 #if defined(ARK_CUDA)
 
 #include <cublas_v2.h>

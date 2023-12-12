@@ -16,9 +16,7 @@ def all_gather_test(rank, input, expected, world_size, height, width, iter=1):
 
     input_tensor = ark.tensor([height, width], ark.fp16)
 
-    allgather_result = ark.local_all_gather_msll(
-        input_tensor, rank, world_size, 1
-    )
+    allgather_result = ark.local_all_gather(input_tensor, rank, world_size, 1)
 
     runtime.launch()
     input_tensor.from_numpy(input)
@@ -42,7 +40,7 @@ def all_gather_test(rank, input, expected, world_size, height, width, iter=1):
     )
 
 
-def test_allgather2D_msll_internal(world_size, height, width):
+def test_allgather2D_internal(world_size, height, width):
     ark.init()
     num_processes = world_size  # number of processes
     processes = []
@@ -67,10 +65,9 @@ def test_allgather2D_msll_internal(world_size, height, width):
 
 
 class TestAllgather(unittest.TestCase):
-    def test_allgather_msll(self):
-        test_allgather2D_msll_internal(8, 4096, 8192)
+    def test_allgather(self):
+        test_allgather2D_internal(8, 4096, 8192)
 
 
 if __name__ == "__main__":
-    os.environ["ARK_USE_MSLL"] = "1"
     unittest.main()
