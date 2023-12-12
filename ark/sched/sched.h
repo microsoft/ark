@@ -64,8 +64,6 @@ class BaseScheduler {
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
 
-    std::vector<const Op *> send_recv_ops;
-
     GpuMgrCtx *ctx;
 };
 

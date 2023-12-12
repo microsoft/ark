@@ -22,7 +22,7 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/ark/ark:base-dev-cuda12.1
+      image: ghcr.io/microsoft/ark/ark:base-dev-cuda12.2
     permissions:
       actions: read
       contents: read

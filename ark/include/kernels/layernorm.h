@@ -108,6 +108,7 @@ struct LayerNorm {
             out[idx_out] = type::Mul::compute(
                 type::Sub::compute(in[idx_in], mean), variance);
         }
+        UnitOp::sync_threads();
     }
 };
 
@@ -191,6 +192,7 @@ struct RMSNorm {
             int idx_out = idx_out_base + idx_w;
             out[idx_out] = type::Mul::compute(in[idx_in], rrms);
         }
+        UnitOp::sync_threads();
     }
 };
 

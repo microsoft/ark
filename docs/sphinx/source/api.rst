@@ -21,7 +21,7 @@ API Document
 .. automodule:: ark.Model
     :members: tensor, reshape, identity, sharding, reduce, layernorm, softmax,
             transpose, linear, im2col, conv2d, max_pool, scale, relu, gelu, add, mul, send,
-            send_done, recv, send_mm, recv_mm, all_reduce
+            send_done, recv, all_reduce
 
 ``ark.Executor``
 =====================

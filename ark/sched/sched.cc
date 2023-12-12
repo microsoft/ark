@@ -54,16 +54,6 @@ GpuMgrCtx *BaseScheduler::create_context(const std::string &name) {
             bi.tbuf->buf = buf;
         }
     }
-    for (auto &srop : this->send_recv_ops) {
-        int sid;
-        int remote_rank;
-        size_t bytes;
-        srop->args.get(&sid, 0);
-        srop->args.get(&remote_rank, 2);
-        srop->args.get(&bytes, 3);
-
-        ctx->reg_sendrecv(sid, remote_rank, bytes, srop->type == OP_RECV);
-    }
     ctx->freeze();
     this->ctx = ctx;
     return ctx;

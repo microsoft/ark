@@ -37,6 +37,19 @@ index f45655721..1be49e6d0 100644
            a_thread_copy_{make_tuple(0, c_thread_origin_data_idx_[I0] * KPerThread, 0)}
      {
          static_assert(ABlockDesc_E1_K1_E2::IsKnownAtCompileTime() &&
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp
+index 5328dfde9..4fca12ae7 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp
+@@ -521,7 +521,7 @@ struct BlockwiseGemmXdlopsInterwave_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
+                                      n0.value == NRepeat - 1)
+                         {
+                             __builtin_amdgcn_sched_barrier(0);
+-                            block_sync_lds();
++                            block_sync_lds<BlockSize>();
+                             __builtin_amdgcn_sched_barrier(0);
+                         }
+ 
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
 index aa814ab00..c1927bc3a 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
@@ -50,6 +63,28 @@ index aa814ab00..c1927bc3a 100644
  
          constexpr auto threadid_to_wave_idx_adaptor = make_single_stage_tensor_adaptor(
              make_tuple(make_merge_transform(make_tuple(MWaves, NWaves, WaveSize))),
+diff --git a/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp b/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp
+index 7e62a822a..e1b706994 100644
+--- a/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp
++++ b/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp
+@@ -94,7 +94,7 @@ struct BlockwiseSoftmax
+         ThreadwiseMaxReduce::Reduce(in_thread_buf, max_value_buf);
+         static_for<0, MRepeat, 1>{}([&](auto I) {
+             BlockwiseMaxReduce::Reduce(reduce_work_buf, max_value_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+         });
+ 
+         // calculate exp for elements, P=exp(s-max)
+@@ -114,7 +114,7 @@ struct BlockwiseSoftmax
+         ThreadwiseSumReduce::Reduce(in_thread_buf, sum_value_buf);
+         static_for<0, MRepeat, 1>{}([&](auto I) {
+             BlockwiseSumReduce::Reduce(reduce_work_buf, sum_value_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+         });
+     }
+ 
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp b/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
 index 03e4d42d3..53da453bb 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
@@ -113,7 +148,7 @@ index 03e4d42d3..53da453bb 100644
              threadwise_transfer_.MoveDstSliceWindow(dst_desc, step);
          }
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp b/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
-index 316508651..8699ec348 100644
+index 316508651..ba65f76ca 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
 @@ -55,7 +55,7 @@ struct BlockwiseWelford
@@ -125,6 +160,24 @@ index 316508651..8699ec348 100644
  
          const auto thread_m_cluster_id = thread_cluster_idx[Number<0>{}];
          const auto thread_k_cluster_id = thread_cluster_idx[Number<1>{}];
+@@ -66,7 +66,7 @@ struct BlockwiseWelford
+         var_block_buf[offset1]   = var_value;
+         count_block_buf[offset1] = count;
+ 
+-        block_sync_lds();
++        block_sync_lds<BlockSize>();
+ 
+         static_for<0, cluster_len_shift, 1>{}([&](auto I) {
+             constexpr index_t indOffset = 1 << (cluster_len_shift - 1 - I());
+@@ -91,7 +91,7 @@ struct BlockwiseWelford
+                 count_block_buf[offset1] = count1;
+             }
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+         });
+ 
+         index_t offset = block_buf_desc_m_k.CalculateOffset(make_tuple(thread_m_cluster_id, 0));
 diff --git a/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp b/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
 index 2163ad323..9cff14993 100644
 --- a/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
@@ -350,7 +403,7 @@ index e3795060b..cc0463897 100644
              return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
          }
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
-index a72a4ee06..ad0c96ead 100644
+index a72a4ee06..3a65b752f 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
 @@ -170,7 +170,8 @@ struct GridwiseReduceSecondHalfBatchNormBackwardFinal
@@ -374,8 +427,21 @@ index a72a4ee06..ad0c96ead 100644
          const index_t blkgroup_id     = block_global_id / blkgroup_size;
          const index_t block_local_id  = block_global_id % blkgroup_size;
  
+@@ -300,10 +301,10 @@ struct GridwiseReduceSecondHalfBatchNormBackwardFinal
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             BlockwiseReduce::Reduce(reduce_work_buf, dscale_thread_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+             BlockwiseReduce::Reduce(reduce_work_buf, dbias_thread_buf(I));
+         });
+ 
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
-index 08cb0dd19..ae0cbc9e5 100644
+index 08cb0dd19..9110ed8e0 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
 @@ -103,7 +103,8 @@ struct GridwiseMultiblockWelfordFirstHalf
@@ -399,8 +465,17 @@ index 08cb0dd19..ae0cbc9e5 100644
          const index_t blkgroup_id     = block_global_id / blkgroup_size;
          const index_t block_local_id  = block_global_id % blkgroup_size;
  
+@@ -228,7 +229,7 @@ struct GridwiseMultiblockWelfordFirstHalf
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             welford_count_thread_buf(I) = threadwise_welford.cur_count_;
+             BlockwiseWelford::Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp
-index 548d7fd40..c72c64ea5 100644
+index 548d7fd40..46bc9ecb6 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final.hpp
 @@ -168,7 +168,8 @@ struct GridwiseWelfordSecondHalfBatchNormForwardFinal
@@ -424,10 +499,28 @@ index 548d7fd40..c72c64ea5 100644
          const index_t blkgroup_id     = block_global_id / blkgroup_size;
          const index_t block_local_id  = block_global_id % blkgroup_size;
  
+@@ -304,7 +305,7 @@ struct GridwiseWelfordSecondHalfBatchNormForwardFinal
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             BlockwiseWelford::Run(
+                 welford_mean_thread_buf(I), welford_var_thread_buf(I), welford_count_thread_buf(I));
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
-index 42b7e172b..b310cdad8 100644
+index 42b7e172b..22604d86a 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
+@@ -151,7 +151,7 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
+ 
+     // clang-format off
+     // Two of the steps of Multiblock BatchNorm Backward
+-    // Step 1: Second half of Welford method to calculate mean and variance, as well as getting inv-variance = 1/sqrt(epsilon+variance) 
++    // Step 1: Second half of Welford method to calculate mean and variance, as well as getting inv-variance = 1/sqrt(epsilon+variance)
+     // Step 2: First half of Reduction: dbias = sum(dy), dscale = sum(dy * (x-mean) * inv-variance)
+     // clang-format on
+     __device__ static void Run(const XYGridDesc_M_K& x_grid_desc_m_k,
 @@ -175,7 +175,8 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
                                 const XDataType* const __restrict__ p_x,
                                 const DyDataType* const __restrict__ p_dy,
@@ -448,6 +541,28 @@ index 42b7e172b..b310cdad8 100644
 +        const index_t block_global_id = block_1d_id;
          const index_t blkgroup_id     = block_global_id / blkgroup_size;
          const index_t block_local_id  = block_global_id % blkgroup_size;
+ 
+@@ -363,7 +364,7 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
+ 
+             static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                 BlockwiseWelford::Run(welford_mean_thread_buf(I),
+                                       welford_var_thread_buf(I),
+@@ -504,10 +505,10 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             BlockwiseReduce::Reduce(reduce_work_buf, reduce_dscale_thread_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+             BlockwiseReduce::Reduce(reduce_work_buf, reduce_dbias_thread_buf(I));
+         });
  
 diff --git a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
 index 9bd860f39..73f4c1bda 100644
@@ -517,7 +632,7 @@ index 9bd860f39..73f4c1bda 100644
          return true;
      }
 diff --git a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
-index aa34cfbf8..c32d72de1 100644
+index aa34cfbf8..54cdc8e41 100644
 --- a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
 @@ -386,7 +386,8 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
@@ -548,8 +663,35 @@ index aa34cfbf8..c32d72de1 100644
  
              const auto post_shuffle_thread_data_idx_begin =
                  post_shuffle_thread_cluster_idx * PostShuffleThreadSliceSize_M_N;
+@@ -936,7 +937,7 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
+             int shuffleM_index = __builtin_amdgcn_readfirstlane(0);
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread shuffle data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -946,7 +947,7 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // Get shuffle data from LDS to VGPR
+                 post_shuffle_thread_copy_lds_to_vgpr.Run(c_shuffle_block_desc_mperblock_nperblock,
+@@ -1024,7 +1025,7 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
+                 auto& count_thread_buf = welford_count_thread_bufs(i);
+ 
+                 static_for<0, PostShuffleThreadSliceSize_M, 1>{}([&](auto j) {
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+                     count_thread_buf(j) = threadwise_welfords(i).cur_count_;
+                     BlockwiseWelford::Run(
+                         mean_thread_buf(j), var_thread_buf(j), count_thread_buf(j));
 diff --git a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
-index fbe89e7e5..8dbc68a01 100644
+index fbe89e7e5..5660058e8 100644
 --- a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
 @@ -101,11 +101,12 @@ struct GridwiseWelfordSecondHalfLayernorm2d
@@ -568,6 +710,15 @@ index fbe89e7e5..8dbc68a01 100644
          const auto block_work_idx     = make_tuple(block_global_id / NBlockClusterLength,
                                                 block_global_id % NBlockClusterLength);
  
+@@ -333,7 +334,7 @@ struct GridwiseWelfordSecondHalfLayernorm2d
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             BlockwiseWelford::Run(
+                 welford_mean_thread_buf(I), welford_var_thread_buf(I), welford_count_thread_buf(I));
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
 index bdebe3816..b38fe5c4a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
@@ -679,7 +830,7 @@ index 6c5bd29f9..aa8cb5c95 100644
          auto threadwise_src_val_load =
              ThreadwiseTensorSliceTransfer_v2<InDataType,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
-index fccb127d0..9102f6df1 100644
+index fccb127d0..edf985966 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
 @@ -338,7 +338,8 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
@@ -701,8 +852,67 @@ index fccb127d0..9102f6df1 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -675,7 +676,7 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+                 b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                      b1_block_slice_copy_step);
+ 
+-                block_sync_lds(); // wait for gemm0 LDS read
++                block_sync_lds<BlockSize>(); // wait for gemm0 LDS read
+ 
+                 b1_blockwise_copy.RunWrite(b1_block_desc_bk0_n_bk1, b1_block_buf);
+ 
+@@ -692,11 +693,11 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+ 
+                         b1_blockwise_copy.RunRead(b1_grid_desc_bk0_n_bk1, b1_grid_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         gemm1_blockwise_gemm.Run(a1_thread_buf, b1_block_buf, c_thread_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                              b1_block_slice_copy_step);
+@@ -715,7 +716,7 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+                         make_tuple(I0, I0, I0),
+                         a1_thread_buf);
+ 
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     gemm1_blockwise_gemm.Run(a1_thread_buf, b1_block_buf, c_thread_buf);
+                 }
+@@ -726,7 +727,7 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+             b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc_bk0_n_bk1,
+                                                 b_block_reset_copy_step); // rewind K and step N
+ 
+-            block_sync_lds(); // wait for gemm1 LDS read
++            block_sync_lds<BlockSize>(); // wait for gemm1 LDS read
+         } while(++gemm1_k_block_outer_index < num_gemm1_k_block_outer_loop); // end j loop
+ 
+         // shuffle C and write out
+@@ -896,7 +897,7 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -906,7 +907,7 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
-index b9f4a3080..89be57256 100644
+index b9f4a3080..4f2a32ad2 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
 @@ -142,7 +142,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
@@ -733,8 +943,67 @@ index b9f4a3080..89be57256 100644
  
          if(!block_2_e1tile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -973,7 +974,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+                 b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                      b1_block_slice_copy_step);
+ 
+-                block_sync_lds(); // wait for gemm0 LDS read
++                block_sync_lds<BlockSize>(); // wait for gemm0 LDS read
+ 
+                 b1_blockwise_copy.RunWrite(b1_block_desc_bk0_n_bk1, b1_block_buf);
+ 
+@@ -990,11 +991,11 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+ 
+                         b1_blockwise_copy.RunRead(b1_grid_desc_bk0_n_bk1, b1_grid_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         blockwise_gemm1.Run(a1_thread_buf, b1_block_buf, c1_thread_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                              b1_block_slice_copy_step);
+@@ -1013,7 +1014,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+                         make_tuple(I0, I0, I0),
+                         a1_thread_buf);
+ 
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     blockwise_gemm1.Run(a1_thread_buf, b1_block_buf, c1_thread_buf);
+                 }
+@@ -1024,7 +1025,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+             b0_blockwise_copy.MoveSrcSliceWindow(b0_grid_desc_bk0_n_bk1,
+                                                  b0_block_reset_copy_step); // rewind K and step N
+ 
+-            block_sync_lds(); // wait for gemm1 LDS read
++            block_sync_lds<BlockSize>(); // wait for gemm1 LDS read
+         } while(++gemm1_k_block_outer_index < num_gemm1_k_block_outer_loop); // end j loop
+ 
+         // shuffle C1 and write out
+@@ -1227,7 +1228,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c1_thread_copy_vgpr_to_lds.Run(c1_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -1237,7 +1238,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
+                                                c1_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 cde1_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
-index 6a6f19d71..f9027d7cf 100644
+index 6a6f19d71..54b021424 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
 @@ -302,7 +302,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
@@ -765,8 +1034,76 @@ index 6a6f19d71..f9027d7cf 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -1000,7 +1001,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+                 });
+             }
+ 
+-            block_sync_lds(); // wait for lds read in gemm0 blockwise gemm
++            block_sync_lds<BlockSize>(); // wait for lds read in gemm0 blockwise gemm
+ 
+             // softmax
+             SoftmaxBuf& max = blockwise_softmax.max_value_buf;
+@@ -1031,7 +1032,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+                 b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                      b1_block_slice_copy_step);
+ 
+-                block_sync_lds(); // wait for reduction LDS read
++                block_sync_lds<BlockSize>(); // wait for reduction LDS read
+ 
+                 b1_blockwise_copy.RunWrite(b1_block_desc_bk0_n_bk1, b1_block_buf);
+ 
+@@ -1048,11 +1049,11 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+ 
+                         b1_blockwise_copy.RunRead(b1_grid_desc_bk0_n_bk1, b1_grid_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         gemm1_blockwise_gemm.Run(a1_thread_buf, b1_block_buf, acc1_thread_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                              b1_block_slice_copy_step);
+@@ -1071,7 +1072,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+                         make_tuple(I0, I0, I0),
+                         a1_thread_buf);
+ 
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     gemm1_blockwise_gemm.Run(a1_thread_buf, b1_block_buf, acc1_thread_buf);
+                 }
+@@ -1116,7 +1117,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+             running_max = running_max_new;
+             running_sum = running_sum_new;
+ 
+-            block_sync_lds(); // wait for gemm1 LDS read
++            block_sync_lds<BlockSize>(); // wait for gemm1 LDS read
+         } while(++gemm1_k_block_outer_index < num_gemm1_k_block_outer_loop); // end j loop
+ 
+         // shuffle C and write out
+@@ -1286,7 +1287,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4,
+@@ -1296,7 +1297,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
-index d6d205111..003e3628b 100644
+index d6d205111..921ea7bf5 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
 @@ -359,7 +359,8 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
@@ -788,8 +1125,76 @@ index d6d205111..003e3628b 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -806,7 +807,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+                     [&](auto i) { acc_element_op(acc_thread_buf(i), acc_thread_buf[i]); });
+             }
+ 
+-            block_sync_lds(); // wait for lds read in gemm0 blockwise gemm
++            block_sync_lds<BlockSize>(); // wait for lds read in gemm0 blockwise gemm
+ 
+             // softmax
+             SoftmaxBuf& max = blockwise_softmax.max_value_buf;
+@@ -837,7 +838,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+                 b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                      b1_block_slice_copy_step);
+ 
+-                block_sync_lds(); // wait for reduction LDS read
++                block_sync_lds<BlockSize>(); // wait for reduction LDS read
+ 
+                 b1_blockwise_copy.RunWrite(b1_block_desc_bk0_n_bk1, b1_block_buf);
+ 
+@@ -854,11 +855,11 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+ 
+                         b1_blockwise_copy.RunRead(b1_grid_desc_bk0_n_bk1, b1_grid_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         gemm1_blockwise_gemm.Run(a1_thread_buf, b1_block_buf, acc1_thread_buf);
+ 
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+ 
+                         b1_blockwise_copy.MoveSrcSliceWindow(b1_grid_desc_bk0_n_bk1,
+                                                              b1_block_slice_copy_step);
+@@ -877,7 +878,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+                         make_tuple(I0, I0, I0),
+                         a1_thread_buf);
+ 
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     gemm1_blockwise_gemm.Run(a1_thread_buf, b1_block_buf, acc1_thread_buf);
+                 }
+@@ -922,7 +923,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+             running_max = running_max_new;
+             running_sum = running_sum_new;
+ 
+-            block_sync_lds(); // wait for gemm1 LDS read
++            block_sync_lds<BlockSize>(); // wait for gemm1 LDS read
+         } while(++gemm1_k_block_outer_index < num_gemm1_k_block_outer_loop); // end j loop
+ 
+         // shuffle C and write out
+@@ -1092,7 +1093,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_n2_n3_n4,
+@@ -1102,7 +1103,7 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
-index ede6a96dc..5c48b298e 100644
+index ede6a96dc..750d08c04 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
 @@ -180,7 +180,8 @@ struct GridwiseBatchNormBackwardWithBlockwiseWelford
@@ -813,8 +1218,29 @@ index ede6a96dc..5c48b298e 100644
  
          const auto thread_cluster_idx =
              thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+@@ -395,7 +396,7 @@ struct GridwiseBatchNormBackwardWithBlockwiseWelford
+ 
+             static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                 int count = threadwise_welford.cur_count_;
+                 BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
+@@ -461,9 +462,9 @@ struct GridwiseBatchNormBackwardWithBlockwiseWelford
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+             BlockwiseReduce::Reduce(reduce_work_buf, dscale_thread_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+             BlockwiseReduce::Reduce(reduce_work_buf, dbias_thread_buf(I));
+         });
+ 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
-index 33c45a0f0..de0b3c56c 100644
+index 33c45a0f0..1c9e78451 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
 @@ -153,7 +153,8 @@ struct GridwiseBatchNormForwardWithBlockwiseWelford
@@ -838,6 +1264,15 @@ index 33c45a0f0..de0b3c56c 100644
  
          const auto thread_cluster_idx =
              thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+@@ -289,7 +290,7 @@ struct GridwiseBatchNormForwardWithBlockwiseWelford
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             int count = threadwise_welford.cur_count_;
+             BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp
 index 2369f5179..bcd09bf53 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_contraction_dlops_v1r2.hpp
@@ -871,7 +1306,7 @@ index 2369f5179..bcd09bf53 100644
              ThreadwiseTensorSliceTransfer_v1r3<
                  FloatAcc,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp
-index b09a73590..c5cc8fe9d 100644
+index b09a73590..a9832dacb 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_elementwise_layernorm_welford_variance.hpp
 @@ -124,15 +124,16 @@ struct GridwiseElementwiseLayernormWelfordVariance_mk_to_mk
@@ -894,8 +1329,17 @@ index b09a73590..c5cc8fe9d 100644
          const index_t grid_size       = get_grid_size();
  
          auto in_global_buf_tuple = generate_tuple(
+@@ -394,7 +395,7 @@ struct GridwiseElementwiseLayernormWelfordVariance_mk_to_mk
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             if constexpr(I > 0)
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+             int count = threadwise_welford.cur_count_;
+             BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
-index bebcdceb4..9a11a1bc3 100644
+index bebcdceb4..6a4d31e6b 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
 @@ -385,7 +385,8 @@ struct GridwiseGemmBiasAddReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -926,8 +1370,17 @@ index bebcdceb4..9a11a1bc3 100644
  
              const auto c_reduce_thread_data_idx_begin =
                  c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+@@ -869,7 +870,7 @@ struct GridwiseGemmBiasAddReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+                 {
+                     c_reduce_thread_copy_lds_to_vgpr.Run(c_reduce_block_desc_mperblock_nperblock,
+                                                          c_shuffle_block_buf,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
-index 9c68b4f5c..6e730add8 100644
+index 9c68b4f5c..aebab0d78 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
 @@ -262,7 +262,8 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
@@ -949,6 +1402,42 @@ index 9c68b4f5c..6e730add8 100644
  
          // HACK: this force index data into SGPR
          const index_t im0 = __builtin_amdgcn_readfirstlane(c_m0_n0_block_cluster_idx[I0]);
+@@ -456,7 +457,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+                 a_blockwise_copy.RunRead(a_grid_desc_k0_m0_m1_k1, a_global_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc_k0_n0_n1_k1, b_global_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS double buffer: GEMM on current data
+                 blockwise_gemm.Run(c_thread_desc_m10_m11_n10_n11,
+@@ -478,7 +479,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+                 a_blockwise_copy.RunRead(a_grid_desc_k0_m0_m1_k1, a_global_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc_k0_n0_n1_k1, b_global_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS double buffer: GEMM on current data
+                 blockwise_gemm.Run(
+@@ -498,7 +499,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+             a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc_k0_m0_m1_k1, a_block_slice_copy_step);
+             b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc_k0_n0_n1_k1, b_block_slice_copy_step);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // LDS double buffer: load last data from device mem
+             a_blockwise_copy.RunRead(a_grid_desc_k0_m0_m1_k1, a_global_buf);
+@@ -512,7 +513,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
+             a_blockwise_copy.RunWrite(a_block_desc_k0_m0_m1_k1, a_block_odd_buf);
+             b_blockwise_copy.RunWrite(b_block_desc_k0_n0_n1_k1, b_block_odd_buf);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // LDS double buffer: GEMM on last data
+             blockwise_gemm.Run(
 @@ -540,7 +541,7 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
  
              const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
@@ -959,7 +1448,7 @@ index 9c68b4f5c..6e730add8 100644
              const auto ds_grid_buf = generate_tuple(
                  [&](auto i) {
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
-index d46aea5e2..f661d1f10 100644
+index d46aea5e2..9cc312b7f 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
 @@ -261,7 +261,8 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
@@ -981,6 +1470,42 @@ index d46aea5e2..f661d1f10 100644
  
          // HACK: this force index data into SGPR
          const index_t im0 = __builtin_amdgcn_readfirstlane(c_m0_n0_block_cluster_idx[I0]);
+@@ -454,7 +455,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+                 a_blockwise_copy.RunRead(a_grid_desc_k0_m0_m1_k1, a_global_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc_k0_n0_n1_k1, b_global_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS double buffer: GEMM on current data
+                 blockwise_gemm.Run(c_thread_desc_m10_m11_n10_n11,
+@@ -476,7 +477,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+                 a_blockwise_copy.RunRead(a_grid_desc_k0_m0_m1_k1, a_global_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc_k0_n0_n1_k1, b_global_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS double buffer: GEMM on current data
+                 blockwise_gemm.Run(
+@@ -496,7 +497,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+             a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc_k0_m0_m1_k1, a_block_slice_copy_step);
+             b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc_k0_n0_n1_k1, b_block_slice_copy_step);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // LDS double buffer: load last data from device mem
+             a_blockwise_copy.RunRead(a_grid_desc_k0_m0_m1_k1, a_global_buf);
+@@ -510,7 +511,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
+             a_blockwise_copy.RunWrite(a_block_desc_k0_m0_m1_k1, a_block_odd_buf);
+             b_blockwise_copy.RunWrite(b_block_desc_k0_n0_n1_k1, b_block_odd_buf);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // LDS double buffer: GEMM on last data
+             blockwise_gemm.Run(
 @@ -538,7 +539,7 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
  
              const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
@@ -1009,6 +1534,42 @@ index d46aea5e2..f661d1f10 100644
  
          const index_t k_batch_id = block_work_idx[I0];
  
+@@ -996,7 +998,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+                 a_blockwise_copy.RunRead(a_grid_desc_b_k0_m0_m1_k1, a_global_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc_b_k0_n0_n1_k1, b_global_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS double buffer: GEMM on current data
+                 blockwise_gemm.Run(c_thread_desc_m10_m11_n10_n11,
+@@ -1018,7 +1020,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+                 a_blockwise_copy.RunRead(a_grid_desc_b_k0_m0_m1_k1, a_global_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc_b_k0_n0_n1_k1, b_global_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS double buffer: GEMM on current data
+                 blockwise_gemm.Run(
+@@ -1038,7 +1040,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+             a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc_b_k0_m0_m1_k1, a_block_slice_copy_step);
+             b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc_b_k0_n0_n1_k1, b_block_slice_copy_step);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // LDS double buffer: load last data from device mem
+             a_blockwise_copy.RunRead(a_grid_desc_b_k0_m0_m1_k1, a_global_buf);
+@@ -1052,7 +1054,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
+             a_blockwise_copy.RunWrite(a_block_desc_b_k0_m0_m1_k1, a_block_odd_buf);
+             b_blockwise_copy.RunWrite(b_block_desc_b_k0_n0_n1_k1, b_block_odd_buf);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // LDS double buffer: GEMM on last data
+             blockwise_gemm.Run(
 @@ -1080,7 +1082,7 @@ struct GridwiseGemmDl_bkm_bkn_mn_v1r3
  
              const auto c_m10_m11_n10_n11_thread_origin_idx_on_block =
@@ -1131,7 +1692,7 @@ index ace844338..9e863b574 100644
          const auto ho_thread_id = c_thread_idx[I2];
          const auto wo_thread_id = c_thread_idx[I3];
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
-index 578665ea8..af7187972 100644
+index 578665ea8..5120e0709 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
 @@ -339,7 +339,8 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -1162,8 +1723,26 @@ index 578665ea8..af7187972 100644
  
              const auto c_reduce_thread_data_idx_begin =
                  c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+@@ -820,7 +821,7 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread shuffle data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -830,7 +831,7 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // Get shuffle data from LDS to VGPR
+                 c_reduce_thread_copy_lds_to_vgpr.Run(c_reduce_block_desc_mperblock_nperblock,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
-index d3f81566e..8e1dccf07 100644
+index d3f81566e..5cc6325e0 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
 @@ -588,7 +588,8 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
@@ -1185,8 +1764,75 @@ index d3f81566e..8e1dccf07 100644
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
                 make_tuple(e_grid_desc_mblock_mperblock_nblock_nperblock.GetLength(I0),
+@@ -713,7 +714,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+         // LDS allocation for A and B: be careful of alignment
+         auto a_block_buf = make_dynamic_buffer<AddressSpaceEnum::Lds>(static_cast<ADataType*>(p_shared), a_block_desc_k0perblock_mperblock_k1.GetElementSpaceSize());
+         auto b_block_buf = make_dynamic_buffer<AddressSpaceEnum::Lds>(static_cast<BDataType*>(p_shared) + a_block_space_size_aligned, b_block_desc_k0perblock_nperblock_k1.GetElementSpaceSize());
+-        
++
+         // Shift Per SUB_K
+         constexpr auto a_block_slice_copy_step = make_multi_index(K0PerBlock, 0, 0);
+         constexpr auto b_block_slice_copy_step = make_multi_index(K0PerBlock, 0, 0);
+@@ -738,7 +739,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+ /*******************************************************************************/
+         // write out to C, implement shuffle
+         {
+-            constexpr auto c_thread_desc_mrepeat_mwave_msubgroup_nrepeat_nwave_nthreadpersubgroup_maccvgprs =  
++            constexpr auto c_thread_desc_mrepeat_mwave_msubgroup_nrepeat_nwave_nthreadpersubgroup_maccvgprs =
+             blockwise_gemm.GetCThreadDescriptor_MRepeat_MWave_MSubGroup_NRepeat_NWave_NThreadPerSubGroup_MAccVgprs();
+ 
+             // This API Provide All dimension (size) you need
+@@ -794,10 +795,10 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+                 make_tuple(make_merge_transform(make_tuple(NRepeat, NWave, NThreadPerSubGroup))),
+                 make_tuple(Sequence<0, 1, 2>{}),
+                 make_tuple(Sequence<0>{}));
+-            
++
+             const auto m_thread_data_on_block_idx = m_thread_data_on_block_to_mrepeat_mwave_msubgroup_maccvgprs_adaptor.CalculateBottomIndex(
+                 make_multi_index(m_thread_data_on_block));
+-            
++
+             const auto n_thread_data_on_block_idx = n_thread_data_on_block_to_nrepeat_nwave_nthreadpersubgroup_adaptor.CalculateBottomIndex(
+                 make_multi_index(n_thread_data_on_block));
+ 
+@@ -830,7 +831,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+                                      n_thread_data_on_block_idx[I2],
+                                      m_thread_data_on_block_idx[I3]),
+                     ck::tensor_operation::element_wise::PassThrough{}};
+-            
++
+             // tuple of reference to C/Ds tensor descriptors
+             const auto c_ds_desc_refs = concat_tuple_of_reference(
+                 tie(c_shuffle_block_desc_mshrepeat_mpershrepeat_nshrepeat_npershrepeat),
+@@ -838,7 +839,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+                     [&](auto i) -> const auto& // return type should be reference
+                     { return ds_grid_desc_mblock_mperblock_nblock_nperblock[i]; },
+                     Number<NumDTensor>{}));
+-            
++
+             // tuple of reference to C/Ds tensor buffers
+             const auto c_ds_buf_refs = concat_tuple_of_reference(
+                 tie(c_shuffle_block_buf),
+@@ -913,7 +914,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_mrepeat_mwave_msubgroup_nrepeat_nwave_nthreadpersubgroup_maccvgprs,
+@@ -923,7 +924,7 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 cde_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
-index 98a71a7c2..678f4a4f0 100644
+index 98a71a7c2..d2c0dd3f8 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
 @@ -351,7 +351,8 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
@@ -1208,8 +1854,177 @@ index 98a71a7c2..678f4a4f0 100644
  
          if(!block_2_etile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -721,7 +722,7 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -731,7 +732,7 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 cde_block_copy_lds_and_global.Run(
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp
+index d1209636d..6cbc49595 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp
+@@ -78,13 +78,13 @@ struct GridwiseGemmPipeline_v1<1>
+             {
+                 a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
+ 
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, a_block_copy_step);
+                 b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc, b_block_copy_step);
+@@ -98,7 +98,7 @@ struct GridwiseGemmPipeline_v1<1>
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+         }
+@@ -192,13 +192,13 @@ struct GridwiseGemmPipeline_v1<2>
+                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf, I0);
+ 
+                 // Sync
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 // Gemm i
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+                 // Sync
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 // Move
+                 a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, a_block_copy_step);
+@@ -213,13 +213,13 @@ struct GridwiseGemmPipeline_v1<2>
+                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf, I1);
+ 
+                 // Sync
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 // Gemm i+1
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+                 // Sync
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 i += 2;
+             } while(i < (num_loop - 2));
+@@ -232,20 +232,20 @@ struct GridwiseGemmPipeline_v1<2>
+             b_blockwise_copy.RunWrite(b_block_desc, b_block_buf, I0);
+ 
+             // Sync
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             // Gemm num_loop - 2
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+             // Sync
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             // Write num_loop - 1
+             a_blockwise_copy.RunWrite(a_block_desc, a_block_buf, I1);
+             b_blockwise_copy.RunWrite(b_block_desc, b_block_buf, I1);
+ 
+             // Sync
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             // Gemm num_loop - 1
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+@@ -319,13 +319,13 @@ struct GridwiseGemmPipelineInterwave_v1<1>
+             {
+                 a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
+ 
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-                // block_sync_lds(); // moved into blockwise_gemm
++                // block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>(); // moved into blockwise_gemm
+ 
+                 a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, a_block_copy_step);
+                 b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc, b_block_copy_step);
+@@ -339,7 +339,7 @@ struct GridwiseGemmPipelineInterwave_v1<1>
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+         }
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp
+index 3281b910d..b0cd8597c 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp
+@@ -79,12 +79,12 @@ struct GridwiseGemmPipeline_v2
+ 
+             do
+             {
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 // GEMM i
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+                 // move to i + 2
+                 a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, a_block_copy_step);
+@@ -106,18 +106,18 @@ struct GridwiseGemmPipeline_v2
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             // GEMM num_loop - 2
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             // LDS write num_loop - 1
+             a_blockwise_copy.RunWrite(a_block_desc, a_block_buf);
+             b_blockwise_copy.RunWrite(b_block_desc, b_block_buf);
+ 
+-            block_sync_lds();
++            block_sync_lds<BlockwiseGemm::ThisThreadBlock::kNumThread_>();
+ 
+             // GEMM num_loop - 1
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
-index a3f532471..9c98860d5 100644
+index a3f532471..7daf6b51a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
 @@ -344,7 +344,8 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -1240,8 +2055,26 @@ index a3f532471..9c98860d5 100644
  
              const auto c_reduce_thread_data_idx_begin =
                  c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+@@ -774,7 +775,7 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -784,7 +785,7 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
-index aa89bff9e..7edc49374 100644
+index aa89bff9e..b7236b336 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
 @@ -403,10 +403,11 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
@@ -1277,6 +2110,24 @@ index aa89bff9e..7edc49374 100644
  
          if(!block_2_etile_map.ValidCTileIndex(
                 make_tuple(block_work_idx[I1], block_work_idx[I2]),
+@@ -833,7 +835,7 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+ 
+                 static_for<0, num_access, 1>{}([&](auto access_id) {
+                     // make sure it's safe to write to LDS
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // each thread write its data from VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -843,7 +845,7 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+                                                   c_shuffle_block_buf);
+ 
+                     // make sure it's safe to read from LDS
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // each block copy its data from LDS to global
+                     cde_block_copy_lds_and_global.Run(
 @@ -889,7 +891,8 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
                                  const DsGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&,
                                  const EGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock&
@@ -1296,8 +2147,80 @@ index aa89bff9e..7edc49374 100644
  
          if(!block_2_etile_map.ValidCTileIndex(
                 make_tuple(block_work_idx[I1], block_work_idx[I2]),
+@@ -1227,7 +1230,7 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+ 
+                 static_for<0, num_access, 1>{}([&](auto access_id) {
+                     // make sure it's safe to write to LDS
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // each thread write its data from VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -1237,7 +1240,7 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
+                                                   c_shuffle_block_buf);
+ 
+                     // make sure it's safe to read from LDS
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // each block copy its data from LDS to global
+                     c_shuffle_block_copy_lds_to_global.Run(
+diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp
+index 2d3a36fca..9e9f1cae0 100644
+--- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp
++++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp
+@@ -71,7 +71,7 @@ struct GridwiseGemmLoadWave<TileLoadThreadGroup, 1>
+             do
+             {
+                 // sync for Load threads()
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+                 // global read i + 1
+                 a_blockwise_copy.RunRead(a_grid_desc, a_grid_buf);
+                 b_blockwise_copy.RunRead(b_grid_desc, b_grid_buf);
+@@ -81,7 +81,7 @@ struct GridwiseGemmLoadWave<TileLoadThreadGroup, 1>
+                 b_blockwise_copy.MoveSrcSliceWindow(b_grid_desc, b_block_copy_step);
+ 
+                 // sync with math threads()
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // LDS write i+1
+                 a_blockwise_copy.RunWrite(a_block_desc, a_block_buf);
+@@ -93,7 +93,7 @@ struct GridwiseGemmLoadWave<TileLoadThreadGroup, 1>
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+             // GEMM num_loop - 1
+         }
+     }
+@@ -134,19 +134,19 @@ struct GridwiseGemmMathWave<TileMathThreadGroup, 1>
+ 
+             do
+             {
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // GEMM i
+                 block_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+                 ++i;
+             } while(i < (num_loop - 1));
+         }
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             // GEMM num_loop - 1
+             block_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
-index 397ae1c1b..643e6c49e 100644
+index 397ae1c1b..0586da1fd 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
 @@ -325,7 +325,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
@@ -1319,8 +2242,57 @@ index 397ae1c1b..643e6c49e 100644
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
                 make_tuple(c_grid_desc_mblock_mperblock_nblock_nperblock.GetLength(I0),
+@@ -442,7 +443,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+         // LDS allocation for A and B: be careful of alignment
+         auto a_block_buf = make_dynamic_buffer<AddressSpaceEnum::Lds>(static_cast<FloatA*>(p_shared), a_block_desc_k0perblock_mperblock_k1.GetElementSpaceSize());
+         auto b_block_buf = make_dynamic_buffer<AddressSpaceEnum::Lds>(static_cast<FloatB*>(p_shared) + a_block_space_size_aligned, b_block_desc_k0perblock_nperblock_k1.GetElementSpaceSize());
+-        
++
+         // Shift Per SUB_K
+         constexpr auto a_block_slice_copy_step = make_multi_index(K0PerBlock, 0, 0);
+         constexpr auto b_block_slice_copy_step = make_multi_index(K0PerBlock, 0, 0);
+@@ -467,7 +468,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+ /*******************************************************************************/
+         // write out to C, implement shuffle
+         {
+-            constexpr auto c_thread_desc_mrepeat_mwave_msubgroup_nrepeat_nwave_nthreadpersubgroup_maccvgprs =  
++            constexpr auto c_thread_desc_mrepeat_mwave_msubgroup_nrepeat_nwave_nthreadpersubgroup_maccvgprs =
+             blockwise_gemm.GetCThreadDescriptor_MRepeat_MWave_MSubGroup_NRepeat_NWave_NThreadPerSubGroup_MAccVgprs();
+ 
+             // This API Provide All dimension (size) you need
+@@ -523,10 +524,10 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+                 make_tuple(make_merge_transform(make_tuple(NRepeat, NWave, NThreadPerSubGroup))),
+                 make_tuple(Sequence<0, 1, 2>{}),
+                 make_tuple(Sequence<0>{}));
+-            
++
+             const auto m_thread_data_on_block_idx = m_thread_data_on_block_to_mrepeat_mwave_msubgroup_maccvgprs_adaptor.CalculateBottomIndex(
+                 make_multi_index(m_thread_data_on_block));
+-            
++
+             const auto n_thread_data_on_block_idx = n_thread_data_on_block_to_nrepeat_nwave_nthreadpersubgroup_adaptor.CalculateBottomIndex(
+                 make_multi_index(n_thread_data_on_block));
+ 
+@@ -614,7 +615,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_mrepeat_mwave_msubgroup_nrepeat_nwave_nthreadpersubgroup_maccvgprs,
+@@ -624,7 +625,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
-index 1213cdc26..e180db1ec 100644
+index 1213cdc26..542e35c95 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
 @@ -290,7 +290,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -1342,8 +2314,26 @@ index 1213cdc26..e180db1ec 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -619,7 +620,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -629,7 +630,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                               c_shuffle_block_buf);
+ 
+                 // make sure it's safe to read from LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
-index 2d4ebe707..391431692 100644
+index 2d4ebe707..2c245d981 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
 @@ -373,7 +373,8 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -1374,8 +2364,57 @@ index 2d4ebe707..391431692 100644
  
              const auto c_reduce_thread_data_idx_begin =
                  c_reduce_thread_cluster_idx * c_reduce_thread_lengths_mperblock_nperblock;
+@@ -877,7 +878,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+             static_for<0, num_access, 1>{}([&](auto access_id) {
+                 // make sure it's safe to write to LDS
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each thread write its data from VGPR to LDS
+                 c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -886,7 +887,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                               c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+                                               c_shuffle_block_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // load from LDS and global, add bias
+                 c_reduce_thread_copy_lds_to_vgpr.Run(c_reduce_block_desc_mperblock_nperblock,
+@@ -964,10 +965,10 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                         false>;
+ 
+                     static_for<0, mreduce_per_thread, 1>{}([&](auto i) {
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+                         BlockwiseReduce::Reduce(d_reduce_work_buf,
+                                                 d0_thread_buf(i)); // blockwise reduced sum
+-                        block_sync_lds();
++                        block_sync_lds<BlockSize>();
+                         BlockwiseReduce::Reduce(d_reduce_work_buf,
+                                                 d1_thread_buf(i)); // blockwise reduced squared sum
+                     });
+@@ -1026,7 +1027,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+                                 static_cast<FloatReduceAcc>(c0_thread_buf(i)); // + beta
+                         });
+ 
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     c_reduce_thread_copy_vgpr_to_lds.Run(c_reduce_thread_desc_mperblock_nperblock,
+                                                          make_tuple(I0, I0),
+@@ -1036,7 +1037,7 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
+ 
+                 } // end layernorm
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 // each block copy its data from LDS to global
+                 c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
-index acece0fbb..a664b5bdb 100644
+index acece0fbb..5a15c3b86 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
 @@ -78,18 +78,20 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
@@ -1433,8 +2472,37 @@ index acece0fbb..a664b5bdb 100644
  
          // HACK: this force m/n_block_data_idx_on_grid into SGPR
          const index_t m_block_data_idx_on_grid =
+@@ -480,8 +483,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+                 b_block_slice_copy_step,
+                 num_k_block_main_loop);
+ 
+-            block_sync_lds();
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
++            block_sync_lds<BlockSize>();
+         }
+         else if(TileMathThreadGroup::IsBelong())
+         {
+@@ -709,7 +712,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+ 
+                 static_for<0, num_access, 1>{}([&](auto access_id) {
+                     // make sure it's safe to write to LDS
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // each thread write its data from VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(c_thread_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+@@ -718,7 +721,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
+                                                   c_block_desc_m0_n0_m1_n1_m2_m3_m4_n2,
+                                                   c_shuffle_block_buf);
+                     // make sure it's safe to read from LDS
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // each block copy its data from LDS to global
+                     c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
-index 1979331d0..a8b48ee5e 100644
+index 1979331d0..ea2f7059c 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
 @@ -621,7 +621,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_bwd_weight
@@ -1456,8 +2524,26 @@ index 1979331d0..a8b48ee5e 100644
  
          const index_t k_batch_id = block_work_idx[I0];
  
+@@ -939,7 +940,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_bwd_weight
+                     constexpr auto nxdlperwave = Number<nxdlperwave_value>{};
+ 
+                     // make sure it's safe to do ds_write
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(
+@@ -950,7 +951,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_bwd_weight
+                         c_block_buf);
+ 
+                     // make sure it's safe to do ds_read
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // LDS to global
+                     c_block_copy_lds_to_global.Run(c_block_desc_mblock_mperblock_nblock_nperblock,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
-index 8d86f3c1d..bd862963b 100644
+index 8d86f3c1d..0e9b20dbf 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
 @@ -252,7 +252,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
@@ -1497,6 +2583,42 @@ index 8d86f3c1d..bd862963b 100644
          printf("block id: %d  m blockid: %d n block id: %d ,thread id: %d, wave id :{%d %d %d} "
                 "kn id: {%d %d}\n",
                 block_id,
+@@ -469,7 +470,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+                wave_id[I2],
+                wave_k_n_id[I0],
+                wave_k_n_id[I1]);
+-        printf("mfma thread k per xdlops: %d K0PerThread: %d HasMainK0BlockLoop: %d K0: %d  \t", 
++        printf("mfma thread k per xdlops: %d K0PerThread: %d HasMainK0BlockLoop: %d K0: %d  \t",
+                 xdlops_gemm.K0PerXdlops, K0PerThread, HasMainK0BlockLoop, b_grid_desc_k0_k1_k2_n0_n1_n2_n3_k3.GetLength(I0));
+ #endif
+ 
+@@ -557,7 +558,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+                 {
+                     a_blockwise_copy.RunRead(a_grid_desc_k0_m_k1, a_grid_buf);
+                     blockwise_gemm.ResetABlockStartWindow();
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     static_for<0, BBlockBufferSize, 1>{}([&](auto ii) {
+                         blockwise_gemm.Run(a_block_buf, b_thread_buf(Number<ii>{}), c_thread_buf);
+@@ -573,7 +574,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+                                                              b_thread_slice_copy_step);
+                     });
+ 
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+                     a_blockwise_copy.RunWrite(a_block_desc_k0_m_k1, a_block_buf);
+                     // move a and b window
+                     a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc_k0_m_k1,
+@@ -585,7 +586,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
+ 
+             // tail
+             {
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 blockwise_gemm.ResetABlockStartWindow();
+ 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
 index 775b77118..73f1ae8da 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
@@ -1521,7 +2643,7 @@ index 775b77118..73f1ae8da 100644
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
-index 55f465a03..79bce459f 100644
+index 55f465a03..f16cfe4dd 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
 @@ -290,7 +290,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
@@ -1543,8 +2665,33 @@ index 55f465a03..79bce459f 100644
  
          if(!c_block_cluster_adaptor.ValidCTileIndex(
                 make_tuple(block_work_idx[I1], block_work_idx[I2]),
+@@ -510,13 +511,13 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
+ 
+                 a_blockwise_copy.RunRead(a_b_k0_m_k1_grid_desc, a_grid_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 b_blockwise_copy.RunRead(b_b_k0_n_k1_grid_desc, b_grid_buf);
+ 
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 a_blockwise_copy.RunWrite(a_b_k0_m_k1_block_desc, a_block_buf);
+                 b_blockwise_copy.RunWrite(b_b_k0_n_k1_block_desc, b_block_buf);
+@@ -527,7 +528,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+         }
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
-index b393c4897..66ec99f16 100644
+index b393c4897..b64b3ea99 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
 @@ -498,7 +498,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
@@ -1566,8 +2713,51 @@ index b393c4897..66ec99f16 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -749,13 +750,13 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
+ 
+                 a_blockwise_copy.RunRead(a_b_k0_m_k1_grid_desc, a_grid_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 b_blockwise_copy.RunRead(b_b_k0_n_k1_grid_desc, b_grid_buf);
+ 
+                 blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 a_blockwise_copy.RunWrite(a_b_k0_m_k1_block_desc, a_block_buf);
+                 b_blockwise_copy.RunWrite(b_b_k0_n_k1_block_desc, b_block_buf);
+@@ -766,7 +767,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
+ 
+         // tail
+         {
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+ 
+             blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
+         }
+@@ -948,7 +949,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
+                     constexpr auto nxdlperwave = Number<nxdlperwave_value>{};
+ 
+                     // make sure it's safe to do ds_write
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(
+@@ -959,7 +960,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
+                         c_block_buf);
+ 
+                     // make sure it's safe to do ds_read
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // LDS to global
+                     c_block_copy_lds_to_global.Run(c_block_desc_mblock_mperblock_nblock_nperblock,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
-index 8259927fe..dcd391e14 100644
+index 8259927fe..d1b090c3b 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
 @@ -335,7 +335,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1
@@ -1589,8 +2779,26 @@ index 8259927fe..dcd391e14 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -673,7 +674,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1
+                     constexpr auto nxdlperwave = Number<nxdlperwave_value>{};
+ 
+                     // make sure it's safe to do ds_write
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(
+@@ -684,7 +685,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1
+                         c_shuffle_block_buf);
+ 
+                     // make sure it's safe to do ds_read
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // LDS to global
+                     c_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
-index 5d5fdae17..06ec53a59 100644
+index 5d5fdae17..0112a836a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
 @@ -351,7 +351,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r2
@@ -1612,8 +2820,26 @@ index 5d5fdae17..06ec53a59 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -698,7 +699,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r2
+                     constexpr auto nxdlperwave = Number<nxdlperwave_value>{};
+ 
+                     // make sure it's safe to do ds_write
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(
+@@ -709,7 +710,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r2
+                         c_block_buf);
+ 
+                     // make sure it's safe to do ds_read
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // LDS to global
+                     c_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
-index dc83f8e98..cfa758e74 100644
+index dc83f8e98..6bc190175 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
 @@ -367,7 +367,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r3
@@ -1635,8 +2861,26 @@ index dc83f8e98..cfa758e74 100644
  
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
+@@ -723,7 +724,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r3
+                     constexpr auto nxdlperwave = Number<nxdlperwave_value>{};
+ 
+                     // make sure it's safe to do ds_write
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // VGPR to LDS
+                     c_thread_copy_vgpr_to_lds.Run(
+@@ -734,7 +735,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r3
+                         c_block_buf);
+ 
+                     // make sure it's safe to do ds_read
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                     // LDS to global
+                     c_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp
-index 792ffabcb..1545d98ad 100644
+index 792ffabcb..825b7b976 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_naive_variance.hpp
 @@ -104,7 +104,8 @@ struct GridwiseNormalizationNaiveVariance_mk_to_mk
@@ -1660,8 +2904,38 @@ index 792ffabcb..1545d98ad 100644
  
          const auto thread_cluster_idx =
              thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+@@ -289,12 +290,12 @@ struct GridwiseNormalizationNaiveVariance_mk_to_mk
+ 
+             static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                 BlockwiseSumReduce::Reduce(reduce_work_buf, mean_thread_buf(I));
+                 mean_thread_buf(I) = mean_thread_buf(I) / reduce_length;
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 BlockwiseSumReduce::Reduce(reduce_work_buf, mean_square_thread_buf(I));
+                 mean_square_thread_buf(I) = mean_square_thread_buf(I) / reduce_length;
+@@ -391,12 +392,12 @@ struct GridwiseNormalizationNaiveVariance_mk_to_mk
+ 
+             static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                 BlockwiseSumReduce::Reduce(reduce_work_buf, mean_thread_buf(I));
+                 mean_thread_buf(I) = mean_thread_buf(I) / reduce_length;
+ 
+-                block_sync_lds();
++                block_sync_lds<BlockSize>();
+ 
+                 BlockwiseSumReduce::Reduce(reduce_work_buf, mean_square_thread_buf(I));
+                 mean_square_thread_buf(I) = mean_square_thread_buf(I) / reduce_length;
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp
-index 3a7ae459e..1078bf475 100644
+index 3a7ae459e..67eaa6b8a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_normalization_welford_variance.hpp
 @@ -120,7 +120,8 @@ struct GridwiseNormalizationWelfordVariance_mk_to_mk
@@ -1685,6 +2959,24 @@ index 3a7ae459e..1078bf475 100644
  
          const auto thread_cluster_idx =
              thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
+@@ -275,7 +276,7 @@ struct GridwiseNormalizationWelfordVariance_mk_to_mk
+ 
+             static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                 int count = threadwise_welford.cur_count_;
+                 BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
+@@ -356,7 +357,7 @@ struct GridwiseNormalizationWelfordVariance_mk_to_mk
+ 
+             static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+ 
+                 int count = threadwise_welford.cur_count_;
+                 BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
 index de1ae9159..b36799c27 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
@@ -1722,7 +3014,7 @@ index 901e7aee9..52d129a9a 100644
  
      const index_t thread_global_id = block_global_id * BlockSize + thread_local_id;
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
-index 0344e6830..0b87d4686 100644
+index 0344e6830..2bba43ecb 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
 @@ -91,7 +91,8 @@ struct GridwiseSoftmax_mk_to_mk
@@ -1746,8 +3038,30 @@ index 0344e6830..0b87d4686 100644
          const index_t blkgroup_id     = block_global_id / block_group_size;
          const index_t block_local_id  = block_global_id % block_group_size;
  
+@@ -252,7 +253,7 @@ struct GridwiseSoftmax_mk_to_mk
+ 
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             BlockwiseMaxReduce::Reduce(reduce_work_buf, max_value_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+         });
+ 
+         threadwise_src_load.MoveSrcSliceWindow(in_grid_desc_m_k, in_thread_copy_bwd_step);
+@@ -305,10 +306,10 @@ struct GridwiseSoftmax_mk_to_mk
+             reducedTiles++;
+         } while(reducedTiles < num_k_block_tile_iteration);
+ 
+-        block_sync_lds(); // wait for reading being complete before writing to LDS
++        block_sync_lds<BlockSize>(); // wait for reading being complete before writing to LDS
+         static_for<0, MThreadSliceSize, 1>{}([&](auto I) {
+             BlockwiseSumReduce::Reduce(reduce_work_buf, accu_value_buf(I));
+-            block_sync_lds();
++            block_sync_lds<BlockSize>();
+         });
+ 
+         threadwise_src_load.MoveSrcSliceWindow(in_grid_desc_m_k, in_thread_copy_fwd_step);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
-index ff2511fa6..487c7315d 100644
+index ff2511fa6..8de5990cd 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
 @@ -96,10 +96,11 @@ struct GridwiseSparseEmbeddingsForwardLayernorm
@@ -1765,6 +3079,15 @@ index ff2511fa6..487c7315d 100644
  
          constexpr auto thread_cluster_desc =
              make_cluster_descriptor(Sequence<DimClusterSize, RowClusterSize>{}, Sequence<0, 1>{});
+@@ -304,7 +305,7 @@ struct GridwiseSparseEmbeddingsForwardLayernorm
+             // blockwise welford
+             static_for<0, mean_var_buf_size, 1>{}([&](auto I) {
+                 if constexpr(I > 0)
+-                    block_sync_lds();
++                    block_sync_lds<BlockSize>();
+                 BlockwiseWelford::Run(
+                     mean_thread_buf(I), var_thread_buf(I), threadwise_welford.cur_count_);
+             });
 diff --git a/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp b/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
 index 0672bf8e5..e8373fce2 100644
 --- a/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
@@ -1811,6 +3134,63 @@ index 44ff43815..689d44930 100644
  __device__ index_t get_block_1d_id() { return blockIdx.x; }
  
  __device__ index_t get_grid_size() { return gridDim.x; }
+diff --git a/include/ck/utility/synchronization.hpp b/include/ck/utility/synchronization.hpp
+index 0e247ed0f..9e13bcb1a 100644
+--- a/include/ck/utility/synchronization.hpp
++++ b/include/ck/utility/synchronization.hpp
+@@ -5,18 +5,44 @@
+ 
+ #include "ck/ck.hpp"
+ 
++extern __shared__ int _ARK_SMEM[];
++
+ namespace ck {
+ 
++struct WarpGroupState {
++    unsigned int flag[8];
++    unsigned int is_inc_flag[8];
++    unsigned int cnt[8];
++};
++
++template <int BlockSize>
+ __device__ void block_sync_lds()
+ {
+-#if CK_EXPERIMENTAL_BLOCK_SYNC_LDS_WITHOUT_SYNC_VMEM
+-    asm volatile("\
+-    s_waitcnt lgkmcnt(0) \n \
+-    s_barrier \
+-    " ::);
+-#else
+-    __syncthreads();
+-#endif
++    static_assert(BlockSize % 64 == 0, "");
++    constexpr int NumWarps = BlockSize / 64;
++    if constexpr (NumWarps == 1) {
++        __builtin_amdgcn_wave_barrier();
++    } else if constexpr (NumWarps == 16) {
++        __syncthreads();
++    } else {
++        static_assert(128 >= sizeof(WarpGroupState), "");
++        int lane_id = threadIdx.x & 63;
++        if (lane_id == 0) {
++            constexpr int MaxOldCnt = NumWarps - 1;
++            int warp_id = threadIdx.x >> 6;
++            int group_id = warp_id / NumWarps;
++            WarpGroupState *state = reinterpret_cast<WarpGroupState *>(_ARK_SMEM);
++            unsigned int tmp = state->is_inc_flag[group_id] ^ 1;
++            if (atomicInc(&state->cnt[group_id], MaxOldCnt) == MaxOldCnt) {
++                state->flag[group_id] = tmp;
++            } else {
++                while (atomicAdd(&state->flag[group_id], 0) != tmp) __builtin_amdgcn_s_sleep(1);
++                __asm__ __volatile__("s_wakeup");
++            }
++            state->is_inc_flag[group_id] = tmp;
++        }
++        __builtin_amdgcn_wave_barrier();
++    }
+ }
+ 
+ __device__ void s_nop()
 diff --git a/include/ck/utility/thread_group.hpp b/include/ck/utility/thread_group.hpp
 index d469dec89..08db3ddee 100644
 --- a/include/ck/utility/thread_group.hpp

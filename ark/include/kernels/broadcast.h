@@ -517,6 +517,8 @@ struct Broadcast1 {
 
             Intrinsic::compute(&out[idx_out], &in[idx_in]);
         }
+
+        UnitOp::sync_threads();
     }
 };
 
@@ -602,6 +604,8 @@ struct Broadcast2 {
 
             Intrinsic::compute(&out[idx_out], &in0[idx_in0], &in1[idx_in1]);
         }
+
+        UnitOp::sync_threads();
     }
 };
 
