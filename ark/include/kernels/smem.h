@@ -20,7 +20,8 @@ struct SharedMemory {
     static DEVICE int smem_base_offset(int smem_per_warp) {
         // The smallest warp ID in the uop.
         int least_warp_id = math::gm<NumWarps>(warp_id());
-        return math::div<sizeof(int)>(least_warp_id * smem_per_warp + ARK_SMEM_RESERVED_BYTES);
+        return math::div<sizeof(int)>(least_warp_id * smem_per_warp +
+                                      ARK_SMEM_RESERVED_BYTES);
     }
 
     static DEVICE T *get(int smem_per_warp) {
