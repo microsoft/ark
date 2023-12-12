@@ -50,6 +50,8 @@ struct Ewise1 {
 
             CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w);
         }
+
+        UnitOp::sync_threads();
     }
 };
 
