@@ -269,7 +269,8 @@ void GpuLoopKernel::load() {
         GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, this->module,
                                 ARK_BUF_NAME));
         std::array<int, 4> data = {0, 0, 0, 0};
-        GLOG(gpuMemcpyHtoD(lss_ptr_addr, data.data(), sizeof(int) * data.size()));
+        GLOG(gpuMemcpyHtoD(lss_ptr_addr, data.data(),
+                           sizeof(int) * data.size()));
         GLOG(gpuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val, sizeof(GpuPtr)));
         // set the data buffer pointers of remote gpus
         int nrph = get_env().num_ranks_per_host;
