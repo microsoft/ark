@@ -10,32 +10,26 @@
 
 namespace ark {
 
-class GpuMgrV2;
-
+class GpuMemV2;
 class GpuStreamV2 {
    public:
-    explicit GpuStreamV2(GpuMgrV2 &gpu_mgr);
-
+    GpuStreamV2();
+    ~GpuStreamV2() = default;
     void sync() const;
 
    private:
     friend class GpuMgrV2;
     class Impl;
     std::shared_ptr<Impl> pimpl_;
-    std::shared_ptr<GpuMgrV2> gpu_mgr_;
 };
-
-class GpuMemV2;
 
 class GpuMgrV2 {
    public:
     GpuMgrV2(int gpu_id);
-    ~GpuMgrV2();
+    ~GpuMgrV2() = default;
 
     std::shared_ptr<GpuMemV2> malloc(size_t bytes, size_t align = 1);
-
     std::shared_ptr<GpuStreamV2> main_stream() const;
-
     std::shared_ptr<GpuStreamV2> new_stream();
 
     struct Info;
@@ -64,13 +58,12 @@ class GpuMgrV2 {
 
     class Impl;
     std::shared_ptr<Impl> pimpl_;
-
     std::shared_ptr<GpuStreamV2> main_stream_;
 
     void set_current() const;
     void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;
-    void memcpy_htod_async(void *dst, size_t dst_offset, const void *src,
+    void memcpy_htod_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;
     void memcpy_dtod_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;

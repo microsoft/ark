@@ -12,7 +12,6 @@ class GpuStreamV2::Impl {
    public:
     explicit Impl();
     ~Impl();
-
     gpuStream get() const { return gpu_stream_; }
 
    private:
@@ -25,8 +24,7 @@ GpuStreamV2::Impl::Impl() {
 
 GpuStreamV2::Impl::~Impl() { GLOG(gpuStreamDestroy(gpu_stream_)); }
 
-GpuStreamV2::GpuStreamV2(GpuMgrV2 &gpu_mgr)
-    : pimpl_(std::make_shared<Impl>()), gpu_mgr_(&gpu_mgr) {}
+GpuStreamV2::GpuStreamV2() : pimpl_(std::make_shared<Impl>()) {}
 
 void GpuStreamV2::sync() const { GLOG(gpuStreamSynchronize(pimpl_->get())); }
 
@@ -86,9 +84,7 @@ GpuMgrV2::Impl::~Impl() {
 
 GpuMgrV2::GpuMgrV2(int gpu_id)
     : pimpl_(std::make_shared<Impl>(gpu_id)),
-      main_stream_(std::make_shared<GpuStreamV2>(*this)) {}
-
-GpuMgrV2::~GpuMgrV2() = default;
+      main_stream_(std::make_shared<GpuStreamV2>()) {}
 
 std::shared_ptr<GpuMemV2> GpuMgrV2::malloc(size_t bytes, size_t align) {
     return std::make_shared<GpuMemV2>(*this, bytes, align);
@@ -100,7 +96,7 @@ std::shared_ptr<GpuStreamV2> GpuMgrV2::main_stream() const {
 
 std::shared_ptr<GpuStreamV2> GpuMgrV2::new_stream() {
     this->set_current();
-    return std::make_shared<GpuStreamV2>(*this);
+    return std::make_shared<GpuStreamV2>();
 }
 
 const GpuMgrV2::Info &GpuMgrV2::info() const { return pimpl_->info_; }
@@ -111,15 +107,15 @@ void GpuMgrV2::memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                                  size_t src_offset, size_t bytes) const {
     dst = static_cast<char *>(dst) + dst_offset;
     gpuDeviceptr d_src = reinterpret_cast<gpuDeviceptr>(
-        reinterpret_cast<long long unsigned int>(src) + src_offset);
+        reinterpret_cast<uint64_t>(src) + src_offset);
     GLOG(gpuMemcpyDtoHAsync(dst, d_src, bytes, main_stream_->pimpl_->get()));
 }
 
-void GpuMgrV2::memcpy_htod_async(void *dst, size_t dst_offset, const void *src,
+void GpuMgrV2::memcpy_htod_async(void *dst, size_t dst_offset, void *src,
                                  size_t src_offset, size_t bytes) const {
     gpuDeviceptr d_dst = reinterpret_cast<gpuDeviceptr>(
         reinterpret_cast<long long unsigned int>(dst) + dst_offset);
-    src = static_cast<const char *>(src) + src_offset;
+    src = static_cast<char *>(src) + src_offset;
     GLOG(gpuMemcpyHtoDAsync(d_dst, src, bytes, main_stream_->pimpl_->get()));
 }
 
