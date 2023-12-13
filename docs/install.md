@@ -35,6 +35,8 @@ docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.6
 
 Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.
 
+*NOTE(Dec 2023): ROCm Docker images are not yet verified enough and may be updated in the future.*
+
 The following is an example `docker run` command for NVIDIA GPUs.
 ```
 # Run a container for NVIDIA GPUs
