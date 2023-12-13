@@ -258,63 +258,77 @@ void GpuLoopKernel::load() {
     if (this->stream != nullptr) {
         // Wait until previous works finish.
         this->wait();
-    } else {
-        // Initialize global variables in the loop kernel.
-        GpuPtr buf_ptr_val = this->ctx->get_data_ref();
-        GpuPtr lss_ptr_addr;
-        GpuPtr buf_ptr_addr;
-        size_t tmp = 0;
-        GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, this->module,
-                                ARK_LSS_NAME));
-        GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, this->module,
-                                ARK_BUF_NAME));
-        std::array<int, 4> data = {0, 0, 0, 0};
-        GLOG(gpuMemcpyHtoD(lss_ptr_addr, data.data(),
+        return;
+    }
+    // Initialize global variables in the loop kernel.
+    GpuPtr buf_ptr_val = this->ctx->get_data_ref();
+    GpuPtr lss_ptr_addr;
+    GpuPtr buf_ptr_addr;
+    size_t tmp = 0;
+    GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, this->module, ARK_LSS_NAME));
+    GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, this->module, ARK_BUF_NAME));
+    std::array<int, 4> data = {0, 0, 0, 0};
+    GLOG(gpuMemcpyHtoD(lss_ptr_addr, data.data(), sizeof(int) * data.size()));
+    GLOG(gpuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val, sizeof(GpuPtr)));
+    // TODO: remove this hack
+    GpuPtr lss_0_ptr_addr;
+    GpuPtr lss_1_ptr_addr;
+    gpuError ret = gpuModuleGetGlobal(&lss_0_ptr_addr, &tmp, this->module,
+                                      ARK_LSS_NAME "_0");
+    if (ret == gpuSuccess) {
+        GLOG(gpuMemcpyHtoD(lss_0_ptr_addr, data.data(),
                            sizeof(int) * data.size()));
-        GLOG(gpuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val, sizeof(GpuPtr)));
-        // set the data buffer pointers of remote gpus
-        int nrph = get_env().num_ranks_per_host;
-        int nodes_id = this->ctx->get_gpu_id() / nrph;
-        // only set the GPU remote data buf pointers of the GPUs on the same
-        // node
-        for (int i = nodes_id * nrph;
-             i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
-             i++) {
-            GpuPtr data_buf_value = this->ctx->get_data_ref(i);
-            if (data_buf_value == 0) {
-                continue;
-            }
-            GpuPtr data_buf_ptr;
-            string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-            gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, this->module,
-                                             data_buf_name.c_str());
-            if (_e == gpuErrorNotFound) {
-                LOG(DEBUG, "global variable ", data_buf_name, " not found");
-                continue;
-            }
-            LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
-                " data_buf_value=", data_buf_value);
-            GLOG(gpuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
+    } else if (ret != gpuErrorNotFound) {
+        GLOG(ret);
+    }
+    ret = gpuModuleGetGlobal(&lss_1_ptr_addr, &tmp, this->module,
+                             ARK_LSS_NAME "_1");
+    if (ret == gpuSuccess) {
+        GLOG(gpuMemcpyHtoD(lss_1_ptr_addr, data.data(),
+                           sizeof(int) * data.size()));
+    } else if (ret != gpuErrorNotFound) {
+        GLOG(ret);
+    }
+    // set the data buffer pointers of remote gpus
+    int nrph = get_env().num_ranks_per_host;
+    int nodes_id = this->ctx->get_gpu_id() / nrph;
+    // only set the GPU remote data buf pointers of the GPUs on the same node
+    for (int i = nodes_id * nrph;
+         i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size(); i++) {
+        GpuPtr data_buf_value = this->ctx->get_data_ref(i);
+        if (data_buf_value == 0) {
+            continue;
         }
-        GpuCommSw *comm = this->ctx->get_comm_sw();
-        if (comm->get_proxy_channels_num() > 0) {
-            GpuPtr channel_addr;
-            GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
-                                    "_ARK_PROXY_CHANS"));
-            const void *chans_ref = comm->get_proxy_channels_ref();
-            size_t chans_bytes = comm->get_proxy_channels_bytes();
-            GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
-                               chans_bytes));
+        GpuPtr data_buf_ptr;
+        string data_buf_name = ARK_BUF_NAME + std::to_string(i);
+        gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, this->module,
+                                         data_buf_name.c_str());
+        if (_e == gpuErrorNotFound) {
+            LOG(DEBUG, "global variable ", data_buf_name, " not found");
+            continue;
         }
-        if (comm->get_sm_channels_num() > 0) {
-            GpuPtr channel_addr;
-            GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
-                                    "_ARK_SM_CHANS"));
-            const void *chans_ref = comm->get_sm_channels_ref();
-            size_t chans_bytes = comm->get_sm_channels_bytes();
-            GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
-                               chans_bytes));
-        }
+        LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
+            " data_buf_value=", data_buf_value);
+        GLOG(gpuMemcpyHtoD(data_buf_ptr, &data_buf_value, sizeof(GpuPtr)));
+    }
+    GpuCommSw *comm = this->ctx->get_comm_sw();
+    if (comm->get_proxy_channels_num() > 0) {
+        GpuPtr channel_addr;
+        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
+                                "_ARK_PROXY_CHANS"));
+        const void *chans_ref = comm->get_proxy_channels_ref();
+        size_t chans_bytes = comm->get_proxy_channels_bytes();
+        GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
+                           chans_bytes));
+    }
+    if (comm->get_sm_channels_num() > 0) {
+        GpuPtr channel_addr;
+        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
+                                "_ARK_SM_CHANS"));
+        const void *chans_ref = comm->get_sm_channels_ref();
+        size_t chans_bytes = comm->get_sm_channels_bytes();
+        GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
+                           chans_bytes));
     }
 }
 
