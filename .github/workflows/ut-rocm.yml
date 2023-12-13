@@ -43,7 +43,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random -E "sched_test|sendrecv|all_reduce|all_gather|reduce_scatter"
+          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
         run: |
