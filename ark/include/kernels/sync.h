@@ -45,17 +45,24 @@ DEVICE void sync_gpu(sync::State &state) {
         return;
     }
     if (threadIdx.x == 0) {
+        // Make sure that all threads in this block have done `__threadfence()`
+        // before to flip `flag`.
         __threadfence();
-        if (atomicAdd(&state.cnt, 1) == MaxOldCnt) {
-            state.flag = 1;
+        int is_add_ = state.is_add ^ 1;
+        if (is_add_) {
+            if (atomicAdd(&state.cnt, 1) == MaxOldCnt) {
+                state.flag = 1;
+            }
+            while (!state.flag) {
+            }
+        } else {
+            if (atomicSub(&state.cnt, 1) == 1) {
+                state.flag = 0;
+            }
+            while (state.flag) {
+            }
         }
-        while (!state.flag) {
-        }
-        if (atomicSub(&state.cnt, 1) == 1) {
-            state.flag = 0;
-        }
-        while (state.flag) {
-        }
+        state.is_add = is_add_;
     }
     // We need sync here because only a single thread is checking whether
     // the flag is flipped.
