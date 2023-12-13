@@ -215,7 +215,7 @@ void GpuCommSw::Impl::configure(
                            return future.get();
                        });
         for (size_t i = 0; i < connections.size(); ++i) {
-            LOG(INFO, "Rank ", rank_, " connected to rank ", i);
+            LOG(DEBUG, "Rank ", rank_, " connected to rank ", i);
             this->proxy_channels.push_back(
                 mscclpp::deviceHandle(mscclpp::SimpleProxyChannel(
                     this->proxy_service->proxyChannel(

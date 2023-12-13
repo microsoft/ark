@@ -49,26 +49,11 @@ DEVICE void sync_gpu(sync::State &state) {
         // before to flip `flag`.
         __threadfence();
         int is_add_ = state.is_add ^ 1;
-        // if (blockIdx.x == 0) {
-        //     printf("state.cnt = %d, state.flag = %d, state.is_add = %d\n",
-        //            state.cnt, state.flag, state.is_add);
-        // }
         if (is_add_) {
             if (atomicAdd(&state.cnt, 1) == MaxOldCnt) {
                 state.flag = 1;
-                // printf(
-                //     "reach end state.cnt = %d, state.flag = %d, "
-                //     "state.is_add = %d\n",
-                //     state.cnt, state.flag, state.is_add);
             }
             while (!state.flag) {
-                // __builtin_amdgcn_s_sleep(1);  // Just for delay print
-                // if (blockIdx.x == 0 && threadIdx.x == 0) {
-                //     printf(
-                //         "wait state.cnt = %d, state.flag = %d, "
-                //         "state.is_add = %d\n",
-                //         state.cnt, state.flag, state.is_add);
-                // }
             }
         } else {
             if (atomicSub(&state.cnt, 1) == 1) {
