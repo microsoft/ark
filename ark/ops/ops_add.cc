@@ -49,17 +49,17 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
     CHECK(input != nullptr);
     CHECK(other != nullptr);
     if (input->type != other->type) {
-        LOG(ERROR, "input data types mismatch: ", input->type, ", ",
+        ERR(InvalidUsageError, "input data types mismatch: ", input->type, ", ",
             other->type);
     }
     if (output != nullptr && input->type != output->type) {
-        LOG(ERROR, "invalid output data type: ", output->type);
+        ERR(InvalidUsageError, "invalid output data type: ", output->type);
     }
     Dims output_shape = broadcast(input->shape, other->shape);
     if (output == nullptr) {
         output = this->tensor(output_shape, input->type);
     } else if (output->shape != output_shape) {
-        LOG(ERROR, "invalid output shape: ", output->shape);
+        ERR(InvalidUsageError, "invalid output shape: ", output->shape);
     } else if (output == input) {
         output = this->identity(output);
     }
@@ -68,41 +68,7 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
 }
 
 const OpConfigMap ArithmeticConfigMap = {
-    {{OP_ARCH_ANY, "fp32"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, false, false},
-         {8, 0, {{256, 128}, {256, 128}}, {{256, 128}}, false, false},
-         {8, 0, {{128, 128}, {128, 128}}, {{128, 128}}, false, false},
-         {4, 0, {{64, 64}, {64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}, {32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}, {16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}, {8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}, {2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}, {4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}, {2, 64}}, {{2, 64}}, false, false},
-         {1, 0, {{1, 128}, {1, 128}}, {{1, 128}}, false, false},
-         {1, 0, {{1, 64}, {1, 64}}, {{1, 64}}, false, false},
-         {1, 0, {{1, 32}, {1, 32}}, {{1, 32}}, false, false},
-     }},
-    {{OP_ARCH_ANY, "fp16"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, false, false},
-         {8, 0, {{256, 128}, {256, 128}}, {{256, 128}}, false, false},
-         {8, 0, {{128, 128}, {128, 128}}, {{128, 128}}, false, false},
-         {4, 0, {{64, 64}, {64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}, {32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}, {16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}, {8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}, {2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}, {4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}, {2, 64}}, {{2, 64}}, false, false},
-         {1, 0, {{1, 256}, {1, 256}}, {{1, 256}}, false, false},
-         {1, 0, {{1, 128}, {1, 128}}, {{1, 128}}, false, false},
-         {1, 0, {{1, 64}, {1, 64}}, {{1, 64}}, false, false},
-     }},
-    {{OP_ARCH_ANY, "bf16"},
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
          {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, false, false},

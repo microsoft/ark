@@ -103,8 +103,6 @@ ark::unittest::State test_gpu_mgr_mem_free() {
         ctx->freeze();
 
         UNITTEST_EQ(buf0->ref(), buf1->ref());
-        UNITTEST_EQ(buf0->href(), buf1->href());
-        UNITTEST_EQ(buf0->pref(), buf1->pref());
 
         int buf0_data = 9;
         ark::gpu_memcpy(buf0, 0, &buf0_data, 0, sizeof(int));

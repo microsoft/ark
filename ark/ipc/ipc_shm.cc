@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "include/ark.h"
 #include "logging.h"
 
 #define SHM_DIR "/dev/shm/"
@@ -42,11 +43,12 @@ int ipc_shm_open_blocking(const char *name) {
     // Monitor file creations in the shm directory.
     int ifd = inotify_init1(IN_NONBLOCK);
     if (ifd == -1) {
-        LOG(ERROR, "inotify_init1: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "inotify_init1: ", strerror(errno), " (", errno, ")");
     }
     if (inotify_add_watch(ifd, SHM_DIR, IN_CREATE) == -1) {
         close(ifd);
-        LOG(ERROR, "inotify_add_watch: ", strerror(errno), " (", errno, ")");
+        ERR(SystemError, "inotify_add_watch: ", strerror(errno), " (", errno,
+            ")");
     }
     // Check whether the file already exists.
     // NOTE: `inotify_add_watch()` should come before `shm_open()`
@@ -65,7 +67,7 @@ int ipc_shm_open_blocking(const char *name) {
         if (poll_num == -1) {
             if (errno != EINTR) {
                 close(ifd);
-                LOG(ERROR, "poll: ", strerror(errno), " (", errno, ")");
+                ERR(SystemError, "poll: ", strerror(errno), " (", errno, ")");
             }
         } else if ((poll_num > 0) && (pfd.revents & POLLIN)) {
             // Read inotify events.
@@ -74,7 +76,8 @@ int ipc_shm_open_blocking(const char *name) {
                 if (len == -1) {
                     if (errno != EAGAIN) {
                         close(ifd);
-                        LOG(ERROR, "read: ", strerror(errno), " (", errno, ")");
+                        ERR(SystemError, "read: ", strerror(errno), " (", errno,
+                            ")");
                     }
                     break;
                 }

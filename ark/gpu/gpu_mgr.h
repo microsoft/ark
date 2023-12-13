@@ -94,7 +94,6 @@ class GpuMgrCtx {
     void mem_free(GpuBuf *buf);
     void mem_export(GpuBuf *buf, size_t offset, int sid);
     GpuBuf *mem_import(size_t bytes, int sid, int gpu_id);
-    void reg_sendrecv(int sid, int gpu_dst, std::size_t bytes, bool is_recv);
     void freeze(bool expose = false);
     // void send(int sid, int rank, size_t bytes);
     GpuState set_current();
@@ -103,18 +102,8 @@ class GpuMgrCtx {
     int get_gpu_id() const { return gpu_mgr->gpu_id; }
     const std::string &get_name() const { return name; }
     size_t get_total_bytes() const { return total_bytes; }
-    // Get the host memory address of an SC flag.
-    volatile int *get_sc_href(int sid) const;
-    // Get the host memory address of an RC flag.
-    volatile int *get_rc_href(int sid) const;
     // Get the GPU memory address of a GPU data buffer.
     GpuPtr get_data_ref(int gid = -1) const;
-    // Get the GPU memory address of an SC flag.
-    GpuPtr get_sc_ref(int sid) const;
-    // Get the GPU memory address of an RC flag.
-    GpuPtr get_rc_ref(int sid) const;
-    //
-    GpuPtr get_request_ref() const;
     //
     GpuCommSw *get_comm_sw() const;
 
@@ -139,7 +128,6 @@ class GpuMgrCtx {
     const int world_size;
     std::string name;
     GpuMem data_mem;
-    GpuMem sc_rc_mem;
 
     //
     std::vector<GpuStream> streams;

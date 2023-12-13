@@ -6,6 +6,10 @@ import os
 if os.environ.get("ARK_ROOT", None) is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
+import ctypes
+
+ctypes.CDLL(os.environ["ARK_ROOT"] + "/lib/libmscclpp.so")
+
 from . import _ark_core
 from .data_type import DataType, _REGISTRY_DATA_TYPE
 from .tensor import Dims, Tensor, TensorBuf, Parameter

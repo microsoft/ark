@@ -28,22 +28,17 @@ ARK provides a set of APIs for users to express their distributed deep learning 
 
 ARK is under active development and a part of its features will be added in a future release. The following describes key features of each version.
 
-### New in ARK v0.3 (Latest Release)
+### New in ARK v0.4 (Latest Release)
 
-* Enable heuristic model graph optimization
-* Revise Python interfaces
-* Add more operators & support mixed-precision models & support `bfloat16`
-* Add a Llama2-7B example
-* Fix connection setup bugs for large & distributed models
-* Fix correctness bugs from a few operators
-* Minor scheduler improvements
+* Support AMD GPUs (CDNA2, single-GPU only)
+* Add high-performance AllReduce & AllGather algorithms with MSCCL++
+* Fix major bugs in the scheduler
 
-See details from https://github.com/microsoft/ark/issues/113.
+See details from https://github.com/microsoft/ark/issues/137.
 
-### ARK v0.4 (TBU, Nov. 2023)
+### ARK v0.5 (TBU, Dec. 2023)
 
-* Support AMD GPUs
-* Add high-performance AllReduce & AllGather algorithms
+* Multi-GPU support for AMD GPUs
 * Add multi-GPU LLM examples
 * Improve Python unit tests & code coverage
 

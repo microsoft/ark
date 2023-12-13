@@ -47,7 +47,7 @@ std::string OpNode::get_name() const {
 
 OpGraph::OpGraph(const Model &model) {
     if (!model.verify()) {
-        LOG(ERROR, "Model verification failed");
+        ERR(ModelError, "Model verification failed");
     }
     this->create_nodes(model);
 }
@@ -135,8 +135,10 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
     OPGRAPH_DEBUG("remove virtual ops");
     std::list<OpNode *> new_boundary_nodes;
     for (auto &boundary_node : boundary_nodes) {
-        if (boundary_node->ops.size() != 1) {
-            LOG(ERROR, "unexpected error");
+        if (boundary_node->ops.size() == 0) {
+            ERR(SchedulerError, "unexpected error: empty OpNode");
+        } else if (boundary_node->ops.size() > 1) {
+            ERR(SchedulerError, "unexpected error: multiple Ops in OpNode");
         }
         OPGRAPH_DEBUG("  boundary node");
         OPGRAPH_DEBUG("    op: ", boundary_node->get_name());
@@ -158,7 +160,8 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
                 continue;
             }
             if (seen_nodes.find(producer) != seen_nodes.end()) {
-                LOG(ERROR, "unexpected error: circular dependency detected");
+                ERR(SchedulerError,
+                    "unexpected error: circular dependency detected");
             }
             OPGRAPH_DEBUG("      added ", producer->get_name(),
                           " to next boundary");
@@ -175,7 +178,7 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
                     return node.get() == boundary_node;
                 });
             if (it == nodes.end()) {
-                LOG(ERROR, "unexpected error");
+                ERR(SchedulerError, "unexpected error");
             }
             nodes.erase(it);
             OPGRAPH_DEBUG("      nodes.size() ", nodes.size());
@@ -230,7 +233,8 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
                 continue;
             }
             if (seen_nodes.find(producer) != seen_nodes.end()) {
-                LOG(ERROR, "unexpected error: circular dependency detected");
+                ERR(SchedulerError,
+                    "unexpected error: circular dependency detected");
             }
             new_boundary_nodes.emplace_back(producer);
         }
@@ -243,7 +247,7 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
         // This node has only one producer.
         OpNode *producer = *(boundary_node->producers.begin());
         if (producer->users.size() == 0) {
-            LOG(ERROR, "unexpected error: graph is incomplete");
+            ERR(SchedulerError, "unexpected error: graph is incomplete");
         }
         if (producer->users.size() > 1) {
             // The producer has multiple users. It cannot be merged.
@@ -271,7 +275,7 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
                              return node.get() == boundary_node;
                          });
         if (it == nodes.end()) {
-            LOG(ERROR, "unexpected error");
+            ERR(SchedulerError, "unexpected error");
         }
         nodes.erase(it);
 
@@ -287,7 +291,7 @@ OpNode *OpGraph::break_node(OpNode *node, int op_idx) {
         return node;
     }
     if (op_idx < 0 || op_idx >= (int)node->ops.size()) {
-        LOG(ERROR, "unexpected error: op_idx out of range");
+        ERR(SchedulerError, "unexpected error: op_idx out of range");
     }
     this->nodes_storage.emplace_back(std::make_unique<OpNode>());
     OpNode *new_node = this->nodes_storage.back().get();

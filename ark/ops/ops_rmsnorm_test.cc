@@ -74,10 +74,19 @@ ark::unittest::State test_rmsnorm_bf16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_rmsnorm_invalid() {
+    ark::Model model;
+    ark::Tensor *input = model.tensor(ark::Dims(1, 3, 16, 8192), ark::BF16);
+    ark::Tensor *output = model.tensor(ark::Dims(1, 3, 16, 8192), ark::FP32);
+    UNITTEST_THROW(model.rmsnorm(input, output), ark::InvalidUsageError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_rmsnorm_fp32);
     UNITTEST(test_rmsnorm_fp16);
     UNITTEST(test_rmsnorm_bf16);
+    UNITTEST(test_rmsnorm_invalid);
     return ark::unittest::SUCCESS;
 }

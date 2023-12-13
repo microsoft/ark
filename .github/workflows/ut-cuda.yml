@@ -17,13 +17,13 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        cuda: [ cuda11.8, cuda12.1 ]
+        cuda: [ cuda11.8, cuda12.2 ]
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.cuda }}
       cancel-in-progress: true
     container:
       image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.cuda }}"
-      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1 -v /usr/src:/usr/src -v /lib/modules:/lib/modules -v /dev:/dev
+      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
 
     steps:
       - name: Checkout
@@ -43,14 +43,6 @@ jobs:
           git submodule foreach --recursive git clean -fdx
           git submodule update --init --recursive
 
-      - name: InstallGPUDMA
-        run: |
-          if ! lsmod | grep gpumem; then
-            cd third_party && make gpudma
-            sudo insmod ./gpudma/module/gpumem.ko
-            sudo chmod 666 /dev/gpumem
-          fi
-  
       - name: Build
         run: |
           mkdir build && cd build

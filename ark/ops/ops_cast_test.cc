@@ -254,6 +254,63 @@ ark::unittest::State test_cast_float_to_bf16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_cast_invalid() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor(ark::Dims(1), ark::BYTE);
+        UNITTEST_THROW(m.cast(t, ark::FP32), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor(ark::Dims(4, 1), ark::BYTE);
+        m.cast(t0, ark::FP32);  // ok
+        ark::Tensor *t1 = m.tensor(ark::Dims(4, 1, 1), ark::BYTE);
+        m.cast(t1, ark::FP32);  // ok
+        ark::Tensor *t2 = m.tensor(ark::Dims(4, 1, 1, 1), ark::BYTE);
+        m.cast(t2, ark::FP32);  // ok
+        ark::Tensor *t3 = m.tensor(ark::Dims(7, 1), ark::BYTE);
+        UNITTEST_THROW(m.cast(t3, ark::FP32), ark::InvalidUsageError);
+        ark::Tensor *t4 = m.tensor(ark::Dims(7, 1, 1), ark::BYTE);
+        UNITTEST_THROW(m.cast(t4, ark::FP32), ark::InvalidUsageError);
+        ark::Tensor *t5 = m.tensor(ark::Dims(7, 1, 1, 1), ark::BYTE);
+        UNITTEST_THROW(m.cast(t5, ark::FP32), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor({8, 1}, ark::BYTE);
+        m.cast(t0, ark::FP32);  // ok
+        ark::Tensor *t1 =
+            m.tensor({8, 1}, ark::BYTE, nullptr, {9, 1}, {0, 0}, {3, 1});
+        UNITTEST_THROW(m.cast(t1, ark::FP32), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor({8, 1}, ark::FP16);
+        ark::Tensor *out = m.tensor({8, 1}, ark::INT32);
+        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor({8, 1}, ark::FP16);
+        ark::Tensor *out = m.tensor({4, 1}, ark::FP32);
+        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor({8, 1}, ark::FP32);
+        m.cast(t0, ark::FP32);  // ok
+        ark::Tensor *out = m.tensor({8, 1}, ark::FP32);
+        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor({8, 1}, ark::FP16);
+        ark::Tensor *out = m.tensor({16, 1}, ark::BYTE);
+        UNITTEST_THROW(m.cast(t0, ark::BYTE, out), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_cast_fp16_to_fp32);
@@ -270,5 +327,6 @@ int main() {
     UNITTEST(test_cast_int32_to_byte);
     UNITTEST(test_cast_bf16_to_float);
     UNITTEST(test_cast_float_to_bf16);
+    UNITTEST(test_cast_invalid);
     return ark::unittest::SUCCESS;
 }

@@ -24,7 +24,7 @@ TensorBuf::TensorBuf(const DimType &bytes_, int id_) : bytes{bytes_}, id{id_} {}
 
 size_t TensorBuf::get_buf_offset() const {
     if (this->buf == nullptr) {
-        LOG(ERROR, "TensorBuf is not configured yet");
+        ERR(InvalidUsageError, "TensorBuf is not configured yet");
     }
     return static_cast<GpuBuf *>(this->buf)->get_offset();
 }
@@ -41,7 +41,7 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
       id{id_},
       name{name_} {
     if (shape_.size() == 0) {
-        LOG(ERROR,
+        ERR(InvalidUsageError,
             "Tensor shape should consist of positive numbers. Given: ", shape_);
     } else if (shape_.is_no_dim()) {
         // Assume a single-element constant
@@ -54,7 +54,7 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
         this->ldims = this->shape;
     } else {
         if (ndims != ldims_.ndims()) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "Tensor shape and ldims should have the same number of "
                 "dimensions. Given: shape ",
                 this->shape, " ldims ", ldims_);
@@ -69,7 +69,7 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
         this->offs = Dims{dims_vec};
     } else {
         if (ndims != offs_.ndims()) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "Tensor shape and offs should have the same number of "
                 "dimensions. Given: shape ",
                 this->shape, " offs ", offs_);
@@ -84,7 +84,7 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
         this->pads = Dims{dims_vec};
     } else {
         if (ndims != pads_.ndims()) {
-            LOG(ERROR,
+            ERR(InvalidUsageError,
                 "Tensor shape and pads should have the same number of "
                 "dimensions. Given: shape ",
                 this->shape, " pads ", pads_);
@@ -93,14 +93,15 @@ Tensor::Tensor(const Dims &shape_, const TensorType &type_, TensorBuf *buf_,
     }
     for (int i = 0; i < ndims; ++i) {
         if (this->ldims[i] % this->pads[i] != 0) {
-            LOG(ERROR, "Tensor ldims should be a multiple of pads. ldims ",
+            ERR(InvalidUsageError,
+                "Tensor ldims should be a multiple of pads. ldims ",
                 this->ldims, " pads ", this->pads);
         }
     }
     for (int i = 0; i < ndims; ++i) {
         if (this->offs[i] + this->shape[i] > this->ldims[i]) {
-            LOG(ERROR, "Tensor exceeds the memory boundary. offs ", this->offs,
-                " shape ", this->shape, " ldims ", this->ldims);
+            ERR(InvalidUsageError, "Tensor exceeds the memory boundary. offs ",
+                this->offs, " shape ", this->shape, " ldims ", this->ldims);
         }
     }
 }
@@ -196,7 +197,7 @@ static Dims calc_pads(const Dims &tile, const Dims &ldims) {
         if (tile_copy[0] == 1) {
             tile_copy.erase(0);
         } else {
-            LOG(ERROR, "invalid tile ", tile, " for ldims ", ldims);
+            ERR(ModelError, "invalid tile ", tile, " for ldims ", ldims);
         }
     }
     std::vector<DimType> tmp;
@@ -376,11 +377,12 @@ bool Tensor::is_sequential() const {
 
 void Tensor::write(const void *buf) {
     if (buf == nullptr) {
-        LOG(ERROR, "the given host buffer is null");
+        ERR(InvalidUsageError, "the given host buffer is null");
     }
     GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
     if (gbuf == nullptr) {
-        LOG(ERROR, "failed to get GPU buffer for tensor ", this->name);
+        ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
+            this->name);
     }
     size_t bytes = this->shape_bytes();
     int ndims = this->ndims();
@@ -436,14 +438,15 @@ void Tensor::write(const void *buf) {
 void *Tensor::read(void *buf) {
     GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
     if (gbuf == nullptr) {
-        LOG(ERROR, "failed to get GPU buffer for tensor ", this->id);
+        ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
+            this->id);
     }
     size_t bytes = this->shape_bytes();
     int ndims = this->ndims();
     if (buf == nullptr) {
         buf = ::malloc(bytes);
         if (buf == nullptr) {
-            LOG(ERROR, "failed to allocate host buffer");
+            ERR(SystemError, "failed to allocate host buffer");
         }
     }
     char *ptr = (char *)buf;
@@ -499,13 +502,14 @@ void *Tensor::read(void *buf) {
 void *Tensor::read_raw(void *buf) {
     GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
     if (gbuf == nullptr) {
-        LOG(ERROR, "failed to get GPU buffer for tensor ", this->id);
+        ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
+            this->id);
     }
     size_t bytes = this->ldims_bytes();
     if (buf == nullptr) {
         buf = ::malloc(bytes);
         if (buf == nullptr) {
-            LOG(ERROR, "failed to allocate host buffer");
+            ERR(SystemError, "failed to allocate host buffer");
         }
     }
     gpu_memcpy(buf, 0, gbuf, 0, bytes);
@@ -515,7 +519,8 @@ void *Tensor::read_raw(void *buf) {
 void Tensor::clear() {
     GpuBuf *buf = static_cast<GpuBuf *>(this->buf->buf);
     if (buf == nullptr) {
-        LOG(ERROR, "failed to get GPU buffer for tensor ", this->name);
+        ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
+            this->name);
     }
     int ndims = this->ndims();
     size_t bytes = this->shape_bytes();

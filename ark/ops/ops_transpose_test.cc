@@ -125,6 +125,30 @@ ark::unittest::State test_transpose_0231_bf16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_transpose_invalid() {
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor({5}, ark::FP32);
+        UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor({5, 128}, ark::FP32);
+        UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor({5, 128}, ark::FP32);
+        UNITTEST_THROW(m.transpose(t, {0, 2}), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t = m.tensor({5, 128}, ark::FP32);
+        UNITTEST_THROW(m.transpose(t, {1, 1}), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_transpose_0132_fp32);
@@ -133,5 +157,6 @@ int main() {
     UNITTEST(test_transpose_0231_fp32);
     UNITTEST(test_transpose_0231_fp16);
     UNITTEST(test_transpose_0231_bf16);
+    UNITTEST(test_transpose_invalid);
     return ark::unittest::SUCCESS;
 }

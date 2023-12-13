@@ -110,6 +110,8 @@ struct Softmax {
                 type::Exp::compute(type::Sub::compute(in[idx_in], max_input)),
                 exp_sum_input);
         }
+
+        UnitOp::sync_threads();
     }
 };
 

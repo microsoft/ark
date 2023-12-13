@@ -80,7 +80,7 @@ static const std::string gpu_compile_command(
 #if defined(ARK_CUDA)
     // Remove prepending "cuda_" from arch to get the compute capability
     if (arch.size() < 5 || arch.substr(0, 5) != "cuda_") {
-        LOG(ERROR, "Invalid architecture: ", arch);
+        ERR(InvalidUsageError, "Invalid architecture: ", arch);
     }
     std::string cc = arch.substr(5);
 
@@ -101,10 +101,6 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_CUDA_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
-    if (get_env().use_msll) {
-        args.emplace_back("--define-macro=ARK_USE_MSLL=1");
-        args.emplace_back("-I" + get_env().msll_include_dir);
-    }
     args.emplace_back("-gencode arch=compute_" + cc + ",code=sm_" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
@@ -113,14 +109,14 @@ static const std::string gpu_compile_command(
 #elif defined(ARK_ROCM)
     // Remove prepending "rocm_" from arch to get the compute capability
     if (arch.size() < 5 || arch.substr(0, 5) != "rocm_") {
-        LOG(ERROR, "Invalid architecture: ", arch);
+        ERR(InvalidUsageError, "Invalid architecture: ", arch);
     }
     std::string cc = arch.substr(5);
 
     std::vector<std::string> args;
 
     // TODO: use the compiler found by cmake.
-    args.emplace_back("/usr/bin/hipcc");
+    args.emplace_back("LANG=C /usr/bin/hipcc");
     args.emplace_back("--genco");
 #if (ARK_DEBUG_KERNEL)
     args.emplace_back("-O0");
@@ -129,10 +125,6 @@ static const std::string gpu_compile_command(
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
-    if (get_env().use_msll) {
-        args.emplace_back("--define-macro=ARK_USE_MSLL=1");
-        args.emplace_back("-I" + get_env().msll_include_dir);
-    }
     args.emplace_back("--offload-arch=gfx" + cc);
     args.emplace_back("-o " + output_file_path);
     args.emplace_back(code_file_path);
@@ -176,7 +168,8 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
                 // Remove the cached binary.
                 int err = remove_file(bin_file_path);
                 if (err != 0) {
-                    LOG(ERROR, "Failed to remove a cache file: ", bin_file_path,
+                    ERR(SystemError,
+                        "Failed to remove a cache file: ", bin_file_path,
                         " (errno ", err, ")");
                 }
             }
@@ -198,14 +191,15 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             unique_ptr<FILE, decltype(&pclose)> pipe(
                 popen(compile_cmd.c_str(), "r"), pclose);
             if (!pipe) {
-                LOG(ERROR, "popen() failed");
+                ERR(SystemError, "popen() failed");
             }
             while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
                 exec_print << buffer.data();
             }
             string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                LOG(ERROR, "\n", compile_cmd, "\n", exec_print_str, "\n");
+                ERR(ExecutorError, "\n", compile_cmd, "\n", exec_print_str,
+                    "\n");
             }
             LOG(INFO, "Compile succeed: ", code_file_path, " (",
                 cpu_timer() - start, " seconds)");

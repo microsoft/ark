@@ -65,12 +65,12 @@ class ModelArgs70B(ModelArgs):
     dim: int = 8192
     n_layers: int = 80
     n_heads: int = 64
-    n_kv_heads: Optional[int] = None
+    n_kv_heads: Optional[int] = 8
     vocab_size: int = -1
     multiple_of: int = (
-        256  # make SwiGLU hidden layer size multiple of large power of 2
+        4096  # make SwiGLU hidden layer size multiple of large power of 2
     )
-    ffn_dim_multiplier: Optional[float] = None
+    ffn_dim_multiplier: Optional[float] = 1.3
     norm_eps: float = 1e-5
     max_batch_size: int = 32
     max_seq_len: int = 4096
@@ -115,6 +115,7 @@ class ColumnParallelLinear(ark.Module):
         in_dim: int,
         out_dim: int,
         dtype: ark.DataType = ark.fp16,
+        gather_output: bool = True,
         local_rank: int = 0,
         world_size: int = 1,
     ):
@@ -124,52 +125,40 @@ class ColumnParallelLinear(ark.Module):
         self.dtype = dtype
         self.local_rank = local_rank
         self.world_size = world_size
+        self.gather_output = gather_output
 
         self.weight = ark.parameter([out_dim // world_size, in_dim], dtype)
 
     def forward(self, x):
-        if self.world_size == 1:
+        if self.world_size == 1 or self.gather_output == False:
             return ark.matmul(x, self.weight, transpose_other=True)
+        # We need to concat the output_tensor_shards along the last dimension
+        output_tensor = ark.tensor(
+            [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
+        )
+        output_tensor_shards = ark.sharding(
+            output_tensor,
+            axis=2,
+            dim_per_shard=self.out_dim // self.world_size,
+        )
+        local_result = ark.identity(
+            output_tensor_shards[self.local_rank], deps=output_tensor_shards
+        )
         # (batch_size, seq_len, out_dim // world_size)
-        local_result = ark.matmul(x, self.weight, transpose_other=True)
-        if os.environ.get("ARK_USE_MSLL", "0") == "1":
-            output_tensor = ark.tensor(
-                [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
-            )
-            output_tensor_shards = ark.sharding(
-                output_tensor,
-                axis=2,
-                dim_per_shard=self.out_dim // self.world_size,
-            )
-            shard = ark.scale(
-                local_result, 1.0, output_tensor_shards[self.local_rank]
-            )
-            gather_result = ark.identity(output_tensor, deps=[shard])
-            return ark.local_all_gather_msll(
-                gather_result, self.local_rank, self.world_size
-            )
-        else:
-            gathered_list = ark.all_gather(
-                local_result, self.local_rank, self.world_size
-            )
-            # We need to concat the output_tensor_shards along the last dimension
-            output_tensor = ark.tensor(
-                [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
-            )
-            output_tensor_shards = ark.sharding(
-                output_tensor,
-                axis=2,
-                dim_per_shard=self.out_dim // self.world_size,
-            )
-            deps = []
-            # Copy all tensors in gathered_list to output_tensor_shards
-            for i in range(self.world_size):
-                shard = ark.scale(
-                    gathered_list[i], 1.0, output_tensor_shards[i]
-                )
-                deps.append(shard)
-            # The output_tensor should depend on the scale operators
-            return ark.identity(output_tensor, deps=deps)
+        local_result = ark.matmul(
+            x, self.weight, local_result, transpose_other=True
+        )
+        gather_input = ark.identity(output_tensor, deps=[local_result])
+        # return gather_input
+        gather_reshape = ark.reshape(
+            gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
+        )
+        gather_out = ark.local_all_gather(
+            gather_reshape, self.local_rank, self.world_size, 1
+        )
+        return ark.reshape(
+            gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
+        )
 
 
 class RowParallelLinear(ark.Module):
@@ -194,6 +183,7 @@ class RowParallelLinear(ark.Module):
         in_dim: int,
         out_dim: int,
         dtype: ark.DataType = ark.fp16,
+        input_is_parallel: bool = False,
         local_rank: int = 0,
         world_size: int = 1,
     ):
@@ -203,6 +193,7 @@ class RowParallelLinear(ark.Module):
         self.dtype = dtype
         self.local_rank = local_rank
         self.world_size = world_size
+        self.input_is_parallel = input_is_parallel
 
         self.weight = ark.parameter([out_dim, in_dim // world_size], dtype)
 
@@ -210,33 +201,66 @@ class RowParallelLinear(ark.Module):
         if self.world_size == 1:
             return ark.matmul(x, self.weight, transpose_other=True)
         x_ndims = len(x.shape())
-        x_shards = ark.sharding(x, x_ndims - 1, self.in_dim // self.world_size)
-        local_result = ark.matmul(
-            x_shards[self.local_rank], self.weight, transpose_other=True
-        )
-        if os.environ.get("ARK_USE_MSLL", "0") == "1":
-            reduced_result = ark.local_all_reduce_msll(
-                local_result, self.local_rank, self.world_size
-            )
+        if self.input_is_parallel:
+            input_parallel = x
         else:
-            reduced_result = ark.all_reduce(
-                local_result, self.local_rank, self.world_size
+            x_shards = ark.sharding(
+                x, x_ndims - 1, self.in_dim // self.world_size
             )
+            input_parallel = x_shards[self.local_rank]
+        local_result = ark.matmul(
+            input_parallel, self.weight, transpose_other=True
+        )
+        reduced_result = ark.local_all_reduce(
+            local_result, self.local_rank, self.world_size
+        )
         return reduced_result
 
 
 class ParallelEmbedding(ark.Module):
     """Embedding layer."""
 
-    # TODO: support parallelism
-    def __init__(self, vocab_size: int, dim: int, dtype: ark.DataType):
+    def __init__(
+        self,
+        vocab_size: int,
+        dim: int,
+        dtype: ark.DataType,
+        local_rank: int = 0,
+        world_size: int = 1,
+    ):
         super().__init__()
         self.vocab_size = vocab_size
         self.dim = dim
-        self.weight = ark.parameter([vocab_size, dim], dtype)
+        self.weight = ark.parameter([vocab_size, dim // world_size], dtype)
+        self.out_dim = dim
+        self.dtype = dtype
+        self.world_size = world_size
+        self.local_rank = local_rank
 
     def forward(self, x):
-        return ark.embedding(x, self.weight)
+        if self.world_size == 1:
+            return ark.embedding(x, self.weight)
+
+        output_tensor = ark.tensor(
+            [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
+        )
+        output_tensor_shards = ark.sharding(
+            output_tensor, axis=2, dim_per_shard=self.out_dim // self.world_size
+        )
+        local_result = ark.identity(
+            output_tensor_shards[self.local_rank], deps=output_tensor_shards
+        )
+        local_result = ark.embedding(x, self.weight, local_result)
+        gather_input = ark.identity(output_tensor, deps=[local_result])
+        gather_reshape = ark.reshape(
+            gather_input, [x.shape()[0] * x.shape()[1], self.out_dim]
+        )
+        gather_out = ark.local_all_gather(
+            gather_reshape, self.local_rank, self.world_size, 1
+        )
+        return ark.reshape(
+            gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
+        )
 
 
 class Linear(ark.Module):
@@ -291,13 +315,13 @@ class FeedForward(ark.Module):
         )
 
         self.w1 = ColumnParallelLinear(
-            dim, hidden_dim, dtype, local_rank, world_size
+            dim, hidden_dim, dtype, False, local_rank, world_size
         )
         self.w2 = RowParallelLinear(
-            hidden_dim, dim, dtype, local_rank, world_size
+            hidden_dim, dim, dtype, True, local_rank, world_size
         )
         self.w3 = ColumnParallelLinear(
-            dim, hidden_dim, dtype, local_rank, world_size
+            dim, hidden_dim, dtype, False, local_rank, world_size
         )
 
     def forward(self, x):
@@ -331,7 +355,7 @@ class Attention(ark.Module):
         self.n_kv_heads = (
             args.n_heads if args.n_kv_heads is None else args.n_kv_heads
         )
-        model_parallel_size = 1
+        model_parallel_size = world_size
         self.dtype = dtype
         self.n_local_heads = args.n_heads // model_parallel_size
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
@@ -341,6 +365,7 @@ class Attention(ark.Module):
             args.dim,
             args.n_heads * self.head_dim,
             dtype,
+            False,
             local_rank,
             world_size,
         )
@@ -348,6 +373,7 @@ class Attention(ark.Module):
             args.dim,
             self.n_kv_heads * self.head_dim,
             dtype,
+            False,
             local_rank,
             world_size,
         )
@@ -355,6 +381,7 @@ class Attention(ark.Module):
             args.dim,
             self.n_kv_heads * self.head_dim,
             dtype,
+            False,
             local_rank,
             world_size,
         )
@@ -362,6 +389,7 @@ class Attention(ark.Module):
             args.n_heads * self.head_dim,
             args.dim,
             dtype,
+            True,
             local_rank,
             world_size,
         )
@@ -472,7 +500,7 @@ class Transformer(ark.Module):
         self.n_layers = params.n_layers
 
         self.tok_embeddings = ParallelEmbedding(
-            params.vocab_size, params.dim, dtype
+            params.vocab_size, params.dim, dtype, local_rank, world_size
         )
 
         self.layers = []
@@ -484,9 +512,8 @@ class Transformer(ark.Module):
             )
             self.register_module(f"layers.{layer_id}", self.layers[layer_id])
         self.norm = RMSNorm(params.dim, eps=params.norm_eps, dtype=dtype)
-        # TODO: parallize
         self.output = ColumnParallelLinear(
-            params.dim, params.vocab_size, dtype, 0, 1
+            params.dim, params.vocab_size, dtype, True, local_rank, world_size
         )
 
     def forward(

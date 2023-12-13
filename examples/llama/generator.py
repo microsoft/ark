@@ -1,14 +1,16 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import ark
-import json
-import torch
 import argparse
 import multiprocessing as mp
+import json
 import numpy as np
-from model import ModelArgs, ModelArgs7B, Transformer
+from pathlib import Path
 
+import ark
+from model import ModelArgs, Transformer
+
+import torch
 from llama.tokenizer import Tokenizer
 
 
@@ -47,13 +49,19 @@ class Generator:
 
         self.runtime: ark.Runtime = None
 
-    def launch(self, pth_path: str, tok_path: str):
+    def launch(
+        self,
+        ckpt_dir: str,
+        tok_path: str,
+    ):
         # Load a pretrained tokenizer
         self.tokenizer = Tokenizer(model_path=tok_path)
         self.args.vocab_size = self.tokenizer.n_words
 
         # Initiate ARK
         ark.init()
+        ark.set_rank(self.local_rank)
+        ark.set_world_size(self.world_size)
 
         dtype_ark = ark.DataType.from_numpy(self.dtype)
 
@@ -83,8 +91,6 @@ class Generator:
         self.mask = ark.tensor(list(mask_np.shape), dtype_ark)
 
         # Transformer
-        ark.set_rank(self.local_rank)
-        ark.set_world_size(self.world_size)
         module = Transformer(
             self.args,
             dtype_ark,
@@ -99,7 +105,10 @@ class Generator:
 
         # Make sure we can read state_dict before initiating runtime
         param_names = set(module.params_dict().keys())
-        state_dict = torch.load(pth_path)
+        checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+        ckpt_path = checkpoints[self.local_rank]
+        print(f"Loading checkpoint from {ckpt_path} for rank {self.local_rank}")
+        state_dict = torch.load(ckpt_path)
         state_dict = {
             k: v.float().numpy().astype(self.dtype)
             for k, v in state_dict.items()
@@ -137,6 +146,8 @@ class Generator:
                 break
             output_ids.append(next_token)
 
+        elapsed = self.runtime.stop()
+        print(f"elapsed {elapsed:.5f} ms, itr {len(output_ids)}")
         output_text = self.tokenizer.decode(output_ids)
         return output_text
 
@@ -149,16 +160,16 @@ def worker(args: argparse.Namespace, rank: int):
         params = json.load(f)
 
     gen = Generator(
-        ModelArgs7B(**params),
+        ModelArgs(**params),
         local_rank=rank,
         world_size=args.ngpus,
-        seq_len=128,
+        seq_len=512,
     )
     if rank == 0:
         log(f"gen.args {gen.args}")
 
     log("Launching generator...")
-    gen.launch(args.pth_path, args.tok_path)
+    gen.launch(args.ckpt_dir, args.tok_path)
 
     prompt_list = ["Where is the capital of France?"]
     for i, prompt in enumerate(prompt_list):
@@ -169,13 +180,12 @@ def worker(args: argparse.Namespace, rank: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pth_path", type=str, required=True)
+    parser.add_argument("--ckpt_dir", type=str, required=True)
     parser.add_argument("--params_path", type=str, required=True)
     parser.add_argument("--tok_path", type=str, required=True)
     parser.add_argument("--ngpus", type=int, default=1)
 
     args = parser.parse_args()
-
     procs = []
     for i in range(args.ngpus):
         p = mp.Process(target=worker, args=(args, i))

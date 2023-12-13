@@ -12,10 +12,7 @@
 #include "gpu/gpu_mgr.h"
 
 #define ARK_BUF_NAME "ARK_BUF"
-#define ARK_SC_NAME "ARK_SC"
-#define ARK_RC_NAME "ARK_RC"
 #define ARK_LSS_NAME "ARK_LOOP_SYNC_STATE"
-#define ARK_REQ_NAME "ARK_REQUEST"
 
 namespace ark {
 
@@ -84,9 +81,7 @@ class GpuLoopKernel : public GpuKernel {
 
     int threads_per_warp = -1;
 
-    std::unique_ptr<GpuMem> flag;
-
-    volatile int *flag_href;
+    int *flag;
 
     GpuStream stream = nullptr;
     bool is_recording = false;

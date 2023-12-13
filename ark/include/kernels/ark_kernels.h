@@ -15,10 +15,6 @@
 #include "cast.h"
 #include "copy.h"
 #include "comm.h"
-#include "comm_mm.h"
-#ifdef ARK_USE_MSLL
-#include "comm_msll.h"
-#endif  // ARK_USE_MSLL
 #include "embedding.h"
 #include "im2col.h"
 #include "layernorm.h"

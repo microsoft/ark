@@ -102,7 +102,7 @@ Tensor *Model::im2col(Tensor *input, int kernel_height, int kernel_width,
         h = input->shape[2];
         w = input->shape[3];
     } else {
-        LOG(ERROR,
+        ERR(InvalidUsageError,
             "invalid # of input dimensions. Expected 2, 3, or 4, but given ",
             input_ndims);
     }

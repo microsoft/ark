@@ -10,8 +10,8 @@
 #include <vector>
 
 #define ARK_MAJOR 0
-#define ARK_MINOR 3
-#define ARK_PATCH 0
+#define ARK_MINOR 4
+#define ARK_PATCH 1
 #define ARK_VERSION (ARK_MAJOR * 10000 + ARK_MINOR * 100 + ARK_PATCH)
 
 namespace ark {
@@ -60,6 +60,8 @@ struct Dims {
     bool is_no_dim() const;
     // Return true if the dimensions are invalid.
     bool is_invalid() const;
+    // Insert a dimension at the given index.
+    void insert(int idx, DimType dim);
     // Erase the dimension at the given index and return the erased dimension.
     DimType erase(int idx);
 
@@ -132,7 +134,7 @@ class TensorBuf {
 
     DimType bytes;
     int id;
-    bool immutable = false;
+    bool immutable = true;
 
    protected:
     void *buf = nullptr;
@@ -359,13 +361,17 @@ class Model {
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
     template <typename ReduceOpType>
-    Tensor *reduce(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce(Tensor *input, int axis, bool keepdims = true,
+                   Tensor *output = nullptr,
                    const std::string &name = "reduce");
-    Tensor *reduce_sum(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce_sum(Tensor *input, int axis, bool keepdims = true,
+                       Tensor *output = nullptr,
                        const std::string &name = "reduce_sum");
-    Tensor *reduce_mean(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce_mean(Tensor *input, int axis, bool keepdims = true,
+                        Tensor *output = nullptr,
                         const std::string &name = "reduce_mean");
-    Tensor *reduce_max(Tensor *input, int axis, Tensor *output = nullptr,
+    Tensor *reduce_max(Tensor *input, int axis, bool keepdims = true,
+                       Tensor *output = nullptr,
                        const std::string &name = "reduce_max");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
@@ -460,43 +466,21 @@ class Model {
     /// @param bytes
     /// @param name
     /// @return
-    Tensor *send(Tensor *input, int id, int dst_rank, std::size_t bytes = 0,
+    Tensor *send(Tensor *input, int sid, int dst_rank, std::size_t bytes = 0,
                  const std::string &name = "send");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
-    Tensor *send_done(Tensor *input, int id, int dst_rank,
+    Tensor *send_done(Tensor *input, int sid, int dst_rank,
                       const std::string &name = "send_done");
     // Receives a tensor from a source rank (@p src_rank), identified by the
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
-    Tensor *recv(int id, int src_rank, std::size_t bytes = 0,
+    Tensor *recv(int sid, int src_rank, std::size_t bytes = 0,
                  Tensor *output = nullptr, const std::string &name = "recv");
-    // Similar to the 'send_done' function, but implemented using in-stream
-    // RDMA copy and Low Latency (LL) protocol.
-    Tensor *send_mm(Tensor *input, int id, int gpu_dst, std::size_t bytes = 0,
-                    Tensor *output = nullptr,
-                    const std::string &name = "send_mm");
-    // Similar to the 'recv' function, but implemented using in-stream RDMA
-    // copy and Low Latency (LL) protocol.
-    Tensor *recv_mm(Tensor *input, int id, int gpu_src, std::size_t bytes = 0,
-                    Tensor *output = nullptr,
-                    const std::string &name = "recv_mm");
     //
-    Tensor *send_msll(Tensor *input, int sid, int dst_rank,
-                      std::size_t bytes = 0,
-                      const std::string &name = "send_msll");
-    //
-    Tensor *send_done_msll(Tensor *input, int dst_rank,
-                           const std::string &name = "send_done_msll");
-    //
-    Tensor *recv_msll(int sid, int src_rank, std::size_t bytes = 0,
-                      Tensor *output = nullptr,
-                      const std::string &name = "recv_msll");
-    //
-    Tensor *put_packet_msll(Tensor *input, Tensor *local_tmp_buf,
-                            Tensor *recv_buf, int id, int rank, int dst_rank,
-                            size_t dst_offset, int flag,
-                            const std::string &name = "put_packet_msll");
+    Tensor *put_packet(Tensor *input, Tensor *local_tmp_buf, Tensor *recv_buf,
+                       int id, int rank, int dst_rank, size_t dst_offset,
+                       int flag, const std::string &name = "put_packet");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
@@ -518,43 +502,42 @@ class Model {
                  Tensor *output = nullptr, const std::string &name = "cast");
 
     // sync across multi devices
-    Tensor *device_sync_msll(Tensor *input, int npeers,
-                             const std::string &name = "device_sync_msll");
+    Tensor *device_sync(Tensor *input, int npeers,
+                        const std::string &name = "device_sync");
 
     // local reduce scatter
-    Tensor *local_reduce_scatter_msll(
+    Tensor *local_reduce_scatter(
         Tensor *input, int gpu_id, int ngpus_per_node,
-        const std::string &name = "local_reduce_scatter_msll");
+        const std::string &name = "local_reduce_scatter");
 
     // local all gather
-    Tensor *local_all_gather_msll(
-        Tensor *input, int gpu_id, int ngpus_per_node,
-        const std::string &name = "local_all_gather_msll");
+    Tensor *local_all_gather(Tensor *input, int gpu_id, int ngpus_per_node,
+                             int axis = 0,
+                             const std::string &name = "local_all_gather");
     // read data from remote and reduce to current buffer
-    Tensor *read_and_reduce_msll(
-        Tensor *input, int sid, int npeers, size_t offset, size_t bytes,
-        const std::string &name = "read_and_reduce_msll");
+    Tensor *read_and_reduce(Tensor *input, int sid, int npeers, size_t offset,
+                            size_t bytes,
+                            const std::string &name = "read_and_reduce");
     // gather from peers
-    Tensor *gather_from_peers_msll(
-        Tensor *input, int sid, int npeers, size_t chunkBytes,
-        const std::string &name = "gather_from_peers_msll");
+    Tensor *gather_from_peers(Tensor *input, Tensor *tile, int sid, int npeers,
+                              size_t chunkBytes,
+                              const std::string &name = "gather_from_peers");
 
-    Tensor *local_all_reduce_msll(
+    Tensor *local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
+                             const std::string &name = "local_all_reduce");
+    Tensor *local_all_reduce_packet(
         Tensor *input, int gpu_id, int gpu_num,
-        const std::string &name = "local_all_reduce_msll");
-    Tensor *local_all_reduce_packet_msll(
-        Tensor *input, int gpu_id, int gpu_num,
-        const std::string &name = "local_all_reduce_packet_msll");
+        const std::string &name = "local_all_reduce_packet");
 
-    Tensor *reduce_and_write_packet_msll(
+    Tensor *reduce_and_write_packet(
         Tensor *input, Tensor *scratch, Tensor *output,
         const std::vector<Tensor *> &remote_peer_bufs, int id, int rank,
         int npeers, size_t elems_per_rank, size_t scratch_offset,
         size_t remote_dst_offset, int flag,
-        const std::string &name = "reduce_and_write_packet_msll");
-    Tensor *get_packet_msll(Tensor *input, Tensor *output, size_t src_offset,
-                            size_t dst_offset, size_t npackets, int flag,
-                            const std::string &name = "get_packet_msll");
+        const std::string &name = "reduce_and_write_packet");
+    Tensor *get_packet(Tensor *input, Tensor *output, size_t src_offset,
+                       size_t dst_offset, size_t npackets, int flag,
+                       const std::string &name = "get_packet");
     /// Verify if this model is valid.
     /// @return true if the model is valid, false otherwise.
     bool verify() const;
@@ -592,6 +575,46 @@ class Executor {
    private:
     class Impl;
     std::unique_ptr<Impl> impl_;
+};
+
+class InvalidUsageError : public std::runtime_error {
+   public:
+    InvalidUsageError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class ModelError : public std::runtime_error {
+   public:
+    ModelError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class SchedulerError : public std::runtime_error {
+   public:
+    SchedulerError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class ExecutorError : public std::runtime_error {
+   public:
+    ExecutorError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class SystemError : public std::runtime_error {
+   public:
+    SystemError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class GpuError : public std::runtime_error {
+   public:
+    GpuError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class RuntimeError : public std::runtime_error {
+   public:
+    RuntimeError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+class UnitTestError : public std::runtime_error {
+   public:
+    UnitTestError(const std::string &msg) : std::runtime_error(msg) {}
 };
 
 }  // namespace ark

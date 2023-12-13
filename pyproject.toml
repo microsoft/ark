@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "ark"
-version = "0.3.0"
+version = "0.4.1"
 
 [tool.scikit-build]
 cmake.minimum-version = "3.25"

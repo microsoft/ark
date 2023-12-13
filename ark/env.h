@@ -25,22 +25,20 @@ struct Env {
     int ipc_listen_port_base;
     // Number of ranks per host.
     int num_ranks_per_host;
-    // Disable IB.
-    bool disable_ib;
     // Disable P2P GPU memcpy.
     bool disable_p2p_memcpy;
+    // Disable IB
+    bool disable_ib;
     // Disable the heuristic ARK graph optimization.
     bool disable_graph_opt;
     // Ignore compiled binary cache.
     bool ignore_binary_cache;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
-    // Use MSLL.
-    bool use_msll;
-    // MSLL include directory path.
-    std::string msll_include_dir;
-    // MSLL bootstrap port.
-    int msll_port;
+    // Enforce to compile a specific kernel code file.
+    std::string enforce_kernel_code_path;
+    // MSCCL++ bootstrap port.
+    int mscclpp_port;
 };
 
 // Get the global Env.

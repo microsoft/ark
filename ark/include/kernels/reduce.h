@@ -550,6 +550,8 @@ struct WwiseReduce {
             ReduceType::template postReduce<1>(&out[idx_out], &finalSum,
                                                InShape::W);
         }
+
+        UnitOp::sync_threads();
     }
 };
 

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "env.h"
+#include "include/ark.h"
 #include "logging.h"
 
 namespace ark {
@@ -29,7 +30,7 @@ const std::string &get_host(int idx) {
             int host_idx = 0;
             while (fgets(buf, sizeof(buf), fp) != nullptr) {
                 if (buf[1023] != 0) {
-                    LOG(ERROR, "hostfile line too long: ", buf);
+                    ERR(InvalidUsageError, "hostfile line too long: ", buf);
                 }
                 // Erase the newline character
                 int l = strlen(buf);
@@ -37,7 +38,7 @@ const std::string &get_host(int idx) {
                 // Hostname to IP
                 struct hostent *ent = gethostbyname(buf);
                 if (ent == nullptr) {
-                    LOG(ERROR, "cannot resolve hostname: ", buf);
+                    ERR(InvalidUsageError, "cannot resolve hostname: ", buf);
                 }
                 char *host = inet_ntoa(*(struct in_addr *)ent->h_addr);
                 LOG(INFO, "HOST ", host_idx, ": ", host);
@@ -47,7 +48,7 @@ const std::string &get_host(int idx) {
         }
     }
     if ((idx < 0) || (idx >= (int)hosts.size())) {
-        LOG(ERROR, "invalid host index: ", idx);
+        ERR(InvalidUsageError, "invalid host index: ", idx);
     }
     return hosts[idx];
 }

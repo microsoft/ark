@@ -49,8 +49,33 @@ ark::unittest::State test_div_fp32() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_div_invalid() {
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP32);
+        ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP16);
+        UNITTEST_THROW(m.div(t0, t1), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP32);
+        ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP32);
+        ark::Tensor *out = m.tensor(ark::Dims(8192), ark::FP16);
+        UNITTEST_THROW(m.div(t0, t1, out), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *t0 = m.tensor(ark::Dims(8192), ark::FP32);
+        ark::Tensor *t1 = m.tensor(ark::Dims(8192), ark::FP32);
+        ark::Tensor *out = m.tensor(ark::Dims(1024), ark::FP16);
+        UNITTEST_THROW(m.div(t0, t1, out), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_div_fp32);
+    UNITTEST(test_div_invalid);
     return ark::unittest::SUCCESS;
 }

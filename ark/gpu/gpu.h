@@ -75,6 +75,9 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciBusId,
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDeviceId,
                               CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuCtxMapHost, CU_CTX_MAP_HOST);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, CU_MEMHOSTALLOC_DEVICEMAP);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocWriteCombined,
+                              CU_MEMHOSTALLOC_WRITECOMBINED);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostRegisterMapped,
                               CU_MEMHOSTREGISTER_DEVICEMAP);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuJitInfoLogBuffer, CU_JIT_INFO_LOG_BUFFER);
@@ -115,6 +118,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetGlobal, cuModuleGetGlobal);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, cuLaunchKernel);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, cuFuncGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, cuFuncSetAttribute);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, cuMemHostAlloc);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, cuMemHostRegister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, cuMemHostUnregister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, cuMemHostGetDevicePointer);
@@ -191,6 +195,9 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDeviceId,
                               hipDeviceAttributePciDeviceId);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuCtxMapHost, hipDeviceMapHost);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostRegisterMapped, hipHostRegisterMapped);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, hipHostMallocMapped);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocWriteCombined,
+                              hipHostMallocWriteCombined);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuJitInfoLogBuffer, hipJitOptionInfoLogBuffer);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuJitInfoLogBufferSizeBytes,
                               hipJitOptionInfoLogBufferSizeBytes);
@@ -229,6 +236,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetGlobal, hipModuleGetGlobal);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, hipModuleLaunchKernel);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, hipFuncGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, hipFuncSetAttribute);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, hipHostAlloc);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, hipHostRegister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, hipHostUnregister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, hipHostGetDevicePointer);

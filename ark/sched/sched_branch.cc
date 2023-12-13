@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "include/ark.h"
 #include "logging.h"
 
 #define DEBUG_BRANCH 0
@@ -103,21 +104,22 @@ SchedBranch::Impl::~Impl() {}
 void SchedBranch::Impl::add(int opseq_id, int uop_id, int sm_id,
                             int warp_id_begin, int warp_id_end) {
     if (uop_id < 0) {
-        LOG(ERROR, "uop_id ", uop_id, " out of range [0, inf)");
+        ERR(SchedulerError, "uop_id ", uop_id, " out of range [0, inf)");
     }
     if (sm_id < 0) {
-        LOG(ERROR, "sm_id ", sm_id, " out of range [0, inf)");
+        ERR(SchedulerError, "sm_id ", sm_id, " out of range [0, inf)");
     }
     if (warp_id_begin < 0) {
-        LOG(ERROR, "warp_id_begin ", warp_id_begin, " out of range [0, inf)");
+        ERR(SchedulerError, "warp_id_begin ", warp_id_begin,
+            " out of range [0, inf)");
     }
     if (warp_id_end <= warp_id_begin) {
-        LOG(ERROR, "warp_id_end ", warp_id_end, " <= warp_id_begin ",
+        ERR(SchedulerError, "warp_id_end ", warp_id_end, " <= warp_id_begin ",
             warp_id_begin);
     }
     auto p = this->opseq_to_uop_ids[opseq_id].insert(uop_id);
     if (!p.second) {
-        LOG(ERROR, "opseq_id ", opseq_id, " uop_id ", uop_id,
+        ERR(SchedulerError, "opseq_id ", opseq_id, " uop_id ", uop_id,
             " already exists");
     }
     UnitOp uop{opseq_id, uop_id, sm_id, warp_id_begin, warp_id_end};
@@ -173,6 +175,7 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
         } else {
             info.smem_bytes_per_warp = search->second;
         }
+        BRANCH_DEBUG("-- start merging uop branches");
 
         merged_uop_indices.emplace(i);
         BRANCH_DEBUG("merged uop id ", current_uop.uop_id, " sm_id ",
@@ -197,7 +200,7 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
                 info.num_warps_per_uop) {
                 // The same opseq should have the same number of warps per
                 // uop.
-                LOG(ERROR, "invalid num_warps_per_uop: ",
+                ERR(SchedulerError, "invalid num_warps_per_uop: ",
                     next_uop.warp_id_end - next_uop.warp_id_begin,
                     ", expected: ", info.num_warps_per_uop);
             }
@@ -213,15 +216,24 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
                 } else if (next_uop.warp_id_begin != current_warp_id_end) {
                     // Non-contiguous warps. Break.
                     break;
+                } else if ((info.sm_id_end - info.sm_id_begin > 1) &&
+                           (next_uop.warp_id_end > info.warp_id_end)) {
+                    // This branch is scheduling multiple SMs and next_uop
+                    // uses warp IDs that are not used by previous SMs.
+                    // Break.
+                    break;
                 }
                 // Contiguous warps. Try merge.
             } else if (next_uop.sm_id == info.sm_id_end) {
                 // Scheduling the same opseq on the next SM.
-                if (next_uop.warp_id_begin != info.warp_id_begin) {
+                if (current_warp_id_end != info.warp_id_end) {
+                    // The last scheduled SM uses less warps than the
+                    // previous scheduled SMs. Break.
+                    break;
+                } else if (next_uop.warp_id_begin != info.warp_id_begin) {
                     // Using different warp IDs from the next SM. Break.
                     break;
                 }
-
                 search = sm_id_to_smem_per_warp.find(next_uop.sm_id);
                 if (search != sm_id_to_smem_per_warp.end()) {
                     if (info.smem_bytes_per_warp != search->second) {
@@ -311,7 +323,7 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
 
             if (merged_uop_indices.size() - num_merged_uops !=
                 (size_t)(info.get_num_uops() + new_info.get_num_uops())) {
-                LOG(ERROR,
+                ERR(SchedulerError,
                     "unexpected error: numbers of newly merged uops mismatch (",
                     merged_uop_indices.size() - num_merged_uops, " vs ",
                     info.get_num_uops() + new_info.get_num_uops(), ")");
@@ -320,11 +332,11 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
             infos.emplace_back(info);
             infos.emplace_back(new_info);
         } else if (current_warp_id_end != info.warp_id_end) {
-            LOG(ERROR, "unexpected error");
+            ERR(SchedulerError, "unexpected error");
         } else {
             if (merged_uop_indices.size() - num_merged_uops !=
                 (size_t)info.get_num_uops()) {
-                LOG(ERROR,
+                ERR(SchedulerError,
                     "unexpected error: numbers of newly merged uops mismatch (",
                     merged_uop_indices.size() - num_merged_uops, " vs ",
                     info.get_num_uops(), ")");
@@ -338,7 +350,8 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
         int expected_id = 0;
         for (int uop_id : p.second) {
             if (uop_id != expected_id) {
-                LOG(ERROR, "missing uop ", expected_id, " in opseq ", p.first);
+                ERR(SchedulerError, "missing uop ", expected_id, " in opseq ",
+                    p.first);
             }
             expected_id += 1;
         }
@@ -354,7 +367,7 @@ std::vector<OpBranchInfo> SchedBranch::Impl::get_op_branch_info(
         compare_num_uops += p.second.size();
     }
     if ((size_t)num_uops != compare_num_uops) {
-        LOG(ERROR, "invalid number of uops: ", num_uops,
+        ERR(SchedulerError, "invalid number of uops: ", num_uops,
             ", expected: ", compare_num_uops,
             " merged_uop_indices.size(): ", merged_uop_indices.size());
     }
@@ -403,7 +416,7 @@ std::vector<Branch> SchedBranch::Impl::get_branches(
                 branch.warp_branches.emplace_back(std::move(warp_branch));
             } else {
                 // This may be not possible.
-                LOG(ERROR, "unexpected error");
+                ERR(SchedulerError, "unexpected error");
             }
         } else {
             // Add a new branch.

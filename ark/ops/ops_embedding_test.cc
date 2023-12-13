@@ -100,10 +100,27 @@ ark::unittest::State test_embedding_bf16() {
     return test_embedding<ark::bfloat16_t>();
 }
 
+ark::unittest::State test_embedding_invalid() {
+    {
+        ark::Model m;
+        ark::Tensor *ti = m.tensor(ark::Dims(4, 8, 3, 64), ark::INT32);
+        ark::Tensor *tw = m.tensor(ark::Dims(100, 1024), ark::FP32);
+        UNITTEST_THROW(m.embedding(ti, tw), ark::InvalidUsageError);
+    }
+    {
+        ark::Model m;
+        ark::Tensor *ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
+        ark::Tensor *tw = m.tensor(ark::Dims(2, 100, 1024), ark::FP32);
+        UNITTEST_THROW(m.embedding(ti, tw), ark::InvalidUsageError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_embedding_fp32);
     UNITTEST(test_embedding_fp16);
     UNITTEST(test_embedding_bf16);
+    UNITTEST(test_embedding_invalid);
     return ark::unittest::SUCCESS;
 }

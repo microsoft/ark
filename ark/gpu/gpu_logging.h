@@ -5,6 +5,7 @@
 #define ARK_GPU_LOGGING_H_
 
 #include "gpu/gpu.h"
+#include "include/ark.h"
 #include "logging.h"
 
 #define GLOG(cmd)                                                        \
@@ -13,9 +14,9 @@
         if (_e != ark::gpuSuccess) {                                     \
             const char *_estr;                                           \
             if (ark::gpuGetErrorString(_e, &_estr) == ark::gpuSuccess) { \
-                LOG(ark::ERROR, "GPU error ", _e, " '", _estr, "'");     \
+                ERR(ark::GpuError, _e, " '", _estr, "'");                \
             } else {                                                     \
-                LOG(ark::ERROR, "GPU error ", _e);                       \
+                ERR(ark::GpuError, _e);                                  \
             }                                                            \
         }                                                                \
     } while (0)

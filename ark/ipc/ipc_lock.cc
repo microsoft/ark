@@ -5,6 +5,7 @@
 
 #include <cassert>
 
+#include "include/ark.h"
 #include "logging.h"
 
 namespace ark {
@@ -68,7 +69,7 @@ IpcLockGuard::IpcLockGuard(IpcLock *lock_) : lock{lock_} {
     assert(lock->is_init == true);
     int r = ipc_lock_acquire(lock_);
     if (r != 0) {
-        LOG(ERROR, "ipc_lock_acquire failed (errno ", r, ")");
+        ERR(SystemError, "ipc_lock_acquire failed (errno ", r, ")");
     }
 }
 
