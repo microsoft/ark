@@ -296,16 +296,25 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
         // The candidate has only one user. Merge the two nodes.
 
         // Merge `boundary_node` into `merge_candidate`.
-        OPGRAPH_DEBUG("  merge ops: ", merge_candidate->get_name(), " -> ",
+        OPGRAPH_DEBUG("  merge: ", merge_candidate->get_name(), " -> ",
                       boundary_node->get_name());
         auto &ops = boundary_node->ops;
         merge_candidate->ops.insert(merge_candidate->ops.end(), ops.begin(),
                                     ops.end());
-        merge_candidate->users = boundary_node->users;
-        for (auto &user : merge_candidate->users) {
+        for (auto &user : boundary_node->users) {
             user->producers.erase(boundary_node);
             user->producers.insert(merge_candidate);
+            merge_candidate->users.insert(user);
         }
+        for (auto &producer : boundary_node->producers) {
+            if (producer == merge_candidate) {
+                continue;
+            }
+            producer->users.erase(boundary_node);
+            producer->users.insert(merge_candidate);
+            merge_candidate->producers.insert(producer);
+        }
+        merge_candidate->users = boundary_node->users;
 
         // Remove `boundary_node` from `nodes`.
         auto it =
