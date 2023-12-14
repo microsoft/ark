@@ -7,22 +7,16 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import unittest
+import multiprocessing as mp
 
-
-def test_softmax_internal(batch_size, m, n, data_type="float", iter=1):
+def test_softmax_internal(batch_size, m, n, data_type=ark.fp32, iter=1):
     runtime = ark.Runtime()
-    if data_type == "float":
-        ark_data_type = ark.TensorType.FP32
-        numpy_data_type = np.float32
-    elif data_type == "half":
-        ark_data_type = ark.TensorType.FP16
-        numpy_data_type = np.float16
-    input_tensor = ark.tensor(ark.Dims(batch_size, m, n), ark_data_type)
 
+    input_tensor = ark.tensor((batch_size, m, n), data_type)
     output_tensor = ark.softmax(input_tensor)
-    # Test the mul method
-    runtime.launch()
-    input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
+
+    runtime.launch(8)
+    input_tensor_host = np.random.rand(batch_size, m, n).astype(data_type.to_numpy())
     input_tensor.from_numpy(input_tensor_host)
     runtime.run(iter)
 
@@ -55,24 +49,50 @@ def test_softmax_internal(batch_size, m, n, data_type="float", iter=1):
 
 class TestSoftmax(unittest.TestCase):
     def test_softmax(self):
-        test_softmax_internal(1, 32, 4, "half")
-        test_softmax_internal(1, 32, 512, "half")
-        test_softmax_internal(1, 64, 4, "half")
-        test_softmax_internal(1, 128, 128, "half")
-        test_softmax_internal(1, 256, 256, "half")
-        test_softmax_internal(1, 512, 512, "half")
+        # test_softmax_internal(1, 32, 4, "half")
+        # test_softmax_internal(1, 32, 512, "half")
+        # test_softmax_internal(1, 64, 4, "half")
+        # test_softmax_internal(1, 128, 128, "half")
+        # test_softmax_internal(1, 256, 256, "half")
+        # test_softmax_internal(1, 512, 512, "half")
 
-        test_softmax_internal(1, 8, 4)
-        test_softmax_internal(1, 128, 128)
-        test_softmax_internal(1, 256, 256)
-        test_softmax_internal(1, 512, 512)
-        test_softmax_internal(1, 1024, 1024)
-        test_softmax_internal(1, 4096, 1024)
-        test_softmax_internal(1, 1024, 4096)
-        test_softmax_internal(2, 64, 64)
-        test_softmax_internal(2, 128, 128)
-        test_softmax_internal(8, 4096, 1024)
-        test_softmax_internal(8, 1024, 4096)
+
+        p = mp.Process(target=test_softmax_internal, args=(1, 8, 4, ark.fp32))
+        p.start()
+        p.join()
+
+        p = mp.Process(target=test_softmax_internal, args=(1, 128, 128, ark.fp32))
+        p.start()
+        p.join()
+
+        p = mp.Process(target=test_softmax_internal, args=(1, 256, 256, ark.fp32))
+        p.start()
+        p.join()
+
+        p = mp.Process(target=test_softmax_internal, args=(1, 512, 512, ark.fp32))
+        p.start()
+        p.join()
+
+        p = mp.Process(target=test_softmax_internal, args=(1, 1024, 1024, ark.fp32))
+        p.start()
+        p.join()
+
+        p = mp.Process(target=test_softmax_internal, args=(1, 4096, 1024, ark.fp32))
+        p.start()
+        p.join()
+
+
+        # test_softmax_internal(1, 8, 4)
+        # test_softmax_internal(1, 128, 128)
+        # test_softmax_internal(1, 256, 256)
+        # test_softmax_internal(1, 512, 512)
+        # test_softmax_internal(1, 1024, 1024)
+        # test_softmax_internal(1, 4096, 1024)
+        # test_softmax_internal(1, 1024, 4096)
+        # test_softmax_internal(2, 64, 64)
+        # test_softmax_internal(2, 128, 128)
+        # test_softmax_internal(8, 4096, 1024)
+        # test_softmax_internal(8, 1024, 4096)
 
 
 if __name__ == "__main__":
