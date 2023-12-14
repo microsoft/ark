@@ -12,6 +12,7 @@ namespace ark {
 class GpuMemory::Impl {
    public:
     Impl(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align);
+    Impl(const mscclpp::RegisteredMemory& remote_memory);
     ~Impl();
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
@@ -24,16 +25,18 @@ class GpuMemory::Impl {
     friend class GpuMemory;
 
     std::shared_ptr<GpuManager> manager_;
+    mscclpp::RegisteredMemory remote_memory_;
     size_t bytes_;
     size_t align_;
     size_t bytes_raw_;
+    bool is_remote_;
     gpuDeviceptr dev_ptr_raw_;
     gpuDeviceptr dev_ptr_aligned_;
 };
 
 GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
                       size_t align)
-    : manager_(manager), bytes_(bytes), align_(align) {
+    : manager_(manager), bytes_(bytes), align_(align) : is_remote_(false) {
     if (align_ == 0) {
         align_ = 1;
     } else if (align_ & (align_ - 1)) {
@@ -66,9 +69,24 @@ GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
     manager_->sync();
 }
 
-GpuMemory::Impl::~Impl() { GLOG(gpuMemFree(dev_ptr_raw_)); }
+GpuMemory::Impl::Impl(const mscclpp::RegisteredMemory& remote_memory)
+    : remote_memory_(remote_memory),
+      bytes_(remote_memory_.size()),
+      dev_ptr_aligned_(remote_memory.data()),
+      dev_ptr_raw_(nullptr),
+      is_remote_(true) {}
+
+GpuMemory::Impl::~Impl() {
+    if (is_remote_) {
+        return;
+    }
+    GLOG(gpuMemFree(dev_ptr_raw_));
+}
 
 void GpuMemory::Impl::to_host(void* dst, bool async) const {
+    if (is_remote_) {
+        LOG(ERROR, "cannot copy from remote memory.");
+    }
     void* dev_ptr = reinterpret_cast<void*>(dev_ptr_aligned_);
     manager_->set_current();
     manager_->memcpy_dtoh_async(dst, 0, dev_ptr, 0, bytes_);
@@ -78,6 +96,9 @@ void GpuMemory::Impl::to_host(void* dst, bool async) const {
 }
 
 void GpuMemory::Impl::from_host(const void* src, size_t bytes, bool async) {
+    if (is_remote_) {
+        LOG(ERROR, "cannot copy to remote memory.");
+    }
     void* dev_ptr = reinterpret_cast<void*>(dev_ptr_aligned_);
     manager_->set_current();
     manager_->memcpy_htod_async(dev_ptr, 0, const_cast<void*>(src), 0,
@@ -92,6 +113,10 @@ void GpuMemory::Impl::sync() const { manager_->sync(); }
 GpuMemory::GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes,
                      size_t align)
     : pimpl_(std::make_shared<Impl>(manager, bytes, align)) {}
+
+GpuMemory::GpuMemory(const mscclpp::RegisteredMemory& remote_memory) {
+    pimpl_ = std::make_shared<Impl>(remote_memory);
+}
 
 size_t GpuMemory::bytes() const { return pimpl_->bytes_; }
 

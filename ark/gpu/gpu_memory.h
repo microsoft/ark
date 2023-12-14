@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include "mscclpp/core.hpp"
+
 namespace ark {
 
 class GpuManager;
@@ -14,6 +16,7 @@ class GpuManager;
 class GpuMemory {
    public:
     GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align);
+    GpuMemory(const mscclpp::RegisteredMemory& remote_memory);
     size_t bytes() const;
 
     template <typename T>
