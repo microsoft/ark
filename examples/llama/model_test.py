@@ -242,8 +242,6 @@ def test_module(
 def test_rmsnorm(
     args: ModelArgs, batch_size: int, seq_len: int, dtype: np.dtype
 ):
-    ark.init()
-
     # Create random input data
     inputs_ark = [
         np.random.uniform(
