@@ -4,9 +4,9 @@
 #ifndef ARK_KERNELS_CAST_H_
 #define ARK_KERNELS_CAST_H_
 
-#include "broadcast.h"
-#include "type_intrinsics.h"
-#include "vector_type.h"
+#include "common/broadcast.h"
+#include "common/type_intrinsics.h"
+#include "common/vector_type.h"
 
 namespace ark {
 

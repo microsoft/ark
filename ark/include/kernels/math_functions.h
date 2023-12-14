@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_MATH_FUNCTIONS_H_
 #define ARK_KERNELS_MATH_FUNCTIONS_H_
 
-#include "common.h"
+#include "common/broadcast.h"
 
 namespace ark {
 

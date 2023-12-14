@@ -4,8 +4,11 @@
 #ifndef ARK_KERNELS_BROADCAST_H_
 #define ARK_KERNELS_BROADCAST_H_
 
-#include "common.h"
+#include "bf16.h"
+#include "fp16.h"
+#include "fp32.h"
 #include "load_store.h"
+#include "unit_op.h"
 
 namespace ark {
 

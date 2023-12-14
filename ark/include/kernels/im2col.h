@@ -4,8 +4,7 @@
 #ifndef ARK_KERNELS_IM2COL_H_
 #define ARK_KERNELS_IM2COL_H_
 
-#include "ewise.h"
-#include "sync.h"
+#include "common/ewise.h"
 
 namespace ark {
 

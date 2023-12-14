@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_ARITHMETIC_H_
 #define ARK_KERNELS_ARITHMETIC_H_
 
-#include "broadcast.h"
+#include "common/broadcast.h"
 
 namespace ark {
 

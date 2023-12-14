@@ -4,13 +4,10 @@
 #ifndef ARK_KERNELS_REDUCE_H_
 #define ARK_KERNELS_REDUCE_H_
 
-#include <type_traits>
-
-#include "arch.h"
-#include "ewise.h"
-#include "shfl.h"
-#include "type_intrinsics.h"
-#include "vector_type.h"
+#include "common/ewise.h"
+#include "common/shfl.h"
+#include "common/type_intrinsics.h"
+#include "common/vector_type.h"
 
 namespace ark {
 
