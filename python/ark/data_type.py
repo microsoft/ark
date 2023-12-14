@@ -29,7 +29,6 @@ class MetaDataType(type):
             new_class.element_size = staticmethod(
                 lambda: new_class.ttype().bytes()
             )
-            new_class.__doc__ = reg["doc"]
         return new_class
 
 
