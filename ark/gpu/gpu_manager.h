@@ -1,34 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_MGR_V2_H_
-#define ARK_GPU_MGR_V2_H_
+#ifndef ARK_GPU_MANAGER_H_
+#define ARK_GPU_MANAGER_H_
 
 #include <memory>
 
-#include "gpu_mem_v2.h"
+#include "gpu/gpu_memory.h"
+#include "gpu/gpu_stream.h"
 
 namespace ark {
-
-class GpuMemV2;
-class GpuStreamV2 {
+class GpuManager : public std::enable_shared_from_this<GpuManager> {
    public:
-    GpuStreamV2();
-    ~GpuStreamV2() = default;
-    void sync() const;
+    static std::shared_ptr<GpuManager> get_instance(int gpu_id);
+    ~GpuManager() = default;
+    GpuManager(const GpuManager &) = delete;
+    GpuManager &operator=(const GpuManager &) = delete;
 
-   private:
-    friend class GpuMgrV2;
-    class Impl;
-    std::shared_ptr<Impl> pimpl_;
-};
-
-class GpuMgrV2 {
-   public:
-    GpuMgrV2(int gpu_id);
-    ~GpuMgrV2() = default;
-
-    std::shared_ptr<GpuMemV2> malloc(size_t bytes, size_t align = 1);
+    std::shared_ptr<GpuMemory> malloc(size_t bytes, size_t align = 1);
     std::shared_ptr<GpuStreamV2> main_stream() const;
     std::shared_ptr<GpuStreamV2> new_stream();
 
@@ -54,7 +43,8 @@ class GpuMgrV2 {
     };
 
    private:
-    friend class GpuMemV2;
+    GpuManager(int gpu_id);
+    friend class GpuMemory;
 
     class Impl;
     std::shared_ptr<Impl> pimpl_;
@@ -74,4 +64,4 @@ class GpuMgrV2 {
 
 }  // namespace ark
 
-#endif  // ARK_GPU_MGR_V2_H_
+#endif  // ARK_GPU_MANAGER_H_

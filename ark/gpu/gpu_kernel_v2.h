@@ -7,13 +7,13 @@
 #include <memory>
 #include <string>
 
-#include "gpu/gpu_mgr_v2.h"
+#include "gpu/gpu_manager.h"
 
 namespace ark {
 
 class GpuKernelV2 {
    public:
-    GpuKernelV2(std::shared_ptr<GpuMgrV2> gpu_mgr, const std::string& code,
+    GpuKernelV2(std::shared_ptr<GpuManager> manager, const std::string& code,
                 const std::array<int, 3>& block_dim,
                 const std::array<int, 3>& grid_dim, int smem_bytes,
                 const std::string& kernel_name);

@@ -1,22 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_MEM_V2_H_
-#define ARK_GPU_MEM_V2_H_
+#ifndef ARK_GPU_MEMORY_H_
+#define ARK_GPU_MEMORY_H_
 
 #include <memory>
 #include <vector>
 
-#include "gpu/gpu_mgr_v2.h"
-
 namespace ark {
 
-class GpuMgrV2;
+class GpuManager;
 
-class GpuMemV2 {
+class GpuMemory {
    public:
-    explicit GpuMemV2(GpuMgrV2& gpu_mgr, size_t bytes, size_t align);
-
+    GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align);
     size_t bytes() const;
 
     template <typename T>
@@ -42,4 +39,4 @@ class GpuMemV2 {
 
 }  // namespace ark
 
-#endif  // ARK_GPU_MEM_V2_H_
+#endif  // ARK_GPU_MEMORY_H_

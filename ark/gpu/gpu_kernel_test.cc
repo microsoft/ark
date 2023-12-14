@@ -52,7 +52,7 @@ unittest::State test_gpu_kernel_loop_void() {
 const std::string void_kernel = "__global__ void kernel() {}";
 
 unittest::State test_gpu_kernel() {
-    auto gmgr = std::make_shared<ark::GpuMgrV2>(0);
+    auto gmgr = ark::GpuManager::get_instance(0);
     ark::GpuKernelV2 kernel(gmgr, void_kernel, {1, 1, 1}, {1, 1, 1}, 0,
                             "kernel");
     return unittest::SUCCESS;

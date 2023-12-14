@@ -11,15 +11,18 @@ namespace ark {
 
 class GpuKernelV2::Impl {
    public:
-    Impl(std::shared_ptr<GpuMgrV2> gpu_mgr, const std::string& code,
+    Impl(std::shared_ptr<GpuManager> manager, const std::string& code,
          const std::array<int, 3>& block_dim,
          const std::array<int, 3>& grid_dim, int smem_bytes,
          const std::string& kernel_name);
+    ~Impl() = default;
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
 
     void compile();
 
    private:
-    std::shared_ptr<GpuMgrV2> gpu_mgr_;
+    std::shared_ptr<GpuManager> manager_;
     std::string code_;
     std::array<int, 3> block_dim_;
     std::array<int, 3> grid_dim_;
@@ -30,12 +33,12 @@ class GpuKernelV2::Impl {
     gpuFunction function_;
 };
 
-GpuKernelV2::Impl::Impl(std::shared_ptr<GpuMgrV2> gpu_mgr,
+GpuKernelV2::Impl::Impl(std::shared_ptr<GpuManager> manager,
                         const std::string& code,
                         const std::array<int, 3>& block_dim,
                         const std::array<int, 3>& grid_dim, int smem_bytes,
                         const std::string& kernel_name)
-    : gpu_mgr_(gpu_mgr),
+    : manager_(manager),
       code_(code),
       block_dim_(block_dim),
       grid_dim_(grid_dim),
@@ -43,14 +46,14 @@ GpuKernelV2::Impl::Impl(std::shared_ptr<GpuMgrV2> gpu_mgr,
       kernel_name_(kernel_name) {}
 
 void GpuKernelV2::Impl::compile() {
-    int max_reg_per_block = gpu_mgr_->info().max_registers_per_block;
-    int max_reg_per_thread = gpu_mgr_->info().max_registers_per_thread;
+    int max_reg_per_block = manager_->info().max_registers_per_block;
+    int max_reg_per_thread = manager_->info().max_registers_per_thread;
     int max_reg_cnt =
         max_reg_per_block / (block_dim_[0] * block_dim_[1] * block_dim_[2]);
     if (max_reg_cnt >= max_reg_per_thread) {
         max_reg_cnt = max_reg_per_thread - 1;
     }
-    bin_ = gpu_compile({code_}, gpu_mgr_->info().arch, max_reg_cnt);
+    bin_ = gpu_compile({code_}, manager_->info().arch, max_reg_cnt);
     GLOG(gpuModuleLoadData(&module_, bin_.c_str()));
     GLOG(gpuModuleGetFunction(&function_, module_, kernel_name_.c_str()));
 
@@ -63,12 +66,12 @@ void GpuKernelV2::Impl::compile() {
                              dynamic_smem_size_bytes));
 }
 
-GpuKernelV2::GpuKernelV2(std::shared_ptr<GpuMgrV2> gpu_mgr,
+GpuKernelV2::GpuKernelV2(std::shared_ptr<GpuManager> manager,
                          const std::string& code,
                          const std::array<int, 3>& block_dim,
                          const std::array<int, 3>& grid_dim, int smem_bytes,
                          const std::string& kernel_name)
-    : pimpl_(std::make_shared<Impl>(gpu_mgr, code, block_dim, grid_dim,
+    : pimpl_(std::make_shared<Impl>(manager, code, block_dim, grid_dim,
                                     smem_bytes, kernel_name)) {}
 
 void GpuKernelV2::compile() { pimpl_->compile(); }
