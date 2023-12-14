@@ -57,7 +57,8 @@ def run_ark(
     output = module(*module_inputs)
 
     runtime = ark.Runtime()
-    runtime.launch()
+    # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
+    runtime.launch(num_warps_per_sm=8)
 
     # Load model parameters
     module.load_state_dict(state_dict)

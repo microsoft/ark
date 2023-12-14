@@ -93,12 +93,14 @@ const OpConfigMap MathConfigMap = {
     {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{256, 1}}, {{256, 1}}, false, false},
+         {1, 0, {{1, 512}}, {{1, 512}}, false, false},
+         {1, 0, {{512, 1}}, {{512, 1}}, false, false},
          {1, 0, {{1, 256}}, {{1, 256}}, false, false},
-         {1, 0, {{128, 1}}, {{128, 1}}, false, false},
+         {1, 0, {{256, 1}}, {{256, 1}}, false, false},
          {1, 0, {{1, 128}}, {{1, 128}}, false, false},
-         {1, 0, {{64, 1}}, {{64, 1}}, false, false},
+         {1, 0, {{128, 1}}, {{128, 1}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
+         {1, 0, {{64, 1}}, {{64, 1}}, false, false},
      }},
 };
 

@@ -221,7 +221,7 @@ const OpConfigMap ReduceWConfigMap = {
     {{OP_ARCH_CUDA_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{1, -1}}, {{1, 1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, 1}}, false, false},
          {2, 128, {{1, -1}}, {{1, 1}}, true, false},
          {4, 128, {{1, -1}}, {{1, 1}}, true, false},
          {8, 128, {{1, -1}}, {{1, 1}}, true, false},
@@ -229,7 +229,7 @@ const OpConfigMap ReduceWConfigMap = {
     {{OP_ARCH_ROCM_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 256, {{1, -1}}, {{1, 1}}, true, false},
+         {1, 256, {{1, -1}}, {{1, 1}}, false, false},
          {2, 256, {{1, -1}}, {{1, 1}}, true, false},
          {4, 256, {{1, -1}}, {{1, 1}}, true, false},
          {8, 256, {{1, -1}}, {{1, 1}}, true, false},
