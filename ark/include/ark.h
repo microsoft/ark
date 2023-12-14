@@ -381,11 +381,6 @@ class Model {
     // `input` tensor and returns the normalized tensor as `output`.
     Tensor *rmsnorm(Tensor *input, Tensor *output = nullptr,
                     const std::string &name = "rmsnorm");
-    // Applies softmax activation to the `input` tensor, with the softmax
-    // operator
-    // being performed on the last dimension of the input tensor.
-    Tensor *softmax(Tensor *input, Tensor *output = nullptr,
-                    const std::string &name = "softmax");
     // Transposes the `input` tensor according to the given `perm` permutation.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.

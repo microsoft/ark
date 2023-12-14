@@ -258,10 +258,12 @@ def softmax(
     Usage:
     tensor_softmax = ark.softmax(tensor)
     """
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_model().softmax(input._tensor, output, name)
-    return Tensor(_tensor)
+    max = reduce_max(input, axis=-1)
+    output = sub(input, max, output=output)
+    output = exp(output, output=output)
+    sum = reduce_sum(output, axis=-1)
+    output = div(output, sum, output=output)
+    return output
 
 
 def transpose(

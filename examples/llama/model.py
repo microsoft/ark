@@ -435,7 +435,7 @@ class Attention(ark.Module):
             scores = ark.add(scores, mask)
         # if self.dtype == ark.fp16:
         #     scores = ark.cast(scores, ark.fp32)
-        scores = ark.softmax(scores)
+        scores = ark.softmax(scores, output=scores)
         # if self.dtype == ark.fp16:
         #     scores = ark.cast(scores, ark.fp16)
 

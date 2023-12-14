@@ -104,7 +104,6 @@ typedef enum {
     OP_REDUCE_W_MAX,
     OP_LAYERNORM,
     OP_RMSNORM,
-    OP_SOFTMAX,
     OP_SCALE,
     OP_RELU,
     OP_COPY,
@@ -555,13 +554,6 @@ class GetFromPacketOp : public Op {
                     int flag, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class SoftmaxOp : public Op {
-   public:
-    SoftmaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
-              const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
 };
 
 class TensorOp : public Op {
