@@ -5,6 +5,7 @@
 #define ARK_KERNELS_MATH_FUNCTIONS_H_
 
 #include "common/broadcast.h"
+#include "common/type_intrinsics.h"
 
 namespace ark {
 

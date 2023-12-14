@@ -4,10 +4,21 @@
 #ifndef ARK_KERNELS_DEVICE_H_
 #define ARK_KERNELS_DEVICE_H_
 
-#if defined(ARK_TARGET_CUDA_ARCH)
+#if defined(ARK_TARGET_CUDA_ARCH) && defined(ARK_TARGET_ROCM_ARCH)
+static_assert(false, "Multiple GPU architectures");
+#endif  // defined(ARK_TARGET_CUDA_ARCH) && defined(ARK_TARGET_ROCM_ARCH)
+
+#if !defined(ARK_TARGET_CUDA_ARCH) && !defined(ARK_TARGET_ROCM_ARCH)
+static_assert(false, "Unknown GPU architecture");
+#define ARK_TARGET_CUDA_ARCH // Dummy define
+#endif  // !defined(ARK_TARGET_CUDA_ARCH) && !defined(ARK_TARGET_ROCM_ARCH)
+
+
+#if defined(ARK_TARGET_ROCM_ARCH)
+#include <hip/hip_runtime.h>
+#endif  // !defined(ARK_TARGET_CUDA_ARCH)
+
+
 #define DEVICE __forceinline__ __device__
-#else
-#define DEVICE __device__ inline
-#endif
 
 #endif  // ARK_KERNELS_DEVICE_H_
