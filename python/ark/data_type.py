@@ -34,6 +34,10 @@ class MetaDataType(type):
 
 
 class DataType(metaclass=MetaDataType):
+    """
+    Represent the data type of a tensor.
+    """
+
     @staticmethod
     def from_numpy(np_type: numpy.dtype) -> "DataType":
         """
