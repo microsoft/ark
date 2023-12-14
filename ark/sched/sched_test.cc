@@ -9,7 +9,6 @@
 #include "ops/ops_test_common.h"
 #include "unittest/unittest_utils.h"
 
-
 ark::unittest::State test_sched_many_comm_ops() {
     constexpr int num_gpus = 4;
     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {

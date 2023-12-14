@@ -12,8 +12,15 @@ extern const OpConfigMap ArithmeticConfigMap;
 
 ScaleOp::ScaleOp(const std::string &prec_type, Tensor *input, Tensor *output,
                  float val, const std::string &name)
-    : Op{OP_SCALE, prec_type,       {input}, {output}, {{val}},
-         name,     &ArithmeticConfigMap, -1,      true} {}
+    : Op{OP_SCALE,
+         prec_type,
+         {input},
+         {output},
+         {{val}},
+         name,
+         &ArithmeticConfigMap,
+         -1,
+         true} {}
 
 std::string ScaleOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
