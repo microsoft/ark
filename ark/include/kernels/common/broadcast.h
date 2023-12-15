@@ -7,8 +7,10 @@
 #include "bf16.h"
 #include "fp16.h"
 #include "fp32.h"
+#include "integer.h"
 #include "load_store.h"
 #include "unit_op.h"
+#include "vector_type.h"
 
 namespace ark {
 

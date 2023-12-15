@@ -23,10 +23,8 @@ struct Cast<_InShape, _FromType, _ToType, 2> {
     static DEVICE void compute(_ToType *output, const _FromType *input) {
         if constexpr (_InShape::W == 1) {
             *output = type::Cast::compute<_ToType>(*input);
-        } else if constexpr (type::VtypeExists<
-                                 type::Vtype<_FromType, 2>>::value &&
-                             type::VtypeExists<
-                                 type::Vtype<_ToType, 2>>::value) {
+        } else if constexpr (type::VtypeExists<_FromType, 2>::value &&
+                             type::VtypeExists<_ToType, 2>::value) {
             using ToType2 = typename type::Vtype<_ToType, 2>::type;
             using FromType2 = typename type::Vtype<_FromType, 2>::type;
             ToType2 *pout = reinterpret_cast<ToType2 *>(output);

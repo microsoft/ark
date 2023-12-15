@@ -28,9 +28,35 @@ struct Constant<i32> {
 };
 
 template <>
+struct Constant<i32x2> {
+    static DEVICE i32x2 zero() { return make_int2(0, 0); }
+    static DEVICE i32x2 lowest() { return make_int2(0x80000000, 0x80000000); }
+};
+
+template <>
+struct Constant<i32x4> {
+    static DEVICE i32x4 zero() { return make_int4(0, 0, 0, 0); }
+    static DEVICE i32x4 lowest() {
+        return make_int4(0x80000000, 0x80000000, 0x80000000, 0x80000000);
+    }
+};
+
+template <>
 struct Constant<ui32> {
     static DEVICE ui32 zero() { return 0; }
     static DEVICE ui32 lowest() { return 0; }
+};
+
+template <>
+struct Constant<ui32x2> {
+    static DEVICE ui32x2 zero() { return make_uint2(0, 0); }
+    static DEVICE ui32x2 lowest() { return make_uint2(0, 0); }
+};
+
+template <>
+struct Constant<ui32x4> {
+    static DEVICE ui32x4 zero() { return make_uint4(0, 0); }
+    static DEVICE ui32x4 lowest() { return make_uint4(0, 0); }
 };
 
 template <>
@@ -41,6 +67,16 @@ struct Vtype<i32, 2> {
 template <>
 struct Vtype<i32, 4> {
     using type = i32x4;
+};
+
+template <>
+struct Vtype<ui32, 2> {
+    using type = ui32x2;
+};
+
+template <>
+struct Vtype<ui32, 4> {
+    using type = ui32x4;
 };
 
 }  // namespace type

@@ -102,12 +102,11 @@ struct ReduceTypeSum {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
                 type::Constant<typename type::Vtype<DataType, 4>::type>::zero();
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
                 type::Constant<typename type::Vtype<DataType, 2>::type>::zero();
         } else {
@@ -122,7 +121,7 @@ struct ReduceTypeSum {
     static DEVICE void reduce(DataType *out, const DataType *in0,
                               const DataType *in1) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
                 type::Add::compute(
                     *reinterpret_cast<
@@ -130,8 +129,7 @@ struct ReduceTypeSum {
                     *reinterpret_cast<
                         const typename type::Vtype<DataType, 4>::type *>(in1));
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
                 type::Add::compute(
                     *reinterpret_cast<
@@ -150,13 +148,12 @@ struct ReduceTypeSum {
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
                 *reinterpret_cast<
                     const typename type::Vtype<DataType, 4>::type *>(in);
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
                 *reinterpret_cast<
                     const typename type::Vtype<DataType, 2>::type *>(in);
@@ -173,13 +170,12 @@ struct ReduceTypeMax {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
                 type::Constant<
                     typename type::Vtype<DataType, 4>::type>::lowest();
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
                 type::Constant<
                     typename type::Vtype<DataType, 2>::type>::lowest();
@@ -195,7 +191,7 @@ struct ReduceTypeMax {
     static DEVICE void reduce(DataType *out, const DataType *in0,
                               const DataType *in1) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
                 type::Max::compute(
                     *reinterpret_cast<
@@ -203,8 +199,7 @@ struct ReduceTypeMax {
                     *reinterpret_cast<
                         const typename type::Vtype<DataType, 4>::type *>(in1));
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
                 type::Max::compute(
                     *reinterpret_cast<
@@ -223,13 +218,12 @@ struct ReduceTypeMax {
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
                 *reinterpret_cast<
                     const typename type::Vtype<DataType, 4>::type *>(in);
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
                 *reinterpret_cast<
                     const typename type::Vtype<DataType, 2>::type *>(in);
@@ -246,12 +240,11 @@ struct ReduceTypeMean {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
                 type::Constant<typename type::Vtype<DataType, 4>::type>::zero();
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
                 type::Constant<typename type::Vtype<DataType, 2>::type>::zero();
         } else {
@@ -266,7 +259,7 @@ struct ReduceTypeMean {
     static DEVICE void reduce(DataType *out, const DataType *in0,
                               const DataType *in1) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
                 type::Add::compute(
                     *reinterpret_cast<
@@ -274,8 +267,7 @@ struct ReduceTypeMean {
                     *reinterpret_cast<
                         const typename type::Vtype<DataType, 4>::type *>(in1));
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
                 type::Add::compute(
                     *reinterpret_cast<
@@ -294,7 +286,7 @@ struct ReduceTypeMean {
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
         if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<type::Vtype<DataType, 4>>::value) {
+                      type::VtypeExists<DataType, 4>::value) {
             int4 nelem4 = make_int4(nelem, nelem, nelem, nelem);
             *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(out) =
                 type::Div::compute(
@@ -302,8 +294,7 @@ struct ReduceTypeMean {
                         const typename type::Vtype<DataType, 4>::type *>(in),
                     nelem4);
         } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<
-                                 type::Vtype<DataType, 2>>::value) {
+                             type::VtypeExists<DataType, 2>::value) {
             int2 nelem2 = make_int2(nelem, nelem);
             *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(out) =
                 type::Div::compute(

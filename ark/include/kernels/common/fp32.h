@@ -27,6 +27,18 @@ struct Constant<fp32> {
 };
 
 template <>
+struct Constant<fp32x2> {
+    static DEVICE fp32x2 zero() { return make_float2(0, 0); }
+    static DEVICE fp32x2 lowest() { return make_float2(-FLT_MAX, -FLT_MAX); }
+};
+
+template <>
+struct Constant<fp32x4> {
+    static DEVICE fp32x4 zero() { return make_float4(0, 0, 0, 0); }
+    static DEVICE fp32x4 lowest() { return make_float4(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX); }
+};
+
+template <>
 struct Vtype<fp32, 2> {
     using type = fp32x2;
 };
