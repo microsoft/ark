@@ -219,10 +219,10 @@ ark::unittest::State test_gpu_manager() {
 
 int main() {
     ark::init();
-    // UNITTEST(test_gpu_mgr_basic);
-    // UNITTEST(test_gpu_mgr_mem_alloc);
-    // UNITTEST(test_gpu_mgr_mem_free);
-    // UNITTEST(test_gpu_mgr_remote);
+    UNITTEST(test_gpu_mgr_basic);
+    UNITTEST(test_gpu_mgr_mem_alloc);
+    UNITTEST(test_gpu_mgr_mem_free);
+    UNITTEST(test_gpu_mgr_remote);
     UNITTEST(test_gpu_manager);
     return 0;
 }

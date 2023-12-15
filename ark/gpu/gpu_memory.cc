@@ -36,7 +36,7 @@ class GpuMemory::Impl {
 
 GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
                       size_t align)
-    : manager_(manager), bytes_(bytes), align_(align) : is_remote_(false) {
+    : manager_(manager), bytes_(bytes), align_(align), is_remote_(false) {
     if (align_ == 0) {
         align_ = 1;
     } else if (align_ & (align_ - 1)) {

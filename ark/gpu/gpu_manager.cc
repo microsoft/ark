@@ -3,6 +3,8 @@
 
 #include "gpu/gpu_manager.h"
 
+#include <unordered_map>
+
 #include "gpu/gpu.h"
 #include "gpu/gpu_logging.h"
 
@@ -62,7 +64,22 @@ GpuManager::Impl::~Impl() {
 }
 
 std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
-    return std::shared_ptr<GpuManager>(new GpuManager(gpu_id));
+    static std::unordered_map<int, std::weak_ptr<GpuManager>> instances;
+    auto it = instances.find(gpu_id);
+    if (it == instances.end()) {
+        auto instance = std::make_shared<GpuManager>(gpu_id);
+        instances[gpu_id] = instance;
+        return instance;
+    } else {
+        auto instance = it->second.lock();
+        if (instance) {
+            return instance;
+        } else {
+            auto instance = std::make_shared<GpuManager>(gpu_id);
+            instances[gpu_id] = instance;
+            return instance;
+        }
+    }
 }
 
 GpuManager::GpuManager(int gpu_id)
