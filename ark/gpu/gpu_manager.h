@@ -18,8 +18,8 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
     GpuManager &operator=(const GpuManager &) = delete;
 
     std::shared_ptr<GpuMemory> malloc(size_t bytes, size_t align = 1);
-    std::shared_ptr<GpuStreamV2> main_stream() const;
-    std::shared_ptr<GpuStreamV2> new_stream();
+    std::shared_ptr<GpuMemory> empty_memory() const;
+    int get_gpu_id() const;
 
     struct Info;
     const Info &info() const;
@@ -48,7 +48,6 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
 
     class Impl;
     std::shared_ptr<Impl> pimpl_;
-    std::shared_ptr<GpuStreamV2> main_stream_;
 
     void set_current() const;
     void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,

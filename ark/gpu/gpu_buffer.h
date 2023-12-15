@@ -17,6 +17,9 @@ class GpuBuffer {
               size_t offset, size_t bytes);
     ~GpuBuffer() = default;
     GpuPtr ref(size_t offset = 0) const;
+    size_t get_offset() const { return offset_; }
+    void set_offset(size_t offset) { offset_ = offset; }
+    int get_gpu_id() const { return gpu_id_; }
 
    private:
     int gpu_id_;

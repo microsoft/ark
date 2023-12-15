@@ -15,8 +15,10 @@ class GpuManager;
 
 class GpuMemory {
    public:
+    GpuMemory(std::shared_ptr<GpuManager> manager);
     GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align);
     GpuMemory(const mscclpp::RegisteredMemory& remote_memory);
+    void init(size_t bytes, size_t align);
     size_t bytes() const;
 
     template <typename T>
