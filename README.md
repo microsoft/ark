@@ -13,6 +13,7 @@ A GPU-driven system framework for scalable AI applications.
 | Unit Tests (ROCm) | [![Unit Tests (ROCm)](https://github.com/microsoft/ark/actions/workflows/ut-rocm.yml/badge.svg?branch=main)](https://github.com/microsoft/ark/actions/workflows/ut-rocm.yml) |
 
 *NOTE (Nov 2023): ROCm unit tests will be replaced into an Azure pipeline in the future.*
+*NOTE (Dec 2023): ROCm unit tests are failing due to the nodes' issue. This will be fixed soon.*
 
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
