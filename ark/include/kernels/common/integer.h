@@ -55,8 +55,8 @@ struct Constant<ui32x2> {
 
 template <>
 struct Constant<ui32x4> {
-    static DEVICE ui32x4 zero() { return make_uint4(0, 0); }
-    static DEVICE ui32x4 lowest() { return make_uint4(0, 0); }
+    static DEVICE ui32x4 zero() { return make_uint4(0, 0, 0, 0); }
+    static DEVICE ui32x4 lowest() { return make_uint4(0, 0, 0, 0); }
 };
 
 template <>
