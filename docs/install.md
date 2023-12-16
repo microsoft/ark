@@ -2,22 +2,12 @@
 
 ## Prerequisites
 
-* Linux kernel >= 4.15.0
-
-    - If you have a lower version, you can upgrade it via:
-        ```bash
-        sudo apt-get update
-        sudo apt-get install -y linux-image-4.15.0-13-generic linux-header-4.15.0-13-generic
-        ```
-
 * CMake >= 3.25.0 and Python >= 3.8
 
 * Supported GPUs
     - NVIDIA GPUs: Volta (CUDA >= 11.1) / Ampere (CUDA >= 11.1) / Hopper (CUDA >= 12.0)
         - Hopper support will be added in the future.
-    - AMD GPUs: CDNA2 (ROCm >= 5.0) / CDNA3
-        - Multi-GPU execution is not yet supported for AMD GPUs and will be supported by a future release.
-        - CDNA3 support will be added in the future.
+    - AMD GPUs: CDNA2 (ROCm >= 5.7) / CDNA3 (ROCm >= 5.7)
 
 * Mellanox OFED
 
@@ -28,9 +18,9 @@ We currently provide only *base images* for ARK, which contain all the dependenc
 You can pull a base image as follows.
 ```
 # For NVIDIA GPUs
-docker pull ghcr.io/microsoft/ark/ark:base-dev-cuda12.1
+docker pull ghcr.io/microsoft/ark/ark:base-dev-cuda12.2
 # For AMD GPUs
-docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.6
+docker pull ghcr.io/microsoft/ark/ark:base-dev-rocm5.7
 ```
 
 Check [ARK containers](https://github.com/microsoft/ark/pkgs/container/ark%2Fark) for all available Docker images.

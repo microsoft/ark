@@ -1,6 +1,7 @@
 {
     "configurations": [
         {
+            "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
                 "/usr/local/cuda/include",

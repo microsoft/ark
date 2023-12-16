@@ -25,7 +25,7 @@ GpuMem::GpuMem(size_t bytes) { this->init(bytes); }
 GpuMem::GpuMem(const GpuMem::Info &info) { this->init(info); }
 
 //
-void GpuMem::init(size_t bytes, bool expose) {
+void GpuMem::init(size_t bytes, [[maybe_unused]] bool expose) {
     if (bytes == 0) {
         ERR(InvalidUsageError, "Tried to allocate zero byte.");
     }
