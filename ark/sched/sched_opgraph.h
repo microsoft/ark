@@ -84,16 +84,23 @@ class OpGraph {
     /// @return The new @ref OpNode.
     OpNode *break_node(OpNode *node, int op_idx);
 
+    /// Check dependencies between two @ref OpNode.
+    ///
+    /// @param node1 The first @ref OpNode.
+    /// @param node2 The second @ref OpNode.
+    /// @return True if @p node1 depends on @p node2.
+    bool depends_on(OpNode *node1, OpNode *node2) const;
+
    private:
     std::list<std::unique_ptr<OpNode>> nodes_storage;
 
     void create_nodes(const Model &model);
-    static void recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
-                                  std::set<OpNode *> &seen_nodes,
-                                  const std::list<OpNode *> &boundary_nodes);
-    static void recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
-                                std::set<OpNode *> &seen_nodes,
-                                const std::list<OpNode *> &boundary_nodes);
+    void recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
+                           std::set<OpNode *> &seen_nodes,
+                           const std::list<OpNode *> &boundary_nodes);
+    void recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
+                         std::set<OpNode *> &seen_nodes,
+                         const std::list<OpNode *> &boundary_nodes);
 };
 
 }  // namespace ark
