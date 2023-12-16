@@ -10,13 +10,35 @@ namespace ark {
 namespace type {
 
 template <typename DataType, int Size>
-struct Vtype {};
+struct Vtype {
+    using type = void;
+};
 
-template <typename DataType, int Size, typename = void>
-struct VtypeExists : std::false_type {};
+template <typename DataType>
+struct Vtype<DataType, 1> {
+    using type = DataType;
+};
 
 template <typename DataType, int Size>
-struct VtypeExists<DataType, Size, std::void_t<typename Vtype<DataType, Size>::type>> : std::true_type {
+struct VtypeExists {
+    enum {
+        value =
+            std::is_same_v<typename Vtype<DataType, Size>::type, void> ? 0 : 1
+    };
+};
+
+template <typename DataType, int CurrentVal = 256>
+struct VtypeMaxSize {
+    enum {
+        value = VtypeExists<DataType, CurrentVal>::value
+                    ? CurrentVal
+                    : VtypeMaxSize<DataType, CurrentVal / 2>::value
+    };
+};
+
+template <typename DataType>
+struct VtypeMaxSize<DataType, 0> {
+    enum { value = 0 };
 };
 
 template <typename T, typename = void>

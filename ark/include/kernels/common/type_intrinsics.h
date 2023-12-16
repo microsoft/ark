@@ -18,7 +18,7 @@ namespace type {
 
 struct Cast {
     template <typename CastType, typename DataType>
-    static DEVICE CastType compute(DataType input) {
+    static DEVICE CastType compute(const DataType &input) {
         if constexpr (std::is_same<CastType, DataType>::value) {
             return input;
         } else if constexpr (std::is_same<CastType, fp16>::value &&
@@ -134,6 +134,32 @@ struct Cast {
         } else {
             return CastType(input);
         }
+    }
+};
+
+struct Replicate {
+    template <int Size, typename DataType,
+              typename VecType = typename type::Vtype<DataType, Size>::type>
+    static DEVICE VecType compute(const DataType &input) {
+        if constexpr (std::is_same<DataType, fp16>::value && Size == 2) {
+            return __halves2half2(input, input);
+        } else if constexpr (std::is_same<DataType, bf16>::value && Size == 2) {
+            return __halves2bfloat162(input, input);
+        } else if constexpr (IsBuiltinVector2<DataType>::value && Size == 2) {
+            VecType ret;
+            ret.x = input;
+            ret.y = input;
+            return ret;
+        } else if constexpr (IsBuiltinVector4<DataType>::value && Size == 4) {
+            VecType ret;
+            ret.x = input;
+            ret.y = input;
+            ret.z = input;
+            ret.w = input;
+            return ret;
+        }
+        static_assert(Size == 1, "Undefined replication for this type");
+        return input;
     }
 };
 

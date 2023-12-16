@@ -35,7 +35,9 @@ struct Constant<fp32x2> {
 template <>
 struct Constant<fp32x4> {
     static DEVICE fp32x4 zero() { return make_float4(0, 0, 0, 0); }
-    static DEVICE fp32x4 lowest() { return make_float4(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX); }
+    static DEVICE fp32x4 lowest() {
+        return make_float4(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX);
+    }
 };
 
 template <>
