@@ -32,10 +32,11 @@ ARK is under active development and a part of its features will be added in a fu
 
 ### New in ARK v0.5 (Latest Release)
 
-* Add high-performance AllReduce & AllGather algorithms with MSCCL++
+* Integrate with [MSCCL++](https://github.com/microsoft/mscclpp)
 * Removed dependency on `gpudma`
 * Add AMD CDNA3 architecture support
 * Support communication for AMD GPUs
+* Optimize OpGraph scheduling
 * Add a multi-GPU Llama2 example
 
 See details from https://github.com/microsoft/ark/issues/168.
