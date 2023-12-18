@@ -64,14 +64,15 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, float, float, 4> {
             *out = _IntrinsicType::compute(*in);
         } else {
             longlong2 reg_out;
-            longlong2 reg_in = load_128b((const longlong2 *)in);
+            longlong2 reg_in;
+            load<16>(&reg_in, in);
             float4 *pout = (float4 *)&reg_out;
             float4 *pin = (float4 *)&reg_in;
             pout->w = _IntrinsicType::compute(pin->w);
             pout->x = _IntrinsicType::compute(pin->x);
             pout->y = _IntrinsicType::compute(pin->y);
             pout->z = _IntrinsicType::compute(pin->z);
-            store_128b((longlong2 *)out, reg_out);
+            store<16>(out, &reg_out);
         }
     }
 };
@@ -122,7 +123,8 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 8> {
         if (_InShape::W == 1) {
             *out = _IntrinsicType::compute(*in);
         } else {
-            longlong2 reg_in = load_128b((const longlong2 *)in);
+            longlong2 reg_in;
+            load<16>(&reg_in, in);
             longlong2 reg_out;
             fp16x2 *pin = (fp16x2 *)&reg_in;
             fp16x2 *pout = (fp16x2 *)&reg_out;
@@ -130,7 +132,7 @@ struct Broadcast1Intrinsic<_IntrinsicType, _InShape, fp16, fp16, 8> {
             pout[1] = _IntrinsicType::compute(pin[1]);
             pout[2] = _IntrinsicType::compute(pin[2]);
             pout[3] = _IntrinsicType::compute(pin[3]);
-            store_128b((longlong2 *)out, reg_out);
+            store<16>(out, &reg_out);
         }
     }
 };
@@ -209,7 +211,8 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _IntrinsicType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
-            longlong2 reg_b = load_128b((const longlong2 *)b);
+            longlong2 reg_b;
+            load<16>(&reg_b, b);
             longlong2 reg_c;
             float4 *pb = (float4 *)&reg_b;
             float4 *pc = (float4 *)&reg_c;
@@ -218,9 +221,10 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
             pc->x = _IntrinsicType::compute(v, pb->x);
             pc->y = _IntrinsicType::compute(v, pb->y);
             pc->z = _IntrinsicType::compute(v, pb->z);
-            store_128b((longlong2 *)c, reg_c);
+            store<16>(c, &reg_c);
         } else if (_In1Shape::W == 1) {
-            longlong2 reg_a = load_128b((const longlong2 *)a);
+            longlong2 reg_a;
+            load<16>(&reg_a, a);
             longlong2 reg_c;
             float4 *pa = (float4 *)&reg_a;
             float4 *pc = (float4 *)&reg_c;
@@ -229,10 +233,12 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
             pc->x = _IntrinsicType::compute(pa->x, v);
             pc->y = _IntrinsicType::compute(pa->y, v);
             pc->z = _IntrinsicType::compute(pa->z, v);
-            store_128b((longlong2 *)c, reg_c);
+            store<16>(c, &reg_c);
         } else {
-            longlong2 reg_a = load_128b((const longlong2 *)a);
-            longlong2 reg_b = load_128b((const longlong2 *)b);
+            longlong2 reg_a;
+            longlong2 reg_b;
+            load<16>(&reg_a, a);
+            load<16>(&reg_b, b);
             longlong2 reg_c;
             float4 *pa = (float4 *)&reg_a;
             float4 *pb = (float4 *)&reg_b;
@@ -241,7 +247,7 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, float, float,
             pc->x = _IntrinsicType::compute(pa->x, pb->x);
             pc->y = _IntrinsicType::compute(pa->y, pb->y);
             pc->z = _IntrinsicType::compute(pa->z, pb->z);
-            store_128b((longlong2 *)c, reg_c);
+            store<16>(c, &reg_c);
         }
     }
 };
@@ -323,7 +329,8 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
         if (_In0Shape::W == 1 && _In1Shape::W == 1) {
             *c = _IntrinsicType::compute(*a, *b);
         } else if (_In0Shape::W == 1) {
-            longlong2 reg_b = load_128b((const longlong2 *)b);
+            longlong2 reg_b;
+            load<16>(&reg_b, b);
             longlong2 reg_c;
             fp16x2 *pb = (fp16x2 *)&reg_b;
             fp16x2 *pc = (fp16x2 *)&reg_c;
@@ -332,9 +339,10 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
             pc[1] = _IntrinsicType::compute(v, pb[1]);
             pc[2] = _IntrinsicType::compute(v, pb[2]);
             pc[3] = _IntrinsicType::compute(v, pb[3]);
-            store_128b((longlong2 *)c, reg_c);
+            store<16>(c, &reg_c);
         } else if (_In1Shape::W == 1) {
-            longlong2 reg_a = load_128b((const longlong2 *)a);
+            longlong2 reg_a;
+            load<16>(&reg_a, a);
             longlong2 reg_c;
             fp16x2 *pa = (fp16x2 *)&reg_a;
             fp16x2 *pc = (fp16x2 *)&reg_c;
@@ -343,10 +351,12 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
             pc[1] = _IntrinsicType::compute(pa[1], v);
             pc[2] = _IntrinsicType::compute(pa[2], v);
             pc[3] = _IntrinsicType::compute(pa[3], v);
-            store_128b((longlong2 *)c, reg_c);
+            store<16>(c, &reg_c);
         } else {
-            longlong2 reg_a = load_128b((const longlong2 *)a);
-            longlong2 reg_b = load_128b((const longlong2 *)b);
+            longlong2 reg_a;
+            longlong2 reg_b;
+            load<16>(&reg_a, a);
+            load<16>(&reg_b, b);
             longlong2 reg_c;
             fp16x2 *pa = (fp16x2 *)&reg_a;
             fp16x2 *pb = (fp16x2 *)&reg_b;
@@ -355,7 +365,7 @@ struct Broadcast2Intrinsic<_IntrinsicType, _In0Shape, _In1Shape, fp16, fp16,
             pc[1] = _IntrinsicType::compute(pa[1], pb[1]);
             pc[2] = _IntrinsicType::compute(pa[2], pb[2]);
             pc[3] = _IntrinsicType::compute(pa[3], pb[3]);
-            store_128b((longlong2 *)c, reg_c);
+            store<16>(c, &reg_c);
         }
     }
 };
