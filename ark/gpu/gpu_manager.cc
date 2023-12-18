@@ -111,7 +111,7 @@ void GpuManager::memset_d32_sync(void *dst, unsigned int val,
 void GpuManager::memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                                    size_t src_offset, size_t bytes) const {
     dst = static_cast<char *>(dst) + dst_offset;
-    gpuDeviceptr d_src = reinterpret_cast<gpuDeviceptr>(
+    gpuDeviceptr d_src = static_cast<gpuDeviceptr>(
         reinterpret_cast<uint64_t>(src) + src_offset);
     GLOG(gpuMemcpyDtoHAsync(dst, d_src, bytes, pimpl_->main_stream_->get()));
 }

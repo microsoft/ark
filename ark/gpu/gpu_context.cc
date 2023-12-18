@@ -1,5 +1,6 @@
 #include "gpu/gpu_context.h"
 
+#include <cassert>
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -225,10 +226,10 @@ void GpuContext::Impl::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
             ", given ", bytes);
     }
     GpuPtr ptr = buffer->ref(offset);
-    if (ptr == nullptr) {
+    if (ptr == reinterpret_cast<GpuPtr>(nullptr)) {
         ERR(InvalidUsageError, "buffer is not allocated");
     }
-    manager_->memset_d32_sync(ptr, value, bytes);
+    manager_->memset_d32_sync(reinterpret_cast<void*>(ptr), value, bytes);
 }
 
 std::shared_ptr<GpuContext> GpuContext::get_context(int rank, int world_size) {
@@ -267,6 +268,7 @@ void GpuContext::freeze(bool expose) { pimpl_->freeze(expose); }
 
 void GpuContext::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
                         int value, size_t bytes) {
+    pimpl_->memset(buffer, offset, value, bytes);
 }
 
 }  // namespace ark
