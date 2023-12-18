@@ -46,13 +46,15 @@ class GpuContext::Impl {
    public:
     Impl(int rank, int world_size);
     ~Impl() = default;
-    Impl(const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
+    Impl(const Impl &) = delete;
+    Impl &operator=(const Impl &) = delete;
 
     std::shared_ptr<GpuBuffer> allocate_buffer(size_t bytes, int align = 1);
     void free_buffer(std::shared_ptr<GpuBuffer> buffer);
-    void export_buffer(std::shared_ptr<GpuBuffer> buffer, size_t offset, int expose_id);
-    std::shared_ptr<GpuBuffer> import_buffer(size_t bytes, int gpu_id, int expose_id);
+    void export_buffer(std::shared_ptr<GpuBuffer> buffer, size_t offset,
+                       int expose_id);
+    std::shared_ptr<GpuBuffer> import_buffer(size_t bytes, int gpu_id,
+                                             int expose_id);
     void freeze(bool expose);
     void memset(std::shared_ptr<GpuBuffer> buffer, size_t offset, int value,
                 size_t bytes);
@@ -84,7 +86,8 @@ GpuContext::Impl::Impl(int rank, int world_size)
                                            rank_, world_size_, memory_);
 }
 
-std::shared_ptr<GpuBuffer> GpuContext::Impl::allocate_buffer(size_t bytes, int align) {
+std::shared_ptr<GpuBuffer> GpuContext::Impl::allocate_buffer(size_t bytes,
+                                                             int align) {
     if (bytes == 0) {
         return nullptr;
     }
@@ -229,7 +232,7 @@ void GpuContext::Impl::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
     if (ptr == reinterpret_cast<GpuPtr>(nullptr)) {
         ERR(InvalidUsageError, "buffer is not allocated");
     }
-    manager_->memset_d32_sync(reinterpret_cast<void*>(ptr), value, bytes);
+    manager_->memset_d32_sync(reinterpret_cast<void *>(ptr), value, bytes);
 }
 
 std::shared_ptr<GpuContext> GpuContext::get_context(int rank, int world_size) {

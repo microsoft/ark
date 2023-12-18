@@ -13,14 +13,19 @@
 ark::unittest::State test_gpu_context_remote() {
     int pid0 = ark::unittest::spawn_process([] {
         ark::unittest::Timeout timeout{10};
-        std::shared_ptr<ark::GpuContext> ctx = ark::GpuContext::get_context(0, 2);
-        std::shared_ptr<ark::GpuBuffer> gpu0_eid3 = ctx->allocate_buffer(sizeof(int));
-        std::shared_ptr<ark::GpuBuffer> gpu0_eid4 = ctx->allocate_buffer(sizeof(int));
+        std::shared_ptr<ark::GpuContext> ctx =
+            ark::GpuContext::get_context(0, 2);
+        std::shared_ptr<ark::GpuBuffer> gpu0_eid3 =
+            ctx->allocate_buffer(sizeof(int));
+        std::shared_ptr<ark::GpuBuffer> gpu0_eid4 =
+            ctx->allocate_buffer(sizeof(int));
         ctx->export_buffer(gpu0_eid3, 0, 3);
         ctx->export_buffer(gpu0_eid4, 0, 4);
 
-        std::shared_ptr<ark::GpuBuffer> gpu1_eid5 = ctx->import_buffer(sizeof(int), 1, 5);
-        std::shared_ptr<ark::GpuBuffer> gpu1_eid6 = ctx->import_buffer(sizeof(int), 1, 6);
+        std::shared_ptr<ark::GpuBuffer> gpu1_eid5 =
+            ctx->import_buffer(sizeof(int), 1, 5);
+        std::shared_ptr<ark::GpuBuffer> gpu1_eid6 =
+            ctx->import_buffer(sizeof(int), 1, 6);
         ctx->freeze(true);
 
         volatile int *ptr = (volatile int *)gpu0_eid3->ref();
@@ -39,15 +44,20 @@ ark::unittest::State test_gpu_context_remote() {
 
     int pid1 = ark::unittest::spawn_process([] {
         ark::unittest::Timeout timeout{10};
-        std::shared_ptr<ark::GpuContext> ctx = ark::GpuContext::get_context(1, 2);
+        std::shared_ptr<ark::GpuContext> ctx =
+            ark::GpuContext::get_context(1, 2);
 
-        std::shared_ptr<ark::GpuBuffer> gpu1_eid5 = ctx->allocate_buffer(sizeof(int));
-        std::shared_ptr<ark::GpuBuffer> gpu1_eid6 = ctx->allocate_buffer(sizeof(int));
+        std::shared_ptr<ark::GpuBuffer> gpu1_eid5 =
+            ctx->allocate_buffer(sizeof(int));
+        std::shared_ptr<ark::GpuBuffer> gpu1_eid6 =
+            ctx->allocate_buffer(sizeof(int));
         ctx->export_buffer(gpu1_eid5, 0, 5);
         ctx->export_buffer(gpu1_eid6, 0, 6);
 
-        std::shared_ptr<ark::GpuBuffer> gpu0_eid3 = ctx->import_buffer(sizeof(int), 0, 3);
-        std::shared_ptr<ark::GpuBuffer> gpu0_eid4 = ctx->import_buffer(sizeof(int), 0, 4);
+        std::shared_ptr<ark::GpuBuffer> gpu0_eid3 =
+            ctx->import_buffer(sizeof(int), 0, 3);
+        std::shared_ptr<ark::GpuBuffer> gpu0_eid4 =
+            ctx->import_buffer(sizeof(int), 0, 4);
         ctx->freeze(true);
 
         ctx->memset(gpu0_eid3, 0, 7890, 1);

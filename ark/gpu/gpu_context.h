@@ -14,8 +14,10 @@ class GpuContext {
 
     std::shared_ptr<GpuBuffer> allocate_buffer(size_t bytes, int align = 1);
     void free_buffer(std::shared_ptr<GpuBuffer> buffer);
-    void export_buffer(std::shared_ptr<GpuBuffer> buffer, size_t offset, int expose_id);
-    std::shared_ptr<GpuBuffer> import_buffer(size_t bytes, int gpu_id, int expose_id);
+    void export_buffer(std::shared_ptr<GpuBuffer> buffer, size_t offset,
+                       int expose_id);
+    std::shared_ptr<GpuBuffer> import_buffer(size_t bytes, int gpu_id,
+                                             int expose_id);
     void freeze(bool expose = false);
     int rank() const;
     int world_size() const;

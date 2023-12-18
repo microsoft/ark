@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include "gpu/gpu_memory.h"
 #include "gpu/gpu_buffer.h"
+#include "gpu/gpu_memory.h"
 #include "gpu_buf.h"
 #include "gpu_common.h"
 #include "gpu_mem.h"

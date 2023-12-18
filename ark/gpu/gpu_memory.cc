@@ -36,7 +36,7 @@ class GpuMemory::Impl {
 };
 
 GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
-                      size_t align,  [[maybe_unused]] bool expose)
+                      size_t align, [[maybe_unused]] bool expose)
     : manager_(manager), bytes_(bytes), align_(align), is_remote_(false) {
     if (bytes_ == 0) {
         dev_ptr_aligned_ = reinterpret_cast<gpuDeviceptr>(nullptr);

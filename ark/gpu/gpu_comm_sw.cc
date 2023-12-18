@@ -123,7 +123,8 @@ GpuCommSw::Impl::Impl(const std::string &name, const int gpu_id, const int rank,
     std::stringstream ip_port;
     ip_port << get_host(0) << ":" << get_env().mscclpp_port;
 
-    this->bootstrap_ = std::make_shared<mscclpp::TcpBootstrap>(rank, world_size);
+    this->bootstrap_ =
+        std::make_shared<mscclpp::TcpBootstrap>(rank, world_size);
     this->bootstrap_->initialize(ip_port.str());
     this->comm_ = std::make_shared<mscclpp::Communicator>(this->bootstrap_);
     this->proxy_service_ = std::make_shared<mscclpp::ProxyService>();
@@ -232,8 +233,9 @@ void GpuCommSw::Impl::configure(
             connectionFutures;
         const mscclpp::TransportFlags all_transports =
             mscclpp::Transport::CudaIpc | ibTransport;
-        mscclpp::RegisteredMemory local_reg_memory = this->comm_->registerMemory(
-            (void *)(data_mem->ref()), data_mem->get_bytes(), all_transports);
+        mscclpp::RegisteredMemory local_reg_memory =
+            this->comm_->registerMemory((void *)(data_mem->ref()),
+                                        data_mem->get_bytes(), all_transports);
         std::vector<mscclpp::NonblockingFuture<mscclpp::RegisteredMemory>>
             remote_reg_memories;
         for (int r = 0; r < this->world_size_; ++r) {
@@ -494,7 +496,7 @@ std::shared_ptr<GpuMemory> GpuCommSw::Impl::get_data_memory(const int gid) {
     }
     std::shared_ptr<GpuMemory> dm = data_memories_[gid];
     if (dm == nullptr) {
-        dm = manager_->malloc(0 , 1);
+        dm = manager_->malloc(0, 1);
         data_memories_[gid] = dm;
     }
     return dm;
