@@ -4,8 +4,8 @@
 #ifndef ARK_KERNELS_ACTIVATION_H_
 #define ARK_KERNELS_ACTIVATION_H_
 
-#include "broadcast.h"
-#include "type_intrinsics.h"
+#include "common/broadcast.h"
+#include "common/type_intrinsics.h"
 
 namespace ark {
 

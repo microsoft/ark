@@ -4,6 +4,8 @@
 #ifndef ARK_KERNELS_SHFL_H_
 #define ARK_KERNELS_SHFL_H_
 
+#include "device.h"
+
 namespace ark {
 
 #if defined(ARK_TARGET_CUDA_ARCH)

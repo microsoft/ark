@@ -11,23 +11,7 @@
 #include "fp16.h"
 #include "fp32.h"
 #include "integer.h"
-
-template <typename T, typename = void>
-struct IsBuiltinVector2 : std::false_type {};
-
-template <typename T, typename = void>
-struct IsBuiltinVector4 : std::false_type {};
-
-template <typename T>
-struct IsBuiltinVector2<
-    T, std::void_t<decltype(std::declval<T>().x, std::declval<T>().y)>>
-    : std::true_type {};
-
-template <typename T>
-struct IsBuiltinVector4<
-    T, std::void_t<decltype(std::declval<T>().x, std::declval<T>().y,
-                            std::declval<T>().z, std::declval<T>().w)>>
-    : std::true_type {};
+#include "vector_type.h"
 
 namespace ark {
 namespace type {
