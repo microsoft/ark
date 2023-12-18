@@ -7,18 +7,14 @@
 #include <mscclpp/proxy_channel_device.hpp>
 #include <mscclpp/sm_channel_device.hpp>
 
-#include "common.h"
-#include "ewise.h"
-#include "unit_op.h"
+#include "common/atomic.h"
+#include "common/unit_op.h"
 
 extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle _ARK_PROXY_CHANS[];
 extern __constant__ mscclpp::SmChannelDeviceHandle _ARK_SM_CHANS[];
 
 namespace ark {
 namespace comm {
-
-template <typename OutDims, typename DataType>
-struct EwiseSumCompType {};
 
 template <int NBytes>
 union BytesPack {};

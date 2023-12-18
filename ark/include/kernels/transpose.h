@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_TRANSPOSE_H_
 #define ARK_KERNELS_TRANSPOSE_H_
 
-#include "ewise.h"
+#include "common/ewise.h"
 
 namespace ark {
 

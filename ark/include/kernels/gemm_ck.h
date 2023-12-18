@@ -14,7 +14,8 @@
 
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp"
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp"
-#include "common.h"
+#include "common/checker.h"
+#include "common/unit_op.h"
 
 /// Common aliases for CK GeMM configurations.
 

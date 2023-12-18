@@ -4,10 +4,6 @@
 #ifndef ARK_KERNELS_ARCH_H_
 #define ARK_KERNELS_ARCH_H_
 
-#if defined(ARK_TARGET_ROCM_ARCH)
-#include <hip/hip_runtime.h>
-#endif  // ARK_TARGET_ROCM_ARCH
-
 #include "device.h"
 #include "static_math.h"
 

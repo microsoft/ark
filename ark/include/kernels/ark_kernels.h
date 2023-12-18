@@ -6,15 +6,11 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
-// clang-format off
-#include "common.h"
-// clang-format on
-
 #include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
-#include "copy.h"
 #include "comm.h"
+#include "copy.h"
 #include "embedding.h"
 #include "im2col.h"
 #include "layernorm.h"
