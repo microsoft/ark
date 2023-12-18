@@ -229,7 +229,7 @@ void GpuContext::Impl::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
             ", given ", bytes);
     }
     GpuPtr ptr = buffer->ref(offset);
-    if (ptr == reinterpret_cast<GpuPtr>(nullptr)) {
+    if (ptr == (GpuPtr) nullptr) {
         ERR(InvalidUsageError, "buffer is not allocated");
     }
     manager_->memset_d32_sync(reinterpret_cast<void *>(ptr), value, bytes);

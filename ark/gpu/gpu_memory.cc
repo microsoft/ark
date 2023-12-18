@@ -39,8 +39,8 @@ GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
                       size_t align, [[maybe_unused]] bool expose)
     : manager_(manager), bytes_(bytes), align_(align), is_remote_(false) {
     if (bytes_ == 0) {
-        dev_ptr_aligned_ = reinterpret_cast<gpuDeviceptr>(nullptr);
-        dev_ptr_raw_ = reinterpret_cast<gpuDeviceptr>(nullptr);
+        dev_ptr_aligned_ = (gpuDeviceptr) nullptr;
+        dev_ptr_raw_ = (gpuDeviceptr)(nullptr);
         return;
     }
 
@@ -92,14 +92,14 @@ GpuMemory::Impl::Impl(const mscclpp::RegisteredMemory& remote_memory)
     : remote_memory_(remote_memory),
       bytes_(remote_memory_.size()),
       is_remote_(true),
-      dev_ptr_raw_(reinterpret_cast<gpuDeviceptr>(nullptr)),
-      dev_ptr_aligned_(reinterpret_cast<gpuDeviceptr>(remote_memory.data())) {}
+      dev_ptr_raw_((gpuDeviceptr) nullptr),
+      dev_ptr_aligned_((gpuDeviceptr)remote_memory.data()) {}
 
 GpuMemory::Impl::~Impl() {
     if (is_remote_) {
         return;
     }
-    if (dev_ptr_raw_ != reinterpret_cast<gpuDeviceptr>(nullptr)) {
+    if (dev_ptr_raw_ != (gpuDeviceptr) nullptr) {
         GLOG(gpuMemFree(dev_ptr_raw_));
     }
 }
