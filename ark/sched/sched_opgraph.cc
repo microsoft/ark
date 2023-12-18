@@ -238,35 +238,83 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
             }
             new_boundary_nodes.emplace_back(producer);
         }
+        OpNode *merge_candidate = nullptr;
         if (boundary_node->producers.size() > 1) {
-            // This node has multiple producers. It cannot be merged.
-            seen_nodes.insert(boundary_node);
-            OPGRAPH_DEBUG("    multiple producers");
-            continue;
+            // This node has multiple producers. We can merge only if one
+            // producer depends on all other producers.
+            for (auto &producer : boundary_node->producers) {
+                bool depends_on_all = true;
+                for (auto &other_producer : boundary_node->producers) {
+                    if (other_producer == producer) {
+                        continue;
+                    }
+                    if (!this->depends_on(producer, other_producer)) {
+                        depends_on_all = false;
+                        break;
+                    }
+                }
+                if (depends_on_all) {
+                    merge_candidate = producer;
+                    break;
+                }
+            }
+            if (merge_candidate == nullptr) {
+                // At least one producer does not depend on others.
+                // Cannot merge.
+                seen_nodes.insert(boundary_node);
+                OPGRAPH_DEBUG("    multiple producers");
+                continue;
+            }
+        } else {
+            // This node has only one producer.
+            merge_candidate = *(boundary_node->producers.begin());
         }
-        // This node has only one producer.
-        OpNode *producer = *(boundary_node->producers.begin());
-        if (producer->users.size() == 0) {
+        if (merge_candidate->users.size() == 0) {
             ERR(SchedulerError, "unexpected error: graph is incomplete");
         }
-        if (producer->users.size() > 1) {
-            // The producer has multiple users. It cannot be merged.
-            seen_nodes.insert(boundary_node);
-            OPGRAPH_DEBUG("    multiple users");
-            continue;
+        if (merge_candidate->users.size() > 1) {
+            // The candidate has multiple users. We can merge only if all
+            // other users depend on the current boundary_node.
+            bool depends_on_one = true;
+            for (auto &user : merge_candidate->users) {
+                if (user == boundary_node) {
+                    continue;
+                }
+                if (!this->depends_on(user, boundary_node)) {
+                    depends_on_one = false;
+                    break;
+                }
+            }
+            if (!depends_on_one) {
+                // At least one user does not depend on the boundary_node.
+                // Cannot merge.
+                seen_nodes.insert(boundary_node);
+                OPGRAPH_DEBUG("    multiple users");
+                continue;
+            }
         }
-        // The producer has only one user. Merge the two nodes.
+        // The candidate has only one user. Merge the two nodes.
 
-        // Merge `boundary_node` into `producer`.
-        OPGRAPH_DEBUG("  merge ops: ", producer->get_name(), " -> ",
+        // Merge `boundary_node` into `merge_candidate`.
+        OPGRAPH_DEBUG("  merge: ", merge_candidate->get_name(), " -> ",
                       boundary_node->get_name());
         auto &ops = boundary_node->ops;
-        producer->ops.insert(producer->ops.end(), ops.begin(), ops.end());
-        producer->users = boundary_node->users;
-        for (auto &user : producer->users) {
+        merge_candidate->ops.insert(merge_candidate->ops.end(), ops.begin(),
+                                    ops.end());
+        for (auto &user : boundary_node->users) {
             user->producers.erase(boundary_node);
-            user->producers.insert(producer);
+            user->producers.insert(merge_candidate);
+            merge_candidate->users.insert(user);
         }
+        for (auto &producer : boundary_node->producers) {
+            if (producer == merge_candidate) {
+                continue;
+            }
+            producer->users.erase(boundary_node);
+            producer->users.insert(merge_candidate);
+            merge_candidate->producers.insert(producer);
+        }
+        merge_candidate->users = boundary_node->users;
 
         // Remove `boundary_node` from `nodes`.
         auto it =
@@ -307,6 +355,36 @@ OpNode *OpGraph::break_node(OpNode *node, int op_idx) {
     node->users.clear();
     node->users.insert(new_node);
     return new_node;
+}
+
+/// Check dependencies between two @ref OpNode.
+///
+/// @param node1 The first @ref OpNode.
+/// @param node2 The second @ref OpNode.
+/// @return True if @p node1 depends on @p node2.
+bool OpGraph::depends_on(OpNode *node1, OpNode *node2) const {
+    if (node1 == node2) {
+        return false;
+    }
+    std::set<OpNode *> seen_nodes;
+    std::list<OpNode *> boundary_nodes;
+    boundary_nodes.emplace_back(node1);
+    while (boundary_nodes.size() > 0) {
+        std::list<OpNode *> new_boundary_nodes;
+        for (auto &boundary_node : boundary_nodes) {
+            if (boundary_node == node2) {
+                return true;
+            }
+            for (auto &producer : boundary_node->producers) {
+                if (seen_nodes.find(producer) != seen_nodes.end()) {
+                    continue;
+                }
+                new_boundary_nodes.emplace_back(producer);
+            }
+        }
+        boundary_nodes = new_boundary_nodes;
+    }
+    return false;
 }
 
 }  // namespace ark
