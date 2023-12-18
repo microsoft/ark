@@ -4,10 +4,6 @@
 #ifndef ARK_KERNELS_SYNC_H_
 #define ARK_KERNELS_SYNC_H_
 
-#if defined(ARK_TARGET_ROCM_ARCH)
-#include <hip/hip_runtime.h>
-#endif  // ARK_TARGET_ROCM_ARCH
-
 #include "arch.h"
 #include "device.h"
 #include "smem.h"

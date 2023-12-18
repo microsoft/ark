@@ -6,6 +6,8 @@
 
 #include <mscclpp/atomic_device.hpp>
 
+#include "device.h"
+
 namespace ark {
 
 template <typename T>

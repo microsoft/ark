@@ -8,8 +8,7 @@
 #include "gemm_cutlass.h"
 #elif defined(ARK_TARGET_ROCM_ARCH)
 #include "gemm_ck.h"
-#endif
-#include "unit_op.h"
+#endif  // defined(ARK_TARGET_ROCM_ARCH)
 
 namespace ark {
 

@@ -20,7 +20,8 @@
 #include "cutlass/epilogue/thread/linear_combination.h"
 // clang-format on
 
-#include "common.h"
+#include "common/checker.h"
+#include "common/unit_op.h"
 
 namespace ark {
 

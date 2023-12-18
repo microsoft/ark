@@ -4,14 +4,14 @@
 #ifndef ARK_KERNELS_FP16_H_
 #define ARK_KERNELS_FP16_H_
 
+#include "device.h"
+#include "vector_type.h"
+
 #if defined(ARK_TARGET_CUDA_ARCH)
 #include <cuda_fp16.h>
 #elif defined(ARK_TARGET_ROCM_ARCH)
 #include <hip/hip_fp16.h>
 #endif
-
-#include "device.h"
-#include "vector_type.h"
 
 namespace ark {
 

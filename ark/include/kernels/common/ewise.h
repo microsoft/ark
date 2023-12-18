@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_EWISE_H_
 #define ARK_KERNELS_EWISE_H_
 
-#include "common.h"
+#include "unit_op.h"
 
 namespace ark {
 
