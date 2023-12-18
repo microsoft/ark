@@ -11,14 +11,13 @@ namespace ark {
 
 class GpuMemory::Impl {
    public:
-    Impl(std::shared_ptr<GpuManager> manager);
-    Impl(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align);
+    Impl(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align,
+         bool expose = false);
     Impl(const mscclpp::RegisteredMemory& remote_memory);
     ~Impl();
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
 
-    void init(size_t bytes, size_t align);
     void to_host(void* dst, bool async) const;
     void from_host(const void* src, size_t bytes, bool async);
     void sync() const;
@@ -36,47 +35,33 @@ class GpuMemory::Impl {
     gpuDeviceptr dev_ptr_aligned_;
 };
 
-GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager)
-    : manager_(manager),
-      bytes_(0),
-      align_(1),
-      is_remote_(false),
-      dev_ptr_raw_(nullptr),
-      dev_ptr_aligned_(nullptr) {}
-
 GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
-                      size_t align)
+                      size_t align, bool expose)
     : manager_(manager), bytes_(bytes), align_(align), is_remote_(false) {
-    init(bytes, align);
-}
-
-GpuMemory::Impl::Impl(const mscclpp::RegisteredMemory& remote_memory)
-    : remote_memory_(remote_memory),
-      bytes_(remote_memory_.size()),
-      dev_ptr_aligned_(remote_memory.data()),
-      dev_ptr_raw_(nullptr),
-      is_remote_(true) {}
-
-GpuMemory::Impl::~Impl() {
-    if (is_remote_) {
+    if (bytes_ == 0) {
+        dev_ptr_aligned_ = nullptr;
+        dev_ptr_raw_ = nullptr;
         return;
     }
-    if (dev_ptr_raw_ != nullptr) {
-        GLOG(gpuMemFree(dev_ptr_raw_));
-    }
-}
 
-void GpuMemory::Impl::init(size_t bytes, size_t align) {
-    this->bytes_ = bytes;
-    this->align_ = align;
     if (align_ == 0) {
         align_ = 1;
     } else if (align_ & (align_ - 1)) {
-        LOG(ERROR, "align must be a power of 2. Given %zu.", align_);
+        ERR(InvalidUsageError, "align must be a power of 2. Given %zu.",
+            align_);
     }
     manager_->set_current();
     bytes_raw_ = bytes_ + align_ - 1;
+#if defined(ARK_CUDA)
     GLOG(gpuMemAlloc(&dev_ptr_raw_, bytes_raw_));
+#elif defined(ARK_ROCM)
+    if (expose) {
+        GLOG(hipExtMallocWithFlags(&dev_ptr_raw_, bytes_raw_,
+                                   hipDeviceMallocUncached));
+    } else {
+        GLOG(gpuMemAlloc(&dev_ptr_raw_, bytes_raw_));
+    }
+#endif
 
     // Make sure the raw pointer is a base pointer.
     gpuDeviceptr base_ptr;
@@ -99,6 +84,24 @@ void GpuMemory::Impl::init(size_t bytes, size_t align) {
                                                       ((bytes_raw_ >> 2) << 2)),
                               0, bytes_raw_ & 3);
     manager_->sync();
+    LOG(DEBUG, "Created GpuMemory addr 0x", std::hex, dev_ptr_aligned_,
+        std::dec, " bytes ", bytes_);
+}
+
+GpuMemory::Impl::Impl(const mscclpp::RegisteredMemory& remote_memory)
+    : remote_memory_(remote_memory),
+      bytes_(remote_memory_.size()),
+      is_remote_(true),
+      dev_ptr_raw_(nullptr),
+      dev_ptr_aligned_(remote_memory.data()) {}
+
+GpuMemory::Impl::~Impl() {
+    if (is_remote_) {
+        return;
+    }
+    if (dev_ptr_raw_ != nullptr) {
+        GLOG(gpuMemFree(dev_ptr_raw_));
+    }
 }
 
 void GpuMemory::Impl::to_host(void* dst, bool async) const {
@@ -127,18 +130,29 @@ void GpuMemory::Impl::from_host(const void* src, size_t bytes, bool async) {
 
 void GpuMemory::Impl::sync() const { manager_->sync(); }
 
-GpuMemory::GpuMemory(std::shared_ptr<GpuManager> manager)
-    : pimpl_(std::make_shared<Impl>(manager)) {}
-
 GpuMemory::GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes,
-                     size_t align)
-    : pimpl_(std::make_shared<Impl>(manager, bytes, align)) {}
+                     size_t align, bool expose)
+    : pimpl_(std::make_shared<Impl>(manager, bytes, align, expose)) {}
 
 GpuMemory::GpuMemory(const mscclpp::RegisteredMemory& remote_memory) {
     pimpl_ = std::make_shared<Impl>(remote_memory);
 }
 
-void GpuMemory::init(size_t bytes, size_t align) { pimpl_->init(bytes, align); }
+void GpuMemory::resize(size_t bytes, bool expose) {
+    size_t align = pimpl_->align_;
+    this->pimpl_ =
+        std::make_shared<Impl>(pimpl_->manager_, bytes, align, expose);
+}
+
+void GpuMemory::resize(const mscclpp::RegisteredMemory& remote_memory) {
+    this->pimpl_ = std::make_shared<Impl>(remote_memory);
+}
+
+GpuPtr GpuMemory::ref(size_t offset) const {
+    return reinterpret_cast<GpuPtr>(
+        reinterpret_cast<long long unsigned int>(pimpl_->dev_ptr_aligned_) +
+        offset);
+}
 
 size_t GpuMemory::bytes() const { return pimpl_->bytes_; }
 

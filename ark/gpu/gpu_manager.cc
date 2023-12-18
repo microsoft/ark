@@ -70,7 +70,7 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
     static std::unordered_map<int, std::weak_ptr<GpuManager>> instances;
     auto it = instances.find(gpu_id);
     if (it == instances.end()) {
-        auto instance = std::make_shared<GpuManager>(gpu_id);
+        auto instance = std::shared_ptr<GpuManager>(new GpuManager(gpu_id));
         instances[gpu_id] = instance;
         return instance;
     } else {
@@ -78,7 +78,7 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
         if (instance) {
             return instance;
         } else {
-            auto instance = std::make_shared<GpuManager>(gpu_id);
+            auto instance = std::shared_ptr<GpuManager>(new GpuManager(gpu_id));
             instances[gpu_id] = instance;
             return instance;
         }
@@ -87,12 +87,10 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
 
 GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {}
 
-std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align) {
-    return std::make_shared<GpuMemory>(shared_from_this(), bytes, align);
-}
-
-std::shared_ptr<GpuMemory> GpuManager::empty_memory() const {
-    return std::make_shared<GpuMemory>(shared_from_this());
+std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align,
+                                              bool expose) {
+    return std::make_shared<GpuMemory>(
+        GpuManager::get_instance(pimpl_->gpu_id_), bytes, align, expose);
 }
 
 int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }
@@ -101,6 +99,13 @@ const GpuManager::Info &GpuManager::info() const { return pimpl_->info_; }
 
 void GpuManager::set_current() const {
     GLOG(gpuCtxSetCurrent(pimpl_->gpu_ctx_));
+}
+
+void GpuManager::memset_d32_sync(void *dst, unsigned int val,
+                                 size_t num) const {
+    this->set_current();
+    this->memset_d32_async(dst, val, num);
+    this->sync();
 }
 
 void GpuManager::memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,

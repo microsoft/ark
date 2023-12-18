@@ -17,8 +17,10 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
     GpuManager(const GpuManager &) = delete;
     GpuManager &operator=(const GpuManager &) = delete;
 
-    std::shared_ptr<GpuMemory> malloc(size_t bytes, size_t align = 1);
-    std::shared_ptr<GpuMemory> empty_memory() const;
+    std::shared_ptr<GpuMemory> malloc(size_t bytes, size_t align = 1,
+                                      bool expose = false);
+
+    void memset_d32_sync(void *dst, unsigned int val, size_t num) const;
     int get_gpu_id() const;
 
     struct Info;

@@ -9,8 +9,6 @@
 
 namespace ark {
 
-using GpuPtr = gpuDeviceptr;
-
 class GpuBuffer {
    public:
     GpuBuffer(int gpu_id, const std::shared_ptr<GpuMemory> memory, int id,
@@ -18,8 +16,10 @@ class GpuBuffer {
     ~GpuBuffer() = default;
     GpuPtr ref(size_t offset = 0) const;
     size_t get_offset() const { return offset_; }
+    size_t get_bytes() const { return bytes_; }
     void set_offset(size_t offset) { offset_ = offset; }
     int get_gpu_id() const { return gpu_id_; }
+    int get_id() const { return id_; }
 
    private:
     int gpu_id_;

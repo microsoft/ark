@@ -5,20 +5,24 @@
 #define ARK_GPU_MEMORY_H_
 
 #include <memory>
+#include <mscclpp/core.hpp>
 #include <vector>
 
-#include "mscclpp/core.hpp"
+#include "gpu/gpu.h"
 
 namespace ark {
 
+using GpuPtr = gpuDeviceptr;
 class GpuManager;
 
 class GpuMemory {
    public:
-    GpuMemory(std::shared_ptr<GpuManager> manager);
-    GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align);
+    GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align,
+              bool expose = false);
     GpuMemory(const mscclpp::RegisteredMemory& remote_memory);
-    void init(size_t bytes, size_t align);
+    void resize(size_t bytes, bool expose = false);
+    void resize(const mscclpp::RegisteredMemory& remote_memory);
+    GpuPtr ref(size_t offset = 0) const;
     size_t bytes() const;
 
     template <typename T>

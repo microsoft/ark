@@ -21,8 +21,14 @@ class GpuContext {
     int world_size() const;
     void memset(std::shared_ptr<GpuBuffer> buffer, size_t offset, int value,
                 size_t bytes);
-    void memcpy(std::shared_ptr<GpuBuffer> dst, std::shared_ptr<GpuBuffer> src,
-                size_t bytes);
+    // void memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset, void *src,
+    //             size_t src_offset, size_t bytes);
+    // void memcpy(void *dst, size_t dst_offset,
+    //             const std::shared_ptr<GpuBuffer> src, size_t src_offset,
+    //             size_t bytes);
+    // void memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
+    //             const std::shared_ptr<GpuBuffer> src, size_t src_offset,
+    //             size_t bytes);
 
    private:
     GpuContext(int rank, int world_size);
