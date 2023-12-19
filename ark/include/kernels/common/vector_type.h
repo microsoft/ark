@@ -69,7 +69,7 @@ struct Constant {
 }  // namespace type
 
 template <typename IntrinsicType, typename InputVtype>
-struct IntrinsicComputeExists {
+struct IntrinsicCompute1Exists {
     template <typename U>
     static auto test(InputVtype) -> decltype(&U::compute, std::true_type{});
 
@@ -80,39 +80,76 @@ struct IntrinsicComputeExists {
         test<IntrinsicType>(type::Constant<InputVtype>::zero()))::value;
 };
 
+template <typename IntrinsicType, typename InputVtype>
+struct IntrinsicCompute2Exists {
+    template <typename U>
+    static auto test(InputVtype, InputVtype)
+        -> decltype(&U::compute, std::true_type{});
+
+    template <typename>
+    static auto test(...) -> std::false_type;
+
+    static constexpr bool value = decltype(
+        test<IntrinsicType>(type::Constant<InputVtype>::zero(),
+                            type::Constant<InputVtype>::zero()))::value;
+};
+
 template <typename IntrinsicType, typename InputType, int CurrentVal = 256>
-struct IntrinsicComputeVtypeMaxSize {
+struct IntrinsicCompute1VtypeMaxSize {
     constexpr static int VtypeExists =
         type::VtypeExists<InputType, CurrentVal>::value;
     constexpr static int ICExists =
         VtypeExists
-            ? IntrinsicComputeExists<
+            ? IntrinsicCompute1Exists<
                   IntrinsicType,
                   typename type::Vtype<InputType, CurrentVal>::type>::value
             : 0;
     enum {
         value = ICExists
                     ? CurrentVal
-                    : IntrinsicComputeVtypeMaxSize<IntrinsicType, InputType,
-                                                   CurrentVal / 2>::value
+                    : IntrinsicCompute1VtypeMaxSize<IntrinsicType, InputType,
+                                                    CurrentVal / 2>::value
     };
 };
 
 template <typename IntrinsicType, typename InputType>
-struct IntrinsicComputeVtypeMaxSize<IntrinsicType, InputType, 1> {
+struct IntrinsicCompute1VtypeMaxSize<IntrinsicType, InputType, 1> {
+    enum { value = 1 };
+};
+
+template <typename IntrinsicType, typename InputType, int CurrentVal = 256>
+struct IntrinsicCompute2VtypeMaxSize {
+    constexpr static int VtypeExists =
+        type::VtypeExists<InputType, CurrentVal>::value;
+    constexpr static int ICExists =
+        VtypeExists
+            ? IntrinsicCompute2Exists<
+                  IntrinsicType,
+                  typename type::Vtype<InputType, CurrentVal>::type>::value
+            : 0;
+    enum {
+        value = ICExists
+                    ? CurrentVal
+                    : IntrinsicCompute2VtypeMaxSize<IntrinsicType, InputType,
+                                                    CurrentVal / 2>::value
+    };
+};
+
+template <typename IntrinsicType, typename InputType>
+struct IntrinsicCompute2VtypeMaxSize<IntrinsicType, InputType, 1> {
     enum { value = 1 };
 };
 
 template <int NumElem, typename ElemIntrinsic>
 struct VectorCompute {
     template <typename OutputType, typename InputType>
-    static DEVICE void compute(OutputType *out, InputType *in) {
+    static DEVICE void compute(OutputType *out, const InputType *in) {
         constexpr int TmpMin =
             math::min<type::VtypeMaxSize<OutputType>::value, NumElem>::value;
         constexpr int VtypeSize =
             math::min<TmpMin,
-                      IntrinsicComputeVtypeMaxSize<ElemIntrinsic, InputType,
-                                                   TmpMin>::value>::value;
+                      IntrinsicCompute1VtypeMaxSize<ElemIntrinsic, InputType,
+                                                    TmpMin>::value>::value;
         using OutputVtype = typename type::Vtype<OutputType, VtypeSize>::type;
         using InputVtype = typename type::Vtype<InputType, VtypeSize>::type;
         constexpr int NumVtype = NumElem / VtypeSize;
@@ -120,7 +157,7 @@ struct VectorCompute {
         static_assert(NumElem % VtypeSize == 0,
                       "NumElem must be divisible by VtypeSize");
         OutputVtype *out_vtype = reinterpret_cast<OutputVtype *>(out);
-        InputVtype *in_vtype = reinterpret_cast<InputVtype *>(in);
+        const InputVtype *in_vtype = reinterpret_cast<const InputVtype *>(in);
 #pragma unroll
         for (int i = 0; i < NumVtype; ++i) {
             out_vtype[i] = ElemIntrinsic::compute(in_vtype[i]);
@@ -128,14 +165,14 @@ struct VectorCompute {
     }
 
     template <typename OutputType, typename InputType>
-    static DEVICE void compute(OutputType *out, InputType *in0,
-                               InputType *in1) {
+    static DEVICE void compute(OutputType *out, const InputType *in0,
+                               const InputType *in1) {
         constexpr int TmpMin =
             math::min<type::VtypeMaxSize<OutputType>::value, NumElem>::value;
         constexpr int VtypeSize =
             math::min<TmpMin,
-                      IntrinsicComputeVtypeMaxSize<ElemIntrinsic, InputType,
-                                                   TmpMin>::value>::value;
+                      IntrinsicCompute2VtypeMaxSize<ElemIntrinsic, InputType,
+                                                    TmpMin>::value>::value;
         using OutputVtype = typename type::Vtype<OutputType, VtypeSize>::type;
         using InputVtype = typename type::Vtype<InputType, VtypeSize>::type;
         constexpr int NumVtype = NumElem / VtypeSize;
@@ -143,8 +180,8 @@ struct VectorCompute {
         static_assert(NumElem % VtypeSize == 0,
                       "NumElem must be divisible by VtypeSize");
         OutputVtype *out_vtype = reinterpret_cast<OutputVtype *>(out);
-        InputVtype *in0_vtype = reinterpret_cast<InputVtype *>(in0);
-        InputVtype *in1_vtype = reinterpret_cast<InputVtype *>(in1);
+        const InputVtype *in0_vtype = reinterpret_cast<const InputVtype *>(in0);
+        const InputVtype *in1_vtype = reinterpret_cast<const InputVtype *>(in1);
 #pragma unroll
         for (int i = 0; i < NumVtype; ++i) {
             out_vtype[i] = ElemIntrinsic::compute(in0_vtype[i], in1_vtype[i]);
