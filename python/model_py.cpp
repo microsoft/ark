@@ -64,12 +64,6 @@ void register_model(py::module &m) {
              "the normalized tensor as `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "layernorm")
-        .def("rmsnorm", &ark::Model::rmsnorm,
-             "Applies RMS (Root Mean Square Layer Normalization) normalization "
-             "to the `input` tensor and returns "
-             "the normalized tensor as `output`.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("output") = nullptr, py::arg("name") = "rmsnorm")
         .def("transpose", &ark::Model::transpose,
              "Transposes the `input` tensor according to the given `perm` "
              "permutation. For example, transpose(input, {0, 1 ,3, 2}) will "

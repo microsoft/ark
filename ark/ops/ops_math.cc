@@ -10,12 +10,12 @@ using namespace std;
 
 namespace ark {
 
-extern const OpConfigMap MathConfigMap;
+extern const OpConfigMap Broadcast1ConfigMap;
 
 MathOp::MathOp(const OpType &type, const std::string &prec_type, Tensor *input,
                Tensor *output, const std::string &name)
     : Op{type, prec_type,      {input}, {output}, {},
-         name, &MathConfigMap, -1,      true} {}
+         name, &Broadcast1ConfigMap, -1,      true} {}
 
 std::string MathOp::function_name(const OpConfig &cfg,
                                   const std::string &type) const {
@@ -63,16 +63,44 @@ Tensor *Model::math(Tensor *input, Tensor *output, const string &name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-SqrtOp::SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
-               const string &name)
-    : MathOp{OP_SQRT, prec_type, input, output, name} {}
+ExpOp::ExpOp(const std::string &prec_type, Tensor *input, Tensor *output,
+             const string &name)
+    : MathOp{OP_EXP, prec_type, input, output, name} {}
 
-std::string SqrtOp::function_name(const OpConfig &cfg) const {
-    return MathOp::function_name(cfg, "sqrt");
+std::string ExpOp::function_name(const OpConfig &cfg) const {
+    return MathOp::function_name(cfg, "exp");
 }
 
-Tensor *Model::sqrt(Tensor *input, Tensor *output, const string &name) {
-    return math<SqrtOp>(input, output, name);
+Tensor *Model::exp(Tensor *input, Tensor *output, const string &name) {
+    return math<ExpOp>(input, output, name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+GeluOp::GeluOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : MathOp{OP_GELU, prec_type, input, output, name} {}
+
+std::string GeluOp::function_name(const OpConfig &cfg) const {
+    return MathOp::function_name(cfg, "gelu");
+}
+
+Tensor *Model::gelu(Tensor *input, Tensor *output, const string &name) {
+    return math<GeluOp>(input, output, name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+ReluOp::ReluOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : MathOp{OP_RELU, prec_type, input, output, name} {}
+
+std::string ReluOp::function_name(const OpConfig &cfg) const {
+    return MathOp::function_name(cfg, "relu");
+}
+
+Tensor *Model::relu(Tensor *input, Tensor *output, const string &name) {
+    return math<ReluOp>(input, output, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,19 +117,32 @@ Tensor *Model::rsqrt(Tensor *input, Tensor *output, const string &name) {
     return math<RsqrtOp>(input, output, name);
 }
 
-const OpConfigMap MathConfigMap = {
-    {{OP_ARCH_ANY, "any"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 512}}, {{1, 512}}, false, false},
-         {1, 0, {{512, 1}}, {{512, 1}}, false, false},
-         {1, 0, {{1, 256}}, {{1, 256}}, false, false},
-         {1, 0, {{256, 1}}, {{256, 1}}, false, false},
-         {1, 0, {{1, 128}}, {{1, 128}}, false, false},
-         {1, 0, {{128, 1}}, {{128, 1}}, false, false},
-         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
-         {1, 0, {{64, 1}}, {{64, 1}}, false, false},
-     }},
-};
+////////////////////////////////////////////////////////////////////////////////
+
+SigmoidOp::SigmoidOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : MathOp{OP_SIGMOID, prec_type, input, output, name} {}
+
+std::string SigmoidOp::function_name(const OpConfig &cfg) const {
+    return MathOp::function_name(cfg, "sigmoid");
+}
+
+Tensor *Model::sigmoid(Tensor *input, Tensor *output, const string &name) {
+    return math<SigmoidOp>(input, output, name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+SqrtOp::SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
+               const string &name)
+    : MathOp{OP_SQRT, prec_type, input, output, name} {}
+
+std::string SqrtOp::function_name(const OpConfig &cfg) const {
+    return MathOp::function_name(cfg, "sqrt");
+}
+
+Tensor *Model::sqrt(Tensor *input, Tensor *output, const string &name) {
+    return math<SqrtOp>(input, output, name);
+}
 
 }  // namespace ark

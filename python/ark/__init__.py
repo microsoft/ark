@@ -67,7 +67,6 @@ from .ops import (
     reduce_mean,
     reduce_max,
     layernorm,
-    rmsnorm,
     softmax,
     transpose,
     matmul,

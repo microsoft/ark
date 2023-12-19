@@ -8,7 +8,7 @@
 
 namespace ark {
 
-extern const OpConfigMap ArithmeticConfigMap;
+extern const OpConfigMap Broadcast1ConfigMap;
 
 ScaleOp::ScaleOp(const std::string &prec_type, Tensor *input, Tensor *output,
                  float val, const std::string &name)
@@ -18,7 +18,7 @@ ScaleOp::ScaleOp(const std::string &prec_type, Tensor *input, Tensor *output,
          {output},
          {{val}},
          name,
-         &ArithmeticConfigMap,
+         &Broadcast1ConfigMap,
          -1,
          true} {}
 

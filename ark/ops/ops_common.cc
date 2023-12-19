@@ -448,8 +448,6 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const RecvOp *>(this)->function_name(cfg);
         case OP_LAYERNORM:
             return static_cast<const LayernormOp *>(this)->function_name(cfg);
-        case OP_RMSNORM:
-            return static_cast<const RMSnormOp *>(this)->function_name(cfg);
         case OP_RELU:
             return static_cast<const ReluOp *>(this)->function_name(cfg);
         case OP_COPY:

@@ -377,10 +377,6 @@ class Model {
     // normalized tensor as `output`.
     Tensor *layernorm(Tensor *input, Tensor *output = nullptr,
                       const std::string &name = "layernorm");
-    // Applies RMS (Root Mean Square Layer Normalization) normalization to the
-    // `input` tensor and returns the normalized tensor as `output`.
-    Tensor *rmsnorm(Tensor *input, Tensor *output = nullptr,
-                    const std::string &name = "rmsnorm");
     // Transposes the `input` tensor according to the given `perm` permutation.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
@@ -441,6 +437,10 @@ class Model {
     // Performs rotary position embedding (RoPE) on the `input` tensor
     Tensor *rope(Tensor *input, Tensor *other, Tensor *output = nullptr,
                  const std::string &name = "rope");
+    // Template for broadcated arithmetic operators.
+    template <typename ArithmeticOpType>
+    Tensor *arithmetic(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                       const std::string &name = "arithmeitc");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,

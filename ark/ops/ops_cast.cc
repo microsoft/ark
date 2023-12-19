@@ -8,11 +8,11 @@
 
 namespace ark {
 
-extern const OpConfigMap CastConfigMap;
+extern const OpConfigMap Broadcast1ConfigMap;
 
 CastOp::CastOp(Tensor *input, Tensor *output, const std::string &name)
     : Op{OP_CAST, "none",         {input}, {output}, {},
-         name,    &CastConfigMap, -1,      true} {}
+         name,    &Broadcast1ConfigMap, -1,      true} {}
 
 std::string CastOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
@@ -155,13 +155,20 @@ Tensor *Model::cast(Tensor *input, const TensorType &ttype, Tensor *output,
     return this->impl->add_op(op)[0];
 }
 
-const OpConfigMap CastConfigMap = {
-    {{OP_ARCH_ANY, "none"},
+const OpConfigMap Broadcast1ConfigMap = {
+    {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {1, 0, {{1, 8192}}, {{1, 8192}}, false, false},
+         {1, 0, {{8192, 1}}, {{8192, 1}}, false, false},
+         {1, 0, {{1, 512}}, {{1, 512}}, false, false},
+         {1, 0, {{512, 1}}, {{512, 1}}, false, false},
          {1, 0, {{1, 256}}, {{1, 256}}, false, false},
+         {1, 0, {{256, 1}}, {{256, 1}}, false, false},
          {1, 0, {{1, 128}}, {{1, 128}}, false, false},
+         {1, 0, {{128, 1}}, {{128, 1}}, false, false},
          {1, 0, {{1, 64}}, {{1, 64}}, false, false},
+         {1, 0, {{64, 1}}, {{64, 1}}, false, false},
      }},
 };
 

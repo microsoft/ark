@@ -8,12 +8,12 @@
 
 namespace ark {
 
-extern const OpConfigMap EwiseConfigMap;
+extern const OpConfigMap Broadcast1ConfigMap;
 
 CopyOp::CopyOp(const std::string &prec_type, Tensor *input, Tensor *output,
                const std::string &name)
     : Op{OP_COPY, prec_type,       {input}, {output}, {},
-         name,    &EwiseConfigMap, -1,      true} {}
+         name,    &Broadcast1ConfigMap, -1,      true} {}
 
 std::string CopyOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
@@ -63,55 +63,5 @@ Tensor *Model::copy(Tensor *input, Tensor *output, const std::string &name) {
     CopyOp op{output->type.name(), input, output, name};
     return this->impl->add_op(op)[0];
 }
-
-const OpConfigMap EwiseConfigMap = {
-    {{OP_ARCH_ANY, "fp32"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}}, {{128, 256}}, false, false},
-         {8, 0, {{256, 128}}, {{256, 128}}, false, false},
-         {8, 0, {{128, 128}}, {{128, 128}}, false, false},
-         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
-         {1, 0, {{1, 128}}, {{1, 128}}, false, false},
-         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
-         {1, 0, {{1, 32}}, {{1, 32}}, false, false},
-     }},
-    {{OP_ARCH_ANY, "fp16"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}}, {{128, 256}}, false, false},
-         {8, 0, {{256, 128}}, {{256, 128}}, false, false},
-         {8, 0, {{128, 128}}, {{128, 128}}, false, false},
-         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
-         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
-     }},
-    {{OP_ARCH_ANY, "bf16"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}}, {{128, 256}}, false, false},
-         {8, 0, {{256, 128}}, {{256, 128}}, false, false},
-         {8, 0, {{128, 128}}, {{128, 128}}, false, false},
-         {4, 0, {{64, 64}}, {{64, 64}}, false, false},
-         {2, 0, {{32, 64}}, {{32, 64}}, false, false},
-         {1, 0, {{16, 64}}, {{16, 64}}, false, false},
-         {1, 0, {{8, 64}}, {{8, 64}}, false, false},
-         {1, 0, {{2, 128}}, {{2, 128}}, false, false},
-         {1, 0, {{4, 64}}, {{4, 64}}, false, false},
-         {1, 0, {{2, 64}}, {{2, 64}}, false, false},
-         {1, 0, {{1, 64}}, {{1, 64}}, false, false},
-     }},
-};
 
 }  // namespace ark

@@ -152,6 +152,20 @@ struct VectorCompute {
     }
 };
 
+template <typename OutDims, typename OutDataType, typename UnitOutDims>
+struct DefaultNelemPerThread {
+    static constexpr int ConsecutiveDimLen =
+        (OutDims::W == 1 && UnitOutDims::W == 1) ? UnitOutDims::H
+                                                 : UnitOutDims::W;
+
+    static const int value =
+        (sizeof(OutDataType) <= 2 && ConsecutiveDimLen % 8 == 0)
+            ? 8
+            : (ConsecutiveDimLen % 4 == 0)
+                  ? 4
+                  : (ConsecutiveDimLen % 2 == 0) ? 2 : 1;
+};
+
 }  // namespace ark
 
 #endif  // ARK_KERNELS_VECTOR_TYPE_H_

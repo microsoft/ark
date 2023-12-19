@@ -103,7 +103,6 @@ typedef enum {
     OP_REDUCE_W_MEAN,
     OP_REDUCE_W_MAX,
     OP_LAYERNORM,
-    OP_RMSNORM,
     OP_SCALE,
     OP_RELU,
     OP_COPY,
@@ -272,45 +271,41 @@ class Op {
 
 /// List all operator classes below.
 
-class AddOp : public Op {
+class ArithmeticOp : public Op {
+   public:
+    ArithmeticOp(const OpType &type, const std::string &prec_type, Tensor *input,
+           Tensor *other, Tensor *output, const std::string &name);
+
+   protected:
+    std::string function_name(const OpConfig &cfg,
+                              const std::string &type) const;
+};
+
+class AddOp : public ArithmeticOp {
    public:
     AddOp(const std::string &prec_type, Tensor *input, Tensor *other,
           Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class SubOp : public Op {
+class SubOp : public ArithmeticOp {
    public:
     SubOp(const std::string &prec_type, Tensor *input, Tensor *other,
           Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class MulOp : public Op {
+class MulOp : public ArithmeticOp {
    public:
     MulOp(const std::string &prec_type, Tensor *input, Tensor *other,
           Tensor *output, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class DivOp : public Op {
+class DivOp : public ArithmeticOp {
    public:
     DivOp(const std::string &prec_type, Tensor *input, Tensor *other,
           Tensor *output, const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-};
-
-class GeluOp : public Op {
-   public:
-    GeluOp(const std::string &prec_type, Tensor *input, Tensor *output,
-           const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-};
-
-class ExpOp : public Op {
-   public:
-    ExpOp(const std::string &prec_type, Tensor *input, Tensor *output,
-          const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
@@ -324,9 +319,23 @@ class MathOp : public Op {
                               const std::string &type) const;
 };
 
-class SqrtOp : public MathOp {
+class GeluOp : public MathOp {
    public:
-    SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
+    GeluOp(const std::string &prec_type, Tensor *input, Tensor *output,
+           const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class ExpOp : public MathOp {
+   public:
+    ExpOp(const std::string &prec_type, Tensor *input, Tensor *output,
+          const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class ReluOp : public MathOp {
+   public:
+    ReluOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
@@ -335,6 +344,20 @@ class RsqrtOp : public MathOp {
    public:
     RsqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
             const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SigmoidOp : public MathOp {
+   public:
+    SigmoidOp(const std::string &prec_type, Tensor *input, Tensor *output,
+              const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class SqrtOp : public MathOp {
+   public:
+    SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
+           const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
@@ -358,13 +381,6 @@ class LayernormOp : public Op {
    public:
     LayernormOp(const std::string &prec_type, Tensor *input, Tensor *output,
                 const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-};
-
-class RMSnormOp : public Op {
-   public:
-    RMSnormOp(const std::string &prec_type, Tensor *input, Tensor *output,
-              const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
@@ -437,24 +453,10 @@ class ReduceEMeanOp : public ReduceOp {
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class ReluOp : public Op {
-   public:
-    ReluOp(const std::string &prec_type, Tensor *input, Tensor *output,
-           const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-};
-
 class CopyOp : public Op {
    public:
     CopyOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
-};
-
-class SigmoidOp : public Op {
-   public:
-    SigmoidOp(const std::string &prec_type, Tensor *input, Tensor *output,
-              const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
