@@ -190,7 +190,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
     } else {
         // Rough measure.
         int warmup_iter = 3;
-        float target_msec = 2000;
+        float target_msec = 5000;
         exe.launch();
         exe.run(warmup_iter);
         float warmup_msec = exe.stop();

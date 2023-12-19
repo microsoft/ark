@@ -137,6 +137,13 @@ struct Cast {
     }
 };
 
+struct Identity {
+    template <typename DataType>
+    static DEVICE DataType compute(DataType input) {
+        return input;
+    }
+};
+
 struct Add {
     template <typename DataType>
     static DEVICE DataType compute(DataType a, DataType b) {

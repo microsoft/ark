@@ -8,13 +8,6 @@
 
 namespace ark {
 
-struct Copy {
-    template <typename DataType>
-    static DEVICE DataType compute(DataType input) {
-        return input;
-    }
-};
-
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename InDataType, typename OutDataType>
@@ -26,8 +19,9 @@ DEVICE void copy(OutDataType *out, InDataType *in, int uop_idx,
             : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
     Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                SmemBytes,
-               Broadcast1Intrinsic<Copy, InShape, InDataType, OutDataType,
-                                   NelemPerThread>>::run(out, in, uop_idx);
+               Broadcast1Intrinsic<type::Identity, InShape, InDataType,
+                                   OutDataType, NelemPerThread>>::run(out, in,
+                                                                      uop_idx);
 }
 
 }  // namespace ark

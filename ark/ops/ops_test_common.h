@@ -123,13 +123,20 @@ using OpsTestBaseline = std::function<void(
     const std::vector<void *> &inputs,
     const std::vector<ark::Dims> &input_tensors, int rank)>;
 
+#if defined(ARK_CUDA)
+#define DEFAULT_OP_TEST_NUM_WARPS_PER_SM 16
+#else  // !defined(ARK_CUDA)
+#define DEFAULT_OP_TEST_NUM_WARPS_PER_SM 8
+#endif  // !defined(ARK_CUDA)
+
 OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
                       const std::vector<Tensor *> &inputs,
                       const std::vector<Tensor *> &outputs,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data = {},
                       bool print_on_error = false, int rank = 0,
-                      int world_size = 1, int num_warps_per_sm = 8);
+                      int world_size = 1,
+                      int num_warps_per_sm = DEFAULT_OP_TEST_NUM_WARPS_PER_SM);
 
 OpsTestResult op_test_8(const std::string &test_name_prefix, Model &model,
                         const std::vector<Tensor *> &inputs,
