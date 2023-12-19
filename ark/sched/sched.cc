@@ -128,8 +128,9 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
             configs_str << ", { " << ot_x << ", " << ot_y << " }";
         }
         configs_str << ".";
-        ERR(SchedulerError, "no valid tile configuration found. Output shape ",
-            output->shape, ", available tiles: ", configs_str.str());
+        ERR(SchedulerError, "no valid tile configuration found. Op name ",
+            op->name, ", output shape ", output->shape, ", available tiles: ",
+            configs_str.str());
     }
     std::vector<std::tuple<const OpConfig *, Dims, int>>
         high_priority_candidates;

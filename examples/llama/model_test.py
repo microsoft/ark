@@ -18,7 +18,7 @@ import model as model_ark
 import numpy as np
 from typing import Dict, List
 from dataclasses import dataclass
-from model import ModelArgs, ModelArgs7B
+from model import ModelArgs, ModelArgs7B, ModelArgs70B
 from generator import precompute_freqs_cis
 
 
@@ -61,7 +61,8 @@ def run_ark(
     runtime.launch(num_warps_per_sm=8)
 
     # Load model parameters
-    module.load_state_dict(state_dict)
+    if state_dict:
+        module.load_state_dict(state_dict)
 
     # Load input data into tensors
     tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
@@ -91,10 +92,11 @@ def run_pt(
     iterations: int = 1,
 ) -> List[np.ndarray]:
     # Update the current state_dict with the given one
-    cur_state_dict = module.state_dict()
-    for k, v in state_dict.items():
-        cur_state_dict[k] = v
-    module.load_state_dict(cur_state_dict)
+    if state_dict:
+        cur_state_dict = module.state_dict()
+        for k, v in state_dict.items():
+            cur_state_dict[k] = v
+        module.load_state_dict(cur_state_dict)
 
     # Load input data to GPU
     input_tensors = [
@@ -130,9 +132,11 @@ def test_module(
     inputs_pt: List[np.ndarray],
     module_name_prefix: str = "",
     dtype: np.dtype = np.float16,
-    test_thru: bool = False,
+    test_thru: bool = True,
     test_thru_iterations: int = 100,
-    test_thru_ark_only: bool = False,
+    test_thru_ark_only: bool = True,
+    rank: int = 0,
+    world_size: int = 1,
 ):
     if test_thru:
         print(f"Throughput test (iterations: {test_thru_iterations})")
@@ -145,23 +149,25 @@ def test_module(
     params_dict = module_ark.params_dict()
     param_names = set(params_dict.keys())
 
-    rank = torch.distributed.get_rank()
-    world_size = torch.distributed.get_world_size()
     checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
     ckpt_path = checkpoints[rank]
     if os.path.exists(ckpt_path):
-        prefix = module_name_prefix + "." if module_name_prefix else ""
-        # Load the state_dict from the given path
-        state_dict_pt = torch.load(ckpt_path)
-        state_dict_pt = {
-            k[len(prefix) :]: v
-            for k, v in state_dict_pt.items()
-            if k[len(prefix) :] in param_names and k.startswith(prefix)
-        }
-        state_dict_ark = {
-            k: v.float().numpy().astype(params_dict[k].dtype().to_numpy())
-            for k, v in state_dict_pt.items()
-        }
+        if test_thru:
+            state_dict_pt = {}
+            state_dict_ark = {}
+        else:
+            prefix = module_name_prefix + "." if module_name_prefix else ""
+            # Load the state_dict from the given path
+            state_dict_pt = torch.load(ckpt_path)
+            state_dict_pt = {
+                k[len(prefix) :]: v
+                for k, v in state_dict_pt.items()
+                if k[len(prefix) :] in param_names and k.startswith(prefix)
+            }
+            state_dict_ark = {
+                k: v.float().numpy().astype(params_dict[k].dtype().to_numpy())
+                for k, v in state_dict_pt.items()
+            }
     else:
         raise ValueError(f"Cannot find the given path: {ckpt_dir}")
 
@@ -436,6 +442,8 @@ def test_transformer_block(
         module_args_pt=[0, args],
         inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
         module_name_prefix="layers.0",
+        rank=rank,
+        world_size=world_size,
     )
 
 
@@ -506,8 +514,8 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
-    test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
+    test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
 def worker(
@@ -521,11 +529,11 @@ def worker(
     # For torch.distributed
     os.environ["RANK"] = str(rank)
     os.environ["LOCAL_RANK"] = str(rank)
-    torch.distributed.init_process_group("nccl")
-    torch.cuda.set_device(rank)
+    # torch.distributed.init_process_group("nccl")
+    # torch.cuda.set_device(rank)
 
     # For fairscale
-    fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
+    # fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
     test(args, batch_size, seq_len, dtype, rank, world_size)
 
 
@@ -538,9 +546,9 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs7B()
+    args = ModelArgs70B()
     batch_size = 1
-    seq_len = 512
+    seq_len = 2048
     dtype = np.float16
     world_size = ngpus
 
@@ -548,7 +556,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 512
+    args.max_seq_len = 2048
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
@@ -563,12 +571,12 @@ if __name__ == "__main__":
         # For torch.distributed
         os.environ["RANK"] = "0"
         os.environ["LOCAL_RANK"] = "0"
-        torch.distributed.init_process_group("nccl")
+        # torch.distributed.init_process_group("nccl")
 
         # For fairscale
-        fairscale.nn.model_parallel.initialize.initialize_model_parallel(
-            world_size
-        )
+        # fairscale.nn.model_parallel.initialize.initialize_model_parallel(
+        #     world_size
+        # )
         test(args, batch_size, seq_len, dtype, 0, 1)
     else:
         procs = []
