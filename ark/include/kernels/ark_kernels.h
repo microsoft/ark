@@ -17,7 +17,6 @@
 #include "math_functions.h"
 #include "matmul.h"
 #include "reduce.h"
-#include "softmax.h"
 #include "transpose.h"
 
 #endif  // ARK_KERNELS_H_

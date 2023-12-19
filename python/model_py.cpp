@@ -70,12 +70,6 @@ void register_model(py::module &m) {
              "the normalized tensor as `output`.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "rmsnorm")
-        .def("softmax", &ark::Model::softmax,
-             "Applies softmax activation to the `input` tensor, with the "
-             "softmax operator being performed on the last dimension of the "
-             "input tensor.",
-             py::return_value_policy::reference_internal, py::arg("input"),
-             py::arg("output") = nullptr, py::arg("name") = "softmax")
         .def("transpose", &ark::Model::transpose,
              "Transposes the `input` tensor according to the given `perm` "
              "permutation. For example, transpose(input, {0, 1 ,3, 2}) will "
@@ -129,6 +123,11 @@ void register_model(py::module &m) {
              "Calculates the square root of the `input` tensor, element-wise.",
              py::return_value_policy::reference_internal, py::arg("input"),
              py::arg("output") = nullptr, py::arg("name") = "sqrt")
+        .def("rsqrt", &ark::Model::rsqrt,
+             "Calculates the reverse square root of the `input` tensor, "
+             "element-wise.",
+             py::return_value_policy::reference_internal, py::arg("input"),
+             py::arg("output") = nullptr, py::arg("name") = "rsqrt")
         .def("rope", &ark::Model::rope,
              "Performs rotary position embedding (RoPE) on the `input` "
              "tensor",

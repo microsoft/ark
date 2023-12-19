@@ -101,19 +101,13 @@ struct ReduceShapeChecker {
 struct ReduceTypeSum {
     template <int NelemPerThread, typename DataType>
     static DEVICE void identity(DataType *v) {
-        if constexpr ((NelemPerThread >= 4) && (NelemPerThread % 4 == 0) &&
-                      type::VtypeExists<DataType, 4>::value) {
-            *reinterpret_cast<typename type::Vtype<DataType, 4>::type *>(v) =
-                type::Constant<typename type::Vtype<DataType, 4>::type>::zero();
-        } else if constexpr ((NelemPerThread == 2) &&
-                             type::VtypeExists<DataType, 2>::value) {
-            *reinterpret_cast<typename type::Vtype<DataType, 2>::type *>(v) =
-                type::Constant<typename type::Vtype<DataType, 2>::type>::zero();
-        } else {
+        constexpr int VtypeSize = math::min<type::VtypeMaxSize<DataType>::value,
+                                            NelemPerThread>::value;
+        constexpr int NumLoop = NelemPerThread / VtypeSize;
+        using Vtype = typename type::Vtype<DataType, VtypeSize>::type;
 #pragma unroll
-            for (int elem = 0; elem < NelemPerThread; ++elem) {
-                v[elem] = type::Constant<DataType>::zero();
-            }
+        for (int i = 0; i < NumLoop; ++i) {
+            *(reinterpret_cast<Vtype *>(v) + i) = type::Constant<Vtype>::zero();
         }
     }
 

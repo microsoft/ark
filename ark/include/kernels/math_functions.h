@@ -13,28 +13,27 @@ template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename InDataType, typename OutDataType>
 DEVICE void exp(OutDataType *out, const InDataType *in, int uop_idx, int) {
-    constexpr int NelemPerThread =
-        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
-            ? 8
-            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-               SmemBytes,
-               Broadcast1Intrinsic<type::Exp, InShape, InDataType, OutDataType,
-                                   NelemPerThread>>::run(out, in, uop_idx);
+    DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
+                      OutDataType, type::Exp, UnitOutDims, NumWarps,
+                      SmemBytes>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename InDataType, typename OutDataType>
 DEVICE void sqrt(OutDataType *out, const InDataType *in, int uop_idx, int) {
-    constexpr int NelemPerThread =
-        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
-            ? 8
-            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-               SmemBytes,
-               Broadcast1Intrinsic<type::Sqrt, InShape, InDataType, OutDataType,
-                                   NelemPerThread>>::run(out, in, uop_idx);
+    DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
+                      OutDataType, type::Sqrt, UnitOutDims, NumWarps,
+                      SmemBytes>::run(out, in, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename InDataType, typename OutDataType>
+DEVICE void rsqrt(OutDataType *out, const InDataType *in, int uop_idx, int) {
+    DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
+                      OutDataType, type::Rsqrt, UnitOutDims, NumWarps,
+                      SmemBytes>::run(out, in, uop_idx);
 }
 
 }  // namespace ark

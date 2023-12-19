@@ -13,15 +13,9 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void copy(OutDataType *out, InDataType *in, int uop_idx,
                  int smem_per_warp) {
-    constexpr int NelemPerThread =
-        (sizeof(OutDataType) <= 2 && UnitOutDims::W % 8 == 0)
-            ? 8
-            : (UnitOutDims::W % 4 == 0) ? 4 : (UnitOutDims::W % 2 == 0) ? 2 : 1;
-    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-               SmemBytes,
-               Broadcast1Intrinsic<type::Identity, InShape, InDataType,
-                                   OutDataType, NelemPerThread>>::run(out, in,
-                                                                      uop_idx);
+    DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
+                      OutDataType, type::Identity, UnitOutDims, NumWarps,
+                      SmemBytes>::run(out, in, uop_idx);
 }
 
 }  // namespace ark

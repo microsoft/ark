@@ -57,7 +57,8 @@ def run_ark(
     output = module(*module_inputs)
 
     runtime = ark.Runtime()
-    runtime.launch()
+    # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
+    runtime.launch(num_warps_per_sm=8)
 
     # Load model parameters
     module.load_state_dict(state_dict)
@@ -128,9 +129,9 @@ def test_module(
     module_args_pt: list,
     inputs_pt: List[np.ndarray],
     module_name_prefix: str = "",
+    dtype: np.dtype = np.float16,
     test_thru: bool = False,
     test_thru_iterations: int = 100,
-    dtype: np.dtype = np.float16,
     test_thru_ark_only: bool = False,
 ):
     if test_thru:
@@ -189,11 +190,14 @@ def test_module(
 
         if test_thru:
             print(
-                f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+                f"  PyTorch: {res_pt.runtime:.4f} seconds ({(res_pt.runtime / test_thru_iterations):.6f} seconds/iter)\n"
+                f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
             )
             return
     elif test_thru:
-        print(f"  ARK: {res_ark.runtime:.4f} seconds")
+        print(
+            f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
+        )
         return
 
     # Compare the outputs
@@ -239,8 +243,6 @@ def test_module(
 def test_rmsnorm(
     args: ModelArgs, batch_size: int, seq_len: int, dtype: np.dtype
 ):
-    ark.init()
-
     # Create random input data
     inputs_ark = [
         np.random.uniform(
@@ -419,6 +421,7 @@ def test_transformer_block(
     feature = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
+
     test_module(
         module_class_ark=model_ark.TransformerBlock,
         module_args_ark=[

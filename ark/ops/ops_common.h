@@ -104,7 +104,6 @@ typedef enum {
     OP_REDUCE_W_MAX,
     OP_LAYERNORM,
     OP_RMSNORM,
-    OP_SOFTMAX,
     OP_SCALE,
     OP_RELU,
     OP_COPY,
@@ -112,6 +111,7 @@ typedef enum {
     OP_SIGMOID,
     OP_EXP,
     OP_SQRT,
+    OP_RSQRT,
     OP_MATMUL,
     OP_MAX_POOL,
     OP_ADD,
@@ -314,10 +314,27 @@ class ExpOp : public Op {
     std::string function_name(const OpConfig &cfg) const;
 };
 
-class SqrtOp : public Op {
+class MathOp : public Op {
+   public:
+    MathOp(const OpType &type, const std::string &prec_type, Tensor *input,
+           Tensor *output, const std::string &name);
+
+   protected:
+    std::string function_name(const OpConfig &cfg,
+                              const std::string &type) const;
+};
+
+class SqrtOp : public MathOp {
    public:
     SqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
            const std::string &name);
+    std::string function_name(const OpConfig &cfg) const;
+};
+
+class RsqrtOp : public MathOp {
+   public:
+    RsqrtOp(const std::string &prec_type, Tensor *input, Tensor *output,
+            const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
 };
 
@@ -537,13 +554,6 @@ class GetFromPacketOp : public Op {
                     int flag, const std::string &name);
     std::string function_name(const OpConfig &cfg) const;
     OpArgs function_call_args(const OpConfig &cfg) const;
-};
-
-class SoftmaxOp : public Op {
-   public:
-    SoftmaxOp(const std::string &prec_type, Tensor *input, Tensor *output,
-              const std::string &name);
-    std::string function_name(const OpConfig &cfg) const;
 };
 
 class TensorOp : public Op {

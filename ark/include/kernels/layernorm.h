@@ -184,7 +184,7 @@ struct RMSNorm {
             mean_square, tid, smem_per_warp);
         ReduceTypeMean::template postReduce<1>(&mean_square, &mean_square,
                                                UnitOutDims::W);
-        // the output is (input - mean) / sqrt(mean_square)
+        // the output is input / sqrt(mean_square)
         DataType rrms = type::Cast::compute<DataType>(type::Rsqrt::compute(
             type::Cast::compute<float>(mean_square) + 1e-5f));
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {

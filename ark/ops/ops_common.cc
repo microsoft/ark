@@ -450,8 +450,6 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const LayernormOp *>(this)->function_name(cfg);
         case OP_RMSNORM:
             return static_cast<const RMSnormOp *>(this)->function_name(cfg);
-        case OP_SOFTMAX:
-            return static_cast<const SoftmaxOp *>(this)->function_name(cfg);
         case OP_RELU:
             return static_cast<const ReluOp *>(this)->function_name(cfg);
         case OP_COPY:
@@ -464,6 +462,8 @@ std::string Op::function_name(const OpConfig &cfg) const {
             return static_cast<const ExpOp *>(this)->function_name(cfg);
         case OP_SQRT:
             return static_cast<const SqrtOp *>(this)->function_name(cfg);
+        case OP_RSQRT:
+            return static_cast<const RsqrtOp *>(this)->function_name(cfg);
         case OP_ROPE:
             return static_cast<const RopeOp *>(this)->function_name(cfg);
         case OP_EMBEDDING:
