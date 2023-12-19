@@ -13,7 +13,7 @@
 
 #include "json.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "sched/sched_opseq.h"
 #include "sched/sched_tile.h"
 

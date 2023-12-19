@@ -3,11 +3,9 @@
 
 #include "env.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "model.h"
 #include "sched/sched.h"
-
-using namespace std;
 
 #define DEBUG_SCHEDULE 0
 #define SCHEDULE_DEBUG(...)          \
@@ -106,7 +104,8 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
         // Calculate the max split_k to run two or less tiles per SM. Exceeding
         // this limit is heuristically bad for performance.
         size_t split_k_for_two_tiles_per_sm = num_sm * 2 / num_tiles;
-        size_t tmp_split_k = min(max_split_k, split_k_for_two_tiles_per_sm);
+        size_t tmp_split_k =
+            std::min(max_split_k, split_k_for_two_tiles_per_sm);
 
         // Calculate the actual split_k if we can split the inner dimension
         // into tmp_split_k parts.
@@ -179,7 +178,9 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
 
     heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
 
-    this->op_graph = make_unique<OpGraph>(model);
+    LOG(INFO, "Building OpGraph...");
+    this->op_graph = std::make_unique<OpGraph>(model);
+    LOG(INFO, "OpGraph built.");
 }
 
 void DefaultScheduler::schedule() {
@@ -224,7 +225,8 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
         Op *op = node->ops[0];
         const OpConfig *cfg = this->sched_op_config(op);
         int opseq_id = (int)this->opseqs.size();
-        this->opseqs.emplace_back(make_unique<SchedOpSeq>(opseq_id, op, cfg));
+        this->opseqs.emplace_back(
+            std::make_unique<SchedOpSeq>(opseq_id, op, cfg));
         SchedOpSeq *opseq = this->opseqs.back().get();
 
         bool broke_node = false;
@@ -321,13 +323,13 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
 
     if (this->comp_stream.empty() || sync_comp || sync_comm) {
         // Create a new stream.
-        this->comp_stream.emplace_back(make_unique<SchedStream>(
+        this->comp_stream.emplace_back(std::make_unique<SchedStream>(
             0, gpu_info.num_sm - 1, this->num_warps_per_sm,
             gpu_info.smem_block_total));
     }
     if (this->comm_stream.empty() || sync_comp || sync_comm) {
         // Create a new stream.
-        this->comm_stream.emplace_back(make_unique<SchedStream>(
+        this->comm_stream.emplace_back(std::make_unique<SchedStream>(
             gpu_info.num_sm - 1, gpu_info.num_sm, this->num_warps_per_sm,
             gpu_info.smem_block_total));
     }
