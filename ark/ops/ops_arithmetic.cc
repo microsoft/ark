@@ -8,12 +8,15 @@ namespace ark {
 
 extern const OpConfigMap Broadcast2ConfigMap;
 
-ArithmeticOp::ArithmeticOp(const OpType &type, const std::string &prec_type, Tensor *input,
-               Tensor *other, Tensor *output, const std::string &name)
-    : Op{type, prec_type,      {input, other}, {output}, {},
-         name, &Broadcast2ConfigMap, -1,      true} {}
+ArithmeticOp::ArithmeticOp(const OpType &type, const std::string &prec_type,
+                           Tensor *input, Tensor *other, Tensor *output,
+                           const std::string &name)
+    : Op{type, prec_type, {input, other},       {output},
+         {},   name,      &Broadcast2ConfigMap, -1,
+         true} {}
 
-std::string ArithmeticOp::function_name(const OpConfig &cfg, const std::string &type) const {
+std::string ArithmeticOp::function_name(const OpConfig &cfg,
+                                        const std::string &type) const {
     Tensor *input = this->inputs[0];
     Tensor *other = this->inputs[1];
     Tensor *output = this->outputs[0];
@@ -30,21 +33,23 @@ std::string ArithmeticOp::function_name(const OpConfig &cfg, const std::string &
     }
 
     Dims unit_out_dims{1, 1, tile_out.x, tile_out.y};
-    return Op::function_name("ark::" + type, {{
-                                             input->ldims.dims4(),   // In0Dims
-                                             input->shape.dims4(),   // In0Shape
-                                             other->ldims.dims4(),   // In1Dims
-                                             other->shape.dims4(),   // In1Shape
-                                             output->ldims.dims4(),  // OutDims
-                                             output->shape.dims4(),  // OutShape
-                                             unit_out_dims,   // UnitOutDims
-                                             cfg.num_warps,   // NumWarps
-                                             cfg.smem_bytes,  // SmemBytes
-                                         }});
+    return Op::function_name("ark::" + type,
+                             {{
+                                 input->ldims.dims4(),   // In0Dims
+                                 input->shape.dims4(),   // In0Shape
+                                 other->ldims.dims4(),   // In1Dims
+                                 other->shape.dims4(),   // In1Shape
+                                 output->ldims.dims4(),  // OutDims
+                                 output->shape.dims4(),  // OutShape
+                                 unit_out_dims,          // UnitOutDims
+                                 cfg.num_warps,          // NumWarps
+                                 cfg.smem_bytes,         // SmemBytes
+                             }});
 }
 
 template <typename ArithmeticOpType>
-Tensor *Model::arithmetic(Tensor *input, Tensor *other, Tensor *output, const std::string &name) {
+Tensor *Model::arithmetic(Tensor *input, Tensor *other, Tensor *output,
+                          const std::string &name) {
     CHECK(input != nullptr);
     CHECK(other != nullptr);
     if (input->type != other->type) {
@@ -68,8 +73,8 @@ Tensor *Model::arithmetic(Tensor *input, Tensor *other, Tensor *output, const st
 
 ////////////////////////////////////////////////////////////////////////////////
 
-AddOp::AddOp(const std::string &prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const std::string &name)
+AddOp::AddOp(const std::string &prec_type, Tensor *input, Tensor *other,
+             Tensor *output, const std::string &name)
     : ArithmeticOp{OP_ADD, prec_type, input, other, output, name} {}
 
 std::string AddOp::function_name(const OpConfig &cfg) const {
@@ -83,8 +88,8 @@ Tensor *Model::add(Tensor *input, Tensor *other, Tensor *output,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-SubOp::SubOp(const std::string &prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const std::string &name)
+SubOp::SubOp(const std::string &prec_type, Tensor *input, Tensor *other,
+             Tensor *output, const std::string &name)
     : ArithmeticOp{OP_SUB, prec_type, input, other, output, name} {}
 
 std::string SubOp::function_name(const OpConfig &cfg) const {
@@ -98,8 +103,8 @@ Tensor *Model::sub(Tensor *input, Tensor *other, Tensor *output,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-MulOp::MulOp(const std::string &prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const std::string &name)
+MulOp::MulOp(const std::string &prec_type, Tensor *input, Tensor *other,
+             Tensor *output, const std::string &name)
     : ArithmeticOp{OP_MUL, prec_type, input, other, output, name} {}
 
 std::string MulOp::function_name(const OpConfig &cfg) const {
@@ -113,8 +118,8 @@ Tensor *Model::mul(Tensor *input, Tensor *other, Tensor *output,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-DivOp::DivOp(const std::string &prec_type, Tensor *input, Tensor *other, Tensor *output,
-             const std::string &name)
+DivOp::DivOp(const std::string &prec_type, Tensor *input, Tensor *other,
+             Tensor *output, const std::string &name)
     : ArithmeticOp{OP_DIV, prec_type, input, other, output, name} {}
 
 std::string DivOp::function_name(const OpConfig &cfg) const {

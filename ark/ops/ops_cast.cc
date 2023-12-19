@@ -11,8 +11,8 @@ namespace ark {
 extern const OpConfigMap Broadcast1ConfigMap;
 
 CastOp::CastOp(Tensor *input, Tensor *output, const std::string &name)
-    : Op{OP_CAST, "none",         {input}, {output}, {},
-         name,    &Broadcast1ConfigMap, -1,      true} {}
+    : Op{OP_CAST, "none", {input}, {output}, {}, name, &Broadcast1ConfigMap,
+         -1,      true} {}
 
 std::string CastOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];

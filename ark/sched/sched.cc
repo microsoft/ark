@@ -8,8 +8,6 @@
 #include "logging.h"
 #include "math.h"
 
-using namespace std;
-
 namespace ark {
 
 BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
@@ -114,7 +112,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
         config_candidates.emplace_back(cfg, Dims(ot_x, ot_y), num_tiles);
     }
     if (config_candidates.empty()) {
-        stringstream configs_str;
+        std::stringstream configs_str;
         if (feasible_configs.size() > 0) {
             const OpTile &ot = feasible_configs[0]->output_tiles[0];
             DimType ot_x = (ot.x == -1) ? ldims4[2] : ot.x;
@@ -129,8 +127,8 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
         }
         configs_str << ".";
         ERR(SchedulerError, "no valid tile configuration found. Op name ",
-            op->name, ", output shape ", output->shape, ", available tiles: ",
-            configs_str.str());
+            op->name, ", output shape ", output->shape,
+            ", available tiles: ", configs_str.str());
     }
     std::vector<std::tuple<const OpConfig *, Dims, int>>
         high_priority_candidates;

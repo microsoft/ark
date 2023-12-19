@@ -273,8 +273,9 @@ class Op {
 
 class ArithmeticOp : public Op {
    public:
-    ArithmeticOp(const OpType &type, const std::string &prec_type, Tensor *input,
-           Tensor *other, Tensor *output, const std::string &name);
+    ArithmeticOp(const OpType &type, const std::string &prec_type,
+                 Tensor *input, Tensor *other, Tensor *output,
+                 const std::string &name);
 
    protected:
     std::string function_name(const OpConfig &cfg,

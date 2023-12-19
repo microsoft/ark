@@ -14,8 +14,8 @@ extern const OpConfigMap Broadcast1ConfigMap;
 
 MathOp::MathOp(const OpType &type, const std::string &prec_type, Tensor *input,
                Tensor *output, const std::string &name)
-    : Op{type, prec_type,      {input}, {output}, {},
-         name, &Broadcast1ConfigMap, -1,      true} {}
+    : Op{type, prec_type, {input}, {output}, {}, name, &Broadcast1ConfigMap,
+         -1,   true} {}
 
 std::string MathOp::function_name(const OpConfig &cfg,
                                   const std::string &type) const {
@@ -119,8 +119,8 @@ Tensor *Model::rsqrt(Tensor *input, Tensor *output, const string &name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-SigmoidOp::SigmoidOp(const std::string &prec_type, Tensor *input, Tensor *output,
-               const string &name)
+SigmoidOp::SigmoidOp(const std::string &prec_type, Tensor *input,
+                     Tensor *output, const string &name)
     : MathOp{OP_SIGMOID, prec_type, input, output, name} {}
 
 std::string SigmoidOp::function_name(const OpConfig &cfg) const {

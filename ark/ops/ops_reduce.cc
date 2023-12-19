@@ -87,8 +87,14 @@ std::string ReduceWSumOp::function_name(const OpConfig &cfg) const {
 ReduceESumOp::ReduceESumOp(const std::string &prec_type, Tensor *input,
                            Tensor *output, int axis, bool keepdims,
                            const std::string &name)
-    : ReduceOp{OP_REDUCE_E_SUM,    prec_type, {input},           {output},
-               {{axis, keepdims}}, name,      &Broadcast1ConfigMap, -1} {}
+    : ReduceOp{OP_REDUCE_E_SUM,
+               prec_type,
+               {input},
+               {output},
+               {{axis, keepdims}},
+               name,
+               &Broadcast1ConfigMap,
+               -1} {}
 
 std::string ReduceESumOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_sum");
@@ -107,8 +113,14 @@ std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const {
 ReduceEMaxOp::ReduceEMaxOp(const std::string &prec_type, Tensor *input,
                            Tensor *output, int axis, bool keepdims,
                            const std::string &name)
-    : ReduceOp{OP_REDUCE_E_MAX,    prec_type, {input},           {output},
-               {{axis, keepdims}}, name,      &Broadcast1ConfigMap, -1} {}
+    : ReduceOp{OP_REDUCE_E_MAX,
+               prec_type,
+               {input},
+               {output},
+               {{axis, keepdims}},
+               name,
+               &Broadcast1ConfigMap,
+               -1} {}
 
 std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_max");
@@ -127,8 +139,14 @@ std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const {
 ReduceEMeanOp::ReduceEMeanOp(const std::string &prec_type, Tensor *input,
                              Tensor *output, int axis, bool keepdims,
                              const std::string &name)
-    : ReduceOp{OP_REDUCE_E_MEAN,   prec_type, {input},           {output},
-               {{axis, keepdims}}, name,      &Broadcast1ConfigMap, -1} {}
+    : ReduceOp{OP_REDUCE_E_MEAN,
+               prec_type,
+               {input},
+               {output},
+               {{axis, keepdims}},
+               name,
+               &Broadcast1ConfigMap,
+               -1} {}
 
 std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_mean");

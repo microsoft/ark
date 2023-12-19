@@ -132,7 +132,8 @@ struct ReduceTypeMax {
         using Vtype = typename type::Vtype<DataType, VtypeSize>::type;
 #pragma unroll
         for (int i = 0; i < NumLoop; ++i) {
-            *(reinterpret_cast<Vtype *>(v) + i) = type::Constant<Vtype>::lowest();
+            *(reinterpret_cast<Vtype *>(v) + i) =
+                type::Constant<Vtype>::lowest();
         }
     }
 
@@ -171,11 +172,10 @@ struct ReduceTypeMean {
     template <int NelemPerThread, typename DataType>
     static DEVICE void postReduce(DataType *out, const DataType *in,
                                   int nelem = 1) {
-        constexpr int TmpMin =
-            math::min<type::VtypeMaxSize<DataType>::value, NelemPerThread>::value;
+        constexpr int TmpMin = math::min<type::VtypeMaxSize<DataType>::value,
+                                         NelemPerThread>::value;
         constexpr int VtypeSize =
-                      IntrinsicComputeVtypeMaxSize<type::Div, DataType,
-                                                   TmpMin>::value;
+            IntrinsicComputeVtypeMaxSize<type::Div, DataType, TmpMin>::value;
         using Vtype = typename type::Vtype<DataType, VtypeSize>::type;
         using Vtype = typename type::Vtype<DataType, VtypeSize>::type;
         constexpr int NumVtype = NelemPerThread / VtypeSize;
@@ -327,7 +327,8 @@ struct EwiseReduce {
         using ShapeChecker =
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
 
-        constexpr int NelemPerThread = DefaultNelemPerThread<OutDims, DataType, UnitOutDims>::value;
+        constexpr int NelemPerThread =
+            DefaultNelemPerThread<OutDims, DataType, UnitOutDims>::value;
 
         Ewise1<
             OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
@@ -354,7 +355,8 @@ struct WwiseReduce {
                             int smem_per_warp) {
         using ShapeChecker =
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
-        constexpr int NelemPerThread = DefaultNelemPerThread<OutDims, DataType, UnitOutDims>::value;
+        constexpr int NelemPerThread =
+            DefaultNelemPerThread<OutDims, DataType, UnitOutDims>::value;
 
         constexpr int NonReduceDimLength =
             UnitOutDims::N * UnitOutDims::C * UnitOutDims::H;
@@ -449,7 +451,7 @@ DEVICE void reduce_w_sum(DataType *out, DataType *in, int uop_idx,
                          int smem_per_warp) {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeSum, Axis>::runW(out, in, uop_idx,
-                                                         smem_per_warp);
+                                                      smem_per_warp);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
@@ -459,7 +461,7 @@ DEVICE void reduce_w_mean(DataType *out, DataType *in, int uop_idx,
                           int smem_per_warp) {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeMean, Axis>::runW(out, in, uop_idx,
-                                                          smem_per_warp);
+                                                       smem_per_warp);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
@@ -469,7 +471,7 @@ DEVICE void reduce_w_max(DataType *out, DataType *in, int uop_idx,
                          int smem_per_warp) {
     WwiseReduce<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                 SmemBytes, ReduceTypeMax, Axis>::runW(out, in, uop_idx,
-                                                         smem_per_warp);
+                                                      smem_per_warp);
 }
 
 }  // namespace ark

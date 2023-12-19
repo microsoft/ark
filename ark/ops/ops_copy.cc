@@ -12,8 +12,8 @@ extern const OpConfigMap Broadcast1ConfigMap;
 
 CopyOp::CopyOp(const std::string &prec_type, Tensor *input, Tensor *output,
                const std::string &name)
-    : Op{OP_COPY, prec_type,       {input}, {output}, {},
-         name,    &Broadcast1ConfigMap, -1,      true} {}
+    : Op{OP_COPY, prec_type, {input}, {output}, {}, name, &Broadcast1ConfigMap,
+         -1,      true} {}
 
 std::string CopyOp::function_name(const OpConfig &cfg) const {
     Tensor *input = this->inputs[0];
