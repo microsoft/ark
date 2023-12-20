@@ -21,6 +21,12 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
                                       bool expose = false);
 
     void memset_d32_sync(void *dst, unsigned int val, size_t num) const;
+    void memcpy_htod_sync(void *dst, size_t dst_offset, void *src,
+                          size_t src_offset, size_t bytes) const;
+    void memcpy_dtoh_sync(void *dst, size_t dst_offset, void *src,
+                          size_t src_offset, size_t bytes) const;
+    void memcpy_dtod_sync(void *dst, size_t dst_offset, void *src,
+                          size_t src_offset, size_t bytes) const;
     int get_gpu_id() const;
 
     struct Info;

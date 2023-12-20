@@ -5,9 +5,102 @@
 
 #include <numeric>
 
-#include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
+
+// Test initializing and destroying GpuContext
+ark::unittest::State test_gpu_context_basic() {
+    int pid = ark::unittest::spawn_process([] {
+        ark::unittest::Timeout timeout{10};
+        std::shared_ptr<ark::GpuContext> ctx =
+            ark::GpuContext::get_context(0, 1);
+        UNITTEST_NE(ctx, nullptr);
+        UNITTEST_EQ(ctx->rank(), 0);
+        UNITTEST_EQ(ctx->world_size(), 1);
+        UNITTEST_EQ(ctx->gpu_id(), 0);
+
+        return ark::unittest::SUCCESS;
+    });
+    UNITTEST_NE(pid, -1);
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_gpu_context_buffer_alloc() {
+    int pid = ark::unittest::spawn_process([] {
+        ark::unittest::Timeout timeout{10};
+        std::shared_ptr<ark::GpuContext> ctx =
+            ark::GpuContext::get_context(0, 1);
+        UNITTEST_NE(ctx, nullptr);
+
+        std::shared_ptr<ark::GpuBuffer> buf0 =
+            ctx->allocate_buffer(sizeof(int));
+        std::shared_ptr<ark::GpuBuffer> buf1 =
+            ctx->allocate_buffer(sizeof(int));
+
+        UNITTEST_TRUE(ctx->get_total_bytes() >= 2 * sizeof(int));
+
+        ctx->freeze();
+
+        int buf0_data = 7;
+        int buf1_data = 8;
+        ctx->memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
+        ctx->memcpy(buf1, 0, &buf1_data, 0, sizeof(int));
+
+        int buf0_data2 = 0;
+        int buf1_data2 = 0;
+
+        ctx->memcpy(&buf0_data2, 0, buf0, 0, sizeof(int));
+        ctx->memcpy(&buf1_data2, 0, buf1, 0, sizeof(int));
+
+        UNITTEST_EQ(buf0_data2, 7);
+        UNITTEST_EQ(buf1_data2, 8);
+
+        ctx->memcpy(buf0, 0, buf1, 0, sizeof(int));
+        ctx->memcpy(&buf0_data2, 0, buf0, 0, sizeof(int));
+        UNITTEST_EQ(buf0_data2, 8);
+        return ark::unittest::SUCCESS;
+    });
+    UNITTEST_NE(pid, -1);
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_gpu_context_buffer_free() {
+    int pid = ark::unittest::spawn_process([] {
+        ark::unittest::Timeout timeout{10};
+        std::shared_ptr<ark::GpuContext> ctx =
+            ark::GpuContext::get_context(0, 1);
+        UNITTEST_NE(ctx, nullptr);
+
+        std::shared_ptr<ark::GpuBuffer> buf0 =
+            ctx->allocate_buffer(sizeof(int));
+        // This does not mean to free the buffer, but means that the following
+        // `allocate_buffer()` can reuse the memory of `buf0`.
+        ctx->free_buffer(buf0);
+        // This should reuse the memory of `buf0`.
+        std::shared_ptr<ark::GpuBuffer> buf1 =
+            ctx->allocate_buffer(sizeof(int));
+        ctx->freeze();
+
+        UNITTEST_EQ(buf0->ref(), buf1->ref());
+
+        int buf0_data = 9;
+        ctx->memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
+
+        int buf1_data = 0;
+        ctx->memcpy(&buf1_data, 0, buf1, 0, sizeof(int));
+        UNITTEST_EQ(buf1_data, 9);
+
+        return ark::unittest::SUCCESS;
+    });
+    UNITTEST_NE(pid, -1);
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
 
 // Test accessing remote GPU's memory space.
 ark::unittest::State test_gpu_context_remote() {
@@ -80,6 +173,9 @@ ark::unittest::State test_gpu_context_remote() {
 
 int main() {
     ark::init();
+    UNITTEST(test_gpu_context_basic);
+    UNITTEST(test_gpu_context_buffer_free);
+    UNITTEST(test_gpu_context_buffer_alloc);
     UNITTEST(test_gpu_context_remote);
     return 0;
 }

@@ -108,6 +108,27 @@ void GpuManager::memset_d32_sync(void *dst, unsigned int val,
     this->sync();
 }
 
+void GpuManager::memcpy_htod_sync(void *dst, size_t dst_offset, void *src,
+                                  size_t src_offset, size_t bytes) const {
+    this->set_current();
+    this->memcpy_htod_async(dst, dst_offset, src, src_offset, bytes);
+    this->sync();
+}
+
+void GpuManager::memcpy_dtoh_sync(void *dst, size_t dst_offset, void *src,
+                                  size_t src_offset, size_t bytes) const {
+    this->set_current();
+    this->memcpy_dtoh_async(dst, dst_offset, src, src_offset, bytes);
+    this->sync();
+}
+
+void GpuManager::memcpy_dtod_sync(void *dst, size_t dst_offset, void *src,
+                                  size_t src_offset, size_t bytes) const {
+    this->set_current();
+    this->memcpy_dtod_async(dst, dst_offset, src, src_offset, bytes);
+    this->sync();
+}
+
 void GpuManager::memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                                    size_t src_offset, size_t bytes) const {
     dst = static_cast<char *>(dst) + dst_offset;

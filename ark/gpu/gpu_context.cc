@@ -215,8 +215,8 @@ void GpuContext::Impl::freeze(bool expose) {
     }
     if (expose) {
         comm_sw_->configure(export_id_offsets_, import_gid_buffers_);
+        comm_sw_->launch_request_loop();
     }
-    comm_sw_->launch_request_loop();
 }
 
 void GpuContext::Impl::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
@@ -248,6 +248,10 @@ int GpuContext::rank() const { return pimpl_->rank_; }
 
 int GpuContext::world_size() const { return pimpl_->world_size_; }
 
+int GpuContext::gpu_id() const { return pimpl_->manager_->get_gpu_id(); }
+
+size_t GpuContext::get_total_bytes() const { return pimpl_->total_bytes_; }
+
 std::shared_ptr<GpuBuffer> GpuContext::allocate_buffer(size_t bytes,
                                                        int align) {
     return pimpl_->allocate_buffer(bytes, align);
@@ -272,6 +276,26 @@ void GpuContext::freeze(bool expose) { pimpl_->freeze(expose); }
 void GpuContext::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
                         int value, size_t bytes) {
     pimpl_->memset(buffer, offset, value, bytes);
+}
+
+void GpuContext::memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
+                        void *src, size_t src_offset, size_t bytes) {
+    pimpl_->manager_->memcpy_htod_sync(dst->ref(), dst_offset, src, src_offset,
+                                       bytes);
+}
+
+void GpuContext::memcpy(void *dst, size_t dst_offset,
+                        const std::shared_ptr<GpuBuffer> src, size_t src_offset,
+                        size_t bytes) {
+    pimpl_->manager_->memcpy_dtoh_sync(dst, dst_offset, src->ref(), src_offset,
+                                       bytes);
+}
+
+void GpuContext::memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
+                        const std::shared_ptr<GpuBuffer> src, size_t src_offset,
+                        size_t bytes) {
+    pimpl_->manager_->memcpy_dtod_sync(dst->ref(), dst_offset, src->ref(),
+                                       src_offset, bytes);
 }
 
 }  // namespace ark
