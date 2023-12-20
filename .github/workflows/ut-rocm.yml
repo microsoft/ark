@@ -16,7 +16,7 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        rocm: [ rocm5.6, rocm5.7 ]
+        rocm: [ rocm6.0 ]
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.rocm }}
       cancel-in-progress: true
