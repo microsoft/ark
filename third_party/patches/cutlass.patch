@@ -1,5 +1,5 @@
 diff --git a/include/cutlass/conv/kernel/direct_convolution.h b/include/cutlass/conv/kernel/direct_convolution.h
-index ef7a920e..c094e21e 100644
+index f5cce593..ea993c26 100644
 --- a/include/cutlass/conv/kernel/direct_convolution.h
 +++ b/include/cutlass/conv/kernel/direct_convolution.h
 @@ -388,7 +388,7 @@ struct DirectConvolution {
@@ -21,7 +21,7 @@ index ef7a920e..c094e21e 100644
  
      //
 diff --git a/include/cutlass/conv/kernel/implicit_gemm_convolution.h b/include/cutlass/conv/kernel/implicit_gemm_convolution.h
-index 2669ff77..1faeb115 100644
+index 79dac6dd..0234eefb 100644
 --- a/include/cutlass/conv/kernel/implicit_gemm_convolution.h
 +++ b/include/cutlass/conv/kernel/implicit_gemm_convolution.h
 @@ -294,7 +294,7 @@ struct ImplicitGemmConvolution {
@@ -109,7 +109,7 @@ index c6e7a813..946e4fd3 100644
  
      //
 diff --git a/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h b/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h
-index 26bbe577..b3530f7d 100644
+index 26bbe577..3c7e2d07 100644
 --- a/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h
 +++ b/include/cutlass/conv/threadblock/depthwise_fprop_direct_conv_multistage.h
 @@ -382,7 +382,7 @@ public:
@@ -140,7 +140,7 @@ index 26bbe577..b3530f7d 100644
    }
  
 diff --git a/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h b/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h
-index 1f82769b..09cb2e83 100644
+index 1f82769b..e00237b6 100644
 --- a/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h
 +++ b/include/cutlass/conv/threadblock/depthwise_fprop_pipelined.h
 @@ -218,7 +218,7 @@ public:
@@ -162,7 +162,7 @@ index 1f82769b..09cb2e83 100644
            if(rs_plane_idx == gemm_k_iterations_per_channel - 1){
              // Move to next set of filter groups.
 diff --git a/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h b/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h
-index cc33c69e..c9a2b64c 100644
+index cc33c69e..ca1c4878 100644
 --- a/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h
 +++ b/include/cutlass/conv/threadblock/implicit_gemm_fprop_fusion_multistage.h
 @@ -616,7 +616,7 @@ public:
@@ -193,7 +193,7 @@ index cc33c69e..c9a2b64c 100644
    }
  };
 diff --git a/include/cutlass/conv/threadblock/implicit_gemm_multistage.h b/include/cutlass/conv/threadblock/implicit_gemm_multistage.h
-index 437ae6c1..cc68489a 100644
+index 437ae6c1..47f4b48b 100644
 --- a/include/cutlass/conv/threadblock/implicit_gemm_multistage.h
 +++ b/include/cutlass/conv/threadblock/implicit_gemm_multistage.h
 @@ -357,7 +357,7 @@ public:
@@ -224,7 +224,7 @@ index 437ae6c1..cc68489a 100644
    }
  };
 diff --git a/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h b/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h
-index 1a319263..13329181 100644
+index 1a319263..5db5be10 100644
 --- a/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h
 +++ b/include/cutlass/conv/threadblock/implicit_gemm_pipelined.h
 @@ -218,7 +218,7 @@ public:
@@ -246,7 +246,7 @@ index 1a319263..13329181 100644
            ++this->smem_iterator_A_;
            ++this->smem_iterator_B_;
 diff --git a/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h b/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h
-index 13b5a348..ad1e0849 100644
+index 13b5a348..6a3d2ede 100644
 --- a/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h
 +++ b/include/cutlass/conv/threadblock/implicit_gemm_wgrad_fusion_multistage.h
 @@ -551,7 +551,7 @@ public:
@@ -321,22 +321,22 @@ index b750a4b4..07cb6ad1 100644
          (threadgroup / (ThreadTileCount::kColumn)) * ThreadOutputShape::kH * StrideShape::kRow;
      int base_w =
 diff --git a/include/cutlass/cutlass.h b/include/cutlass/cutlass.h
-index bbef6fc2..eb9155ba 100644
+index 75a46d56..7bed4a49 100644
 --- a/include/cutlass/cutlass.h
 +++ b/include/cutlass/cutlass.h
-@@ -37,6 +37,10 @@
+@@ -47,6 +47,10 @@
  
  #include "cutlass/detail/helper_macros.hpp"
  
 +#ifdef ARK_KERNELS_H_
-+#include "sync.h"
++#include "common/sync.h"
 +#endif // ARK_KERNELS_H_
 +
  ////////////////////////////////////////////////////////////////////////////////////////////////////
  
  namespace cutlass {
 diff --git a/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp b/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp
-index 0374a103..1bd10a6f 100644
+index 0374a103..6b3595e9 100644
 --- a/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp
 +++ b/include/cutlass/epilogue/collective/sm70_epilogue_vectorized.hpp
 @@ -167,9 +167,9 @@ public:
@@ -352,7 +352,7 @@ index 0374a103..1bd10a6f 100644
  
      // Separate out problem shape for convenience
 diff --git a/include/cutlass/epilogue/threadblock/epilogue.h b/include/cutlass/epilogue/threadblock/epilogue.h
-index 42ca5573..e46d1b79 100644
+index 42ca5573..ce718278 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue.h
 @@ -337,7 +337,7 @@ public:
@@ -389,7 +389,7 @@ index 42ca5573..e46d1b79 100644
        //
        // Load fragments from shared memory
 diff --git a/include/cutlass/epilogue/threadblock/epilogue_depthwise.h b/include/cutlass/epilogue/threadblock/epilogue_depthwise.h
-index d5a52ea5..52267f97 100644
+index d5a52ea5..800e318a 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue_depthwise.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue_depthwise.h
 @@ -237,7 +237,7 @@ class EpilogueDepthwise {
@@ -411,7 +411,7 @@ index d5a52ea5..52267f97 100644
      typename SharedLoadIterator::Fragment aligned_accum_fragment;
  
 diff --git a/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h b/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h
-index 1c70bedc..0c7c29d8 100644
+index 1c70bedc..c54bebb1 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue_planar_complex.h
 @@ -285,7 +285,7 @@ public:
@@ -433,7 +433,7 @@ index 1c70bedc..0c7c29d8 100644
        //
        // Load fragments from shared memory
 diff --git a/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h b/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h
-index 54f822fe..c8b6821f 100644
+index 54f822fe..8f02bf19 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h
 @@ -285,7 +285,7 @@ public:
@@ -455,7 +455,7 @@ index 54f822fe..c8b6821f 100644
      Base::reduce(reduce_fragment_idx, output_op, broadcast_ptr, destination_iterator, source_iterator, tensor_iterator, problem_size, threadblock_offset);
      
 diff --git a/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h b/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h
-index 7a97e0cb..89464b98 100644
+index 7a97e0cb..e30cb38d 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue_with_broadcast.h
 @@ -573,7 +573,7 @@ private:
@@ -525,7 +525,7 @@ index 7a97e0cb..89464b98 100644
        //
        // Load fragments from shared memory
 diff --git a/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h b/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h
-index 6e76f7e7..bb24ae3d 100644
+index 6e76f7e7..4d7cfe8f 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue_with_reduction.h
 @@ -351,7 +351,7 @@ private:
@@ -577,7 +577,7 @@ index 6e76f7e7..bb24ae3d 100644
        //
        // Load fragments from shared memory
 diff --git a/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h b/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h
-index 6c543539..d003b150 100644
+index 6c543539..2c80f457 100644
 --- a/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h
 +++ b/include/cutlass/epilogue/threadblock/epilogue_with_visitor.h
 @@ -275,12 +275,12 @@ public:
@@ -596,7 +596,7 @@ index 6c543539..d003b150 100644
        //
        // Load fragments from shared memory
 diff --git a/include/cutlass/epilogue/threadblock/interleaved_epilogue.h b/include/cutlass/epilogue/threadblock/interleaved_epilogue.h
-index b4d1bbe0..766370a1 100644
+index b4d1bbe0..138939be 100644
 --- a/include/cutlass/epilogue/threadblock/interleaved_epilogue.h
 +++ b/include/cutlass/epilogue/threadblock/interleaved_epilogue.h
 @@ -342,7 +342,7 @@ public:
@@ -609,7 +609,7 @@ index b4d1bbe0..766370a1 100644
  
      operator()(output_op, destination_iterator, accumulators, SourceAspectNeeded(source_iterator));
 diff --git a/include/cutlass/gemm/collective/sm70_mma_twostage.hpp b/include/cutlass/gemm/collective/sm70_mma_twostage.hpp
-index ffe1ea6d..6f568c55 100644
+index ffe1ea6d..82a14d31 100644
 --- a/include/cutlass/gemm/collective/sm70_mma_twostage.hpp
 +++ b/include/cutlass/gemm/collective/sm70_mma_twostage.hpp
 @@ -236,7 +236,7 @@ struct CollectiveMma<
@@ -661,7 +661,7 @@ index ffe1ea6d..6f568c55 100644
  
          // Load A, B smem->rmem for k+1
 diff --git a/include/cutlass/gemm/collective/sm80_mma_multistage.hpp b/include/cutlass/gemm/collective/sm80_mma_multistage.hpp
-index dc98823c..5dcb29a4 100644
+index dc98823c..9f3f52a9 100644
 --- a/include/cutlass/gemm/collective/sm80_mma_multistage.hpp
 +++ b/include/cutlass/gemm/collective/sm80_mma_multistage.hpp
 @@ -279,7 +279,7 @@ struct CollectiveMma<
@@ -701,10 +701,10 @@ index dc98823c..5dcb29a4 100644
  
          // Load A, B shmem->regs for k_block+1
 diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
-index 94f4656f..49502f90 100644
+index 6fe3f456..91dc6e0c 100644
 --- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
 +++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_rs_warpspecialized.hpp
-@@ -348,7 +348,8 @@ struct CollectiveMma<
+@@ -355,7 +355,8 @@ struct CollectiveMma<
    {
  
      using namespace cute;
@@ -714,7 +714,7 @@ index 94f4656f..49502f90 100644
      int warp_idx_in_warp_group  = warp_idx % 4;
      int lane_predicate = cute::elect_one_sync();
  
-@@ -420,7 +421,8 @@ struct CollectiveMma<
+@@ -429,7 +430,8 @@ struct CollectiveMma<
    CUTLASS_DEVICE void
    load_tail(MainloopPipeline pipeline, PipelineState smem_pipe_write)
    {
@@ -724,7 +724,7 @@ index 94f4656f..49502f90 100644
      int warp_idx_in_warp_group = warp_idx % 4;
      int lane_predicate = cute::elect_one_sync();
  
-@@ -462,7 +464,8 @@ struct CollectiveMma<
+@@ -471,7 +473,8 @@ struct CollectiveMma<
        "SM90 GMMA mainloops cannot have a non-void copy atom for smem sourced instructions.");
  
      // Obtain warp index
@@ -735,7 +735,7 @@ index 94f4656f..49502f90 100644
      
      Tensor sA_ = make_tensor(make_smem_ptr(shared_tensors.smem_A.data()), SmemLayoutA{});         // (BLK_M,BLK_K,PIPE)
 diff --git a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
-index 932765ea..071f0a15 100644
+index 932765ea..572e99e7 100644
 --- a/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
 +++ b/include/cutlass/gemm/collective/sm90_mma_tma_gmma_ss.hpp
 @@ -326,7 +326,8 @@ struct CollectiveMma<
@@ -913,7 +913,7 @@ index fcb4ec2d..c9ff90c0 100644
        int lane_idx = threadIdx.x % 32;
        
 diff --git a/include/cutlass/gemm/kernel/gemm_grouped.h b/include/cutlass/gemm/kernel/gemm_grouped.h
-index 310ff3b1..7c085121 100644
+index 310ff3b1..0c198db9 100644
 --- a/include/cutlass/gemm/kernel/gemm_grouped.h
 +++ b/include/cutlass/gemm/kernel/gemm_grouped.h
 @@ -372,7 +372,7 @@ public:
@@ -944,7 +944,7 @@ index 310ff3b1..7c085121 100644
        // Compute threadblock-scoped matrix multiply-add
        mma(
 diff --git a/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h b/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h
-index cac99f5c..076793bf 100644
+index cac99f5c..db3e15d7 100644
 --- a/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h
 +++ b/include/cutlass/gemm/kernel/gemm_grouped_softmax_mainloop_fusion.h
 @@ -391,7 +391,7 @@ public:
@@ -975,7 +975,7 @@ index cac99f5c..076793bf 100644
        // Compute threadblock-scoped matrix multiply-add
        mma(
 diff --git a/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h b/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h
-index 3fe842a0..c84e6402 100644
+index 3fe842a0..dfdb8e14 100644
 --- a/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h
 +++ b/include/cutlass/gemm/kernel/gemm_layernorm_mainloop_fusion.h
 @@ -577,7 +577,7 @@ public:
@@ -1006,7 +1006,7 @@ index 3fe842a0..c84e6402 100644
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/kernel/gemm_pipelined.h b/include/cutlass/gemm/kernel/gemm_pipelined.h
-index 900e0442..57676598 100644
+index 900e0442..67ee8f9d 100644
 --- a/include/cutlass/gemm/kernel/gemm_pipelined.h
 +++ b/include/cutlass/gemm/kernel/gemm_pipelined.h
 @@ -94,7 +94,8 @@ __global__ void GemmPipelined(
@@ -1029,7 +1029,7 @@ index 900e0442..57676598 100644
  
    //
 diff --git a/include/cutlass/gemm/kernel/gemm_planar_complex.h b/include/cutlass/gemm/kernel/gemm_planar_complex.h
-index 6987d7e6..7316b990 100644
+index 6987d7e6..79b2c51f 100644
 --- a/include/cutlass/gemm/kernel/gemm_planar_complex.h
 +++ b/include/cutlass/gemm/kernel/gemm_planar_complex.h
 @@ -489,7 +489,7 @@ public:
@@ -1060,7 +1060,7 @@ index 6987d7e6..7316b990 100644
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/kernel/gemm_planar_complex_array.h b/include/cutlass/gemm/kernel/gemm_planar_complex_array.h
-index 6a3aa11c..35cbb7e2 100644
+index 6a3aa11c..b61653c1 100644
 --- a/include/cutlass/gemm/kernel/gemm_planar_complex_array.h
 +++ b/include/cutlass/gemm/kernel/gemm_planar_complex_array.h
 @@ -466,11 +466,12 @@ public:
@@ -1101,7 +1101,7 @@ index ffb928c3..bb4e9385 100644
  
  
 diff --git a/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h b/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h
-index 6d6714d8..ca752a84 100644
+index 6d6714d8..a13ce710 100644
 --- a/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h
 +++ b/include/cutlass/gemm/kernel/gemm_streamk_with_fused_epilogue.h
 @@ -669,7 +669,7 @@ protected:
@@ -1181,7 +1181,7 @@ index 6d6714d8..ca752a84 100644
        epilogue(
          shared_storage.epilogue,
 diff --git a/include/cutlass/gemm/kernel/gemm_universal.h b/include/cutlass/gemm/kernel/gemm_universal.h
-index 8f146afb..cc277f23 100644
+index f095bc53..d42bf69e 100644
 --- a/include/cutlass/gemm/kernel/gemm_universal.h
 +++ b/include/cutlass/gemm/kernel/gemm_universal.h
 @@ -511,7 +511,7 @@ public:
@@ -1212,7 +1212,7 @@ index 8f146afb..cc277f23 100644
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/kernel/gemm_universal_streamk.h b/include/cutlass/gemm/kernel/gemm_universal_streamk.h
-index c52a15c3..1eae72f7 100644
+index c52a15c3..326edeb2 100644
 --- a/include/cutlass/gemm/kernel/gemm_universal_streamk.h
 +++ b/include/cutlass/gemm/kernel/gemm_universal_streamk.h
 @@ -666,7 +666,7 @@ protected:
@@ -1294,7 +1294,7 @@ index 1c58b44e..1a8aaa5e 100644
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/kernel/gemm_with_k_reduction.h b/include/cutlass/gemm/kernel/gemm_with_k_reduction.h
-index 863b0c4c..a87a7667 100644
+index 863b0c4c..94dfcb78 100644
 --- a/include/cutlass/gemm/kernel/gemm_with_k_reduction.h
 +++ b/include/cutlass/gemm/kernel/gemm_with_k_reduction.h
 @@ -480,7 +480,7 @@ public:
@@ -1356,7 +1356,7 @@ index 11490daf..abc873c8 100755
    iterator_D.store(fragment_CD);
  }
 diff --git a/include/cutlass/gemm/kernel/grouped_problem_visitor.h b/include/cutlass/gemm/kernel/grouped_problem_visitor.h
-index d013af02..3affed81 100644
+index d013af02..5c84bf9c 100644
 --- a/include/cutlass/gemm/kernel/grouped_problem_visitor.h
 +++ b/include/cutlass/gemm/kernel/grouped_problem_visitor.h
 @@ -391,7 +391,7 @@ struct GroupedProblemVisitor<ProblemSizeHelper,
@@ -1387,7 +1387,7 @@ index d013af02..3affed81 100644
          shared_storage.prefetched_problems[offset] = problem_info_ptr[block_load_start + tiles_computed + offset];
        }
 diff --git a/include/cutlass/gemm/kernel/rank_2k_grouped.h b/include/cutlass/gemm/kernel/rank_2k_grouped.h
-index 55955d43..1492ae01 100644
+index 55955d43..25b9aa85 100644
 --- a/include/cutlass/gemm/kernel/rank_2k_grouped.h
 +++ b/include/cutlass/gemm/kernel/rank_2k_grouped.h
 @@ -491,7 +491,7 @@ public:
@@ -1427,7 +1427,7 @@ index 55955d43..1492ae01 100644
          accumulators.clear();
        }
 diff --git a/include/cutlass/gemm/kernel/rank_2k_universal.h b/include/cutlass/gemm/kernel/rank_2k_universal.h
-index 2775710d..b418ccba 100644
+index 2775710d..6db859ce 100644
 --- a/include/cutlass/gemm/kernel/rank_2k_universal.h
 +++ b/include/cutlass/gemm/kernel/rank_2k_universal.h
 @@ -401,7 +401,7 @@ public:
@@ -1467,7 +1467,7 @@ index 2775710d..b418ccba 100644
        accumulators.clear();
      }
 diff --git a/include/cutlass/gemm/kernel/rank_k_universal.h b/include/cutlass/gemm/kernel/rank_k_universal.h
-index 188a4e70..85ad1bfb 100644
+index 188a4e70..d4ed392b 100644
 --- a/include/cutlass/gemm/kernel/rank_k_universal.h
 +++ b/include/cutlass/gemm/kernel/rank_k_universal.h
 @@ -369,7 +369,7 @@ public:
@@ -1498,7 +1498,7 @@ index 188a4e70..85ad1bfb 100644
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/kernel/sm70_gemm.hpp b/include/cutlass/gemm/kernel/sm70_gemm.hpp
-index e1fc4ec9..65c54b77 100644
+index ce811a7b..16e1dea0 100644
 --- a/include/cutlass/gemm/kernel/sm70_gemm.hpp
 +++ b/include/cutlass/gemm/kernel/sm70_gemm.hpp
 @@ -199,7 +199,7 @@ public:
@@ -1511,18 +1511,9 @@ index e1fc4ec9..65c54b77 100644
      auto [m_coord, n_coord, l_coord] = blockIdx;
      auto blk_coord_mnkl = make_coord(m_coord, n_coord, _, l_coord);                                        // (m,n,k,l)
 diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
-index 7ab238f6..16714265 100644
+index 8091672f..b2ae22d9 100644
 --- a/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
 +++ b/include/cutlass/gemm/kernel/sm90_gemm_tma.hpp
-@@ -105,7 +105,7 @@ public:
-   using StrideC  = typename CollectiveEpilogue::StrideC;
-   using ElementD = typename CollectiveEpilogue::ElementD;
-   using StrideD  = typename CollectiveEpilogue::StrideD;
--  using EpilogueArguments = typename CollectiveEpilogue::Params;
-+  using EpilogueArguments = typename CollectiveEpilogue::Arguments;
-   using EpilogueParams = typename CollectiveEpilogue::Params;
-   static_assert(cute::is_same_v<ElementAccumulator, typename CollectiveEpilogue::ElementAccumulator>,
-     "Mainloop and epilogue do not agree on accumulator value type.");
 @@ -224,8 +224,10 @@ public:
      static_assert(rank(StrideC{}) == 3, "StrideC must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
      static_assert(rank(StrideD{}) == 3, "StrideD must be rank-3: [M, N, L]. If batch mode is not needed, set L stride to Int<0>.");
@@ -1537,7 +1528,7 @@ index 7ab238f6..16714265 100644
      uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
  
 diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp
-index 01d44274..1de5072e 100644
+index e5ae25a7..7b417313 100644
 --- a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp
 +++ b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized.hpp
 @@ -241,12 +241,15 @@ public:
@@ -1569,10 +1560,10 @@ index 01d44274..1de5072e 100644
        }
      } ();
 diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp
-index dfa18ad2..716f3ead 100644
+index 7ad54f4a..01f2a486 100644
 --- a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp
 +++ b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_cooperative.hpp
-@@ -286,13 +286,16 @@ public:
+@@ -287,13 +287,16 @@ public:
      // Kernel level shared memory storage
      SharedStorage& shared_storage = *reinterpret_cast<SharedStorage*>(smem_buf);
  
@@ -1592,7 +1583,7 @@ index dfa18ad2..716f3ead 100644
      auto producer_warp_role = ProducerWarpRole(warp_idx_in_warp_group);
      int lane_predicate = cute::elect_one_sync();
      uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
-@@ -362,7 +365,7 @@ public:
+@@ -363,7 +366,7 @@ public:
          return [] () { cute::cluster_wait(); };
        }
        else {
@@ -1601,7 +1592,7 @@ index dfa18ad2..716f3ead 100644
          return [] () {}; // do nothing
        }
      } ();
-@@ -526,7 +529,7 @@ public:
+@@ -523,7 +526,7 @@ public:
          mainloop_pipe_consumer_state.advance(work_k_tile_count);
  
          // Index of warp group within consumer warp groups
@@ -1611,13 +1602,13 @@ index dfa18ad2..716f3ead 100644
          // Perform reduction across splits, if needed
          TileScheduler::fixup(
 diff --git a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp
-index 77c88c32..16086c03 100644
+index dd1f5a6b..47ba0145 100644
 --- a/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp
 +++ b/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp
-@@ -283,12 +283,15 @@ public:
+@@ -284,12 +284,15 @@ public:
      // Kernel level shared memory storage
      SharedStorage& shared_storage = *reinterpret_cast<SharedStorage*>(smem_buf);
- 
+     
 -    int thread_idx = int(threadIdx.x);
 +    constexpr int num_warps = MaxThreadsPerBlock / NumThreadsPerWarp;
 +    constexpr int num_warp_groups = num_warps / NumWarpsPerWarpGroup;
@@ -1633,7 +1624,7 @@ index 77c88c32..16086c03 100644
      auto producer_warp_role = ProducerWarpRole(warp_idx_in_warp_group);
      int lane_predicate = cute::elect_one_sync();
      uint32_t block_rank_in_cluster = cute::block_rank_in_cluster();
-@@ -341,7 +344,7 @@ public:
+@@ -342,7 +345,7 @@ public:
  
      typename MathWarpGroupOrderBarrier::Params params_math_wg_order_barrier;
      // DMA Load WG will not participate in these Ordered Barrier syncs
@@ -1642,7 +1633,7 @@ index 77c88c32..16086c03 100644
      params_math_wg_order_barrier.group_size = NumThreadsPerWarpGroup; // Number of threads / participants in a group
      MathWarpGroupOrderBarrier math_wg_order_barrier(shared_storage.pipelines.math_wg_order, params_math_wg_order_barrier);
  
-@@ -364,7 +367,7 @@ public:
+@@ -365,7 +368,7 @@ public:
          return [] () { cute::cluster_wait(); };
        }
        else {
@@ -1696,7 +1687,7 @@ index 9c94efde..4c6e06bd 100644
  
      //
 diff --git a/include/cutlass/gemm/kernel/symm_universal.h b/include/cutlass/gemm/kernel/symm_universal.h
-index f05cf7df..2980b985 100755
+index f05cf7df..f229c2dd 100755
 --- a/include/cutlass/gemm/kernel/symm_universal.h
 +++ b/include/cutlass/gemm/kernel/symm_universal.h
 @@ -387,7 +387,7 @@ public:
@@ -1723,7 +1714,7 @@ index f05cf7df..2980b985 100755
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/kernel/trmm_universal.h b/include/cutlass/gemm/kernel/trmm_universal.h
-index bca9450b..5715b623 100644
+index bca9450b..abd208a0 100644
 --- a/include/cutlass/gemm/kernel/trmm_universal.h
 +++ b/include/cutlass/gemm/kernel/trmm_universal.h
 @@ -362,7 +362,7 @@ public:
@@ -1750,7 +1741,7 @@ index bca9450b..5715b623 100644
      int lane_idx = threadIdx.x % 32;
  
 diff --git a/include/cutlass/gemm/threadblock/ell_mma_multistage.h b/include/cutlass/gemm/threadblock/ell_mma_multistage.h
-index fa0945a4..30b7d43f 100644
+index fa0945a4..48a8d045 100644
 --- a/include/cutlass/gemm/threadblock/ell_mma_multistage.h
 +++ b/include/cutlass/gemm/threadblock/ell_mma_multistage.h
 @@ -436,7 +436,7 @@ public:
@@ -1781,7 +1772,7 @@ index fa0945a4..30b7d43f 100644
    }
  };
 diff --git a/include/cutlass/gemm/threadblock/ell_mma_pipelined.h b/include/cutlass/gemm/threadblock/ell_mma_pipelined.h
-index 8b1c2c43..8a6c6cfc 100644
+index 8b1c2c43..d8724278 100644
 --- a/include/cutlass/gemm/threadblock/ell_mma_pipelined.h
 +++ b/include/cutlass/gemm/threadblock/ell_mma_pipelined.h
 @@ -240,7 +240,7 @@ public:
@@ -1803,7 +1794,7 @@ index 8b1c2c43..8a6c6cfc 100644
            ++this->smem_iterator_A_;
            ++this->smem_iterator_B_;
 diff --git a/include/cutlass/gemm/threadblock/mma_blas3_multistage.h b/include/cutlass/gemm/threadblock/mma_blas3_multistage.h
-index 214916d9..a9a432be 100644
+index 214916d9..297dd6c8 100644
 --- a/include/cutlass/gemm/threadblock/mma_blas3_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_blas3_multistage.h
 @@ -499,7 +499,7 @@ public:
@@ -1841,7 +1832,7 @@ index 214916d9..a9a432be 100644
    }
  };
 diff --git a/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h b/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h
-index 197d0872..f035f9c5 100644
+index 197d0872..9da3b4d8 100644
 --- a/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_layernorm_mainloop_fusion_multistage.h
 @@ -663,7 +663,7 @@ public:
@@ -1872,7 +1863,7 @@ index 197d0872..f035f9c5 100644
    }
  };
 diff --git a/include/cutlass/gemm/threadblock/mma_multistage.h b/include/cutlass/gemm/threadblock/mma_multistage.h
-index 1cc72e2e..c9a0b1cc 100644
+index 1cc72e2e..dfd94f95 100644
 --- a/include/cutlass/gemm/threadblock/mma_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_multistage.h
 @@ -487,7 +487,7 @@ public:
@@ -1894,7 +1885,7 @@ index 1cc72e2e..c9a0b1cc 100644
    }
  
 diff --git a/include/cutlass/gemm/threadblock/mma_pipelined.h b/include/cutlass/gemm/threadblock/mma_pipelined.h
-index 8ada21cd..bfb4ca0e 100644
+index 8ada21cd..d5b60c63 100644
 --- a/include/cutlass/gemm/threadblock/mma_pipelined.h
 +++ b/include/cutlass/gemm/threadblock/mma_pipelined.h
 @@ -274,7 +274,7 @@ public:
@@ -1907,7 +1898,7 @@ index 8ada21cd..bfb4ca0e 100644
  
  
 diff --git a/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h b/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h
-index 9ff59893..a6e2a484 100644
+index 9ff59893..d068a8dd 100644
 --- a/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_planar_complex_multistage.h
 @@ -480,7 +480,7 @@ public:
@@ -1938,7 +1929,7 @@ index 9ff59893..a6e2a484 100644
    }
  };
 diff --git a/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h b/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h
-index d6beec45..f0dab381 100644
+index d6beec45..c3c2a806 100644
 --- a/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h
 +++ b/include/cutlass/gemm/threadblock/mma_planar_complex_pipelined.h
 @@ -287,7 +287,7 @@ public:
@@ -1960,7 +1951,7 @@ index d6beec45..f0dab381 100644
            ++this->smem_iterator_B_;
            ++this->smem_iterator_A_;
 diff --git a/include/cutlass/gemm/threadblock/mma_singlestage.h b/include/cutlass/gemm/threadblock/mma_singlestage.h
-index 3ce8ac80..efe60f4b 100644
+index 3ce8ac80..e3e7b16d 100644
 --- a/include/cutlass/gemm/threadblock/mma_singlestage.h
 +++ b/include/cutlass/gemm/threadblock/mma_singlestage.h
 @@ -214,7 +214,7 @@ public:
@@ -1982,7 +1973,7 @@ index 3ce8ac80..efe60f4b 100644
        iterator_A.load(tb_frag_A);
        iterator_B.load(tb_frag_B);
 diff --git a/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h b/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h
-index 0f54c8bf..5dced509 100644
+index 0f54c8bf..c0b6f84f 100644
 --- a/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_softmax_mainloop_fusion_multistage.h
 @@ -559,7 +559,7 @@ public:
@@ -2020,7 +2011,7 @@ index 0f54c8bf..5dced509 100644
    }
  };
 diff --git a/include/cutlass/gemm/threadblock/mma_sparse_multistage.h b/include/cutlass/gemm/threadblock/mma_sparse_multistage.h
-index 4b35e696..034e4039 100644
+index 4b35e696..b26a7bde 100644
 --- a/include/cutlass/gemm/threadblock/mma_sparse_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_sparse_multistage.h
 @@ -475,7 +475,7 @@ public:
@@ -2051,7 +2042,7 @@ index 4b35e696..034e4039 100644
    }
  };
 diff --git a/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h b/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h
-index 8586c3d9..f081ced1 100644
+index 8586c3d9..8024d1ae 100644
 --- a/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h
 +++ b/include/cutlass/gemm/threadblock/mma_with_reduction_multistage.h
 @@ -383,7 +383,7 @@ public:
@@ -2082,7 +2073,7 @@ index 8586c3d9..f081ced1 100644
    }
  };
 diff --git a/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h b/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h
-index b79b43e7..965f802e 100644
+index b79b43e7..b916458a 100644
 --- a/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h
 +++ b/include/cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h
 @@ -2422,7 +2422,7 @@ public:
@@ -2104,7 +2095,7 @@ index b79b43e7..965f802e 100644
  
      ref_.add_coord_offset(origin_);
 diff --git a/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h b/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
-index 5a0b9f47..1e4f8407 100644
+index 5a0b9f47..e6d208b7 100644
 --- a/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
 +++ b/include/cutlass/reduction/kernel/tensor_reduce_affine_contiguous.h
 @@ -346,7 +346,7 @@ private:
@@ -2144,7 +2135,7 @@ index 5a0b9f47..1e4f8407 100644
          // Update indices and pointers
          idx_linear += gridDim.y * blockDim.y;
 diff --git a/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h b/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h
-index 574c836d..9f5b3b38 100644
+index 574c836d..d5627752 100644
 --- a/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h
 +++ b/include/cutlass/reduction/kernel/tensor_reduce_affine_strided.h
 @@ -328,7 +328,7 @@ private:
@@ -2166,7 +2157,7 @@ index 574c836d..9f5b3b38 100644
  
      return accumulator;
 diff --git a/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp b/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp
-index 27039c64..4d40c598 100644
+index 6e41b7db..771159c8 100644
 --- a/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp
 +++ b/include/cutlass/transform/collective/sm90_wgmma_transpose.hpp
 @@ -224,7 +224,7 @@ public:

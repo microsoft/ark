@@ -6,6 +6,7 @@ declare -A baseImageTable
 baseImageTable=(
     ["cuda11.8"]="nvidia/cuda:11.8.0-devel-ubuntu20.04"
     ["cuda12.1"]="nvidia/cuda:12.1.1-devel-ubuntu20.04"
+    ["cuda12.2"]="nvidia/cuda:12.2.2-devel-ubuntu20.04"
     ["rocm5.6"]="rocm/dev-ubuntu-20.04:5.6.1-complete"
     ["rocm5.7"]="rocm/dev-ubuntu-20.04:5.7-complete"
 )
@@ -14,6 +15,7 @@ declare -A extraLdPathTable
 extraLdPathTable=(
     ["cuda11.8"]="/usr/local/cuda-11.8/lib64"
     ["cuda12.1"]="/usr/local/cuda-12.1/compat:/usr/local/cuda-12.1/lib64"
+    ["cuda12.2"]="/usr/local/cuda-12.2/compat:/usr/local/cuda-12.2/lib64"
     ["rocm5.6"]="/opt/rocm/lib"
     ["rocm5.7"]="/opt/rocm/lib"
 )
@@ -22,7 +24,7 @@ GHCR="ghcr.io/microsoft/ark/ark"
 TARGET=${1}
 
 print_usage() {
-    echo "Usage: $0 [cuda11.8|cuda12.1|rocm5.6|rocm5.7]"
+    echo "Usage: $0 [cuda11.8|cuda12.1|cuda12.2|rocm5.6|rocm5.7]"
 }
 
 if [[ ! -v "baseImageTable[${TARGET}]" ]]; then

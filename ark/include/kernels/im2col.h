@@ -4,8 +4,7 @@
 #ifndef ARK_KERNELS_IM2COL_H_
 #define ARK_KERNELS_IM2COL_H_
 
-#include "ewise.h"
-#include "sync.h"
+#include "common/ewise.h"
 
 namespace ark {
 
@@ -121,7 +120,6 @@ DEVICE void im2col(fp16 *y, fp16 *x, int uop_idx, int) {
            Im2Col<InShape, InDims, OutDims, UnitOutDims, fp16, 2, KernelHeight,
                   KernelWidth, StrideHeight, StrideWidth, PadHeight, PadWidth,
                   DilationHeight, DilationWidth>>::run(y, x, uop_idx);
-    sync_warps<NumWarps>();
 }
 
 }  // namespace ark

@@ -8,8 +8,7 @@
 #include "gemm_cutlass.h"
 #elif defined(ARK_TARGET_ROCM_ARCH)
 #include "gemm_ck.h"
-#endif
-#include "unit_op.h"
+#endif  // defined(ARK_TARGET_ROCM_ARCH)
 
 namespace ark {
 
@@ -112,6 +111,7 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
             ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
         pC, pA, pB, uop_idx, smem_per_warp);
 #endif
+    UnitOp::sync_threads();
 }
 
 }  // namespace ark

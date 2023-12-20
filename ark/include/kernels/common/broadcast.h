@@ -4,8 +4,15 @@
 #ifndef ARK_KERNELS_BROADCAST_H_
 #define ARK_KERNELS_BROADCAST_H_
 
-#include "common.h"
+#include "bf16.h"
+#include "checker.h"
+#include "fp16.h"
+#include "fp32.h"
+#include "integer.h"
 #include "load_store.h"
+#include "type_intrinsics.h"
+#include "unit_op.h"
+#include "vector_type.h"
 
 namespace ark {
 
@@ -472,6 +479,8 @@ struct Broadcast1 {
 
             Intrinsic::compute(&out[idx_out], &in[idx_in]);
         }
+
+        UnitOp::sync_threads();
     }
 };
 
@@ -557,6 +566,8 @@ struct Broadcast2 {
 
             Intrinsic::compute(&out[idx_out], &in0[idx_in0], &in1[idx_in1]);
         }
+
+        UnitOp::sync_threads();
     }
 };
 

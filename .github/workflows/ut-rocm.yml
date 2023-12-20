@@ -34,7 +34,7 @@ jobs:
           git submodule foreach --recursive git reset --hard
           git submodule foreach --recursive git clean -fdx
           git submodule update --init --recursive
-  
+
       - name: Build
         run: |
           mkdir build && cd build
@@ -43,7 +43,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random -E "sched_test|sendrecv|all_reduce|all_gather|reduce_scatter|gpu_mem|gpu_mgr"
+          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
         run: |

@@ -24,10 +24,10 @@ endif()
 find_program(BLACK black)
 if(BLACK)
     add_custom_target(pylint
-        COMMAND python3.8 -m black --check --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
+        COMMAND python3 -m black --check --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
     )
     add_custom_target(pylint-autofix
-        COMMAND python3.8 -m black --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
+        COMMAND python3 -m black --config ${PROJECT_SOURCE_DIR}/pyproject.toml ${PROJECT_SOURCE_DIR}
     )
 else()
     message(STATUS "black not found.")

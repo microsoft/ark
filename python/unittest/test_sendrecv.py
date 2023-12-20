@@ -4,6 +4,7 @@
 import ark
 import numpy as np
 import multiprocessing
+import os
 import unittest
 
 world_size = 2
@@ -14,15 +15,17 @@ tensor_size = tensor_len * 2
 
 def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     # Create a Model instance
-    runtime = ark.Runtime(rank, world_size)
+    runtime = ark.Runtime()
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
 
-    input_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    output_tensor = ark.tensor([tensor_len], ark.fp16)
     if rank == 0:
         ark.send(input_tensor, 0, 1, tensor_size)
         ark.send_done(input_tensor, 0, 1)
     if rank == 1:
-        ark.recv(input_tensor, 0, 0)
-    # ark.all_reduce(input_tensor, rank, world_size)
+        output_tensor = ark.recv(0, 0, 0, output_tensor)
 
     runtime.launch()
     if rank == 0:
@@ -30,8 +33,7 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
     runtime.run(iter)
     elapsed = runtime.stop()
     if rank == 1:
-        host_output = input_tensor.to_numpy()
-
+        host_output = output_tensor.to_numpy()
         max_abs_error = np.max(np.abs(host_output - np_inputs))
         mean_abs_error = np.mean(np.abs(host_output - np_inputs))
         # The numeric error of half precision of the machine
@@ -39,9 +41,23 @@ def sendrecv_test_one_dir_function(rank, np_inputs, iter=1):
         atol = numeric_epsilon_half
         np.testing.assert_allclose(host_output, np_inputs, atol=atol)
         print(
-            f"sendrecv_test_one_dir: rank {rank} tensor_len {tensor_len:6d} "
-            f"max_abs_error {max_abs_error:.5f} mean_abs_error {mean_abs_error:.5f} "
-            f"elapsed {elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
+            "sendrecv_test_one_dir:",
+            "rank",
+            rank,
+            "tensor_len",
+            "{:6d}".format(tensor_len),
+            "max_abs_error:",
+            "{:.5f}".format(max_abs_error),
+            "mean_abs_error:",
+            "{:.5f}".format(mean_abs_error),
+            "elapsed",
+            "{:.5f}".format(elapsed),
+            " ms ",
+            " iter ",
+            iter,
+            "elapsed_per_iter",
+            "{:.5f}".format(elapsed / iter),
+            " ms ",
         )
 
 
@@ -62,14 +78,17 @@ def sendrecv_test_one_dir():
 
 
 def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
-    runtime = ark.Runtime(rank, world_size)
+    # Create a Model instance
+    runtime = ark.Runtime()
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
     other_rank = 1 - rank
 
-    send_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
-    recv_tensor = ark.tensor(ark.Dims(tensor_len), ark.TensorType.FP16)
+    send_tensor = ark.tensor([tensor_len], ark.fp16)
+    recv_tensor = ark.tensor([tensor_len], ark.fp16)
     ark.send(send_tensor, rank, other_rank, tensor_size)
     ark.send_done(send_tensor, rank, other_rank)
-    ark.recv(recv_tensor, other_rank, other_rank)
+    ark.recv(other_rank, other_rank, 0, recv_tensor)
 
     runtime.launch()
     send_tensor.from_numpy(np_inputs[rank])
@@ -77,6 +96,7 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
     runtime.run(iter)
     elapsed = runtime.stop()
 
+    host_output = np.zeros(tensor_len, dtype=np.float16)
     host_output = recv_tensor.to_numpy()
 
     gt = np_inputs[other_rank]
@@ -86,9 +106,20 @@ def sendrecv_test_bi_dir_function(rank, np_inputs, iter=1):
     numeric_epsilon_half = np.finfo(np.float16).eps
     np.testing.assert_allclose(host_output, gt, atol=numeric_epsilon_half)
     print(
-        f"sendrecv_test_bi_dir: rank {rank} tensor_len {tensor_len:6d} "
-        f"max_abs_error {max_abs_error:.5f} mean_abs_error {mean_abs_error:.5f} "
-        f"elapsed {elapsed:.5f} ms iter {iter} elapsed_per_iter {elapsed / iter:.5f} ms"
+        "sendrecv_test_bi_dir:",
+        "rank",
+        rank,
+        "tensor_len",
+        "{:6d}".format(tensor_len),
+        "max_abs_error:",
+        "{:.5f}".format(max_abs_error),
+        "mean_abs_error:",
+        "{:.5f}".format(mean_abs_error),
+        "elapsed",
+        "{:.5f}".format(elapsed),
+        " ms ",
+        " iter ",
+        iter,
     )
 
 

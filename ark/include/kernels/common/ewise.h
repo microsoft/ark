@@ -4,7 +4,7 @@
 #ifndef ARK_KERNELS_EWISE_H_
 #define ARK_KERNELS_EWISE_H_
 
-#include "common.h"
+#include "unit_op.h"
 
 namespace ark {
 
@@ -50,6 +50,8 @@ struct Ewise1 {
 
             CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w);
         }
+
+        UnitOp::sync_threads();
     }
 };
 

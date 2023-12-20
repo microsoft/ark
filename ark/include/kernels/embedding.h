@@ -4,10 +4,8 @@
 #ifndef ARK_KERNELS_EMBEDDING_H_
 #define ARK_KERNELS_EMBEDDING_H_
 
-#include <type_traits>
-
-#include "common.h"
-#include "type_intrinsics.h"
+#include "common/broadcast.h"
+#include "common/type_intrinsics.h"
 
 namespace ark {
 

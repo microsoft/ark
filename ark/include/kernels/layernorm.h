@@ -101,13 +101,14 @@ struct LayerNorm {
                                                UnitOutDims::W);
         variance = type::Rsqrt::compute(
             type::Add::compute(variance, type::Cast::compute<DataType>(1e-5f)));
-        // the output is (input - mean) / sqrt(variance)
+        // the output is input / sqrt(mean_square)
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
             int idx_out = idx_out_base + idx_w;
             out[idx_out] = type::Mul::compute(
                 type::Sub::compute(in[idx_in], mean), variance);
         }
+        UnitOp::sync_threads();
     }
 };
 
@@ -191,6 +192,7 @@ struct RMSNorm {
             int idx_out = idx_out_base + idx_w;
             out[idx_out] = type::Mul::compute(in[idx_in], rrms);
         }
+        UnitOp::sync_threads();
     }
 };
 

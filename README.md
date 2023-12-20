@@ -14,6 +14,8 @@ A GPU-driven system framework for scalable AI applications.
 
 *NOTE (Nov 2023): ROCm unit tests will be replaced into an Azure pipeline in the future.*
 
+*NOTE (Dec 2023): ROCm unit tests are failing due to the nodes' issue. This will be fixed soon.*
+
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
 ## Overview
@@ -28,18 +30,20 @@ ARK provides a set of APIs for users to express their distributed deep learning 
 
 ARK is under active development and a part of its features will be added in a future release. The following describes key features of each version.
 
-### New in ARK v0.4 (Latest Release)
+### New in ARK v0.5 (Latest Release)
 
-* Support AMD GPUs (CDNA2, single-GPU only)
-* Add high-performance AllReduce & AllGather algorithms with MSLL
-* Fix major bugs in the scheduler
+* Integrate with [MSCCL++](https://github.com/microsoft/mscclpp)
+* Removed dependency on `gpudma`
+* Add AMD CDNA3 architecture support
+* Support communication for AMD GPUs
+* Optimize OpGraph scheduling
+* Add a multi-GPU Llama2 example
 
-See details from https://github.com/microsoft/ark/issues/137.
+See details from https://github.com/microsoft/ark/issues/168.
 
-### ARK v0.5 (TBU, Dec. 2023)
+### ARK v0.6 (TBU, Jan. 2024)
 
-* Multi-GPU support for AMD GPUs
-* Add multi-GPU LLM examples
+* Overall performance optimization
 * Improve Python unit tests & code coverage
 
 ## Contributing

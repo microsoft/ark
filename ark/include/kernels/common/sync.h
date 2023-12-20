@@ -4,12 +4,9 @@
 #ifndef ARK_KERNELS_SYNC_H_
 #define ARK_KERNELS_SYNC_H_
 
-#if defined(ARK_TARGET_ROCM_ARCH)
-#include <hip/hip_runtime.h>
-#endif  // ARK_TARGET_ROCM_ARCH
-
 #include "arch.h"
 #include "device.h"
+#include "smem.h"
 #include "static_math.h"
 
 namespace ark {
@@ -23,8 +20,16 @@ struct State {
     int clks_cnt;
 };
 
+struct WarpGroupState {
+    unsigned int flag[8];
+    unsigned int is_inc_flag[8];
+    unsigned int cnt[8];
+};
+
 }  // namespace sync
 
+// Not sure why but this will fix hang issue.
+// __device__ int fake_flag;
 // Synchronize multiple thread blocks inside a kernel. Guarantee that all
 // previous work of all threads in cooperating blocks is finished and
 // visible to all threads in the device.
@@ -101,9 +106,29 @@ DEVICE void sync_warps() {
     static_assert(Arch::ThreadsPerWarp == 64, "");
     if constexpr (NumWarps == 1) {
         __builtin_amdgcn_wave_barrier();
-    } else {
-        // TODO:
+    } else if constexpr (NumWarps == 16) {
         __syncthreads();
+    } else {
+        static_assert(ARK_SMEM_RESERVED_BYTES >= sizeof(sync::WarpGroupState),
+                      "");
+        int lane_id = threadIdx.x & 63;
+        if (lane_id == 0) {
+            constexpr int MaxOldCnt = NumWarps - 1;
+            int warp_id = threadIdx.x >> 6;
+            int group_id = warp_id / NumWarps;
+            sync::WarpGroupState *state =
+                reinterpret_cast<sync::WarpGroupState *>(_ARK_SMEM);
+            unsigned int tmp = state->is_inc_flag[group_id] ^ 1;
+            if (atomicInc(&state->cnt[group_id], MaxOldCnt) == MaxOldCnt) {
+                state->flag[group_id] = tmp;
+            } else {
+                while (atomicAdd(&state->flag[group_id], 0) != tmp)
+                    __builtin_amdgcn_s_sleep(1);
+                __asm__ __volatile__("s_wakeup");
+            }
+            state->is_inc_flag[group_id] = tmp;
+        }
+        __builtin_amdgcn_wave_barrier();
     }
 #endif
 }
