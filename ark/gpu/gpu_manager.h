@@ -6,6 +6,9 @@
 
 #include <memory>
 
+#include "gpu/gpu.h"
+#include "gpu/gpu_common.h"
+#include "gpu/gpu_event.h"
 #include "gpu/gpu_memory.h"
 #include "gpu/gpu_stream.h"
 
@@ -17,8 +20,12 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
     GpuManager(const GpuManager &) = delete;
     GpuManager &operator=(const GpuManager &) = delete;
 
+    void set_current() const;
     std::shared_ptr<GpuMemory> malloc(size_t bytes, size_t align = 1,
                                       bool expose = false);
+    std::shared_ptr<GpuHostMemory> malloc_host(size_t bytes,
+                                               unsigned int flags = 0);
+    std::shared_ptr<GpuEventV2> create_event(bool disable_timing = false);
 
     void memset_d32_sync(void *dst, unsigned int val, size_t num) const;
     void memcpy_htod_sync(void *dst, size_t dst_offset, void *src,
@@ -27,7 +34,12 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
                           size_t src_offset, size_t bytes) const;
     void memcpy_dtod_sync(void *dst, size_t dst_offset, void *src,
                           size_t src_offset, size_t bytes) const;
+
     int get_gpu_id() const;
+    GpuState launch(gpuFunction function, const std::array<int, 3> &grid_dim,
+                    const std::array<int, 3> &block_dim, int smem_bytes,
+                    std::shared_ptr<GpuStreamV2> stream, void **params,
+                    void **extra) const;
 
     struct Info;
     const Info &info() const;
@@ -57,7 +69,6 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 
-    void set_current() const;
     void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;
     void memcpy_htod_async(void *dst, size_t dst_offset, void *src,

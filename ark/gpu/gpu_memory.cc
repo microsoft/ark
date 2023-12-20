@@ -166,4 +166,16 @@ void GpuMemory::from_host(const void* src, size_t bytes, bool async) {
     pimpl_->from_host(src, bytes, async);
 }
 
+GpuHostMemory::GpuHostMemory(std::shared_ptr<GpuManager> manager, size_t bytes, unsigned int flags)
+    : ptr_(nullptr) {
+    manager->set_current();
+    GLOG(gpuHostAlloc(&ptr_, bytes, flags));
+}
+
+GpuHostMemory::~GpuHostMemory() {
+    if (ptr_ != nullptr) {
+        GLOG(gpuHostFree(ptr_));
+    }
+}
+
 }  // namespace ark

@@ -5,7 +5,6 @@
 
 #include <unordered_map>
 
-#include "gpu/gpu.h"
 #include "gpu/gpu_logging.h"
 
 namespace ark {
@@ -24,6 +23,11 @@ class GpuManager::Impl {
     gpuCtx gpu_ctx_;
     GpuManager::Info info_;
     std::shared_ptr<GpuStreamV2> main_stream_;
+
+    GpuState launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
+                    const std::array<int, 3> &block_dim, int smem_bytes,
+                    std::shared_ptr<GpuStreamV2> stream, void **params,
+                    void **extra);
 };
 
 GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
@@ -61,6 +65,17 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
     main_stream_ = std::make_shared<GpuStreamV2>();
 }
 
+GpuState GpuManager::Impl::launch(gpuFunction kernel,
+                                  const std::array<int, 3> &grid_dim,
+                                  const std::array<int, 3> &block_dim,
+                                  int smem_bytes,
+                                  std::shared_ptr<GpuStreamV2> stream,
+                                  void **params, void **extra) {
+    return gpuModuleLaunchKernel(kernel, grid_dim[0], grid_dim[1], grid_dim[2],
+                                 block_dim[0], block_dim[1], block_dim[2],
+                                 smem_bytes, stream->get(), params, extra);
+}
+
 GpuManager::Impl::~Impl() {
     auto e = gpuDevicePrimaryCtxRelease(gpu_dev_);
     if (e != gpuErrorDeinitialized) GLOG(e);
@@ -91,6 +106,17 @@ std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align,
                                               bool expose) {
     return std::make_shared<GpuMemory>(
         GpuManager::get_instance(pimpl_->gpu_id_), bytes, align, expose);
+}
+
+std::shared_ptr<GpuHostMemory> GpuManager::malloc_host(size_t bytes,
+                                                       unsigned int flags) {
+    return std::make_shared<GpuHostMemory>(
+        GpuManager::get_instance(pimpl_->gpu_id_), bytes, flags);
+}
+
+std::shared_ptr<GpuEventV2> GpuManager::create_event(bool disable_timing) {
+    return std::make_shared<GpuEventV2>(
+        GpuManager::get_instance(pimpl_->gpu_id_), disable_timing);
 }
 
 int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }
@@ -127,6 +153,16 @@ void GpuManager::memcpy_dtod_sync(void *dst, size_t dst_offset, void *src,
     this->set_current();
     this->memcpy_dtod_async(dst, dst_offset, src, src_offset, bytes);
     this->sync();
+}
+
+GpuState GpuManager::launch(gpuFunction function,
+                            const std::array<int, 3> &grid_dim,
+                            const std::array<int, 3> &block_dim, int smem_bytes,
+                            std::shared_ptr<GpuStreamV2> stream, void **params,
+                            void **extra) const {
+    this->set_current();
+    return pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream,
+                          params, extra);
 }
 
 void GpuManager::memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,

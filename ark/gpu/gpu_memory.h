@@ -46,6 +46,20 @@ class GpuMemory {
     void from_host(const void* src, size_t bytes, bool async);
 };
 
+class GpuHostMemory {
+   public:
+    GpuHostMemory(std::shared_ptr<GpuManager> manager, size_t bytes,
+                  unsigned int flags);
+    ~GpuHostMemory();
+    template <typename T>
+    T* ref(size_t offset = 0) const {
+        return reinterpret_cast<T*>(ptr_);
+    }
+
+   private:
+    void* ptr_;
+};
+
 }  // namespace ark
 
 #endif  // ARK_GPU_MEMORY_H_
