@@ -175,7 +175,7 @@ struct ReduceTypeMean {
         constexpr int TmpMin = math::min<type::VtypeMaxSize<DataType>::value,
                                          NelemPerThread>::value;
         constexpr int VtypeSize =
-            IntrinsicComputeVtypeMaxSize<type::Div, DataType, TmpMin>::value;
+            IntrinsicCompute2VtypeMaxSize<type::Div, DataType, TmpMin>::value;
         using Vtype = typename type::Vtype<DataType, VtypeSize>::type;
         using Vtype = typename type::Vtype<DataType, VtypeSize>::type;
         constexpr int NumVtype = NelemPerThread / VtypeSize;
