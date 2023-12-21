@@ -62,7 +62,7 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
     size_t gmem_free;
     GLOG(gpuMemGetInfo(&gmem_free, &(info_.gmem_total)));
 #if defined(ARK_CUDA)
-    this->arch = "cuda_" + std::to_string(this->cc_major * 10 + this->cc_minor);
+    info_.arch = "cuda_" + std::to_string(info_.cc_major * 10 + info_.cc_minor);
 #elif defined(ARK_ROCM)
     hipDeviceProp_t prop;
     GLOG(hipGetDeviceProperties(&prop, gpu_id));

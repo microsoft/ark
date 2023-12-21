@@ -19,7 +19,6 @@ GpuPtr GpuBuffer::ref(size_t offset) const {
 }
 void GpuBuffer::memset(int value, size_t offset, size_t bytes) {
     const size_t& buffer_bytes = this->get_bytes();
-    assert(buffer_bytes >= 4);
     if (buffer_bytes < bytes) {
         ERR(InvalidUsageError,
             "memset requests too many elements. Expected <= ", buffer_bytes,
@@ -46,7 +45,8 @@ void GpuBuffer::memcpy_to(void* dst, size_t dst_offset, size_t src_offset,
 
 void GpuBuffer::memcpy_from(size_t dst_offset, const GpuBuffer& src,
                             size_t src_offset, size_t bytes) {
-    memory_->memcpy_from(src.ref(src_offset), offset_ + dst_offset, bytes);
+    memory_->memcpy_from((void*)src.ref(src_offset), offset_ + dst_offset,
+                         bytes);
 }
 
 }  // namespace ark

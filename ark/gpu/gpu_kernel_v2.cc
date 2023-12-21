@@ -3,6 +3,7 @@
 
 #include "gpu/gpu_kernel_v2.h"
 
+#include <cassert>
 #include <cstring>
 
 #include "gpu/gpu.h"
