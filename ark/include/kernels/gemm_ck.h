@@ -44,20 +44,11 @@ template <typename DataTypeA, typename DataTypeB, typename DataTypeC,
           int CShuffleNumStage = 1>
 struct CkGemmConfig;
 
-template <int BlockSize,
-          int MPerBlock,
-          int NPerBlock,
-          int KPerBlock,
-          int AK1,
-          int BK1,
-          int MPerXDL,
-          int NPerXDL,
-          int MXdlPerWave,
-          int NXdlPerWave,
+template <int BlockSize, int MPerBlock, int NPerBlock, int KPerBlock, int AK1,
+          int BK1, int MPerXDL, int NPerXDL, int MXdlPerWave, int NXdlPerWave,
           int ABlockTransferSrcScalarPerVector,
           int BBlockTransferSrcScalarPerVector,
-          int CShuffleMXdlPerWavePerShuffle,
-          int CShuffleNXdlPerWavePerShuffle>
+          int CShuffleMXdlPerWavePerShuffle, int CShuffleNXdlPerWavePerShuffle>
 struct PrintDeviceGemmXdlCShuffle;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,24 +202,17 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
             8>;
 
 #if (DEBUG_CK != 0)
-    PrintDeviceGemmXdlCShuffle<NumThreads,
-            TileSizeM,
-            TileSizeN,
-            32,
-            AK1,
-            BK1,
-            32,
-            32,
-            MXdlPerWave,
-            NXdlPerWave,
-            (!IsColA ? 8 : (AK1 == 2 || Is_128x128x64) ? 4 : MXdlPerWave),
-            (IsColB ? 8
-                    : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 ||
-                       Is_128x64x128)
-                          ? 4
-                          : NXdlPerWave),
-            1,
-            1> p;
+    PrintDeviceGemmXdlCShuffle<
+        NumThreads, TileSizeM, TileSizeN, 32, AK1, BK1, 32, 32, MXdlPerWave,
+        NXdlPerWave,
+        (!IsColA ? 8 : (AK1 == 2 || Is_128x128x64) ? 4 : MXdlPerWave),
+        (IsColB
+             ? 8
+             : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 || Is_128x64x128)
+                   ? 4
+                   : NXdlPerWave),
+        1, 1>
+        p;
 #endif  // (DEBUG_CK != 0)
 };
 
@@ -394,7 +378,8 @@ struct CkGemm {
         char *p_shared = UnitOp::template shared_memory<char>(smem_per_warp);
 
         constexpr int SmemBytes = GridwiseGemm::GetSharedMemoryNumberOfByte();
-        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(), UnitOp::NumThreads>();
+        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(),
+             UnitOp::NumThreads>();
         IsEq<SmemBytes, UnitOp::SmemBytes>();
 
         const auto a_grid_desc_k0_m_k1 =
@@ -403,33 +388,33 @@ struct CkGemm {
         const auto b_grid_desc_k0_n_k1 =
             amd_wave_read_first_lane(GridwiseGemm::MakeBGridDescriptor_K0_N_K1(
                 arg.K, arg.N, arg.NPadded, arg.K0, arg.StrideB));
-        const auto c_grid_desc_m_n = amd_wave_read_first_lane(GridwiseGemm::MakeCGridDescriptor_M_N(
-            arg.M, arg.MPadded, arg.N, arg.NPadded, arg.StrideC));
+        const auto c_grid_desc_m_n =
+            amd_wave_read_first_lane(GridwiseGemm::MakeCGridDescriptor_M_N(
+                arg.M, arg.MPadded, arg.N, arg.NPadded, arg.StrideC));
 
         if (GridwiseGemm::CalculateHasMainKBlockLoop(ProblemSizeK)) {
             GridwiseGemm::template Run<true>(
-                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1,
-                b_grid_desc_k0_n_k1,
+                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1, b_grid_desc_k0_n_k1,
                 c_grid_desc_m_n, uop_idx);
         } else {
             GridwiseGemm::template Run<false>(
-                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1,
-                b_grid_desc_k0_n_k1,
+                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1, b_grid_desc_k0_n_k1,
                 c_grid_desc_m_n, uop_idx);
         }
     }
 
     DEVICE void RunXdlCShuffle(DataTypeC *C, DataTypeA *A, DataTypeB *B,
                                int uop_idx, int smem_per_warp) const {
-        using GridwiseGemm = typename CkGemmConfig::ImplXdlCShuffle::GridwiseGemm;
+        using GridwiseGemm =
+            typename CkGemmConfig::ImplXdlCShuffle::GridwiseGemm;
 
         CkDataTypeC *pC = reinterpret_cast<CkDataTypeC *>(C);
         CkDataTypeA *pA = reinterpret_cast<CkDataTypeA *>(A);
         CkDataTypeB *pB = reinterpret_cast<CkDataTypeB *>(B);
 
         typename GridwiseGemm::Problem problem(ProblemSizeM, ProblemSizeN,
-                                        ProblemSizeK, LeadingDimA,
-                                        LeadingDimB, LeadingDimC);
+                                               ProblemSizeK, LeadingDimA,
+                                               LeadingDimB, LeadingDimC);
 
         if (UnitOp::thread_id() == 0) {
             assert(GridwiseGemm::CheckValidity(problem));
@@ -439,15 +424,16 @@ struct CkGemm {
         char *p_shared = UnitOp::template shared_memory<char>(smem_per_warp);
 
         constexpr int SmemBytes = GridwiseGemm::GetSharedMemoryNumberOfByte();
-        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(), UnitOp::NumThreads>();
+        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(),
+             UnitOp::NumThreads>();
         IsEq<SmemBytes, UnitOp::SmemBytes>();
 
         if (GridwiseGemm::CalculateHasMainKBlockLoop(ProblemSizeK)) {
-            GridwiseGemm::template Run<true>(
-                pA, pB, pC, p_shared, problem, uop_idx);
+            GridwiseGemm::template Run<true>(pA, pB, pC, p_shared, problem,
+                                             uop_idx);
         } else {
-            GridwiseGemm::template Run<false>(
-                pA, pB, pC, p_shared, problem, uop_idx);
+            GridwiseGemm::template Run<false>(pA, pB, pC, p_shared, problem,
+                                              uop_idx);
         }
     }
 
