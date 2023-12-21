@@ -21,7 +21,7 @@ Executor::Impl::Impl(int rank, int world_size, Model &model,
         model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
 
     sched_->schedule();
-    ctx_ = sched_->create_context(name);
+    ctx_ = sched_->create_context();
     const GpuManager::Info &ginfo = ctx_->get_gpu_manager()->info();
     stream_ = ctx_->get_gpu_manager()->create_stream();
     glk_ = std::make_unique<GpuLoopKernelV2>(

@@ -6,7 +6,6 @@
 
 #include <functional>
 
-#define ARK_ROCM 1
 #if defined(ARK_CUDA)
 #include <cuda.h>
 #elif defined(ARK_ROCM)

@@ -4,7 +4,6 @@
 #include <cstring>
 #include <numeric>
 
-#include "gpu/gpu_buf.h"
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
 

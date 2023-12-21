@@ -210,9 +210,7 @@ void GpuContext::Impl::freeze(bool expose) {
         LOG(INFO, "Allocating ", total_bytes_, " bytes of GPU memory");
         memory_->resize(total_bytes_, expose);
     }
-    if (expose) {
-        comm_sw_->configure(export_id_offsets_, import_gid_buffers_);
-    }
+    comm_sw_->configure(export_id_offsets_, import_gid_buffers_);
 }
 
 std::shared_ptr<GpuContext> GpuContext::get_context(int rank, int world_size) {

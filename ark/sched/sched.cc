@@ -29,8 +29,7 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
 }
 
 // create context on gpu for the model
-std::shared_ptr<GpuContext> BaseScheduler::create_context(
-    const std::string &name) {
+std::shared_ptr<GpuContext> BaseScheduler::create_context() {
     std::shared_ptr<GpuContext> ctx =
         GpuContext::get_context(this->rank, this->world_size);
     for (BufInfo &bi : this->buf_infos) {
@@ -50,7 +49,7 @@ std::shared_ptr<GpuContext> BaseScheduler::create_context(
                 ctx->export_buffer(buf, bi.offset, bi.sid);
             }
         } else {
-            buf = ctx->import_buffer(bi.bytes, bi.sid, bi.gpu_id);
+            buf = ctx->import_buffer(bi.bytes, bi.gpu_id, bi.sid);
         }
         if (bi.tbuf != nullptr) {
             bi.tbuf->buf = buf;

@@ -40,7 +40,7 @@ class BaseScheduler {
                   int num_warps_per_sm_ = 16);
 
     // create context on gpu for the model
-    std::shared_ptr<GpuContext> create_context(const std::string &name);
+    std::shared_ptr<GpuContext> create_context();
 
     const OpConfig *sched_op_config(const Op *op);
 

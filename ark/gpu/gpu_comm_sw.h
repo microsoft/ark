@@ -11,9 +11,7 @@
 
 #include "gpu/gpu_buffer.h"
 #include "gpu/gpu_memory.h"
-#include "gpu_buf.h"
 #include "gpu_common.h"
-#include "gpu_mem.h"
 
 namespace ark {
 
@@ -22,8 +20,6 @@ class GpuBuf;
 //
 class GpuCommSw {
    public:
-    GpuCommSw(const std::string &name, const int gpu_id_, const int rank_,
-              const int world_size_, GpuMem *data_mem);
     GpuCommSw(const std::string &name, const int gpu_id, const int rank,
               const int world_size, std::shared_ptr<GpuMemory> data_mem);
     ~GpuCommSw();
@@ -39,8 +35,6 @@ class GpuCommSw {
     void launch_request_loop();
 
     void stop_request_loop();
-
-    GpuMem *get_data_mem(const int gid);
 
     std::shared_ptr<GpuMemory> get_data_memory(const int gid);
 
