@@ -4,8 +4,8 @@
 #ifndef _ARK_SCHED_PROFILER_H_
 #define _ARK_SCHED_PROFILER_H_
 
-#include "gpu/gpu_kernel.h"
-#include "gpu/gpu_mgr.h"
+#include "gpu/gpu_context.h"
+#include "gpu/gpu_loop_kernel.h"
 #include "include/ark.h"
 #include "sched/sched_codegen.h"
 #include "sched/sched_op.h"
@@ -50,16 +50,18 @@ std::vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm);
 
 class SchedProfiler {
    public:
-    SchedProfiler(GpuMgr *gpu_mgr, int num_warps_per_sm_)
-        : gpu_mgr{gpu_mgr}, num_warps_per_sm{num_warps_per_sm_} {}
-    void profile(OpGraph *op_graph, CodeGenerator &codegen, GpuMgrCtx *ctx);
-    float profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx);
+    SchedProfiler(std::shared_ptr<GpuContext> ctx, int num_warps_per_sm_)
+        : ctx_{ctx}, num_warps_per_sm_{num_warps_per_sm_} {}
+    void profile(OpGraph *op_graph, CodeGenerator &codegen,
+                 std::shared_ptr<GpuContext> ctx);
+    float profile_routine(std::shared_ptr<GpuLoopKernelV2> glk,
+                          std::shared_ptr<GpuContext> ctx);
 
-    GpuMgr *gpu_mgr;
-    int num_warps_per_sm;
-    const std::string wps_prof_cache_path = "wps_prof_cache.json";
+    std::shared_ptr<GpuContext> ctx_;
+    int num_warps_per_sm_;
+    const std::string wps_prof_cache_path_ = "wps_prof_cache.json";
     std::map<int, std::map<const SchedOpSeq *, SchedOpSeqPerf>>
-        wps_prof_results;
+        wps_prof_results_;
 };
 
 };  // namespace ark

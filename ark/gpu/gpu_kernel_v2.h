@@ -9,13 +9,13 @@
 
 #include "gpu/gpu_buffer.h"
 #include "gpu/gpu_common.h"
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu_context.h"
 
 namespace ark {
 
 class GpuKernelV2 {
    public:
-    GpuKernelV2(std::shared_ptr<GpuManager> manager, const std::string& codes,
+    GpuKernelV2(std::shared_ptr<GpuContext> ctx, const std::string& codes,
                 const std::array<int, 3>& block_dim,
                 const std::array<int, 3>& grid_dim, size_t smem_bytes,
                 const std::string& kernel_name,
@@ -26,7 +26,7 @@ class GpuKernelV2 {
     GpuState launch(std::shared_ptr<GpuStreamV2> stream);
 
    protected:
-    std::shared_ptr<GpuManager> manager_;
+    std::shared_ptr<GpuContext> ctx_;
     std::string codes_;
     std::array<int, 3> block_dim_;
     std::array<int, 3> grid_dim_;

@@ -20,6 +20,14 @@ class GpuBuffer {
     void set_offset(size_t offset) { offset_ = offset; }
     int get_gpu_id() const { return gpu_id_; }
     int get_id() const { return id_; }
+    void memset(int value, size_t offset, size_t bytes);
+    void memset_d32(int value, size_t offset, size_t nelems);
+    void memcpy_from(size_t dst_offset, const void* src, size_t src_offset,
+                     size_t bytes);
+    void memcpy_to(void* dst, size_t dst_offset, size_t src_offset,
+                   size_t bytes);
+    void memcpy_from(size_t dst_offset, const GpuBuffer& src, size_t src_offset,
+                     size_t bytes);
 
    private:
     int gpu_id_;

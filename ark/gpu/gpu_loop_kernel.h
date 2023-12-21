@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "gpu/gpu_kernel_v2.h"
-#include "gpu/gpu_manager.h"
 
 #define ARK_BUF_NAME "ARK_BUF"
 #define ARK_LSS_NAME "ARK_LOOP_SYNC_STATE"
@@ -16,8 +15,7 @@ namespace ark {
 
 class GpuLoopKernelV2 : public GpuKernelV2 {
    public:
-    GpuLoopKernelV2(std::shared_ptr<GpuManager> manager,
-                    const std::string &name,
+    GpuLoopKernelV2(std::shared_ptr<GpuContext> ctx, const std::string &name,
                     const std::vector<std::string> &codes, int num_sm,
                     int num_warp, unsigned int smem_bytes);
 
@@ -32,7 +30,6 @@ class GpuLoopKernelV2 : public GpuKernelV2 {
     float get_elapsed_msec() const;
 
    private:
-    std::shared_ptr<GpuManager> manager_;
     std::shared_ptr<GpuEventV2> timer_begin_;
     std::shared_ptr<GpuEventV2> timer_end_;
 

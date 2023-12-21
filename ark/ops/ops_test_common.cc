@@ -6,7 +6,6 @@
 #include <cstring>
 
 #include "env.h"
-#include "gpu/gpu_kernel.h"
 #include "gpu/gpu_logging.h"
 #include "logging.h"
 #include "random.h"

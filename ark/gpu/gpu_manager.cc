@@ -61,8 +61,23 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
                                gpuDeviceAttributeMaxThreadsPerBlock, gpu_dev_));
     size_t gmem_free;
     GLOG(gpuMemGetInfo(&gmem_free, &(info_.gmem_total)));
-
-    main_stream_ = std::make_shared<GpuStreamV2>();
+#if defined(ARK_CUDA)
+    this->arch = "cuda_" + std::to_string(this->cc_major * 10 + this->cc_minor);
+#elif defined(ARK_ROCM)
+    hipDeviceProp_t prop;
+    GLOG(hipGetDeviceProperties(&prop, gpu_id));
+    // E.g.: "gfx90a:sramecc+:xnack-"
+    std::string gcn_arch_name = prop.gcnArchName;
+    if (gcn_arch_name.substr(0, 3) != "gfx") {
+        ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
+    }
+    size_t pos_e = gcn_arch_name.find(":");
+    if (pos_e == std::string::npos) {
+        ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
+    }
+    // E.g.: "90a"
+    info_.arch = "rocm_" + gcn_arch_name.substr(3, pos_e - 3);
+#endif
 }
 
 GpuState GpuManager::Impl::launch(gpuFunction kernel,
@@ -100,7 +115,9 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
     }
 }
 
-GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {}
+GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {
+    this->pimpl_->main_stream_ = std::make_shared<GpuStreamV2>(*this);
+}
 
 std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align,
                                               bool expose) {
@@ -117,6 +134,10 @@ std::shared_ptr<GpuHostMemory> GpuManager::malloc_host(size_t bytes,
 std::shared_ptr<GpuEventV2> GpuManager::create_event(bool disable_timing) {
     return std::make_shared<GpuEventV2>(
         GpuManager::get_instance(pimpl_->gpu_id_), disable_timing);
+}
+
+std::shared_ptr<GpuStreamV2> GpuManager::create_stream() {
+    return std::make_shared<GpuStreamV2>(*this);
 }
 
 int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }

@@ -5,9 +5,9 @@
 #include <set>
 #include <unordered_map>
 
+#include "env.h"
 #include "gpu/gpu_comm_sw.h"
 #include "gpu/gpu_logging.h"
-#include "gpu/gpu_manager.h"
 #include "gpu_context.h"
 #include "math.h"
 
@@ -56,8 +56,6 @@ class GpuContext::Impl {
     std::shared_ptr<GpuBuffer> import_buffer(size_t bytes, int gpu_id,
                                              int expose_id);
     void freeze(bool expose);
-    void memset(std::shared_ptr<GpuBuffer> buffer, size_t offset, int value,
-                size_t bytes);
 
    private:
     friend class GpuContext;
@@ -77,9 +75,10 @@ class GpuContext::Impl {
 };
 
 GpuContext::Impl::Impl(int rank, int world_size)
-    : manager_(GpuManager::get_instance(rank)),
-      rank_(rank),
-      world_size_(world_size) {
+    : rank_(rank), world_size_(world_size) {
+    int gpu_id = rank % get_env().num_ranks_per_host;
+    manager_ = GpuManager::get_instance(gpu_id);
+
     // TODO(binyli): refactor GpuCommSw later.
     memory_ = manager_->malloc(0, GPU_PAGE_SIZE);
     comm_sw_ = std::make_shared<GpuCommSw>("comm_sw", manager_->get_gpu_id(),
@@ -135,8 +134,6 @@ std::shared_ptr<GpuBuffer> GpuContext::Impl::allocate_buffer(size_t bytes,
         total_bytes_ = offset + size;
         this->in_use_chunks_.emplace(id, Chunk(offset, offset + size));
     }
-    // this->bufs.emplace_back(std::make_unique<GpuBuf>(
-    //     this->gpu_mgr->gpu_id, &this->data_mem, id, off, bytes));
     LOG(DEBUG, "Allocated ", bytes, " bytes of GPU memory at offset ", offset,
         " rank ", rank_);
     return std::make_shared<GpuBuffer>(manager_->get_gpu_id(), memory_, id,
@@ -215,24 +212,7 @@ void GpuContext::Impl::freeze(bool expose) {
     }
     if (expose) {
         comm_sw_->configure(export_id_offsets_, import_gid_buffers_);
-        comm_sw_->launch_request_loop();
     }
-}
-
-void GpuContext::Impl::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
-                              int value, size_t bytes) {
-    const size_t &buffer_bytes = buffer->get_bytes();
-    assert(buffer_bytes >= 4);
-    if (buffer_bytes < bytes) {
-        ERR(InvalidUsageError,
-            "memset requests too many elements. Expected <= ", buffer_bytes,
-            ", given ", bytes);
-    }
-    GpuPtr ptr = buffer->ref(offset);
-    if (ptr == (GpuPtr) nullptr) {
-        ERR(InvalidUsageError, "buffer is not allocated");
-    }
-    manager_->memset_d32_sync(reinterpret_cast<void *>(ptr), value, bytes);
 }
 
 std::shared_ptr<GpuContext> GpuContext::get_context(int rank, int world_size) {
@@ -244,6 +224,10 @@ std::shared_ptr<GpuContext> GpuContext::get_context(int rank, int world_size) {
 GpuContext::GpuContext(int rank, int world_size)
     : pimpl_(new Impl(rank, world_size)) {}
 
+std::shared_ptr<GpuManager> GpuContext::get_gpu_manager() {
+    return pimpl_->manager_;
+}
+
 int GpuContext::rank() const { return pimpl_->rank_; }
 
 int GpuContext::world_size() const { return pimpl_->world_size_; }
@@ -251,6 +235,17 @@ int GpuContext::world_size() const { return pimpl_->world_size_; }
 int GpuContext::gpu_id() const { return pimpl_->manager_->get_gpu_id(); }
 
 size_t GpuContext::get_total_bytes() const { return pimpl_->total_bytes_; }
+
+std::shared_ptr<GpuMemory> GpuContext::get_data_memory(int gpu_id) {
+    if (gpu_id == -1) {
+        return pimpl_->memory_;
+    }
+    return pimpl_->comm_sw_->get_data_memory(gpu_id);
+}
+
+std::shared_ptr<GpuCommSw> GpuContext::get_comm_sw() {
+    return pimpl_->comm_sw_;
+}
 
 std::shared_ptr<GpuBuffer> GpuContext::allocate_buffer(size_t bytes,
                                                        int align) {
@@ -272,30 +267,5 @@ std::shared_ptr<GpuBuffer> GpuContext::import_buffer(size_t bytes, int gpu_id,
 }
 
 void GpuContext::freeze(bool expose) { pimpl_->freeze(expose); }
-
-void GpuContext::memset(std::shared_ptr<GpuBuffer> buffer, size_t offset,
-                        int value, size_t bytes) {
-    pimpl_->memset(buffer, offset, value, bytes);
-}
-
-void GpuContext::memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
-                        void *src, size_t src_offset, size_t bytes) {
-    pimpl_->manager_->memcpy_htod_sync(dst->ref(), dst_offset, src, src_offset,
-                                       bytes);
-}
-
-void GpuContext::memcpy(void *dst, size_t dst_offset,
-                        const std::shared_ptr<GpuBuffer> src, size_t src_offset,
-                        size_t bytes) {
-    pimpl_->manager_->memcpy_dtoh_sync(dst, dst_offset, src->ref(), src_offset,
-                                       bytes);
-}
-
-void GpuContext::memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
-                        const std::shared_ptr<GpuBuffer> src, size_t src_offset,
-                        size_t bytes) {
-    pimpl_->manager_->memcpy_dtod_sync(dst->ref(), dst_offset, src->ref(),
-                                       src_offset, bytes);
-}
 
 }  // namespace ark

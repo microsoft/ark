@@ -5,7 +5,6 @@
 #include <numeric>
 
 #include "gpu/gpu_buf.h"
-#include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
 

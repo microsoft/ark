@@ -45,20 +45,20 @@ ark::unittest::State test_gpu_context_buffer_alloc() {
 
         int buf0_data = 7;
         int buf1_data = 8;
-        ctx->memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
-        ctx->memcpy(buf1, 0, &buf1_data, 0, sizeof(int));
+        buf0->memcpy_from(0, &buf0_data, 0, sizeof(int));
+        buf1->memcpy_from(0, &buf1_data, 0, sizeof(int));
 
         int buf0_data2 = 0;
         int buf1_data2 = 0;
 
-        ctx->memcpy(&buf0_data2, 0, buf0, 0, sizeof(int));
-        ctx->memcpy(&buf1_data2, 0, buf1, 0, sizeof(int));
+        buf0->memcpy_to(&buf0_data2, 0, 0, sizeof(int));
+        buf1->memcpy_to(&buf1_data2, 0, 0, sizeof(int));
 
         UNITTEST_EQ(buf0_data2, 7);
         UNITTEST_EQ(buf1_data2, 8);
 
-        ctx->memcpy(buf0, 0, buf1, 0, sizeof(int));
-        ctx->memcpy(&buf0_data2, 0, buf0, 0, sizeof(int));
+        buf0->memcpy_from(0, *buf1, 0, sizeof(int));
+        buf0->memcpy_to(&buf0_data2, 0, 0, sizeof(int));
         UNITTEST_EQ(buf0_data2, 8);
         return ark::unittest::SUCCESS;
     });
@@ -88,10 +88,10 @@ ark::unittest::State test_gpu_context_buffer_free() {
         UNITTEST_EQ(buf0->ref(), buf1->ref());
 
         int buf0_data = 9;
-        ctx->memcpy(buf0, 0, &buf0_data, 0, sizeof(int));
+        buf0->memcpy_from(0, &buf0_data, 0, sizeof(int));
 
         int buf1_data = 0;
-        ctx->memcpy(&buf1_data, 0, buf1, 0, sizeof(int));
+        buf1->memcpy_to(&buf1_data, 0, 0, sizeof(int));
         UNITTEST_EQ(buf1_data, 9);
 
         return ark::unittest::SUCCESS;
@@ -125,12 +125,12 @@ ark::unittest::State test_gpu_context_remote() {
         while (*ptr != 7890) {
         }
 
-        ctx->memset(gpu1_eid5, 0, 1234, 1);
+        gpu1_eid5->memset_d32(1234, 0, 1);
         ptr = (volatile int *)gpu0_eid4->ref();
         while (*ptr != 3456) {
         }
 
-        ctx->memset(gpu1_eid6, 0, 5678, 1);
+        gpu1_eid6->memset_d32(5678, 0, 1);
         return ark::unittest::SUCCESS;
     });
     UNITTEST_NE(pid0, -1);
@@ -153,12 +153,12 @@ ark::unittest::State test_gpu_context_remote() {
             ctx->import_buffer(sizeof(int), 0, 4);
         ctx->freeze(true);
 
-        ctx->memset(gpu0_eid3, 0, 7890, 1);
+        gpu0_eid3->memset_d32(7890, 0, 1);
         volatile int *ptr = (volatile int *)gpu1_eid5->ref();
         while (*ptr != 1234) {
         }
 
-        ctx->memset(gpu0_eid4, 0, 3456, 1);
+        gpu0_eid4->memset_d32(3456, 0, 1);
         ptr = (volatile int *)gpu1_eid6->ref();
         while (*ptr != 5678) {
         }

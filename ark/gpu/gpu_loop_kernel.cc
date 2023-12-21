@@ -31,19 +31,19 @@ static void atomicStoreRelaxed(int* ptr, int val) {
 
 namespace ark {
 
-GpuLoopKernelV2::GpuLoopKernelV2(std::shared_ptr<GpuManager> manager,
+GpuLoopKernelV2::GpuLoopKernelV2(std::shared_ptr<GpuContext> ctx,
                                  const std::string& name,
                                  const std::vector<std::string>& codes_body,
                                  int num_sm, int num_warp,
                                  unsigned int smem_bytes)
-    : GpuKernelV2(manager, {},
-                  {num_warp * manager->info().threads_per_warp, 1, 1},
-                  {num_sm, 1, 1}, (smem_bytes < 4) ? 4 : smem_bytes, name,
-                  {{nullptr, sizeof(GpuPtr)}}),
-      manager_(manager),
-      timer_begin_(manager->create_event()),
-      timer_end_(manager->create_event()) {
-    this->flag_ = manager->malloc_host(
+    : GpuKernelV2(
+          ctx, {},
+          {num_warp * ctx->get_gpu_manager()->info().threads_per_warp, 1, 1},
+          {num_sm, 1, 1}, (smem_bytes < 4) ? 4 : smem_bytes, name,
+          {{nullptr, sizeof(GpuPtr)}}),
+      timer_begin_(ctx->get_gpu_manager()->create_event()),
+      timer_end_(ctx->get_gpu_manager()->create_event()) {
+    this->flag_ = ctx->get_gpu_manager()->malloc_host(
         sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
     *(int**)this->params_ptr_[0] = (int*)this->flag_->ref<int>();
 
@@ -100,132 +100,120 @@ GpuLoopKernelV2::GpuLoopKernelV2(std::shared_ptr<GpuManager> manager,
     }
 }
 
-// void GpuLoopKernel::load() {
-//     if (this->ctx->set_current() != gpuSuccess) {
-//         ERR(ExecutorError, "Failed to set the context.");
-//     }
-//     //
-//     if (!this->is_compiled()) {
-//         ERR(InvalidUsageError, "Need to compile first before
-//         initialization.");
-//     }
-//     if (this->stream != nullptr) {
-//         // Wait until previous works finish.
-//         this->wait();
-//         return;
-//     }
-//     // Initialize global variables in the loop kernel.
-//     GpuPtr buf_ptr_val = this->ctx->get_data_ref();
-//     GpuPtr lss_ptr_addr;
-//     GpuPtr buf_ptr_addr;
-//     size_t tmp = 0;
-//     GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, this->module,
-//     ARK_LSS_NAME)); GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp,
-//     this->module, ARK_BUF_NAME)); std::array<int, 4> data = {0, 0, 0, 0};
-//     GLOG(gpuMemcpyHtoD(lss_ptr_addr, data.data(), sizeof(int) *
-//     data.size())); GLOG(gpuMemcpyHtoD(buf_ptr_addr, &buf_ptr_val,
-//     sizeof(GpuPtr)));
-//     // TODO: remove this hack
-//     GpuPtr lss_0_ptr_addr;
-//     GpuPtr lss_1_ptr_addr;
-//     gpuError ret = gpuModuleGetGlobal(&lss_0_ptr_addr, &tmp,
-//     this->module,
-//                                       ARK_LSS_NAME "_0");
-//     if (ret == gpuSuccess) {
-//         GLOG(gpuMemcpyHtoD(lss_0_ptr_addr, data.data(),
-//                            sizeof(int) * data.size()));
-//     } else if (ret != gpuErrorNotFound) {
-//         GLOG(ret);
-//     }
-//     ret = gpuModuleGetGlobal(&lss_1_ptr_addr, &tmp, this->module,
-//                              ARK_LSS_NAME "_1");
-//     if (ret == gpuSuccess) {
-//         GLOG(gpuMemcpyHtoD(lss_1_ptr_addr, data.data(),
-//                            sizeof(int) * data.size()));
-//     } else if (ret != gpuErrorNotFound) {
-//         GLOG(ret);
-//     }
-//     // set the data buffer pointers of remote gpus
-//     int nrph = get_env().num_ranks_per_host;
-//     int nodes_id = this->ctx->get_gpu_id() / nrph;
-//     // only set the GPU remote data buf pointers of the GPUs on the same
-//     node for (int i = nodes_id * nrph;
-//          i < (nodes_id + 1) * nrph && i < this->ctx->get_world_size();
-//          i++) {
-//         GpuPtr data_buf_value = this->ctx->get_data_ref(i);
-//         if (data_buf_value == 0) {
-//             continue;
-//         }
-//         GpuPtr data_buf_ptr;
-//         string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-//         gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp,
-//         this->module,
-//                                          data_buf_name.c_str());
-//         if (_e == gpuErrorNotFound) {
-//             LOG(DEBUG, "global variable ", data_buf_name, " not found");
-//             continue;
-//         }
-//         LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex,
-//         data_buf_ptr,
-//             " data_buf_value=", data_buf_value);
-//         GLOG(gpuMemcpyHtoD(data_buf_ptr, &data_buf_value,
-//         sizeof(GpuPtr)));
-//     }
-//     GpuCommSw *comm = this->ctx->get_comm_sw();
-//     if (comm->get_proxy_channels_num() > 0) {
-//         GpuPtr channel_addr;
-//         GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
-//                                 "_ARK_PROXY_CHANS"));
-//         const void *chans_ref = comm->get_proxy_channels_ref();
-//         size_t chans_bytes = comm->get_proxy_channels_bytes();
-//         GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
-//                            chans_bytes));
-//     }
-//     if (comm->get_sm_channels_num() > 0) {
-//         GpuPtr channel_addr;
-//         GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, this->module,
-//                                 "_ARK_SM_CHANS"));
-//         const void *chans_ref = comm->get_sm_channels_ref();
-//         size_t chans_bytes = comm->get_sm_channels_bytes();
-//         GLOG(gpuMemcpyHtoD(channel_addr, const_cast<void *>(chans_ref),
-//                            chans_bytes));
-//     }
-// }
+void GpuLoopKernelV2::load() {
+    if (!this->is_compiled()) {
+        ERR(InvalidUsageError, "Need to compile first before initialization.");
+    }
+    if (this->stream_ != nullptr) {
+        // Wait until previous works finish.
+        this->wait();
+        return;
+    }
+    // Initialize global variables in the loop kernel.
+    std::shared_ptr<GpuManager> manager = this->ctx_->get_gpu_manager();
+    GpuPtr buf_ptr_val = this->ctx_->get_data_memory()->ref();
+    GpuPtr lss_ptr_addr;
+    GpuPtr buf_ptr_addr;
+    size_t tmp = 0;
+    GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, module_, ARK_LSS_NAME));
+    GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, module_, ARK_BUF_NAME));
+    std::array<int, 4> data = {0, 0, 0, 0};
+    manager->memcpy_htod_sync(lss_ptr_addr, 0, data.data(), 0,
+                              sizeof(int) * data.size());
+    manager->memcpy_htod_sync(buf_ptr_addr, 0, &buf_ptr_val, 0, sizeof(GpuPtr));
+    // TODO: remove this hack
+    GpuPtr lss_0_ptr_addr;
+    GpuPtr lss_1_ptr_addr;
+    gpuError ret =
+        gpuModuleGetGlobal(&lss_0_ptr_addr, &tmp, module_, ARK_LSS_NAME "_0");
+    if (ret == gpuSuccess) {
+        manager->memcpy_htod_sync(lss_0_ptr_addr, 0, data.data(), 0,
+                                  sizeof(int) * data.size());
+    } else if (ret != gpuErrorNotFound) {
+        GLOG(ret);
+    }
+    ret = gpuModuleGetGlobal(&lss_1_ptr_addr, &tmp, module_, ARK_LSS_NAME "_1");
+    if (ret == gpuSuccess) {
+        manager->memcpy_htod_sync(lss_1_ptr_addr, 0, data.data(), 0,
+                                  sizeof(int) * data.size());
+    } else if (ret != gpuErrorNotFound) {
+        GLOG(ret);
+    }
+    // set the data buffer pointers of remote gpus
+    int nrph = get_env().num_ranks_per_host;
+    int nodes_id = this->ctx_->gpu_id() / nrph;
+    // only set the GPU remote data buf pointers of the GPUs on the same node
+    for (int i = nodes_id * nrph;
+         i < (nodes_id + 1) * nrph && i < this->ctx_->world_size(); i++) {
+        GpuPtr data_buf_value = this->ctx_->get_data_memory(i)->ref();
+        if (data_buf_value == 0) {
+            continue;
+        }
+        GpuPtr data_buf_ptr;
+        std::string data_buf_name = ARK_BUF_NAME + std::to_string(i);
+        gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
+                                         data_buf_name.c_str());
+        if (_e == gpuErrorNotFound) {
+            LOG(DEBUG, "global variable ", data_buf_name, " not found");
+            continue;
+        }
+        LOG(DEBUG, data_buf_name, " data_buf_ptr=", std::hex, data_buf_ptr,
+            " data_buf_value=", data_buf_value);
+        manager->memcpy_htod_sync(data_buf_ptr, 0, &data_buf_value, 0,
+                                  sizeof(GpuPtr));
+    }
 
-// GpuState GpuLoopKernel::launch(gpuStream stream, bool disable_timing) {
-//     this->elapsed_msec = -1;
-//     if (!this->is_compiled()) {
-//         ERR(InvalidUsageError, "Need to compile first before
-//         initialization.");
-//     } else if (stream == nullptr) {
-//         ERR(InvalidUsageError, "Given an invalid stream.");
-//     } else if (this->stream != nullptr) {
-//         if (this->stream == stream) {
-//             LOG(WARN, "Ignore launching twice.");
-//             return gpuSuccess;
-//         } else {
-//             ERR(InvalidUsageError, "This loop kernel is already
-//             running.");
-//         }
-//     }
-//     if (!disable_timing) {
-//         GLOG(gpuEventRecord(this->timer_begin, stream));
-//     }
+    std::shared_ptr<GpuCommSw> comm = ctx_->get_comm_sw();
+    if (comm->get_proxy_channels_num() > 0) {
+        GpuPtr channel_addr;
+        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, module_,
+                                "_ARK_PROXY_CHANS"));
+        const void* chans_ref = comm->get_proxy_channels_ref();
+        size_t chans_bytes = comm->get_proxy_channels_bytes();
+        manager->memcpy_htod_sync(channel_addr, 0, const_cast<void*>(chans_ref),
+                                  0, chans_bytes);
+    }
+    if (comm->get_sm_channels_num() > 0) {
+        GpuPtr channel_addr;
+        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
+        const void* chans_ref = comm->get_sm_channels_ref();
+        size_t chans_bytes = comm->get_sm_channels_bytes();
+        manager->memcpy_htod_sync(channel_addr, 0, const_cast<void*>(chans_ref),
+                                  0, chans_bytes);
+    }
+}
 
-//     this->ctx->get_comm_sw()->launch_request_loop();
+GpuState GpuLoopKernelV2::launch(std::shared_ptr<GpuStreamV2> stream,
+                                 bool disable_timing) {
+    this->elapsed_msec_ = -1;
+    if (!this->is_compiled()) {
+        ERR(InvalidUsageError, "Need to compile first before initialization.");
+    } else if (stream == nullptr) {
+        ERR(InvalidUsageError, "Given an invalid stream.");
+    } else if (this->stream_ != nullptr) {
+        if (this->stream_ == stream) {
+            LOG(WARN, "Ignore launching twice.");
+            return gpuSuccess;
+        } else {
+            ERR(InvalidUsageError, "This loop kernel is already running.");
+        }
+    }
+    if (!disable_timing) {
+        timer_begin_->record(stream);
+    }
 
-//     // Initialize loop flags.
-//     atomicStoreRelaxed(this->flag, 0);
-//     GpuState res = GpuKernel::launch(stream);
-//     if (res == gpuSuccess) {
-//         this->stream = stream;
-//         if (!disable_timing) {
-//             GLOG(gpuEventRecord(this->timer_end, stream));
-//             this->is_recording = true;
-//         }
-//     }
-//     return res;
-// }
+    // Initialize loop flags.
+    atomicStoreRelaxed(this->flag_->ref<int>(), 0);
+    GpuState res = GpuKernelV2::launch(stream);
+    if (res == gpuSuccess) {
+        this->stream_ = stream;
+        if (!disable_timing) {
+            timer_end_->record(stream);
+            this->is_recording_ = true;
+        }
+    }
+    return res;
+}
 
 void GpuLoopKernelV2::run(int iter) {
     if (iter > 0) {
@@ -235,46 +223,52 @@ void GpuLoopKernelV2::run(int iter) {
     }
 }
 
-// bool GpuLoopKernel::poll() { return atomicLoadRelaxed(this->flag) <= 0; }
+bool GpuLoopKernelV2::poll() {
+    return atomicLoadRelaxed(this->flag_->ref<int>()) <= 0;
+}
 
-// void GpuLoopKernel::wait() {
-//     int cnt = MAX_LOOP_COUNTER;
-//     while (atomicLoadRelaxed(this->flag) > 0) {
-//         if (--cnt > 0) {
-//             continue;
-//         }
-//         // Check if the kernel encountered an error.
-//         gpuError res = gpuStreamQuery(this->stream);
-//         if (res == gpuSuccess) {
-//             if (atomicLoadRelaxed(this->flag) > 0) {
-//                 LOG(WARN, "Stream is finished but the loop flag is still
-//                 set."); break;
-//             } else {
-//                 LOG(WARN,
-//                     "wait() is delayed by a stream query. Regarding "
-//                     "timing measurements may be inaccurate.");
-//                 break;
-//             }
-//         } else if (res == gpuErrorNotReady) {
-//             cnt = MAX_LOOP_COUNTER;
-//         } else {
-//             GLOG(res);
-//         }
-//     }
-// }
+void GpuLoopKernelV2::wait() {
+    int cnt = MAX_LOOP_COUNTER;
+    while (atomicLoadRelaxed(this->flag_->ref<int>()) > 0) {
+        if (--cnt > 0) {
+            continue;
+        }
+        // Check if the kernel encountered an error.
+        gpuError res = this->stream_->query();
+        if (res == gpuSuccess) {
+            if (atomicLoadRelaxed(this->flag_->ref<int>()) > 0) {
+                LOG(WARN, "Stream is finished but the loop flag is still set.");
+                break;
+            } else {
+                LOG(WARN,
+                    "wait() is delayed by a stream query. Regarding "
+                    "timing measurements may be inaccurate.");
+                break;
+            }
+        } else if (res == gpuErrorNotReady) {
+            cnt = MAX_LOOP_COUNTER;
+        } else {
+            GLOG(res);
+        }
+    }
+}
 
-// void GpuLoopKernel::stop() {
-//     this->wait();
-//     atomicStoreRelaxed(this->flag, -1);
-//     GLOG(gpuStreamSynchronize(this->stream));
-//     if (is_recording) {
-//         GLOG(gpuEventElapsedTime(&(this->elapsed_msec),
-//         this->timer_begin,
-//                                  this->timer_end));
-//         this->is_recording = false;
-//     }
-//     this->stream = nullptr;
-//     this->ctx->get_comm_sw()->stop_request_loop();
-// }
+void GpuLoopKernelV2::stop() {
+    this->wait();
+    atomicStoreRelaxed(this->flag_->ref<int>(), -1);
+    this->stream_->sync();
+    if (is_recording_) {
+        elapsed_msec_ = timer_end_->elapsed_msec(*timer_begin_);
+        this->is_recording_ = false;
+    }
+    this->stream_ = nullptr;
+}
+
+float GpuLoopKernelV2::get_elapsed_msec() const {
+    if (this->is_recording_) {
+        ERR(InvalidUsageError, "Need to stop the kernel first.");
+    }
+    return this->elapsed_msec_;
+}
 
 }  // namespace ark

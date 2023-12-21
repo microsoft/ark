@@ -124,6 +124,7 @@ REGISTER_TENSOR_TYPE(INT8, 1, "int8_t")
 REGISTER_TENSOR_TYPE(UINT8, 1, "uint8_t")
 REGISTER_TENSOR_TYPE(BYTE, 1, "unsigned char")
 
+class GpuBuffer;
 // TensorBuf refers to a data array that can be shared by multiple tensors.
 class TensorBuf {
    public:
@@ -137,7 +138,7 @@ class TensorBuf {
     bool immutable = true;
 
    protected:
-    void *buf = nullptr;
+    std::shared_ptr<GpuBuffer> buf = nullptr;
 
     friend class Tensor;
     friend class BaseScheduler;

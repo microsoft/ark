@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "gpu/gpu_kernel.h"
+#include "gpu/gpu_loop_kernel.h"
 #include "include/ark.h"
 
 namespace ark {
@@ -15,7 +15,7 @@ class Executor::Impl {
    public:
     Impl(int rank, int world_size, Model &model, const std::string &name,
          int num_warps_per_sm);
-    ~Impl();
+    ~Impl() = default;
 
     void compile();
     void launch();
@@ -28,10 +28,10 @@ class Executor::Impl {
     const int world_size_;
     int gpu_id_;
 
-    GpuMgrCtx *ctx_;
+    std::shared_ptr<GpuContext> ctx_;
     std::unique_ptr<BaseScheduler> sched_;
-    std::unique_ptr<GpuLoopKernel> glk_;
-    GpuStream stream_;
+    std::unique_ptr<GpuLoopKernelV2> glk_;
+    std::shared_ptr<GpuStreamV2> stream_;
 };
 
 }  // namespace ark

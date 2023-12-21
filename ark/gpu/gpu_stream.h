@@ -9,11 +9,14 @@
 #include "gpu/gpu.h"
 
 namespace ark {
+
+class GpuManager;
 class GpuStreamV2 {
    public:
-    GpuStreamV2();
+    GpuStreamV2(GpuManager& manager);
     ~GpuStreamV2() = default;
     void sync() const;
+    gpuError query() const;
     gpuStream get() const;
 
    private:

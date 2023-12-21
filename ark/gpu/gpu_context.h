@@ -4,12 +4,15 @@
 #include <memory>
 
 #include "gpu/gpu_buffer.h"
+#include "gpu/gpu_comm_sw.h"
+#include "gpu/gpu_manager.h"
 
 namespace ark {
-
 class GpuContext {
    public:
     static std::shared_ptr<GpuContext> get_context(int rank, int world_size);
+    std::shared_ptr<GpuManager> get_gpu_manager();
+    std::shared_ptr<GpuCommSw> get_comm_sw();
     ~GpuContext() = default;
 
     std::shared_ptr<GpuBuffer> allocate_buffer(size_t bytes, int align = 1);
@@ -23,16 +26,17 @@ class GpuContext {
     int world_size() const;
     int gpu_id() const;
     size_t get_total_bytes() const;
-    void memset(std::shared_ptr<GpuBuffer> buffer, size_t offset, int value,
-                size_t bytes);
-    void memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset, void *src,
-                size_t src_offset, size_t bytes);
-    void memcpy(void *dst, size_t dst_offset,
-                const std::shared_ptr<GpuBuffer> src, size_t src_offset,
-                size_t bytes);
-    void memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
-                const std::shared_ptr<GpuBuffer> src, size_t src_offset,
-                size_t bytes);
+    std::shared_ptr<GpuMemory> get_data_memory(int gpu = -1);
+    // void memset(std::shared_ptr<GpuBuffer> buffer, size_t offset, int value,
+    //             size_t bytes);
+    // void memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset, void *src,
+    //             size_t src_offset, size_t bytes);
+    // void memcpy(void *dst, size_t dst_offset,
+    //             const std::shared_ptr<GpuBuffer> src, size_t src_offset,
+    //             size_t bytes);
+    // void memcpy(std::shared_ptr<GpuBuffer> dst, size_t dst_offset,
+    //             const std::shared_ptr<GpuBuffer> src, size_t src_offset,
+    //             size_t bytes);
 
    private:
     GpuContext(int rank, int world_size);

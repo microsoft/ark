@@ -13,7 +13,7 @@
 #include "gpu/gpu_stream.h"
 
 namespace ark {
-class GpuManager : public std::enable_shared_from_this<GpuManager> {
+class GpuManager {
    public:
     static std::shared_ptr<GpuManager> get_instance(int gpu_id);
     ~GpuManager() = default;
@@ -26,6 +26,7 @@ class GpuManager : public std::enable_shared_from_this<GpuManager> {
     std::shared_ptr<GpuHostMemory> malloc_host(size_t bytes,
                                                unsigned int flags = 0);
     std::shared_ptr<GpuEventV2> create_event(bool disable_timing = false);
+    std::shared_ptr<GpuStreamV2> create_stream();
 
     void memset_d32_sync(void *dst, unsigned int val, size_t num) const;
     void memcpy_htod_sync(void *dst, size_t dst_offset, void *src,
