@@ -78,8 +78,6 @@ GpuContext::Impl::Impl(int rank, int world_size)
     : rank_(rank), world_size_(world_size) {
     int gpu_id = rank % get_env().num_ranks_per_host;
     manager_ = GpuManager::get_instance(gpu_id);
-
-    // TODO(binyli): refactor GpuCommSw later.
     memory_ = manager_->malloc(0, GPU_PAGE_SIZE);
     comm_sw_ = std::make_shared<GpuCommSw>("comm_sw", manager_->get_gpu_id(),
                                            rank_, world_size_, memory_);
