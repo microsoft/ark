@@ -46,7 +46,7 @@ void GpuBuffer::to_host(void* dst, size_t dst_offset, size_t src_offset,
 void GpuBuffer::from_buffer(size_t dst_offset, const GpuBuffer& src,
                             size_t src_offset, size_t bytes) {
     memory_->memcpy_from((void*)src.ref(src_offset), offset_ + dst_offset,
-                         bytes);
+                         bytes, true);
 }
 
 }  // namespace ark
