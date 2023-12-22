@@ -22,11 +22,11 @@ class GpuManager::Impl {
     gpuDevice gpu_dev_;
     gpuCtx gpu_ctx_;
     GpuManager::Info info_;
-    std::shared_ptr<GpuStreamV2> main_stream_;
+    std::shared_ptr<GpuStream> main_stream_;
 
     GpuState launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
                     const std::array<int, 3> &block_dim, int smem_bytes,
-                    std::shared_ptr<GpuStreamV2> stream, void **params,
+                    std::shared_ptr<GpuStream> stream, void **params,
                     void **extra);
 };
 
@@ -84,7 +84,7 @@ GpuState GpuManager::Impl::launch(gpuFunction kernel,
                                   const std::array<int, 3> &grid_dim,
                                   const std::array<int, 3> &block_dim,
                                   int smem_bytes,
-                                  std::shared_ptr<GpuStreamV2> stream,
+                                  std::shared_ptr<GpuStream> stream,
                                   void **params, void **extra) {
     return gpuModuleLaunchKernel(kernel, grid_dim[0], grid_dim[1], grid_dim[2],
                                  block_dim[0], block_dim[1], block_dim[2],
@@ -116,7 +116,7 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
 }
 
 GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {
-    this->pimpl_->main_stream_ = std::make_shared<GpuStreamV2>(*this);
+    this->pimpl_->main_stream_ = std::make_shared<GpuStream>(*this);
 }
 
 std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align,
@@ -131,13 +131,13 @@ std::shared_ptr<GpuHostMemory> GpuManager::malloc_host(size_t bytes,
         GpuManager::get_instance(pimpl_->gpu_id_), bytes, flags);
 }
 
-std::shared_ptr<GpuEventV2> GpuManager::create_event(bool disable_timing) {
-    return std::make_shared<GpuEventV2>(
-        GpuManager::get_instance(pimpl_->gpu_id_), disable_timing);
+std::shared_ptr<GpuEvent> GpuManager::create_event(bool disable_timing) {
+    return std::make_shared<GpuEvent>(GpuManager::get_instance(pimpl_->gpu_id_),
+                                      disable_timing);
 }
 
-std::shared_ptr<GpuStreamV2> GpuManager::create_stream() {
-    return std::make_shared<GpuStreamV2>(*this);
+std::shared_ptr<GpuStream> GpuManager::create_stream() {
+    return std::make_shared<GpuStream>(*this);
 }
 
 int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }
@@ -179,7 +179,7 @@ void GpuManager::memcpy_dtod_sync(void *dst, size_t dst_offset, void *src,
 GpuState GpuManager::launch(gpuFunction function,
                             const std::array<int, 3> &grid_dim,
                             const std::array<int, 3> &block_dim, int smem_bytes,
-                            std::shared_ptr<GpuStreamV2> stream, void **params,
+                            std::shared_ptr<GpuStream> stream, void **params,
                             void **extra) const {
     this->set_current();
     return pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream,

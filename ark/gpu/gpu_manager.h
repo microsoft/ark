@@ -25,8 +25,8 @@ class GpuManager {
                                       bool expose = false);
     std::shared_ptr<GpuHostMemory> malloc_host(size_t bytes,
                                                unsigned int flags = 0);
-    std::shared_ptr<GpuEventV2> create_event(bool disable_timing = false);
-    std::shared_ptr<GpuStreamV2> create_stream();
+    std::shared_ptr<GpuEvent> create_event(bool disable_timing = false);
+    std::shared_ptr<GpuStream> create_stream();
 
     void memset_d32_sync(void *dst, unsigned int val, size_t num) const;
     void memcpy_htod_sync(void *dst, size_t dst_offset, void *src,
@@ -39,7 +39,7 @@ class GpuManager {
     int get_gpu_id() const;
     GpuState launch(gpuFunction function, const std::array<int, 3> &grid_dim,
                     const std::array<int, 3> &block_dim, int smem_bytes,
-                    std::shared_ptr<GpuStreamV2> stream, void **params,
+                    std::shared_ptr<GpuStream> stream, void **params,
                     void **extra) const;
 
     struct Info;

@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_kernel_v2.h"
+#include "gpu/gpu_kernel.h"
+
 #include "gpu/gpu_loop_kernel.h"
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
@@ -23,12 +24,12 @@ ark::unittest::State test_gpu_loop_kernel() {
     auto ctx = ark::GpuContext::get_context(0, 1);
     ctx->freeze();
 
-    ark::GpuLoopKernelV2 glk{ctx,
-                             "test_kernel_loop_void",
-                             {test_kernel_loop_void},
-                             ctx->get_gpu_manager()->info().num_sm,
-                             1,
-                             0};
+    ark::GpuLoopKernel glk{ctx,
+                           "test_kernel_loop_void",
+                           {test_kernel_loop_void},
+                           ctx->get_gpu_manager()->info().num_sm,
+                           1,
+                           0};
     glk.compile();
     glk.load();
 
@@ -44,8 +45,7 @@ const std::string void_kernel = "extern \"C\" __global__ void kernel() {}";
 
 ark::unittest::State test_gpu_kernel() {
     auto ctx = ark::GpuContext::get_context(0, 1);
-    ark::GpuKernelV2 kernel(ctx, void_kernel, {1, 1, 1}, {1, 1, 1}, 0,
-                            "kernel");
+    ark::GpuKernel kernel(ctx, void_kernel, {1, 1, 1}, {1, 1, 1}, 0, "kernel");
     kernel.compile();
     return ark::unittest::SUCCESS;
 }

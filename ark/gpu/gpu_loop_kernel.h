@@ -6,20 +6,20 @@
 
 #include <memory>
 
-#include "gpu/gpu_kernel_v2.h"
+#include "gpu/gpu_kernel.h"
 
 #define ARK_BUF_NAME "ARK_BUF"
 #define ARK_LSS_NAME "ARK_LOOP_SYNC_STATE"
 
 namespace ark {
 
-class GpuLoopKernelV2 : public GpuKernelV2 {
+class GpuLoopKernel : public GpuKernel {
    public:
-    GpuLoopKernelV2(std::shared_ptr<GpuContext> ctx, const std::string &name,
-                    const std::vector<std::string> &codes, int num_sm,
-                    int num_warp, unsigned int smem_bytes);
+    GpuLoopKernel(std::shared_ptr<GpuContext> ctx, const std::string &name,
+                  const std::vector<std::string> &codes, int num_sm,
+                  int num_warp, unsigned int smem_bytes);
 
-    GpuState launch(std::shared_ptr<GpuStreamV2> stream,
+    GpuState launch(std::shared_ptr<GpuStream> stream,
                     bool disable_timing = true);
     void load();
     void run(int iter = 1);
@@ -30,13 +30,13 @@ class GpuLoopKernelV2 : public GpuKernelV2 {
     float get_elapsed_msec() const;
 
    private:
-    std::shared_ptr<GpuEventV2> timer_begin_;
-    std::shared_ptr<GpuEventV2> timer_end_;
+    std::shared_ptr<GpuEvent> timer_begin_;
+    std::shared_ptr<GpuEvent> timer_end_;
 
     int threads_per_warp_ = -1;
     std::shared_ptr<GpuHostMemory> flag_ = nullptr;
 
-    std::shared_ptr<GpuStreamV2> stream_ = nullptr;
+    std::shared_ptr<GpuStream> stream_ = nullptr;
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 };

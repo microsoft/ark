@@ -7,7 +7,7 @@
 #include "gpu/gpu_manager.h"
 
 namespace ark {
-class GpuStreamV2::Impl {
+class GpuStream::Impl {
    public:
     Impl(GpuManager &manager);
     ~Impl();
@@ -29,19 +29,19 @@ class GpuStreamV2::Impl {
     GpuManager &manager_;
 };
 
-GpuStreamV2::GpuStreamV2(GpuManager &manager)
+GpuStream::GpuStream(GpuManager &manager)
     : pimpl_(std::make_shared<Impl>(manager)) {}
 
-void GpuStreamV2::sync() const { pimpl_->sync(); }
+void GpuStream::sync() const { pimpl_->sync(); }
 
-gpuError GpuStreamV2::query() const { return pimpl_->query(); }
+gpuError GpuStream::query() const { return pimpl_->query(); }
 
-gpuStream GpuStreamV2::get() const { return pimpl_->get(); }
+gpuStream GpuStream::get() const { return pimpl_->get(); }
 
-GpuStreamV2::Impl::Impl(GpuManager &manager) : manager_(manager) {
+GpuStream::Impl::Impl(GpuManager &manager) : manager_(manager) {
     GLOG(gpuStreamCreate(&gpu_stream_, gpuStreamNonBlocking));
 }
 
-GpuStreamV2::Impl::~Impl() { GLOG(gpuStreamDestroy(gpu_stream_)); }
+GpuStream::Impl::~Impl() { GLOG(gpuStreamDestroy(gpu_stream_)); }
 
 }  // namespace ark

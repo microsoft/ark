@@ -54,7 +54,7 @@ class SchedProfiler {
         : ctx_{ctx}, num_warps_per_sm_{num_warps_per_sm_} {}
     void profile(OpGraph *op_graph, CodeGenerator &codegen,
                  std::shared_ptr<GpuContext> ctx);
-    float profile_routine(std::shared_ptr<GpuLoopKernelV2> glk,
+    float profile_routine(std::shared_ptr<GpuLoopKernel> glk,
                           std::shared_ptr<GpuContext> ctx);
 
     std::shared_ptr<GpuContext> ctx_;

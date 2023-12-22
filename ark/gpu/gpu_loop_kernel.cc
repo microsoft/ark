@@ -31,12 +31,11 @@ static void atomicStoreRelaxed(int* ptr, int val) {
 
 namespace ark {
 
-GpuLoopKernelV2::GpuLoopKernelV2(std::shared_ptr<GpuContext> ctx,
-                                 const std::string& name,
-                                 const std::vector<std::string>& codes_body,
-                                 int num_sm, int num_warp,
-                                 unsigned int smem_bytes)
-    : GpuKernelV2(
+GpuLoopKernel::GpuLoopKernel(std::shared_ptr<GpuContext> ctx,
+                             const std::string& name,
+                             const std::vector<std::string>& codes_body,
+                             int num_sm, int num_warp, unsigned int smem_bytes)
+    : GpuKernel(
           ctx, {},
           {num_warp * ctx->get_gpu_manager()->info().threads_per_warp, 1, 1},
           {num_sm, 1, 1}, (smem_bytes < 4) ? 4 : smem_bytes, name,
@@ -100,7 +99,7 @@ GpuLoopKernelV2::GpuLoopKernelV2(std::shared_ptr<GpuContext> ctx,
     }
 }
 
-void GpuLoopKernelV2::load() {
+void GpuLoopKernel::load() {
     if (!is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
     }
@@ -184,8 +183,8 @@ void GpuLoopKernelV2::load() {
     }
 }
 
-GpuState GpuLoopKernelV2::launch(std::shared_ptr<GpuStreamV2> stream,
-                                 bool disable_timing) {
+GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
+                               bool disable_timing) {
     elapsed_msec_ = -1;
     if (!is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
@@ -207,7 +206,7 @@ GpuState GpuLoopKernelV2::launch(std::shared_ptr<GpuStreamV2> stream,
 
     // Initialize loop flags.
     atomicStoreRelaxed(flag_->ref<int>(), 0);
-    GpuState res = GpuKernelV2::launch(stream);
+    GpuState res = GpuKernel::launch(stream);
     if (res == gpuSuccess) {
         stream_ = stream;
         if (!disable_timing) {
@@ -218,7 +217,7 @@ GpuState GpuLoopKernelV2::launch(std::shared_ptr<GpuStreamV2> stream,
     return res;
 }
 
-void GpuLoopKernelV2::run(int iter) {
+void GpuLoopKernel::run(int iter) {
     if (iter > 0) {
         while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
         }
@@ -226,11 +225,9 @@ void GpuLoopKernelV2::run(int iter) {
     }
 }
 
-bool GpuLoopKernelV2::poll() {
-    return atomicLoadRelaxed(flag_->ref<int>()) <= 0;
-}
+bool GpuLoopKernel::poll() { return atomicLoadRelaxed(flag_->ref<int>()) <= 0; }
 
-void GpuLoopKernelV2::wait() {
+void GpuLoopKernel::wait() {
     int cnt = MAX_LOOP_COUNTER;
     while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
         if (--cnt > 0) {
@@ -256,7 +253,7 @@ void GpuLoopKernelV2::wait() {
     }
 }
 
-void GpuLoopKernelV2::stop() {
+void GpuLoopKernel::stop() {
     wait();
     atomicStoreRelaxed(flag_->ref<int>(), -1);
     stream_->sync();
@@ -268,7 +265,7 @@ void GpuLoopKernelV2::stop() {
     ctx_->get_comm_sw()->stop_request_loop();
 }
 
-float GpuLoopKernelV2::get_elapsed_msec() const {
+float GpuLoopKernel::get_elapsed_msec() const {
     if (is_recording_) {
         ERR(InvalidUsageError, "Need to stop the kernel first.");
     }

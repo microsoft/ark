@@ -30,8 +30,8 @@ class Executor::Impl {
 
     std::shared_ptr<GpuContext> ctx_;
     std::unique_ptr<BaseScheduler> sched_;
-    std::unique_ptr<GpuLoopKernelV2> glk_;
-    std::shared_ptr<GpuStreamV2> stream_;
+    std::unique_ptr<GpuLoopKernel> glk_;
+    std::shared_ptr<GpuStream> stream_;
 };
 
 }  // namespace ark

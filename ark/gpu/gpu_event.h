@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_EVENT_V2_H_
-#define ARK_GPU_EVENT_V2_H_
+#ifndef ARK_GPU_EVENT_H_
+#define ARK_GPU_EVENT_H_
 
 #include <memory>
 
@@ -10,16 +10,15 @@
 
 namespace ark {
 class GpuManager;
-class GpuEventV2 {
+class GpuEvent {
    public:
-    GpuEventV2(std::shared_ptr<GpuManager> manager,
-               bool disable_timing = false);
-    ~GpuEventV2() = default;
-    GpuEventV2(const GpuEventV2 &) = delete;
-    GpuEventV2 &operator=(const GpuEventV2 &) = delete;
+    GpuEvent(std::shared_ptr<GpuManager> manager, bool disable_timing = false);
+    ~GpuEvent() = default;
+    GpuEvent(const GpuEvent &) = delete;
+    GpuEvent &operator=(const GpuEvent &) = delete;
 
-    void record(std::shared_ptr<GpuStreamV2> stream);
-    float elapsed_msec(const GpuEventV2 &other) const;
+    void record(std::shared_ptr<GpuStream> stream);
+    float elapsed_msec(const GpuEvent &other) const;
 
    private:
     class Impl;
@@ -27,4 +26,4 @@ class GpuEventV2 {
 };
 }  // namespace ark
 
-#endif  // ARK_GPU_EVENT_V2_H_
+#endif  // ARK_GPU_EVENT_H_

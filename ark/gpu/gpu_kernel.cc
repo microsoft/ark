@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_kernel_v2.h"
+#include "gpu/gpu_kernel.h"
 
 #include <cassert>
 #include <cstring>
@@ -12,7 +12,7 @@
 
 namespace ark {
 
-GpuKernelV2::GpuKernelV2(
+GpuKernel::GpuKernel(
     std::shared_ptr<GpuContext> ctx, const std::string& codes,
     const std::array<int, 3>& block_dim, const std::array<int, 3>& grid_dim,
     size_t smem_bytes, const std::string& kernel_name,
@@ -42,7 +42,7 @@ GpuKernelV2::GpuKernelV2(
     }
 }
 
-void GpuKernelV2::compile() {
+void GpuKernel::compile() {
     auto manager = ctx_->get_gpu_manager();
     int max_reg_per_block = manager->info().max_registers_per_block;
     int max_reg_per_thread = manager->info().max_registers_per_thread;
@@ -64,7 +64,7 @@ void GpuKernelV2::compile() {
                              dynamic_smem_size_bytes));
 }
 
-GpuState GpuKernelV2::launch(std::shared_ptr<GpuStreamV2> stream) {
+GpuState GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
     if (!this->is_compiled()) {
         ERR(InvalidUsageError, "Kernel is not compiled yet.");
     }

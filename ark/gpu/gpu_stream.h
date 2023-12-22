@@ -11,10 +11,10 @@
 namespace ark {
 
 class GpuManager;
-class GpuStreamV2 {
+class GpuStream {
    public:
-    GpuStreamV2(GpuManager& manager);
-    ~GpuStreamV2() = default;
+    GpuStream(GpuManager& manager);
+    ~GpuStream() = default;
     void sync() const;
     gpuError query() const;
     gpuStream get() const;

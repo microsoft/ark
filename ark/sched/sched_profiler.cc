@@ -21,7 +21,7 @@ using namespace std;
 
 namespace ark {
 
-float SchedProfiler::profile_routine(std::shared_ptr<GpuLoopKernelV2> glk,
+float SchedProfiler::profile_routine(std::shared_ptr<GpuLoopKernel> glk,
                                      std::shared_ptr<GpuContext> ctx) {
     const int probe_iter = 10;
 

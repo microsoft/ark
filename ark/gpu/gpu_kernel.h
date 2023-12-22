@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_KERNEL_V2_H_
-#define ARK_GPU_KERNEL_V2_H_
+#ifndef ARK_GPU_KERNEL_H_
+#define ARK_GPU_KERNEL_H_
 
 #include <memory>
 #include <string>
@@ -13,17 +13,17 @@
 
 namespace ark {
 
-class GpuKernelV2 {
+class GpuKernel {
    public:
-    GpuKernelV2(std::shared_ptr<GpuContext> ctx, const std::string& codes,
-                const std::array<int, 3>& block_dim,
-                const std::array<int, 3>& grid_dim, size_t smem_bytes,
-                const std::string& kernel_name,
-                std::initializer_list<std::pair<std::shared_ptr<void>, size_t>>
-                    args = {});
+    GpuKernel(std::shared_ptr<GpuContext> ctx, const std::string& codes,
+              const std::array<int, 3>& block_dim,
+              const std::array<int, 3>& grid_dim, size_t smem_bytes,
+              const std::string& kernel_name,
+              std::initializer_list<std::pair<std::shared_ptr<void>, size_t>>
+                  args = {});
 
     void compile();
-    GpuState launch(std::shared_ptr<GpuStreamV2> stream);
+    GpuState launch(std::shared_ptr<GpuStream> stream);
 
    protected:
     std::shared_ptr<GpuContext> ctx_;
@@ -43,4 +43,4 @@ class GpuKernelV2 {
 
 }  // namespace ark
 
-#endif  // ARK_GPU_KERNEL_V2_H_
+#endif  // ARK_GPU_KERNEL_H_

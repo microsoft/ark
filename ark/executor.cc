@@ -24,7 +24,7 @@ Executor::Impl::Impl(int rank, int world_size, Model &model,
     ctx_ = sched_->create_context();
     const GpuManager::Info &ginfo = ctx_->get_gpu_manager()->info();
     stream_ = ctx_->get_gpu_manager()->create_stream();
-    glk_ = std::make_unique<GpuLoopKernelV2>(
+    glk_ = std::make_unique<GpuLoopKernel>(
         ctx_, name, sched_->gen_code(), ginfo.num_sm, num_warps_per_sm,
         (unsigned int)ginfo.smem_block_total);
 }
