@@ -121,13 +121,16 @@ ark::unittest::State test_gpu_context_remote() {
             ctx->import_buffer(sizeof(int), 1, 6);
         ctx->freeze(true);
 
-        volatile int *ptr = (volatile int *)gpu0_eid3->ref();
-        while (*ptr != 7890) {
+        int res = 0;
+        gpu0_eid3->to_host(&res, 0, 0, sizeof(int));
+        while (res != 7890) {
+            gpu0_eid3->to_host(&res, 0, 0, sizeof(int));
         }
 
         gpu1_eid5->memset_d32(1234, 0, 1);
-        ptr = (volatile int *)gpu0_eid4->ref();
-        while (*ptr != 3456) {
+        gpu0_eid4->to_host(&res, 0, 0, sizeof(int));
+        while (res != 3456) {
+            gpu0_eid4->to_host(&res, 0, 0, sizeof(int));
         }
 
         gpu1_eid6->memset_d32(5678, 0, 1);
@@ -153,14 +156,17 @@ ark::unittest::State test_gpu_context_remote() {
             ctx->import_buffer(sizeof(int), 0, 4);
         ctx->freeze(true);
 
+        int res = 0;
         gpu0_eid3->memset_d32(7890, 0, 1);
-        volatile int *ptr = (volatile int *)gpu1_eid5->ref();
-        while (*ptr != 1234) {
+        gpu1_eid5->to_host(&res, 0, 0, sizeof(int));
+        while (res != 1234) {
+            gpu1_eid5->to_host(&res, 0, 0, sizeof(int));
         }
 
         gpu0_eid4->memset_d32(3456, 0, 1);
-        ptr = (volatile int *)gpu1_eid6->ref();
-        while (*ptr != 5678) {
+        gpu1_eid6->to_host(&res, 0, 0, sizeof(int));
+        while (res != 5678) {
+            gpu1_eid6->to_host(&res, 0, 0, sizeof(int));
         }
 
         return ark::unittest::SUCCESS;
