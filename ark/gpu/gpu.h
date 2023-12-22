@@ -6,6 +6,11 @@
 
 #include <functional>
 
+#if (!defined(ARK_CUDA) && !defined(ARK_ROCM))
+#error "ARK_CUDA or ARK_ROCM must be defined"
+#define ARK_CUDA  // dummy
+#endif            // !defined(ARK_CUDA) && !defined(ARK_ROCM)
+
 #if defined(ARK_CUDA)
 #include <cuda.h>
 #elif defined(ARK_ROCM)
