@@ -31,19 +31,19 @@ void GpuBuffer::memset_d32(int value, size_t offset, size_t nelems) {
     this->memset(value, offset, nelems * sizeof(int));
 }
 
-void GpuBuffer::memcpy_from(size_t dst_offset, const void* src,
-                            size_t src_offset, size_t bytes) {
+void GpuBuffer::from_host(size_t dst_offset, const void* src, size_t src_offset,
+                          size_t bytes) {
     void* host_ptr = reinterpret_cast<void*>((size_t)src + src_offset);
     memory_->memcpy_from(host_ptr, offset_ + dst_offset, bytes);
 }
 
-void GpuBuffer::memcpy_to(void* dst, size_t dst_offset, size_t src_offset,
-                          size_t bytes) {
+void GpuBuffer::to_host(void* dst, size_t dst_offset, size_t src_offset,
+                        size_t bytes) {
     void* host_ptr = reinterpret_cast<void*>((size_t)dst + dst_offset);
     memory_->memcpy_to(host_ptr, offset_ + src_offset, bytes);
 }
 
-void GpuBuffer::memcpy_from(size_t dst_offset, const GpuBuffer& src,
+void GpuBuffer::from_buffer(size_t dst_offset, const GpuBuffer& src,
                             size_t src_offset, size_t bytes) {
     memory_->memcpy_from((void*)src.ref(src_offset), offset_ + dst_offset,
                          bytes);

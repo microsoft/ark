@@ -11,9 +11,9 @@ namespace ark {
 
 class GpuMemory::Impl {
    public:
-    Impl(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align,
+    Impl(const GpuManager& manager, size_t bytes, size_t align,
          bool expose = false);
-    Impl(std::shared_ptr<GpuManager> manager,
+    Impl(const GpuManager& manager,
          const mscclpp::RegisteredMemory& remote_memory);
     ~Impl();
     Impl(const Impl&) = delete;
@@ -28,7 +28,7 @@ class GpuMemory::Impl {
    private:
     friend class GpuMemory;
 
-    std::shared_ptr<GpuManager> manager_;
+    const GpuManager& manager_;
     mscclpp::RegisteredMemory remote_memory_;
     size_t bytes_;
     size_t align_;
@@ -38,8 +38,8 @@ class GpuMemory::Impl {
     gpuDeviceptr dev_ptr_aligned_;
 };
 
-GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
-                      size_t align, [[maybe_unused]] bool expose)
+GpuMemory::Impl::Impl(const GpuManager& manager, size_t bytes, size_t align,
+                      [[maybe_unused]] bool expose)
     : manager_(manager), bytes_(bytes), align_(align), is_remote_(false) {
     if (bytes_ == 0) {
         dev_ptr_aligned_ = (gpuDeviceptr) nullptr;
@@ -53,7 +53,7 @@ GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
         ERR(InvalidUsageError, "align must be a power of 2. Given %zu.",
             align_);
     }
-    manager_->set_current();
+    manager_.set_current();
     bytes_raw_ = bytes_ + align_ - 1;
 #if defined(ARK_CUDA)
     GLOG(gpuMemAlloc(&dev_ptr_raw_, bytes_raw_));
@@ -81,17 +81,12 @@ GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager, size_t bytes,
                                 dev_ptr_aligned_));
 
     // Initialize.
-    manager_->memset_d32_async(reinterpret_cast<void*>(dev_ptr_raw_), 0,
-                               bytes_raw_ >> 2);
-    manager_->memset_d8_async(reinterpret_cast<void*>((size_t)dev_ptr_raw_ +
-                                                      ((bytes_raw_ >> 2) << 2)),
-                              0, bytes_raw_ & 3);
-    manager_->sync();
+    manager_.memset(reinterpret_cast<void*>(dev_ptr_raw_), 0, bytes_raw_);
     LOG(DEBUG, "Created GpuMemory addr 0x", std::hex, dev_ptr_aligned_,
         std::dec, " bytes ", bytes_);
 }
 
-GpuMemory::Impl::Impl(std::shared_ptr<GpuManager> manager,
+GpuMemory::Impl::Impl(const GpuManager& manager,
                       const mscclpp::RegisteredMemory& remote_memory)
     : manager_(manager),
       remote_memory_(remote_memory),
@@ -115,11 +110,7 @@ void GpuMemory::Impl::to_host(void* dst, size_t offset, size_t bytes,
         LOG(ERROR, "cannot copy from remote memory.");
     }
     void* dev_ptr = reinterpret_cast<void*>((size_t)dev_ptr_aligned_ + offset);
-    manager_->set_current();
-    manager_->memcpy_dtoh_async(dst, 0, dev_ptr, 0, bytes);
-    if (!async) {
-        manager_->sync();
-    }
+    manager_.memcpy_dtoh(dst, 0, dev_ptr, 0, bytes, async);
 }
 
 void GpuMemory::Impl::from_host(const void* src, size_t offset, size_t bytes,
@@ -128,11 +119,7 @@ void GpuMemory::Impl::from_host(const void* src, size_t offset, size_t bytes,
         LOG(ERROR, "cannot copy to remote memory.");
     }
     void* dev_ptr = reinterpret_cast<void*>((size_t)dev_ptr_aligned_ + offset);
-    manager_->set_current();
-    manager_->memcpy_htod_async(dev_ptr, 0, const_cast<void*>(src), 0, bytes);
-    if (!async) {
-        manager_->sync();
-    }
+    manager_.memcpy_htod(dev_ptr, 0, const_cast<void*>(src), 0, bytes, async);
 }
 
 void GpuMemory::Impl::from_device(const void* src, size_t offset, size_t bytes,
@@ -142,14 +129,10 @@ void GpuMemory::Impl::from_device(const void* src, size_t offset, size_t bytes,
         LOG(ERROR, "cannot copy to remote memory.");
     }
     void* dev_ptr = reinterpret_cast<void*>((size_t)dev_ptr_aligned_ + offset);
-    manager_->set_current();
-    manager_->memcpy_dtod_async(dev_ptr, 0, const_cast<void*>(src), 0, bytes);
-    if (!async) {
-        manager_->sync();
-    }
+    manager_.memcpy_dtod(dev_ptr, 0, const_cast<void*>(src), 0, bytes, async);
 }
 
-void GpuMemory::Impl::sync() const { manager_->sync(); }
+void GpuMemory::Impl::sync() const { manager_.sync(); }
 
 void GpuMemory::Impl::memset(int value, size_t offset, size_t bytes) {
     if (is_remote_ &&
@@ -157,20 +140,15 @@ void GpuMemory::Impl::memset(int value, size_t offset, size_t bytes) {
         LOG(ERROR, "cannot memset remote memory.");
     }
     void* dev_ptr = reinterpret_cast<void*>(dev_ptr_aligned_);
-    manager_->set_current();
-    manager_->memset_d32_async(
-        reinterpret_cast<void*>((size_t)dev_ptr + offset), value, bytes >> 2);
-    manager_->memset_d8_async(
-        reinterpret_cast<void*>((size_t)dev_ptr + offset + ((bytes >> 2) << 2)),
-        value, bytes & 3);
-    manager_->sync();
+    manager_.memset(reinterpret_cast<void*>((size_t)dev_ptr + offset), value,
+                    bytes);
 }
 
-GpuMemory::GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes,
-                     size_t align, bool expose)
+GpuMemory::GpuMemory(const GpuManager& manager, size_t bytes, size_t align,
+                     bool expose)
     : pimpl_(std::make_shared<Impl>(manager, bytes, align, expose)) {}
 
-GpuMemory::GpuMemory(std::shared_ptr<GpuManager> manager,
+GpuMemory::GpuMemory(GpuManager& manager,
                      const mscclpp::RegisteredMemory& remote_memory) {
     pimpl_ = std::make_shared<Impl>(manager, remote_memory);
 }
@@ -220,10 +198,10 @@ void GpuMemory::from_host(const void* src, size_t bytes, bool async) {
     pimpl_->from_host(src, 0, bytes, async);
 }
 
-GpuHostMemory::GpuHostMemory(std::shared_ptr<GpuManager> manager, size_t bytes,
+GpuHostMemory::GpuHostMemory(const GpuManager& manager, size_t bytes,
                              unsigned int flags)
     : ptr_(nullptr) {
-    manager->set_current();
+    manager.set_current();
     GLOG(gpuHostAlloc(&ptr_, bytes, flags));
 }
 

@@ -17,10 +17,7 @@ class GpuManager;
 
 class GpuMemory {
    public:
-    GpuMemory(std::shared_ptr<GpuManager> manager, size_t bytes, size_t align,
-              bool expose = false);
-    GpuMemory(std::shared_ptr<GpuManager> manager,
-              const mscclpp::RegisteredMemory& remote_memory);
+    ~GpuMemory() = default;
     void resize(size_t bytes, bool expose = false);
     void resize(const mscclpp::RegisteredMemory& remote_memory);
     GpuPtr ref(size_t offset = 0) const;
@@ -44,6 +41,12 @@ class GpuMemory {
     void memcpy_to(void* dst, size_t offset, size_t bytes);
 
    private:
+    friend class GpuManager;
+    GpuMemory(const GpuManager& manager, size_t bytes, size_t align,
+              bool expose = false);
+    GpuMemory(GpuManager& manager,
+              const mscclpp::RegisteredMemory& remote_memory);
+
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 
@@ -53,15 +56,19 @@ class GpuMemory {
 
 class GpuHostMemory {
    public:
-    GpuHostMemory(std::shared_ptr<GpuManager> manager, size_t bytes,
-                  unsigned int flags);
     ~GpuHostMemory();
+    GpuHostMemory(const GpuHostMemory&) = delete;
+    GpuHostMemory& operator=(const GpuHostMemory&) = delete;
+
     template <typename T>
     T* ref() const {
         return reinterpret_cast<T*>(ptr_);
     }
 
    private:
+    friend class GpuManager;
+    GpuHostMemory(const GpuManager& manager, size_t bytes, unsigned int flags);
+
     void* ptr_;
 };
 

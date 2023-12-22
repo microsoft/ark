@@ -388,7 +388,7 @@ void Tensor::write(const void *buf) {
     int ndims = this->ndims();
     char *ptr = (char *)buf;
     if (ndims == 1) {
-        gbuf->memcpy_from(this->offset_bytes(0), ptr, 0, bytes);
+        gbuf->from_host(this->offset_bytes(0), ptr, 0, bytes);
         return;
     }
     size_t done = 0;
@@ -397,7 +397,7 @@ void Tensor::write(const void *buf) {
         if (ndims == 2) {
             size_t cb =
                 std::min(rem, (size_t)this->shape[1] * this->type_bytes());
-            gbuf->memcpy_from(this->offset_bytes(i, 0), &ptr[done], 0, cb);
+            gbuf->from_host(this->offset_bytes(i, 0), &ptr[done], 0, cb);
             rem -= cb;
             done += cb;
             if (rem == 0) {
@@ -409,8 +409,7 @@ void Tensor::write(const void *buf) {
             if (ndims == 3) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[2] * this->type_bytes());
-                gbuf->memcpy_from(this->offset_bytes(i, j, 0), &ptr[done], 0,
-                                  cb);
+                gbuf->from_host(this->offset_bytes(i, j, 0), &ptr[done], 0, cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -421,8 +420,8 @@ void Tensor::write(const void *buf) {
             for (DimType k = 0; k < this->shape[2]; ++k) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[3] * this->type_bytes());
-                gbuf->memcpy_from(this->offset_bytes(i, j, k, 0), &ptr[done], 0,
-                                  cb);
+                gbuf->from_host(this->offset_bytes(i, j, k, 0), &ptr[done], 0,
+                                cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -451,7 +450,7 @@ void *Tensor::read(void *buf) {
     }
     char *ptr = (char *)buf;
     if (ndims == 1) {
-        gbuf->memcpy_to(ptr, 0, this->offset_bytes(0), bytes);
+        gbuf->to_host(ptr, 0, this->offset_bytes(0), bytes);
         return ptr;
     }
     size_t done = 0;
@@ -460,7 +459,7 @@ void *Tensor::read(void *buf) {
         if (ndims == 2) {
             size_t cb =
                 std::min(rem, (size_t)this->shape[1] * this->type_bytes());
-            gbuf->memcpy_to(&ptr[done], 0, this->offset_bytes(i, 0), cb);
+            gbuf->to_host(&ptr[done], 0, this->offset_bytes(i, 0), cb);
             rem -= cb;
             done += cb;
             if (rem == 0) {
@@ -472,7 +471,7 @@ void *Tensor::read(void *buf) {
             if (ndims == 3) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[2] * this->type_bytes());
-                gbuf->memcpy_to(&ptr[done], 0, this->offset_bytes(i, j, 0), cb);
+                gbuf->to_host(&ptr[done], 0, this->offset_bytes(i, j, 0), cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -483,8 +482,8 @@ void *Tensor::read(void *buf) {
             for (DimType k = 0; k < this->shape[2]; ++k) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[3] * this->type_bytes());
-                gbuf->memcpy_to(&ptr[done], 0, this->offset_bytes(i, j, k, 0),
-                                cb);
+                gbuf->to_host(&ptr[done], 0, this->offset_bytes(i, j, k, 0),
+                              cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -511,7 +510,7 @@ void *Tensor::read_raw(void *buf) {
             ERR(SystemError, "failed to allocate host buffer");
         }
     }
-    gbuf->memcpy_to(buf, 0, 0, bytes);
+    gbuf->to_host(buf, 0, 0, bytes);
     return buf;
 }
 

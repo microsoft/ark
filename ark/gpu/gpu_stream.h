@@ -13,13 +13,15 @@ namespace ark {
 class GpuManager;
 class GpuStream {
    public:
-    GpuStream(GpuManager& manager);
     ~GpuStream() = default;
     void sync() const;
     gpuError query() const;
     gpuStream get() const;
 
    private:
+    friend class GpuManager;
+    GpuStream(const GpuManager& manager);
+
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 };

@@ -45,20 +45,20 @@ ark::unittest::State test_gpu_context_buffer_alloc() {
 
         int buf0_data = 7;
         int buf1_data = 8;
-        buf0->memcpy_from(0, &buf0_data, 0, sizeof(int));
-        buf1->memcpy_from(0, &buf1_data, 0, sizeof(int));
+        buf0->from_host(0, &buf0_data, 0, sizeof(int));
+        buf1->from_host(0, &buf1_data, 0, sizeof(int));
 
         int buf0_data2 = 0;
         int buf1_data2 = 0;
 
-        buf0->memcpy_to(&buf0_data2, 0, 0, sizeof(int));
-        buf1->memcpy_to(&buf1_data2, 0, 0, sizeof(int));
+        buf0->to_host(&buf0_data2, 0, 0, sizeof(int));
+        buf1->to_host(&buf1_data2, 0, 0, sizeof(int));
 
         UNITTEST_EQ(buf0_data2, 7);
         UNITTEST_EQ(buf1_data2, 8);
 
-        buf0->memcpy_from(0, *buf1, 0, sizeof(int));
-        buf0->memcpy_to(&buf0_data2, 0, 0, sizeof(int));
+        buf0->from_buffer(0, *buf1, 0, sizeof(int));
+        buf0->to_host(&buf0_data2, 0, 0, sizeof(int));
         UNITTEST_EQ(buf0_data2, 8);
         return ark::unittest::SUCCESS;
     });
@@ -88,10 +88,10 @@ ark::unittest::State test_gpu_context_buffer_free() {
         UNITTEST_EQ(buf0->ref(), buf1->ref());
 
         int buf0_data = 9;
-        buf0->memcpy_from(0, &buf0_data, 0, sizeof(int));
+        buf0->from_host(0, &buf0_data, 0, sizeof(int));
 
         int buf1_data = 0;
-        buf1->memcpy_to(&buf1_data, 0, 0, sizeof(int));
+        buf1->to_host(&buf1_data, 0, 0, sizeof(int));
         UNITTEST_EQ(buf1_data, 9);
 
         return ark::unittest::SUCCESS;

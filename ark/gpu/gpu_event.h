@@ -12,7 +12,6 @@ namespace ark {
 class GpuManager;
 class GpuEvent {
    public:
-    GpuEvent(std::shared_ptr<GpuManager> manager, bool disable_timing = false);
     ~GpuEvent() = default;
     GpuEvent(const GpuEvent &) = delete;
     GpuEvent &operator=(const GpuEvent &) = delete;
@@ -21,6 +20,9 @@ class GpuEvent {
     float elapsed_msec(const GpuEvent &other) const;
 
    private:
+    friend class GpuManager;
+    GpuEvent(const GpuManager &manager, bool disable_timing = false);
+
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 };

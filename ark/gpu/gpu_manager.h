@@ -21,6 +21,7 @@ class GpuManager {
     GpuManager &operator=(const GpuManager &) = delete;
 
     void set_current() const;
+    void sync() const;
     std::shared_ptr<GpuMemory> malloc(size_t bytes, size_t align = 1,
                                       bool expose = false);
     std::shared_ptr<GpuHostMemory> malloc_host(size_t bytes,
@@ -28,13 +29,14 @@ class GpuManager {
     std::shared_ptr<GpuEvent> create_event(bool disable_timing = false);
     std::shared_ptr<GpuStream> create_stream();
 
-    void memset_d32_sync(void *dst, unsigned int val, size_t num) const;
-    void memcpy_htod_sync(void *dst, size_t dst_offset, void *src,
-                          size_t src_offset, size_t bytes) const;
-    void memcpy_dtoh_sync(void *dst, size_t dst_offset, void *src,
-                          size_t src_offset, size_t bytes) const;
-    void memcpy_dtod_sync(void *dst, size_t dst_offset, void *src,
-                          size_t src_offset, size_t bytes) const;
+    void memset(void *dst, unsigned int val, size_t bytes,
+                bool async = false) const;
+    void memcpy_htod(void *dst, size_t dst_offset, void *src, size_t src_offset,
+                     size_t bytes, bool async = false) const;
+    void memcpy_dtoh(void *dst, size_t dst_offset, void *src, size_t src_offset,
+                     size_t bytes, bool async = false) const;
+    void memcpy_dtod(void *dst, size_t dst_offset, void *src, size_t src_offset,
+                     size_t bytes, bool async = false) const;
 
     int get_gpu_id() const;
     GpuState launch(gpuFunction function, const std::array<int, 3> &grid_dim,
@@ -65,20 +67,9 @@ class GpuManager {
 
    private:
     GpuManager(int gpu_id);
-    friend class GpuMemory;
 
     class Impl;
     std::shared_ptr<Impl> pimpl_;
-
-    void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
-                           size_t src_offset, size_t bytes) const;
-    void memcpy_htod_async(void *dst, size_t dst_offset, void *src,
-                           size_t src_offset, size_t bytes) const;
-    void memcpy_dtod_async(void *dst, size_t dst_offset, void *src,
-                           size_t src_offset, size_t bytes) const;
-    void memset_d32_async(void *dst, unsigned int val, size_t num) const;
-    void memset_d8_async(void *dst, unsigned char val, size_t num) const;
-    void sync() const;
 };
 
 }  // namespace ark
