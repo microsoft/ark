@@ -7,6 +7,15 @@
 #include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
+const std::string void_kernel = "extern \"C\" __global__ void kernel() {}";
+
+ark::unittest::State test_gpu_kernel() {
+    auto ctx = ark::GpuContext::get_context(0, 1);
+    ark::GpuKernel kernel(ctx, void_kernel, {1, 1, 1}, {1, 1, 1}, 0, "kernel");
+    kernel.compile();
+    return ark::unittest::SUCCESS;
+}
+
 //
 const std::string test_kernel_loop_void =
     "__device__ void ark_loop_body(int _iter) {\n"
@@ -41,18 +50,9 @@ ark::unittest::State test_gpu_loop_kernel() {
     return ark::unittest::SUCCESS;
 }
 
-const std::string void_kernel = "extern \"C\" __global__ void kernel() {}";
-
-ark::unittest::State test_gpu_kernel() {
-    auto ctx = ark::GpuContext::get_context(0, 1);
-    ark::GpuKernel kernel(ctx, void_kernel, {1, 1, 1}, {1, 1, 1}, 0, "kernel");
-    kernel.compile();
-    return ark::unittest::SUCCESS;
-}
-
 int main() {
     ark::init();
-    UNITTEST(test_gpu_loop_kernel);
     UNITTEST(test_gpu_kernel);
+    UNITTEST(test_gpu_loop_kernel);
     return 0;
 }

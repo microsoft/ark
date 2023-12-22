@@ -15,14 +15,8 @@ class GpuStream::Impl {
     Impl &operator=(const Impl &) = delete;
 
     gpuStream get() const { return gpu_stream_; }
-    gpuError query() const {
-        manager_.set_current();
-        return gpuStreamQuery(gpu_stream_);
-    }
-    void sync() const {
-        manager_.set_current();
-        GLOG(gpuStreamSynchronize(gpu_stream_));
-    }
+    gpuError query() const { return gpuStreamQuery(gpu_stream_); }
+    void sync() const { GLOG(gpuStreamSynchronize(gpu_stream_)); }
 
    private:
     gpuStream gpu_stream_;

@@ -248,8 +248,6 @@ GpuState GpuManager::launch(gpuFunction function,
                           params, extra);
 }
 
-void GpuManager::sync() const {
-    GLOG(gpuStreamSynchronize(pimpl_->main_stream_->get()));
-}
+void GpuManager::sync() const { pimpl_->main_stream_->sync(); }
 
 }  // namespace ark

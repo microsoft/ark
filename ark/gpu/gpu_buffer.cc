@@ -17,6 +17,7 @@ GpuBuffer::GpuBuffer(int gpu_id, const std::shared_ptr<GpuMemory> memory,
 GpuPtr GpuBuffer::ref(size_t offset) const {
     return memory_->ref(offset_ + offset);
 }
+
 void GpuBuffer::memset(int value, size_t offset, size_t bytes) {
     const size_t& buffer_bytes = this->get_bytes();
     if (buffer_bytes < bytes) {

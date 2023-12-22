@@ -35,13 +35,11 @@ GpuEvent::Impl::Impl(const GpuManager& manager, bool disable_timing)
 GpuEvent::Impl::~Impl() { GLOG(gpuEventDestroy(event_)); }
 
 void GpuEvent::Impl::record(std::shared_ptr<GpuStream> stream) {
-    manager_.set_current();
     GLOG(gpuEventRecord(event_, stream->get()));
 }
 
 float GpuEvent::Impl::elapsed_msec(const GpuEvent& other) const {
     float elapsed;
-    manager_.set_current();
     GLOG(gpuEventElapsedTime(&elapsed, other.pimpl_->event_, event_));
     return elapsed;
 }

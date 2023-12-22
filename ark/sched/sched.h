@@ -54,6 +54,7 @@ class BaseScheduler {
     std::shared_ptr<GpuManager> gpu_mgr;
     int rank;
     int world_size;
+    std::shared_ptr<GpuContext> ctx;
     int num_warps_per_sm;
     std::unique_ptr<CodeGenerator> codegen;
 
@@ -61,8 +62,6 @@ class BaseScheduler {
 
     // the information of the GPU buffers
     std::vector<BufInfo> buf_infos;
-
-    std::shared_ptr<GpuContext> ctx;
 };
 
 class DefaultScheduler : public BaseScheduler {

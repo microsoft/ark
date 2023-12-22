@@ -18,9 +18,8 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
       gpu_mgr{GpuManager::get_instance(gpu_id)},
       rank{rank_},
       world_size{world_size_},
-      num_warps_per_sm{num_warps_per_sm_} {
+      ctx{GpuContext::get_context(rank_, world_size_)} {
     const GpuManager::Info &gpu_info = this->gpu_mgr->info();
-    this->ctx = GpuContext::get_context(this->rank, this->world_size);
     int max_warps_per_sm =
         (int)(gpu_info.max_threads_per_block / gpu_info.threads_per_warp);
     this->num_warps_per_sm = std::min(num_warps_per_sm_, max_warps_per_sm);
@@ -30,8 +29,6 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
 
 // create context on gpu for the model
 std::shared_ptr<GpuContext> BaseScheduler::create_context() {
-    std::shared_ptr<GpuContext> ctx =
-        GpuContext::get_context(this->rank, this->world_size);
     for (BufInfo &bi : this->buf_infos) {
         std::shared_ptr<GpuBuffer> buf;
         if (bi.gpu_id == this->gpu_mgr->get_gpu_id()) {
@@ -39,25 +36,24 @@ std::shared_ptr<GpuContext> BaseScheduler::create_context() {
                 // Already allocated.
                 buf = bi.tbuf->buf;
                 if (bi.sid != -1) {
-                    ctx->export_buffer(buf, bi.offset, bi.sid);
+                    this->ctx->export_buffer(buf, bi.offset, bi.sid);
                 }
             } else if (bi.sid == -1) {
-                buf = ctx->allocate_buffer(bi.bytes, 1);
+                buf = this->ctx->allocate_buffer(bi.bytes, 1);
             } else {
                 // Align for RDMA performance.
-                buf = ctx->allocate_buffer(bi.bytes, 65536);
-                ctx->export_buffer(buf, bi.offset, bi.sid);
+                buf = this->ctx->allocate_buffer(bi.bytes, 65536);
+                this->ctx->export_buffer(buf, bi.offset, bi.sid);
             }
         } else {
-            buf = ctx->import_buffer(bi.bytes, bi.gpu_id, bi.sid);
+            buf = this->ctx->import_buffer(bi.bytes, bi.gpu_id, bi.sid);
         }
         if (bi.tbuf != nullptr) {
             bi.tbuf->buf = buf;
         }
     }
-    ctx->freeze();
-    this->ctx = ctx;
-    return ctx;
+    this->ctx->freeze();
+    return this->ctx;
 }
 
 const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
