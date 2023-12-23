@@ -3,7 +3,6 @@
 
 #include <cassert>
 
-#include "gpu/gpu_buf.h"
 #include "logging.h"
 #include "model.h"
 

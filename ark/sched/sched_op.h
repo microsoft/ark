@@ -4,7 +4,6 @@
 #ifndef ARK_SCHED_OP_H_
 #define ARK_SCHED_OP_H_
 
-#include "gpu/gpu_mgr.h"
 #include "include/ark.h"
 #include "ops/ops_common.h"
 

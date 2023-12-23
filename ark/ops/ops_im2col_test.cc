@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "logging.h"
 #include "ops_test_common.h"

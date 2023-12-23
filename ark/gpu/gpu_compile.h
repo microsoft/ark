@@ -7,8 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "gpu/gpu_mgr.h"
-
 namespace ark {
 
 const std::string gpu_compile(const std::vector<std::string> &codes,

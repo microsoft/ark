@@ -6,7 +6,7 @@
 
 #include <map>
 
-#include "gpu/gpu_kernel.h"
+#include "gpu/gpu_loop_kernel.h"
 #include "sched/sched_op.h"
 #include "sched/sched_opseq.h"
 #include "sched_branch.h"
@@ -15,7 +15,7 @@ namespace ark {
 
 class CodeGenerator {
    public:
-    CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_);
+    CodeGenerator(const GpuManager::Info &gpu_info_, int num_warps_per_sm_);
 
     std::ostream &def_remote_buf(std::ostream &os, int remote_rank) const;
 
@@ -53,7 +53,7 @@ class CodeGenerator {
    protected:
     size_t get_tensor_offset(const Tensor *tensor) const;
 
-    const GpuInfo &gpu_info;
+    const GpuManager::Info &gpu_info;
     int sm_num;
     int num_warps_per_sm;
     int world_size;

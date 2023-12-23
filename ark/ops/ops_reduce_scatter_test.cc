@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "env.h"
-#include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "ipc/ipc_coll.h"
 #include "ops_test_common.h"

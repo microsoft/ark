@@ -6,7 +6,7 @@
 #include <string>
 
 #include "ark.h"
-#include "gpu/gpu_mgr.h"
+#include "gpu/gpu_buffer.h"
 #include "logging.h"
 #include "math.h"
 
@@ -26,7 +26,7 @@ size_t TensorBuf::get_buf_offset() const {
     if (this->buf == nullptr) {
         ERR(InvalidUsageError, "TensorBuf is not configured yet");
     }
-    return static_cast<GpuBuf *>(this->buf)->get_offset();
+    return this->buf->get_offset();
 }
 
 // Tensor constructor
@@ -379,7 +379,7 @@ void Tensor::write(const void *buf) {
     if (buf == nullptr) {
         ERR(InvalidUsageError, "the given host buffer is null");
     }
-    GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
+    std::shared_ptr<GpuBuffer> gbuf = this->buf->buf;
     if (gbuf == nullptr) {
         ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
             this->name);
@@ -388,7 +388,7 @@ void Tensor::write(const void *buf) {
     int ndims = this->ndims();
     char *ptr = (char *)buf;
     if (ndims == 1) {
-        gpu_memcpy(gbuf, this->offset_bytes(0), ptr, 0, bytes);
+        gbuf->from_host(this->offset_bytes(0), ptr, 0, bytes);
         return;
     }
     size_t done = 0;
@@ -397,7 +397,7 @@ void Tensor::write(const void *buf) {
         if (ndims == 2) {
             size_t cb =
                 std::min(rem, (size_t)this->shape[1] * this->type_bytes());
-            gpu_memcpy(gbuf, this->offset_bytes(i, 0), &ptr[done], 0, cb);
+            gbuf->from_host(this->offset_bytes(i, 0), &ptr[done], 0, cb);
             rem -= cb;
             done += cb;
             if (rem == 0) {
@@ -409,8 +409,7 @@ void Tensor::write(const void *buf) {
             if (ndims == 3) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[2] * this->type_bytes());
-                gpu_memcpy(gbuf, this->offset_bytes(i, j, 0), &ptr[done], 0,
-                           cb);
+                gbuf->from_host(this->offset_bytes(i, j, 0), &ptr[done], 0, cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -421,8 +420,8 @@ void Tensor::write(const void *buf) {
             for (DimType k = 0; k < this->shape[2]; ++k) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[3] * this->type_bytes());
-                gpu_memcpy(gbuf, this->offset_bytes(i, j, k, 0), &ptr[done], 0,
-                           cb);
+                gbuf->from_host(this->offset_bytes(i, j, k, 0), &ptr[done], 0,
+                                cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -436,7 +435,7 @@ void Tensor::write(const void *buf) {
 }
 
 void *Tensor::read(void *buf) {
-    GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
+    std::shared_ptr<GpuBuffer> gbuf = this->buf->buf;
     if (gbuf == nullptr) {
         ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
             this->id);
@@ -451,7 +450,7 @@ void *Tensor::read(void *buf) {
     }
     char *ptr = (char *)buf;
     if (ndims == 1) {
-        gpu_memcpy(ptr, 0, gbuf, this->offset_bytes(0), bytes);
+        gbuf->to_host(ptr, 0, this->offset_bytes(0), bytes);
         return ptr;
     }
     size_t done = 0;
@@ -460,7 +459,7 @@ void *Tensor::read(void *buf) {
         if (ndims == 2) {
             size_t cb =
                 std::min(rem, (size_t)this->shape[1] * this->type_bytes());
-            gpu_memcpy(&ptr[done], 0, gbuf, this->offset_bytes(i, 0), cb);
+            gbuf->to_host(&ptr[done], 0, this->offset_bytes(i, 0), cb);
             rem -= cb;
             done += cb;
             if (rem == 0) {
@@ -472,8 +471,7 @@ void *Tensor::read(void *buf) {
             if (ndims == 3) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[2] * this->type_bytes());
-                gpu_memcpy(&ptr[done], 0, gbuf, this->offset_bytes(i, j, 0),
-                           cb);
+                gbuf->to_host(&ptr[done], 0, this->offset_bytes(i, j, 0), cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -484,8 +482,8 @@ void *Tensor::read(void *buf) {
             for (DimType k = 0; k < this->shape[2]; ++k) {
                 size_t cb =
                     std::min(rem, (size_t)this->shape[3] * this->type_bytes());
-                gpu_memcpy(&ptr[done], 0, gbuf, this->offset_bytes(i, j, k, 0),
-                           cb);
+                gbuf->to_host(&ptr[done], 0, this->offset_bytes(i, j, k, 0),
+                              cb);
                 rem -= cb;
                 done += cb;
                 if (rem == 0) {
@@ -500,7 +498,7 @@ void *Tensor::read(void *buf) {
 }
 
 void *Tensor::read_raw(void *buf) {
-    GpuBuf *gbuf = static_cast<GpuBuf *>(this->buf->buf);
+    std::shared_ptr<GpuBuffer> gbuf = this->buf->buf;
     if (gbuf == nullptr) {
         ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
             this->id);
@@ -512,12 +510,12 @@ void *Tensor::read_raw(void *buf) {
             ERR(SystemError, "failed to allocate host buffer");
         }
     }
-    gpu_memcpy(buf, 0, gbuf, 0, bytes);
+    gbuf->to_host(buf, 0, 0, bytes);
     return buf;
 }
 
 void Tensor::clear() {
-    GpuBuf *buf = static_cast<GpuBuf *>(this->buf->buf);
+    std::shared_ptr<GpuBuffer> buf = this->buf->buf;
     if (buf == nullptr) {
         ERR(InvalidUsageError, "failed to get GPU buffer for tensor ",
             this->name);
@@ -527,7 +525,7 @@ void Tensor::clear() {
     assert(bytes % 4 == 0);
     size_t num = bytes >> 2;
     if (ndims == 1) {
-        gpu_memset(buf, this->offset_bytes(0), 0, num);
+        buf->memset_d32(this->offset_bytes(0), 0, num);
         return;
     }
     size_t done = 0;
@@ -537,7 +535,7 @@ void Tensor::clear() {
             bytes = (size_t)this->shape[1] * this->type_bytes();
             assert(bytes % 4 == 0);
             size_t cn = std::min(rem, bytes >> 2);
-            gpu_memset(buf, this->offset_bytes(i, 0), 0, cn);
+            buf->memset_d32(this->offset_bytes(i, 0), 0, cn);
             rem -= cn;
             done += cn;
             if (rem == 0) {
@@ -550,7 +548,7 @@ void Tensor::clear() {
                 bytes = (size_t)this->shape[2] * this->type_bytes();
                 assert(bytes % 4 == 0);
                 size_t cn = std::min(rem, bytes >> 2);
-                gpu_memset(buf, this->offset_bytes(i, j, 0), 0, cn);
+                buf->memset_d32(this->offset_bytes(i, j, 0), 0, cn);
                 rem -= cn;
                 done += cn;
                 if (rem == 0) {
@@ -562,7 +560,7 @@ void Tensor::clear() {
                 bytes = (size_t)this->shape[3] * this->type_bytes();
                 assert(bytes % 4 == 0);
                 size_t cn = std::min(rem, bytes >> 2);
-                gpu_memset(buf, this->offset_bytes(i, j, k, 0), 0, cn);
+                buf->memset_d32(this->offset_bytes(i, j, k, 0), 0, cn);
                 rem -= cn;
                 done += cn;
                 if (rem == 0) {

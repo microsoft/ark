@@ -4,6 +4,7 @@
 #include <cassert>
 #include <type_traits>
 
+#include "gpu/gpu.h"
 #include "ops_test_common.h"
 
 #if defined(ARK_CUDA)

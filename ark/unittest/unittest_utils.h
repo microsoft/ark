@@ -12,7 +12,6 @@
 #include <type_traits>
 
 #include "cpu_timer.h"
-#include "gpu/gpu_buf.h"
 #include "include/ark.h"
 #include "logging.h"
 

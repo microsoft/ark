@@ -20,7 +20,8 @@
 
 namespace ark {
 
-CodeGenerator::CodeGenerator(const GpuInfo &gpu_info_, int num_warps_per_sm_)
+CodeGenerator::CodeGenerator(const GpuManager::Info &gpu_info_,
+                             int num_warps_per_sm_)
     : gpu_info{gpu_info_},
       sm_num{gpu_info_.num_sm},
       num_warps_per_sm{num_warps_per_sm_},

@@ -6,6 +6,11 @@
 
 #include <functional>
 
+#if (!defined(ARK_CUDA) && !defined(ARK_ROCM))
+#error "ARK_CUDA or ARK_ROCM must be defined"
+#define ARK_CUDA  // dummy
+#endif            // !defined(ARK_CUDA) && !defined(ARK_ROCM)
+
 #if defined(ARK_CUDA)
 #include <cuda.h>
 #elif defined(ARK_ROCM)
@@ -119,6 +124,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, cuLaunchKernel);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, cuFuncGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, cuFuncSetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, cuMemHostAlloc);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostFree, cuMemFreeHost);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, cuMemHostRegister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, cuMemHostUnregister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, cuMemHostGetDevicePointer);
@@ -141,6 +147,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, cuStreamDestroy);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamQuery, cuStreamQuery);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamSynchronize, cuStreamSynchronize);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventCreate, cuEventCreate);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventDestroy, cuEventDestroy);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventRecord, cuEventRecord);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventElapsedTime, cuEventElapsedTime);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuIpcGetMemHandle, cuIpcGetMemHandle);
@@ -236,7 +243,8 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetGlobal, hipModuleGetGlobal);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, hipModuleLaunchKernel);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, hipFuncGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, hipFuncSetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, hipHostAlloc);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, hipHostMalloc);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostFree, hipHostFree);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, hipHostRegister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, hipHostUnregister);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, hipHostGetDevicePointer);
@@ -259,6 +267,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, hipStreamDestroy);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamQuery, hipStreamQuery);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamSynchronize, hipStreamSynchronize);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventCreate, hipEventCreateWithFlags);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventDestroy, hipEventDestroy);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventRecord, hipEventRecord);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventElapsedTime, hipEventElapsedTime);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuIpcGetMemHandle, hipIpcGetMemHandle);
