@@ -10,7 +10,6 @@
 #include <string>
 #include <tuple>
 
-#include "gpu/gpu_mgr.h"
 #include "sched/sched_op.h"
 
 namespace ark {
