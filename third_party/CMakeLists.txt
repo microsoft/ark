@@ -9,11 +9,11 @@ set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 include(FetchContent)
 
 # MSCCL++
-# TODO: change the tag if this PR is merged: https://github.com/microsoft/mscclpp/pull/235
+# TODO: change the tag if this PR is merged: https://github.com/microsoft/mscclpp/pull/238
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG 4681de9
+    GIT_TAG dfa8392
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)

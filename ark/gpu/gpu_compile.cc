@@ -16,6 +16,7 @@
 #include <functional>
 #include <iomanip>
 #include <mutex>
+#include <thread>
 
 #include "cpu_timer.h"
 #include "env.h"

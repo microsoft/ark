@@ -4,88 +4,41 @@
 #ifndef ARK_GPU_KERNEL_H_
 #define ARK_GPU_KERNEL_H_
 
+#include <memory>
 #include <string>
-#include <thread>
-#include <vector>
 
-#include "gpu/gpu.h"
-#include "gpu/gpu_mgr.h"
-
-#define ARK_BUF_NAME "ARK_BUF"
-#define ARK_LSS_NAME "ARK_LOOP_SYNC_STATE"
+#include "gpu/gpu_buffer.h"
+#include "gpu/gpu_common.h"
+#include "gpu/gpu_context.h"
 
 namespace ark {
 
 class GpuKernel {
    public:
-    GpuKernel(const std::string &name, const std::vector<std::string> &codes,
-              const std::array<unsigned int, 3> &grid_dims,
-              const std::array<unsigned int, 3> &block_dims,
-              unsigned int smem_bytes, std::initializer_list<GpuBuf *> buf_args,
-              std::initializer_list<size_t> buf_offs,
-              std::initializer_list<std::pair<void *, size_t>> args,
-              const std::string &gpubin);
-    ~GpuKernel();
+    GpuKernel(std::shared_ptr<GpuContext> ctx, const std::string& codes,
+              const std::array<int, 3>& block_dim,
+              const std::array<int, 3>& grid_dim, size_t smem_bytes,
+              const std::string& kernel_name,
+              std::initializer_list<std::pair<std::shared_ptr<void>, size_t>>
+                  args = {});
 
-    void compile(const GpuInfo &gpu_info);
-    GpuState launch(GpuStream stream);
-
-    const std::string &get_name() { return name; }
-    const std::vector<std::string> &get_codes() { return codes; }
-    const std::string &get_gpubin() { return gpubin; }
-    int get_function_attribute(gpuFunctionAttribute attr) const;
-    bool is_compiled() const { return this->kernel != nullptr; }
+    void compile();
+    GpuState launch(std::shared_ptr<GpuStream> stream);
 
    protected:
-    const std::string name;
-    std::vector<std::string> codes;
-    std::array<unsigned int, 3> const gd;
-    std::array<unsigned int, 3> const bd;
-    unsigned int smem_bytes;
-    // Input data buffers of this kernel.
-    std::vector<GpuBuf *> buf_args;
-    //
-    std::vector<size_t> buf_offs;
-    // Pointers to an entry of each buffer in `buf_args`.
-    std::vector<GpuPtr> ptr_args;
-    int num_params;
-    void **params;
-    std::string gpubin;
+    std::shared_ptr<GpuContext> ctx_;
+    std::string codes_;
+    std::array<int, 3> block_dim_;
+    std::array<int, 3> grid_dim_;
+    int smem_bytes_;
+    std::string kernel_name_;
+    std::string bin_;
+    gpuModule module_;
+    gpuFunction function_ = nullptr;
+    std::vector<void*> params_ptr_;
+    std::vector<std::shared_ptr<void>> args_;
 
-    gpuModule module;
-    gpuFunction kernel = nullptr;
-};
-
-class GpuLoopKernel : public GpuKernel {
-   public:
-    GpuLoopKernel(const std::string &name,
-                  const std::vector<std::string> &codes_body,
-                  unsigned int num_sm, unsigned int num_warp,
-                  unsigned int smem_bytes, const std::string &gpubin,
-                  GpuMgrCtx *ctx);
-
-    void compile(const GpuInfo &gpu_info);
-    GpuState launch(gpuStream stream, bool disable_timing = true);
-    void load();
-    void run(int iter = 1);
-    bool poll();
-    void wait();
-    void stop();
-
-    float get_elapsed_msec() const { return elapsed_msec; }
-
-   private:
-    GpuMgrCtx *ctx;
-    GpuEvent timer_begin;
-    GpuEvent timer_end;
-
-    int threads_per_warp = -1;
-
-    int *flag;
-
-    GpuStream stream = nullptr;
-    bool is_recording = false;
-    float elapsed_msec = -1;
+    bool is_compiled() const { return function_ != nullptr; }
 };
 
 }  // namespace ark
