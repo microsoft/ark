@@ -15,7 +15,8 @@ namespace ark {
 
 std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     os << "op test: " << result.test_name << " #warp/sm "
-       << result.num_warps_per_sm << ", msec/iter " << result.msec_per_iter;
+       << result.num_warps_per_sm << ", #iter " << result.iter << ", msec/iter "
+       << result.msec_per_iter;
     os << std::setprecision(4);
     for (size_t i = 0; i < result.mse.size(); i++) {
         float err_pcnt = result.max_err_rate[i] * 100;
@@ -185,6 +186,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
         exe.launch();
         exe.run(iter);
         float msec = exe.stop();
+        result.iter = iter;
         result.msec_per_iter = msec / iter;
     } else {
         // Rough measure.
@@ -196,12 +198,14 @@ OpsTestResult op_test(const std::string &test_name_prefix, Model &model,
 
         if (warmup_msec > target_msec) {
             // Warm-up was long enough.
+            result.iter = warmup_iter;
             result.msec_per_iter = warmup_msec / warmup_iter;
         } else {
-            int iter = int(target_msec / warmup_msec);
+            int iter = int(target_msec / warmup_msec) * warmup_iter;
             exe.launch();
             exe.run(iter);
             float msec = exe.stop();
+            result.iter = iter;
             result.msec_per_iter = msec / iter;
         }
     }

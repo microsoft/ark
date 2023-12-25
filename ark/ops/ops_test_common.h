@@ -94,6 +94,7 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
 struct OpsTestResult {
     std::string test_name;
     int num_warps_per_sm;
+    int iter;
     float msec_per_iter;
     std::vector<float> mse;
     std::vector<float> max_diff;
