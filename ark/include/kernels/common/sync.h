@@ -107,7 +107,8 @@ DEVICE void sync_warps() {
     static_assert(Arch::ThreadsPerWarp == 64, "");
     if constexpr (NumWarps == 1) {
         __builtin_amdgcn_wave_barrier();
-    } else if constexpr (NumWarps * Arch::ThreadsPerWarp == ARK_THREADS_PER_BLOCK) {
+    } else if constexpr (NumWarps * Arch::ThreadsPerWarp ==
+                         ARK_THREADS_PER_BLOCK) {
         __syncthreads();
     } else {
         static_assert(ARK_SMEM_RESERVED_BYTES >= sizeof(sync::WarpGroupState),
@@ -118,13 +119,16 @@ DEVICE void sync_warps() {
         int lane_id = threadIdx.x & 63;
         int pf = (state->preFlag[warp_id] ^ 1);
         if (lane_id == 0) {
-            mscclpp::atomicStore(&state->flag[warp_id], pf, mscclpp::memoryOrderRelease);
+            mscclpp::atomicStore(&state->flag[warp_id], pf,
+                                 mscclpp::memoryOrderRelease);
             state->preFlag[warp_id] = pf;
         }
         __builtin_amdgcn_wave_barrier();
         int base_warp_id = warp_id & ~(NumWarps - 1);
-        if ((lane_id >= base_warp_id) && (lane_id < base_warp_id + NumWarps) && (lane_id != warp_id)) {
-            while (mscclpp::atomicLoad(&state->flag[lane_id], mscclpp::memoryOrderAcquire) != pf) {
+        if ((lane_id >= base_warp_id) && (lane_id < base_warp_id + NumWarps) &&
+            (lane_id != warp_id)) {
+            while (mscclpp::atomicLoad(&state->flag[lane_id],
+                                       mscclpp::memoryOrderAcquire) != pf) {
                 // asm volatile("s_nop 0" ::);
             }
         }

@@ -49,8 +49,7 @@ SchedStream::Impl::Impl(int sm_id_begin_, int sm_id_end_, int num_warps_per_sm_,
     : sm_id_begin{sm_id_begin_},
       sm_id_end{sm_id_end_},
       num_warps_per_sm{num_warps_per_sm_},
-      smem_bytes_per_sm{smem_bytes_per_sm_} {
-}
+      smem_bytes_per_sm{smem_bytes_per_sm_} {}
 
 SchedStream::Impl::~Impl() {}
 
