@@ -117,8 +117,8 @@ void GpuLoopKernel::load() {
     GpuPtr lss_ptr_addr;
     GpuPtr buf_ptr_addr;
     size_t tmp = 0;
-    GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, module_, ARK_LSS_NAME));
-    GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, module_, ARK_BUF_NAME));
+    GLOG_DRV(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, module_, ARK_LSS_NAME));
+    GLOG_DRV(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, module_, ARK_BUF_NAME));
     std::array<int, 4> data = {0, 0, 0, 0};
     manager->memcpy_htod((void*)lss_ptr_addr, 0, data.data(), 0,
                          sizeof(int) * data.size());
@@ -127,20 +127,20 @@ void GpuLoopKernel::load() {
     // TODO: remove this hack
     GpuPtr lss_0_ptr_addr;
     GpuPtr lss_1_ptr_addr;
-    gpuError ret =
+    gpuDeviceError ret =
         gpuModuleGetGlobal(&lss_0_ptr_addr, &tmp, module_, ARK_LSS_NAME "_0");
-    if (ret == gpuSuccess) {
+    if (ret == gpuDeviceSuccess) {
         manager->memcpy_htod((void*)lss_0_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     } else if (ret != gpuErrorNotFound) {
-        GLOG(ret);
+        GLOG_DRV(ret);
     }
     ret = gpuModuleGetGlobal(&lss_1_ptr_addr, &tmp, module_, ARK_LSS_NAME "_1");
-    if (ret == gpuSuccess) {
+    if (ret == gpuDeviceSuccess) {
         manager->memcpy_htod((void*)lss_1_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     } else if (ret != gpuErrorNotFound) {
-        GLOG(ret);
+        GLOG_DRV(ret);
     }
     // set the data buffer pointers of remote gpus
     int nrph = get_env().num_ranks_per_host;
@@ -154,8 +154,8 @@ void GpuLoopKernel::load() {
         }
         GpuPtr data_buf_ptr;
         std::string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-        gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
-                                         data_buf_name.c_str());
+        gpuDeviceError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
+                                               data_buf_name.c_str());
         if (_e == gpuErrorNotFound) {
             LOG(DEBUG, "global variable ", data_buf_name, " not found");
             continue;
@@ -169,8 +169,8 @@ void GpuLoopKernel::load() {
     std::shared_ptr<GpuCommSw> comm = ctx_->get_comm_sw();
     if (comm->get_proxy_channels_num() > 0) {
         GpuPtr channel_addr;
-        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, module_,
-                                "_ARK_PROXY_CHANS"));
+        GLOG_DRV(gpuModuleGetGlobal(&channel_addr, &tmp, module_,
+                                    "_ARK_PROXY_CHANS"));
         const void* chans_ref = comm->get_proxy_channels_ref();
         size_t chans_bytes = comm->get_proxy_channels_bytes();
         manager->memcpy_htod((void*)channel_addr, 0,
@@ -178,7 +178,7 @@ void GpuLoopKernel::load() {
     }
     if (comm->get_sm_channels_num() > 0) {
         GpuPtr channel_addr;
-        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
+        GLOG_DRV(gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
         const void* chans_ref = comm->get_sm_channels_ref();
         size_t chans_bytes = comm->get_sm_channels_bytes();
         manager->memcpy_htod((void*)channel_addr, 0,
