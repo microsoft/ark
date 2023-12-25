@@ -224,7 +224,6 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuEventDisableTiming, hipEventDisableTiming);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuIpcMemLazyEnablePeerAccess,
                               hipIpcMemLazyEnablePeerAccess);
 
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuInit, hipInit);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, hipDrvGetErrorString);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGet, hipDeviceGet);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetCount, hipGetDeviceCount);
@@ -233,9 +232,6 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRetain, hipDevicePrimaryCtxRetain);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDevicePrimaryCtxRelease,
                           hipDevicePrimaryCtxRelease);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, hipDeviceSynchronize);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxCreate, hipCtxCreate);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxDestroy, hipCtxDestroy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuCtxSetCurrent, hipCtxSetCurrent);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadData, hipModuleLoadData);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadDataEx, hipModuleLoadDataEx);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetFunction, hipModuleGetFunction);
@@ -262,6 +258,7 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32, hipMemsetD32);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32Async, hipMemsetD32Async);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD8Async, hipMemsetD8Async);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, hipPointerSetAttribute);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuSetDevice, hipSetDevice);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreate, hipStreamCreateWithFlags);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, hipStreamDestroy);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamQuery, hipStreamQuery);

@@ -11,7 +11,7 @@ namespace ark {
 class GpuManager::Impl {
    public:
     Impl(int gpu_id);
-    ~Impl();
+    ~Impl() = default;
     Impl(const Impl &) = delete;
     Impl &operator=(const Impl &) = delete;
 
@@ -19,8 +19,6 @@ class GpuManager::Impl {
     friend class GpuManager;
 
     int gpu_id_;
-    gpuDevice gpu_dev_;
-    gpuCtx gpu_ctx_;
     GpuManager::Info info_;
     std::shared_ptr<GpuStream> main_stream_;
 
@@ -40,34 +38,28 @@ class GpuManager::Impl {
 };
 
 GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
-    if (gpuDeviceGet(&gpu_dev_, gpu_id) == gpuErrorNotInitialized) {
-        GLOG(gpuInit(0));
-        GLOG(gpuDeviceGet(&gpu_dev_, gpu_id));
-    }
-    GLOG(gpuDevicePrimaryCtxRetain(&gpu_ctx_, gpu_dev_));
-    GLOG(gpuCtxSetCurrent(gpu_ctx_));
-
+    GLOG(gpuSetDevice(gpu_id));
     GLOG(gpuDeviceGetAttribute(
-        &(info_.cc_major), gpuDeviceAttributeComputeCapabilityMajor, gpu_dev_));
+        &(info_.cc_major), gpuDeviceAttributeComputeCapabilityMajor, gpu_id_));
     GLOG(gpuDeviceGetAttribute(
-        &(info_.cc_minor), gpuDeviceAttributeComputeCapabilityMinor, gpu_dev_));
+        &(info_.cc_minor), gpuDeviceAttributeComputeCapabilityMinor, gpu_id_));
     GLOG(gpuDeviceGetAttribute(
-        &(info_.num_sm), gpuDeviceAttributeMultiprocessorCount, gpu_dev_));
+        &(info_.num_sm), gpuDeviceAttributeMultiprocessorCount, gpu_id_));
     GLOG(gpuDeviceGetAttribute(
         &(info_.smem_total), gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
-        gpu_dev_));
+        gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.smem_block_total),
                                gpuDeviceAttributeSharedMemPerBlockOptin,
-                               gpu_dev_));
+                               gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.clk_rate), gpuDeviceAttributeClockRate,
-                               gpu_dev_));
+                               gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.threads_per_warp),
-                               gpuDeviceAttributeWarpSize, gpu_dev_));
+                               gpuDeviceAttributeWarpSize, gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.max_registers_per_block),
                                gpuDeviceAttributeMaxRegistersPerBlock,
-                               gpu_dev_));
+                               gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.max_threads_per_block),
-                               gpuDeviceAttributeMaxThreadsPerBlock, gpu_dev_));
+                               gpuDeviceAttributeMaxThreadsPerBlock, gpu_id_));
     size_t gmem_free;
     GLOG(gpuMemGetInfo(&gmem_free, &(info_.gmem_total)));
 #if defined(ARK_CUDA)
@@ -139,11 +131,6 @@ void GpuManager::Impl::memset_d8_async(void *dst, unsigned char val,
     GLOG(gpuMemsetD8Async(d_dst, val, num, main_stream_->get()));
 }
 
-GpuManager::Impl::~Impl() {
-    auto e = gpuDevicePrimaryCtxRelease(gpu_dev_);
-    if (e != gpuErrorDeinitialized) GLOG(e);
-}
-
 std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
     static std::unordered_map<int, std::weak_ptr<GpuManager>> instances;
     auto it = instances.find(gpu_id);
@@ -193,7 +180,7 @@ int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }
 const GpuManager::Info &GpuManager::info() const { return pimpl_->info_; }
 
 void GpuManager::set_current() const {
-    GLOG(gpuCtxSetCurrent(pimpl_->gpu_ctx_));
+    GLOG(gpuSetDevice(pimpl_->gpu_id_));
 }
 
 void GpuManager::memset(void *dst, unsigned int val, size_t bytes,
