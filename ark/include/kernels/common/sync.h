@@ -122,7 +122,8 @@ DEVICE void sync_warps() {
             state->preFlag[warp_id] = pf;
         }
         __builtin_amdgcn_wave_barrier();
-        if (lane_id < NumWarps && lane_id != warp_id) {
+        int base_warp_id = warp_id & ~(NumWarps - 1);
+        if ((lane_id >= base_warp_id) && (lane_id < base_warp_id + NumWarps) && (lane_id != warp_id)) {
             while (mscclpp::atomicLoad(&state->flag[lane_id], mscclpp::memoryOrderAcquire) != pf) {
                 // asm volatile("s_nop 0" ::);
             }
