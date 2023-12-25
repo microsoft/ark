@@ -57,10 +57,12 @@ def run_ark(
     output = module(*module_inputs)
 
     runtime = ark.Runtime()
-    runtime.launch()
+    # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
+    runtime.launch(num_warps_per_sm=8)
 
     # Load model parameters
-    module.load_state_dict(state_dict)
+    if state_dict:
+        module.load_state_dict(state_dict)
 
     # Load input data into tensors
     tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
@@ -90,10 +92,11 @@ def run_pt(
     iterations: int = 1,
 ) -> List[np.ndarray]:
     # Update the current state_dict with the given one
-    cur_state_dict = module.state_dict()
-    for k, v in state_dict.items():
-        cur_state_dict[k] = v
-    module.load_state_dict(cur_state_dict)
+    if state_dict:
+        cur_state_dict = module.state_dict()
+        for k, v in state_dict.items():
+            cur_state_dict[k] = v
+        module.load_state_dict(cur_state_dict)
 
     # Load input data to GPU
     input_tensors = [
@@ -128,10 +131,12 @@ def test_module(
     module_args_pt: list,
     inputs_pt: List[np.ndarray],
     module_name_prefix: str = "",
+    dtype: np.dtype = np.float16,
     test_thru: bool = False,
     test_thru_iterations: int = 100,
-    dtype: np.dtype = np.float16,
     test_thru_ark_only: bool = False,
+    rank: int = 0,
+    world_size: int = 1,
 ):
     if test_thru:
         print(f"Throughput test (iterations: {test_thru_iterations})")
@@ -144,23 +149,25 @@ def test_module(
     params_dict = module_ark.params_dict()
     param_names = set(params_dict.keys())
 
-    rank = torch.distributed.get_rank()
-    world_size = torch.distributed.get_world_size()
     checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
     ckpt_path = checkpoints[rank]
     if os.path.exists(ckpt_path):
-        prefix = module_name_prefix + "." if module_name_prefix else ""
-        # Load the state_dict from the given path
-        state_dict_pt = torch.load(ckpt_path)
-        state_dict_pt = {
-            k[len(prefix) :]: v
-            for k, v in state_dict_pt.items()
-            if k[len(prefix) :] in param_names and k.startswith(prefix)
-        }
-        state_dict_ark = {
-            k: v.float().numpy().astype(params_dict[k].dtype().to_numpy())
-            for k, v in state_dict_pt.items()
-        }
+        if test_thru:
+            state_dict_pt = {}
+            state_dict_ark = {}
+        else:
+            prefix = module_name_prefix + "." if module_name_prefix else ""
+            # Load the state_dict from the given path
+            state_dict_pt = torch.load(ckpt_path)
+            state_dict_pt = {
+                k[len(prefix) :]: v
+                for k, v in state_dict_pt.items()
+                if k[len(prefix) :] in param_names and k.startswith(prefix)
+            }
+            state_dict_ark = {
+                k: v.float().numpy().astype(params_dict[k].dtype().to_numpy())
+                for k, v in state_dict_pt.items()
+            }
     else:
         raise ValueError(f"Cannot find the given path: {ckpt_dir}")
 
@@ -189,11 +196,14 @@ def test_module(
 
         if test_thru:
             print(
-                f"  PyTorch: {res_pt.runtime:.4f} seconds, ARK: {res_ark.runtime:.4f} seconds"
+                f"  PyTorch: {res_pt.runtime:.4f} seconds ({(res_pt.runtime / test_thru_iterations):.6f} seconds/iter)\n"
+                f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
             )
             return
     elif test_thru:
-        print(f"  ARK: {res_ark.runtime:.4f} seconds")
+        print(
+            f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
+        )
         return
 
     # Compare the outputs
@@ -239,8 +249,6 @@ def test_module(
 def test_rmsnorm(
     args: ModelArgs, batch_size: int, seq_len: int, dtype: np.dtype
 ):
-    ark.init()
-
     # Create random input data
     inputs_ark = [
         np.random.uniform(
@@ -419,6 +427,7 @@ def test_transformer_block(
     feature = np.random.uniform(
         low=-1, high=1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
+
     test_module(
         module_class_ark=model_ark.TransformerBlock,
         module_args_ark=[
@@ -433,6 +442,8 @@ def test_transformer_block(
         module_args_pt=[0, args],
         inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
         module_name_prefix="layers.0",
+        rank=rank,
+        world_size=world_size,
     )
 
 

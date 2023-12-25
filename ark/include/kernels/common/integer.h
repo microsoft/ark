@@ -65,8 +65,18 @@ struct Vtype<i32, 2> {
 };
 
 template <>
+struct Vtype<const i32, 2> {
+    using type = const i32x2;
+};
+
+template <>
 struct Vtype<i32, 4> {
     using type = i32x4;
+};
+
+template <>
+struct Vtype<const i32, 4> {
+    using type = const i32x4;
 };
 
 template <>
@@ -75,8 +85,18 @@ struct Vtype<ui32, 2> {
 };
 
 template <>
+struct Vtype<const ui32, 2> {
+    using type = const ui32x2;
+};
+
+template <>
 struct Vtype<ui32, 4> {
     using type = ui32x4;
+};
+
+template <>
+struct Vtype<const ui32, 4> {
+    using type = const ui32x4;
 };
 
 }  // namespace type

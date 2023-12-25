@@ -2,33 +2,55 @@
 # Licensed under the MIT license.
 
 import numpy
-import string
 from . import _ark_core
 
 
 _REGISTRY_DATA_TYPE = {
-    "fp32": {"np": numpy.float32, "doc": """32-bit floating point."""},
-    "fp16": {"np": numpy.float16, "doc": """16-bit floating point."""},
-    "bf16": {"np": None, "doc": """bfloat16 floating point."""},
-    "int32": {"np": numpy.int32, "doc": """32-bit signed integer."""},
-    "uint32": {"np": numpy.uint32, "doc": """32-bit unsigned integer."""},
-    "int8": {"np": numpy.int8, "doc": """8-bit signed integer."""},
-    "uint8": {"np": numpy.uint8, "doc": """8-bit unsigned integer."""},
-    "byte": {
-        "np": numpy.ubyte,
-        "doc": """
-Represent the data as bytes, supposed to be untyped binary.
-
-Unlike other data types, casting to/from `byte` from/to another data type
-is considered as reinterpretation of the data, instead of conversion.
-""",
-    },
+    "fp32": {"np": numpy.float32},
+    "fp16": {"np": numpy.float16},
+    "bf16": {"np": None},
+    "int32": {"np": numpy.int32},
+    "uint32": {"np": numpy.uint32},
+    "int8": {"np": numpy.int8},
+    "uint8": {"np": numpy.uint8},
+    "byte": {"np": numpy.ubyte},
 }
 
 
-class DataType:
+class MetaDataType(type):
+    def __new__(cls, name, bases, attrs):
+        new_class = super().__new__(cls, name, bases, attrs)
+        if name in _REGISTRY_DATA_TYPE:
+            reg = _REGISTRY_DATA_TYPE[name]
+            new_class.to_numpy = staticmethod(lambda: reg["np"])
+            new_class.ttype = staticmethod(
+                lambda: getattr(_ark_core, "_" + name.upper())
+            )
+            new_class.element_size = staticmethod(
+                lambda: new_class.ttype().bytes()
+            )
+        return new_class
+
+
+class DataType(metaclass=MetaDataType):
+    """
+    Represent the data type of a tensor.
+    """
+
     @staticmethod
     def from_numpy(np_type: numpy.dtype) -> "DataType":
+        """
+        Return the corresponding ark data type.
+
+        Parameters:
+            np_type (numpy.dtype): The numpy data type.
+
+        Returns:
+            DataType: The corresponding ark data type.
+
+        Raises:
+            ValueError: If there is no defined conversion from numpy data type to ark data type.
+        """
         for type_name, reg in _REGISTRY_DATA_TYPE.items():
             if reg["np"] == np_type:
                 return DataType.from_name(type_name)
@@ -39,45 +61,118 @@ class DataType:
 
     @staticmethod
     def from_name(type_name: str) -> "DataType":
-        return globals()[type_name]
+        """
+        Return the corresponding ark data type.
+
+        Parameters:
+            type_name (str): The name of the data type.
+
+        Returns:
+            DataType: The corresponding ark data type.
+
+        Raises:
+            ValueError: If the data type is not defined.
+        """
+        ret = globals().get(type_name, None)
+        if ret is None:
+            raise ValueError(f"Undefined data type {type_name}")
+        return ret
 
     @staticmethod
     def from_ttype(ttype: _ark_core._TensorType) -> "DataType":
+        """
+        Return the corresponding ark data type.
+
+        Parameters:
+            ttype (_ark_core._TensorType): The tensor type.
+
+        Returns:
+            DataType: The corresponding ark data type.
+
+        Raises:
+            ValueError: If the data type is not defined.
+        """
         return DataType.from_name(ttype.name())
 
     @staticmethod
     def to_numpy() -> numpy.dtype:
-        """Return the corresponding numpy data type."""
+        """
+        Return the corresponding numpy data type.
+
+        Returns:
+            numpy.dtype: The corresponding numpy data type.
+        """
         ...
 
     @staticmethod
     def ttype() -> _ark_core._TensorType:
-        """Return the corresponding tensor type."""
+        """
+        Return the corresponding tensor type.
+
+        Returns:
+            _ark_core._TensorType: The corresponding tensor type.
+        """
         ...
 
     @staticmethod
     def element_size() -> int:
-        """Return the size of the data type in bytes."""
+        """
+        Return the size of the data type in bytes.
+
+        Returns:
+            int: The size of the data type in bytes.
+        """
         ...
 
 
-_DATA_TYPE_TEMPLATE = string.Template(
+class fp32(DataType):
+    """32-bit floating point."""
+
+    ...
+
+
+class fp16(DataType):
+    """16-bit floating point."""
+
+    ...
+
+
+class bf16(DataType):
+    """bfloat16 floating point."""
+
+    ...
+
+
+class int32(DataType):
+    """32-bit signed integer."""
+
+    ...
+
+
+class uint32(DataType):
+    """32-bit unsigned integer."""
+
+    ...
+
+
+class int8(DataType):
+    """8-bit signed integer."""
+
+    ...
+
+
+class uint8(DataType):
+    """8-bit unsigned integer."""
+
+    ...
+
+
+class byte(DataType):
     """
-class $type_name(DataType):
-    @staticmethod
-    def to_numpy() -> numpy.dtype:
-        return _REGISTRY_DATA_TYPE[__class__.__name__]["np"]
+    Represent the data as bytes, supposed to be untyped binary.
 
-    @staticmethod
-    def ttype() -> _ark_core._TensorType:
-        return getattr(_ark_core, "_" + __class__.__name__.upper())
+    Unlike other data types, casting to/from `byte` from/to another data type
+    is considered as reinterpretation of the data, instead of conversion.
+    """
 
-    @staticmethod
-    def element_size() -> int:
-        return __class__.ttype().bytes()
-"""
-)
-
-for type_name, reg in _REGISTRY_DATA_TYPE.items():
-    exec(_DATA_TYPE_TEMPLATE.substitute(type_name=type_name))
-    globals()[type_name].__doc__ = reg["doc"]
+    ...
