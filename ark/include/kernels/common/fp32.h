@@ -46,8 +46,18 @@ struct Vtype<fp32, 2> {
 };
 
 template <>
+struct Vtype<const fp32, 2> {
+    using type = const fp32x2;
+};
+
+template <>
 struct Vtype<fp32, 4> {
     using type = fp32x4;
+};
+
+template <>
+struct Vtype<const fp32, 4> {
+    using type = const fp32x4;
 };
 
 }  // namespace type

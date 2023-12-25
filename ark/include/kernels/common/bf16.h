@@ -34,13 +34,18 @@ struct Constant<bf16> {
 
 template <>
 struct Constant<bf16x2> {
-    static DEVICE bf16 zero() { return bf16_raw{0x0}; }
-    static DEVICE bf16 lowest() { return bf16_raw{0xff7f}; }
+    static DEVICE bf16x2 zero() { return bf16x2_raw{0x0, 0x0}; }
+    static DEVICE bf16x2 lowest() { return bf16x2_raw{0xff7f, 0xff7f}; }
 };
 
 template <>
 struct Vtype<bf16, 2> {
     using type = bf16x2;
+};
+
+template <>
+struct Vtype<const bf16, 2> {
+    using type = const bf16x2;
 };
 
 }  // namespace type
