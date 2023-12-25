@@ -122,9 +122,8 @@ DEVICE void sync_warps() {
             if (atomicInc(&state->cnt[group_id], MaxOldCnt) == MaxOldCnt) {
                 state->flag[group_id] = tmp;
             } else {
-                while (atomicAdd(&state->flag[group_id], 0) != tmp)
-                    __builtin_amdgcn_s_sleep(1);
-                __asm__ __volatile__("s_wakeup");
+                while (state->flag[group_id] != tmp) {
+                }
             }
             state->is_inc_flag[group_id] = tmp;
         }

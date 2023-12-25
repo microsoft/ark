@@ -1,5 +1,5 @@
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp
-index f23404a1..239f52b9 100644
+index f23404a1d..239f52b95 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dl_v2r3.hpp
 @@ -152,7 +152,7 @@ struct BlockwiseGemmDl_A_BK0_BM_BK1_B_BK0_BN_BK1_C_BM0_BM1_BN0_BN1_pipeline_BM0_
@@ -12,7 +12,7 @@ index f23404a1..239f52b9 100644
                make_tuple(0, c_thread_origin_data_idx_[I0], c_thread_origin_data_idx_[I1], 0)},
            b_thread_copy_{
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp
-index b0143366..554af68b 100644
+index b0143366c..554af68b5 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v2r2.hpp
 @@ -145,7 +145,7 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v2r2_pipeline_2x2
@@ -25,7 +25,7 @@ index b0143366..554af68b 100644
                make_tuple(0, c_thread_origin_data_idx_[I0], c_thread_origin_data_idx_[I1])},
            b_thread_copy_{
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp
-index 0d092da5..905c8c3a 100644
+index 0d092da51..905c8c3a1 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dlops_v3.hpp
 @@ -55,7 +55,7 @@ struct BlockwiseGemmDlops_km_kn_m0m1n0n1_v3
@@ -38,7 +38,7 @@ index 0d092da5..905c8c3a 100644
      {
          static_assert(ABlockDesc_E1_K1_E2::IsKnownAtCompileTime() &&
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dpp.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dpp.hpp
-index d62ed4b1..adad1319 100644
+index d62ed4b15..adad1319c 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_dpp.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_dpp.hpp
 @@ -50,7 +50,7 @@ struct BlockwiseGemmDpp_ak0mak1_bk0nbk1_m0n0m1n1m2n2
@@ -51,7 +51,7 @@ index d62ed4b1..adad1319 100644
      static constexpr index_t KPerThread = KPerBlock / dpp_gemm.K0PerDpp;
 
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp
-index 904a96cc..e5cd9e8a 100644
+index 904a96cc9..e5cd9e8a3 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops.hpp
 @@ -515,7 +515,7 @@ struct BlockwiseGemmXdlopsInterwave_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1
@@ -64,7 +64,7 @@ index 904a96cc..e5cd9e8a 100644
                          }
 
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
-index 8ae1ba3f..6e56da9a 100644
+index 8ae1ba3f3..6e56da9a0 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_gemm_xdlops_skip_b_lds.hpp
 @@ -56,7 +56,7 @@ struct BlockwiseGemmXdlops_k0mk1_k0nk1_m0n0m1n1m2m3m4n2_v1r1
@@ -77,7 +77,7 @@ index 8ae1ba3f..6e56da9a 100644
          constexpr auto threadid_to_wave_idx_adaptor = make_single_stage_tensor_adaptor(
              make_tuple(make_merge_transform(make_tuple(MWaves, NWaves, WaveSize))),
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp b/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp
-index 2fb72427..d1e21fb3 100644
+index 2fb724270..d1e21fb36 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_softmax.hpp
 @@ -94,7 +94,7 @@ struct BlockwiseSoftmax
@@ -99,7 +99,7 @@ index 2fb72427..d1e21fb3 100644
      }
 
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp b/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
-index d8da134a..9efb0f94 100644
+index d8da134a3..9efb0f949 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_tensor_slice_transfer_v5r1.hpp
 @@ -63,10 +63,10 @@ struct BlockwiseTensorSliceTransfer_v5r1
@@ -161,7 +161,7 @@ index d8da134a..9efb0f94 100644
              threadwise_transfer_.MoveDstSliceWindow(dst_desc, step);
          }
 diff --git a/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp b/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
-index 820a08fc..e63df71e 100644
+index 820a08fc4..e63df71e0 100644
 --- a/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
 +++ b/include/ck/tensor_operation/gpu/block/blockwise_welford.hpp
 @@ -57,7 +57,7 @@ struct BlockwiseWelford
@@ -192,7 +192,7 @@ index 820a08fc..e63df71e 100644
 
          index_t offset = block_buf_desc_m_k.CalculateOffset(make_tuple(thread_m_cluster_id, 0));
 diff --git a/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp b/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
-index 82667e23..545a6e8a 100644
+index 82667e235..545a6e8aa 100644
 --- a/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
 +++ b/include/ck/tensor_operation/gpu/block/reduction_functions_blockwise.hpp
 @@ -49,7 +49,7 @@ struct PartitionedBlockwiseReduction
@@ -223,7 +223,7 @@ index 82667e23..545a6e8a 100644
          const auto thread_m_cluster_id = thread_cluster_idx[Number<0>{}];
          const auto thread_k_cluster_id = thread_cluster_idx[Number<1>{}];
 diff --git a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp
-index 9a5317dd..df372873 100644
+index 9a5317dd1..df3728730 100644
 --- a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp
 +++ b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v6r3.hpp
 @@ -84,7 +84,7 @@ struct ThreadGroupTensorSliceTransfer_v6r3
@@ -236,7 +236,7 @@ index 9a5317dd..df372873 100644
              const auto thread_data_idx_begin = thread_cluster_idx * thread_slice_lengths;
 
 diff --git a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp
-index 993d90e3..79d0c981 100644
+index 993d90e35..79d0c9815 100644
 --- a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp
 +++ b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7.hpp
 @@ -96,7 +96,7 @@ struct ThreadGroupTensorSliceTransfer_v7
@@ -249,7 +249,7 @@ index 993d90e3..79d0c981 100644
              const auto thread_data_idx_begin = thread_cluster_idx * thread_slice_lengths;
 
 diff --git a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7r2.hpp b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7r2.hpp
-index 1a9bb321..6493a71e 100644
+index 1a9bb3213..6493a71e3 100644
 --- a/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7r2.hpp
 +++ b/include/ck/tensor_operation/gpu/block/thread_group_tensor_slice_transfer_v7r2.hpp
 @@ -100,7 +100,7 @@ struct ThreadGroupTensorSliceTransfer_v7r2
@@ -262,7 +262,7 @@ index 1a9bb321..6493a71e 100644
              const auto thread_data_idx_begin = thread_cluster_idx * thread_slice_lengths;
 
 diff --git a/include/ck/tensor_operation/gpu/device/device_base.hpp b/include/ck/tensor_operation/gpu/device/device_base.hpp
-index 19816901..bfa17499 100644
+index 198169011..bfa174996 100644
 --- a/include/ck/tensor_operation/gpu/device/device_base.hpp
 +++ b/include/ck/tensor_operation/gpu/device/device_base.hpp
 @@ -14,11 +14,11 @@ namespace device {
@@ -282,7 +282,7 @@ index 19816901..bfa17499 100644
      void* p_workspace_ = nullptr;
  };
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
-index ebbb1d38..9bb1c3a8 100644
+index ebbb1d38c..9bb1c3a82 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
 +++ b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp
 @@ -211,6 +211,7 @@ struct DeviceGemmXdl : public DeviceGemm<ALayout,
@@ -294,7 +294,7 @@ index ebbb1d38..9bb1c3a8 100644
                               const BDataType* p_b,
                               CDataType* p_c,
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
-index 693fd704..2a011727 100644
+index 693fd7048..2a0117271 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp
 @@ -215,6 +215,7 @@ struct DeviceGemm_Xdl_CShuffle : public DeviceGemm<ALayout,
@@ -306,7 +306,7 @@ index 693fd704..2a011727 100644
                               const BDataType* p_b,
                               CDataType* p_c,
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
-index 4823f5d4..99dd0738 100644
+index 4823f5d48..99dd07382 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_contraction_multiple_d_xdl_cshuffle.hpp
 @@ -445,7 +445,7 @@ struct DeviceGroupedContractionMultipleD_Xdl_CShuffle
@@ -319,7 +319,7 @@ index 4823f5d4..99dd0738 100644
              return default_block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
          }
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
-index 0190b3ce..5c766264 100644
+index 0190b3cee..5c766264a 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
 +++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_multiple_d_dl.hpp
 @@ -373,7 +373,7 @@ struct DeviceGroupedGemmMultipleD_Dl : public DeviceGroupedGemm<ALayout,
@@ -332,7 +332,7 @@ index 0190b3ce..5c766264 100644
              return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
          }
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
-index 9290a315..a0021d41 100644
+index 9290a3155..a0021d41a 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
 +++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl.hpp
 @@ -321,7 +321,7 @@ struct DeviceGroupedGemm_Xdl : public DeviceGroupedGemm<ALayout,
@@ -345,7 +345,7 @@ index 9290a315..a0021d41 100644
              return block_2_etile_map_.CheckValidity(e_grid_desc_m_n);
          }
 diff --git a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl_fixed_nk.hpp b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl_fixed_nk.hpp
-index 56132f7a..5f804687 100644
+index 56132f7a0..5f8046872 100644
 --- a/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl_fixed_nk.hpp
 +++ b/include/ck/tensor_operation/gpu/device/impl/device_grouped_gemm_xdl_fixed_nk.hpp
 @@ -290,7 +290,7 @@ struct DeviceGroupedGemm_Xdl_Fixed_NK : public DeviceGroupedGemmFixedNK<ALayout,
@@ -367,7 +367,7 @@ index 56132f7a..5f804687 100644
              return true;
          }
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_batchnorm_forward.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_batchnorm_forward.hpp
-index 47573107..79e13a73 100644
+index 47573107c..79e13a73d 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_batchnorm_forward.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_batchnorm_forward.hpp
 @@ -190,14 +190,15 @@ struct GridwiseMultiblockBatchNormForward
@@ -408,7 +408,7 @@ index 47573107..79e13a73 100644
              BlockwiseWelford2::Run(mean_thread_buf(I), var_thread_buf(I), count_thread_buf(I));
          });
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
-index 4e182ec2..c079599a 100644
+index 4e182ec29..c079599ad 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_reduce_second_half_batchnorm_backward_final.hpp
 @@ -170,7 +170,8 @@ struct GridwiseReduceSecondHalfBatchNormBackwardFinal
@@ -446,7 +446,7 @@ index 4e182ec2..c079599a 100644
          });
 
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
-index a82a1735..fde64c98 100644
+index a82a17350..fde64c986 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_first_half.hpp
 @@ -103,7 +103,8 @@ struct GridwiseMultiblockWelfordFirstHalf
@@ -480,7 +480,7 @@ index a82a1735..fde64c98 100644
              welford_count_thread_buf(I) = threadwise_welford.cur_count_;
              BlockwiseWelford::Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final_obsolete.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final_obsolete.hpp
-index 672be91a..77036154 100644
+index 672be91a7..77036154a 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final_obsolete.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_batchnorm_forward_final_obsolete.hpp
 @@ -165,7 +165,8 @@ struct GridwiseWelfordSecondHalfBatchNormForwardFinal
@@ -514,7 +514,7 @@ index 672be91a..77036154 100644
              BlockwiseWelford::Run(
                  welford_mean_thread_buf(I), welford_var_thread_buf(I), welford_count_thread_buf(I));
 diff --git a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
-index 2d5dc90b..160eef03 100644
+index 2d5dc90bf..160eef036 100644
 --- a/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/batchnorm_multiblock/gridwise_multiblock_welford_second_half_multiblock_reduce_first_half.hpp
 @@ -175,7 +175,8 @@ struct GridwiseWelfordSecondHalfReduceFirstHalf
@@ -561,7 +561,7 @@ index 2d5dc90b..160eef03 100644
          });
 
 diff --git a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
-index 7bb47e9d..2b2e8c60 100644
+index 7bb47e9d3..2b2e8c604 100644
 --- a/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/block_to_ctile_map.hpp
 @@ -60,7 +60,7 @@ struct BlockToCTileMap_M00_N0_M01
@@ -628,7 +628,7 @@ index 7bb47e9d..2b2e8c60 100644
          return true;
      }
 diff --git a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
-index 206ea00b..cb152f09 100644
+index 206ea00b9..cb152f094 100644
 --- a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_gemm_multiple_d_welford_first_half_xdl_cshuffle.hpp
 @@ -390,7 +390,8 @@ struct GridwiseGemmMultipleDWelfordFirstHalf_xdl_cshuffle
@@ -687,7 +687,7 @@ index 206ea00b..cb152f09 100644
                      BlockwiseWelford::Run(
                          mean_thread_buf(j), var_thread_buf(j), count_thread_buf(j));
 diff --git a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
-index 69468c25..17adf494 100644
+index 69468c25b..17adf4941 100644
 --- a/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gemm_layernorm/gridwise_welford_second_half_layernorm2d.hpp
 @@ -101,11 +101,12 @@ struct GridwiseWelfordSecondHalfLayernorm2d
@@ -716,7 +716,7 @@ index 69468c25..17adf494 100644
              BlockwiseWelford::Run(
                  welford_mean_thread_buf(I), welford_var_thread_buf(I), welford_count_thread_buf(I));
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
-index bd1e0585..23c039c2 100644
+index bd1e0585f..23c039c21 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_2d_multiple_reduction_multiblock.hpp
 @@ -128,7 +128,8 @@ struct GridwiseMultipleReduction_mk_to_m_multiblock
@@ -740,7 +740,7 @@ index bd1e0585..23c039c2 100644
          const index_t block_local_id  = block_global_id % block_group_size;
 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp
-index 203be3c4..17da7a83 100644
+index 203be3c42..17da7a83f 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_multiblock.hpp
 @@ -145,7 +145,8 @@ struct GridwiseReduction_mk_to_m_multiblock
@@ -784,7 +784,7 @@ index 203be3c4..17da7a83 100644
          const auto thread_cluster_idx =
              thread_cluster_desc.CalculateBottomIndex(make_multi_index(thread_local_id));
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp
-index 910c926c..a54476ff 100644
+index 910c926c7..a54476ff2 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_2d_reduction_threadwise.hpp
 @@ -106,7 +106,8 @@ struct GridwiseReduction_mk_to_m_threadwise
@@ -826,7 +826,7 @@ index 910c926c..a54476ff 100644
          auto threadwise_src_val_load =
              ThreadwiseTensorSliceTransfer_v2<InDataType,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
-index 9469fa7b..6dd057a7 100644
+index 9469fa7bc..6dd057a72 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_gemm_xdl_cshuffle_v1.hpp
 @@ -339,7 +339,8 @@ struct GridwiseBatchedGemmGemm_Xdl_CShuffle
@@ -908,7 +908,7 @@ index 9469fa7b..6dd057a7 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
-index a0924ae3..1b22d598 100644
+index a0924ae3b..1b22d598b 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_gemm_multiple_d_xdl_cshuffle_v1.hpp
 @@ -144,7 +144,7 @@ struct GridwiseBatchedGemmMultipleDGemmMultipleD_Xdl_CShuffle
@@ -999,7 +999,7 @@ index a0924ae3..1b22d598 100644
                  // each block copy its data from LDS to global
                  cde1_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
-index bc76d4cc..277d1954 100644
+index bc76d4cc4..277d19548 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_multiple_d_softmax_gemm_xdl_cshuffle_v1.hpp
 @@ -303,7 +303,7 @@ struct GridwiseBatchedGemmMultipleDSoftmaxGemm_Xdl_CShuffle
@@ -1099,7 +1099,7 @@ index bc76d4cc..277d1954 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
-index afb2ad2e..d8f81aa9 100644
+index afb2ad2e7..d8f81aa98 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batched_gemm_softmax_gemm_xdl_cshuffle_v1.hpp
 @@ -360,7 +360,8 @@ struct GridwiseBatchedGemmSoftmaxGemm_Xdl_CShuffle
@@ -1190,7 +1190,7 @@ index afb2ad2e..d8f81aa9 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
-index ed1ffdd8..e0f34a11 100644
+index ed1ffdd85..e0f34a110 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_backward_blockwise_welford.hpp
 @@ -180,7 +180,8 @@ struct GridwiseBatchNormBackwardWithBlockwiseWelford
@@ -1236,7 +1236,7 @@ index ed1ffdd8..e0f34a11 100644
          });
 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
-index b6c83af1..b5e6a4f8 100644
+index b6c83af13..b5e6a4f84 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_batchnorm_forward_blockwise_welford.hpp
 @@ -153,7 +153,8 @@ struct GridwiseBatchNormForwardWithBlockwiseWelford
@@ -1270,7 +1270,7 @@ index b6c83af1..b5e6a4f8 100644
              int count = threadwise_welford.cur_count_;
              BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
-index 9f5df8bd..17a3dd24 100644
+index 9f5df8bdb..17a3dd24f 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_bias_add_reduce_xdl_cshuffle_v1.hpp
 @@ -388,7 +388,8 @@ struct GridwiseGemmBiasAddReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -1311,7 +1311,7 @@ index 9f5df8bd..17a3dd24 100644
                      c_reduce_thread_copy_lds_to_vgpr.Run(c_reduce_block_desc_mperblock_nperblock,
                                                           c_shuffle_block_buf,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
-index 27f48a84..cb5f7acc 100644
+index 27f48a84b..cb5f7acc3 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_multiple_d.hpp
 @@ -262,7 +262,8 @@ struct GridwiseGemmDlMultipleD_km_kn_mn
@@ -1379,7 +1379,7 @@ index 27f48a84..cb5f7acc 100644
              const auto ds_grid_buf = generate_tuple(
                  [&](auto i) {
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
-index 1da72369..abb15841 100644
+index 1da723697..abb158414 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dl_v1r3.hpp
 @@ -261,7 +261,8 @@ struct GridwiseGemmDl_km_kn_mn_v1r3
@@ -1511,7 +1511,7 @@ index 1da72369..abb15841 100644
              ThreadwiseTensorSliceTransfer_v1r3<
                  FloatAcc,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dpp.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dpp.hpp
-index 6eca77c8..786ebd88 100644
+index 6eca77c89..786ebd885 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dpp.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_dpp.hpp
 @@ -118,23 +118,23 @@ struct GridwiseGemm_ak0mak1_bk0nbk1_mn_dpp
@@ -1590,7 +1590,7 @@ index 6eca77c8..786ebd88 100644
          if(!block_2_ctile_map.ValidCTileIndex(
                 block_work_idx,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_abd_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_abd_xdl_cshuffle.hpp
-index 10a0842d..b3fc6769 100644
+index 10a0842da..b3fc67694 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_abd_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_abd_xdl_cshuffle.hpp
 @@ -532,7 +532,8 @@ struct GridwiseGemmMultipleABD_xdl_cshuffle
@@ -1631,7 +1631,7 @@ index 10a0842d..b3fc6769 100644
                  // each block copy its data from LDS to global
                  cde_block_copy_lds_and_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
-index 5c9f40b5..35cba930 100644
+index 5c9f40b51..35cba930e 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_multiple_r_xdl_cshuffle.hpp
 @@ -340,7 +340,8 @@ struct GridwiseGemmMultipleDMultipleR_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -1681,7 +1681,7 @@ index 5c9f40b5..35cba930 100644
                  // Get shuffle data from LDS to VGPR
                  c_reduce_thread_copy_lds_to_vgpr.Run(c_reduce_block_desc_mperblock_nperblock,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
-index 98ade85a..c13f5e1e 100644
+index 98ade85a3..c13f5e1e9 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_wmma_cshuffle.hpp
 @@ -590,7 +590,8 @@ struct GridwiseGemmMultipleD_k0mk1_k0nk1_mn_wmma_cshuffle
@@ -1722,7 +1722,7 @@ index 98ade85a..c13f5e1e 100644
                  // each block copy its data from LDS to global
                  cde_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
-index 15c30a0d..907f72c2 100644
+index 15c30a0da..907f72c21 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_cshuffle.hpp
 @@ -446,7 +446,8 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
@@ -1763,7 +1763,7 @@ index 15c30a0d..907f72c2 100644
                  // each block copy its data from LDS to global
                  cde_block_copy_lds_and_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_splitk_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_splitk_cshuffle.hpp
-index 4f37049b..f81848f3 100644
+index 4f37049b2..f81848f36 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_splitk_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_multiple_d_xdl_splitk_cshuffle.hpp
 @@ -477,7 +477,8 @@ struct GridwiseGemmMultipleD_xdl_splitk_cshuffle
@@ -1834,7 +1834,7 @@ index 4f37049b..f81848f3 100644
          const index_t kbatch_id = __builtin_amdgcn_readfirstlane(block_work_idx[I0]);
 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp
-index 754a3e89..7eec936c 100644
+index 754a3e89c..7eec936c9 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v1.hpp
 @@ -79,13 +79,13 @@ struct GridwiseGemmPipeline_v1<1>
@@ -1944,7 +1944,7 @@ index 754a3e89..7eec936c 100644
              blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
          }
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp
-index 25e1cebd..8f277523 100644
+index 25e1cebdb..8f277523a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v2.hpp
 @@ -83,12 +83,12 @@ struct GridwiseGemmPipeline_v2
@@ -1985,7 +1985,7 @@ index 25e1cebd..8f277523 100644
              // GEMM num_loop - 1
              blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v3.hpp
-index ced62241..75fcf821 100644
+index ced62241c..75fcf821b 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v3.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_pipeline_v3.hpp
 @@ -64,12 +64,12 @@ struct GridwiseGemmPipeline_v3
@@ -2013,7 +2013,7 @@ index ced62241..75fcf821 100644
          }
      }
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
-index d75b631e..4e1f20c4 100644
+index d75b631e6..4e1f20c48 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_reduce_xdl_cshuffle_v1.hpp
 @@ -345,7 +345,8 @@ struct GridwiseGemmReduce_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -2063,7 +2063,7 @@ index d75b631e..4e1f20c4 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
-index e7dc0d3e..3c57b8b0 100644
+index e7dc0d3eb..3c57b8b09 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle.hpp
 @@ -405,10 +405,11 @@ struct GridwiseGemmSplitKMultipleD_xdl_cshuffle
@@ -2155,7 +2155,7 @@ index e7dc0d3e..3c57b8b0 100644
                      // each block copy its data from LDS to global
                      c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle_v2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle_v2.hpp
-index caf8f040..af583e6e 100644
+index caf8f040f..af583e6e5 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle_v2.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_split_k_multiple_d_xdl_cshuffle_v2.hpp
 @@ -477,7 +477,8 @@ struct GridwiseGemmMultipleD_xdl_splitk_cshuffle
@@ -2226,7 +2226,7 @@ index caf8f040..af583e6e 100644
          const index_t kbatch_id = __builtin_amdgcn_readfirstlane(block_work_idx[I0]);
 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp
-index de5a4241..f6c9cc92 100644
+index de5a42419..f6c9cc923 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_waveletmodel.hpp
 @@ -71,7 +71,7 @@ struct GridwiseGemmLoadWave<TileLoadThreadGroup, 1>
@@ -2280,7 +2280,7 @@ index de5a4241..f6c9cc92 100644
              // GEMM num_loop - 1
              block_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
-index d8b31311..1af2602b 100644
+index d8b31311b..1af2602b3 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_wmma.hpp
 @@ -326,7 +326,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_wmma
@@ -2321,7 +2321,7 @@ index d8b31311..1af2602b 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
-index d700314a..e92f2190 100644
+index d700314a2..e92f21906 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_cshuffle_v1.hpp
 @@ -134,22 +134,22 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -2449,7 +2449,7 @@ index d700314a..e92f2190 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
-index 013120c5..e8b91ec3 100644
+index 013120c54..e8b91ec36 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_layernorm_cshuffle_v1.hpp
 @@ -374,7 +374,8 @@ struct GridwiseGemmLayernorm_k0mk1_k0nk1_mn_xdl_cshuffle_v1
@@ -2530,7 +2530,7 @@ index 013120c5..e8b91ec3 100644
                  // each block copy its data from LDS to global
                  c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
-index 8675a924..87ec86cd 100644
+index 8675a9242..87ec86cd2 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdl_waveletmodel_cshuffle.hpp
 @@ -78,18 +78,20 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdl_waveletmodel_cshuffle
@@ -2618,7 +2618,7 @@ index 8675a924..87ec86cd 100644
                      // each block copy its data from LDS to global
                      c_shuffle_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
-index 06c87d18..1eeb82b1 100644
+index 06c87d189..1eeb82b1c 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_bwd_weight.hpp
 @@ -631,7 +631,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_bwd_weight
@@ -2659,7 +2659,7 @@ index 06c87d18..1eeb82b1 100644
                      // LDS to global
                      c_block_copy_lds_to_global.Run(c_block_desc_mblock_mperblock_nblock_nperblock,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
-index b12bcee0..2410eac8 100644
+index b12bcee0f..2410eac8f 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_skip_b_lds_v1.hpp
 @@ -252,7 +252,7 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_skip_b_lds_v1
@@ -2729,7 +2729,7 @@ index b12bcee0..2410eac8 100644
                  blockwise_gemm.ResetABlockStartWindow();
 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_streamk.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_streamk.hpp
-index 2b1814c0..19baaab3 100644
+index 2b1814c03..19baaab3f 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_streamk.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_streamk.hpp
 @@ -547,7 +547,7 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_streamk
@@ -2769,7 +2769,7 @@ index 2b1814c0..19baaab3 100644
      }
 
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
-index 54760b05..98fcac52 100644
+index 54760b055..98fcac52c 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r3.hpp
 @@ -165,12 +165,12 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v2r3
@@ -2852,7 +2852,7 @@ index 54760b05..98fcac52 100644
          static_assert(is_known_at_compile_time<remove_cv_t<decltype(K1)>>::value,
                        "wrong! K1 need to be known at compile-time");
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
-index 19fbee72..71936bba 100644
+index 19fbee727..71936bbaf 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4.hpp
 @@ -290,7 +290,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4
@@ -2900,7 +2900,7 @@ index 19fbee72..71936bba 100644
              blockwise_gemm.Run(a_block_buf, b_block_buf, c_thread_buf);
          }
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
-index f9744d71..64bc85f4 100644
+index f9744d716..64bc85f49 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v2r4r2.hpp
 @@ -577,7 +577,8 @@ struct GridwiseGemm_bk0mk1_bk0nk1_mn_xdlops_v2r4r2
@@ -2941,7 +2941,7 @@ index f9744d71..64bc85f4 100644
                      // LDS to global
                      c_block_copy_lds_to_global.Run(c_block_desc_mblock_mperblock_nblock_nperblock,
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
-index b766b70a..3d1de1c8 100644
+index b766b70a6..3d1de1c8a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r1.hpp
 @@ -335,7 +335,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r1
@@ -2982,7 +2982,7 @@ index b766b70a..3d1de1c8 100644
                      // LDS to global
                      c_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
-index fbe4dd40..2173f2a4 100644
+index fbe4dd409..2173f2a45 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r2.hpp
 @@ -351,7 +351,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r2
@@ -3023,7 +3023,7 @@ index fbe4dd40..2173f2a4 100644
                      // LDS to global
                      c_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
-index 1dc8d31e..4017ccf7 100644
+index 1dc8d31ef..4017ccf7b 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_gemm_xdlops_v3r3.hpp
 @@ -367,7 +367,8 @@ struct GridwiseGemm_k0mk1_k0nk1_mn_xdlops_v3r3
@@ -3064,7 +3064,7 @@ index 1dc8d31e..4017ccf7 100644
                      // LDS to global
                      c_block_copy_lds_to_global.Run(
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
-index 61d0f9e0..5e0961c1 100644
+index 61d0f9e0d..5e0961c1c 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_permute.hpp
 @@ -207,7 +207,8 @@ struct GridwisePermute
@@ -3087,7 +3087,7 @@ index 61d0f9e0..5e0961c1 100644
          const index_t n_block_data_idx_on_grid =
              __builtin_amdgcn_readfirstlane(block_work_idx[I0] * NPerBlock);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp
-index 41352fab..654875e1 100644
+index 41352fabe..654875e10 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_set_buffer_value.hpp
 @@ -19,7 +19,7 @@ __global__ void kernel_buffer_set_value(const Grid1dBufferDescType grid_1d_buffe
@@ -3100,7 +3100,7 @@ index 41352fab..654875e1 100644
 
      const index_t thread_global_id = block_global_id * BlockSize + thread_local_id;
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
-index 5f56ac6f..98403cb3 100644
+index 5f56ac6fc..98403cb3a 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_softmax.hpp
 @@ -91,7 +91,8 @@ struct GridwiseSoftmax_mk_to_mk
@@ -3147,7 +3147,7 @@ index 5f56ac6f..98403cb3 100644
 
          threadwise_src_load.MoveSrcSliceWindow(in_grid_desc_m_k, in_thread_copy_fwd_step);
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
-index 287b4e54..fa833c5f 100644
+index 287b4e542..fa833c5f0 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_sparse_embeddings_forward_layernorm.hpp
 @@ -96,10 +96,11 @@ struct GridwiseSparseEmbeddingsForwardLayernorm
@@ -3175,7 +3175,7 @@ index 287b4e54..fa833c5f 100644
                      mean_thread_buf(I), var_thread_buf(I), threadwise_welford.cur_count_);
              });
 diff --git a/include/ck/tensor_operation/gpu/grid/gridwise_tensor_rearrange.hpp b/include/ck/tensor_operation/gpu/grid/gridwise_tensor_rearrange.hpp
-index e4e47b4f..40907a23 100644
+index e4e47b4fa..40907a233 100644
 --- a/include/ck/tensor_operation/gpu/grid/gridwise_tensor_rearrange.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/gridwise_tensor_rearrange.hpp
 @@ -69,10 +69,11 @@ struct GridwiseTensorRearrange
@@ -3202,7 +3202,7 @@ index e4e47b4f..40907a23 100644
      {
          if(in_grid_desc.GetLength(I0) % MPerBlock != 0 ||
 diff --git a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_naive_variance.hpp b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_naive_variance.hpp
-index c3f12210..755ea40b 100644
+index c3f122106..755ea40b6 100644
 --- a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_naive_variance.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_naive_variance.hpp
 @@ -104,7 +104,8 @@ struct GridwiseNormalizationNaiveVariance_mk_to_mk
@@ -3257,7 +3257,7 @@ index c3f12210..755ea40b 100644
                  BlockwiseSumReduce::Reduce(reduce_work_buf, mean_square_thread_buf(I));
                  mean_square_thread_buf(I) = mean_square_thread_buf(I) / reduce_length;
 diff --git a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_1st.hpp b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_1st.hpp
-index 80e9a84f..b738b9e5 100644
+index 80e9a84f9..b738b9e58 100644
 --- a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_1st.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_1st.hpp
 @@ -118,7 +118,8 @@ struct GridwiseNormalizationSplitK1st
@@ -3291,7 +3291,7 @@ index 80e9a84f..b738b9e5 100644
              int count = threadwise_welford.cur_count_;
              BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
 diff --git a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_2nd.hpp b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_2nd.hpp
-index 136ac94e..e5a008d5 100644
+index 136ac94e7..e5a008d57 100644
 --- a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_2nd.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_splitk_2nd.hpp
 @@ -110,11 +110,12 @@ struct GridwiseNormalizationSplitK2nd
@@ -3320,7 +3320,7 @@ index 136ac94e..e5a008d5 100644
              BlockwiseWelford::Run(
                  mean_thread_buf(I), var_thread_buf(I), welford_count_thread_buf(I));
 diff --git a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_welford_variance.hpp b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_welford_variance.hpp
-index ff971227..63b177bd 100644
+index ff9712276..63b177bd5 100644
 --- a/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_welford_variance.hpp
 +++ b/include/ck/tensor_operation/gpu/grid/normalization/gridwise_normalization_welford_variance.hpp
 @@ -120,7 +120,8 @@ struct GridwiseNormalizationWelfordVariance_mk_to_mk
@@ -3363,7 +3363,7 @@ index ff971227..63b177bd 100644
                  int count = threadwise_welford.cur_count_;
                  BlockwiseWelford::Run(mean_thread_buf(I), var_thread_buf(I), count);
 diff --git a/include/ck/tensor_operation/gpu/warp/dpp_gemm.hpp b/include/ck/tensor_operation/gpu/warp/dpp_gemm.hpp
-index a1844316..59b794b6 100644
+index a18443164..59b794b66 100644
 --- a/include/ck/tensor_operation/gpu/warp/dpp_gemm.hpp
 +++ b/include/ck/tensor_operation/gpu/warp/dpp_gemm.hpp
 @@ -421,7 +421,7 @@ struct DppSelector
@@ -3412,7 +3412,7 @@ index a1844316..59b794b6 100644
      }
 
 diff --git a/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp b/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
-index 979f3567..28c2f340 100644
+index 979f3567e..28c2f340a 100644
 --- a/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
 +++ b/include/ck/tensor_operation/gpu/warp/wmma_gemm.hpp
 @@ -459,7 +459,7 @@ struct WmmaGemm
@@ -3425,7 +3425,7 @@ index 979f3567..28c2f340 100644
      __device__ static auto GetSubGroupId()
      {
 diff --git a/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp b/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp
-index c8e56fbc..1ad2ebe6 100644
+index c8e56fbc5..1ad2ebe63 100644
 --- a/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp
 +++ b/include/ck/tensor_operation/gpu/warp/xdlops_gemm.hpp
 @@ -1079,7 +1079,7 @@ struct XdlopsGemm
@@ -3438,7 +3438,7 @@ index c8e56fbc..1ad2ebe6 100644
      __device__ static auto GetBlkIdx()
      {
 diff --git a/include/ck/utility/get_id.hpp b/include/ck/utility/get_id.hpp
-index 77564c61..ac30065d 100644
+index 77564c613..ac30065dc 100644
 --- a/include/ck/utility/get_id.hpp
 +++ b/include/ck/utility/get_id.hpp
 @@ -13,12 +13,14 @@ __host__ __device__ constexpr index_t get_warp_size()
@@ -3458,64 +3458,38 @@ index 77564c61..ac30065d 100644
 
  __device__ index_t get_grid_size() { return gridDim.x; }
 diff --git a/include/ck/utility/synchronization.hpp b/include/ck/utility/synchronization.hpp
-index 775e7ac3..062790b0 100644
+index 775e7ac3a..2e470df6d 100644
 --- a/include/ck/utility/synchronization.hpp
 +++ b/include/ck/utility/synchronization.hpp
-@@ -5,18 +5,44 @@
+@@ -5,10 +5,18 @@
 
  #include "ck/ck.hpp"
 
-+extern __shared__ int _ARK_SMEM[];
++#if defined(ARK_TARGET_ROCM_ARCH)
++#include "common/sync.h"
++#endif  // defined(ARK_TARGET_ROCM_ARCH)
 +
  namespace ck {
 
-+struct WarpGroupState {
-+    unsigned int flag[8];
-+    unsigned int is_inc_flag[8];
-+    unsigned int cnt[8];
-+};
-+
 +template <int BlockSize>
  __device__ void block_sync_lds()
  {
--#if CK_EXPERIMENTAL_BLOCK_SYNC_LDS_WITHOUT_SYNC_VMEM
--    asm volatile("\
--    s_waitcnt lgkmcnt(0) \n \
--    s_barrier \
--    " ::);
--#else
--    __syncthreads();
--#endif
-+    static_assert(BlockSize % 64 == 0, "");
-+    constexpr int NumWarps = BlockSize / 64;
-+    if constexpr (NumWarps == 1) {
-+        __builtin_amdgcn_wave_barrier();
-+    } else if constexpr (NumWarps == 16) {
-+        __syncthreads();
-+    } else {
-+        static_assert(128 >= sizeof(WarpGroupState), "");
-+        int lane_id = threadIdx.x & 63;
-+        if (lane_id == 0) {
-+            constexpr int MaxOldCnt = NumWarps - 1;
-+            int warp_id = threadIdx.x >> 6;
-+            int group_id = warp_id / NumWarps;
-+            WarpGroupState *state = reinterpret_cast<WarpGroupState *>(_ARK_SMEM);
-+            unsigned int tmp = state->is_inc_flag[group_id] ^ 1;
-+            if (atomicInc(&state->cnt[group_id], MaxOldCnt) == MaxOldCnt) {
-+                state->flag[group_id] = tmp;
-+            } else {
-+                while (atomicAdd(&state->flag[group_id], 0) != tmp) __builtin_amdgcn_s_sleep(1);
-+                __asm__ __volatile__("s_wakeup");
-+            }
-+            state->is_inc_flag[group_id] = tmp;
-+        }
-+        __builtin_amdgcn_wave_barrier();
-+    }
++#if defined(ARK_TARGET_ROCM_ARCH)
++    ark::sync_warps<BlockSize / 64>();
++#else
+ #if CK_EXPERIMENTAL_BLOCK_SYNC_LDS_WITHOUT_SYNC_VMEM
+     asm volatile("\
+     s_waitcnt lgkmcnt(0) \n \
+@@ -17,6 +25,7 @@ __device__ void block_sync_lds()
+ #else
+     __syncthreads();
+ #endif
++#endif
  }
 
  __device__ void s_nop()
 diff --git a/include/ck/utility/thread_group.hpp b/include/ck/utility/thread_group.hpp
-index 1cd6b2f3..1d0e19a7 100644
+index 1cd6b2f3c..1d0e19a79 100644
 --- a/include/ck/utility/thread_group.hpp
 +++ b/include/ck/utility/thread_group.hpp
 @@ -16,7 +16,7 @@ struct ThisThreadBlock
