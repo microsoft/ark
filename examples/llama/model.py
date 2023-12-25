@@ -89,15 +89,14 @@ class RMSNorm(ark.Module):
         self.dtype = dtype
         self.weight = ark.parameter([1, 1, dim], ark.fp32)
 
-    def _norm(self, x):
-        # x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
-        return ark.rmsnorm(x)
-
     def forward(self, x):
         x = ark.cast(x, ark.fp32)
-        output = self._norm(x)
-        output = ark.mul(output, self.weight)
-        return ark.cast(output, self.dtype)
+        x2 = ark.mul(x, x)
+        mean = ark.reduce_mean(x2, axis=-1)
+        rrms = ark.rsqrt(mean)
+        x = ark.mul(x, rrms)
+        x = ark.mul(x, self.weight, x)
+        return ark.cast(x, self.dtype)
 
 
 class ColumnParallelLinear(ark.Module):
@@ -431,7 +430,7 @@ class Attention(ark.Module):
             scores = ark.add(scores, mask)
         # if self.dtype == ark.fp16:
         #     scores = ark.cast(scores, ark.fp32)
-        scores = ark.softmax(scores)
+        scores = ark.softmax(scores, output=scores)
         # if self.dtype == ark.fp16:
         #     scores = ark.cast(scores, ark.fp16)
 

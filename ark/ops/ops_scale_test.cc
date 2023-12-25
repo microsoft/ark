@@ -107,11 +107,29 @@ ark::unittest::State test_scale_invalid() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_scale_perf() {
+    ark::DimType nelem = 8 * 1024 * 1024;
+
+    ark::Model m;
+    ark::Tensor *t = m.tensor({nelem}, ark::FP32);
+    ark::Tensor *out = m.scale(t, 0.7);
+
+    auto result =
+        ark::op_test("scale_perf", m, {t}, {out}, baseline_scale<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_EQ(result.max_diff[0], 0.0f);
+
+    float gbps = nelem * sizeof(float) / result.msec_per_iter * 1e-6;
+    UNITTEST_LOG(gbps, " GB/s");
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_scale_fp32);
     UNITTEST(test_scale_fp16);
     UNITTEST(test_scale_bf16);
     UNITTEST(test_scale_invalid);
+    UNITTEST(test_scale_perf);
     return ark::unittest::SUCCESS;
 }

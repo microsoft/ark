@@ -13,13 +13,11 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG dfa8392
+    GIT_TAG bc20e80
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
-# TODO: remove if this PR is merged: https://github.com/microsoft/mscclpp/pull/234
-set(BYPASS_PEERMEM_CHECK ON CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
 FetchContent_MakeAvailable(mscclpp)
 

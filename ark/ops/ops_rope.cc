@@ -8,12 +8,12 @@
 
 namespace ark {
 
-extern const OpConfigMap ArithmeticConfigMap;
+extern const OpConfigMap Broadcast2ConfigMap;
 
 RopeOp::RopeOp(const std::string &prec_type, Tensor *input, Tensor *other,
                Tensor *output, const std::string &name)
     : Op{OP_ROPE, prec_type, {input, other},       {output},
-         {},      name,      &ArithmeticConfigMap, -1,
+         {},      name,      &Broadcast2ConfigMap, -1,
          true} {}
 
 std::string RopeOp::function_name(const OpConfig &cfg) const {
