@@ -132,9 +132,9 @@ def test_module(
     inputs_pt: List[np.ndarray],
     module_name_prefix: str = "",
     dtype: np.dtype = np.float16,
-    test_thru: bool = True,
+    test_thru: bool = False,
     test_thru_iterations: int = 100,
-    test_thru_ark_only: bool = True,
+    test_thru_ark_only: bool = False,
     rank: int = 0,
     world_size: int = 1,
 ):
