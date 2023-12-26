@@ -32,13 +32,13 @@ DEVICE int warp_id() {
 #if defined(ARK_TARGET_CUDA_ARCH)
 #define ARCH_ALIAS_FUNC(alias, cuda_func, hip_func)    \
     template <typename... Args>                        \
-    inline auto alias(Args &&...args) {                \
+    inline auto alias(Args &&... args) {               \
         return cuda_func(std::forward<Args>(args)...); \
     }
 #elif defined(ARK_TARGET_ROCM_ARCH)
 #define ARCH_ALIAS_FUNC(alias, cuda_func, hip_func)   \
     template <typename... Args>                       \
-    inline auto alias(Args &&...args) {               \
+    inline auto alias(Args &&... args) {              \
         return hip_func(std::forward<Args>(args)...); \
     }
 #endif
