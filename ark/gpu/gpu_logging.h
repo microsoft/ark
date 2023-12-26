@@ -17,18 +17,17 @@
         }                                                   \
     } while (0)
 
-#define GLOG_DRV(cmd)                                       \
-    do {                                                    \
-        ark::gpuDeviceError _e = cmd;                       \
-        if (_e != ark::gpuDeviceSuccess) {                  \
-            const char *_estr;                              \
-            if (ark::gpuDeviceGetErrorString(_e, &_estr) == \
-                ark::gpuDeviceSuccess) {                    \
-                ERR(ark::GpuError, _e, " '", _estr, "'");   \
-            } else {                                        \
-                ERR(ark::GpuError, _e);                     \
-            }                                               \
-        }                                                   \
+#define GLOG_DRV(cmd)                                                          \
+    do {                                                                       \
+        ark::gpuDrvError _e = cmd;                                          \
+        if (_e != ark::gpuDrvSuccess) {                                        \
+            const char *_estr;                                                 \
+            if (ark::gpuDrvGetErrorString(_e, &_estr) == ark::gpuDrvSuccess) { \
+                ERR(ark::GpuError, _e, " '", _estr, "'");                      \
+            } else {                                                           \
+                ERR(ark::GpuError, _e);                                        \
+            }                                                                  \
+        }                                                                      \
     } while (0)
 
 #endif  // ARK_GPU_LOGGING_H_

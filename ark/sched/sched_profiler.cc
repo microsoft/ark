@@ -27,7 +27,7 @@ float SchedProfiler::profile_routine(std::shared_ptr<GpuLoopKernel> glk,
 
     glk->load();
     GpuState ret = glk->launch(ctx->get_gpu_manager()->create_stream(), false);
-    if (ret != gpuSuccess) {
+    if (ret != gpuDrvSuccess) {
         ERR(ExecutorError, "launch() failed with error code ", ret);
     }
 

@@ -113,7 +113,7 @@ void GpuLoopKernel::load() {
     }
     // Initialize global variables in the loop kernel.
     std::shared_ptr<GpuManager> manager = ctx_->get_gpu_manager();
-    GpuPtr buf_ptr_val = ctx_->get_data_memory()->ref();
+    void* buf_ptr_val = ctx_->get_data_memory()->ref();
     GpuPtr lss_ptr_addr;
     GpuPtr buf_ptr_addr;
     size_t tmp = 0;
@@ -127,16 +127,16 @@ void GpuLoopKernel::load() {
     // TODO: remove this hack
     GpuPtr lss_0_ptr_addr;
     GpuPtr lss_1_ptr_addr;
-    gpuDeviceError ret =
+    gpuDrvError ret =
         gpuModuleGetGlobal(&lss_0_ptr_addr, &tmp, module_, ARK_LSS_NAME "_0");
-    if (ret == gpuDeviceSuccess) {
+    if (ret == gpuDrvSuccess) {
         manager->memcpy_htod((void*)lss_0_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     } else if (ret != gpuErrorNotFound) {
         GLOG_DRV(ret);
     }
     ret = gpuModuleGetGlobal(&lss_1_ptr_addr, &tmp, module_, ARK_LSS_NAME "_1");
-    if (ret == gpuDeviceSuccess) {
+    if (ret == gpuDrvSuccess) {
         manager->memcpy_htod((void*)lss_1_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     } else if (ret != gpuErrorNotFound) {
@@ -148,14 +148,14 @@ void GpuLoopKernel::load() {
     // only set the GPU remote data buf pointers of the GPUs on the same node
     for (int i = nodes_id * nrph;
          i < (nodes_id + 1) * nrph && i < ctx_->world_size(); i++) {
-        GpuPtr data_buf_value = ctx_->get_data_memory(i)->ref();
+        void* data_buf_value = ctx_->get_data_memory(i)->ref();
         if (data_buf_value == 0) {
             continue;
         }
         GpuPtr data_buf_ptr;
         std::string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-        gpuDeviceError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
-                                               data_buf_name.c_str());
+        gpuDrvError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
+                                            data_buf_name.c_str());
         if (_e == gpuErrorNotFound) {
             LOG(DEBUG, "global variable ", data_buf_name, " not found");
             continue;
@@ -196,7 +196,7 @@ GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
     } else if (stream_ != nullptr) {
         if (stream_ == stream) {
             LOG(WARN, "Ignore launching twice.");
-            return gpuSuccess;
+            return gpuDrvSuccess;
         } else {
             ERR(InvalidUsageError, "This loop kernel is already running.");
         }
@@ -210,7 +210,7 @@ GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
     // Initialize loop flags.
     atomicStoreRelaxed(flag_->ref<int>(), 0);
     GpuState res = GpuKernel::launch(stream);
-    if (res == gpuSuccess) {
+    if (res == gpuDrvSuccess) {
         stream_ = stream;
         if (!disable_timing) {
             timer_end_->record(stream);

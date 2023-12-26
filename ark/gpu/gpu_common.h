@@ -12,7 +12,7 @@ namespace ark {
 enum { MAX_NUM_SID = 65536 };
 
 //
-typedef gpuError GpuState;
+typedef gpuDrvError GpuState;
 
 }  // namespace ark
 

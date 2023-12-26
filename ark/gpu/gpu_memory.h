@@ -20,7 +20,7 @@ class GpuMemory {
     ~GpuMemory() = default;
     void resize(size_t bytes, bool expose = false);
     void resize(const mscclpp::RegisteredMemory& remote_memory);
-    GpuPtr ref(size_t offset = 0) const;
+    void* ref(size_t offset = 0) const;
     size_t bytes() const;
 
     template <typename T>
@@ -36,6 +36,7 @@ class GpuMemory {
 
     void sync() const;
     void memset(int value, size_t offset, size_t bytes);
+    void memset_d32(int value, size_t offset, size_t nelems);
     void memcpy_from(const void* src, size_t offset, size_t bytes,
                      bool from_device = false);
     void memcpy_to(void* dst, size_t offset, size_t bytes);
