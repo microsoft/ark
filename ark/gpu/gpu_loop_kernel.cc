@@ -178,7 +178,8 @@ void GpuLoopKernel::load() {
     }
     if (comm->get_sm_channels_num() > 0) {
         GpuPtr channel_addr;
-        GLOG_DRV(gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
+        GLOG_DRV(
+            gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
         const void* chans_ref = comm->get_sm_channels_ref();
         size_t chans_bytes = comm->get_sm_channels_bytes();
         manager->memcpy_htod((void*)channel_addr, 0,

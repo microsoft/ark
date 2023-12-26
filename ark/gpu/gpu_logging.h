@@ -19,7 +19,7 @@
 
 #define GLOG_DRV(cmd)                                                          \
     do {                                                                       \
-        ark::gpuDrvError _e = cmd;                                          \
+        ark::gpuDrvError _e = cmd;                                             \
         if (_e != ark::gpuDrvSuccess) {                                        \
             const char *_estr;                                                 \
             if (ark::gpuDrvGetErrorString(_e, &_estr) == ark::gpuDrvSuccess) { \

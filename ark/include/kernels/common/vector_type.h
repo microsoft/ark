@@ -77,8 +77,8 @@ struct IntrinsicCompute1Exists {
     template <typename>
     static auto test(...) -> std::false_type;
 
-    static constexpr bool value = decltype(
-        test<IntrinsicType>(type::Constant<InputVtype>::zero()))::value;
+    static constexpr bool value = decltype(test<IntrinsicType>(
+        type::Constant<InputVtype>::zero()))::value;
 };
 
 template <typename IntrinsicType, typename InputVtype>
@@ -90,9 +90,9 @@ struct IntrinsicCompute2Exists {
     template <typename>
     static auto test(...) -> std::false_type;
 
-    static constexpr bool value = decltype(
-        test<IntrinsicType>(type::Constant<InputVtype>::zero(),
-                            type::Constant<InputVtype>::zero()))::value;
+    static constexpr bool value = decltype(test<IntrinsicType>(
+        type::Constant<InputVtype>::zero(),
+        type::Constant<InputVtype>::zero()))::value;
 };
 
 template <typename IntrinsicType, typename InputType, int CurrentVal = 256>
@@ -197,11 +197,10 @@ struct DefaultNelemPerThread {
                                                  : UnitOutDims::W;
 
     static const int value =
-        (sizeof(OutDataType) <= 2 && ConsecutiveDimLen % 8 == 0)
-            ? 8
-            : (ConsecutiveDimLen % 4 == 0)
-                  ? 4
-                  : (ConsecutiveDimLen % 2 == 0) ? 2 : 1;
+        (sizeof(OutDataType) <= 2 && ConsecutiveDimLen % 8 == 0) ? 8
+        : (ConsecutiveDimLen % 4 == 0)                           ? 4
+        : (ConsecutiveDimLen % 2 == 0)                           ? 2
+                                                                 : 1;
 };
 
 }  // namespace ark
