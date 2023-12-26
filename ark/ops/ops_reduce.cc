@@ -72,7 +72,7 @@ std::string ReduceOp::function_name(const OpConfig &cfg,
 }
 
 extern const OpConfigMap ReduceWConfigMap;
-extern const OpConfigMap ReduceEConfigMap;
+extern const OpConfigMap Broadcast1ConfigMap;
 
 ReduceWSumOp::ReduceWSumOp(const std::string &prec_type, Tensor *input,
                            Tensor *output, int axis, bool keepdims,
@@ -87,8 +87,14 @@ std::string ReduceWSumOp::function_name(const OpConfig &cfg) const {
 ReduceESumOp::ReduceESumOp(const std::string &prec_type, Tensor *input,
                            Tensor *output, int axis, bool keepdims,
                            const std::string &name)
-    : ReduceOp{OP_REDUCE_E_SUM,    prec_type, {input},           {output},
-               {{axis, keepdims}}, name,      &ReduceEConfigMap, -1} {}
+    : ReduceOp{OP_REDUCE_E_SUM,
+               prec_type,
+               {input},
+               {output},
+               {{axis, keepdims}},
+               name,
+               &Broadcast1ConfigMap,
+               -1} {}
 
 std::string ReduceESumOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_sum");
@@ -107,8 +113,14 @@ std::string ReduceWMaxOp::function_name(const OpConfig &cfg) const {
 ReduceEMaxOp::ReduceEMaxOp(const std::string &prec_type, Tensor *input,
                            Tensor *output, int axis, bool keepdims,
                            const std::string &name)
-    : ReduceOp{OP_REDUCE_E_MAX,    prec_type, {input},           {output},
-               {{axis, keepdims}}, name,      &ReduceEConfigMap, -1} {}
+    : ReduceOp{OP_REDUCE_E_MAX,
+               prec_type,
+               {input},
+               {output},
+               {{axis, keepdims}},
+               name,
+               &Broadcast1ConfigMap,
+               -1} {}
 
 std::string ReduceEMaxOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_max");
@@ -127,8 +139,14 @@ std::string ReduceWMeanOp::function_name(const OpConfig &cfg) const {
 ReduceEMeanOp::ReduceEMeanOp(const std::string &prec_type, Tensor *input,
                              Tensor *output, int axis, bool keepdims,
                              const std::string &name)
-    : ReduceOp{OP_REDUCE_E_MEAN,   prec_type, {input},           {output},
-               {{axis, keepdims}}, name,      &ReduceEConfigMap, -1} {}
+    : ReduceOp{OP_REDUCE_E_MEAN,
+               prec_type,
+               {input},
+               {output},
+               {{axis, keepdims}},
+               name,
+               &Broadcast1ConfigMap,
+               -1} {}
 
 std::string ReduceEMeanOp::function_name(const OpConfig &cfg) const {
     return ReduceOp::function_name(cfg, "e_mean");
@@ -198,49 +216,22 @@ Tensor *Model::reduce_max(Tensor *input, int axis, bool keepdims,
     }
 }
 
-const OpConfigMap ReduceEConfigMap = {
-    {{OP_ARCH_ANY, "any"},
-     {
-         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {8, 0, {{128, 256}, {128, 256}}, {{128, 256}}, true, false},
-         {8, 0, {{256, 128}, {256, 128}}, {{256, 128}}, true, false},
-         {8, 0, {{128, 128}, {128, 128}}, {{128, 128}}, true, false},
-         {4, 0, {{64, 64}, {64, 64}}, {{64, 64}}, true, false},
-         {2, 0, {{32, 64}, {32, 64}}, {{32, 64}}, true, false},
-         {1, 0, {{16, 64}, {16, 64}}, {{16, 64}}, true, false},
-         {1, 0, {{8, 64}, {8, 64}}, {{8, 64}}, true, false},
-         {1, 0, {{2, 128}, {2, 128}}, {{2, 128}}, true, false},
-         {1, 0, {{4, 64}, {4, 64}}, {{4, 64}}, true, false},
-         {1, 0, {{2, 64}, {2, 64}}, {{2, 64}}, true, false},
-         {1, 0, {{1, 64}, {1, 64}}, {{1, 64}}, true, false},
-         {1, 0, {{1, 32}, {1, 32}}, {{1, 32}}, true, false},
-     }},
-};
-
 const OpConfigMap ReduceWConfigMap = {
     {{OP_ARCH_CUDA_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 128, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 128, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 128, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 128, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 128, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 128, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 128, {{1, 1}}, {{1, 1}}, true, false},
+         {1, 128, {{1, -1}}, {{1, 1}}, false, false},
+         {2, 128, {{1, -1}}, {{1, 1}}, true, false},
+         {4, 128, {{1, -1}}, {{1, 1}}, true, false},
+         {8, 128, {{1, -1}}, {{1, 1}}, true, false},
      }},
     {{OP_ARCH_ROCM_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 256, {{32, 1}}, {{32, 1}}, true, false},
-         {1, 256, {{16, 1}}, {{16, 1}}, true, false},
-         {1, 256, {{8, 1}}, {{8, 1}}, true, false},
-         {1, 256, {{4, 1}}, {{4, 1}}, true, false},
-         {1, 256, {{2, 1}}, {{2, 1}}, true, false},
-         {1, 256, {{1, 1}}, {{1, 1}}, true, false},
-         {4, 256, {{1, 1}}, {{1, 1}}, true, false},
-         {8, 256, {{1, 1}}, {{1, 1}}, true, false},
+         {1, 256, {{1, -1}}, {{1, 1}}, false, false},
+         {2, 256, {{1, -1}}, {{1, 1}}, true, false},
+         {4, 256, {{1, -1}}, {{1, 1}}, true, false},
+         {8, 256, {{1, -1}}, {{1, 1}}, true, false},
      }},
 };
 

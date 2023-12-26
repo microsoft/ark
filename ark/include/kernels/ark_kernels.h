@@ -6,7 +6,6 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
-#include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
 #include "comm.h"
@@ -17,7 +16,6 @@
 #include "math_functions.h"
 #include "matmul.h"
 #include "reduce.h"
-#include "softmax.h"
 #include "transpose.h"
 
 #endif  // ARK_KERNELS_H_

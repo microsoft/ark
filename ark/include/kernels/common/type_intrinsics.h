@@ -18,7 +18,7 @@ namespace type {
 
 struct Cast {
     template <typename CastType, typename DataType>
-    static DEVICE CastType compute(DataType input) {
+    static DEVICE CastType compute(const DataType &input) {
         if constexpr (std::is_same<CastType, DataType>::value) {
             return input;
         } else if constexpr (std::is_same<CastType, fp16>::value &&
@@ -137,137 +137,207 @@ struct Cast {
     }
 };
 
+struct Replicate {
+    template <int Size, typename DataType,
+              typename VecType = typename type::Vtype<DataType, Size>::type>
+    static DEVICE VecType compute(const DataType &input) {
+        if constexpr (std::is_same<DataType, fp16>::value && Size == 2) {
+            return __halves2half2(input, input);
+        } else if constexpr (std::is_same<DataType, bf16>::value && Size == 2) {
+            return __halves2bfloat162(input, input);
+        } else if constexpr (IsBuiltinVector2<DataType>::value && Size == 2) {
+            VecType ret;
+            ret.x = input;
+            ret.y = input;
+            return ret;
+        } else if constexpr (IsBuiltinVector4<DataType>::value && Size == 4) {
+            VecType ret;
+            ret.x = input;
+            ret.y = input;
+            ret.z = input;
+            ret.w = input;
+            return ret;
+        } else {
+            static_assert(Size == 1, "Undefined replication for this type");
+            return input;
+        }
+    }
+};
+
+struct Identity {
+    template <typename DataType>
+    static DEVICE DataType compute(const DataType &input) {
+        return input;
+    }
+};
+
 struct Add {
     template <typename DataType>
-    static DEVICE DataType compute(DataType a, DataType b) {
+    static DEVICE DataType compute(const DataType &a, const DataType &b) {
         return a + b;
     }
 
-    static DEVICE fp16 compute(fp16 a, fp16 b) { return __hadd(a, b); }
+    static DEVICE fp16 compute(const fp16 &a, const fp16 &b) {
+        return __hadd(a, b);
+    }
 
-    static DEVICE fp16x2 compute(fp16x2 a, fp16x2 b) { return __hadd2(a, b); }
+    static DEVICE fp16x2 compute(const fp16x2 &a, const fp16x2 &b) {
+        return __hadd2(a, b);
+    }
 
-    static DEVICE bf16 compute(bf16 a, bf16 b) { return __hadd(a, b); }
+    static DEVICE bf16 compute(const bf16 &a, const bf16 &b) {
+        return __hadd(a, b);
+    }
 
-    static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __hadd2(a, b); }
+    static DEVICE bf16x2 compute(const bf16x2 &a, const bf16x2 &b) {
+        return __hadd2(a, b);
+    }
 };
 
 struct Sub {
     template <typename DataType>
-    static DEVICE DataType compute(DataType a, DataType b) {
+    static DEVICE DataType compute(const DataType &a, const DataType &b) {
         return a - b;
     }
 
-    static DEVICE fp16 compute(fp16 a, fp16 b) { return __hsub(a, b); }
+    static DEVICE fp16 compute(const fp16 &a, const fp16 &b) {
+        return __hsub(a, b);
+    }
 
-    static DEVICE fp16x2 compute(fp16x2 a, fp16x2 b) { return __hsub2(a, b); }
+    static DEVICE fp16x2 compute(const fp16x2 &a, const fp16x2 &b) {
+        return __hsub2(a, b);
+    }
 
-    static DEVICE bf16 compute(bf16 a, bf16 b) { return __hsub(a, b); }
+    static DEVICE bf16 compute(const bf16 &a, const bf16 &b) {
+        return __hsub(a, b);
+    }
 
-    static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __hsub2(a, b); }
+    static DEVICE bf16x2 compute(const bf16x2 &a, const bf16x2 &b) {
+        return __hsub2(a, b);
+    }
 };
 
 struct Mul {
     template <typename DataType>
-    static DEVICE DataType compute(DataType a, DataType b) {
+    static DEVICE DataType compute(const DataType &a, const DataType &b) {
         return a * b;
     }
 
-    static DEVICE fp16 compute(fp16 a, fp16 b) { return __hmul(a, b); }
+    static DEVICE fp16 compute(const fp16 &a, const fp16 &b) {
+        return __hmul(a, b);
+    }
 
-    static DEVICE fp16x2 compute(fp16x2 a, fp16x2 b) { return __hmul2(a, b); }
+    static DEVICE fp16x2 compute(const fp16x2 &a, const fp16x2 &b) {
+        return __hmul2(a, b);
+    }
 
-    static DEVICE bf16 compute(bf16 a, bf16 b) { return __hmul(a, b); }
+    static DEVICE bf16 compute(const bf16 &a, const bf16 &b) {
+        return __hmul(a, b);
+    }
 
-    static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __hmul2(a, b); }
+    static DEVICE bf16x2 compute(const bf16x2 &a, const bf16x2 &b) {
+        return __hmul2(a, b);
+    }
 };
 
 struct Div {
     template <typename DataType>
-    static DEVICE DataType compute(DataType a, DataType b) {
+    static DEVICE DataType compute(const DataType &a, const DataType &b) {
         return a / b;
     }
 
-    static DEVICE fp16 compute(fp16 a, fp16 b) { return __hdiv(a, b); }
+    static DEVICE fp16 compute(const fp16 &a, const fp16 &b) {
+        return __hdiv(a, b);
+    }
 
-    static DEVICE fp16x2 compute(fp16x2 a, fp16x2 b) { return __h2div(a, b); }
+    static DEVICE fp16x2 compute(const fp16x2 &a, const fp16x2 &b) {
+        return __h2div(a, b);
+    }
 
-    static DEVICE bf16 compute(bf16 a, bf16 b) { return __hdiv(a, b); }
+    static DEVICE bf16 compute(const bf16 &a, const bf16 &b) {
+        return __hdiv(a, b);
+    }
 
-    static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __h2div(a, b); }
+    static DEVICE bf16x2 compute(const bf16x2 &a, const bf16x2 &b) {
+        return __h2div(a, b);
+    }
 };
 
 struct Neg {
     template <typename DataType>
-    static DEVICE DataType compute(DataType input) {
+    static DEVICE DataType compute(const DataType &input) {
         return -input;
     }
 
-    static DEVICE fp16 compute(fp16 input) { return __hneg(input); }
+    static DEVICE fp16 compute(const fp16 &input) { return __hneg(input); }
 
-    static DEVICE fp16x2 compute(fp16x2 input) { return __hneg2(input); }
+    static DEVICE fp16x2 compute(const fp16x2 &input) { return __hneg2(input); }
 
-    static DEVICE bf16 compute(bf16 input) { return __hneg(input); }
+    static DEVICE bf16 compute(const bf16 &input) { return __hneg(input); }
 
-    static DEVICE bf16x2 compute(bf16x2 input) { return __hneg2(input); }
+    static DEVICE bf16x2 compute(const bf16x2 &input) { return __hneg2(input); }
 };
 
 struct Exp {
     template <typename DataType>
-    static DEVICE DataType compute(DataType input) {
+    static DEVICE DataType compute(const DataType &input) {
         return Cast::compute<DataType>(expf(Cast::compute<float>(input)));
     }
 
-    static DEVICE fp16 compute(fp16 input) { return hexp(input); }
+    static DEVICE fp16 compute(const fp16 &input) { return hexp(input); }
 
-    static DEVICE fp16x2 compute(fp16x2 input) { return h2exp(input); }
+    static DEVICE fp16x2 compute(const fp16x2 &input) { return h2exp(input); }
 
-    static DEVICE bf16 compute(bf16 input) { return hexp(input); }
+    static DEVICE bf16 compute(const bf16 &input) { return hexp(input); }
 
-    static DEVICE bf16x2 compute(bf16x2 input) { return h2exp(input); }
+    static DEVICE bf16x2 compute(const bf16x2 &input) { return h2exp(input); }
 };
 
 struct Sqrt {
     template <typename DataType>
-    static DEVICE DataType compute(DataType input) {
+    static DEVICE DataType compute(const DataType &input) {
         return Cast::compute<DataType>(sqrtf(Cast::compute<float>(input)));
     }
 
-    static DEVICE fp16 compute(fp16 input) { return hsqrt(input); }
+    static DEVICE fp16 compute(const fp16 &input) { return hsqrt(input); }
 
-    static DEVICE fp16x2 compute(fp16x2 input) { return h2sqrt(input); }
+    static DEVICE fp16x2 compute(const fp16x2 &input) { return h2sqrt(input); }
 
-    static DEVICE bf16 compute(bf16 input) { return hsqrt(input); }
+    static DEVICE bf16 compute(const bf16 &input) { return hsqrt(input); }
 
-    static DEVICE bf16x2 compute(bf16x2 input) { return h2sqrt(input); }
+    static DEVICE bf16x2 compute(const bf16x2 &input) { return h2sqrt(input); }
 };
 
 struct Rsqrt {
     template <typename DataType>
-    static DEVICE DataType compute(DataType input) {
+    static DEVICE DataType compute(const DataType &input) {
         return Cast::compute<DataType>(rsqrtf(Cast::compute<float>(input)));
     }
 
-    static DEVICE fp16 compute(fp16 input) { return hrsqrt(input); }
+    static DEVICE fp16 compute(const fp16 &input) { return hrsqrt(input); }
 
-    static DEVICE fp16x2 compute(fp16x2 input) { return h2rsqrt(input); }
+    static DEVICE fp16x2 compute(const fp16x2 &input) { return h2rsqrt(input); }
 
-    static DEVICE bf16 compute(bf16 input) { return hrsqrt(input); }
+    static DEVICE bf16 compute(const bf16 &input) { return hrsqrt(input); }
 
-    static DEVICE bf16x2 compute(bf16x2 input) { return h2rsqrt(input); }
+    static DEVICE bf16x2 compute(const bf16x2 &input) { return h2rsqrt(input); }
 };
 
 struct Max {
     template <typename DataType>
-    static DEVICE DataType compute(DataType a, DataType b) {
+    static DEVICE DataType compute(const DataType &a, const DataType &b) {
         return (a > b) ? a : b;
     }
 
-    static DEVICE float compute(float a, float b) { return fmaxf(a, b); }
+    static DEVICE float compute(const float &a, const float &b) {
+        return fmaxf(a, b);
+    }
 
-    static DEVICE fp16 compute(fp16 a, fp16 b) { return __hmax(a, b); }
+    static DEVICE fp16 compute(const fp16 &a, const fp16 &b) {
+        return __hmax(a, b);
+    }
 
-    static DEVICE fp16x2 compute(fp16x2 a, fp16x2 b) {
+    static DEVICE fp16x2 compute(const fp16x2 &a, const fp16x2 &b) {
 #if defined(ARK_TARGET_CUDA_ARCH) && (ARK_TARGET_CUDA_ARCH >= 800)
         return __hmax2(a, b);
 #else
@@ -276,9 +346,13 @@ struct Max {
 #endif
     }
 
-    static DEVICE bf16 compute(bf16 a, bf16 b) { return __hmax(a, b); }
+    static DEVICE bf16 compute(const bf16 &a, const bf16 &b) {
+        return __hmax(a, b);
+    }
 
-    static DEVICE bf16x2 compute(bf16x2 a, bf16x2 b) { return __hmax2(a, b); }
+    static DEVICE bf16x2 compute(const bf16x2 &a, const bf16x2 &b) {
+        return __hmax2(a, b);
+    }
 };
 
 }  // namespace type

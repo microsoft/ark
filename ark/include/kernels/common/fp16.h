@@ -80,6 +80,11 @@ struct Vtype<fp16, 2> {
     using type = fp16x2;
 };
 
+template <>
+struct Vtype<const fp16, 2> {
+    using type = const fp16x2;
+};
+
 }  // namespace type
 
 }  // namespace ark

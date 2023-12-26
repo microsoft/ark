@@ -378,15 +378,6 @@ class Model {
     // normalized tensor as `output`.
     Tensor *layernorm(Tensor *input, Tensor *output = nullptr,
                       const std::string &name = "layernorm");
-    // Applies RMS (Root Mean Square Layer Normalization) normalization to the
-    // `input` tensor and returns the normalized tensor as `output`.
-    Tensor *rmsnorm(Tensor *input, Tensor *output = nullptr,
-                    const std::string &name = "rmsnorm");
-    // Applies softmax activation to the `input` tensor, with the softmax
-    // operator
-    // being performed on the last dimension of the input tensor.
-    Tensor *softmax(Tensor *input, Tensor *output = nullptr,
-                    const std::string &name = "softmax");
     // Transposes the `input` tensor according to the given `perm` permutation.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
@@ -417,12 +408,19 @@ class Model {
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
     Tensor *scale(Tensor *input, float val, Tensor *output = nullptr,
                   const std::string &name = "scale");
+    //
+    template <typename MathOpType>
+    Tensor *math(Tensor *input, Tensor *output = nullptr,
+                 const std::string &name = "math");
     // Calculates the exponential of the `input` tensor, element-wise.
     Tensor *exp(Tensor *input, Tensor *output = nullptr,
                 const std::string &name = "exp");
     // Calculates the square root of the `input` tensor, element-wise.
     Tensor *sqrt(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "sqrt");
+    // Calculates the reverse square root of the `input` tensor, element-wise.
+    Tensor *rsqrt(Tensor *input, Tensor *output = nullptr,
+                  const std::string &name = "rsqrt");
     // ReLU activation
     Tensor *relu(Tensor *input, Tensor *output = nullptr,
                  const std::string &name = "relu");
@@ -440,6 +438,10 @@ class Model {
     // Performs rotary position embedding (RoPE) on the `input` tensor
     Tensor *rope(Tensor *input, Tensor *other, Tensor *output = nullptr,
                  const std::string &name = "rope");
+    // Template for broadcated arithmetic operators.
+    template <typename ArithmeticOpType>
+    Tensor *arithmetic(Tensor *input, Tensor *other, Tensor *output = nullptr,
+                       const std::string &name = "arithmeitc");
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor *add(Tensor *input, Tensor *other, Tensor *output = nullptr,
