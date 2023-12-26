@@ -12,7 +12,7 @@
 
 #include "env.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 
 #define OP_PREFIX "op"
 #define UNIT_OP_PREFIX "uop"

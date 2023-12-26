@@ -8,7 +8,7 @@
 #include "ark.h"
 #include "gpu/gpu_buffer.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 
 #define DEBUG_PADDING 0
 #define PADDING_DEBUG(...)           \
