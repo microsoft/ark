@@ -8,8 +8,6 @@
 #include "logging.h"
 #include "model.h"
 
-using namespace std;
-
 #define DEBUG_OPGRAPH 0
 #define OPGRAPH_DEBUG(...)           \
     do {                             \
@@ -293,8 +291,7 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
                 continue;
             }
         }
-        // The candidate has only one user. Merge the two nodes.
-
+        // We can merge the two nodes.
         // Merge `boundary_node` into `merge_candidate`.
         OPGRAPH_DEBUG("  merge: ", merge_candidate->get_name(), " -> ",
                       boundary_node->get_name());
@@ -314,7 +311,7 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
             producer->users.insert(merge_candidate);
             merge_candidate->producers.insert(producer);
         }
-        merge_candidate->users = boundary_node->users;
+        merge_candidate->users.erase(boundary_node);
 
         // Remove `boundary_node` from `nodes`.
         auto it =
