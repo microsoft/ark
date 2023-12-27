@@ -12,7 +12,7 @@
 
 #include "env.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 
 #define OP_PREFIX "op"
 #define UNIT_OP_PREFIX "uop"
@@ -393,25 +393,6 @@ std::ostream &CodeGenerator::opseq(std::ostream &os, const std::string &name,
     if (idx != sched_ops.size()) {
         os << "}\n";
     }
-    return os;
-}
-
-std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const {
-    os << "if(";
-    if (sched.sm_b > 0) os << "blockIdx.x >= " << sched.sm_b << "&& ";
-    os << "blockIdx.x < " << sched.sm_e << "){\n";
-    os << "  if(";
-    if (sched.th_b > 0) os << "threadIdx.x >= " << sched.th_b << " && ";
-    os << "threadIdx.x<" << sched.th_e << "){\n";
-    SchedOpSeq *opseq = sched.opseq;
-    os << "    opseq_" << opseq->get_id() << "_tile_task"
-       << "(" << sched.alpha << "*(blockIdx.x - " << sched.sm_b << ") + "
-       << "threadIdx.x / " << opseq->get_num_warps() * 32 << " + " << sched.beta
-       << ");\n";
-    os << "    "
-       << "ark::sync_warps<" << opseq->get_num_warps() << ">();\n";
-    os << "  }\n"
-       << " }\n";
     return os;
 }
 

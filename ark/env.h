@@ -42,7 +42,7 @@ struct Env {
 };
 
 // Get the global Env.
-const Env &get_env();
+const Env &get_env(bool reset = false);
 
 }  // namespace ark
 

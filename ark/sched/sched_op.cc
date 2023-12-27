@@ -4,7 +4,7 @@
 #include "sched/sched_op.h"
 
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 
 using namespace std;
 

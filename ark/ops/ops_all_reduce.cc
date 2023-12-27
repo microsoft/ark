@@ -5,7 +5,7 @@
 #include <mscclpp/packet_device.hpp>
 
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "model.h"
 #include "ops_common.h"
 constexpr int MSCCLPP_PACKET_SIZE = sizeof(mscclpp::LLPacket);

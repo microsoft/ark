@@ -10,7 +10,7 @@
 
 #include "include/ark.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "sched_branch.h"
 
 namespace ark {

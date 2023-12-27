@@ -29,7 +29,7 @@ GpuEvent::Impl::Impl(const GpuManager& manager, bool disable_timing)
     if (disable_timing) {
         flags |= gpuEventDisableTiming;
     }
-    GLOG(gpuEventCreate(&event_, flags));
+    GLOG(gpuEventCreateWithFlags(&event_, flags));
 }
 
 GpuEvent::Impl::~Impl() { GLOG(gpuEventDestroy(event_)); }
