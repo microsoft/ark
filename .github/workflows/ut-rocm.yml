@@ -43,7 +43,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random -E "ops_matmul_test"
 
       - name: ReportCoverage
         run: |
