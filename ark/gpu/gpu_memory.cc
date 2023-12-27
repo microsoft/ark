@@ -24,6 +24,7 @@ class GpuMemory::Impl {
     void from_device(const void* src, size_t offset, size_t bytes, bool async);
     void sync() const;
     void memset(int value, size_t offset, size_t bytes);
+    void memset_d32(int value, size_t offset, size_t nelems);
 
    private:
     friend class GpuMemory;
@@ -34,16 +35,16 @@ class GpuMemory::Impl {
     size_t align_;
     size_t bytes_raw_;
     bool is_remote_;
-    gpuDeviceptr dev_ptr_raw_;
-    gpuDeviceptr dev_ptr_aligned_;
+    void* dev_ptr_raw_;
+    void* dev_ptr_aligned_;
 };
 
 GpuMemory::Impl::Impl(const GpuManager& manager, size_t bytes, size_t align,
                       [[maybe_unused]] bool expose)
     : manager_(manager), bytes_(bytes), align_(align), is_remote_(false) {
     if (bytes_ == 0) {
-        dev_ptr_aligned_ = (gpuDeviceptr) nullptr;
-        dev_ptr_raw_ = (gpuDeviceptr)(nullptr);
+        dev_ptr_aligned_ = nullptr;
+        dev_ptr_raw_ = nullptr;
         return;
     }
 
@@ -56,32 +57,33 @@ GpuMemory::Impl::Impl(const GpuManager& manager, size_t bytes, size_t align,
     manager_.set_current();
     bytes_raw_ = bytes_ + align_ - 1;
 #if defined(ARK_CUDA)
-    GLOG(gpuMemAlloc(&dev_ptr_raw_, bytes_raw_));
+    GLOG(gpuMalloc(&dev_ptr_raw_, bytes_raw_));
 #elif defined(ARK_ROCM)
     if (expose) {
         GLOG(hipExtMallocWithFlags(&dev_ptr_raw_, bytes_raw_,
                                    hipDeviceMallocUncached));
     } else {
-        GLOG(gpuMemAlloc(&dev_ptr_raw_, bytes_raw_));
+        GLOG(gpuMalloc(&dev_ptr_raw_, bytes_raw_));
     }
 #endif
 
     // Make sure the raw pointer is a base pointer.
     gpuDeviceptr base_ptr;
     size_t base_size;
-    GLOG(gpuMemGetAddressRange(&base_ptr, &base_size, dev_ptr_raw_));
-    if (base_ptr != dev_ptr_raw_) {
+    GLOG_DRV(gpuMemGetAddressRange(&base_ptr, &base_size,
+                                   (gpuDeviceptr)dev_ptr_raw_));
+    if ((void*)base_ptr != dev_ptr_raw_) {
         LOG(ERROR, "unexpected error: dev_ptr_raw_ is not a base pointer.");
     }
     dev_ptr_aligned_ =
-        (gpuDeviceptr)(((size_t)dev_ptr_raw_ + align_ - 1) & ~(align_ - 1));
+        (void*)(((size_t)dev_ptr_raw_ + align_ - 1) & ~(align_ - 1));
 
     int one = 1;
-    GLOG(gpuPointerSetAttribute(&one, gpuPointerAttributeSyncMemops,
-                                dev_ptr_aligned_));
+    GLOG_DRV(gpuPointerSetAttribute(&one, gpuPointerAttributeSyncMemops,
+                                    (gpuDeviceptr)dev_ptr_aligned_));
 
     // Initialize.
-    manager_.memset(reinterpret_cast<void*>(dev_ptr_raw_), 0, bytes_raw_);
+    manager_.memset(dev_ptr_raw_, 0, bytes_raw_);
     LOG(DEBUG, "Created GpuMemory addr 0x", std::hex, dev_ptr_aligned_,
         std::dec, " bytes ", bytes_);
 }
@@ -92,15 +94,15 @@ GpuMemory::Impl::Impl(const GpuManager& manager,
       remote_memory_(remote_memory),
       bytes_(remote_memory_.size()),
       is_remote_(true),
-      dev_ptr_raw_((gpuDeviceptr) nullptr),
-      dev_ptr_aligned_((gpuDeviceptr)remote_memory.data()) {}
+      dev_ptr_raw_(nullptr),
+      dev_ptr_aligned_(remote_memory.data()) {}
 
 GpuMemory::Impl::~Impl() {
     if (is_remote_) {
         return;
     }
-    if (dev_ptr_raw_ != (gpuDeviceptr) nullptr) {
-        GLOG(gpuMemFree(dev_ptr_raw_));
+    if (dev_ptr_raw_ != nullptr) {
+        GLOG(gpuFree(dev_ptr_raw_));
     }
 }
 
@@ -139,9 +141,18 @@ void GpuMemory::Impl::memset(int value, size_t offset, size_t bytes) {
         !this->remote_memory_.transports().has(mscclpp::Transport::CudaIpc)) {
         LOG(ERROR, "cannot memset remote memory.");
     }
-    void* dev_ptr = reinterpret_cast<void*>(dev_ptr_aligned_);
-    manager_.memset(reinterpret_cast<void*>((size_t)dev_ptr + offset), value,
-                    bytes);
+    manager_.memset(reinterpret_cast<void*>((size_t)dev_ptr_aligned_ + offset),
+                    value, bytes);
+}
+
+void GpuMemory::Impl::memset_d32(int value, size_t offset, size_t nelems) {
+    if (is_remote_ &&
+        !this->remote_memory_.transports().has(mscclpp::Transport::CudaIpc)) {
+        LOG(ERROR, "cannot memset remote memory.");
+    }
+    manager_.memset_d32(
+        reinterpret_cast<void*>((size_t)dev_ptr_aligned_ + offset), value,
+        nelems);
 }
 
 GpuMemory::GpuMemory(const GpuManager& manager, size_t bytes, size_t align,
@@ -163,18 +174,16 @@ void GpuMemory::resize(const mscclpp::RegisteredMemory& remote_memory) {
     this->pimpl_ = std::make_shared<Impl>(pimpl_->manager_, remote_memory);
 }
 
-GpuPtr GpuMemory::ref(size_t offset) const {
-    return reinterpret_cast<GpuPtr>(
-        reinterpret_cast<long long unsigned int>(pimpl_->dev_ptr_aligned_) +
-        offset);
-}
-
 size_t GpuMemory::bytes() const { return pimpl_->bytes_; }
 
 void GpuMemory::sync() const { pimpl_->sync(); }
 
 void GpuMemory::memset(int value, size_t offset, size_t bytes) {
     pimpl_->memset(value, offset, bytes);
+}
+
+void GpuMemory::memset_d32(int value, size_t offset, size_t nelems) {
+    pimpl_->memset_d32(value, offset, nelems);
 }
 
 void GpuMemory::memcpy_from(const void* src, size_t offset, size_t bytes,
@@ -188,6 +197,12 @@ void GpuMemory::memcpy_from(const void* src, size_t offset, size_t bytes,
 
 void GpuMemory::memcpy_to(void* dst, size_t offset, size_t bytes) {
     pimpl_->to_host(dst, offset, bytes, false);
+}
+
+void* GpuMemory::ref_impl(size_t offset) const {
+    return reinterpret_cast<void*>(
+        reinterpret_cast<long long unsigned int>(pimpl_->dev_ptr_aligned_) +
+        offset);
 }
 
 void GpuMemory::to_host(void* dst, size_t bytes, bool async) const {

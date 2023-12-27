@@ -12,9 +12,11 @@
 
 #include "gpu/gpu_buffer.h"
 #include "gpu/gpu_memory.h"
-#include "gpu_common.h"
 
 namespace ark {
+
+// Constants.
+enum { MAX_NUM_SID = 65536 };
 
 class GpuBuf;
 
