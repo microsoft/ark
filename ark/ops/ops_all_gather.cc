@@ -4,7 +4,7 @@
 #include <cassert>
 
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "model.h"
 #include "ops_common.h"
 

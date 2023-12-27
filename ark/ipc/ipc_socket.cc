@@ -111,18 +111,6 @@ IpcSocket::State IpcSocket::add_item(const std::string &name, const void *data,
     return SUCCESS;
 }
 
-IpcSocket::State IpcSocket::remove_item(const std::string &name) {
-    auto it = this->items.find(name);
-    if (it == this->items.end()) {
-        return ITEM_NOT_FOUND;
-    }
-    if (it->second.data != nullptr) {
-        free(it->second.data);
-    }
-    this->items.erase(it);
-    return SUCCESS;
-}
-
 IpcSocket::State IpcSocket::query_item_internal(const std::string &ip, int port,
                                                 const std::string &name,
                                                 void *data, int size,

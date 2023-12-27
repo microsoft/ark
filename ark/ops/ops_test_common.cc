@@ -255,13 +255,12 @@ OpsTestResult op_test_32(const std::string &test_name_prefix, Model &model,
 }
 
 OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size) {
-    GLOG(gpuMemAlloc(reinterpret_cast<gpuDeviceptr *>(&this->gpu_ptr_), size));
+    GLOG(gpuMalloc(&this->gpu_ptr_, size));
 }
 
 OpsTestGpuMem::~OpsTestGpuMem() {
-    if (gpuMemFree(reinterpret_cast<gpuDeviceptr>(this->gpu_ptr_)) !=
-        gpuSuccess) {
-        LOG(WARN, "gpuMemFree() failed.");
+    if (gpuFree(this->gpu_ptr_) != gpuSuccess) {
+        LOG(WARN, "gpuFree() failed.");
     }
 }
 
@@ -271,8 +270,7 @@ size_t OpsTestGpuMem::size() const { return this->size_; }
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size) {
     OpsTestGpuMem gpu_mem(size);
-    GLOG(gpuMemcpyHtoD(reinterpret_cast<gpuDeviceptr>(gpu_mem.get()), host_ptr,
-                       size));
+    GLOG(gpuMemcpy(gpu_mem.get(), host_ptr, size, gpuMemcpyHostToDevice));
     return gpu_mem;
 }
 
@@ -280,9 +278,8 @@ void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr) {
     if (host_ptr == nullptr) {
         host_ptr = ::malloc(test_gpu_mem.size());
     }
-    GLOG(gpuMemcpyDtoH(host_ptr,
-                       reinterpret_cast<gpuDeviceptr>(test_gpu_mem.get()),
-                       test_gpu_mem.size()));
+    GLOG(gpuMemcpy(host_ptr, test_gpu_mem.get(), test_gpu_mem.size(),
+                   gpuMemcpyDeviceToHost));
     return host_ptr;
 }
 

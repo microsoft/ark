@@ -19,8 +19,7 @@ class GpuLoopKernel : public GpuKernel {
                   const std::vector<std::string> &codes, int num_sm,
                   int num_warp, unsigned int smem_bytes);
 
-    GpuState launch(std::shared_ptr<GpuStream> stream,
-                    bool disable_timing = true);
+    void launch(std::shared_ptr<GpuStream> stream, bool disable_timing = true);
     void load();
     void run(int iter = 1);
     bool poll();

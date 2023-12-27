@@ -14,7 +14,7 @@ GpuBuffer::GpuBuffer(int gpu_id, const std::shared_ptr<GpuMemory> memory,
       offset_(offset),
       bytes_(bytes) {}
 
-GpuPtr GpuBuffer::ref(size_t offset) const {
+void* GpuBuffer::ref(size_t offset) const {
     return memory_->ref(offset_ + offset);
 }
 
@@ -29,7 +29,13 @@ void GpuBuffer::memset(int value, size_t offset, size_t bytes) {
 }
 
 void GpuBuffer::memset_d32(int value, size_t offset, size_t nelems) {
-    this->memset(value, offset, nelems * sizeof(int));
+    const size_t& buffer_bytes = this->get_bytes();
+    if (buffer_bytes < nelems * sizeof(int)) {
+        ERR(InvalidUsageError,
+            "memset requests too many elements. Expected <= ", buffer_bytes,
+            ", given ", nelems * sizeof(int));
+    }
+    memory_->memset_d32(value, offset_ + offset, nelems);
 }
 
 void GpuBuffer::from_host(size_t dst_offset, const void* src, size_t src_offset,

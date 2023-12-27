@@ -7,7 +7,6 @@
 #include "include/ark.h"
 #include "sched/sched_codegen.h"
 #include "sched/sched_opgraph.h"
-#include "sched/sched_profiler.h"
 #include "sched/sched_stream.h"
 
 namespace ark {
@@ -74,10 +73,6 @@ class DefaultScheduler : public BaseScheduler {
 
    protected:
     void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
-    void schedule_depth(std::vector<SchedOpSeq *> &depth,
-                        std::vector<Sched> &scheds);
-    void schedule_depth_comm(std::vector<SchedOpSeq *> &depth,
-                             std::vector<Sched> &scheds);
     void heuristic_optimize_model(Model &model, Model::Impl *model_impl,
                                   const GpuManager::Info &gpu_info, int num_sm);
     void heuristic_optimize_matmul(Model &model, Model::Impl *model_impl,

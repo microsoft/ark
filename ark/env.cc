@@ -10,7 +10,7 @@
 #define DEFAULT_ARK_LOG_LEVEL "INFO"
 #define DEFAULT_ARK_ROOT "/usr/local/ark"
 #define DEFAULT_ARK_TMP "/tmp/ark"
-#define DEFAULT_ARK_KEEP_TMP false
+#define DEFAULT_ARK_KEEP_TMP true
 #define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
 #define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
@@ -85,8 +85,8 @@ Env::Env() {
 std::shared_ptr<Env> _ARK_ENV_GLOBAL = nullptr;
 
 // Get the global Env.
-const Env &get_env() {
-    if (_ARK_ENV_GLOBAL.get() == nullptr) {
+const Env &get_env(bool reset) {
+    if (reset || (_ARK_ENV_GLOBAL.get() == nullptr)) {
         _ARK_ENV_GLOBAL.reset(new Env);
     }
     return *_ARK_ENV_GLOBAL;

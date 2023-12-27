@@ -11,7 +11,7 @@ namespace ark {
 /// Return a hostname from the hostfile.
 /// @param idx Index of the hostname to return.
 /// @return The hostname.
-const std::string &get_host(int idx);
+const std::string get_host(int idx);
 
 }  // namespace ark
 

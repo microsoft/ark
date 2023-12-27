@@ -12,7 +12,7 @@
 
     A directory to store temporal files that ARK generates.
 
-- `ARK_KEEP_TMP` (Default: `0`; Options: `0`, `1`)
+- `ARK_KEEP_TMP` (Default: `1`; Options: `0`, `1`)
 
     If set to `1`, do not remove temporal files in the `ARK_TMP` directory, vice versa.
 

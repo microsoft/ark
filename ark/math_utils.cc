@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "math.h"
+#include "math_utils.h"
 
 #include "include/ark.h"
 #include "logging.h"
