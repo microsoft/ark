@@ -3,7 +3,6 @@
 
 #include "sched/sched.h"
 
-#include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "logging.h"
 #include "ops/ops_test_common.h"

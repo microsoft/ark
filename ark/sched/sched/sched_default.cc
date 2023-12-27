@@ -57,11 +57,9 @@ static int calc_num_tiles(const Op &op, const OpTile &tile) {
 /// @param gpu_info GPU info to optimize for
 /// @param num_sm number of SMs to use for this op. This should be equal to or
 /// less than the number of SMs on the GPU (`gpu_info.num_sm`).
-void DefaultScheduler::heuristic_optimize_matmul(Model &model,
-                                                 Model::Impl *model_impl,
-                                                 Op &matmul_op,
-                                                 const GpuInfo &gpu_info,
-                                                 int num_sm) {
+void DefaultScheduler::heuristic_optimize_matmul(
+    Model &model, Model::Impl *model_impl, Op &matmul_op,
+    const GpuManager::Info &gpu_info, int num_sm) {
     if (matmul_op.type != OP_MATMUL) {
         ERR(SchedulerError, "This is not a matmul op.");
     }
@@ -147,10 +145,9 @@ void DefaultScheduler::heuristic_optimize_matmul(Model &model,
 /// @param gpu_info GPU info to optimize for
 /// @param num_sm number of SMs to use for this op. This should be equal to or
 /// less than the number of SMs on the GPU (`gpu_info.num_sm`).
-void DefaultScheduler::heuristic_optimize_model(Model &model,
-                                                Model::Impl *model_impl,
-                                                const GpuInfo &gpu_info,
-                                                int num_sm) {
+void DefaultScheduler::heuristic_optimize_model(
+    Model &model, Model::Impl *model_impl, const GpuManager::Info &gpu_info,
+    int num_sm) {
     if (get_env().disable_graph_opt) {
         LOG(INFO, "Graph optimization is disabled.");
         return;
@@ -170,7 +167,7 @@ void DefaultScheduler::heuristic_optimize_model(Model &model,
 DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
                                    int world_size_, int num_warps_per_sm_)
     : BaseScheduler(model, gpu_id, rank_, world_size_, num_warps_per_sm_) {
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
 
     // Number of SMs to use for computation. The last SM is preserved for
     // communication only.
@@ -211,7 +208,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
     if (nodes.empty()) {
         return;
     }
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
 
     std::list<OpNode *> next_nodes;
     std::vector<SchedItem> comp_items;
@@ -503,12 +500,13 @@ void DefaultScheduler::configure_gpu_buf(
             for (auto &p : search->second) {
                 Tensor *t = p.first;
                 sid = p.second;
-                this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, buf->bytes,
-                                             buf, sid, t->offset_bytes());
+                this->buf_infos.emplace_back(this->gpu_mgr->get_gpu_id(),
+                                             buf->bytes, buf, sid,
+                                             t->offset_bytes());
             }
         } else {
-            this->buf_infos.emplace_back(this->gpu_mgr->gpu_id, buf->bytes, buf,
-                                         sid, 0);
+            this->buf_infos.emplace_back(this->gpu_mgr->get_gpu_id(),
+                                         buf->bytes, buf, sid, 0);
         }
     }
 }
@@ -552,7 +550,7 @@ std::vector<std::string> DefaultScheduler::gen_code() {
                              *opseq, uop_map);
     }
 
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
     int num_sm_comp = gpu_info.num_sm - 1;
     int num_sm_comm = 1;
 

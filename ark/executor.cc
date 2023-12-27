@@ -16,38 +16,24 @@ namespace ark {
 Executor::Impl::Impl(int rank, int world_size, Model &model,
                      const std::string &name, int num_warps_per_sm)
     : rank_{rank}, world_size_{world_size} {
-    //
     gpu_id_ = rank_ % get_env().num_ranks_per_host;
     sched_.reset(static_cast<BaseScheduler *>(new DefaultScheduler{
         model, gpu_id_, rank_, world_size_, num_warps_per_sm}));
 
-    const GpuInfo &ginfo = get_gpu_mgr(gpu_id_)->get_gpu_info();
     sched_->schedule();
-    ctx_ = sched_->create_context(name);
-    stream_ = ctx_->create_stream();
+    ctx_ = sched_->create_context();
+    const GpuManager::Info &ginfo = ctx_->get_gpu_manager()->info();
+    stream_ = ctx_->get_gpu_manager()->create_stream();
     glk_ = std::make_unique<GpuLoopKernel>(
-        name, sched_->gen_code(), (unsigned int)ginfo.num_sm,
-        (unsigned int)num_warps_per_sm, (unsigned int)ginfo.smem_block_total,
-        "", ctx_);
+        ctx_, name, sched_->gen_code(), ginfo.num_sm, num_warps_per_sm,
+        (unsigned int)ginfo.smem_block_total);
 }
 
-Executor::Impl::~Impl() {
-    // TODO: pass a shared pointer of GpuMgrCtx to GpuLoopKernel
-    // so that we don't need to call reset() here.
-    glk_.reset();
-    get_gpu_mgr(gpu_id_)->destroy_context(ctx_);
-}
-
-void Executor::Impl::compile() {
-    glk_->compile(get_gpu_mgr(gpu_id_)->get_gpu_info());
-}
+void Executor::Impl::compile() { glk_->compile(); }
 
 void Executor::Impl::launch() {
     glk_->load();
-    GpuState ret = glk_->launch(stream_, false);
-    if (ret != 0) {
-        ERR(ExecutorError, "failed to launch this executor.");
-    }
+    glk_->launch(stream_, false);
 }
 
 void Executor::Impl::run(int iter) { glk_->run(iter); }

@@ -21,14 +21,12 @@ using namespace std;
 
 namespace ark {
 
-float SchedProfiler::profile_routine(GpuLoopKernel *glk, GpuMgrCtx *ctx) {
+float SchedProfiler::profile_routine(std::shared_ptr<GpuLoopKernel> glk,
+                                     std::shared_ptr<GpuContext> ctx) {
     const int probe_iter = 10;
 
     glk->load();
-    GpuState ret = glk->launch(ctx->create_stream(), false);
-    if (ret != gpuSuccess) {
-        ERR(ExecutorError, "launch() failed with error code ", ret);
-    }
+    glk->launch(ctx->get_gpu_manager()->create_stream(), false);
 
     int test_iter = probe_iter * 1e2 / 1;
     if (test_iter == 0) test_iter = 1;
@@ -154,10 +152,11 @@ vector<Sched> gen_sched(SchedTileDepth *tile_depths, int num_warps_per_sm) {
     return scheds;
 }
 
-void SchedProfiler::profile(OpGraph *, CodeGenerator &, GpuMgrCtx *) {
+void SchedProfiler::profile(OpGraph *, CodeGenerator &,
+                            std::shared_ptr<GpuContext>) {
 #if 0
     using ProfCallback = function<void(float, int)>;
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    GpuManager::Info &gpu_info = this->gpu_mgr->info();
     // Get or create entry of profile results.
     auto &res = this->wps_prof_results[this->num_warps_per_sm];
     //

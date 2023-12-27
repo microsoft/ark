@@ -4,6 +4,7 @@
 #include <cassert>
 #include <type_traits>
 
+#include "gpu/gpu.h"
 #include "ops_test_common.h"
 
 #if defined(ARK_CUDA)
@@ -24,9 +25,6 @@ constexpr auto BLAS_R_16BF = CUDA_R_16BF;
 constexpr auto BLAS_COMPUTE_32F = CUBLAS_COMPUTE_32F;
 constexpr auto BLAS_COMPUTE_32F_FAST_TF32 = CUBLAS_COMPUTE_32F_FAST_TF32;
 constexpr auto BLAS_COMPUTE_16F = CUBLAS_COMPUTE_16F;
-
-ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, cublasCreate);
-ARK_GPU_DEFINE_FUNC_ALIAS(blasDestroy, cublasDestroy);
 
 inline auto blasGemmEx(blasHandle handle, blasOperation transA,
                        blasOperation transB, int m, int n, int k,
@@ -71,9 +69,6 @@ constexpr auto BLAS_COMPUTE_32F = rocblas_datatype_f32_r;
     rocblas_datatype_f32_r;
 [[maybe_unused]] constexpr auto BLAS_COMPUTE_16F = rocblas_datatype_f16_r;
 
-ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, rocblas_create_handle);
-ARK_GPU_DEFINE_FUNC_ALIAS(blasDestroy, rocblas_destroy_handle);
-
 inline auto blasGemmEx(blasHandle handle, blasOperation transA,
                        blasOperation transB, int m, int n, int k,
                        const void *alpha, const void *A, blasDataType Atype,
@@ -98,6 +93,9 @@ inline auto blasGemmStridedBatchedEx(
 }
 
 #endif
+
+ARK_GPU_DEFINE_FUNC_ALIAS(blasCreate, cublasCreate, rocblas_create_handle);
+ARK_GPU_DEFINE_FUNC_ALIAS(blasDestroy, cublasDestroy, rocblas_destroy_handle);
 
 class BlasHandle {
    public:

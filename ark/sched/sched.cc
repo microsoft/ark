@@ -13,11 +13,11 @@ namespace ark {
 BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
                              int world_size_, int num_warps_per_sm_)
     : model{&model},
-      gpu_mgr{get_gpu_mgr(gpu_id)},
+      gpu_mgr{GpuManager::get_instance(gpu_id)},
       rank{rank_},
       world_size{world_size_},
-      num_warps_per_sm{num_warps_per_sm_} {
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+      ctx{GpuContext::get_context(rank_, world_size_)} {
+    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
     int max_warps_per_sm =
         (int)(gpu_info.max_threads_per_block / gpu_info.threads_per_warp);
     this->num_warps_per_sm = std::min(num_warps_per_sm_, max_warps_per_sm);
@@ -26,35 +26,32 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
 }
 
 // create context on gpu for the model
-GpuMgrCtx *BaseScheduler::create_context(const std::string &name) {
-    GpuMgrCtx *ctx =
-        this->gpu_mgr->create_context(name, this->rank, this->world_size);
+std::shared_ptr<GpuContext> BaseScheduler::create_context() {
     for (BufInfo &bi : this->buf_infos) {
-        GpuBuf *buf;
-        if (bi.gpu_id == this->gpu_mgr->gpu_id) {
+        std::shared_ptr<GpuBuffer> buf;
+        if (bi.gpu_id == this->gpu_mgr->get_gpu_id()) {
             if (bi.tbuf->buf != nullptr) {
                 // Already allocated.
-                buf = static_cast<GpuBuf *>(bi.tbuf->buf);
+                buf = bi.tbuf->buf;
                 if (bi.sid != -1) {
-                    ctx->mem_export(buf, bi.offset, bi.sid);
+                    this->ctx->export_buffer(buf, bi.offset, bi.sid);
                 }
             } else if (bi.sid == -1) {
-                buf = ctx->mem_alloc(bi.bytes, 1);
+                buf = this->ctx->allocate_buffer(bi.bytes, 1);
             } else {
                 // Align for RDMA performance.
-                buf = ctx->mem_alloc(bi.bytes, 65536);
-                ctx->mem_export(buf, bi.offset, bi.sid);
+                buf = this->ctx->allocate_buffer(bi.bytes, 65536);
+                this->ctx->export_buffer(buf, bi.offset, bi.sid);
             }
         } else {
-            buf = ctx->mem_import(bi.bytes, bi.sid, bi.gpu_id);
+            buf = this->ctx->import_buffer(bi.bytes, bi.gpu_id, bi.sid);
         }
         if (bi.tbuf != nullptr) {
             bi.tbuf->buf = buf;
         }
     }
-    ctx->freeze();
-    this->ctx = ctx;
-    return ctx;
+    this->ctx->freeze();
+    return this->ctx;
 }
 
 const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
@@ -65,7 +62,7 @@ const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     if (output == nullptr || op->cfg_map == nullptr) {
         return nullptr;
     }
-    const GpuInfo &gpu_info = this->gpu_mgr->get_gpu_info();
+    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
     OpArchType arch_type = op_arch_from_string(gpu_info.arch);
     if (arch_type == OP_ARCH_UNKNOWN) {
         ERR(SchedulerError, "unsupported GPU architecture ", gpu_info.arch,

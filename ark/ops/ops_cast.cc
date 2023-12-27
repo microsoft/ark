@@ -159,8 +159,6 @@ const OpConfigMap Broadcast1ConfigMap = {
     {{OP_ARCH_ANY, "any"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {1, 0, {{1, 8192}}, {{1, 8192}}, false, false},
-         {1, 0, {{8192, 1}}, {{8192, 1}}, false, false},
          {1, 0, {{1, 512}}, {{1, 512}}, false, false},
          {1, 0, {{512, 1}}, {{512, 1}}, false, false},
          {1, 0, {{1, 256}}, {{1, 256}}, false, false},

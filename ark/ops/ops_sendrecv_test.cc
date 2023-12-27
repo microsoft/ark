@@ -4,7 +4,6 @@
 #include <numeric>
 
 #include "env.h"
-#include "gpu/gpu_kernel.h"
 #include "include/ark.h"
 #include "ipc/ipc_coll.h"
 #include "logging.h"

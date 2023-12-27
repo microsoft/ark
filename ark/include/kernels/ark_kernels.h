@@ -6,7 +6,6 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
-#include "activation.h"
 #include "arithmetic.h"
 #include "cast.h"
 #include "comm.h"
