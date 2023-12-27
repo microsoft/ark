@@ -14,8 +14,6 @@ A GPU-driven system framework for scalable AI applications.
 
 *NOTE (Nov 2023): ROCm unit tests will be replaced into an Azure pipeline in the future.*
 
-*NOTE (Dec 2023): ROCm unit tests are failing due to the nodes' issue. This will be fixed soon.*
-
 See [Quick Start](docs/quickstart.md) to quickly get started.
 
 ## Overview

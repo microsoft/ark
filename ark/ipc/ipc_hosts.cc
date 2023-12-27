@@ -18,7 +18,10 @@ namespace ark {
 
 static std::vector<std::string> hosts;
 
-const std::string get_host(int idx) {
+const std::string get_host(int idx, bool reset) {
+    if (reset) {
+        hosts.clear();
+    }
     if (hosts.size() == 0) {
         const auto &hostfile = get_env().hostfile;
         if (!is_file(hostfile)) {
