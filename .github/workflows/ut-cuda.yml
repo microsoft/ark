@@ -51,7 +51,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+          cd build && ARK_ROOT=$PWD ARK_IGNORE_BINARY_CACHE=1 ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
         run: |

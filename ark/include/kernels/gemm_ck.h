@@ -7,11 +7,6 @@
 #include <cassert>
 #include <type_traits>
 
-// TODO: temporal until CK officially supports gfx941/942
-#if defined(__gfx941__) || defined(__gfx942__)
-#define __gfx940__
-#endif
-
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp"
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp"
 #include "common/checker.h"

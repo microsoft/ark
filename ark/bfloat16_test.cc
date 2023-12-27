@@ -228,8 +228,26 @@ ark::unittest::State test_bfloat16() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_bfloat16_error() {
+    ark::bfloat16_t x(0.1f);
+    ark::bfloat16_t sum(0.0f);
+    int reduce_length = 256;   // should not exceed 2^8
+
+    for (int i = 0; i < reduce_length; ++i) {
+        sum += x * x;
+    }
+
+    // max diff = 2^(-8) * x * 2 * reduce_length = 0.2
+    UNITTEST_LOG(float(sum));
+    UNITTEST_TRUE(float(sum) >= 2.36f);
+    UNITTEST_TRUE(float(sum) <= 2.76f);
+
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_bfloat16);
+    UNITTEST(test_bfloat16_error);
     return 0;
 }
