@@ -16,10 +16,6 @@ int ipc_shm_open(const char *name);
 // If opening fails due to non-existence, block until it can open.
 // If opening fails due to any other reasons, return -1.
 int ipc_shm_open_blocking(const char *name);
-// Destroy a shm file.
-int ipc_shm_destroy(const char *name);
-// Return zero if we can open the shm file.
-int ipc_shm_exist(const char *name);
 
 }  // namespace ark
 
