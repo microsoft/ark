@@ -394,25 +394,6 @@ std::ostream &CodeGenerator::opseq(std::ostream &os, const std::string &name,
     return os;
 }
 
-std::ostream &CodeGenerator::sched(std::ostream &os, Sched &sched) const {
-    os << "if(";
-    if (sched.sm_b > 0) os << "blockIdx.x >= " << sched.sm_b << "&& ";
-    os << "blockIdx.x < " << sched.sm_e << "){\n";
-    os << "  if(";
-    if (sched.th_b > 0) os << "threadIdx.x >= " << sched.th_b << " && ";
-    os << "threadIdx.x<" << sched.th_e << "){\n";
-    SchedOpSeq *opseq = sched.opseq;
-    os << "    opseq_" << opseq->get_id() << "_tile_task"
-       << "(" << sched.alpha << "*(blockIdx.x - " << sched.sm_b << ") + "
-       << "threadIdx.x / " << opseq->get_num_warps() * 32 << " + " << sched.beta
-       << ");\n";
-    os << "    "
-       << "ark::sync_warps<" << opseq->get_num_warps() << ">();\n";
-    os << "  }\n"
-       << " }\n";
-    return os;
-}
-
 std::ostream &CodeGenerator::def_proxy_channels(std::ostream &os,
                                                 size_t num_channels) const {
     if (num_channels == 0) {

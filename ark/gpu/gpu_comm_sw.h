@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "gpu/gpu_buffer.h"
@@ -23,9 +24,6 @@ class GpuCommSw {
     GpuCommSw(const std::string &name, const int gpu_id, const int rank,
               const int world_size, std::shared_ptr<GpuMemory> data_mem);
     ~GpuCommSw();
-
-    void configure(const std::vector<std::pair<int, size_t>> &export_sid_offs,
-                   const std::map<int, std::vector<GpuBuf *>> &import_gid_bufs);
 
     void configure(
         const std::vector<std::pair<int, size_t>> &export_sid_offs,

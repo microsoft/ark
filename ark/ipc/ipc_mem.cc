@@ -104,15 +104,11 @@ IpcMem::IpcMem(const string &name, bool create, bool try_create)
         }
     }
     create_ = create;
-    locked_ = false;
 }
 
 // Destructor.
 IpcMem::~IpcMem() {
     if (lock_ != nullptr) {
-        if (locked_) {
-            this->unlock();
-        }
         if (create_) {
             string lock_name =
                 get_env().shm_name_prefix + name_ + NAME_LOCK_POSTFIX;
@@ -129,28 +125,6 @@ IpcMem::~IpcMem() {
         munmap(addr_, total_bytes_);
     }
 }
-
-void IpcMem::lock() {
-    assert(lock_ != nullptr);
-    assert(!locked_);
-    int r = ipc_lock_acquire(lock_);
-    if (r != 0) {
-        ERR(SystemError, "ipc_lock_acquire failed (errno ", r, ")");
-    }
-    locked_ = true;
-}
-
-void IpcMem::unlock() {
-    assert(lock_ != nullptr);
-    assert(locked_);
-    int r = ipc_lock_release(lock_);
-    if (r != 0) {
-        ERR(SystemError, "ipc_lock_release failed (errno ", r, ")");
-    }
-    locked_ = false;
-}
-
-bool IpcMem::is_locked() const { return locked_; }
 
 // Allocate/re-allocate the shared memory space of the data file.
 // Return the current mmapped address if the given `bytes`
