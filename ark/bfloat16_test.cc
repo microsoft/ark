@@ -231,7 +231,7 @@ ark::unittest::State test_bfloat16() {
 ark::unittest::State test_bfloat16_error() {
     ark::bfloat16_t x(0.1f);
     ark::bfloat16_t sum(0.0f);
-    int reduce_length = 256;   // should not exceed 2^8
+    int reduce_length = 256;  // should not exceed 2^8
 
     for (int i = 0; i < reduce_length; ++i) {
         sum += x * x;

@@ -125,13 +125,16 @@ struct CkGemmConfig<fp32, fp32, fp32, fp32, LayoutA, LayoutB, NumThreads,
             typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
             (IsColB ? 2 : 1),
             ((IsColB || BK1 == 1 || Is_256x128x256 || Is_128x128x128 ||
-                       Is_128x64x128 || Is_128x32x128)
-                          ? 4
-                          : NXdlPerWave),
-            BK1,
-            (BK1 == 4), 1, 1,
-            S<1, (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 || NumThreads == 64) ? 8 : 16, 1,
-              (Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 8 : 16>,
+              Is_128x64x128 || Is_128x32x128)
+                 ? 4
+                 : NXdlPerWave),
+            BK1, (BK1 == 4), 1, 1,
+            S<1,
+              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 ||
+               NumThreads == 64)
+                  ? 8
+                  : 16,
+              1, (Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 8 : 16>,
             4>;
 };
 
@@ -241,7 +244,10 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
                           : NXdlPerWave),
             BK1, (BK1 == 8), 1, 1,
             S<1,
-              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 || NumThreads == 64) ? 16 : 32,
+              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 ||
+               NumThreads == 64)
+                  ? 16
+                  : 32,
               1,
               ((Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 4 : 8)>,
             8>;
@@ -338,7 +344,10 @@ struct CkGemmConfig<bf16, bf16, bf16, fp32, LayoutA, LayoutB, NumThreads,
                           : NXdlPerWave),
             BK1, (BK1 == 8), 1, 1,
             S<1,
-              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 || NumThreads == 64) ? 16 : 32,
+              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 ||
+               NumThreads == 64)
+                  ? 16
+                  : 32,
               1,
               ((Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 4 : 8)>,
             8>;
