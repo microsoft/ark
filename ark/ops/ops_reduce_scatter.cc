@@ -139,21 +139,36 @@ Tensor *Model::local_reduce_scatter(Tensor *input, int gpu_id,
 
 const OpConfigMap ReadAndReduceConfigMap = {
     {{OP_ARCH_ANY, "any"},
-     {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-      // TODO: The config for 32MB elements, need to update for other message
-      // size
-      {16,
-       0,
-       {{-1, -1},
-        {-1, -1},
-        {-1, -1},
-        {-1, -1},
-        {-1, -1},
-        {-1, -1},
-        {-1, -1},
-        {-1, -1}},
-       {{1, 65536}, {-1, -1}},
-       false,
-       true}}},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         // TODO: The config for 32MB elements, need to update for other message
+         // size
+         {16,
+          0,
+          {{-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{1, 65536}, {-1, -1}},
+          false,
+          true},
+         {8,
+          0,
+          {{-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{1, 65536}, {-1, -1}},
+          false,
+          true},
+     }},
 };
 };  // namespace ark
