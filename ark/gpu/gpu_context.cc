@@ -9,7 +9,7 @@
 #include "gpu/gpu_comm_sw.h"
 #include "gpu/gpu_logging.h"
 #include "gpu_context.h"
-#include "math.h"
+#include "math_utils.h"
 
 namespace {
 constexpr size_t GPU_PAGE_SHIFT = 16;

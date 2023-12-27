@@ -3,6 +3,7 @@
 
 #include "gpu/gpu_comm_sw.h"
 
+#include <algorithm>
 #include <cassert>
 #include <list>
 #include <mscclpp/core.hpp>

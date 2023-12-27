@@ -43,8 +43,6 @@ class CodeGenerator {
                         const SchedOpSeq &opseq,
                         std::map<std::string, int> &uop_map) const;
 
-    std::ostream &sched(std::ostream &os, Sched &sched) const;
-
     std::ostream &def_proxy_channels(std::ostream &os,
                                      size_t num_channels) const;
 
