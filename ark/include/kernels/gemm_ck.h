@@ -81,6 +81,8 @@ struct CkGemmConfig<fp32, fp32, fp32, fp32, LayoutA, LayoutB, NumThreads,
         NumThreads == 128 && TileSizeM == 64 && TileSizeN == 128;
     static constexpr bool Is_128x128x128 =
         NumThreads == 128 && TileSizeM == 128 && TileSizeN == 128;
+    static constexpr bool Is_128x128x32 =
+        NumThreads == 128 && TileSizeM == 128 && TileSizeN == 32;
     static constexpr bool Is_128x32x128 =
         NumThreads == 128 && TileSizeM == 32 && TileSizeN == 128;
 
