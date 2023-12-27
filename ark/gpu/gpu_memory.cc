@@ -174,12 +174,6 @@ void GpuMemory::resize(const mscclpp::RegisteredMemory& remote_memory) {
     this->pimpl_ = std::make_shared<Impl>(pimpl_->manager_, remote_memory);
 }
 
-void* GpuMemory::ref(size_t offset) const {
-    return reinterpret_cast<void*>(
-        reinterpret_cast<long long unsigned int>(pimpl_->dev_ptr_aligned_) +
-        offset);
-}
-
 size_t GpuMemory::bytes() const { return pimpl_->bytes_; }
 
 void GpuMemory::sync() const { pimpl_->sync(); }
@@ -203,6 +197,12 @@ void GpuMemory::memcpy_from(const void* src, size_t offset, size_t bytes,
 
 void GpuMemory::memcpy_to(void* dst, size_t offset, size_t bytes) {
     pimpl_->to_host(dst, offset, bytes, false);
+}
+
+void* GpuMemory::ref_impl(size_t offset) const {
+    return reinterpret_cast<void*>(
+        reinterpret_cast<long long unsigned int>(pimpl_->dev_ptr_aligned_) +
+        offset);
 }
 
 void GpuMemory::to_host(void* dst, size_t bytes, bool async) const {

@@ -12,220 +12,174 @@
 #endif            // !defined(ARK_CUDA) && !defined(ARK_ROCM)
 
 #if defined(ARK_CUDA)
+
 #include <cuda.h>
 #include <cuda_runtime.h>
+#define ARK_GPU_DEFINE_TYPE_ALIAS(alias, cuda_type, rocm_type) \
+    using alias = cuda_type;
+#define ARK_GPU_DEFINE_CONSTANT_ALIAS(alias, cuda_const, rocm_const) \
+    constexpr auto alias = cuda_const;
+#define ARK_GPU_DEFINE_FUNC_ALIAS(alias, cuda_func, rocm_func) \
+    template <typename... Args>                                \
+    inline auto alias(Args &&... args) {                       \
+        return cuda_func(std::forward<Args>(args)...);         \
+    }
+
 #elif defined(ARK_ROCM)
+
 #include <hip/hip_runtime.h>
 #include <hip/hiprtc.h>
-#endif
-
-#define ARK_GPU_DEFINE_TYPE_ALIAS(alias, type) typedef type alias;
-
-#define ARK_GPU_DEFINE_CONSTANT_ALIAS(alias, constant) \
-    constexpr auto alias = constant;
-
-#define ARK_GPU_DEFINE_FUNC_ALIAS(alias, func)    \
-    template <typename... Args>                   \
-    inline auto alias(Args &&... args) {          \
-        return func(std::forward<Args>(args)...); \
+#define ARK_GPU_DEFINE_TYPE_ALIAS(alias, cuda_type, rocm_type) \
+    using alias = rocm_type;
+#define ARK_GPU_DEFINE_CONSTANT_ALIAS(alias, cuda_const, rocm_const) \
+    constexpr auto alias = rocm_const;
+#define ARK_GPU_DEFINE_FUNC_ALIAS(alias, cuda_func, rocm_func) \
+    template <typename... Args>                                \
+    inline auto alias(Args &&... args) {                       \
+        return rocm_func(std::forward<Args>(args)...);         \
     }
+
+#endif  // defined(ARK_ROCM)
 
 namespace ark {
 
-#if defined(ARK_CUDA)
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuError, cudaError_t, hipError_t);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuEvent, cudaEvent_t, hipEvent_t);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuStream, cudaStream_t, hipStream_t);
 
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuError, cudaError);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuEvent, cudaEvent_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuStream, cudaStream_t);
-
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuDeviceptr, CUdeviceptr);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuDrvError, CUresult);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuModule, CUmodule);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunction, CUfunction);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunctionAttribute, CUfunction_attribute);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuDeviceptr, CUdeviceptr, hipDeviceptr_t);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuDrvError, CUresult, hipError_t);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuModule, CUmodule, hipModule_t);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunction, CUfunction, hipFunction_t);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunctionAttribute, CUfunction_attribute,
+                          hipFunction_attribute);
 
 // runtime API
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, cudaSuccess);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotReady, cudaErrorNotReady);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, cudaSuccess, hipSuccess);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotReady, cudaErrorNotReady,
+                              hipErrorNotReady);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeComputeCapabilityMajor,
-                              cudaDevAttrComputeCapabilityMajor);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeComputeCapabilityMinor,
-                              cudaDevAttrComputeCapabilityMinor);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMaxThreadsPerBlock,
-                              cudaDevAttrMaxThreadsPerBlock);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMultiprocessorCount,
-                              cudaDevAttrMultiProcessorCount);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(
-    gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
-    cudaDevAttrMaxSharedMemoryPerMultiprocessor);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeSharedMemPerBlockOptin,
-                              cudaDevAttrMaxSharedMemoryPerBlockOptin);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeClockRate,
-                              cudaDevAttrClockRate);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeWarpSize, cudaDevAttrWarpSize);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMaxRegistersPerBlock,
-                              cudaDevAttrMaxRegistersPerBlock);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDomainID,
-                              cudaDevAttrPciDomainId);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciBusId, cudaDevAttrPciBusId);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDeviceId,
-                              cudaDevAttrPciDeviceId);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuEventDisableTiming, cudaEventDisableTiming);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, cudaHostAllocMapped);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocWriteCombined,
-                              cudaHostAllocWriteCombined);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyDeviceToHost, cudaMemcpyDeviceToHost);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyDeviceToDevice,
-                              cudaMemcpyDeviceToDevice);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyHostToDevice, cudaMemcpyHostToDevice);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuStreamNonBlocking, cudaStreamNonBlocking);
-
-// driver API
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDrvSuccess, CUDA_SUCCESS);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotFound, CUDA_ERROR_NOT_FOUND);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuFuncAttributeSharedSizeBytes,
-                              CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuFuncAttributeMaxDynamicSharedSizeBytes,
-                              CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuPointerAttributeSyncMemops,
-                              CU_POINTER_ATTRIBUTE_SYNC_MEMOPS);
-
-// runtime API
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, cudaGetErrorString);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cudaDeviceGetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cudaDeviceSynchronize);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, cudaHostAlloc);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostFree, cudaFreeHost);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, cudaHostRegister);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, cudaHostUnregister);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, cuMemHostGetDevicePointer);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMalloc, cudaMalloc);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuFree, cudaFree);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetInfo, cudaMemGetInfo);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpy, cudaMemcpy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyAsync, cudaMemcpyAsync);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetAsync, cudaMemsetAsync);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuSetDevice, cudaSetDevice);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreateWithFlags, cudaStreamCreateWithFlags);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, cudaStreamDestroy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamQuery, cudaStreamQuery);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamSynchronize, cudaStreamSynchronize);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventCreateWithFlags, cudaEventCreateWithFlags);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventDestroy, cudaEventDestroy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventRecord, cudaEventRecord);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventElapsedTime, cudaEventElapsedTime);
-
-// driver API
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDrvGetErrorString, cuGetErrorString);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadData, cuModuleLoadData);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadDataEx, cuModuleLoadDataEx);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetFunction, cuModuleGetFunction);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetGlobal, cuModuleGetGlobal);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, cuLaunchKernel);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, cuFuncGetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, cuFuncSetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32Async, cuMemsetD32Async);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetAddressRange, cuMemGetAddressRange);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, cuPointerSetAttribute);
-
-#elif defined(ARK_ROCM)
-
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuError, hipError_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuEvent, hipEvent_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuStream, hipStream_t);
-
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuDeviceptr, hipDeviceptr_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuDrvError, hipError_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuModule, hipModule_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunction, hipFunction_t);
-ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunctionAttribute, hipFunction_attribute);
-
-// runtime API
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, hipSuccess);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotReady, hipErrorNotReady);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeComputeCapabilityMajor,
+                              cudaDevAttrComputeCapabilityMajor,
                               hipDeviceAttributeComputeCapabilityMajor);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeComputeCapabilityMinor,
+                              cudaDevAttrComputeCapabilityMinor,
                               hipDeviceAttributeComputeCapabilityMinor);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMaxThreadsPerBlock,
+                              cudaDevAttrMaxThreadsPerBlock,
                               hipDeviceAttributeMaxThreadsPerBlock);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMultiprocessorCount,
+                              cudaDevAttrMultiProcessorCount,
                               hipDeviceAttributeMultiprocessorCount);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(
     gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
+    cudaDevAttrMaxSharedMemoryPerMultiprocessor,
     hipDeviceAttributeMaxSharedMemoryPerMultiprocessor);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeSharedMemPerBlockOptin,
+                              cudaDevAttrMaxSharedMemoryPerBlockOptin,
                               hipDeviceAttributeMaxSharedMemoryPerBlock);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeClockRate,
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeClockRate, cudaDevAttrClockRate,
                               hipDeviceAttributeClockRate);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeWarpSize,
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeWarpSize, cudaDevAttrWarpSize,
                               hipDeviceAttributeWarpSize);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributeMaxRegistersPerBlock,
+                              cudaDevAttrMaxRegistersPerBlock,
                               hipDeviceAttributeMaxRegistersPerBlock);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDomainID,
+                              cudaDevAttrPciDomainId,
                               hipDeviceAttributePciDomainID);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciBusId,
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciBusId, cudaDevAttrPciBusId,
                               hipDeviceAttributePciBusId);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDeviceAttributePciDeviceId,
+                              cudaDevAttrPciDeviceId,
                               hipDeviceAttributePciDeviceId);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuEventDisableTiming, hipEventDisableTiming);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, hipHostMallocMapped);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuEventDisableTiming, cudaEventDisableTiming,
+                              hipEventDisableTiming);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocMapped, cudaHostAllocMapped,
+                              hipHostMallocMapped);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuHostAllocWriteCombined,
+                              cudaHostAllocWriteCombined,
                               hipHostMallocWriteCombined);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyDeviceToHost, hipMemcpyDeviceToHost);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyDeviceToDevice, hipMemcpyDeviceToDevice);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyHostToDevice, hipMemcpyHostToDevice);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuStreamNonBlocking, hipStreamNonBlocking);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyDeviceToHost, cudaMemcpyDeviceToHost,
+                              hipMemcpyDeviceToHost);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyDeviceToDevice, cudaMemcpyDeviceToDevice,
+                              hipMemcpyDeviceToDevice);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuMemcpyHostToDevice, cudaMemcpyHostToDevice,
+                              hipMemcpyHostToDevice);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuStreamNonBlocking, cudaStreamNonBlocking,
+                              hipStreamNonBlocking);
 
 // driver API
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDrvSuccess, hipSuccess);
-ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotFound, hipErrorNotFound);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuDrvSuccess, CUDA_SUCCESS, hipSuccess);
+ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuErrorNotFound, CUDA_ERROR_NOT_FOUND,
+                              hipErrorNotFound);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuFuncAttributeSharedSizeBytes,
+                              CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES,
                               HIP_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuFuncAttributeMaxDynamicSharedSizeBytes,
+                              CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,
                               hipFuncAttributeMaxDynamicSharedMemorySize);
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuPointerAttributeSyncMemops,
+                              CU_POINTER_ATTRIBUTE_SYNC_MEMOPS,
                               HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS);
 
 // runtime API
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, hipGetErrorString);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, hipDeviceGetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, hipDeviceSynchronize);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, hipHostAlloc);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostFree, hipHostFree);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, hipHostRegister);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, hipHostUnregister);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, hipHostGetDevicePointer);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMalloc, hipMalloc);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuFree, hipFree);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetInfo, hipMemGetInfo);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpy, hipMemcpy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyAsync, hipMemcpyAsync);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetAsync, hipMemsetAsync);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuSetDevice, hipSetDevice);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreateWithFlags, hipStreamCreateWithFlags);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, hipStreamDestroy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamQuery, hipStreamQuery);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamSynchronize, hipStreamSynchronize);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventCreateWithFlags, hipEventCreateWithFlags);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventDestroy, hipEventDestroy);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventRecord, hipEventRecord);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventElapsedTime, hipEventElapsedTime);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, cudaGetErrorString,
+                          hipGetErrorString);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cudaDeviceGetAttribute,
+                          hipDeviceGetAttribute);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cudaDeviceSynchronize,
+                          hipDeviceSynchronize);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostAlloc, cudaHostAlloc, hipHostMalloc);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostFree, cudaFreeHost, hipHostFree);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostRegister, cudaHostRegister, hipHostRegister);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostUnregister, cudaHostUnregister,
+                          hipHostUnregister);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuHostGetDevicePointer, cuMemHostGetDevicePointer,
+                          hipHostGetDevicePointer);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMalloc, cudaMalloc, hipMalloc);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuFree, cudaFree, hipFree);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetInfo, cudaMemGetInfo, hipMemGetInfo);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpy, cudaMemcpy, hipMemcpy);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyAsync, cudaMemcpyAsync, hipMemcpyAsync);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetAsync, cudaMemsetAsync, hipMemsetAsync);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuSetDevice, cudaSetDevice, hipSetDevice);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreateWithFlags, cudaStreamCreateWithFlags,
+                          hipStreamCreateWithFlags);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, cudaStreamDestroy,
+                          hipStreamDestroy);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamQuery, cudaStreamQuery, hipStreamQuery);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamSynchronize, cudaStreamSynchronize,
+                          hipStreamSynchronize);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventCreateWithFlags, cudaEventCreateWithFlags,
+                          hipEventCreateWithFlags);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventDestroy, cudaEventDestroy, hipEventDestroy);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventRecord, cudaEventRecord, hipEventRecord);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuEventElapsedTime, cudaEventElapsedTime,
+                          hipEventElapsedTime);
 
 // driver API
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuDrvGetErrorString, hipDrvGetErrorString);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadData, hipModuleLoadData);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadDataEx, hipModuleLoadDataEx);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetFunction, hipModuleGetFunction);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetGlobal, hipModuleGetGlobal);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, hipModuleLaunchKernel);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, hipFuncGetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, hipFuncSetAttribute);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32Async, hipMemsetD32Async);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetAddressRange, hipMemGetAddressRange);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, hipPointerSetAttribute);
-
-#endif
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuDrvGetErrorString, cuGetErrorString,
+                          hipDrvGetErrorString);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadData, cuModuleLoadData,
+                          hipModuleLoadData);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLoadDataEx, cuModuleLoadDataEx,
+                          hipModuleLoadDataEx);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetFunction, cuModuleGetFunction,
+                          hipModuleGetFunction);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleGetGlobal, cuModuleGetGlobal,
+                          hipModuleGetGlobal);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuModuleLaunchKernel, cuLaunchKernel,
+                          hipModuleLaunchKernel);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncGetAttribute, cuFuncGetAttribute,
+                          hipFuncGetAttribute);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuFuncSetAttribute, cuFuncSetAttribute,
+                          hipFuncSetAttribute);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetD32Async, cuMemsetD32Async,
+                          hipMemsetD32Async);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemGetAddressRange, cuMemGetAddressRange,
+                          hipMemGetAddressRange);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, cuPointerSetAttribute,
+                          hipPointerSetAttribute);
 
 }  // namespace ark
 

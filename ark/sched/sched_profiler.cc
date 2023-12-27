@@ -26,10 +26,7 @@ float SchedProfiler::profile_routine(std::shared_ptr<GpuLoopKernel> glk,
     const int probe_iter = 10;
 
     glk->load();
-    GpuState ret = glk->launch(ctx->get_gpu_manager()->create_stream(), false);
-    if (ret != gpuDrvSuccess) {
-        ERR(ExecutorError, "launch() failed with error code ", ret);
-    }
+    glk->launch(ctx->get_gpu_manager()->create_stream(), false);
 
     int test_iter = probe_iter * 1e2 / 1;
     if (test_iter == 0) test_iter = 1;

@@ -42,8 +42,7 @@ ark::unittest::State test_gpu_loop_kernel() {
     glk.compile();
     glk.load();
 
-    ark::GpuState ret = glk.launch(ctx->get_gpu_manager()->create_stream());
-    UNITTEST_EQ(ret, 0);
+    glk.launch(ctx->get_gpu_manager()->create_stream());
     glk.run(100);
     glk.stop();
 

@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "gpu/gpu.h"
-#include "gpu/gpu_common.h"
 #include "gpu/gpu_event.h"
 #include "gpu/gpu_memory.h"
 #include "gpu/gpu_stream.h"
@@ -41,10 +40,10 @@ class GpuManager {
                      size_t bytes, bool async = false) const;
 
     int get_gpu_id() const;
-    GpuState launch(gpuFunction function, const std::array<int, 3> &grid_dim,
-                    const std::array<int, 3> &block_dim, int smem_bytes,
-                    std::shared_ptr<GpuStream> stream, void **params,
-                    void **extra) const;
+    void launch(gpuFunction function, const std::array<int, 3> &grid_dim,
+                const std::array<int, 3> &block_dim, int smem_bytes,
+                std::shared_ptr<GpuStream> stream, void **params,
+                void **extra) const;
 
     struct Info;
     const Info &info() const;

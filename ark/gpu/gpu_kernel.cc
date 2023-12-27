@@ -64,13 +64,13 @@ void GpuKernel::compile() {
                                  dynamic_smem_size_bytes));
 }
 
-GpuState GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
+void GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
     if (!this->is_compiled()) {
         ERR(InvalidUsageError, "Kernel is not compiled yet.");
     }
-    return ctx_->get_gpu_manager()->launch(function_, grid_dim_, block_dim_,
-                                           smem_bytes_, stream,
-                                           this->params_ptr_.data(), nullptr);
+    ctx_->get_gpu_manager()->launch(function_, grid_dim_, block_dim_,
+                                    smem_bytes_, stream,
+                                    this->params_ptr_.data(), nullptr);
 }
 
 }  // namespace ark

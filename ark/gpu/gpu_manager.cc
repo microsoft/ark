@@ -22,10 +22,9 @@ class GpuManager::Impl {
     GpuManager::Info info_;
     std::shared_ptr<GpuStream> main_stream_;
 
-    GpuState launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
-                    const std::array<int, 3> &block_dim, int smem_bytes,
-                    std::shared_ptr<GpuStream> stream, void **params,
-                    void **extra);
+    void launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
+                const std::array<int, 3> &block_dim, int smem_bytes,
+                std::shared_ptr<GpuStream> stream, void **params, void **extra);
 
     void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;
@@ -81,15 +80,14 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
 #endif
 }
 
-GpuState GpuManager::Impl::launch(gpuFunction kernel,
-                                  const std::array<int, 3> &grid_dim,
-                                  const std::array<int, 3> &block_dim,
-                                  int smem_bytes,
-                                  std::shared_ptr<GpuStream> stream,
-                                  void **params, void **extra) {
-    return gpuModuleLaunchKernel(kernel, grid_dim[0], grid_dim[1], grid_dim[2],
-                                 block_dim[0], block_dim[1], block_dim[2],
-                                 smem_bytes, stream->get(), params, extra);
+void GpuManager::Impl::launch(gpuFunction kernel,
+                              const std::array<int, 3> &grid_dim,
+                              const std::array<int, 3> &block_dim,
+                              int smem_bytes, std::shared_ptr<GpuStream> stream,
+                              void **params, void **extra) {
+    GLOG_DRV(gpuModuleLaunchKernel(
+        kernel, grid_dim[0], grid_dim[1], grid_dim[2], block_dim[0],
+        block_dim[1], block_dim[2], smem_bytes, stream->get(), params, extra));
 }
 
 void GpuManager::Impl::memcpy_dtoh_async(void *dst, size_t dst_offset,
@@ -228,14 +226,14 @@ void GpuManager::memcpy_dtod(void *dst, size_t dst_offset, void *src,
     }
 }
 
-GpuState GpuManager::launch(gpuFunction function,
-                            const std::array<int, 3> &grid_dim,
-                            const std::array<int, 3> &block_dim, int smem_bytes,
-                            std::shared_ptr<GpuStream> stream, void **params,
-                            void **extra) const {
+void GpuManager::launch(gpuFunction function,
+                        const std::array<int, 3> &grid_dim,
+                        const std::array<int, 3> &block_dim, int smem_bytes,
+                        std::shared_ptr<GpuStream> stream, void **params,
+                        void **extra) const {
     this->set_current();
-    return pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream,
-                          params, extra);
+    pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream, params,
+                   extra);
 }
 
 void GpuManager::sync() const { pimpl_->main_stream_->sync(); }

@@ -187,8 +187,8 @@ void GpuLoopKernel::load() {
     }
 }
 
-GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
-                               bool disable_timing) {
+void GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
+                           bool disable_timing) {
     elapsed_msec_ = -1;
     if (!is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
@@ -197,7 +197,7 @@ GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
     } else if (stream_ != nullptr) {
         if (stream_ == stream) {
             LOG(WARN, "Ignore launching twice.");
-            return gpuDrvSuccess;
+            return;
         } else {
             ERR(InvalidUsageError, "This loop kernel is already running.");
         }
@@ -210,15 +210,12 @@ GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
 
     // Initialize loop flags.
     atomicStoreRelaxed(flag_->ref<int>(), 0);
-    GpuState res = GpuKernel::launch(stream);
-    if (res == gpuDrvSuccess) {
-        stream_ = stream;
-        if (!disable_timing) {
-            timer_end_->record(stream);
-            is_recording_ = true;
-        }
+    GpuKernel::launch(stream);
+    stream_ = stream;
+    if (!disable_timing) {
+        timer_end_->record(stream);
+        is_recording_ = true;
     }
-    return res;
 }
 
 void GpuLoopKernel::run(int iter) {
