@@ -11,7 +11,7 @@ namespace ark {
 class GpuManager::Impl {
    public:
     Impl(int gpu_id);
-    ~Impl();
+    ~Impl() = default;
     Impl(const Impl &) = delete;
     Impl &operator=(const Impl &) = delete;
 
@@ -19,15 +19,12 @@ class GpuManager::Impl {
     friend class GpuManager;
 
     int gpu_id_;
-    gpuDevice gpu_dev_;
-    gpuCtx gpu_ctx_;
     GpuManager::Info info_;
     std::shared_ptr<GpuStream> main_stream_;
 
-    GpuState launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
-                    const std::array<int, 3> &block_dim, int smem_bytes,
-                    std::shared_ptr<GpuStream> stream, void **params,
-                    void **extra);
+    void launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
+                const std::array<int, 3> &block_dim, int smem_bytes,
+                std::shared_ptr<GpuStream> stream, void **params, void **extra);
 
     void memcpy_dtoh_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;
@@ -35,39 +32,33 @@ class GpuManager::Impl {
                            size_t src_offset, size_t bytes) const;
     void memcpy_dtod_async(void *dst, size_t dst_offset, void *src,
                            size_t src_offset, size_t bytes) const;
+    void memset_async(void *dst, unsigned int val, size_t bytes) const;
     void memset_d32_async(void *dst, unsigned int val, size_t num) const;
-    void memset_d8_async(void *dst, unsigned char val, size_t num) const;
 };
 
 GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
-    if (gpuDeviceGet(&gpu_dev_, gpu_id) == gpuErrorNotInitialized) {
-        GLOG(gpuInit(0));
-        GLOG(gpuDeviceGet(&gpu_dev_, gpu_id));
-    }
-    GLOG(gpuDevicePrimaryCtxRetain(&gpu_ctx_, gpu_dev_));
-    GLOG(gpuCtxSetCurrent(gpu_ctx_));
-
+    GLOG(gpuSetDevice(gpu_id));
     GLOG(gpuDeviceGetAttribute(
-        &(info_.cc_major), gpuDeviceAttributeComputeCapabilityMajor, gpu_dev_));
+        &(info_.cc_major), gpuDeviceAttributeComputeCapabilityMajor, gpu_id_));
     GLOG(gpuDeviceGetAttribute(
-        &(info_.cc_minor), gpuDeviceAttributeComputeCapabilityMinor, gpu_dev_));
-    GLOG(gpuDeviceGetAttribute(
-        &(info_.num_sm), gpuDeviceAttributeMultiprocessorCount, gpu_dev_));
+        &(info_.cc_minor), gpuDeviceAttributeComputeCapabilityMinor, gpu_id_));
+    GLOG(gpuDeviceGetAttribute(&(info_.num_sm),
+                               gpuDeviceAttributeMultiprocessorCount, gpu_id_));
     GLOG(gpuDeviceGetAttribute(
         &(info_.smem_total), gpuDeviceAttributeMaxSharedMemoryPerMultiprocessor,
-        gpu_dev_));
+        gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.smem_block_total),
                                gpuDeviceAttributeSharedMemPerBlockOptin,
-                               gpu_dev_));
+                               gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.clk_rate), gpuDeviceAttributeClockRate,
-                               gpu_dev_));
+                               gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.threads_per_warp),
-                               gpuDeviceAttributeWarpSize, gpu_dev_));
+                               gpuDeviceAttributeWarpSize, gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.max_registers_per_block),
                                gpuDeviceAttributeMaxRegistersPerBlock,
-                               gpu_dev_));
+                               gpu_id_));
     GLOG(gpuDeviceGetAttribute(&(info_.max_threads_per_block),
-                               gpuDeviceAttributeMaxThreadsPerBlock, gpu_dev_));
+                               gpuDeviceAttributeMaxThreadsPerBlock, gpu_id_));
     size_t gmem_free;
     GLOG(gpuMemGetInfo(&gmem_free, &(info_.gmem_total)));
 #if defined(ARK_CUDA)
@@ -89,59 +80,52 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
 #endif
 }
 
-GpuState GpuManager::Impl::launch(gpuFunction kernel,
-                                  const std::array<int, 3> &grid_dim,
-                                  const std::array<int, 3> &block_dim,
-                                  int smem_bytes,
-                                  std::shared_ptr<GpuStream> stream,
-                                  void **params, void **extra) {
-    return gpuModuleLaunchKernel(kernel, grid_dim[0], grid_dim[1], grid_dim[2],
-                                 block_dim[0], block_dim[1], block_dim[2],
-                                 smem_bytes, stream->get(), params, extra);
+void GpuManager::Impl::launch(gpuFunction kernel,
+                              const std::array<int, 3> &grid_dim,
+                              const std::array<int, 3> &block_dim,
+                              int smem_bytes, std::shared_ptr<GpuStream> stream,
+                              void **params, void **extra) {
+    GLOG_DRV(gpuModuleLaunchKernel(
+        kernel, grid_dim[0], grid_dim[1], grid_dim[2], block_dim[0],
+        block_dim[1], block_dim[2], smem_bytes, stream->get(), params, extra));
 }
 
 void GpuManager::Impl::memcpy_dtoh_async(void *dst, size_t dst_offset,
                                          void *src, size_t src_offset,
                                          size_t bytes) const {
     dst = static_cast<char *>(dst) + dst_offset;
-    gpuDeviceptr d_src = (gpuDeviceptr)((uint64_t)src + src_offset);
-    GLOG(gpuMemcpyDtoHAsync(dst, d_src, bytes, main_stream_->get()));
+    src = static_cast<char *>(src) + src_offset;
+    GLOG(gpuMemcpyAsync(dst, src, bytes, gpuMemcpyDeviceToHost,
+                        main_stream_->get()));
 }
 
 void GpuManager::Impl::memcpy_htod_async(void *dst, size_t dst_offset,
                                          void *src, size_t src_offset,
                                          size_t bytes) const {
-    gpuDeviceptr d_dst = reinterpret_cast<gpuDeviceptr>(
-        reinterpret_cast<long long unsigned int>(dst) + dst_offset);
+    dst = static_cast<char *>(dst) + dst_offset;
     src = static_cast<char *>(src) + src_offset;
-    GLOG(gpuMemcpyHtoDAsync(d_dst, src, bytes, main_stream_->get()));
+    GLOG(gpuMemcpyAsync(dst, src, bytes, gpuMemcpyHostToDevice,
+                        main_stream_->get()));
 }
 
 void GpuManager::Impl::memcpy_dtod_async(void *dst, size_t dst_offset,
                                          void *src, size_t src_offset,
                                          size_t bytes) const {
-    gpuDeviceptr d_dst = reinterpret_cast<gpuDeviceptr>(
-        reinterpret_cast<long long unsigned int>(dst) + dst_offset);
-    gpuDeviceptr d_src = reinterpret_cast<gpuDeviceptr>(
-        reinterpret_cast<long long unsigned int>(src) + src_offset);
-    GLOG(gpuMemcpyDtoDAsync(d_dst, d_src, bytes, main_stream_->get()));
+    dst = static_cast<char *>(dst) + dst_offset;
+    src = static_cast<char *>(src) + src_offset;
+    GLOG(gpuMemcpyAsync(dst, src, bytes, gpuMemcpyDeviceToDevice,
+                        main_stream_->get()));
+}
+
+void GpuManager::Impl::memset_async(void *dst, unsigned int val,
+                                    size_t bytes) const {
+    GLOG(gpuMemsetAsync(dst, val, bytes, main_stream_->get()));
 }
 
 void GpuManager::Impl::memset_d32_async(void *dst, unsigned int val,
-                                        size_t num) const {
-    gpuDeviceptr d_dst = reinterpret_cast<gpuDeviceptr>(dst);
-    GLOG(gpuMemsetD32Async(d_dst, val, num, main_stream_->get()));
-}
-
-void GpuManager::Impl::memset_d8_async(void *dst, unsigned char val,
-                                       size_t num) const {
-    gpuDeviceptr d_dst = reinterpret_cast<gpuDeviceptr>(dst);
-    GLOG(gpuMemsetD8Async(d_dst, val, num, main_stream_->get()));
-}
-
-GpuManager::Impl::~Impl() {
-    auto e = gpuDevicePrimaryCtxRelease(gpu_dev_);
-    if (e != gpuErrorDeinitialized) GLOG(e);
+                                        size_t nelems) const {
+    GLOG_DRV(
+        gpuMemsetD32Async((gpuDeviceptr)dst, val, nelems, main_stream_->get()));
 }
 
 std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
@@ -192,17 +176,21 @@ int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }
 
 const GpuManager::Info &GpuManager::info() const { return pimpl_->info_; }
 
-void GpuManager::set_current() const {
-    GLOG(gpuCtxSetCurrent(pimpl_->gpu_ctx_));
-}
+void GpuManager::set_current() const { GLOG(gpuSetDevice(pimpl_->gpu_id_)); }
 
 void GpuManager::memset(void *dst, unsigned int val, size_t bytes,
                         bool async) const {
     this->set_current();
-    pimpl_->memset_d32_async(dst, val, bytes >> 2);
-    pimpl_->memset_d8_async(
-        reinterpret_cast<void *>((size_t)dst + ((bytes >> 2) << 2)), val,
-        bytes & 3);
+    pimpl_->memset_async(dst, val, bytes);
+    if (!async) {
+        this->sync();
+    }
+}
+
+void GpuManager::memset_d32(void *dst, unsigned int val, size_t nelems,
+                            bool async) const {
+    this->set_current();
+    pimpl_->memset_d32_async(dst, val, nelems);
     if (!async) {
         this->sync();
     }
@@ -238,14 +226,14 @@ void GpuManager::memcpy_dtod(void *dst, size_t dst_offset, void *src,
     }
 }
 
-GpuState GpuManager::launch(gpuFunction function,
-                            const std::array<int, 3> &grid_dim,
-                            const std::array<int, 3> &block_dim, int smem_bytes,
-                            std::shared_ptr<GpuStream> stream, void **params,
-                            void **extra) const {
+void GpuManager::launch(gpuFunction function,
+                        const std::array<int, 3> &grid_dim,
+                        const std::array<int, 3> &block_dim, int smem_bytes,
+                        std::shared_ptr<GpuStream> stream, void **params,
+                        void **extra) const {
     this->set_current();
-    return pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream,
-                          params, extra);
+    pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream, params,
+                   extra);
 }
 
 void GpuManager::sync() const { pimpl_->main_stream_->sync(); }

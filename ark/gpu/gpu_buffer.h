@@ -14,7 +14,7 @@ class GpuBuffer {
     GpuBuffer(int gpu_id, const std::shared_ptr<GpuMemory> memory, int id,
               size_t offset, size_t bytes);
     ~GpuBuffer() = default;
-    GpuPtr ref(size_t offset = 0) const;
+    void* ref(size_t offset = 0) const;
     size_t get_offset() const { return offset_; }
     size_t get_bytes() const { return bytes_; }
     void set_offset(size_t offset) { offset_ = offset; }

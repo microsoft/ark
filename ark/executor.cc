@@ -33,10 +33,7 @@ void Executor::Impl::compile() { glk_->compile(); }
 
 void Executor::Impl::launch() {
     glk_->load();
-    GpuState ret = glk_->launch(stream_, false);
-    if (ret != 0) {
-        ERR(ExecutorError, "failed to launch this executor.");
-    }
+    glk_->launch(stream_, false);
 }
 
 void Executor::Impl::run(int iter) { glk_->run(iter); }

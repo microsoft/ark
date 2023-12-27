@@ -10,7 +10,6 @@
 #include <mscclpp/sm_channel.hpp>
 
 #include "env.h"
-#include "gpu/gpu_common.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_manager.h"
 #include "include/ark.h"
