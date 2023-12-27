@@ -296,7 +296,7 @@ class Silu(ark.Module):
 class FeedForward(ark.Module):
     def __init__(
         self,
-        dim: int,
+        dim: int, # 70B: 8192
         hidden_dim: int,
         multiple_of: int,
         ffn_dim_multiplier: Optional[float],
@@ -311,7 +311,7 @@ class FeedForward(ark.Module):
             hidden_dim = int(ffn_dim_multiplier * hidden_dim)
         hidden_dim = multiple_of * (
             (hidden_dim + multiple_of - 1) // multiple_of
-        )
+        ) # 70B: 8192
 
         self.w1 = ColumnParallelLinear(
             dim, hidden_dim, dtype, False, local_rank, world_size
@@ -324,10 +324,12 @@ class FeedForward(ark.Module):
         )
 
     def forward(self, x):
-        # self.w2(F.silu(self.w1(x)) * self.w3(x))
+        # x.shape() 70B: [batch_size, seq_len, 8192]
         x1 = self.w1(x)
+        # x1.shape() 70B: [batch_size, seq_len, 1024]
         x1 = Silu()(x1)
         x2 = self.w3(x)
+        # x2.shape() 70B: [batch_size, seq_len, 1024]
         x3 = ark.mul(x1, x2)
         x4 = self.w2(x3)
         return x4

@@ -227,8 +227,26 @@ ark::unittest::State test_half() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_half_error() {
+    ark::half_t x(0.1f);
+    ark::half_t sum(0.0f);
+    int reduce_length = 1024;   // should not exceed 2^11
+
+    for (int i = 0; i < reduce_length; ++i) {
+        sum += x * x;
+    }
+
+    // max diff = 2^(-11) * x * 2 * reduce_length = 0.1
+    UNITTEST_LOG(float(sum));
+    UNITTEST_TRUE(float(sum) >= 10.14f);
+    UNITTEST_TRUE(float(sum) <= 10.34f);
+
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_half);
+    UNITTEST(test_half_error);
     return 0;
 }

@@ -285,7 +285,7 @@ def test_row_parallel_linear(
         np.random.uniform(
             low=-0.1,
             high=0.1,
-            size=(batch_size, seq_len, args.dim // args.n_heads * args.n_heads),
+            size=(batch_size, seq_len, args.dim // world_size),
         ).astype(dtype)
     ]
     inputs_pt = [i.astype(dtype) for i in inputs_ark]
@@ -296,7 +296,7 @@ def test_row_parallel_linear(
             args.dim // args.n_heads * args.n_heads,
             args.dim,
             ark.DataType.from_numpy(dtype),
-            False,
+            True,
             rank,
             world_size,
         ],
@@ -306,7 +306,7 @@ def test_row_parallel_linear(
             args.dim // args.n_heads * args.n_heads,
             args.dim,
             False,
-            False,
+            True,
             lambda x: x,
         ],
         inputs_pt=inputs_pt,
