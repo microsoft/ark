@@ -18,7 +18,7 @@ ark::unittest::State test_gpu_kernel() {
 
 //
 const std::string test_kernel_loop_void =
-    "__device__ void ark_loop_body(int _iter) {\n"
+    "__device__ void ark_loop_body(char *_buf, int _iter) {\n"
     "  // Do nothing. Print iteration counter.\n"
     "  if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
     "    if (_iter % 50 == 49) {\n"

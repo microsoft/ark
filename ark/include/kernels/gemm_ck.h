@@ -32,6 +32,8 @@ using PipelineVersion = ck::PipelineVersion;
 static constexpr auto GemmDefault =
     ck::tensor_operation::device::GemmSpecialization::Default;
 
+#define DEBUG_CK 0
+
 namespace ark {
 
 template <typename DataTypeA, typename DataTypeB, typename DataTypeC,
@@ -41,6 +43,13 @@ template <typename DataTypeA, typename DataTypeB, typename DataTypeC,
           PipelineVersion PipelineVer = PipelineVersion::v1,
           int CShuffleNumStage = 1>
 struct CkGemmConfig;
+
+template <int BlockSize, int MPerBlock, int NPerBlock, int KPerBlock, int AK1,
+          int BK1, int MPerXDL, int NPerXDL, int MXdlPerWave, int NXdlPerWave,
+          int ABlockTransferSrcScalarPerVector,
+          int BBlockTransferSrcScalarPerVector,
+          int CShuffleMXdlPerWavePerShuffle, int CShuffleNXdlPerWavePerShuffle>
+struct PrintDeviceGemmXdlCShuffle;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -191,6 +200,20 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
               1,
               ((Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 4 : 8)>,
             8>;
+
+#if (DEBUG_CK != 0)
+    PrintDeviceGemmXdlCShuffle<
+        NumThreads, TileSizeM, TileSizeN, 32, AK1, BK1, 32, 32, MXdlPerWave,
+        NXdlPerWave,
+        (!IsColA ? 8 : (AK1 == 2 || Is_128x128x64) ? 4 : MXdlPerWave),
+        (IsColB
+             ? 8
+             : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 || Is_128x64x128)
+                   ? 4
+                   : NXdlPerWave),
+        1, 1>
+        p;
+#endif  // (DEBUG_CK != 0)
 };
 
 template <typename LayoutA, typename LayoutB, int NumThreads, int TileSizeM,
@@ -339,10 +362,6 @@ struct CkGemm {
         CkDataTypeA *pA = reinterpret_cast<CkDataTypeA *>(A);
         CkDataTypeB *pB = reinterpret_cast<CkDataTypeB *>(B);
 
-        // static constexpr auto I0 = ck::Number<0>{};
-        // static constexpr auto I1 = ck::Number<1>{};
-        // static constexpr auto I2 = ck::Number<2>{};
-
         const auto a_element_op = PassThrough{};
         const auto b_element_op = PassThrough{};
         const auto c_element_op = PassThrough{};
@@ -352,83 +371,69 @@ struct CkGemm {
             LeadingDimB, LeadingDimC, a_element_op, b_element_op, c_element_op);
 
         if (UnitOp::thread_id() == 0) {
-            assert(GridwiseGemm::CheckValidity(
-                arg.a_grid_desc_k0_m_k1_, arg.b_grid_desc_k0_n_k1_,
-                arg.c_grid_desc_m_n_, arg.block_2_ctile_map_));
+            assert(GridwiseGemm::CheckValidity(arg));
         }
         UnitOp::sync_threads();
-
-        // const auto K = arg.a_grid_desc_k0_m_k1_.GetLength(I0) *
-        //                arg.a_grid_desc_k0_m_k1_.GetLength(I2);
 
         char *p_shared = UnitOp::template shared_memory<char>(smem_per_warp);
 
         constexpr int SmemBytes = GridwiseGemm::GetSharedMemoryNumberOfByte();
+        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(),
+             UnitOp::NumThreads>();
         IsEq<SmemBytes, UnitOp::SmemBytes>();
+
+        const auto a_grid_desc_k0_m_k1 =
+            amd_wave_read_first_lane(GridwiseGemm::MakeAGridDescriptor_K0_M_K1(
+                arg.M, arg.MPadded, arg.K, arg.K0, arg.StrideA));
+        const auto b_grid_desc_k0_n_k1 =
+            amd_wave_read_first_lane(GridwiseGemm::MakeBGridDescriptor_K0_N_K1(
+                arg.K, arg.N, arg.NPadded, arg.K0, arg.StrideB));
+        const auto c_grid_desc_m_n =
+            amd_wave_read_first_lane(GridwiseGemm::MakeCGridDescriptor_M_N(
+                arg.M, arg.MPadded, arg.N, arg.NPadded, arg.StrideC));
 
         if (GridwiseGemm::CalculateHasMainKBlockLoop(ProblemSizeK)) {
             GridwiseGemm::template Run<true>(
-                pA, pB, pC, p_shared, arg.a_grid_desc_k0_m_k1_,
-                arg.b_grid_desc_k0_n_k1_,
-                arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_, a_element_op,
-                b_element_op, c_element_op, arg.block_2_ctile_map_, uop_idx);
+                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1, b_grid_desc_k0_n_k1,
+                c_grid_desc_m_n, uop_idx);
         } else {
             GridwiseGemm::template Run<false>(
-                pA, pB, pC, p_shared, arg.a_grid_desc_k0_m_k1_,
-                arg.b_grid_desc_k0_n_k1_,
-                arg.c_grid_desc_m0_n0_m1_n1_m2_m3_m4_n2_, a_element_op,
-                b_element_op, c_element_op, arg.block_2_ctile_map_, uop_idx);
+                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1, b_grid_desc_k0_n_k1,
+                c_grid_desc_m_n, uop_idx);
         }
     }
 
     DEVICE void RunXdlCShuffle(DataTypeC *C, DataTypeA *A, DataTypeB *B,
                                int uop_idx, int smem_per_warp) const {
-        using Impl = typename CkGemmConfig::ImplXdlCShuffle;
-        using GridwiseGemm = typename Impl::GridwiseGemm;
+        using GridwiseGemm =
+            typename CkGemmConfig::ImplXdlCShuffle::GridwiseGemm;
 
         CkDataTypeC *pC = reinterpret_cast<CkDataTypeC *>(C);
         CkDataTypeA *pA = reinterpret_cast<CkDataTypeA *>(A);
         CkDataTypeB *pB = reinterpret_cast<CkDataTypeB *>(B);
 
-        // static constexpr auto I0 = ck::Number<0>{};
-        // static constexpr auto I1 = ck::Number<1>{};
-        // static constexpr auto I2 = ck::Number<2>{};
-
-        const auto a_element_op = PassThrough{};
-        const auto b_element_op = PassThrough{};
-        const auto c_element_op = PassThrough{};
-
-        auto arg = Impl::MakeArgument(
-            pA, pB, pC, ProblemSizeM, ProblemSizeN, ProblemSizeK, LeadingDimA,
-            LeadingDimB, LeadingDimC, a_element_op, b_element_op, c_element_op);
+        typename GridwiseGemm::Problem problem(ProblemSizeM, ProblemSizeN,
+                                               ProblemSizeK, LeadingDimA,
+                                               LeadingDimB, LeadingDimC);
 
         if (UnitOp::thread_id() == 0) {
-            assert(GridwiseGemm::CheckValidity(
-                arg.a_grid_desc_ak0_m_ak1_, arg.b_grid_desc_bk0_n_bk1_,
-                arg.c_grid_desc_m_n_, arg.block_2_ctile_map_));
+            assert(GridwiseGemm::CheckValidity(problem));
         }
         UnitOp::sync_threads();
-
-        // const auto K = arg.a_grid_desc_ak0_m_ak1_.GetLength(I0) *
-        //                arg.a_grid_desc_ak0_m_ak1_.GetLength(I2);
 
         char *p_shared = UnitOp::template shared_memory<char>(smem_per_warp);
 
         constexpr int SmemBytes = GridwiseGemm::GetSharedMemoryNumberOfByte();
+        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(),
+             UnitOp::NumThreads>();
         IsEq<SmemBytes, UnitOp::SmemBytes>();
 
         if (GridwiseGemm::CalculateHasMainKBlockLoop(ProblemSizeK)) {
-            GridwiseGemm::template Run<true>(
-                pA, pB, pC, p_shared, a_element_op, b_element_op, c_element_op,
-                arg.a_grid_desc_ak0_m_ak1_, arg.b_grid_desc_bk0_n_bk1_,
-                arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
-                arg.block_2_ctile_map_, uop_idx);
+            GridwiseGemm::template Run<true>(pA, pB, pC, p_shared, problem,
+                                             uop_idx);
         } else {
-            GridwiseGemm::template Run<false>(
-                pA, pB, pC, p_shared, a_element_op, b_element_op, c_element_op,
-                arg.a_grid_desc_ak0_m_ak1_, arg.b_grid_desc_bk0_n_bk1_,
-                arg.c_grid_desc_mblock_mperblock_nblock_nperblock_,
-                arg.block_2_ctile_map_, uop_idx);
+            GridwiseGemm::template Run<false>(pA, pB, pC, p_shared, problem,
+                                              uop_idx);
         }
     }
 
