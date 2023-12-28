@@ -10,19 +10,19 @@ on:
 
 jobs:
   UnitTest:
-    runs-on: [ self-hosted, MI250X ]
+    runs-on: [ self-hosted, AMD ]
     defaults:
       run:
         shell: bash
     strategy:
       matrix:
-        rocm: [ rocm5.6, rocm5.7 ]
+        rocm: [ rocm6.0 ]
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.rocm }}
       cancel-in-progress: true
-    container:
-      image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.rocm }}"
-      options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
+    # container:
+    #   image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.rocm }}"
+    #   options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
 
     steps:
       - name: Checkout
@@ -33,6 +33,7 @@ jobs:
           git config --global --add safe.directory /__w/ark/ark
           git submodule foreach --recursive git reset --hard
           git submodule foreach --recursive git clean -fdx
+          git submodule foreach git fetch
           git submodule update --init --recursive
 
       - name: Build
@@ -43,7 +44,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+          cd build && ARK_ROOT=$PWD ARK_IGNORE_BINARY_CACHE=1 ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
         run: |

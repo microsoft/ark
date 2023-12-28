@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "gpu/gpu.h"
-#include "gpu/gpu_common.h"
 #include "gpu/gpu_event.h"
 #include "gpu/gpu_memory.h"
 #include "gpu/gpu_stream.h"
@@ -31,6 +30,8 @@ class GpuManager {
 
     void memset(void *dst, unsigned int val, size_t bytes,
                 bool async = false) const;
+    void memset_d32(void *dst, unsigned int val, size_t nelems,
+                    bool async = false) const;
     void memcpy_htod(void *dst, size_t dst_offset, void *src, size_t src_offset,
                      size_t bytes, bool async = false) const;
     void memcpy_dtoh(void *dst, size_t dst_offset, void *src, size_t src_offset,
@@ -39,10 +40,10 @@ class GpuManager {
                      size_t bytes, bool async = false) const;
 
     int get_gpu_id() const;
-    GpuState launch(gpuFunction function, const std::array<int, 3> &grid_dim,
-                    const std::array<int, 3> &block_dim, int smem_bytes,
-                    std::shared_ptr<GpuStream> stream, void **params,
-                    void **extra) const;
+    void launch(gpuFunction function, const std::array<int, 3> &grid_dim,
+                const std::array<int, 3> &block_dim, int smem_bytes,
+                std::shared_ptr<GpuStream> stream, void **params,
+                void **extra) const;
 
     struct Info;
     const Info &info() const;

@@ -20,8 +20,12 @@ class GpuMemory {
     ~GpuMemory() = default;
     void resize(size_t bytes, bool expose = false);
     void resize(const mscclpp::RegisteredMemory& remote_memory);
-    GpuPtr ref(size_t offset = 0) const;
     size_t bytes() const;
+
+    template <typename T = void>
+    T* ref(size_t offset = 0) const {
+        return reinterpret_cast<T*>((size_t)this->ref_impl(offset));
+    }
 
     template <typename T>
     void to_host(std::vector<T>& dst, bool async = false) const {
@@ -36,6 +40,7 @@ class GpuMemory {
 
     void sync() const;
     void memset(int value, size_t offset, size_t bytes);
+    void memset_d32(int value, size_t offset, size_t nelems);
     void memcpy_from(const void* src, size_t offset, size_t bytes,
                      bool from_device = false);
     void memcpy_to(void* dst, size_t offset, size_t bytes);
@@ -50,6 +55,7 @@ class GpuMemory {
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 
+    void* ref_impl(size_t offset = 0) const;
     void to_host(void* dst, size_t bytes, bool async) const;
     void from_host(const void* src, size_t bytes, bool async);
 };

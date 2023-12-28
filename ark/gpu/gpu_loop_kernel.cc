@@ -73,6 +73,7 @@ GpuLoopKernel::GpuLoopKernel(std::shared_ptr<GpuContext> ctx,
         "extern \"C\" __global__ __launch_bounds__(" << block_dim_[0] << ", 1)\n"
         "void " << kernel_name_ << "(int *_it)\n"
         "{\n"
+        "  char *_buf = " ARK_BUF_NAME ";\n"
         "  int *shared_mem = (int *)_ARK_SMEM;\n"
         "  for (int i = threadIdx.x; i < ARK_SMEM_RESERVED_BYTES / sizeof(int); i += blockDim.x) {\n"
         "    shared_mem[i] = 0;\n"
@@ -88,7 +89,7 @@ GpuLoopKernel::GpuLoopKernel(std::shared_ptr<GpuContext> ctx,
         "      return;\n"
         "    }\n"
         "    for (int _i = 0; _i < _ITER; ++_i) {\n"
-        "      ark_loop_body(_i);\n"
+        "      ark_loop_body(_buf, _i);\n"
         "      ark::sync_gpu<" << num_sm << ">(" ARK_LSS_NAME ");\n"
         "    }\n"
         "    if (threadIdx.x == 0 && blockIdx.x == 0) {\n"
@@ -113,12 +114,12 @@ void GpuLoopKernel::load() {
     }
     // Initialize global variables in the loop kernel.
     std::shared_ptr<GpuManager> manager = ctx_->get_gpu_manager();
-    GpuPtr buf_ptr_val = ctx_->get_data_memory()->ref();
+    void* buf_ptr_val = ctx_->get_data_memory()->ref();
     GpuPtr lss_ptr_addr;
     GpuPtr buf_ptr_addr;
     size_t tmp = 0;
-    GLOG(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, module_, ARK_LSS_NAME));
-    GLOG(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, module_, ARK_BUF_NAME));
+    GLOG_DRV(gpuModuleGetGlobal(&lss_ptr_addr, &tmp, module_, ARK_LSS_NAME));
+    GLOG_DRV(gpuModuleGetGlobal(&buf_ptr_addr, &tmp, module_, ARK_BUF_NAME));
     std::array<int, 4> data = {0, 0, 0, 0};
     manager->memcpy_htod((void*)lss_ptr_addr, 0, data.data(), 0,
                          sizeof(int) * data.size());
@@ -127,20 +128,20 @@ void GpuLoopKernel::load() {
     // TODO: remove this hack
     GpuPtr lss_0_ptr_addr;
     GpuPtr lss_1_ptr_addr;
-    gpuError ret =
+    gpuDrvError ret =
         gpuModuleGetGlobal(&lss_0_ptr_addr, &tmp, module_, ARK_LSS_NAME "_0");
-    if (ret == gpuSuccess) {
+    if (ret == gpuDrvSuccess) {
         manager->memcpy_htod((void*)lss_0_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     } else if (ret != gpuErrorNotFound) {
-        GLOG(ret);
+        GLOG_DRV(ret);
     }
     ret = gpuModuleGetGlobal(&lss_1_ptr_addr, &tmp, module_, ARK_LSS_NAME "_1");
-    if (ret == gpuSuccess) {
+    if (ret == gpuDrvSuccess) {
         manager->memcpy_htod((void*)lss_1_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     } else if (ret != gpuErrorNotFound) {
-        GLOG(ret);
+        GLOG_DRV(ret);
     }
     // set the data buffer pointers of remote gpus
     int nrph = get_env().num_ranks_per_host;
@@ -148,14 +149,14 @@ void GpuLoopKernel::load() {
     // only set the GPU remote data buf pointers of the GPUs on the same node
     for (int i = nodes_id * nrph;
          i < (nodes_id + 1) * nrph && i < ctx_->world_size(); i++) {
-        GpuPtr data_buf_value = ctx_->get_data_memory(i)->ref();
+        void* data_buf_value = ctx_->get_data_memory(i)->ref();
         if (data_buf_value == 0) {
             continue;
         }
         GpuPtr data_buf_ptr;
         std::string data_buf_name = ARK_BUF_NAME + std::to_string(i);
-        gpuError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
-                                         data_buf_name.c_str());
+        gpuDrvError _e = gpuModuleGetGlobal(&data_buf_ptr, &tmp, module_,
+                                            data_buf_name.c_str());
         if (_e == gpuErrorNotFound) {
             LOG(DEBUG, "global variable ", data_buf_name, " not found");
             continue;
@@ -169,8 +170,8 @@ void GpuLoopKernel::load() {
     std::shared_ptr<GpuCommSw> comm = ctx_->get_comm_sw();
     if (comm->get_proxy_channels_num() > 0) {
         GpuPtr channel_addr;
-        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, module_,
-                                "_ARK_PROXY_CHANS"));
+        GLOG_DRV(gpuModuleGetGlobal(&channel_addr, &tmp, module_,
+                                    "_ARK_PROXY_CHANS"));
         const void* chans_ref = comm->get_proxy_channels_ref();
         size_t chans_bytes = comm->get_proxy_channels_bytes();
         manager->memcpy_htod((void*)channel_addr, 0,
@@ -178,7 +179,8 @@ void GpuLoopKernel::load() {
     }
     if (comm->get_sm_channels_num() > 0) {
         GpuPtr channel_addr;
-        GLOG(gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
+        GLOG_DRV(
+            gpuModuleGetGlobal(&channel_addr, &tmp, module_, "_ARK_SM_CHANS"));
         const void* chans_ref = comm->get_sm_channels_ref();
         size_t chans_bytes = comm->get_sm_channels_bytes();
         manager->memcpy_htod((void*)channel_addr, 0,
@@ -186,8 +188,8 @@ void GpuLoopKernel::load() {
     }
 }
 
-GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
-                               bool disable_timing) {
+void GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
+                           bool disable_timing) {
     elapsed_msec_ = -1;
     if (!is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
@@ -196,7 +198,7 @@ GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
     } else if (stream_ != nullptr) {
         if (stream_ == stream) {
             LOG(WARN, "Ignore launching twice.");
-            return gpuSuccess;
+            return;
         } else {
             ERR(InvalidUsageError, "This loop kernel is already running.");
         }
@@ -209,15 +211,12 @@ GpuState GpuLoopKernel::launch(std::shared_ptr<GpuStream> stream,
 
     // Initialize loop flags.
     atomicStoreRelaxed(flag_->ref<int>(), 0);
-    GpuState res = GpuKernel::launch(stream);
-    if (res == gpuSuccess) {
-        stream_ = stream;
-        if (!disable_timing) {
-            timer_end_->record(stream);
-            is_recording_ = true;
-        }
+    GpuKernel::launch(stream);
+    stream_ = stream;
+    if (!disable_timing) {
+        timer_end_->record(stream);
+        is_recording_ = true;
     }
-    return res;
 }
 
 void GpuLoopKernel::run(int iter) {

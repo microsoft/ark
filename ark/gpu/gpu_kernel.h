@@ -8,7 +8,6 @@
 #include <string>
 
 #include "gpu/gpu_buffer.h"
-#include "gpu/gpu_common.h"
 #include "gpu/gpu_context.h"
 
 namespace ark {
@@ -23,7 +22,7 @@ class GpuKernel {
                   args = {});
 
     void compile();
-    GpuState launch(std::shared_ptr<GpuStream> stream);
+    void launch(std::shared_ptr<GpuStream> stream);
 
    protected:
     std::shared_ptr<GpuContext> ctx_;

@@ -10,7 +10,7 @@
 
 #include "include/ark.h"
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "sched_branch.h"
 
 namespace ark {
@@ -49,13 +49,14 @@ SchedStream::Impl::Impl(int sm_id_begin_, int sm_id_end_, int num_warps_per_sm_,
     : sm_id_begin{sm_id_begin_},
       sm_id_end{sm_id_end_},
       num_warps_per_sm{num_warps_per_sm_},
-      smem_bytes_per_sm{smem_bytes_per_sm_} {
-    this->branch_infos.emplace_back(std::make_unique<BranchInfo>());
-}
+      smem_bytes_per_sm{smem_bytes_per_sm_} {}
 
 SchedStream::Impl::~Impl() {}
 
 void SchedStream::Impl::add_items(const std::vector<SchedItem> &items) {
+    if (items.size() == 0) {
+        return;
+    }
     for (auto &item : items) {
         if (item.num_warps_per_uop > this->num_warps_per_sm) {
             ERR(SchedulerError, "uop requires more warps (",
@@ -69,6 +70,7 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items) {
         }
     }
 
+    this->sync();
     BranchInfo *branch_info = this->branch_infos.back().get();
 
     // Sort items in decreasing order of smem_bytes_per_uop / num_warps_per_uop.
@@ -195,10 +197,6 @@ void SchedStream::Impl::add_items(const std::vector<SchedItem> &items) {
         for (int done_opseq_id : done_items) {
             remaining_items.erase(done_opseq_id);
         }
-    }
-
-    if (sorted_items.size() > 0) {
-        this->sync();
     }
 }
 

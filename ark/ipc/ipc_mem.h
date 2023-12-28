@@ -19,12 +19,6 @@ class IpcMem {
     // Destructor.
     ~IpcMem();
 
-    // Lock this memory.
-    void lock();
-
-    // Unlock this memory.
-    void unlock();
-
     // Allocate/re-allocate the shared memory space of the data file.
     // Return the current mmapped address if the given `bytes`
     // is less than `total_bytes`.
@@ -42,8 +36,6 @@ class IpcMem {
     // Return true if object is the data creator.
     bool is_create() const { return create_; }
 
-    bool is_locked() const;
-
    private:
     const std::string name_;
     // If true, this object will create shared object files and
@@ -57,8 +49,6 @@ class IpcMem {
     void *addr_ = nullptr;
     // Size of the mmapped memory space of the data file.
     size_t total_bytes_ = 0;
-    // True if this object has locked the lock file.
-    bool locked_ = false;
 };
 
 }  // namespace ark

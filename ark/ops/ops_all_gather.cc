@@ -4,7 +4,7 @@
 #include <cassert>
 
 #include "logging.h"
-#include "math.h"
+#include "math_utils.h"
 #include "model.h"
 #include "ops_common.h"
 
@@ -185,21 +185,59 @@ Tensor *Model::local_all_gather(Tensor *input, int gpu_id, int ngpus_per_node,
 
 const OpConfigMap GatherFromPeersConfigMap = {
     {{OP_ARCH_ANY, "any"},
-     {// NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-      // TODO: The config for 32MB elements, need to update for other message
-      // size
-      {16,
-       0,
-       {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
-       {{1, 65536}, {-1, -1}},
-       false,
-       true},
-      {16,
-       0,
-       {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
-       {{128, 2560}, {-1, -1}},
-       false,
-       true}}},
+     {
+         // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         // TODO: The config for 32MB elements, need to update for other message
+         // size
+         {16,
+          0,
+          {{-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{1, 65536}, {-1, -1}},
+          false,
+          true},
+         {16,
+          0,
+          {{-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{128, 2560}, {-1, -1}},
+          false,
+          true},
+         {8,
+          0,
+          {{-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{1, 65536}, {-1, -1}},
+          false,
+          true},
+         {8,
+          0,
+          {{-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1},
+           {-1, -1}},
+          {{128, 2560}, {-1, -1}},
+          false,
+          true},
+     }},
 };
 
 }  // namespace ark

@@ -48,7 +48,7 @@ if(USE_ROCM)
     FetchContent_Declare(
         ck
         GIT_REPOSITORY https://github.com/ROCmSoftwarePlatform/composable_kernel.git
-        GIT_TAG rocm-5.7.1
+        GIT_TAG rocm-6.0.0
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel
     )
     FetchContent_GetProperties(ck)
