@@ -5,8 +5,6 @@
 #include "math_utils.h"
 #include "model.h"
 
-using namespace std;
-
 namespace ark {
 
 extern const OpConfigMap MatmulConfigMap;
@@ -14,7 +12,7 @@ extern const OpConfigMap MatmulConfigMap;
 MatmulOp::MatmulOp(const std::string &prec_type, Tensor *mat_a, Tensor *mat_b,
                    Tensor *mat_y, Dims nca, Dims ncb, Dims problem_size,
                    Dims leading_dims, bool is_column_a, bool is_column_b,
-                   const string &name, int gran_lev)
+                   const std::string &name, int gran_lev)
     : Op{OP_MATMUL,
          prec_type,
          {mat_a, mat_b},
@@ -22,7 +20,8 @@ MatmulOp::MatmulOp(const std::string &prec_type, Tensor *mat_a, Tensor *mat_b,
          {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b}},
          name,
          &MatmulConfigMap,
-         gran_lev} {}
+         gran_lev,
+         true} {}
 
 std::string MatmulOp::function_name(const OpConfig &cfg) const {
     Tensor *mat_a = this->inputs[0];
@@ -100,7 +99,7 @@ std::string MatmulOp::function_name(const OpConfig &cfg) const {
 
 Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
                       DimType split_k, bool trans_a, bool trans_b,
-                      const string &name, int gran_lev) {
+                      const std::string &name, int gran_lev) {
     CHECK(mat_a != nullptr);
     CHECK(mat_b != nullptr);
     CHECK(split_k >= 1);
@@ -181,12 +180,12 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     }
 
     // N and C dimension of output matrix
-    Dims ncc{max(nca[0], ncb[0]), max(nca[1], ncb[1])};
+    Dims ncc{std::max(nca[0], ncb[0]), std::max(nca[1], ncb[1])};
 
     Dims output_shape;
-    if (max(ndims_a, ndims_b) == 4) {
+    if (std::max(ndims_a, ndims_b) == 4) {
         output_shape = Dims{ncc[0], ncc[1], m, n};
-    } else if (max(ndims_a, ndims_b) == 3) {
+    } else if (std::max(ndims_a, ndims_b) == 3) {
         output_shape = Dims{ncc[1], m, n};
     } else {
         output_shape = Dims{m, n};
@@ -235,7 +234,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     Dims split_output_shape = output_shape;
     split_output_shape[0] *= split_k;
     Tensor *output_buffer = this->tensor(split_output_shape, mat_y->type);
-    vector<Tensor *> mat_y_shards = this->sharding(
+    std::vector<Tensor *> mat_y_shards = this->sharding(
         output_buffer, 0, output_shape[0], name + "/sharding_mat_y");
 
     int axis_a;
@@ -251,9 +250,9 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
         axis_b = (ndims_b == 1) ? (ndims_b - 1) : (ndims_b - 2);
     }
 
-    vector<Tensor *> mat_a_shards =
+    std::vector<Tensor *> mat_a_shards =
         this->sharding(mat_a, axis_a, spu, name + "/sharding_mat_a");
-    vector<Tensor *> mat_b_shards =
+    std::vector<Tensor *> mat_b_shards =
         this->sharding(mat_b, axis_b, spu, name + "/sharding_mat_b");
 
     CHECK(mat_y_shards.size() == (size_t)split_k);
@@ -264,7 +263,7 @@ Tensor *Model::matmul(Tensor *mat_a, Tensor *mat_b, Tensor *mat_y,
     for (DimType i = 0; i < split_k; ++i) {
         Tensor *shard_output = this->matmul(
             mat_a_shards[i], mat_b_shards[i], mat_y_shards[i], 1, trans_a,
-            trans_b, name + "/matmul_shard_" + to_string(i), gran_lev);
+            trans_b, name + "/matmul_shard_" + std::to_string(i), gran_lev);
         shard_outputs.push_back(shard_output);
     }
     // Reduce after all outputs are ready.
@@ -332,6 +331,7 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_ROCM_942, "fp16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 24672, {{256, 32}, {32, 128}}, {{256, 128}}, true, false},
          {4, 24672, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
          {2, 16480, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
          {1, 8288, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
@@ -339,6 +339,7 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_ROCM_942, "bf16"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 24624, {{256, 32}, {32, 128}}, {{256, 128}}, true, false},
          {4, 24624, {{128, 32}, {32, 256}}, {{128, 256}}, true, false},
          {2, 16432, {{128, 32}, {32, 128}}, {{128, 128}}, true, false},
          {1, 8240, {{64, 32}, {32, 64}}, {{64, 64}}, true, false},
@@ -346,6 +347,7 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_ROCM_942, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
+         {4, 24672, {{256, 16}, {16, 128}}, {{256, 128}}, true, false},
          {4, 24672, {{128, 16}, {16, 256}}, {{128, 256}}, true, false},
          {2, 16480, {{128, 16}, {16, 128}}, {{128, 128}}, true, false},
          {1, 8288, {{64, 16}, {16, 64}}, {{64, 64}}, true, false},
