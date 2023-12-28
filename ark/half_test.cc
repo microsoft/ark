@@ -230,7 +230,7 @@ ark::unittest::State test_half() {
 ark::unittest::State test_half_error() {
     ark::half_t x(0.1f);
     ark::half_t sum(0.0f);
-    int reduce_length = 1024;   // should not exceed 2^11
+    int reduce_length = 1024;  // should not exceed 2^11
 
     for (int i = 0; i < reduce_length; ++i) {
         sum += x * x;

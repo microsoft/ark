@@ -44,6 +44,7 @@ jobs:
       script: |
         git submodule foreach --recursive git reset --hard
         git submodule foreach --recursive git clean -fdx
+        git submodule foreach git fetch
         git submodule update --init --recursive
 
   - task: Bash@3
@@ -63,7 +64,7 @@ jobs:
     inputs:
       targetType: 'inline'
       script: |
-        cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+        cd build && ARK_ROOT=$PWD ARK_IGNORE_BINARY_CACHE=1 ctest --stop-on-failure --verbose --schedule-random
       workingDirectory: '$(System.DefaultWorkingDirectory)'
 
   - task: Bash@3

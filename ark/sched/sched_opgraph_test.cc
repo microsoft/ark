@@ -319,6 +319,55 @@ ark::unittest::State test_sched_opgraph() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_sched_opgraph_dependent_inputs() {
+    ark::Model m;
+
+    ark::Tensor *ones = m.tensor({256, 256}, ark::FP16);
+    ark::Tensor *x0 = m.scale(m.scale(ones, 2), 2);
+    ark::Tensor *x1 = m.scale(m.scale(x0, 2), 2);
+
+    ark::Tensor *x2 = m.mul(ones, x1);
+    ark::Tensor *x3 = m.mul(ones, x1);
+    ark::Tensor *x4 = m.mul(x2, x3);
+    ark::Tensor *y = m.add(x0, x4);
+
+    ark::OpGraph graph(m);
+    UNITTEST_EQ(graph.get_nodes().size(), 4);
+    auto nodes_iter = graph.get_nodes().begin();
+    auto node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops.size(), 4);
+    UNITTEST_EQ(node->ops[1]->outputs[0], x0);
+    UNITTEST_EQ(node->ops[3]->outputs[0], x1);
+    UNITTEST_EQ(node->users.size(), 3);
+    UNITTEST_EQ(node->producers.size(), 0);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops.size(), 1);
+    UNITTEST_EQ(node->ops[0]->outputs[0], x2);
+    UNITTEST_EQ(node->ops[0]->inputs[0], ones);
+    UNITTEST_EQ(node->ops[0]->inputs[1], x1);
+    UNITTEST_EQ(node->users.size(), 1);
+    UNITTEST_EQ(node->producers.size(), 1);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops.size(), 1);
+    UNITTEST_EQ(node->ops[0]->outputs[0], x3);
+    UNITTEST_EQ(node->ops[0]->inputs[0], ones);
+    UNITTEST_EQ(node->ops[0]->inputs[1], x1);
+    UNITTEST_EQ(node->users.size(), 1);
+    UNITTEST_EQ(node->producers.size(), 1);
+    node = (nodes_iter++)->get();
+    UNITTEST_EQ(node->ops.size(), 2);
+    UNITTEST_EQ(node->ops[0]->outputs[0], x4);
+    UNITTEST_EQ(node->ops[0]->inputs[0], x2);
+    UNITTEST_EQ(node->ops[0]->inputs[1], x3);
+    UNITTEST_EQ(node->ops[1]->outputs[0], y);
+    UNITTEST_EQ(node->ops[1]->inputs[0], x0);
+    UNITTEST_EQ(node->ops[1]->inputs[1], x4);
+    UNITTEST_EQ(node->users.size(), 0);
+    UNITTEST_EQ(node->producers.size(), 3);
+
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_sched_opgraph_noop() {
     ark::Model model;
     model.tensor({1}, ark::FP32);
@@ -564,6 +613,7 @@ ark::unittest::State test_sched_opgraph_all_reduce() {
 int main() {
     ark::init();
     UNITTEST(test_sched_opgraph);
+    UNITTEST(test_sched_opgraph_dependent_inputs);
     UNITTEST(test_sched_opgraph_noop);
     UNITTEST(test_sched_opgraph_identity);
     UNITTEST(test_sched_opgraph_sharding);

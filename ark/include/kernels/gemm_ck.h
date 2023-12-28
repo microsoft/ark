@@ -7,11 +7,6 @@
 #include <cassert>
 #include <type_traits>
 
-// TODO: temporal until CK officially supports gfx941/942
-#if defined(__gfx941__) || defined(__gfx942__)
-#define __gfx940__
-#endif
-
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl.hpp"
 #include "ck/tensor_operation/gpu/device/impl/device_gemm_xdl_cshuffle.hpp"
 #include "common/checker.h"
@@ -44,20 +39,11 @@ template <typename DataTypeA, typename DataTypeB, typename DataTypeC,
           int CShuffleNumStage = 1>
 struct CkGemmConfig;
 
-template <int BlockSize,
-          int MPerBlock,
-          int NPerBlock,
-          int KPerBlock,
-          int AK1,
-          int BK1,
-          int MPerXDL,
-          int NPerXDL,
-          int MXdlPerWave,
-          int NXdlPerWave,
+template <int BlockSize, int MPerBlock, int NPerBlock, int KPerBlock, int AK1,
+          int BK1, int MPerXDL, int NPerXDL, int MXdlPerWave, int NXdlPerWave,
           int ABlockTransferSrcScalarPerVector,
           int BBlockTransferSrcScalarPerVector,
-          int CShuffleMXdlPerWavePerShuffle,
-          int CShuffleNXdlPerWavePerShuffle>
+          int CShuffleMXdlPerWavePerShuffle, int CShuffleNXdlPerWavePerShuffle>
 struct PrintDeviceGemmXdlCShuffle;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +56,8 @@ struct CkGemmConfig<fp32, fp32, fp32, fp32, LayoutA, LayoutB, NumThreads,
                     CShuffleNumStage> {
     static constexpr bool IsColA = std::is_same<LayoutA, Col>::value;
     static constexpr bool IsColB = std::is_same<LayoutB, Col>::value;
+    static constexpr auto AK1 = 4;  // or (!IsColA) ? 4 : 1;
+    static constexpr auto BK1 = 4;  // or IsColB ? 4 : 1;
     static constexpr auto MNXdlPerWave =
         TileSizeM * TileSizeN / 16 / NumThreads;
     static constexpr auto LogMNXdlPerWave = math::log2_up<MNXdlPerWave>::value;
@@ -77,12 +65,38 @@ struct CkGemmConfig<fp32, fp32, fp32, fp32, LayoutA, LayoutB, NumThreads,
         (TileSizeM < TileSizeN) ? 1 << (LogMNXdlPerWave / 2)
                                 : 1 << (LogMNXdlPerWave - LogMNXdlPerWave / 2);
     static constexpr auto NXdlPerWave = MNXdlPerWave / MXdlPerWave;
+
+    static constexpr bool Is_256x256x128 =
+        NumThreads == 256 && TileSizeM == 256 && TileSizeN == 128;
+    static constexpr bool Is_256x128x256 =
+        NumThreads == 256 && TileSizeM == 128 && TileSizeN == 256;
+    static constexpr bool Is_256x64x128 =
+        NumThreads == 256 && TileSizeM == 64 && TileSizeN == 128;
+    static constexpr bool Is_256x128x64 =
+        NumThreads == 256 && TileSizeM == 128 && TileSizeN == 64;
+
     static constexpr bool Is_128x128x64 =
         NumThreads == 128 && TileSizeM == 128 && TileSizeN == 64;
     static constexpr bool Is_128x64x128 =
         NumThreads == 128 && TileSizeM == 64 && TileSizeN == 128;
     static constexpr bool Is_128x128x128 =
         NumThreads == 128 && TileSizeM == 128 && TileSizeN == 128;
+    static constexpr bool Is_128x128x32 =
+        NumThreads == 128 && TileSizeM == 128 && TileSizeN == 32;
+    static constexpr bool Is_128x32x128 =
+        NumThreads == 128 && TileSizeM == 32 && TileSizeN == 128;
+
+    static constexpr auto A_Lengths_K0 =
+        (!IsColA || AK1 == 4 || Is_256x256x128 || Is_128x128x128 ||
+         Is_128x128x64)
+            ? 4
+            : Is_256x64x128 ? 16 : 8;
+
+    static constexpr auto B_Lengths_K0 =
+        (IsColB || BK1 == 4 || Is_256x128x256 || Is_128x128x128 ||
+         Is_128x64x128)
+            ? 4
+            : Is_256x128x64 ? 16 : 8;
 
     using ImplXdl = ck::tensor_operation::device::DeviceGemmXdl<
         F32, F32, F32, F32, LayoutA, LayoutB, Row, PassThrough, PassThrough,
@@ -97,6 +111,33 @@ struct CkGemmConfig<fp32, fp32, fp32, fp32, LayoutA, LayoutB, NumThreads,
         (IsColB ? 2 : 1),
         ((IsColB || Is_128x64x128 || Is_128x128x128) ? 4 : NXdlPerWave), 4,
         true, 7, 1>;
+
+    using ImplXdlCShuffle =
+        ck::tensor_operation::device::DeviceGemm_Xdl_CShuffle<
+            LayoutA, LayoutB, Row, F32, F32, F32, F32, F32, PassThrough,
+            PassThrough, PassThrough, GemmDefault, 1, NumThreads, TileSizeM,
+            TileSizeN, 16, AK1, BK1, 32, 32, MXdlPerWave, NXdlPerWave,
+            S<A_Lengths_K0, (NumThreads / A_Lengths_K0), 1>,
+            typename std::conditional<IsColA, S<0, 2, 1>, S<1, 0, 2>>::type,
+            typename std::conditional<IsColA, S<0, 2, 1>, S<1, 0, 2>>::type,
+            (IsColA ? 1 : 2),
+            ((!IsColA || Is_128x128x64 || AK1 == 1) ? 4 : MXdlPerWave), AK1,
+            (AK1 == 4), S<B_Lengths_K0, (NumThreads / B_Lengths_K0), 1>,
+            typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
+            typename std::conditional<IsColB, S<1, 0, 2>, S<0, 2, 1>>::type,
+            (IsColB ? 2 : 1),
+            ((IsColB || BK1 == 1 || Is_256x128x256 || Is_128x128x128 ||
+              Is_128x64x128 || Is_128x32x128)
+                 ? 4
+                 : NXdlPerWave),
+            BK1, (BK1 == 4), 1, 1,
+            S<1,
+              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 ||
+               NumThreads == 64)
+                  ? 8
+                  : 16,
+              1, (Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 8 : 16>,
+            4>;
 };
 
 template <typename LayoutA, typename LayoutB, int NumThreads, int TileSizeM,
@@ -205,30 +246,26 @@ struct CkGemmConfig<fp16, fp16, fp16, fp32, LayoutA, LayoutB, NumThreads,
                           : NXdlPerWave),
             BK1, (BK1 == 8), 1, 1,
             S<1,
-              (Is_128x128x128 || Is_128x64x128 || NumThreads == 64) ? 16 : 32,
+              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 ||
+               NumThreads == 64)
+                  ? 16
+                  : 32,
               1,
               ((Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 4 : 8)>,
             8>;
 
 #if (DEBUG_CK != 0)
-    PrintDeviceGemmXdlCShuffle<NumThreads,
-            TileSizeM,
-            TileSizeN,
-            32,
-            AK1,
-            BK1,
-            32,
-            32,
-            MXdlPerWave,
-            NXdlPerWave,
-            (!IsColA ? 8 : (AK1 == 2 || Is_128x128x64) ? 4 : MXdlPerWave),
-            (IsColB ? 8
-                    : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 ||
-                       Is_128x64x128)
-                          ? 4
-                          : NXdlPerWave),
-            1,
-            1> p;
+    PrintDeviceGemmXdlCShuffle<
+        NumThreads, TileSizeM, TileSizeN, 32, AK1, BK1, 32, 32, MXdlPerWave,
+        NXdlPerWave,
+        (!IsColA ? 8 : (AK1 == 2 || Is_128x128x64) ? 4 : MXdlPerWave),
+        (IsColB
+             ? 8
+             : (BK1 == 2 || Is_256x128x256 || Is_128x128x128 || Is_128x64x128)
+                   ? 4
+                   : NXdlPerWave),
+        1, 1>
+        p;
 #endif  // (DEBUG_CK != 0)
 };
 
@@ -276,6 +313,8 @@ struct CkGemmConfig<bf16, bf16, bf16, fp32, LayoutA, LayoutB, NumThreads,
         NumThreads == 256 && TileSizeM == 128 && TileSizeN == 256;
     static constexpr bool Is_128x64x128 =
         NumThreads == 128 && TileSizeM == 64 && TileSizeN == 128;
+    static constexpr bool Is_128x32x128 =
+        NumThreads == 128 && TileSizeM == 32 && TileSizeN == 128;
 
     static constexpr bool Is_256x128x64 =
         NumThreads == 256 && TileSizeM == 128 && TileSizeN == 64;
@@ -307,7 +346,10 @@ struct CkGemmConfig<bf16, bf16, bf16, fp32, LayoutA, LayoutB, NumThreads,
                           : NXdlPerWave),
             BK1, (BK1 == 8), 1, 1,
             S<1,
-              (Is_128x128x128 || Is_128x64x128 || NumThreads == 64) ? 16 : 32,
+              (Is_128x128x128 || Is_128x64x128 || Is_128x32x128 ||
+               NumThreads == 64)
+                  ? 16
+                  : 32,
               1,
               ((Is_128x128x64 || Is_128x128x32 || NumThreads == 64) ? 4 : 8)>,
             8>;
@@ -394,7 +436,8 @@ struct CkGemm {
         char *p_shared = UnitOp::template shared_memory<char>(smem_per_warp);
 
         constexpr int SmemBytes = GridwiseGemm::GetSharedMemoryNumberOfByte();
-        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(), UnitOp::NumThreads>();
+        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(),
+             UnitOp::NumThreads>();
         IsEq<SmemBytes, UnitOp::SmemBytes>();
 
         const auto a_grid_desc_k0_m_k1 =
@@ -403,33 +446,33 @@ struct CkGemm {
         const auto b_grid_desc_k0_n_k1 =
             amd_wave_read_first_lane(GridwiseGemm::MakeBGridDescriptor_K0_N_K1(
                 arg.K, arg.N, arg.NPadded, arg.K0, arg.StrideB));
-        const auto c_grid_desc_m_n = amd_wave_read_first_lane(GridwiseGemm::MakeCGridDescriptor_M_N(
-            arg.M, arg.MPadded, arg.N, arg.NPadded, arg.StrideC));
+        const auto c_grid_desc_m_n =
+            amd_wave_read_first_lane(GridwiseGemm::MakeCGridDescriptor_M_N(
+                arg.M, arg.MPadded, arg.N, arg.NPadded, arg.StrideC));
 
         if (GridwiseGemm::CalculateHasMainKBlockLoop(ProblemSizeK)) {
             GridwiseGemm::template Run<true>(
-                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1,
-                b_grid_desc_k0_n_k1,
+                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1, b_grid_desc_k0_n_k1,
                 c_grid_desc_m_n, uop_idx);
         } else {
             GridwiseGemm::template Run<false>(
-                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1,
-                b_grid_desc_k0_n_k1,
+                pA, pB, pC, p_shared, a_grid_desc_k0_m_k1, b_grid_desc_k0_n_k1,
                 c_grid_desc_m_n, uop_idx);
         }
     }
 
     DEVICE void RunXdlCShuffle(DataTypeC *C, DataTypeA *A, DataTypeB *B,
                                int uop_idx, int smem_per_warp) const {
-        using GridwiseGemm = typename CkGemmConfig::ImplXdlCShuffle::GridwiseGemm;
+        using GridwiseGemm =
+            typename CkGemmConfig::ImplXdlCShuffle::GridwiseGemm;
 
         CkDataTypeC *pC = reinterpret_cast<CkDataTypeC *>(C);
         CkDataTypeA *pA = reinterpret_cast<CkDataTypeA *>(A);
         CkDataTypeB *pB = reinterpret_cast<CkDataTypeB *>(B);
 
         typename GridwiseGemm::Problem problem(ProblemSizeM, ProblemSizeN,
-                                        ProblemSizeK, LeadingDimA,
-                                        LeadingDimB, LeadingDimC);
+                                               ProblemSizeK, LeadingDimA,
+                                               LeadingDimB, LeadingDimC);
 
         if (UnitOp::thread_id() == 0) {
             assert(GridwiseGemm::CheckValidity(problem));
@@ -439,15 +482,16 @@ struct CkGemm {
         char *p_shared = UnitOp::template shared_memory<char>(smem_per_warp);
 
         constexpr int SmemBytes = GridwiseGemm::GetSharedMemoryNumberOfByte();
-        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(), UnitOp::NumThreads>();
+        IsEq<GridwiseGemm::ThisThreadBlock::GetNumOfThread(),
+             UnitOp::NumThreads>();
         IsEq<SmemBytes, UnitOp::SmemBytes>();
 
         if (GridwiseGemm::CalculateHasMainKBlockLoop(ProblemSizeK)) {
-            GridwiseGemm::template Run<true>(
-                pA, pB, pC, p_shared, problem, uop_idx);
+            GridwiseGemm::template Run<true>(pA, pB, pC, p_shared, problem,
+                                             uop_idx);
         } else {
-            GridwiseGemm::template Run<false>(
-                pA, pB, pC, p_shared, problem, uop_idx);
+            GridwiseGemm::template Run<false>(pA, pB, pC, p_shared, problem,
+                                              uop_idx);
         }
     }
 
