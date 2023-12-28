@@ -27,8 +27,6 @@
 
 #define ARK_DEBUG_KERNEL 0
 
-using namespace std;
-
 namespace ark {
 
 template <typename ItemType>
@@ -151,7 +149,7 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
     items.reserve(codes.size());
     srand();
     for (auto &code : codes) {
-        string hash_str = fnv1a_hash(code);
+        std::string hash_str = fnv1a_hash(code);
         items.emplace_back(code, "/tmp/ark_" + hash_str);
     }
     assert(items.size() == 1);
@@ -187,9 +185,9 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             LOG(INFO, "Compiling: ", code_file_path);
             LOG(DEBUG, compile_cmd);
             // Run the command.
-            array<char, 4096> buffer;
-            stringstream exec_print;
-            unique_ptr<FILE, decltype(&pclose)> pipe(
+            std::array<char, 4096> buffer;
+            std::stringstream exec_print;
+            std::unique_ptr<FILE, decltype(&pclose)> pipe(
                 popen(compile_cmd.c_str(), "r"), pclose);
             if (!pipe) {
                 ERR(SystemError, "popen() failed");
@@ -197,7 +195,7 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
                 exec_print << buffer.data();
             }
-            string exec_print_str = exec_print.str();
+            std::string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
                 ERR(ExecutorError, "\n", compile_cmd, "\n", exec_print_str,
                     "\n");
@@ -205,7 +203,7 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             LOG(INFO, "Compile succeed: ", code_file_path, " (",
                 cpu_timer() - start, " seconds)");
         });
-    string gpubin_file_path = items[0].second + ".cubin";
+    std::string gpubin_file_path = items[0].second + ".cubin";
     return read_file(gpubin_file_path);
 }
 
