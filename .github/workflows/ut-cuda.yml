@@ -41,7 +41,7 @@ jobs:
           git config --global --add safe.directory /__w/ark/ark
           git submodule foreach --recursive git reset --hard
           git submodule foreach --recursive git clean -fdx
-          git submodule foreach git pull --depth=1
+          git submodule foreach git fetch
           git submodule update --init --recursive
 
       - name: Build
