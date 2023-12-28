@@ -20,8 +20,7 @@ MatmulOp::MatmulOp(const std::string &prec_type, Tensor *mat_a, Tensor *mat_b,
          {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b}},
          name,
          &MatmulConfigMap,
-         gran_lev,
-         true} {}
+         gran_lev} {}
 
 std::string MatmulOp::function_name(const OpConfig &cfg) const {
     Tensor *mat_a = this->inputs[0];
@@ -347,7 +346,7 @@ const OpConfigMap MatmulConfigMap = {
     {{OP_ARCH_ROCM_942, "fp32"},
      {
          // NumWarps, SmemBytes, InDepsTiles, OutDepsTiles, SyncPre, SyncPost
-         {4, 24672, {{256, 16}, {16, 128}}, {{256, 128}}, true, false},
+         // {4, 24672, {{256, 16}, {16, 128}}, {{256, 128}}, true, false},
          {4, 24672, {{128, 16}, {16, 256}}, {{128, 256}}, true, false},
          {2, 16480, {{128, 16}, {16, 128}}, {{128, 128}}, true, false},
          {1, 8288, {{64, 16}, {16, 64}}, {{64, 64}}, true, false},
