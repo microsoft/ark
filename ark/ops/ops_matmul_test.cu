@@ -562,9 +562,8 @@ ark::unittest::State test_matmul_fp16_perf() {
         ark::Tensor *b = m.tensor(ark::Dims(8192, 128), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, false, false, "matmul", 0);
 
-        auto result =
-            ark::op_test("matmul_fp16", m, {a, b}, {c},
-                         baseline_matmul_nn<ark::half_t>);
+        auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
+                                   baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
     }
     return ark::unittest::SUCCESS;
