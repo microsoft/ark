@@ -570,6 +570,7 @@ ark::unittest::State test_matmul_fp16_perf() {
 }
 
 int main() {
+    ::setenv("ARK_DISABLE_GRAPH_OPT", "1", 1);
     ark::init();
     UNITTEST(test_matmul_fp16);
     UNITTEST(test_matmul_fp32);
