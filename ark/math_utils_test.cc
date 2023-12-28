@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "include/ark.h"
 #include "math_utils.h"
+
+#include "include/ark.h"
 #include "unittest/unittest_utils.h"
 
 ark::unittest::State test_math() {
