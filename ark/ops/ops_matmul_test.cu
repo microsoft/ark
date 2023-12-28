@@ -564,7 +564,7 @@ ark::unittest::State test_matmul_fp16_perf() {
 
         auto result =
             ark::op_test("matmul_fp16", m, {a, b}, {c},
-                         baseline_matmul_nn<ark::half_t>, {}, false, 0, 1, 4);
+                         baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
     }
     return ark::unittest::SUCCESS;
