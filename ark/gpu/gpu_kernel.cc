@@ -52,25 +52,25 @@ void GpuKernel::compile() {
         max_reg_cnt = max_reg_per_thread - 1;
     }
     bin_ = gpu_compile({codes_}, manager->info().arch, max_reg_cnt);
-    GLOG(gpuModuleLoadData(&module_, bin_.c_str()));
-    GLOG(gpuModuleGetFunction(&function_, module_, kernel_name_.c_str()));
+    GLOG_DRV(gpuModuleLoadData(&module_, bin_.c_str()));
+    GLOG_DRV(gpuModuleGetFunction(&function_, module_, kernel_name_.c_str()));
 
     int static_smem_size_bytes;
-    GLOG(gpuFuncGetAttribute(&static_smem_size_bytes,
-                             gpuFuncAttributeSharedSizeBytes, function_));
+    GLOG_DRV(gpuFuncGetAttribute(&static_smem_size_bytes,
+                                 gpuFuncAttributeSharedSizeBytes, function_));
     int dynamic_smem_size_bytes = smem_bytes_ - static_smem_size_bytes;
-    GLOG(gpuFuncSetAttribute(function_,
-                             gpuFuncAttributeMaxDynamicSharedSizeBytes,
-                             dynamic_smem_size_bytes));
+    GLOG_DRV(gpuFuncSetAttribute(function_,
+                                 gpuFuncAttributeMaxDynamicSharedSizeBytes,
+                                 dynamic_smem_size_bytes));
 }
 
-GpuState GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
+void GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
     if (!this->is_compiled()) {
         ERR(InvalidUsageError, "Kernel is not compiled yet.");
     }
-    return ctx_->get_gpu_manager()->launch(function_, grid_dim_, block_dim_,
-                                           smem_bytes_, stream,
-                                           this->params_ptr_.data(), nullptr);
+    ctx_->get_gpu_manager()->launch(function_, grid_dim_, block_dim_,
+                                    smem_bytes_, stream,
+                                    this->params_ptr_.data(), nullptr);
 }
 
 }  // namespace ark

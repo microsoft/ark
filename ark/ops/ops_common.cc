@@ -218,57 +218,6 @@ void OpArg::get(Tensor **arg) const {
     *arg = static_cast<Tensor *>(this->val);
 }
 
-bool operator<(const OpArg &oa1, const OpArg &oa2) {
-    if (oa1.type != oa2.type) {
-        return oa1.type < oa2.type;
-    }
-    assert(oa1.val != nullptr);
-    assert(oa2.val != nullptr);
-    switch (oa1.type) {
-        case OP_ARG_INT:
-            return *(int *)oa1.val < *(int *)oa2.val;
-        case OP_ARG_INT64:
-            return *(DimType *)oa1.val < *(DimType *)oa2.val;
-        case OP_ARG_UINT64:
-            return *(uint64_t *)oa1.val < *(uint64_t *)oa2.val;
-        case OP_ARG_BOOL:
-            return *(bool *)oa1.val < *(bool *)oa2.val;
-        case OP_ARG_FLOAT:
-            return *(float *)oa1.val < *(float *)oa2.val;
-        case OP_ARG_DIMS:
-            return *(Dims *)oa1.val < *(Dims *)oa2.val;
-        case OP_ARG_TENSOR:
-            return (uintptr_t)oa1.val < (uintptr_t)oa2.val;
-    }
-    assert(false);
-    return false;
-}
-bool operator==(const OpArg &oa1, const OpArg &oa2) {
-    if (oa1.type != oa2.type) {
-        return false;
-    }
-    assert(oa1.val != nullptr);
-    assert(oa2.val != nullptr);
-    switch (oa1.type) {
-        case OP_ARG_INT:
-            return *(int *)oa1.val == *(int *)oa2.val;
-        case OP_ARG_INT64:
-            return *(DimType *)oa1.val == *(DimType *)oa2.val;
-        case OP_ARG_UINT64:
-            return *(uint64_t *)oa1.val == *(uint64_t *)oa2.val;
-        case OP_ARG_BOOL:
-            return *(bool *)oa1.val == *(bool *)oa2.val;
-        case OP_ARG_FLOAT:
-            return *(float *)oa1.val == *(float *)oa2.val;
-        case OP_ARG_DIMS:
-            return *(Dims *)oa1.val == *(Dims *)oa2.val;
-        case OP_ARG_TENSOR:
-            return oa1.val == oa2.val;
-    }
-    assert(false);
-    return false;
-}
-
 OpArgs::OpArgs(const std::vector<OpArg> &args) : args{args} {}
 
 OpArgs &OpArgs::operator=(const OpArgs &opargs) {
@@ -358,30 +307,6 @@ void OpArgs::get(Tensor **arg, size_t idx) const {
 }
 
 const std::vector<OpArg> &OpArgs::get_args() const { return this->args; }
-
-bool operator<(const OpArgs &opargs1, const OpArgs &opargs2) {
-    for (size_t i = 0; i < opargs1.args.size(); ++i) {
-        if (opargs1.args[i] == opargs2.args[i]) {
-            continue;
-        }
-        return opargs1.args[i] < opargs2.args[i];
-    }
-    return false;
-}
-
-bool operator==(const OpArgs &opargs1, const OpArgs &opargs2) {
-    for (size_t i = 0; i < opargs1.args.size(); ++i) {
-        if (opargs1.args[i] == opargs2.args[i]) {
-            continue;
-        }
-        return false;
-    }
-    return true;
-}
-
-bool operator!=(const OpArgs &opargs1, const OpArgs &opargs2) {
-    return !(opargs1 == opargs2);
-}
 
 Op::Op(const OpType &type_, const std::string &prec_type_,
        const vector<Tensor *> &inputs_, const vector<Tensor *> &output_refs_,
@@ -581,32 +506,6 @@ bool Op::is_virtual() const { return this->cfg_map == nullptr; }
 bool Op::is_comm() const {
     return this->type == OP_SEND || this->type == OP_SEND_DONE ||
            this->type == OP_RECV || this->type == OP_DEVICE_SYNC;
-}
-
-bool operator<(const Op &op1, const Op &op2) {
-    if (op1.type < op2.type) {
-        return true;
-    }
-    if (op1.prec_type < op2.prec_type) {
-        return true;
-    }
-    if (op1.args < op2.args) {
-        return true;
-    }
-    return false;
-}
-
-bool operator==(const Op &op1, const Op &op2) {
-    if (op1.type != op2.type) {
-        return false;
-    }
-    if (op1.prec_type != op2.prec_type) {
-        return false;
-    }
-    if (op1.args != op2.args) {
-        return false;
-    }
-    return true;
 }
 
 }  // namespace ark

@@ -33,7 +33,7 @@ gpuError GpuStream::query() const { return pimpl_->query(); }
 gpuStream GpuStream::get() const { return pimpl_->get(); }
 
 GpuStream::Impl::Impl(const GpuManager &manager) : manager_(manager) {
-    GLOG(gpuStreamCreate(&gpu_stream_, gpuStreamNonBlocking));
+    GLOG(gpuStreamCreateWithFlags(&gpu_stream_, gpuStreamNonBlocking));
 }
 
 GpuStream::Impl::~Impl() { GLOG(gpuStreamDestroy(gpu_stream_)); }

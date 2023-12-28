@@ -99,17 +99,4 @@ int ipc_shm_open_blocking(const char *name) {
     return -1;
 }
 
-// Destroy a shm file.
-int ipc_shm_destroy(const char *name) { return shm_unlink(name); }
-
-// Return zero if we can open the shm file.
-int ipc_shm_exist(const char *name) {
-    int fd = shm_open(name, O_RDWR, SHM_MODE);
-    if (fd != -1) {
-        close(fd);
-        return true;
-    }
-    return false;
-}
-
 }  // namespace ark

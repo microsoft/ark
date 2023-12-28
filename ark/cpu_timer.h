@@ -8,8 +8,6 @@ namespace ark {
 
 // Measure current time in second.
 double cpu_timer(void);
-// Measure current time in nanosecond.
-long cpu_ntimer(void);
 // Sleep in second.
 int cpu_timer_sleep(double sec);
 // Sleep in nanosecond.
