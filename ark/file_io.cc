@@ -3,196 +3,87 @@
 
 #include "file_io.h"
 
-#include <dirent.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <cerrno>
-#include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 
 #include "include/ark.h"
 #include "logging.h"
 
-using namespace std;
-
-static bool get_stat(const char *path, struct stat *st) {
-    if (stat(path, st) == -1) {
-        switch (errno) {
-            case EACCES:
-                ERR(ark::SystemError, "permission denied: ", path);
-            case EFAULT:
-                ERR(ark::SystemError, "bad address: ", path);
-            case ENOENT:
-            case ENOTDIR:
-                return false;
-            default:
-                ERR(ark::SystemError, "stat() for file path ", path,
-                    " failed with errno ", errno);
-        };
-    }
-    return true;
-}
+namespace fs = std::filesystem;
 
 namespace ark {
 
-bool is_exist(const string &path) {
-    struct stat st;
-    return get_stat(path.c_str(), &st);
+bool is_exist(const std::string &path) {
+    return fs::directory_entry{path}.exists();
 }
 
-bool is_dir(const string &path) {
-    struct stat st;
-    if (!get_stat(path.c_str(), &st)) {
-        return false;
-    }
-    return S_ISDIR(st.st_mode);
+bool is_dir(const std::string &path) {
+    return fs::is_directory(fs::status(path));
 }
 
-bool is_file(const string &path) {
-    struct stat st;
-    if (!get_stat(path.c_str(), &st)) {
-        return false;
-    }
-    return S_ISREG(st.st_mode);
+bool is_file(const std::string &path) {
+    return fs::is_regular_file(fs::status(path));
 }
 
-int create_dir(const string &path) {
-    if (mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-        return errno;
-    }
-    return 0;
+int create_dir(const std::string &path) {
+    std::error_code ec;
+    fs::create_directories(path, ec);
+    return ec.value();
 }
 
-int remove_dir(const string &path) {
-    if (rmdir(path.c_str()) == -1) {
-        return errno;
-    }
-    return 0;
-}
-
-// Helper function to remove all files in a directory given a file descriptor.
-int clear_dirat_helper(int dir_fd, const char *name) {
-    int r = -1;
-    int fd = openat(dir_fd, name, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
-
-    if (fd >= 0) {
-        struct stat statbuf;
-
-        if (!fstat(fd, &statbuf)) {
-            if (S_ISDIR(statbuf.st_mode)) {
-                r = clear_dirat_helper(fd, ".");
-                if (!r) {
-                    r = unlinkat(dir_fd, name, AT_REMOVEDIR);
-                }
-            } else {
-                r = unlinkat(dir_fd, name, 0);
-            }
-        }
-        close(fd);
-    }
-
-    return r;
+int remove_dir(const std::string &path) {
+    LOG(DEBUG, "remove dir: ", path);
+    std::error_code ec;
+    fs::remove_all(path, ec);
+    return ec.value();
 }
 
 // Remove all files in a directory.
-int clear_dir(const string &path) {
-    const char *path_c = path.c_str();
-    DIR *d = opendir(path_c);
-    int r = -1;
-
-    if (d) {
-        struct dirent *p;
-        int dir_fd = dirfd(d);
-
-        while ((p = readdir(d))) {
-            // Skip the names "." and ".." as we don't want to recurse on
-            // them.
-            if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
-                continue;
-            }
-            r = clear_dirat_helper(dir_fd, p->d_name);
+int clear_dir(const std::string &path) {
+    LOG(DEBUG, "clear dir: ", path);
+    std::error_code ec;
+    for (const auto &entry : fs::directory_iterator(path, ec)) {
+        if (ec.value() != 0) {
+            return ec.value();
         }
-        closedir(d);
+        fs::remove_all(entry.path(), ec);
+        if (ec.value() != 0) {
+            return ec.value();
+        }
     }
-
-    return r;
+    return ec.value();
 }
 
-vector<string> list_dir(const string &path) {
-    string path_str;
-    if (path[path.size() - 1] == '/') {
-        path_str = path.substr(0, path.size() - 1);
-    } else {
-        path_str = path;
+std::vector<std::string> list_dir(const std::string &path) {
+    std::vector<std::string> files;
+    for (const auto &entry : fs::directory_iterator(path)) {
+        files.push_back(entry.path().string());
     }
-    const char *path_c = path_str.c_str();
-    DIR *d = opendir(path_c);
-    size_t path_len = strlen(path_c);
-
-    vector<string> ret;
-
-    if (d) {
-        struct dirent *p;
-
-        while ((p = readdir(d))) {
-            char *buf;
-            size_t len;
-
-            // Skip the names "." and ".." as we don't want to recurse on them.
-            if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
-                continue;
-            }
-            len = path_len + strlen(p->d_name) + 2;
-            buf = (char *)malloc(len);
-
-            if (buf) {
-                struct stat statbuf;
-
-                snprintf(buf, len, "%s/%s", path_c, p->d_name);
-                if (!stat(buf, &statbuf)) {
-                    ret.emplace_back(buf);
-                }
-                free(buf);
-            }
-        }
-        closedir(d);
-    }
-
-    return ret;
+    return files;
 }
 
-string read_file(const string &path) {
-    ifstream file(path);
-    stringstream ss;
+std::string read_file(const std::string &path) {
+    std::ifstream file(path);
+    std::stringstream ss;
     ss << file.rdbuf();
     return ss.str();
 }
 
-void write_file(const string &path, const string &data) {
-    ofstream file(path, ios::out | ios::trunc);
+void write_file(const std::string &path, const std::string &data) {
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
     file << data;
 }
 
-int remove_file(const string &path) {
+int remove_file(const std::string &path) {
     LOG(DEBUG, "remove file: ", path);
-    if (remove(path.c_str()) == 0) {
-        return 0;
-    }
-    return errno;
+    std::error_code ec;
+    fs::remove(path, ec);
+    return ec.value();
 }
 
-string get_dir(const string &path) {
-    size_t len = path.size();
-    while (len-- > 0) {
-        if (path[len] == '/') {
-            break;
-        }
-    }
-    return path.substr(0, len);
+std::string get_dir(const std::string &path) {
+    return fs::path(path).parent_path().string();
 }
 
 }  // namespace ark
