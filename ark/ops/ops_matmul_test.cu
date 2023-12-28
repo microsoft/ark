@@ -305,11 +305,14 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
 
 template <typename T>
 float max_diff(float max_abs, int reduction_length) {
-    constexpr int NumFracBits = (std::is_same_v<T, float> ? 23 : (std::is_same_v<T, ark::half_t> ? 10 : 7));
+    constexpr int NumFracBits =
+        (std::is_same_v<T, float> ? 23
+                                  : (std::is_same_v<T, ark::half_t> ? 10 : 7));
     // If the reduction length is too large, the error will be dominated by
     // the rounding error of the reduction itself.
     assert(reduction_length <= (1 << (NumFracBits + 1)));
-    float max_diff = reduction_length * 2 * max_abs * 1.0f / (1 << (NumFracBits + 1));
+    float max_diff =
+        reduction_length * 2 * max_abs * 1.0f / (1 << (NumFracBits + 1));
     // *2 because the baseline is also a computed value.
     return max_diff * 2;
 }
@@ -395,7 +398,8 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::bfloat16_t>(0.1f, 256));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      max_diff<ark::bfloat16_t>(0.1f, 256));
     }
     return ark::unittest::SUCCESS;
 }
@@ -558,9 +562,9 @@ ark::unittest::State test_matmul_fp16_perf() {
         ark::Tensor *b = m.tensor(ark::Dims(8192, 128), ark::FP16);
         ark::Tensor *c = m.matmul(a, b, nullptr, 1, false, false, "matmul", 0);
 
-        auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
-                                   baseline_matmul_nn<ark::half_t>,
-                                   {}, false, 0, 1, 4);
+        auto result =
+            ark::op_test("matmul_fp16", m, {a, b}, {c},
+                         baseline_matmul_nn<ark::half_t>, {}, false, 0, 1, 4);
         UNITTEST_LOG(result);
     }
     return ark::unittest::SUCCESS;
