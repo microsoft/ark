@@ -72,11 +72,9 @@ std::ostream &CodeGenerator::tensor(std::ostream &os,
                                     const Tensor *tensor) const {
     size_t off = this->get_tensor_offset(tensor);
     os << "(" << tensor->type.type_str() << " *)";
-    std::string buf_name;
+    std::string buf_name = ARK_BUF_NAME;
     if (tensor->imported_rank >= 0) {
-        buf_name = ARK_BUF_NAME + std::to_string(tensor->imported_rank);
-    } else {
-        buf_name = "_buf";
+        buf_name += std::to_string(tensor->imported_rank);
     }
     os << "&" << buf_name << "[" << off << "]";
     return os;
@@ -245,7 +243,7 @@ std::ostream &CodeGenerator::branch(std::ostream &os, const Branch &br,
             // uop = uop_id_diff * (warp_idx / num_warps_per_uop +
             //                      num_uops * sm_idx) + uop_id_begin;
             std::stringstream ss;
-            ss << OP_PREFIX << opseq_id << "(_buf, ";
+            ss << OP_PREFIX << opseq_id << '(';
             if (uop_id_diff != 0) {
                 auto indexing = get_indexing(num_warps_per_uop);
                 if (!indexing.empty()) {
@@ -371,7 +369,7 @@ std::ostream &CodeGenerator::opseq(std::ostream &os, const std::string &name,
             os << "// tile dims: (" << opseq.get_tdims()[0] << ", "
                << opseq.get_tdims()[1] << ", " << opseq.get_tdims()[2] << ")\n"
                << "__noinline__ __device__ void " << name
-               << "(char *_buf, int _uop_idx, int _smem_per_warp) {\n";
+               << "(int _uop_idx, int _smem_per_warp) {\n";
         }
         --idx;
         os << "  ";

@@ -552,7 +552,7 @@ std::vector<std::string> DefaultScheduler::gen_code() {
     int num_sm_comp = gpu_info.num_sm - 1;
     int num_sm_comm = 1;
 
-    code << "__device__ void ark_loop_body(char *_buf, int _iter) {\n";
+    code << "__device__ void ark_loop_body(int _iter) {\n";
     for (size_t i = 0; i < this->comp_stream.size(); ++i) {
         auto comp_streams = this->comp_stream[i]->get_streams();
         for (size_t j = 0; j < comp_streams.size(); ++j) {
