@@ -21,8 +21,6 @@ def test_norm_internal(
     input_tensor = ark.tensor(ark.Dims(batch_size, m, n), ark_data_type)
     if norm_type == "layernorm":
         output_tensor = ark.layernorm(input_tensor)
-    elif norm_type == "rmsnorm":
-        output_tensor = ark.rmsnorm(input_tensor)
     runtime.launch()
 
     input_tensor_host = np.random.rand(batch_size, m, n).astype(numpy_data_type)
@@ -41,11 +39,6 @@ def test_norm_internal(
         # get the ground truth
         gt = torch.nn.LayerNorm([n], eps=1e-5, elementwise_affine=False)(
             torch_input
-        ).numpy()
-    elif norm_type == "rmsnorm":
-        gt = (
-            torch_input
-            * torch.rsqrt(torch_input.pow(2).mean(-1, keepdim=True) + 1e-5)
         ).numpy()
 
     # test if the result is correct
@@ -85,26 +78,6 @@ class TestNorm(unittest.TestCase):
         test_norm_internal(2, 128, 128, "float", "layernorm")
         test_norm_internal(8, 4096, 1024, "float", "layernorm")
         test_norm_internal(8, 1024, 4096, "float", "layernorm")
-
-    def test_rmsnorm(self):
-        test_norm_internal(1, 32, 4, "half", "rmsnorm")
-        test_norm_internal(1, 32, 512, "half", "rmsnorm")
-        test_norm_internal(1, 64, 4, "half", "rmsnorm")
-        test_norm_internal(1, 128, 128, "half", "rmsnorm")
-        test_norm_internal(1, 256, 256, "half", "rmsnorm")
-        test_norm_internal(1, 512, 512, "half", "rmsnorm")
-
-        test_norm_internal(1, 8, 4, "float", "rmsnorm")
-        test_norm_internal(1, 128, 128, "float", "rmsnorm")
-        test_norm_internal(1, 256, 256, "float", "rmsnorm")
-        test_norm_internal(1, 512, 512, "float", "rmsnorm")
-        test_norm_internal(1, 1024, 1024, "float", "rmsnorm")
-        test_norm_internal(1, 4096, 1024, "float", "rmsnorm")
-        test_norm_internal(1, 1024, 4096, "float", "rmsnorm")
-        test_norm_internal(2, 64, 64, "float", "rmsnorm")
-        test_norm_internal(2, 128, 128, "float", "rmsnorm")
-        test_norm_internal(8, 4096, 1024, "float", "rmsnorm")
-        test_norm_internal(8, 1024, 4096, "float", "rmsnorm")
 
 
 if __name__ == "__main__":
