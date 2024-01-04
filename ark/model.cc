@@ -7,8 +7,6 @@
 
 #include "logging.h"
 
-using namespace std;
-
 namespace ark {
 
 // Create a new TensorBuf object with `bytes` bytes.
@@ -16,7 +14,7 @@ namespace ark {
 // scheduler determine the value after the model is completely defined.
 TensorBuf *Model::Impl::create_tensor_buf(const DimType bytes) {
     this->tns_bufs_storage.emplace_back(
-        make_unique<TensorBuf>(bytes, (int)this->tns_bufs_storage.size()));
+        std::make_unique<TensorBuf>(bytes, (int)this->tns_bufs_storage.size()));
     return this->tns_bufs_storage.back().get();
 }
 
@@ -43,20 +41,20 @@ void Model::Impl::destroy_tensor_buf(const TensorBuf *buf) {
 
 std::vector<Tensor *> Model::Impl::add_op(
     const OpType type, const std::string &prec_type,
-    const vector<Tensor *> &inputs, const vector<Tensor *> &outputs,
-    const OpArgs &args, const string &name, const OpConfigMap *cfg_map,
+    const std::vector<Tensor *> &inputs, const std::vector<Tensor *> &outputs,
+    const OpArgs &args, const std::string &name, const OpConfigMap *cfg_map,
     int gran_lev) {
     Op op{type, prec_type, inputs, outputs, args, name, cfg_map, gran_lev};
     return this->add_op(op);
 }
 
 std::string Model::Impl::append_name_postfix(const std::string &name) {
-    string suffix_str;
+    std::string suffix_str;
     auto p = this->name_cnts.emplace(name, 1);
     if (!p.second) {
         int suffix_num = p.first->second;
         this->name_cnts[name] = suffix_num + 1;
-        suffix_str = "_" + to_string(suffix_num);
+        suffix_str = "_" + std::to_string(suffix_num);
     } else {
         suffix_str = "";
     }
@@ -65,7 +63,7 @@ std::string Model::Impl::append_name_postfix(const std::string &name) {
 
 std::vector<Tensor *> Model::Impl::add_op(Op &op) {
     op.name = append_name_postfix(op.name);
-    this->ops_storage.emplace_back(make_unique<Op>(op));
+    this->ops_storage.emplace_back(std::make_unique<Op>(op));
 
     Op *op_ptr = this->ops_storage.back().get();
     for (auto &tns : op_ptr->inputs) {
@@ -93,7 +91,7 @@ std::vector<Tensor *> Model::Impl::add_op(Op &op) {
         // can be only one producer Op for each tensor). To avoid this,
         // we create an identical tensor and set the producer of the new tensor
         // to be the current Op.
-        this->tns_storage.emplace_back(make_unique<Tensor>(
+        this->tns_storage.emplace_back(std::make_unique<Tensor>(
             tns->shape, tns->type, tns->buf, tns->ldims, tns->offs, tns->pads,
             tns->exported, tns->imported_rank, (int)this->tns_storage.size(),
             tns->name));
@@ -347,7 +345,7 @@ const Op *Model::Impl::get_cyclic_op() const {
 }
 
 //
-Model::Model(int rank_) : impl{make_unique<Model::Impl>()} {
+Model::Model(int rank_) : impl{std::make_unique<Model::Impl>()} {
     this->impl->rank = rank_;
 }
 

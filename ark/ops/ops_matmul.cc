@@ -20,8 +20,7 @@ MatmulOp::MatmulOp(const std::string &prec_type, Tensor *mat_a, Tensor *mat_b,
          {{nca, ncb, problem_size, leading_dims, is_column_a, is_column_b}},
          name,
          &MatmulConfigMap,
-         gran_lev,
-         true} {}
+         gran_lev} {}
 
 std::string MatmulOp::function_name(const OpConfig &cfg) const {
     Tensor *mat_a = this->inputs[0];
