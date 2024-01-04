@@ -110,7 +110,7 @@ ark::unittest::State test_sched_graph_opt() {
 
 int main() {
     ark::init();
-    // UNITTEST(test_sched_many_comm_ops);
+    UNITTEST(test_sched_many_comm_ops);
     UNITTEST(test_sched_mixed_precision);
     UNITTEST(test_sched_parallel_matmul);
     UNITTEST(test_sched_graph_opt);
