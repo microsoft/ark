@@ -331,7 +331,7 @@ std::ostream &CodeGenerator::def_uop(std::ostream &os, const SchedOp &sop,
     if (op->force_inline) {
         os << "DEVICE ";
     } else {
-        os << "__device__ ";
+        os << "__noinline__ __device__ ";
     }
     os << "void " << uop_name << "(";
 
@@ -370,7 +370,7 @@ std::ostream &CodeGenerator::opseq(std::ostream &os, const std::string &name,
         if (idx == sched_ops.size()) {
             os << "// tile dims: (" << opseq.get_tdims()[0] << ", "
                << opseq.get_tdims()[1] << ", " << opseq.get_tdims()[2] << ")\n"
-               << "__device__ void " << name
+               << "__noinline__ __device__ void " << name
                << "(char *_buf, int _uop_idx, int _smem_per_warp) {\n";
         }
         --idx;
