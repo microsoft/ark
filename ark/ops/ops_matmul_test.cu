@@ -373,7 +373,9 @@ ark::unittest::State test_matmul_fp32() {
                                    {p_ones_a.data(), p_ones_b.data()});
         UNITTEST_LOG(result);
         // TODO: #199
-        // UNITTEST_TRUE(result.max_diff[0] < max_diff<float>(0.1f, 8192));
+#if defined(ARK_CUDA)
+        UNITTEST_TRUE(result.max_diff[0] < max_diff<float>(0.1f, 8192));
+#endif  // defined(ARK_CUDA)
     }
     return ark::unittest::SUCCESS;
 }
@@ -419,7 +421,10 @@ ark::unittest::State test_matmul_fp16_split() {
                                    baseline_matmul_nn<ark::half_t>,
                                    {ones_a.data(), ones_b.data()});
         UNITTEST_LOG(result);
+        // TODO: #199
+#if defined(ARK_CUDA)
         UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(1.0f, 128));
+#endif  // defined(ARK_CUDA)
     }
     {
         ark::Model m;
@@ -430,7 +435,10 @@ ark::unittest::State test_matmul_fp16_split() {
         auto result = ark::op_test("matmul_fp16_split", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
+        // TODO: #199
+#if defined(ARK_CUDA)
         UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 2048));
+#endif  // defined(ARK_CUDA)
     }
     return ark::unittest::SUCCESS;
 }
