@@ -18,7 +18,7 @@ import model as model_ark
 import numpy as np
 from typing import Dict, List
 from dataclasses import dataclass
-from model import ModelArgs, ModelArgs7B
+from model import ModelArgs, ModelArgs7B, ModelArgs70B
 from generator import precompute_freqs_cis
 
 
@@ -514,8 +514,8 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
-    test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
+    test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
 def worker(
@@ -529,11 +529,11 @@ def worker(
     # For torch.distributed
     os.environ["RANK"] = str(rank)
     os.environ["LOCAL_RANK"] = str(rank)
-    torch.distributed.init_process_group("nccl")
-    torch.cuda.set_device(rank)
+    # torch.distributed.init_process_group("nccl")
+    # torch.cuda.set_device(rank)
 
     # For fairscale
-    fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
+    # fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
     test(args, batch_size, seq_len, dtype, rank, world_size)
 
 
@@ -546,9 +546,9 @@ if __name__ == "__main__":
     ngpus = parser.parse_args().ngpus
 
     # Configurations
-    args = ModelArgs7B()
+    args = ModelArgs70B()
     batch_size = 1
-    seq_len = 512
+    seq_len = 2048
     dtype = np.float16
     world_size = ngpus
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 512
+    args.max_seq_len = 2048
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size
@@ -571,12 +571,12 @@ if __name__ == "__main__":
         # For torch.distributed
         os.environ["RANK"] = "0"
         os.environ["LOCAL_RANK"] = "0"
-        torch.distributed.init_process_group("nccl")
+        # torch.distributed.init_process_group("nccl")
 
         # For fairscale
-        fairscale.nn.model_parallel.initialize.initialize_model_parallel(
-            world_size
-        )
+        # fairscale.nn.model_parallel.initialize.initialize_model_parallel(
+        #     world_size
+        # )
         test(args, batch_size, seq_len, dtype, 0, 1)
     else:
         procs = []
