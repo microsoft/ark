@@ -33,6 +33,7 @@ jobs:
           git config --global --add safe.directory /__w/ark/ark
           git submodule foreach --recursive git reset --hard
           git submodule foreach --recursive git clean -fdx
+          git submodule foreach git fetch
           git submodule update --init --recursive
 
       - name: Build
@@ -43,7 +44,7 @@ jobs:
 
       - name: RunUT
         run: |
-          cd build && ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random -E "ops_matmul_test"
+          cd build && ARK_ROOT=$PWD ARK_IGNORE_BINARY_CACHE=1 ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
         run: |

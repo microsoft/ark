@@ -11,6 +11,9 @@ import ark
 from model import ModelArgs, Transformer
 
 import torch
+import sys
+
+sys.path.append("llama")
 from llama.tokenizer import Tokenizer
 
 
