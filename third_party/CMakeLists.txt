@@ -20,6 +20,18 @@ set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
 FetchContent_MakeAvailable(mscclpp)
 
+# JSON
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG v3.11.3
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/json
+)
+FetchContent_GetProperties(json)
+if (NOT json_POPULATED)
+    FetchContent_Populate(json)
+endif()
+
 if(USE_CUDA)
     # Configure CUTLASS
     FetchContent_Declare(

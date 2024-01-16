@@ -8,6 +8,7 @@
 #include "sched/sched_codegen.h"
 #include "sched/sched_opgraph.h"
 #include "sched/sched_stream.h"
+#include "schedule/schedule.h"
 
 namespace ark {
 
@@ -87,6 +88,7 @@ class DefaultScheduler : public BaseScheduler {
     std::unique_ptr<OpGraph> op_graph;
     std::vector<std::unique_ptr<SchedStream>> comp_stream;
     std::vector<std::unique_ptr<SchedStream>> comm_stream;
+    Schedule sched;
 };
 
 }  // namespace ark
