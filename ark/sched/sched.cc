@@ -27,35 +27,6 @@ BaseScheduler::BaseScheduler(Model &model, int gpu_id, int rank_,
         std::make_unique<CodeGenerator>(gpu_info, num_warps_per_sm_);
 }
 
-// create context on gpu for the model
-std::shared_ptr<GpuContext> BaseScheduler::create_context() {
-    for (BufInfo &bi : this->buf_infos) {
-        std::shared_ptr<GpuBuffer> buf;
-        if (bi.gpu_id == this->gpu_mgr->get_gpu_id()) {
-            if (bi.tbuf->buf != nullptr) {
-                // Already allocated.
-                buf = bi.tbuf->buf;
-                if (bi.sid != -1) {
-                    this->ctx->export_buffer(buf, bi.offset, bi.sid);
-                }
-            } else if (bi.sid == -1) {
-                buf = this->ctx->allocate_buffer(bi.bytes, 1);
-            } else {
-                // Align for RDMA performance.
-                buf = this->ctx->allocate_buffer(bi.bytes, 65536);
-                this->ctx->export_buffer(buf, bi.offset, bi.sid);
-            }
-        } else {
-            buf = this->ctx->import_buffer(bi.bytes, bi.gpu_id, bi.sid);
-        }
-        if (bi.tbuf != nullptr) {
-            bi.tbuf->buf = buf;
-        }
-    }
-    this->ctx->freeze();
-    return this->ctx;
-}
-
 const OpConfig *BaseScheduler::sched_op_config(const Op *op) {
     if (op == nullptr || op->outputs.size() == 0) {
         ERR(SchedulerError, "unexpected error");

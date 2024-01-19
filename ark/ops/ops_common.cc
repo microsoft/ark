@@ -14,6 +14,14 @@ using namespace std;
 
 namespace ark {
 
+bool operator==(const OpArgType &lhs, const OpArgType &rhs) {
+    return lhs.id == rhs.id;
+}
+
+bool operator!=(const OpArgType &lhs, const OpArgType &rhs) {
+    return !(lhs == rhs);
+}
+
 Dims broadcast(const Dims &dims1, const Dims &dims2) {
     std::vector<DimType> output_dims_reversed;
     int ndims = std::max(dims1.ndims(), dims2.ndims());
@@ -149,7 +157,7 @@ OpArg::OpArg(const OpArg &arg) : type{arg.type} {
     } else if (this->type == OP_ARG_TENSOR) {
         this->val = arg.val;
     } else {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
 }
 OpArg::~OpArg() {
@@ -171,49 +179,49 @@ OpArg::~OpArg() {
 }
 void OpArg::get(int *arg) const {
     if (this->type != OP_ARG_INT) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = *static_cast<int *>(this->val);
 }
 
 void OpArg::get(long long int *arg) const {
     if (this->type != OP_ARG_INT64) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = *static_cast<long long int *>(this->val);
 }
 
 void OpArg::get(uint64_t *arg) const {
     if (this->type != OP_ARG_UINT64) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = *static_cast<uint64_t *>(this->val);
 }
 
 void OpArg::get(bool *arg) const {
     if (this->type != OP_ARG_BOOL) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = *static_cast<bool *>(this->val);
 }
 
 void OpArg::get(float *arg) const {
     if (this->type != OP_ARG_FLOAT) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = *static_cast<float *>(this->val);
 }
 
 void OpArg::get(Dims *arg) const {
     if (this->type != OP_ARG_DIMS) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = *static_cast<Dims *>(this->val);
 }
 
 void OpArg::get(Tensor **arg) const {
     if (this->type != OP_ARG_TENSOR) {
-        ERR(InvalidUsageError, "invalid argument type ", this->type);
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
     }
     *arg = static_cast<Tensor *>(this->val);
 }
@@ -235,7 +243,7 @@ void OpArgs::get(int *arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_INT) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = *static_cast<int *>(this->args[idx].val);
 }
@@ -246,7 +254,7 @@ void OpArgs::get(long long int *arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_INT64) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = *static_cast<long long int *>(this->args[idx].val);
 }
@@ -257,7 +265,7 @@ void OpArgs::get(uint64_t *arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_UINT64) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = *static_cast<uint64_t *>(this->args[idx].val);
 }
@@ -268,7 +276,7 @@ void OpArgs::get(bool *arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_BOOL) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = *static_cast<bool *>(this->args[idx].val);
 }
@@ -279,7 +287,7 @@ void OpArgs::get(float *arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_FLOAT) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = *static_cast<float *>(this->args[idx].val);
 }
@@ -290,7 +298,7 @@ void OpArgs::get(Dims *arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_DIMS) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = *static_cast<Dims *>(this->args[idx].val);
 }
@@ -301,12 +309,16 @@ void OpArgs::get(Tensor **arg, size_t idx) const {
             this->args.size());
     }
     if (this->args[idx].type != OP_ARG_TENSOR) {
-        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type);
+        ERR(InvalidUsageError, "invalid argument type ", this->args[idx].type.name);
     }
     *arg = static_cast<Tensor *>(this->args[idx].val);
 }
 
 const std::vector<OpArg> &OpArgs::get_args() const { return this->args; }
+
+bool operator==(const OpType &lhs, const OpType &rhs) {
+    return lhs.id == rhs.id;
+}
 
 Op::Op(const OpType &type_, const std::string &prec_type_,
        const vector<Tensor *> &inputs_, const vector<Tensor *> &output_refs_,
@@ -334,126 +346,113 @@ Op::Op(const OpType &type_, const std::string &prec_type_,
 }
 
 std::string Op::function_name(const OpConfig &cfg) const {
-    switch (this->type) {
-        case OP_REDUCE_E_SUM:
-            return static_cast<const ReduceESumOp *>(this)->function_name(cfg);
-        case OP_REDUCE_E_MEAN:
-            return static_cast<const ReduceEMeanOp *>(this)->function_name(cfg);
-        case OP_REDUCE_E_MAX:
-            return static_cast<const ReduceEMaxOp *>(this)->function_name(cfg);
-        case OP_REDUCE_W_SUM:
-            return static_cast<const ReduceWSumOp *>(this)->function_name(cfg);
-        case OP_REDUCE_W_MEAN:
-            return static_cast<const ReduceWMeanOp *>(this)->function_name(cfg);
-        case OP_REDUCE_W_MAX:
-            return static_cast<const ReduceWMaxOp *>(this)->function_name(cfg);
-        case OP_SCALE:
-            return static_cast<const ScaleOp *>(this)->function_name(cfg);
-        case OP_MATMUL:
-            return static_cast<const MatmulOp *>(this)->function_name(cfg);
-        case OP_MAX_POOL:
-            return static_cast<const MaxPoolOp *>(this)->function_name(cfg);
-        case OP_ADD:
-            return static_cast<const AddOp *>(this)->function_name(cfg);
-        case OP_SUB:
-            return static_cast<const SubOp *>(this)->function_name(cfg);
-        case OP_MUL:
-            return static_cast<const MulOp *>(this)->function_name(cfg);
-        case OP_DIV:
-            return static_cast<const DivOp *>(this)->function_name(cfg);
-        case OP_IM2COL:
-            return static_cast<const Im2colOp *>(this)->function_name(cfg);
-        case OP_TRANSPOSE:
-            return static_cast<const TransposeOp *>(this)->function_name(cfg);
-        case OP_SEND:
-            return static_cast<const SendOp *>(this)->function_name(cfg);
-        case OP_SEND_DONE:
-            return static_cast<const SendDoneOp *>(this)->function_name(cfg);
-        case OP_RECV:
-            return static_cast<const RecvOp *>(this)->function_name(cfg);
-        case OP_LAYERNORM:
-            return static_cast<const LayernormOp *>(this)->function_name(cfg);
-        case OP_RELU:
-            return static_cast<const ReluOp *>(this)->function_name(cfg);
-        case OP_COPY:
-            return static_cast<const CopyOp *>(this)->function_name(cfg);
-        case OP_SIGMOID:
-            return static_cast<const SigmoidOp *>(this)->function_name(cfg);
-        case OP_GELU:
-            return static_cast<const GeluOp *>(this)->function_name(cfg);
-        case OP_EXP:
-            return static_cast<const ExpOp *>(this)->function_name(cfg);
-        case OP_SQRT:
-            return static_cast<const SqrtOp *>(this)->function_name(cfg);
-        case OP_RSQRT:
-            return static_cast<const RsqrtOp *>(this)->function_name(cfg);
-        case OP_ROPE:
-            return static_cast<const RopeOp *>(this)->function_name(cfg);
-        case OP_EMBEDDING:
-            return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
-        case OP_CAST:
-            return static_cast<const CastOp *>(this)->function_name(cfg);
-        case OP_DEVICE_SYNC:
-            return static_cast<const DeviceSyncOp *>(this)->function_name(cfg);
-        case OP_READ_AND_REDUCE:
-            return static_cast<const ReadAndReduceOp *>(this)->function_name(
-                cfg);
-        case OP_GATHER_FROM_PEERS:
-            return static_cast<const GatherFromPeersOp *>(this)->function_name(
-                cfg);
-        case OP_PUT_PACKET:
-            return static_cast<const PutPacketOp *>(this)->function_name(cfg);
-        case OP_REDUCE_AND_WRITE_PACKET:
-            return static_cast<const ReduceAndWritePacketOp *>(this)
-                ->function_name(cfg);
-        case OP_GET_FROM_PACKET:
-            return static_cast<const GetFromPacketOp *>(this)->function_name(
-                cfg);
-        default:
-            ERR(ModelError, "invalid op type ", this->type);
-            return "";
+    if (this->type.id == OP_REDUCE_E_SUM.id) {
+        return static_cast<const ReduceESumOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_E_MEAN.id) {
+        return static_cast<const ReduceEMeanOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_E_MAX.id) {
+        return static_cast<const ReduceEMaxOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_W_SUM.id) {
+        return static_cast<const ReduceWSumOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_W_MEAN.id) {
+        return static_cast<const ReduceWMeanOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_W_MAX.id) {
+        return static_cast<const ReduceWMaxOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SCALE.id) {
+        return static_cast<const ScaleOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_MATMUL.id) {
+        return static_cast<const MatmulOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_MAX_POOL.id) {
+        return static_cast<const MaxPoolOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_ADD.id) {
+        return static_cast<const AddOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SUB.id) {
+        return static_cast<const SubOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_MUL.id) {
+        return static_cast<const MulOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_DIV.id) {
+        return static_cast<const DivOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_IM2COL.id) {
+        return static_cast<const Im2colOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_TRANSPOSE.id) {
+        return static_cast<const TransposeOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SEND.id) {
+        return static_cast<const SendOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SEND_DONE.id) {
+        return static_cast<const SendDoneOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_RECV.id) {
+        return static_cast<const RecvOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_LAYERNORM.id) {
+        return static_cast<const LayernormOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_RELU.id) {
+        return static_cast<const ReluOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_COPY.id) {
+        return static_cast<const CopyOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SIGMOID.id) {
+        return static_cast<const SigmoidOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_GELU.id) {
+        return static_cast<const GeluOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_EXP.id) {
+        return static_cast<const ExpOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SQRT.id) {
+        return static_cast<const SqrtOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_RSQRT.id) {
+        return static_cast<const RsqrtOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_ROPE.id) {
+        return static_cast<const RopeOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_EMBEDDING.id) {
+        return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_CAST.id) {
+        return static_cast<const CastOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_DEVICE_SYNC.id) {
+        return static_cast<const DeviceSyncOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_READ_AND_REDUCE.id) {
+        return static_cast<const ReadAndReduceOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_GATHER_FROM_PEERS.id) {
+        return static_cast<const GatherFromPeersOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_PUT_PACKET.id) {
+        return static_cast<const PutPacketOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_AND_WRITE_PACKET.id) {
+        return static_cast<const ReduceAndWritePacketOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_GET_FROM_PACKET.id) {
+        return static_cast<const GetFromPacketOp *>(this)->function_name(cfg);
+    } else {
+        ERR(ModelError, "invalid op type ", this->type.name);
+        return "";
     }
     // Never reach here.
     return "";
 }
 
 OpArgs Op::function_call_args(const OpConfig &cfg) const {
-    switch (this->type) {
-        case OP_SCALE:
-            return static_cast<const ScaleOp *>(this)->function_call_args(cfg);
-        case OP_SEND:
-            return static_cast<const SendOp *>(this)->function_call_args(cfg);
-        case OP_SEND_DONE:
-            return static_cast<const SendDoneOp *>(this)->function_call_args(
-                cfg);
-        case OP_RECV:
-            return static_cast<const RecvOp *>(this)->function_call_args(cfg);
-        case OP_DEVICE_SYNC:
-            return static_cast<const DeviceSyncOp *>(this)->function_call_args(
-                cfg);
-        case OP_READ_AND_REDUCE:
-            return static_cast<const ReadAndReduceOp *>(this)
-                ->function_call_args(cfg);
-        case OP_GATHER_FROM_PEERS:
-            return static_cast<const GatherFromPeersOp *>(this)
-                ->function_call_args(cfg);
-        case OP_PUT_PACKET:
-            return static_cast<const PutPacketOp *>(this)->function_call_args(
-                cfg);
-        case OP_REDUCE_AND_WRITE_PACKET:
-            return static_cast<const ReduceAndWritePacketOp *>(this)
-                ->function_call_args(cfg);
-        case OP_GET_FROM_PACKET:
-            return static_cast<const GetFromPacketOp *>(this)
-                ->function_call_args(cfg);
-        default:
-            OpArgs opargs;
-            std::vector<Tensor *> deps = this->outputs;
-            deps.insert(deps.end(), this->inputs.begin(), this->inputs.end());
-            for (Tensor *tns : deps) {
-                opargs.put(tns);
-            }
-            return opargs;
+    if (this->type.id == OP_SCALE.id) {
+        return static_cast<const ScaleOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_SEND.id) {
+        return static_cast<const SendOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_SEND_DONE.id) {
+        return static_cast<const SendDoneOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_RECV.id) {
+        return static_cast<const RecvOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_DEVICE_SYNC.id) {
+        return static_cast<const DeviceSyncOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_READ_AND_REDUCE.id) {
+        return static_cast<const ReadAndReduceOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_GATHER_FROM_PEERS.id) {
+        return static_cast<const GatherFromPeersOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_PUT_PACKET.id) {
+        return static_cast<const PutPacketOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_REDUCE_AND_WRITE_PACKET.id) {
+        return static_cast<const ReduceAndWritePacketOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_GET_FROM_PACKET.id) {
+        return static_cast<const GetFromPacketOp *>(this)->function_call_args(cfg);
+    } else {
+        OpArgs opargs;
+        std::vector<Tensor *> deps = this->outputs;
+        deps.insert(deps.end(), this->inputs.begin(), this->inputs.end());
+        for (Tensor *tns : deps) {
+            opargs.put(tns);
+        }
+        return opargs;
     }
     // Never reach here.
     return {};

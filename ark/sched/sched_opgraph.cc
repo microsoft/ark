@@ -7,6 +7,7 @@
 
 #include "logging.h"
 #include "model.h"
+#include "nlohmann/json.hpp"
 
 #define DEBUG_OPGRAPH 0
 #define OPGRAPH_DEBUG(...)           \
@@ -382,6 +383,120 @@ bool OpGraph::depends_on(OpNode *node1, OpNode *node2) const {
         boundary_nodes = new_boundary_nodes;
     }
     return false;
+}
+
+nlohmann::json to_json(const TensorBuf &tensor_buf) {
+    nlohmann::json j;
+    j["Id"] = tensor_buf.id;
+    j["Bytes"] = tensor_buf.bytes;
+    return j;
+}
+
+nlohmann::json to_json(const Tensor &tensor) {
+    nlohmann::json j;
+    j["Id"] = tensor.id;
+    j["TensorBuf"] = to_json(*(tensor.buf));
+    j["TensorType"] = tensor.type.type_str();
+    j["Shape"] = tensor.shape.serialize();
+    j["Strides"] = tensor.ldims.serialize();
+    j["Offsets"] = tensor.offs.serialize();
+    if (tensor.imported_rank >= 0) {
+        j["ImportedRank"] = tensor.imported_rank;
+    }
+    return j;
+}
+
+nlohmann::json to_json(const OpArg &op_arg) {
+    nlohmann::json j;
+    j["Type"] = op_arg.type.name;
+    if (op_arg.type == OP_ARG_TENSOR) {
+        Tensor *tns;
+        op_arg.get(&tns);
+        j["Value"] = tns->id;
+    } else if (op_arg.type == OP_ARG_FLOAT) {
+        float val;
+        op_arg.get(&val);
+        j["Value"] = val;
+    } else if (op_arg.type == OP_ARG_INT) {
+        int val;
+        op_arg.get(&val);
+        j["Value"] = val;
+    } else if (op_arg.type == OP_ARG_BOOL) {
+        bool val;
+        op_arg.get(&val);
+        j["Value"] = val;
+    } else if (op_arg.type == OP_ARG_INT64) {
+        long long int val;
+        op_arg.get(&val);
+        j["Value"] = val;
+    } else if (op_arg.type == OP_ARG_UINT64) {
+        uint64_t val;
+        op_arg.get(&val);
+        j["Value"] = val;
+    } else {
+        throw std::runtime_error("unexpected");
+    }
+    return j;
+}
+
+nlohmann::json to_json(const Op &op) {
+    nlohmann::json j;
+    j["Type"] = op.type.name;
+    j["PrecisionType"] = op.prec_type;
+    j["InputTensors"] = nlohmann::json();
+    for (auto tensor : op.inputs) {
+        j["InputTensors"].emplace_back(to_json(*tensor));
+    }
+    j["OutputTensors"] = nlohmann::json();
+    for (auto tensor : op.inputs) {
+        j["OutputTensors"].emplace_back(to_json(*tensor));
+    }
+    j["OutputRefTensors"] = nlohmann::json();
+    for (auto tensor : op.inputs) {
+        j["OutputRefTensors"].emplace_back(to_json(*tensor));
+    }
+    j["Args"] = nlohmann::json();
+    for (auto arg : op.args.get_args()) {
+        j["Args"].emplace_back(to_json(arg));
+    }
+    return j;
+}
+
+nlohmann::json to_json(const OpNode &node, const std::map<const OpNode *, size_t> &node2id) {
+    nlohmann::json j;
+    j["Id"] = node2id.at(&node);
+    j["Ops"] = nlohmann::json();
+    for (auto op : node.ops) {
+        j["Ops"].emplace_back(to_json(*op));
+    }
+    j["ConsumerNodeIds"] = nlohmann::json();
+    for (auto user : node.users) {
+        j["ConsumerNodeIds"].emplace_back(node2id.at(user));
+    }
+    j["ProducerNodeIds"] = nlohmann::json();
+    for (auto producer : node.producers) {
+        j["ProducerNodeIds"].emplace_back(node2id.at(producer));
+    }
+    return j;
+}
+
+nlohmann::json to_json(const OpGraph &opgraph) {
+    size_t id = 0;
+    std::map<const OpNode *, size_t> node2id;
+    for (const auto &node : opgraph.get_nodes()) {
+        node2id[node.get()] = id++;
+    }
+    nlohmann::json j;
+    j["Nodes"] = nlohmann::json();
+    for (const auto &node : opgraph.get_nodes()) {
+        j["Nodes"].emplace_back(to_json(*node, node2id));
+    }
+    return j;
+}
+
+std::string OpGraph::serialize(int indent) const {
+    auto j = to_json(*this);
+    return j.dump(indent);
 }
 
 }  // namespace ark

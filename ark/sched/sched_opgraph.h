@@ -91,6 +91,8 @@ class OpGraph {
     /// @return True if @p node1 depends on @p node2.
     bool depends_on(OpNode *node1, OpNode *node2) const;
 
+    std::string serialize(int indent = -1) const;
+
    private:
     std::list<std::unique_ptr<OpNode>> nodes_storage;
 

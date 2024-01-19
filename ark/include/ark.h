@@ -65,6 +65,8 @@ struct Dims {
     // Erase the dimension at the given index and return the erased dimension.
     DimType erase(int idx);
 
+    std::string serialize() const;
+
     DimType &operator[](int idx);
 
     const DimType &operator[](int idx) const;
@@ -141,7 +143,7 @@ class TensorBuf {
     std::shared_ptr<GpuBuffer> buf = nullptr;
 
     friend class Tensor;
-    friend class BaseScheduler;
+    friend class DefaultScheduler;
 };
 
 /// Tensor is a view of a TensorBuf.

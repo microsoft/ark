@@ -63,7 +63,7 @@ static int calc_num_tiles(const Op &op, const OpTile &tile) {
 void DefaultScheduler::heuristic_optimize_matmul(
     Model &model, Model::Impl *model_impl, Op &matmul_op,
     const GpuManager::Info &gpu_info, int num_sm) {
-    if (matmul_op.type != OP_MATMUL) {
+    if (matmul_op.type.id != OP_MATMUL.id) {
         ERR(SchedulerError, "This is not a matmul op.");
     }
     if (matmul_op.gran_lev != -1) {
@@ -196,122 +196,6 @@ void DefaultScheduler::schedule() {
     recursive_schedule(root_nodes, seen_nodes);
 
     this->configure_gpu_buf(this->model->impl->get_tensors());
-
-    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
-    sched.num_processors = gpu_info.num_sm;
-    sched.num_warps_per_processor = this->num_warps_per_sm;
-
-    for (const auto &opseq : this->opseqs) {
-        TaskInfo ti;
-        ti.id = opseq->get_id();
-        ti.num_warps = opseq->get_num_warps();
-        ti.sram_bytes = opseq->get_smem_bytes();
-        std::stringstream ss;
-        for (const auto &sop : opseq->get_sched_ops()) {
-            ss << sop.serialize() << ";";
-        }
-        ti.detail = ss.str();
-        sched.task_infos.emplace_back(std::move(ti));
-    }
-    // sort task_infos by id
-    std::sort(sched.task_infos.begin(), sched.task_infos.end(),
-              [](const TaskInfo &a, const TaskInfo &b) { return a.id < b.id; });
-
-    for (size_t i = 0; i < this->comp_stream.size(); i++) {
-        ProcessorGroup comp_group;
-        comp_group.processor_range = Range<int>(0, gpu_info.num_sm - 1);
-        auto comp_streams = this->comp_stream[i]->get_streams();
-        for (size_t j = 0; j < comp_streams.size(); ++j) {
-            auto &stream = comp_streams[j];
-            for (auto &branch : stream.branches) {
-                for (auto &warp_branch : branch.warp_branches) {
-                    ResourceGroup rg;
-                    rg.processor_range =
-                        Range<int>(branch.sm_id_begin, branch.sm_id_end);
-                    rg.warp_range = Range<int>(warp_branch.warp_id_begin,
-                                               warp_branch.warp_id_end);
-                    rg.sram_range = Range<int>(
-                        warp_branch.warp_id_begin * branch.smem_bytes_per_warp,
-                        warp_branch.warp_id_end * branch.smem_bytes_per_warp);
-                    for (auto &branch_op : warp_branch.branch_ops) {
-                        TaskGroup tg;
-                        tg.task_range =
-                            Range<int>(branch_op.uop_id_begin,
-                                       branch_op.uop_id_begin +
-                                           branch_op.uop_id_diff *
-                                               (warp_branch.warp_id_end -
-                                                warp_branch.warp_id_begin) /
-                                               branch_op.num_warps_per_uop *
-                                               (gpu_info.num_sm - 1),
-                                       branch_op.uop_id_diff);
-                        tg.task_stride = 1;
-                        tg.task_id = branch_op.opseq_id;
-
-                        if (rg.task_groups.size() > 0) {
-                            auto &last_tg = rg.task_groups.back();
-                            if ((last_tg.task_id == tg.task_id) &&
-                                (*last_tg.task_range.end() ==
-                                 *tg.task_range.begin()) &&
-                                (last_tg.task_range.step() ==
-                                 tg.task_range.step()) &&
-                                (last_tg.task_stride == tg.task_stride)) {
-                                last_tg.task_range = Range<int>(
-                                    *last_tg.task_range.begin(),
-                                    *tg.task_range.end(), tg.task_range.step());
-                                continue;
-                            }
-                        }
-
-                        rg.task_groups.emplace_back(std::move(tg));
-                    }
-                    comp_group.resource_groups.emplace_back(std::move(rg));
-                }
-            }
-        }
-        sched.processor_groups.emplace_back(std::move(comp_group));
-
-        ProcessorGroup comm_group;
-        comm_group.processor_range =
-            Range<int>(gpu_info.num_sm - 1, gpu_info.num_sm);
-        auto comm_streams = this->comm_stream[i]->get_streams();
-        for (size_t j = 0; j < comm_streams.size(); ++j) {
-            auto &stream = comm_streams[j];
-            for (auto &branch : stream.branches) {
-                for (auto &warp_branch : branch.warp_branches) {
-                    ResourceGroup rg;
-                    rg.processor_range =
-                        Range<int>(branch.sm_id_begin, branch.sm_id_end);
-                    rg.warp_range = Range<int>(warp_branch.warp_id_begin,
-                                               warp_branch.warp_id_end);
-                    rg.sram_range = Range<int>(
-                        warp_branch.warp_id_begin * branch.smem_bytes_per_warp,
-                        warp_branch.warp_id_end * branch.smem_bytes_per_warp);
-                    for (auto &branch_op : warp_branch.branch_ops) {
-                        TaskGroup tg;
-                        tg.task_range =
-                            Range<int>(branch_op.uop_id_begin,
-                                       branch_op.uop_id_begin +
-                                           branch_op.uop_id_diff *
-                                               (warp_branch.warp_id_end -
-                                                warp_branch.warp_id_begin) /
-                                               branch_op.num_warps_per_uop * 1,
-                                       branch_op.uop_id_diff);
-                        tg.task_stride = 1;
-                        tg.task_id = branch_op.opseq_id;
-                        rg.task_groups.emplace_back(std::move(tg));
-                    }
-                    comm_group.resource_groups.emplace_back(std::move(rg));
-                }
-            }
-        }
-        sched.processor_groups.emplace_back(std::move(comm_group));
-
-        ProcessorGroup sync_all_group;
-        sync_all_group.processor_range = Range<int>(0, gpu_info.num_sm);
-        sched.processor_groups.emplace_back(std::move(sync_all_group));
-    }
-
-    write_file("sched.json", sched.serialize(2));
 
     if (this->comp_stream.size() != this->comm_stream.size()) {
         ERR(SchedulerError, "unexpected error");
@@ -624,6 +508,153 @@ void DefaultScheduler::configure_gpu_buf(
                                          buf->bytes, buf, sid, 0);
         }
     }
+}
+
+// create context on gpu for the model
+std::shared_ptr<GpuContext> DefaultScheduler::create_context() {
+    for (BufInfo &bi : this->buf_infos) {
+        std::shared_ptr<GpuBuffer> buf;
+        if (bi.gpu_id == this->gpu_mgr->get_gpu_id()) {
+            if (bi.tbuf->buf != nullptr) {
+                // Already allocated.
+                buf = bi.tbuf->buf;
+                if (bi.sid != -1) {
+                    this->ctx->export_buffer(buf, bi.offset, bi.sid);
+                }
+            } else if (bi.sid == -1) {
+                buf = this->ctx->allocate_buffer(bi.bytes, 1);
+            } else {
+                // Align for RDMA performance.
+                buf = this->ctx->allocate_buffer(bi.bytes, 65536);
+                this->ctx->export_buffer(buf, bi.offset, bi.sid);
+            }
+        } else {
+            buf = this->ctx->import_buffer(bi.bytes, bi.gpu_id, bi.sid);
+        }
+        if (bi.tbuf != nullptr) {
+            bi.tbuf->buf = buf;
+        }
+    }
+    this->ctx->freeze();
+
+    const GpuManager::Info &gpu_info = this->gpu_mgr->info();
+    sched.num_processors = gpu_info.num_sm;
+    sched.num_warps_per_processor = this->num_warps_per_sm;
+
+    for (const auto &opseq : this->opseqs) {
+        TaskInfo ti;
+        ti.id = opseq->get_id();
+        ti.num_warps = opseq->get_num_warps();
+        ti.sram_bytes = opseq->get_smem_bytes();
+        std::stringstream ss;
+        for (const auto &sop : opseq->get_sched_ops()) {
+            ss << sop.serialize() << ";";
+        }
+        ti.detail = ss.str();
+        sched.task_infos.emplace_back(std::move(ti));
+    }
+    // sort task_infos by id
+    std::sort(sched.task_infos.begin(), sched.task_infos.end(),
+              [](const TaskInfo &a, const TaskInfo &b) { return a.id < b.id; });
+
+    for (size_t i = 0; i < this->comp_stream.size(); i++) {
+        ProcessorGroup comp_group;
+        comp_group.processor_range = Range<int>(0, gpu_info.num_sm - 1);
+        auto comp_streams = this->comp_stream[i]->get_streams();
+        for (size_t j = 0; j < comp_streams.size(); ++j) {
+            auto &stream = comp_streams[j];
+            for (auto &branch : stream.branches) {
+                for (auto &warp_branch : branch.warp_branches) {
+                    ResourceGroup rg;
+                    rg.processor_range =
+                        Range<int>(branch.sm_id_begin, branch.sm_id_end);
+                    rg.warp_range = Range<int>(warp_branch.warp_id_begin,
+                                               warp_branch.warp_id_end);
+                    rg.sram_range = Range<int>(
+                        warp_branch.warp_id_begin * branch.smem_bytes_per_warp,
+                        warp_branch.warp_id_end * branch.smem_bytes_per_warp);
+                    for (auto &branch_op : warp_branch.branch_ops) {
+                        TaskGroup tg;
+                        tg.task_range =
+                            Range<int>(branch_op.uop_id_begin,
+                                       branch_op.uop_id_begin +
+                                           branch_op.uop_id_diff *
+                                               (warp_branch.warp_id_end -
+                                                warp_branch.warp_id_begin) /
+                                               branch_op.num_warps_per_uop *
+                                               (gpu_info.num_sm - 1),
+                                       branch_op.uop_id_diff);
+                        tg.task_stride = 1;
+                        tg.task_id = branch_op.opseq_id;
+
+                        if (rg.task_groups.size() > 0) {
+                            auto &last_tg = rg.task_groups.back();
+                            if ((last_tg.task_id == tg.task_id) &&
+                                (*last_tg.task_range.end() ==
+                                 *tg.task_range.begin()) &&
+                                (last_tg.task_range.step() ==
+                                 tg.task_range.step()) &&
+                                (last_tg.task_stride == tg.task_stride)) {
+                                last_tg.task_range = Range<int>(
+                                    *last_tg.task_range.begin(),
+                                    *tg.task_range.end(), tg.task_range.step());
+                                continue;
+                            }
+                        }
+
+                        rg.task_groups.emplace_back(std::move(tg));
+                    }
+                    comp_group.resource_groups.emplace_back(std::move(rg));
+                }
+            }
+        }
+        sched.processor_groups.emplace_back(std::move(comp_group));
+
+        ProcessorGroup comm_group;
+        comm_group.processor_range =
+            Range<int>(gpu_info.num_sm - 1, gpu_info.num_sm);
+        auto comm_streams = this->comm_stream[i]->get_streams();
+        for (size_t j = 0; j < comm_streams.size(); ++j) {
+            auto &stream = comm_streams[j];
+            for (auto &branch : stream.branches) {
+                for (auto &warp_branch : branch.warp_branches) {
+                    ResourceGroup rg;
+                    rg.processor_range =
+                        Range<int>(branch.sm_id_begin, branch.sm_id_end);
+                    rg.warp_range = Range<int>(warp_branch.warp_id_begin,
+                                               warp_branch.warp_id_end);
+                    rg.sram_range = Range<int>(
+                        warp_branch.warp_id_begin * branch.smem_bytes_per_warp,
+                        warp_branch.warp_id_end * branch.smem_bytes_per_warp);
+                    for (auto &branch_op : warp_branch.branch_ops) {
+                        TaskGroup tg;
+                        tg.task_range =
+                            Range<int>(branch_op.uop_id_begin,
+                                       branch_op.uop_id_begin +
+                                           branch_op.uop_id_diff *
+                                               (warp_branch.warp_id_end -
+                                                warp_branch.warp_id_begin) /
+                                               branch_op.num_warps_per_uop * 1,
+                                       branch_op.uop_id_diff);
+                        tg.task_stride = 1;
+                        tg.task_id = branch_op.opseq_id;
+                        rg.task_groups.emplace_back(std::move(tg));
+                    }
+                    comm_group.resource_groups.emplace_back(std::move(rg));
+                }
+            }
+        }
+        sched.processor_groups.emplace_back(std::move(comm_group));
+
+        ProcessorGroup sync_all_group;
+        sync_all_group.processor_range = Range<int>(0, gpu_info.num_sm);
+        sched.processor_groups.emplace_back(std::move(sync_all_group));
+    }
+
+    write_file("sched.json", sched.serialize(2));
+
+
+    return this->ctx;
 }
 
 std::vector<std::string> DefaultScheduler::gen_code() {

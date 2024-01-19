@@ -20,15 +20,23 @@ namespace ark {
 Dims broadcast(const Dims &dims1, const Dims &dims2);
 
 /// Type of operator argument.
-typedef enum {
-    OP_ARG_INT,
-    OP_ARG_INT64,
-    OP_ARG_UINT64,
-    OP_ARG_BOOL,
-    OP_ARG_FLOAT,
-    OP_ARG_DIMS,
-    OP_ARG_TENSOR,
-} OpArgType;
+struct OpArgType {
+    OpArgType(size_t id, const std::string &name) : id(id), name(name) {}
+    size_t id;
+    std::string name;
+};
+
+bool operator==(const OpArgType &lhs, const OpArgType &rhs);
+
+bool operator!=(const OpArgType &lhs, const OpArgType &rhs);
+
+const OpArgType OP_ARG_INT(0, "int");
+const OpArgType OP_ARG_INT64(1, "int64");
+const OpArgType OP_ARG_UINT64(2, "uint64");
+const OpArgType OP_ARG_BOOL(3, "bool");
+const OpArgType OP_ARG_FLOAT(4, "float");
+const OpArgType OP_ARG_DIMS(5, "dims");
+const OpArgType OP_ARG_TENSOR(6, "tensor");
 
 /// Stores an arbitrary type of argument given to an operator.
 struct OpArg {
@@ -90,48 +98,54 @@ class OpArgs {
 };
 
 /// Type of @ref Op.
-typedef enum {
-    OP_UNKNOWN = 0,
-    OP_TENSOR,
-    OP_REFER,
-    OP_RESHAPE,
-    OP_MERGE,
-    OP_REDUCE_E_SUM,
-    OP_REDUCE_E_MEAN,
-    OP_REDUCE_E_MAX,
-    OP_REDUCE_W_SUM,
-    OP_REDUCE_W_MEAN,
-    OP_REDUCE_W_MAX,
-    OP_LAYERNORM,
-    OP_SCALE,
-    OP_RELU,
-    OP_COPY,
-    OP_GELU,
-    OP_SIGMOID,
-    OP_EXP,
-    OP_SQRT,
-    OP_RSQRT,
-    OP_MATMUL,
-    OP_MAX_POOL,
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-    OP_ROPE,
-    OP_IM2COL,
-    OP_TRANSPOSE,
-    OP_SEND,
-    OP_SEND_DONE,
-    OP_RECV,
-    OP_EMBEDDING,
-    OP_DEVICE_SYNC,
-    OP_READ_AND_REDUCE,
-    OP_GATHER_FROM_PEERS,
-    OP_CAST,
-    OP_PUT_PACKET,
-    OP_REDUCE_AND_WRITE_PACKET,
-    OP_GET_FROM_PACKET,
-} OpType;
+struct OpType {
+    OpType(size_t id, const std::string &name) : id(id), name(name) {}
+    const size_t id;
+    std::string name;
+};
+
+bool operator==(const OpType &lhs, const OpType &rhs);
+
+const OpType OP_UNKNOWN(0, "unknown");
+const OpType OP_TENSOR(1, "tensor");
+const OpType OP_REFER(2, "refer");
+const OpType OP_RESHAPE(3, "reshape");
+const OpType OP_MERGE(4, "merge");
+const OpType OP_REDUCE_E_SUM(5, "reduce_e_sum");
+const OpType OP_REDUCE_E_MEAN(6, "reduce_e_mean");
+const OpType OP_REDUCE_E_MAX(7, "reduce_e_max");
+const OpType OP_REDUCE_W_SUM(8, "reduce_w_sum");
+const OpType OP_REDUCE_W_MEAN(9, "reduce_w_mean");
+const OpType OP_REDUCE_W_MAX(10, "reduce_w_max");
+const OpType OP_LAYERNORM(11, "layernorm");
+const OpType OP_SCALE(12, "scale");
+const OpType OP_RELU(13, "relu");
+const OpType OP_COPY(14, "copy");
+const OpType OP_GELU(15, "gelu");
+const OpType OP_SIGMOID(16, "sigmoid");
+const OpType OP_EXP(17, "exp");
+const OpType OP_SQRT(18, "sqrt");
+const OpType OP_RSQRT(19, "rsqrt");
+const OpType OP_MATMUL(20, "matmul");
+const OpType OP_MAX_POOL(21, "max_pool");
+const OpType OP_ADD(22, "add");
+const OpType OP_SUB(23, "sub");
+const OpType OP_MUL(24, "mul");
+const OpType OP_DIV(25, "div");
+const OpType OP_ROPE(26, "rope");
+const OpType OP_IM2COL(27, "im2col");
+const OpType OP_TRANSPOSE(28, "transpose");
+const OpType OP_SEND(29, "send");
+const OpType OP_SEND_DONE(30, "send_done");
+const OpType OP_RECV(31, "recv");
+const OpType OP_EMBEDDING(32, "embedding");
+const OpType OP_DEVICE_SYNC(33, "device_sync");
+const OpType OP_READ_AND_REDUCE(34, "read_and_reduce");
+const OpType OP_GATHER_FROM_PEERS(35, "gather_from_peers");
+const OpType OP_CAST(36, "cast");
+const OpType OP_PUT_PACKET(37, "put_packet");
+const OpType OP_REDUCE_AND_WRITE_PACKET(38, "reduce_and_write_packet");
+const OpType OP_GET_FROM_PACKET(39, "get_from_packet");
 
 /// Type of hardware architecture support.
 typedef enum {
