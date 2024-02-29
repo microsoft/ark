@@ -23,6 +23,7 @@ from generator import precompute_freqs_cis
 
 
 ckpt_dir: str = ""
+output_dir: str = ""
 
 numpy_dtype_to_torch_dtype: dict = {
     np.float16: torch.float16,
@@ -35,7 +36,6 @@ numpy_dtype_to_torch_dtype: dict = {
 class RunResults:
     outputs: List[np.ndarray] = None
     runtime: float = 0.0  # in seconds
-
 
 def run_ark(
     module: ark.Module,
@@ -57,38 +57,16 @@ def run_ark(
     output = module(*module_inputs)
 
     opgraph = ark._ark_core._OpGraph(ark.Model.get_model())
-    
-    print(opgraph.serialize(4))
 
-    exit(0)
+    json_str = opgraph.serialize(4)
 
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # runtime = ark.Runtime()
-    # # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
-    # runtime.launch(num_warps_per_sm=8)
+    file_name = output_dir+f'/opgraph_worker_{rank}.json'
 
-    # # Load model parameters
-    # if state_dict:
-    #     module.load_state_dict(state_dict)
-
-    # # Load input data into tensors
-    # tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
-    # tensor_data = [i for i in inputs if isinstance(i, np.ndarray)]
-    # for tensor, ndarray in zip(tensors, tensor_data):
-    #     tensor.from_numpy(ndarray)
-
-    # start_time = time.time()
-
-    # # Run the model
-    # runtime.run(iter=iterations)
-
-    # end_time = time.time()
-
-    # if isinstance(output, list) or isinstance(output, tuple):
-    #     outputs = [o.to_numpy() for o in output]
-    # outputs = [output.to_numpy()]
-
-    # return RunResults(outputs=outputs, runtime=end_time - start_time)
+    with open(file_name, "w") as json_file:
+        json_file.write(json_str)
+        print(f'{file_name} written successfully')
 
     return None
 
@@ -158,30 +136,7 @@ def test_module(
     params_dict = module_ark.params_dict()
     param_names = set(params_dict.keys())
 
-    checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
     state_dict_ark =[]
-    # ckpt_path = checkpoints[rank]
-    # if os.path.exists(ckpt_path):
-    #     if test_thru:
-    #         state_dict_pt = {}
-    #         state_dict_ark = {}
-    #     else:
-    #         prefix = module_name_prefix + "." if module_name_prefix else ""
-    #         # Load the state_dict from the given path
-    #         state_dict_pt = torch.load(ckpt_path)
-    #         state_dict_pt = {
-    #             k[len(prefix) :]: v
-    #             for k, v in state_dict_pt.items()
-    #             if k[len(prefix) :] in param_names and k.startswith(prefix)
-    #         }
-    #         state_dict_ark = {
-    #             k: v.float().numpy().astype(params_dict[k].dtype().to_numpy())
-    #             for k, v in state_dict_pt.items()
-    #         }
-    # else:
-    #     pass
-    #     raise ValueError(f"Cannot find the given path: {ckpt_dir}")
-
     # Run the ARK module
     res_ark = run_ark(
         module_ark,
@@ -191,72 +146,6 @@ def test_module(
         rank=rank,
         world_size=world_size,
     )
-
-    return
-
-    if not test_thru_ark_only:
-        # PyTorch module
-        torch.set_default_dtype(numpy_dtype_to_torch_dtype[dtype])
-        module_pt: torch.nn.Module = module_class_pt(*module_args_pt)
-
-        # Run the PyTorch module
-        res_pt = run_pt(
-            module_pt,
-            state_dict_pt,
-            inputs_pt,
-            iterations=test_thru_iterations if test_thru else 1,
-        )
-
-        if test_thru:
-            print(
-                f"  PyTorch: {res_pt.runtime:.4f} seconds ({(res_pt.runtime / test_thru_iterations):.6f} seconds/iter)\n"
-                f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
-            )
-            return
-    elif test_thru:
-        print(
-            f"  ARK: {res_ark.runtime:.4f} seconds ({(res_ark.runtime / test_thru_iterations):.6f} seconds/iter)"
-        )
-        return
-
-    # Compare the outputs
-    eps = np.finfo(np.float64).eps
-
-    for i, (o_ark, o_pt) in enumerate(zip(res_ark.outputs, res_pt.outputs)):
-        shape = o_ark.shape
-        o_ark = o_ark.flatten().astype(np.float64)
-        o_pt = o_pt.flatten().astype(np.float64)
-
-        max_value_idx = np.argmax(o_pt)
-        min_value_idx = np.argmin(o_pt)
-
-        abs_diff = np.abs(o_ark - o_pt)
-        max_abs_diff_idx = np.argmax(abs_diff)
-        max_abs_diff = abs_diff[max_abs_diff_idx]
-
-        abs_pt = np.abs(o_pt)
-        rel_diff = abs_diff / (abs_pt + eps)
-        max_rel_diff_idx = np.argmax(rel_diff)
-        max_rel_diff = rel_diff[max_rel_diff_idx]
-
-        # max rel_diff where abs_pt is larger than 1e-3
-        max_rel_diff_3_idx = np.argmax(rel_diff * (abs_pt > 1e-3))
-        max_rel_diff_3 = rel_diff[max_rel_diff_3_idx]
-
-        mean_square_error = np.mean(np.square(o_ark - o_pt))
-
-        # Test info as string
-        test_info = f"{module_class_ark.__name__}: output {i}, shape {shape}"
-
-        print(
-            test_info + "\n"
-            f"  max_pt: {o_pt[max_value_idx]} vs {o_ark[max_value_idx]} at index {max_value_idx}\n"
-            f"  min_pt: {o_pt[min_value_idx]} vs {o_ark[min_value_idx]} at index {min_value_idx}\n"
-            f"  max_abs_diff: {max_abs_diff:.4e} ({o_pt[max_abs_diff_idx]} vs {o_ark[max_abs_diff_idx]} at index {max_abs_diff_idx})\n"
-            f"  max_rel_diff: {max_rel_diff:.4e} ({o_pt[max_rel_diff_idx]} vs {o_ark[max_rel_diff_idx]} at index {max_rel_diff_idx})\n"
-            f"  max_rel_diff_3: {max_rel_diff_3:.4e} ({o_pt[max_rel_diff_3_idx]} vs {o_ark[max_rel_diff_3_idx]} at index {max_rel_diff_3_idx})\n"
-            f"  mean_square_error: {mean_square_error:.4e}\n"
-        )
 
 
 def test_rmsnorm(
@@ -530,33 +419,15 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
     # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
-
-def worker(
-    args: ModelArgs,
-    batch_size: int,
-    seq_len: int,
-    dtype: np.dtype,
-    rank: int = 0,
-    world_size: int = 1,
-):
-    # For torch.distributed
-    os.environ["RANK"] = str(rank)
-    os.environ["LOCAL_RANK"] = str(rank)
-    # torch.distributed.init_process_group("gloo")
-    # torch.cuda.set_device(rank)
-
-    # For fairscale
-    # fairscale.nn.model_parallel.initialize.initialize_model_parallel(world_size)
-    test(args, batch_size, seq_len, dtype, rank, world_size)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ckpt_dir", type=str, required=True)
+    # parser.add_argument("--ckpt_dir", type=str, required=True)
     parser.add_argument("--ngpus", type=int, default=1)
+    parser.add_argument("--output_dir", type=str, default="opgraph")
 
-    ckpt_dir = parser.parse_args().ckpt_dir
+    # ckpt_dir = parser.parse_args().ckpt_dir
     ngpus = parser.parse_args().ngpus
+    output_dir = parser.parse_args().output_dir
 
     # Configurations
     args = ModelArgs7B()
@@ -575,27 +446,14 @@ if __name__ == "__main__":
     assert batch_size <= args.max_batch_size
     assert seq_len <= args.max_seq_len
 
-    # For torch.distributed
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "29500"
-    os.environ["WORLD_SIZE"] = str(world_size)
 
     if world_size == 1:
-        # For torch.distributed
-        os.environ["RANK"] = "0"
-        os.environ["LOCAL_RANK"] = "0"
-        # torch.distributed.init_process_group("mpi")
-
-        # For fairscale
-        # fairscale.nn.model_parallel.initialize.initialize_model_parallel(
-        #     world_size
-        # )
         test(args, batch_size, seq_len, dtype, 0, 1)
     else:
         procs = []
         for i in range(ngpus):
             p = mp.Process(
-                target=worker,
+                target=test,
                 args=(args, batch_size, seq_len, dtype, i, world_size),
             )
             p.start()
