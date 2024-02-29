@@ -433,8 +433,13 @@ nlohmann::json to_json(const OpArg &op_arg) {
         uint64_t val;
         op_arg.get(&val);
         j["Value"] = val;
-    } else {
-        throw std::runtime_error("unexpected");
+    } else if (op_arg.type == OP_ARG_DIMS) {
+        Dims dims;
+        op_arg.get(&dims);
+        j["Value"] = dims.serialize();
+    }
+    else {
+        throw std::runtime_error("unexpected OpArg: "+std::string(op_arg.type.name));
     }
     return j;
 }

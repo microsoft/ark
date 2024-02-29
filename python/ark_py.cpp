@@ -16,6 +16,7 @@ extern void register_tensor_type(py::module &m);
 extern void register_tensor(py::module &m);
 extern void register_model(py::module &m);
 extern void register_executor(py::module &m);
+extern void register_opgraph(py::module &m);
 
 PYBIND11_MODULE(_ark_core, m) {
     m.doc() = "Bind ARK C++ APIs to Python";
@@ -30,4 +31,5 @@ PYBIND11_MODULE(_ark_core, m) {
     register_tensor(m);
     register_model(m);
     register_executor(m);
+    register_opgraph(m);
 }
