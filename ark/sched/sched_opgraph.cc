@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "sched/sched_opgraph.h"
-
 #include <algorithm>
 
+#include "ark/model.h"
 #include "logging.h"
 #include "model.h"
 #include "nlohmann/json.hpp"
+#include "ops/ops_common.h"
 
 #define DEBUG_OPGRAPH 0
 #define OPGRAPH_DEBUG(...)           \
@@ -433,8 +433,13 @@ nlohmann::json to_json(const OpArg &op_arg) {
         uint64_t val;
         op_arg.get(&val);
         j["Value"] = val;
+    } else if (op_arg.type == OP_ARG_DIMS) {
+        Dims dims;
+        op_arg.get(&dims);
+        j["Value"] = dims.serialize();
     } else {
-        throw std::runtime_error("unexpected");
+        throw std::runtime_error("unexpected OpArg: " +
+                                 std::string(op_arg.type.name));
     }
     return j;
 }
@@ -462,7 +467,8 @@ nlohmann::json to_json(const Op &op) {
     return j;
 }
 
-nlohmann::json to_json(const OpNode &node, const std::map<const OpNode *, size_t> &node2id) {
+nlohmann::json to_json(const OpNode &node,
+                       const std::map<const OpNode *, size_t> &node2id) {
     nlohmann::json j;
     j["Id"] = node2id.at(&node);
     j["Ops"] = nlohmann::json();

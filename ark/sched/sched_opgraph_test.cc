@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "sched_opgraph.h"
-
 #include <algorithm>
 
 #include "ark.h"
 #include "logging.h"
 #include "unittest/unittest_utils.h"
+#include "ops/ops_common.h"
 
 ark::unittest::State test_sched_opgraph() {
     ark::Model model;

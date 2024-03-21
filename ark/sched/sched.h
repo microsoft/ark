@@ -6,7 +6,6 @@
 
 #include "include/ark.h"
 #include "sched/sched_codegen.h"
-#include "sched/sched_opgraph.h"
 #include "sched/sched_stream.h"
 #include "schedule/schedule.h"
 
