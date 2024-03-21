@@ -22,6 +22,11 @@ bool operator!=(const OpArgType &lhs, const OpArgType &rhs) {
     return !(lhs == rhs);
 }
 
+std::ostream &operator<<(std::ostream &os, const OpArgType &type) {
+    os << type.name;
+    return os;
+}
+
 Dims broadcast(const Dims &dims1, const Dims &dims2) {
     std::vector<DimType> output_dims_reversed;
     int ndims = std::max(dims1.ndims(), dims2.ndims());

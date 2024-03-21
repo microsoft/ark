@@ -30,6 +30,8 @@ bool operator==(const OpArgType &lhs, const OpArgType &rhs);
 
 bool operator!=(const OpArgType &lhs, const OpArgType &rhs);
 
+std::ostream &operator<<(std::ostream &os, const OpArgType &type);
+
 const OpArgType OP_ARG_INT(0, "int");
 const OpArgType OP_ARG_INT64(1, "int64");
 const OpArgType OP_ARG_UINT64(2, "uint64");
