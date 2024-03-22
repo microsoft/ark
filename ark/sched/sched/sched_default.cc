@@ -176,14 +176,12 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
     int num_sm_calc = gpu_info.num_sm - 1;
 
     heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
-
-    this->op_graph = make_unique<OpGraph>(model);
 }
 
 void DefaultScheduler::schedule() {
     LOG(DEBUG, "DefaultScheduler start scheduling");
 
-    auto &nodes = this->op_graph->get_nodes();
+    auto &nodes = this->model->get_nodes();
 
     std::list<OpNode *> root_nodes;
     for (auto &node : nodes) {
@@ -240,7 +238,7 @@ void DefaultScheduler::recursive_schedule(std::list<OpNode *> &nodes,
                 }
             }
             // Cannot merge. Add remaining part of the OpNode to next_nodes.
-            OpNode *next_node = this->op_graph->break_node(node, i);
+            OpNode *next_node = this->model->break_node(node, i);
             next_nodes.emplace_back(next_node);
             broke_node = true;
             break;
@@ -652,7 +650,6 @@ std::shared_ptr<GpuContext> DefaultScheduler::create_context() {
     }
 
     write_file("sched.json", sched.serialize(2));
-
 
     return this->ctx;
 }

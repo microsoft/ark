@@ -85,7 +85,6 @@ class DefaultScheduler : public BaseScheduler {
     void recursive_schedule(std::list<OpNode *> &nodes,
                             std::set<OpNode *> &seen_nodes);
 
-    std::unique_ptr<OpGraph> op_graph;
     std::vector<std::unique_ptr<SchedStream>> comp_stream;
     std::vector<std::unique_ptr<SchedStream>> comm_stream;
 

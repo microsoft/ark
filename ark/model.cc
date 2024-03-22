@@ -19,6 +19,496 @@
 
 namespace ark {
 
+bool operator==(const OpArgType &lhs, const OpArgType &rhs) {
+    return lhs.id == rhs.id;
+}
+
+bool operator!=(const OpArgType &lhs, const OpArgType &rhs) {
+    return !(lhs == rhs);
+}
+
+std::ostream &operator<<(std::ostream &os, const OpArgType &type) {
+    os << type.name;
+    return os;
+}
+
+OpArchType op_arch_from_string(const std::string &arch) {
+    if (arch == "cuda_60") {
+        return OP_ARCH_CUDA_60;
+    } else if (arch == "cuda_70") {
+        return OP_ARCH_CUDA_70;
+    } else if (arch == "cuda_80") {
+        return OP_ARCH_CUDA_80;
+    } else if (arch == "cuda_90") {
+        return OP_ARCH_CUDA_90;
+    } else if (arch == "rocm_90a") {
+        return OP_ARCH_ROCM_90A;
+    } else if (arch == "rocm_942") {
+        return OP_ARCH_ROCM_942;
+    }
+    return OP_ARCH_UNKNOWN;
+}
+
+bool operator<(const OpConfigKey &ops1, const OpConfigKey &ops2) {
+    if (ops1.arch_type != ops2.arch_type) {
+        return ops1.arch_type < ops2.arch_type;
+    } else {
+        return ops1.prec_type < ops2.prec_type;
+    }
+}
+
+bool operator==(const OpConfigKey &ops1, const OpConfigKey &ops2) {
+    return ops1.arch_type == ops2.arch_type && ops1.prec_type == ops2.prec_type;
+}
+
+OpConfigMap::OpConfigMap(
+    std::initializer_list<
+        std::pair<const OpConfigKey, const std::vector<OpConfig>>>
+        ilist)
+    : cfg_map{ilist} {}
+
+// A dummy OpConfig vector to return when no config is found
+static const std::vector<OpConfig> NoneConfigs;
+
+const std::vector<OpConfig> &OpConfigMap::get(const OpConfigKey &key) const {
+    auto search = this->cfg_map.find(key);
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({key.arch_type, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+#if defined(ARK_CUDA)
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_CUDA_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+#elif defined(ARK_ROCM)
+    search = this->cfg_map.find({OP_ARCH_ROCM_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_ROCM_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+#endif
+    search = this->cfg_map.find({OP_ARCH_ANY, key.prec_type});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    search = this->cfg_map.find({OP_ARCH_ANY, "any"});
+    if (search != this->cfg_map.end()) {
+        return search->second;
+    }
+    return NoneConfigs;
+}
+
+OpArg::OpArg(int arg) : type{OP_ARG_INT}, val{new int{arg}} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(DimType arg) : type{OP_ARG_INT64}, val{new DimType{arg}} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(uint64_t arg) : type{OP_ARG_UINT64}, val{new uint64_t{arg}} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(bool arg) : type{OP_ARG_BOOL}, val{new bool{arg}} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(float arg) : type{OP_ARG_FLOAT}, val{new float{arg}} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(const Dims &arg) : type{OP_ARG_DIMS}, val{new Dims{arg}} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(Tensor *arg) : type{OP_ARG_TENSOR}, val{arg} {
+    assert(this->val != nullptr);
+}
+OpArg::OpArg(const OpArg &arg) : type{arg.type} {
+    if (this->type == OP_ARG_INT) {
+        this->val = new int{*(int *)arg.val};
+    } else if (this->type == OP_ARG_INT64) {
+        this->val = new DimType{*(DimType *)arg.val};
+    } else if (this->type == OP_ARG_UINT64) {
+        this->val = new uint64_t{*(uint64_t *)arg.val};
+    } else if (this->type == OP_ARG_BOOL) {
+        this->val = new bool{*(bool *)arg.val};
+    } else if (this->type == OP_ARG_FLOAT) {
+        this->val = new float{*(float *)arg.val};
+    } else if (this->type == OP_ARG_DIMS) {
+        this->val = new Dims{*(Dims *)arg.val};
+    } else if (this->type == OP_ARG_TENSOR) {
+        this->val = arg.val;
+    } else {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+}
+OpArg::~OpArg() {
+    if (this->type == OP_ARG_INT) {
+        delete static_cast<int *>(this->val);
+    } else if (this->type == OP_ARG_INT64) {
+        delete static_cast<DimType *>(this->val);
+    } else if (this->type == OP_ARG_UINT64) {
+        delete static_cast<uint64_t *>(this->val);
+    } else if (this->type == OP_ARG_BOOL) {
+        delete static_cast<bool *>(this->val);
+    } else if (this->type == OP_ARG_FLOAT) {
+        delete static_cast<float *>(this->val);
+    } else if (this->type == OP_ARG_DIMS) {
+        delete static_cast<Dims *>(this->val);
+    } else if (this->type == OP_ARG_TENSOR) {
+        // Do nothing
+    }
+}
+void OpArg::get(int *arg) const {
+    if (this->type != OP_ARG_INT) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = *static_cast<int *>(this->val);
+}
+
+void OpArg::get(long long int *arg) const {
+    if (this->type != OP_ARG_INT64) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = *static_cast<long long int *>(this->val);
+}
+
+void OpArg::get(uint64_t *arg) const {
+    if (this->type != OP_ARG_UINT64) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = *static_cast<uint64_t *>(this->val);
+}
+
+void OpArg::get(bool *arg) const {
+    if (this->type != OP_ARG_BOOL) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = *static_cast<bool *>(this->val);
+}
+
+void OpArg::get(float *arg) const {
+    if (this->type != OP_ARG_FLOAT) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = *static_cast<float *>(this->val);
+}
+
+void OpArg::get(Dims *arg) const {
+    if (this->type != OP_ARG_DIMS) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = *static_cast<Dims *>(this->val);
+}
+
+void OpArg::get(Tensor **arg) const {
+    if (this->type != OP_ARG_TENSOR) {
+        ERR(InvalidUsageError, "invalid argument type ", this->type.name);
+    }
+    *arg = static_cast<Tensor *>(this->val);
+}
+
+OpArgs::OpArgs(const std::vector<OpArg> &args) : args{args} {}
+
+OpArgs &OpArgs::operator=(const OpArgs &opargs) {
+    if (this != &opargs) {
+        this->args = opargs.args;
+    }
+    return *this;
+}
+
+void OpArgs::put(const OpArg &arg) { this->args.emplace_back(arg); }
+
+void OpArgs::get(int *arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_INT) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = *static_cast<int *>(this->args[idx].val);
+}
+
+void OpArgs::get(long long int *arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_INT64) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = *static_cast<long long int *>(this->args[idx].val);
+}
+
+void OpArgs::get(uint64_t *arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_UINT64) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = *static_cast<uint64_t *>(this->args[idx].val);
+}
+
+void OpArgs::get(bool *arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_BOOL) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = *static_cast<bool *>(this->args[idx].val);
+}
+
+void OpArgs::get(float *arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_FLOAT) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = *static_cast<float *>(this->args[idx].val);
+}
+
+void OpArgs::get(Dims *arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_DIMS) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = *static_cast<Dims *>(this->args[idx].val);
+}
+
+void OpArgs::get(Tensor **arg, size_t idx) const {
+    if (this->args.size() <= idx) {
+        ERR(InvalidUsageError, "invalid argument index ", idx, " size ",
+            this->args.size());
+    }
+    if (this->args[idx].type != OP_ARG_TENSOR) {
+        ERR(InvalidUsageError, "invalid argument type ",
+            this->args[idx].type.name);
+    }
+    *arg = static_cast<Tensor *>(this->args[idx].val);
+}
+
+const std::vector<OpArg> &OpArgs::get_args() const { return this->args; }
+
+bool operator==(const OpType &lhs, const OpType &rhs) {
+    return lhs.id == rhs.id;
+}
+
+Op::Op(const OpType &type_, const std::string &prec_type_,
+       const std::vector<Tensor *> &inputs_,
+       const std::vector<Tensor *> &output_refs_, const OpArgs &args_,
+       const std::string &name_, const OpConfigMap *cfg_map_, int gran_lev_,
+       bool force_inline_)
+    : type{type_},
+      prec_type{prec_type_},
+      inputs{inputs_},
+      output_refs{output_refs_},
+      args{args_},
+      name{name_},
+      cfg_map{cfg_map_},
+      gran_lev{gran_lev_},
+      force_inline{force_inline_} {
+    for (auto &tns : inputs_) {
+        if (tns == nullptr) {
+            ERR(ModelError, "input tensor is null");
+        }
+    }
+    for (auto &tns : output_refs_) {
+        if (tns == nullptr) {
+            ERR(ModelError, "output reference tensor is null");
+        }
+    }
+}
+
+std::string Op::function_name(const OpConfig &cfg) const {
+    if (this->type.id == OP_REDUCE_E_SUM.id) {
+        return static_cast<const ReduceESumOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_E_MEAN.id) {
+        return static_cast<const ReduceEMeanOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_E_MAX.id) {
+        return static_cast<const ReduceEMaxOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_W_SUM.id) {
+        return static_cast<const ReduceWSumOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_W_MEAN.id) {
+        return static_cast<const ReduceWMeanOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_W_MAX.id) {
+        return static_cast<const ReduceWMaxOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SCALE.id) {
+        return static_cast<const ScaleOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_MATMUL.id) {
+        return static_cast<const MatmulOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_MAX_POOL.id) {
+        return static_cast<const MaxPoolOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_ADD.id) {
+        return static_cast<const AddOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SUB.id) {
+        return static_cast<const SubOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_MUL.id) {
+        return static_cast<const MulOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_DIV.id) {
+        return static_cast<const DivOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_IM2COL.id) {
+        return static_cast<const Im2colOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_TRANSPOSE.id) {
+        return static_cast<const TransposeOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SEND.id) {
+        return static_cast<const SendOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SEND_DONE.id) {
+        return static_cast<const SendDoneOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_RECV.id) {
+        return static_cast<const RecvOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_LAYERNORM.id) {
+        return static_cast<const LayernormOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_RELU.id) {
+        return static_cast<const ReluOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_COPY.id) {
+        return static_cast<const CopyOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SIGMOID.id) {
+        return static_cast<const SigmoidOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_GELU.id) {
+        return static_cast<const GeluOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_EXP.id) {
+        return static_cast<const ExpOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_SQRT.id) {
+        return static_cast<const SqrtOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_RSQRT.id) {
+        return static_cast<const RsqrtOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_ROPE.id) {
+        return static_cast<const RopeOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_EMBEDDING.id) {
+        return static_cast<const EmbeddingOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_CAST.id) {
+        return static_cast<const CastOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_DEVICE_SYNC.id) {
+        return static_cast<const DeviceSyncOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_READ_AND_REDUCE.id) {
+        return static_cast<const ReadAndReduceOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_GATHER_FROM_PEERS.id) {
+        return static_cast<const GatherFromPeersOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_PUT_PACKET.id) {
+        return static_cast<const PutPacketOp *>(this)->function_name(cfg);
+    } else if (this->type.id == OP_REDUCE_AND_WRITE_PACKET.id) {
+        return static_cast<const ReduceAndWritePacketOp *>(this)->function_name(
+            cfg);
+    } else if (this->type.id == OP_GET_FROM_PACKET.id) {
+        return static_cast<const GetFromPacketOp *>(this)->function_name(cfg);
+    } else {
+        ERR(ModelError, "invalid op type ", this->type.name);
+        return "";
+    }
+    // Never reach here.
+    return "";
+}
+
+OpArgs Op::function_call_args(const OpConfig &cfg) const {
+    if (this->type.id == OP_SCALE.id) {
+        return static_cast<const ScaleOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_SEND.id) {
+        return static_cast<const SendOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_SEND_DONE.id) {
+        return static_cast<const SendDoneOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_RECV.id) {
+        return static_cast<const RecvOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_DEVICE_SYNC.id) {
+        return static_cast<const DeviceSyncOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_READ_AND_REDUCE.id) {
+        return static_cast<const ReadAndReduceOp *>(this)->function_call_args(
+            cfg);
+    } else if (this->type.id == OP_GATHER_FROM_PEERS.id) {
+        return static_cast<const GatherFromPeersOp *>(this)->function_call_args(
+            cfg);
+    } else if (this->type.id == OP_PUT_PACKET.id) {
+        return static_cast<const PutPacketOp *>(this)->function_call_args(cfg);
+    } else if (this->type.id == OP_REDUCE_AND_WRITE_PACKET.id) {
+        return static_cast<const ReduceAndWritePacketOp *>(this)
+            ->function_call_args(cfg);
+    } else if (this->type.id == OP_GET_FROM_PACKET.id) {
+        return static_cast<const GetFromPacketOp *>(this)->function_call_args(
+            cfg);
+    } else {
+        OpArgs opargs;
+        std::vector<Tensor *> deps = this->outputs;
+        deps.insert(deps.end(), this->inputs.begin(), this->inputs.end());
+        for (Tensor *tns : deps) {
+            opargs.put(tns);
+        }
+        return opargs;
+    }
+    // Never reach here.
+    return {};
+}
+
+std::string Op::function_name(const std::string &kernel_name,
+                              const OpArgs &template_args) {
+    std::stringstream ss;
+    ss << kernel_name;
+    size_t num_args = template_args.args.size();
+    if (num_args == 0) {
+        return ss.str();
+    }
+    ss << "<";
+    for (size_t i = 0; i < num_args; ++i) {
+        auto &arg = template_args.args[i];
+        if (arg.type == OP_ARG_INT) {
+            int val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_INT64) {
+            long long int val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_UINT64) {
+            uint64_t val;
+            template_args.get(&val, i);
+            ss << val;
+        } else if (arg.type == OP_ARG_BOOL) {
+            bool val;
+            template_args.get(&val, i);
+            ss << (val ? "true" : "false");
+        } else if (arg.type == OP_ARG_FLOAT) {
+            ERR(ModelError, "float template args are not supported");
+        } else if (arg.type == OP_ARG_DIMS) {
+            Dims val;
+            template_args.get(&val, i);
+            ss << "ark::Vec" << val;
+        }
+        if (i < num_args - 1) {
+            ss << ", ";
+        }
+    }
+    ss << ">";
+    return ss.str();
+}
+
+bool Op::is_virtual() const { return this->cfg_map == nullptr; }
+
+bool Op::is_comm() const {
+    return this->type == OP_SEND || this->type == OP_SEND_DONE ||
+           this->type == OP_RECV || this->type == OP_DEVICE_SYNC;
+}
+
 // Create a new TensorBuf object with `bytes` bytes.
 // A common usage is setting `bytes` to 0 during declaring a model and let the
 // scheduler determine the value after the model is completely defined.
@@ -354,87 +844,21 @@ const Op *Model::Impl::get_cyclic_op() const {
     return nullptr;
 }
 
-//
-Model::Model(int rank_) : impl{std::make_unique<Model::Impl>()} {
-    this->impl->rank = rank_;
-}
-
-Model::~Model() = default;
-
-bool Model::verify() const {
-    const Op *cyclic_op = this->impl->get_cyclic_op();
-    if (cyclic_op != nullptr) {
-        LOG(WARN, "Cyclic dependency detected around Op ",
-            cyclic_op->name.c_str(), " and its inputs.");
-        return false;
-    }
-    return true;
-}
-
-void OpNode::remove_self() {
-    // Remove self from users and producers.
-    for (auto &user : this->users) {
-        user->producers.erase(this);
-    }
-    for (auto &producer : this->producers) {
-        producer->users.erase(this);
-    }
-    // Connect users and producers.
-    for (auto &user : this->users) {
-        for (auto &producer : this->producers) {
-            user->producers.insert(producer);
-            producer->users.insert(user);
-        }
-    }
-}
-
-std::string OpNode::get_name() const {
-    std::stringstream name;
-    for (auto &op : this->ops) {
-        name << op->name << ";";
-    }
-    return name.str();
-}
-
-OpGraph::OpGraph(const Model &model) {
-    if (!model.verify()) {
-        ERR(ModelError, "Model verification failed");
-    }
-    this->create_nodes(model);
-}
-
-OpGraph::OpGraph(OpGraph &graph) {
-    // Copy nodes_storage
-    *this = graph;
-}
-
-OpGraph &OpGraph::operator=(const OpGraph &graph) {
-    // Copy nodes_storage
-    this->nodes_storage.clear();
-    for (auto &node : graph.nodes_storage) {
-        this->nodes_storage.emplace_back(std::make_unique<OpNode>());
-        this->nodes_storage.back()->ops = node->ops;
-        this->nodes_storage.back()->users = node->users;
-        this->nodes_storage.back()->producers = node->producers;
-    }
-    return *this;
-}
-
 /// Traverse the model graph and merge Ops that one of them is the only
 /// user of the other and the other is the only producer of the first.
 ///
 /// @param model The @ref Model.
 ///
-void OpGraph::create_nodes(const Model &model) {
+void Model::Impl::create_nodes() {
     std::list<OpNode *> leaf_nodes;
     std::map<const Op *, OpNode *> op2node;
     // Initialize OpNode.
-    OPGRAPH_DEBUG("initialize OpNode. ", model.impl->get_ops().size(), " ops");
-    for (auto &op : model.impl->get_ops()) {
+    OPGRAPH_DEBUG("initialize OpNode. ", this->get_ops().size(), " ops");
+    for (auto &op : this->get_ops()) {
         this->nodes_storage.emplace_back(std::make_unique<OpNode>());
         this->nodes_storage.back()->ops.emplace_back(op);
         op2node[op] = this->nodes_storage.back().get();
-        if (model.impl->get_user_ops(op).size() == 0) {
+        if (this->get_user_ops(op).size() == 0) {
             leaf_nodes.emplace_back(this->nodes_storage.back().get());
         }
     }
@@ -443,11 +867,11 @@ void OpGraph::create_nodes(const Model &model) {
         // As nothing is merged yet, all OpNode should have only one Op.
         Op *op = node->ops[0];
         OPGRAPH_DEBUG("node ", op->name);
-        for (auto &producer_op : model.impl->get_producer_ops(op)) {
+        for (auto &producer_op : this->get_producer_ops(op)) {
             node->producers.insert(op2node[producer_op]);
             OPGRAPH_DEBUG("  producer ", producer_op->name);
         }
-        for (auto &user_op : model.impl->get_user_ops(op)) {
+        for (auto &user_op : this->get_user_ops(op)) {
             node->users.insert(op2node[user_op]);
             OPGRAPH_DEBUG("  user ", user_op->name);
         }
@@ -471,15 +895,17 @@ void OpGraph::create_nodes(const Model &model) {
     recursive_merge(this->nodes_storage, seen_nodes, leaf_nodes);
 }
 
+void Model::Impl::clear_nodes() { this->nodes_storage.clear(); }
+
 /// Helper of @ref create_nodes().
 /// Traverse the model graph and remove virtual Ops that perform no computation.
 ///
 /// @param nodes The list of @ref OpNode.
 /// @param boundary_nodes The list of boundary @ref OpNode.
 ///
-void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
-                                std::set<OpNode *> &seen_nodes,
-                                const std::list<OpNode *> &boundary_nodes) {
+void Model::Impl::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
+                                    std::set<OpNode *> &seen_nodes,
+                                    const std::list<OpNode *> &boundary_nodes) {
     if (boundary_nodes.size() == 0) {
         return;
     }
@@ -548,9 +974,9 @@ void OpGraph::recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
 /// @param seen_nodes The set of @ref OpNode that have been seen.
 /// @param boundary_nodes The list of boundary @ref OpNode.
 ///
-void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
-                              std::set<OpNode *> &seen_nodes,
-                              const std::list<OpNode *> &boundary_nodes) {
+void Model::Impl::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
+                                  std::set<OpNode *> &seen_nodes,
+                                  const std::list<OpNode *> &boundary_nodes) {
     if (boundary_nodes.size() == 0) {
         return;
     }
@@ -684,7 +1110,7 @@ void OpGraph::recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
     recursive_merge(nodes, seen_nodes, new_boundary_nodes);
 }
 
-OpNode *OpGraph::break_node(OpNode *node, int op_idx) {
+OpNode *Model::Impl::break_node(OpNode *node, int op_idx) {
     if (op_idx == 0) {
         return node;
     }
@@ -712,7 +1138,7 @@ OpNode *OpGraph::break_node(OpNode *node, int op_idx) {
 /// @param node1 The first @ref OpNode.
 /// @param node2 The second @ref OpNode.
 /// @return True if @p node1 depends on @p node2.
-bool OpGraph::depends_on(OpNode *node1, OpNode *node2) const {
+bool Model::Impl::depends_on(OpNode *node1, OpNode *node2) const {
     if (node1 == node2) {
         return false;
     }
@@ -838,23 +1264,80 @@ nlohmann::json to_json(const OpNode &node,
     return j;
 }
 
-nlohmann::json to_json(const OpGraph &opgraph) {
+std::string Model::Impl::serialize(int indent) const {
     size_t id = 0;
     std::map<const OpNode *, size_t> node2id;
-    for (const auto &node : opgraph.get_nodes()) {
+    for (const auto &node : this->get_nodes()) {
         node2id[node.get()] = id++;
     }
     nlohmann::json j;
     j["Nodes"] = nlohmann::json();
-    for (const auto &node : opgraph.get_nodes()) {
+    for (const auto &node : this->get_nodes()) {
         j["Nodes"].emplace_back(to_json(*node, node2id));
     }
-    return j;
+    return j.dump(indent);
 }
 
-std::string OpGraph::serialize(int indent) const {
-    auto j = to_json(*this);
-    return j.dump(indent);
+//
+Model::Model(int rank_) : impl{std::make_unique<Model::Impl>()} {
+    this->impl->rank = rank_;
+}
+
+Model::~Model() = default;
+
+const std::list<std::unique_ptr<OpNode>> &Model::get_nodes() const {
+    return this->impl->get_nodes();
+}
+
+void Model::create_nodes() { return this->impl->create_nodes(); }
+
+void Model::clear_nodes() { return this->impl->clear_nodes(); }
+
+OpNode *Model::break_node(OpNode *node, int op_idx) {
+    return this->impl->break_node(node, op_idx);
+}
+
+bool Model::depends_on(OpNode *node1, OpNode *node2) const {
+    return this->impl->depends_on(node1, node2);
+}
+
+std::string Model::serialize(int indent) const {
+    return this->impl->serialize(indent);
+}
+
+bool Model::verify() const {
+    const Op *cyclic_op = this->impl->get_cyclic_op();
+    if (cyclic_op != nullptr) {
+        LOG(WARN, "Cyclic dependency detected around Op ",
+            cyclic_op->name.c_str(), " and its inputs.");
+        return false;
+    }
+    return true;
+}
+
+void OpNode::remove_self() {
+    // Remove self from users and producers.
+    for (auto &user : this->users) {
+        user->producers.erase(this);
+    }
+    for (auto &producer : this->producers) {
+        producer->users.erase(this);
+    }
+    // Connect users and producers.
+    for (auto &user : this->users) {
+        for (auto &producer : this->producers) {
+            user->producers.insert(producer);
+            producer->users.insert(user);
+        }
+    }
+}
+
+std::string OpNode::get_name() const {
+    std::stringstream name;
+    for (auto &op : this->ops) {
+        name << op->name << ";";
+    }
+    return name.str();
 }
 
 }  // namespace ark

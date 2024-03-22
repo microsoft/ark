@@ -51,10 +51,10 @@ ark::unittest::State test_model_opgraph() {
     //   (AddOp,)
     //
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 1UL);
 
-    auto node = graph.get_nodes().front().get();
+    auto node = model.get_nodes().front().get();
     UNITTEST_EQ(node->ops.size(), 1UL);
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
     UNITTEST_EQ(node->ops[0]->inputs[0], t0);
@@ -82,10 +82,11 @@ ark::unittest::State test_model_opgraph() {
     //   (AddOp,AddOp,)
     //
 
-    graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
+    model.clear_nodes();
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 1UL);
 
-    node = graph.get_nodes().front().get();
+    node = model.get_nodes().front().get();
 
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
     UNITTEST_EQ(node->ops[0]->inputs[0], t0);
@@ -114,10 +115,11 @@ ark::unittest::State test_model_opgraph() {
     //   (AddOp,AddOp,ReluOp,)
     //
 
-    graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
+    model.clear_nodes();
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 1UL);
 
-    node = graph.get_nodes().front().get();
+    node = model.get_nodes().front().get();
 
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
     UNITTEST_EQ(node->ops[0]->inputs[0], t0);
@@ -152,10 +154,11 @@ ark::unittest::State test_model_opgraph() {
     //   (AddOp,AddOp,ReluOp,AddOp,)
     //
 
-    graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 1UL);
+    model.clear_nodes();
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 1UL);
 
-    auto nodes_iter = graph.get_nodes().begin();
+    auto nodes_iter = model.get_nodes().begin();
     node = (nodes_iter++)->get();
     UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
@@ -196,10 +199,11 @@ ark::unittest::State test_model_opgraph() {
     //                      (AddOp,) --+--> (AddOp,)
     //
 
-    graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
+    model.clear_nodes();
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 3UL);
 
-    nodes_iter = graph.get_nodes().begin();
+    nodes_iter = model.get_nodes().begin();
     node = (nodes_iter++)->get();
     UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
@@ -253,10 +257,11 @@ ark::unittest::State test_model_opgraph() {
     //                                      (AddOp,)
     //
 
-    graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 4UL);
+    model.clear_nodes();
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 4UL);
 
-    nodes_iter = graph.get_nodes().begin();
+    nodes_iter = model.get_nodes().begin();
     node = (nodes_iter++)->get();
     UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
@@ -312,10 +317,11 @@ ark::unittest::State test_model_opgraph() {
     //                                      (AddOp,)
     //
 
-    graph = ark::OpGraph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 5UL);
+    model.clear_nodes();
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 5UL);
 
-    nodes_iter = graph.get_nodes().begin();
+    nodes_iter = model.get_nodes().begin();
     node = (nodes_iter++)->get();
     UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
     UNITTEST_EQ(node->ops[0]->outputs[0], t2);
@@ -350,9 +356,9 @@ ark::unittest::State test_model_opgraph_dependent_inputs() {
     ark::Tensor *x4 = m.mul(x2, x3);
     ark::Tensor *y = m.add(x0, x4);
 
-    ark::OpGraph graph(m);
-    UNITTEST_EQ(graph.get_nodes().size(), 4);
-    auto nodes_iter = graph.get_nodes().begin();
+    m.create_nodes();
+    UNITTEST_EQ(m.get_nodes().size(), 4);
+    auto nodes_iter = m.get_nodes().begin();
     auto node = (nodes_iter++)->get();
     UNITTEST_EQ(node->ops.size(), 4);
     UNITTEST_EQ(node->ops[1]->outputs[0], x0);
@@ -394,8 +400,8 @@ ark::unittest::State test_model_opgraph_noop() {
     model.tensor({1}, ark::FP32);
     UNITTEST_TRUE(model.verify());
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 0UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 0UL);
     return ark::unittest::SUCCESS;
 }
 
@@ -419,10 +425,10 @@ ark::unittest::State test_model_opgraph_identity() {
     ark::Tensor *t4 = model.relu(t3);
     UNITTEST_TRUE(model.verify());
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 3UL);
 
-    auto nodes_iter = graph.get_nodes().begin();
+    auto nodes_iter = model.get_nodes().begin();
     auto node = (nodes_iter++)->get();
     UNITTEST_EQ(node->ops[0]->outputs[0], r0);
     UNITTEST_EQ(node->producers.size(), 0UL);
@@ -470,10 +476,10 @@ ark::unittest::State test_model_opgraph_sharding() {
     ark::Tensor *t5 = model.relu(t4);
     UNITTEST_TRUE(model.verify());
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 4UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 4UL);
 
-    auto nodes_iter = graph.get_nodes().begin();
+    auto nodes_iter = model.get_nodes().begin();
     auto node = (nodes_iter++)->get();
     UNITTEST_EQ(node->ops[0]->outputs[0], r0);
     UNITTEST_EQ(node->producers.size(), 0UL);
@@ -511,10 +517,10 @@ ark::unittest::State test_model_opgraph_split_matmul() {
     model.matmul(t0, t1, nullptr, 2, false, false, "matmul", 3);
     UNITTEST_TRUE(model.verify());
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 3UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 3UL);
 
-    auto nodes_iter = graph.get_nodes().begin();
+    auto nodes_iter = model.get_nodes().begin();
     auto node = (nodes_iter++)->get();
     UNITTEST_EQ(node->ops[0]->name, "matmul/matmul_shard_0");
     UNITTEST_EQ(node->producers.size(), 0UL);
@@ -552,10 +558,10 @@ ark::unittest::State test_model_opgraph_cumulate() {
 
     UNITTEST_TRUE(model.verify());
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 5UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 5UL);
 
-    auto last_node = graph.get_nodes().back().get();
+    auto last_node = model.get_nodes().back().get();
     UNITTEST_EQ(last_node->ops[0]->outputs[0], cumulate);
     UNITTEST_EQ(last_node->producers.size(), 2UL);
     UNITTEST_EQ(last_node->users.size(), 0UL);
@@ -579,10 +585,10 @@ ark::unittest::State test_model_opgraph_all_reduce() {
 
     UNITTEST_TRUE(model.verify());
 
-    ark::OpGraph graph(model);
-    UNITTEST_EQ(graph.get_nodes().size(), 6UL);
+    model.create_nodes();
+    UNITTEST_EQ(model.get_nodes().size(), 6UL);
 
-    auto nodes_iter = graph.get_nodes().begin();
+    auto nodes_iter = model.get_nodes().begin();
     auto node = (nodes_iter++)->get();
     UNITTEST_EQ(node->get_name(), "send;send_done;recv;");
     UNITTEST_EQ(node->producers.size(), 0UL);
