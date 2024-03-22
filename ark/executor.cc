@@ -4,11 +4,11 @@
 #include "ark/executor.h"
 
 #include <algorithm>
-#include <string>
 #include <memory>
+#include <string>
 
-#include "gpu/gpu_loop_kernel.h"
 #include "env.h"
+#include "gpu/gpu_loop_kernel.h"
 #include "logging.h"
 #include "sched/sched.h"
 

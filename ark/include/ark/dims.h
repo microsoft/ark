@@ -4,9 +4,9 @@
 #ifndef ARK_DIMS_H
 #define ARK_DIMS_H
 
+#include <ostream>
 #include <string>
 #include <vector>
-#include <ostream>
 
 namespace ark {
 
@@ -19,10 +19,10 @@ enum { DIMS_LEN = 4, NO_DIM = -1 };
 
 // Up-to-`DIMS_LEN`-dimensional vector.
 class Dims {
-  private:
+   private:
     DimType data[DIMS_LEN];
 
-  public:
+   public:
     // Construct with given four dimensions.
     Dims(DimType d0 = NO_DIM, DimType d1 = NO_DIM, DimType d2 = NO_DIM,
          DimType d3 = NO_DIM);
