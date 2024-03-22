@@ -126,6 +126,31 @@ class Model::Impl {
     /// @return the first cyclic @ref Op if there is any, otherwise nullptr.
     const Op *get_cyclic_op() const;
 
+    /// Get the @ref OpNode list.
+    /// @return The @ref OpNode list.
+    const std::list<std::unique_ptr<OpNode>> &get_nodes() const {
+        return this->nodes_storage;
+    }
+
+    /// Break a @ref OpNode into two @ref OpNode.
+    ///
+    /// The original node will have the first @p op_idx ops, and the new node
+    /// will have the rest.
+    ///
+    /// @param node The @ref OpNode to break.
+    /// @param op_idx The index of the first op in the new @ref OpNode.
+    /// @return The new @ref OpNode.
+    OpNode *break_node(OpNode *node, int op_idx);
+
+    /// Check dependencies between two @ref OpNode.
+    ///
+    /// @param node1 The first @ref OpNode.
+    /// @param node2 The second @ref OpNode.
+    /// @return True if @p node1 depends on @p node2.
+    bool depends_on(OpNode *node1, OpNode *node2) const;
+
+    std::string serialize(int indent = -1) const;
+
    protected:
     /// Rank of this model.
     int rank;
@@ -138,6 +163,8 @@ class Model::Impl {
     friend class Model;
 
    private:
+    std::list<std::unique_ptr<OpNode>> nodes_storage;
+
     /// Append a postfix to a name to make it unique.
     /// @param name the name to append postfix.
     /// @return the name with postfix.
@@ -155,6 +182,15 @@ class Model::Impl {
     std::map<Tensor *, std::set<Op *>> tns_to_users;
     /// Count the number of tensors requested the same name.
     std::map<std::string, int> name_cnts;
+
+    void create_nodes();
+    void clear_nodes();
+    void recursive_rm_virt(std::list<std::unique_ptr<OpNode>> &nodes,
+                           std::set<OpNode *> &seen_nodes,
+                           const std::list<OpNode *> &boundary_nodes);
+    void recursive_merge(std::list<std::unique_ptr<OpNode>> &nodes,
+                         std::set<OpNode *> &seen_nodes,
+                         const std::list<OpNode *> &boundary_nodes);
 };
 
 }  // namespace ark

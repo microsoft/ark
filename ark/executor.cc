@@ -1,17 +1,41 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "executor.h"
+#include "ark/executor.h"
 
 #include <algorithm>
 #include <string>
+#include <memory>
 
+#include "gpu/gpu_loop_kernel.h"
 #include "env.h"
-#include "include/ark.h"
 #include "logging.h"
 #include "sched/sched.h"
 
 namespace ark {
+
+class Executor::Impl {
+   public:
+    Impl(int rank, int world_size, Model &model, const std::string &name,
+         int num_warps_per_sm);
+    ~Impl() = default;
+
+    void compile();
+    void launch();
+    void run(int iter);
+    void wait();
+    float stop();
+
+   private:
+    const int rank_;
+    const int world_size_;
+    int gpu_id_;
+
+    std::shared_ptr<GpuContext> ctx_;
+    std::unique_ptr<BaseScheduler> sched_;
+    std::unique_ptr<GpuLoopKernel> glk_;
+    std::shared_ptr<GpuStream> stream_;
+};
 
 Executor::Impl::Impl(int rank, int world_size, Model &model,
                      const std::string &name, int num_warps_per_sm)

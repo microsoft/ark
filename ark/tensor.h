@@ -4,7 +4,7 @@
 #ifndef ARK_TENSOR_H_
 #define ARK_TENSOR_H_
 
-#include "include/ark.h"
+#include "ark/dims.h"
 
 namespace ark {
 

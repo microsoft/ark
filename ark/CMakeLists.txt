@@ -17,7 +17,7 @@ set(COMMON_LIBS ARK::numa ARK::ibverbs mscclpp mscclpp_static pthread rt)
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(ark_obj PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(ark_obj SYSTEM PRIVATE
-    ${PROJECT_SOURCE_DIR}/third_party/json
+    ${PROJECT_SOURCE_DIR}/third_party/json/include
     ${MSCCLPP_INCLUDE_DIRS}
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
@@ -52,7 +52,7 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
     set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)
     target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(${exe_name} SYSTEM PRIVATE
-        ${PROJECT_SOURCE_DIR}/third_party/json
+        ${PROJECT_SOURCE_DIR}/third_party/json/include
         ${IBVERBS_INCLUDE_DIRS}
         ${NUMA_INCLUDE_DIRS}
     )

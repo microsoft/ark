@@ -166,6 +166,12 @@ DimType Dims::erase(int idx) {
     return ret;
 }
 
+std::string Dims::serialize() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
+}
+
 DimType &Dims::operator[](int idx) {
     int nd = this->ndims();
     if (idx >= nd || -idx > nd) {

@@ -6,8 +6,8 @@
 
 #include "include/ark.h"
 #include "sched/sched_codegen.h"
-#include "sched/sched_opgraph.h"
 #include "sched/sched_stream.h"
+#include "schedule/schedule.h"
 
 namespace ark {
 
@@ -38,12 +38,10 @@ class BaseScheduler {
     BaseScheduler(Model &model, int gpu_id, int rank_, int world_size_,
                   int num_warps_per_sm_ = 16);
 
-    // create context on gpu for the model
-    std::shared_ptr<GpuContext> create_context();
-
     const OpConfig *sched_op_config(const Op *op);
 
     virtual void schedule() = 0;
+    virtual std::shared_ptr<GpuContext> create_context() = 0;
 
     //
     virtual std::vector<std::string> gen_code() = 0;
@@ -71,6 +69,9 @@ class DefaultScheduler : public BaseScheduler {
     std::vector<std::string> gen_code();
     void schedule();
 
+    // create context on gpu for the model
+    std::shared_ptr<GpuContext> create_context();
+
    protected:
     void configure_gpu_buf(const std::list<Tensor *> &model_tensors);
     void heuristic_optimize_model(Model &model, Model::Impl *model_impl,
@@ -84,9 +85,10 @@ class DefaultScheduler : public BaseScheduler {
     void recursive_schedule(std::list<OpNode *> &nodes,
                             std::set<OpNode *> &seen_nodes);
 
-    std::unique_ptr<OpGraph> op_graph;
     std::vector<std::unique_ptr<SchedStream>> comp_stream;
     std::vector<std::unique_ptr<SchedStream>> comm_stream;
+
+    Schedule sched;
 };
 
 }  // namespace ark

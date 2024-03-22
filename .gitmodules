@@ -13,3 +13,7 @@
 [submodule "third_party/mscclpp"]
 	path = third_party/mscclpp
 	url = https://github.com/microsoft/mscclpp
+
+[submodule "third_party/json"]
+	path = third_party/json
+	url = https://github.com/nlohmann/json
