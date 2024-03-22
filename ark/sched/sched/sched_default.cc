@@ -176,6 +176,7 @@ DefaultScheduler::DefaultScheduler(Model &model, int gpu_id, int rank_,
     int num_sm_calc = gpu_info.num_sm - 1;
 
     heuristic_optimize_model(model, model.impl.get(), gpu_info, num_sm_calc);
+    model.create_nodes();
 }
 
 void DefaultScheduler::schedule() {
