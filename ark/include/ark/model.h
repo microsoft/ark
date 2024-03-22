@@ -51,13 +51,13 @@ std::ostream &operator<<(std::ostream &os, const TensorType &type);
     };                                                      \
     const TensorType_##_type_name _type_name;
 
-REGISTER_TENSOR_TYPE(FP32, 4, "float")
-REGISTER_TENSOR_TYPE(FP16, 2, "ark::fp16")
-REGISTER_TENSOR_TYPE(BF16, 2, "ark::bf16")
-REGISTER_TENSOR_TYPE(INT32, 4, "int32_t")
-REGISTER_TENSOR_TYPE(UINT32, 4, "uint32_t")
-REGISTER_TENSOR_TYPE(INT8, 1, "int8_t")
-REGISTER_TENSOR_TYPE(UINT8, 1, "uint8_t")
+REGISTER_TENSOR_TYPE(FP32, 4, "fp32")
+REGISTER_TENSOR_TYPE(FP16, 2, "fp16")
+REGISTER_TENSOR_TYPE(BF16, 2, "bf16")
+REGISTER_TENSOR_TYPE(INT32, 4, "i32")
+REGISTER_TENSOR_TYPE(UINT32, 4, "ui32")
+REGISTER_TENSOR_TYPE(INT8, 1, "i8")
+REGISTER_TENSOR_TYPE(UINT8, 1, "ui8")
 REGISTER_TENSOR_TYPE(BYTE, 1, "unsigned char")
 
 class GpuBuffer;
