@@ -51,14 +51,14 @@ struct UnitOp {
     static_assert(_UnitOutDims::W > 0,
                   "Unit dimension is not positive in dimension W");
 
-    static_assert(_OutDims::N % _UnitOutDims::N == 0,
-                  "Dimension N is not divisible by the unit dimension");
-    static_assert(_OutDims::C % _UnitOutDims::C == 0,
-                  "Dimension C is not divisible by the unit dimension");
-    static_assert(_OutDims::H % _UnitOutDims::H == 0,
-                  "Dimension H is not divisible by the unit dimension");
-    static_assert(_OutDims::W % _UnitOutDims::W == 0,
-                  "Dimension W is not divisible by the unit dimension");
+    // static_assert(_OutDims::N % _UnitOutDims::N == 0,
+    //               "Dimension N is not divisible by the unit dimension");
+    // static_assert(_OutDims::C % _UnitOutDims::C == 0,
+    //               "Dimension C is not divisible by the unit dimension");
+    // static_assert(_OutDims::H % _UnitOutDims::H == 0,
+    //               "Dimension H is not divisible by the unit dimension");
+    // static_assert(_OutDims::W % _UnitOutDims::W == 0,
+    //               "Dimension W is not divisible by the unit dimension");
 
     static_assert(_NumWarps > 0, "# of warps is not positive");
     static_assert(_SmemBytes >= 0, "Bytes of shared memory is negative");

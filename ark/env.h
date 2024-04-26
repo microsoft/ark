@@ -35,8 +35,8 @@ struct Env {
     bool ignore_binary_cache;
     // Prefix of shared memory file names.
     std::string shm_name_prefix;
-    // Enforce to compile a specific kernel code file.
-    std::string enforce_kernel_code_path;
+    // Enforce to compile a specific plan file.
+    std::string enforce_plan_path;
     // MSCCL++ bootstrap port.
     int mscclpp_port;
 };

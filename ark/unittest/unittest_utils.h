@@ -11,8 +11,8 @@
 #include <thread>
 #include <type_traits>
 
+#include "ark/init.hpp"
 #include "cpu_timer.h"
-#include "include/ark.h"
 #include "logging.h"
 
 namespace ark {
@@ -48,6 +48,7 @@ std::string get_kernel_code(const std::string &name);
 // Run the given test function.
 #define UNITTEST(test_func)                                          \
     do {                                                             \
+        ark::init();                                                 \
         LOG(ark::INFO, "unittest start: " #test_func);               \
         double _s = ark::cpu_timer();                                \
         ark::unittest::State _ret;                                   \

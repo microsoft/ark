@@ -144,6 +144,8 @@ struct alignas(2) bfloat16_t {
     int mantissa() const { return int(raw() & 0x7f); }
 };
 
+using bf16 = bfloat16_t;
+
 /// Assignment from half_t
 template <>
 bfloat16_t& bfloat16_t::operator=(bfloat16_t const& x);

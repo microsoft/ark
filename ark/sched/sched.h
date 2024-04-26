@@ -4,10 +4,9 @@
 #ifndef ARK_SCHED_H_
 #define ARK_SCHED_H_
 
-#include "include/ark.h"
+#include "ark/schedule.hpp"
 #include "sched/sched_codegen.h"
 #include "sched/sched_stream.h"
-#include "schedule/schedule.h"
 
 namespace ark {
 

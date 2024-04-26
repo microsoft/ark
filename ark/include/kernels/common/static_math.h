@@ -150,6 +150,28 @@ static DEVICE long long int gm(long long int x) {
     return math::div<Divisor>(x) * Divisor;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+template <size_t Rhs>
+DEVICE bool geq(size_t x) {
+    return x >= Rhs;
+}
+
+template <>
+DEVICE bool geq<0>(size_t x) {
+    return true;
+}
+
+template <size_t Rhs>
+DEVICE bool le(size_t x) {
+    return x < Rhs;
+}
+
+template <>
+DEVICE bool le<0>(size_t x) {
+    return false;
+}
+
 }  // namespace math
 }  // namespace ark
 

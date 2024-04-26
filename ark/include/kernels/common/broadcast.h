@@ -393,12 +393,19 @@ struct Broadcast2 {
         int uw = UnitOp::uop_idx_w(uop_idx);
 
         for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
-            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
-            int tid_h =
-                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
             int tid_c =
                 ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
-            int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
+            int tid_h;
+            int tid_w;
+            if constexpr (IsHConsec) {
+                tid_h = (tid * NelemPerThread) % UnitOutDims::H;
+                tid_w = 0;
+            } else {
+                tid_h =
+                    ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+                tid_w = (tid * NelemPerThread) % UnitOutDims::W;
+            }
 
             if (tid_n >= UnitOutDims::N) {
                 break;

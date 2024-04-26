@@ -12,6 +12,10 @@ namespace py = pybind11;
 void register_model(py::module &m) {
     py::class_<ark::Model>(m, "_Model")
         .def(py::init<int>(), py::arg("rank") = 0)
+        .def("create_nodes", &ark::Model::create_nodes)
+        .def("serialize", &ark::Model::serialize,
+             py::return_value_policy::reference_internal,
+             py::arg("indent") = -1)
         .def("tensor", &ark::Model::tensor,
              "construct a tensor with given shape and data type.",
              py::return_value_policy::reference_internal, py::arg("shape"),

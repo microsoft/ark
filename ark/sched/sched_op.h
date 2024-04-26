@@ -4,9 +4,6 @@
 #ifndef ARK_SCHED_OP_H_
 #define ARK_SCHED_OP_H_
 
-#include "include/ark.h"
-#include "ops/ops_common.h"
-
 namespace ark {
 
 class SchedOp {

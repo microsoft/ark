@@ -38,7 +38,8 @@ const string SchedOp::serialize() const {
     ss << this->function_name() << ",";
 
     OpArgs call_args = this->get_op()->function_call_args(*(this->get_cfg()));
-    for (const OpArg &arg : call_args.get_args()) {
+    for (const auto &p : call_args.get_args()) {
+        const OpArg &arg = p.second;
         if (arg.type == OP_ARG_TENSOR) {
             Tensor *tns;
             arg.get(&tns);

@@ -15,6 +15,7 @@
 #include "layernorm.h"
 #include "math_functions.h"
 #include "matmul.h"
+#include "noop.h"
 #include "reduce.h"
 #include "transpose.h"
 
