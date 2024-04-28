@@ -86,12 +86,10 @@ class Model : public ModelGraph {
 
     ModelTensorRef reshape(ModelTensorRef input, const Dims &shape,
                            bool allowzero = false,
-                           ModelTensorRef output = nullptr,
                            const std::string &name = "");
     ModelTensorRef reshape(ModelTensorRef input,
                            const std::initializer_list<DimType> &shape,
                            bool allowzero = false,
-                           ModelTensorRef output = nullptr,
                            const std::string &name = "");
     // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
     // inferred from the `input`. If one dimension of `shape` is 0, by default
@@ -104,7 +102,6 @@ class Model : public ModelGraph {
     ModelTensorRef reshape(ModelTensorRef input,
                            const std::vector<DimType> &shape,
                            bool allowzero = false,
-                           ModelTensorRef output = nullptr,
                            const std::string &name = "");
     // Returns an identical tensor of `input` with execution dependencies
     // `deps`.

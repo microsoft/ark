@@ -3,8 +3,6 @@
 
 #include "ops_refer.hpp"
 
-#include <set>
-
 #include "ops_common.hpp"
 
 namespace ark {

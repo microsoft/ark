@@ -15,6 +15,8 @@
 
 namespace ark {
 
+void check_null(ModelTensorRef tensor);
+
 void check_match_data_type(ModelTensorRef t, ModelDataType dt);
 
 void check_match_data_type(ModelTensorRef a, ModelTensorRef b);

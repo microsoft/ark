@@ -12,6 +12,12 @@
 
 namespace ark {
 
+void check_null(ModelTensorRef tensor) {
+    if (!tensor) {
+        ERR(InvalidUsageError, "tensor is null");
+    }
+}
+
 void check_match_data_type(ModelTensorRef t, ModelDataType dt) {
     if (t->data_type() != dt) {
         ERR(InvalidUsageError,

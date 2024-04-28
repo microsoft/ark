@@ -14,6 +14,7 @@
 #include "ops/ops_matmul.hpp"
 #include "ops/ops_noop.hpp"
 #include "ops/ops_refer.hpp"
+#include "ops/ops_reshape.hpp"
 #include "ops/ops_scale.hpp"
 #include "ops/ops_sendrecv.hpp"
 #include "ops/ops_tensor.hpp"
@@ -50,6 +51,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Noop);
         MODEL_OP_TYPE_REGISTER(Recv);
         MODEL_OP_TYPE_REGISTER(Relu);
+        MODEL_OP_TYPE_REGISTER(Reshape);
         MODEL_OP_TYPE_REGISTER(Rsqrt);
         MODEL_OP_TYPE_REGISTER(Scale);
         MODEL_OP_TYPE_REGISTER(Send);
