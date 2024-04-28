@@ -9,6 +9,7 @@
 #include "logging.h"
 #include "model_tensor.hpp"
 #include "ops/ops_arithmetic.hpp"
+#include "ops/ops_copy.hpp"
 #include "ops/ops_math.hpp"
 #include "ops/ops_matmul.hpp"
 #include "ops/ops_noop.hpp"
@@ -39,17 +40,22 @@ std::shared_ptr<ModelOpFactory> model_op_factory() {
 const ModelOpType ModelOpT::from_name(const std::string &type_name) {
     static std::unordered_map<std::string, ModelOpType> instances;
     if (instances.empty()) {
-        MODEL_OP_TYPE_REGISTER(Noop);
         MODEL_OP_TYPE_REGISTER(Add);
+        MODEL_OP_TYPE_REGISTER(Copy);
         MODEL_OP_TYPE_REGISTER(Div);
         MODEL_OP_TYPE_REGISTER(Exp);
+        MODEL_OP_TYPE_REGISTER(Gelu);
         MODEL_OP_TYPE_REGISTER(Matmul);
         MODEL_OP_TYPE_REGISTER(Mul);
+        MODEL_OP_TYPE_REGISTER(Noop);
         MODEL_OP_TYPE_REGISTER(Recv);
         MODEL_OP_TYPE_REGISTER(Relu);
+        MODEL_OP_TYPE_REGISTER(Rsqrt);
         MODEL_OP_TYPE_REGISTER(Scale);
         MODEL_OP_TYPE_REGISTER(Send);
         MODEL_OP_TYPE_REGISTER(SendDone);
+        MODEL_OP_TYPE_REGISTER(Sigmoid);
+        MODEL_OP_TYPE_REGISTER(Sqrt);
         MODEL_OP_TYPE_REGISTER(Sub);
         MODEL_OP_TYPE_REGISTER(Tensor);
     }

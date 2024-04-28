@@ -19,14 +19,42 @@ namespace ark {
 // NOTE: Broadcast does not automatically cast input to output type.
 // Type casting should be handled by `IntrinsicType::compute()` if needed.
 
-template <typename _IntrinsicType, typename _InShape, bool _IsHConsec,
-          typename _InputType, typename _OutputType, int _NelemPerThread>
+template <typename InDims, typename InShape, typename InDataType,
+          typename OutDims, typename OutShape, typename OutDataType,
+          typename IntrinsicType, typename UnitOutDims>
 struct Broadcast1Intrinsic {
-    using InputType = _InputType;
-    using OutputType = _OutputType;
-    static const int NelemPerThread = _NelemPerThread;
+    using InputType = InDataType;
+    using OutputType = OutDataType;
+
+    static constexpr bool IsHConsec =
+        (OutDims::W == 1 && UnitOutDims::W == 1 && InDims::W == 1);
     static const bool BroadcastInput =
-        (_IsHConsec && _InShape::H == 1) || (!_IsHConsec && _InShape::W == 1);
+        (IsHConsec && InShape::H == 1) || (!IsHConsec && InShape::W == 1);
+
+    static constexpr int OutConsecLen =
+        IsHConsec ? math::min<OutDims::H, UnitOutDims::H>::value
+                  : math::min<OutDims::W, UnitOutDims::W>::value;
+    static constexpr int InConsecLen = IsHConsec ? InDims::H : InDims::W;
+
+    static constexpr int OutConsecBytes = OutConsecLen * sizeof(OutputType);
+    static constexpr int InConsecBytes = InConsecLen * sizeof(InputType);
+
+    static constexpr int OutNelemPerThread =
+        (OutConsecBytes % 16 == 0)  ? 16 / sizeof(OutputType)
+        : (OutConsecBytes % 8 == 0) ? 8 / sizeof(OutputType)
+        : (OutConsecBytes % 4 == 0) ? 4 / sizeof(OutputType)
+        : (OutConsecBytes % 2 == 0) ? 2 / sizeof(OutputType)
+                                    : 1;
+    static constexpr int InNelemPerThread =
+        (InConsecBytes % 16 == 0)  ? 16 / sizeof(InputType)
+        : (InConsecBytes % 8 == 0) ? 8 / sizeof(InputType)
+        : (InConsecBytes % 4 == 0) ? 4 / sizeof(InputType)
+        : (InConsecBytes % 2 == 0) ? 2 / sizeof(InputType)
+                                   : 1;
+
+    static constexpr int NelemPerThread =
+        BroadcastInput ? OutNelemPerThread
+                       : math::gcd<OutNelemPerThread, InNelemPerThread>::value;
 
     static_assert(math::is_pow2<NelemPerThread>::value,
                   "NelemPerThread must be power of 2");
@@ -56,15 +84,15 @@ struct Broadcast1Intrinsic {
             using OutputVtype =
                 typename type::Vtype<OutputType, OutputVtypeSize>::type;
 
-            OutputType reg = _IntrinsicType::compute(*stage);
+            OutputType reg = IntrinsicType::compute(*stage);
 #pragma unroll
             for (int i = 0; i < NumComputeLoop; ++i) {
                 *(reinterpret_cast<OutputVtype *>(result) + i) =
                     type::Replicate::compute<OutputVtypeSize, OutputType>(reg);
             }
         } else {
-            VectorCompute<NelemPerThread, _IntrinsicType>::compute(result,
-                                                                   stage);
+            VectorCompute<NelemPerThread, IntrinsicType>::compute(result,
+                                                                  stage);
         }
     }
 
@@ -91,17 +119,63 @@ struct Broadcast1Intrinsic {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename _IntrinsicType, typename _In0Shape, typename _In1Shape,
-          bool _IsHConsec, typename _InputType, typename _OutputType,
-          int _NelemPerThread>
+template <typename In0Dims, typename In0Shape, typename In0DataType,
+          typename In1Dims, typename In1Shape, typename In1DataType,
+          typename OutDims, typename OutShape, typename OutDataType,
+          typename IntrinsicType, typename UnitOutDims>
 struct Broadcast2Intrinsic {
-    using InputType = _InputType;
-    using OutputType = _OutputType;
-    static const int NelemPerThread = _NelemPerThread;
+    using InputType = In0DataType;
+    using OutputType = OutDataType;
+    static_assert(std::is_same<In0DataType, In1DataType>::value,
+                  "Broadcasting across different data types is not supported");
+
+    static constexpr bool IsHConsec = (OutDims::W == 1 && UnitOutDims::W == 1 &&
+                                       In0Dims::W == 1 && In1Dims::W == 1);
     static const bool BroadcastInput0 =
-        (_IsHConsec && _In0Shape::H == 1) || (!_IsHConsec && _In0Shape::W == 1);
+        (IsHConsec && In0Shape::H == 1) || (!IsHConsec && In0Shape::W == 1);
     static const bool BroadcastInput1 =
-        (_IsHConsec && _In1Shape::H == 1) || (!_IsHConsec && _In1Shape::W == 1);
+        (IsHConsec && In1Shape::H == 1) || (!IsHConsec && In1Shape::W == 1);
+
+    static constexpr int OutConsecLen =
+        IsHConsec ? math::min<OutDims::H, UnitOutDims::H>::value
+                  : math::min<OutDims::W, UnitOutDims::W>::value;
+    static constexpr int In0ConsecLen = IsHConsec ? In0Dims::H : In0Dims::W;
+    static constexpr int In1ConsecLen = IsHConsec ? In1Dims::H : In1Dims::W;
+
+    static constexpr int OutConsecBytes = OutConsecLen * sizeof(OutputType);
+    static constexpr int In0ConsecBytes = In0ConsecLen * sizeof(InputType);
+    static constexpr int In1ConsecBytes = In1ConsecLen * sizeof(InputType);
+
+    static constexpr int OutNelemPerThread =
+        (OutConsecBytes % 16 == 0)  ? 16 / sizeof(OutputType)
+        : (OutConsecBytes % 8 == 0) ? 8 / sizeof(OutputType)
+        : (OutConsecBytes % 4 == 0) ? 4 / sizeof(OutputType)
+        : (OutConsecBytes % 2 == 0) ? 2 / sizeof(OutputType)
+                                    : 1;
+
+    static constexpr int In0NelemPerThread =
+        (In0ConsecBytes % 16 == 0)  ? 16 / sizeof(InputType)
+        : (In0ConsecBytes % 8 == 0) ? 8 / sizeof(InputType)
+        : (In0ConsecBytes % 4 == 0) ? 4 / sizeof(InputType)
+        : (In0ConsecBytes % 2 == 0) ? 2 / sizeof(InputType)
+                                    : 1;
+
+    static constexpr int In1NelemPerThread =
+        (In1ConsecBytes % 16 == 0)  ? 16 / sizeof(InputType)
+        : (In1ConsecBytes % 8 == 0) ? 8 / sizeof(InputType)
+        : (In1ConsecBytes % 4 == 0) ? 4 / sizeof(InputType)
+        : (In1ConsecBytes % 2 == 0) ? 2 / sizeof(InputType)
+                                    : 1;
+
+    static constexpr int NelemPerThread =
+        (BroadcastInput0 && BroadcastInput1) ? OutNelemPerThread
+        : BroadcastInput0
+            ? math::gcd<OutNelemPerThread, In0NelemPerThread>::value
+        : BroadcastInput1
+            ? math::gcd<OutNelemPerThread, In1NelemPerThread>::value
+            : math::gcd<OutNelemPerThread,
+                        math::gcd<In0NelemPerThread,
+                                  In1NelemPerThread>::value>::value;
 
     static_assert(math::is_pow2<NelemPerThread>::value,
                   "NelemPerThread must be power of 2");
@@ -140,7 +214,7 @@ struct Broadcast2Intrinsic {
             using OutputVtype =
                 typename type::Vtype<OutputType, OutputVtypeSize>::type;
 
-            OutputType reg = _IntrinsicType::compute(*stage0, *stage1);
+            OutputType reg = IntrinsicType::compute(*stage0, *stage1);
 #pragma unroll
             for (int i = 0; i < NumComputeLoop; ++i) {
                 *(reinterpret_cast<OutputVtype *>(result) + i) =
@@ -151,7 +225,7 @@ struct Broadcast2Intrinsic {
                 math::min<type::VtypeMaxSize<OutputType>::value,
                           NelemPerThread>::value;
             constexpr int VtypeSize = math::min<
-                TmpMin, IntrinsicCompute2VtypeMaxSize<_IntrinsicType, InputType,
+                TmpMin, IntrinsicCompute2VtypeMaxSize<IntrinsicType, InputType,
                                                       TmpMin>::value>::value;
             using OutputVtype =
                 typename type::Vtype<OutputType, VtypeSize>::type;
@@ -169,7 +243,7 @@ struct Broadcast2Intrinsic {
 #pragma unroll
                 for (int i = 0; i < NumVtype; ++i) {
                     out_vtype[i] =
-                        _IntrinsicType::compute(in0_vtype, in1_vtype[i]);
+                        IntrinsicType::compute(in0_vtype, in1_vtype[i]);
                 }
             } else {
                 const InputVtype *in0_vtype =
@@ -179,11 +253,11 @@ struct Broadcast2Intrinsic {
 #pragma unroll
                 for (int i = 0; i < NumVtype; ++i) {
                     out_vtype[i] =
-                        _IntrinsicType::compute(in0_vtype[i], in1_vtype);
+                        IntrinsicType::compute(in0_vtype[i], in1_vtype);
                 }
             }
         } else {
-            VectorCompute<NelemPerThread, _IntrinsicType>::compute(
+            VectorCompute<NelemPerThread, IntrinsicType>::compute(
                 result, stage0, stage1);
         }
     }
@@ -293,13 +367,8 @@ struct Broadcast1 {
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
     static constexpr int NelemPerThread = Intrinsic::NelemPerThread;
-    static constexpr bool IsHConsec = (OutDims::W == 1 && UnitOutDims::W == 1);
-    static constexpr int ConsecutiveDimLen =
-        IsHConsec ? UnitOutDims::H : UnitOutDims::W;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static_assert(ConsecutiveDimLen % NelemPerThread == 0,
-                  "ConsecutiveDimLen must be divisible by NelemPerThread");
 
     /// Conduct computation on one input and broadcast the result to output.
     /// @param out Output data.
@@ -317,16 +386,9 @@ struct Broadcast1 {
             int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
             int tid_c =
                 ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
-            int tid_h;
-            int tid_w;
-            if constexpr (IsHConsec) {
-                tid_h = (tid * NelemPerThread) % UnitOutDims::H;
-                tid_w = 0;
-            } else {
-                tid_h =
-                    ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
-                tid_w = (tid * NelemPerThread) % UnitOutDims::W;
-            }
+            int tid_h =
+                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
 
             if (tid_n >= UnitOutDims::N) {
                 break;
@@ -370,13 +432,8 @@ struct Broadcast2 {
     using InputType = typename Intrinsic::InputType;
     using OutputType = typename Intrinsic::OutputType;
     static constexpr int NelemPerThread = Intrinsic::NelemPerThread;
-    static constexpr bool IsHConsec = (OutDims::W == 1 && UnitOutDims::W == 1);
-    static constexpr int ConsecutiveDimLen =
-        IsHConsec ? UnitOutDims::H : UnitOutDims::W;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
-    static_assert(ConsecutiveDimLen % NelemPerThread == 0,
-                  "ConsecutiveDimLen must be divisible by NelemPerThread");
 
     /// Conduct computation on two inputs and broadcast the result to output.
     /// @param out Output data.
@@ -396,16 +453,9 @@ struct Broadcast2 {
             int tid_n = (tid * NelemPerThread) / UnitOutDims::CHW;
             int tid_c =
                 ((tid * NelemPerThread) / UnitOutDims::HW) % UnitOutDims::C;
-            int tid_h;
-            int tid_w;
-            if constexpr (IsHConsec) {
-                tid_h = (tid * NelemPerThread) % UnitOutDims::H;
-                tid_w = 0;
-            } else {
-                tid_h =
-                    ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
-                tid_w = (tid * NelemPerThread) % UnitOutDims::W;
-            }
+            int tid_h =
+                ((tid * NelemPerThread) / UnitOutDims::W) % UnitOutDims::H;
+            int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
 
             if (tid_n >= UnitOutDims::N) {
                 break;
@@ -466,11 +516,8 @@ template <typename InDims, typename InShape, typename InDataType,
 struct DefaultBroadcast1
     : public Broadcast1<
           InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
-          Broadcast1Intrinsic<IntrinsicType, InShape,
-                              (OutDims::W == 1 && UnitOutDims::W == 1),
-                              InDataType, OutDataType,
-                              DefaultNelemPerThread<OutDims, OutDataType,
-                                                    UnitOutDims>::value>> {};
+          Broadcast1Intrinsic<InDims, InShape, InDataType, OutDims, OutShape,
+                              OutDataType, IntrinsicType, UnitOutDims>> {};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -484,11 +531,9 @@ struct DefaultBroadcast2
     : public Broadcast2<
           In0Dims, In0Shape, In1Dims, In1Shape, OutDims, OutShape, UnitOutDims,
           NumWarps, SmemBytes,
-          Broadcast2Intrinsic<IntrinsicType, In0Shape, In1Shape,
-                              (OutDims::W == 1 && UnitOutDims::W == 1),
-                              In0DataType, OutDataType,
-                              DefaultNelemPerThread<OutDims, OutDataType,
-                                                    UnitOutDims>::value>> {};
+          Broadcast2Intrinsic<In0Dims, In0Shape, In0DataType, In1Dims, In1Shape,
+                              In1DataType, OutDims, OutShape, OutDataType,
+                              IntrinsicType, UnitOutDims>> {};
 
 }  // namespace ark
 

@@ -76,6 +76,17 @@ struct lm {
     enum { value = mul<div_up<A, B>::value, B>::value };
 };
 
+// Greatest common divisor
+template <long long int A, long long int B>
+struct gcd {
+    enum { value = gcd<B, A % B>::value };
+};
+
+template <long long int A>
+struct gcd<A, 0> {
+    enum { value = A };
+};
+
 // Integer subtraction
 template <long long int A, long long int B>
 struct sub {
