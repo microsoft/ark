@@ -435,7 +435,7 @@ const CodeGenerator::TensorInfo &CodeGenerator::tensor_info(
     size_t tensor_id) const {
     auto it = impl_->tensor_id_to_info_.find(tensor_id);
     if (it == impl_->tensor_id_to_info_.end()) {
-        ERR(InvalidUsageError, "tensor ID not found: ", tensor_id);
+        ERR(NotFoundError, "tensor ID not found: ", tensor_id);
     }
     return it->second;
 }

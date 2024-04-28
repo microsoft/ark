@@ -12,25 +12,33 @@
 
 namespace ark {
 
+void check_match_data_type(ModelTensorRef t, ModelDataType dt) {
+    if (t->data_type() != dt) {
+        ERR(InvalidUsageError,
+            "data types mismatch: ", t->data_type()->type_name(),
+            " != ", dt->type_name());
+    }
+}
+
 void check_match_data_type(ModelTensorRef a, ModelTensorRef b) {
     if (a->data_type() != b->data_type()) {
         ERR(InvalidUsageError,
-            "data types mismatch: ", a->data_type()->type_name(), ", ",
-            b->data_type()->type_name());
+            "data types mismatch: ", a->data_type()->type_name(),
+            " != ", b->data_type()->type_name());
     }
 }
 
 void check_match_shape(ModelTensorRef a, ModelTensorRef b) {
     if (a->shape() != b->shape()) {
-        ERR(InvalidUsageError, "shapes mismatch: ", a->shape(), ", ",
-            b->shape());
+        ERR(InvalidUsageError, "shapes mismatch: ", a->shape(),
+            " != ", b->shape());
     }
 }
 
 void check_shape(ModelTensorRef tensor, const Dims &shape) {
     if (tensor->shape() != shape) {
-        ERR(InvalidUsageError, "shape mismatch: ", tensor->shape(), " and ",
-            shape);
+        ERR(InvalidUsageError, "shape mismatch: ", tensor->shape(),
+            " != ", shape);
     }
 }
 
@@ -53,6 +61,18 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2) {
     }
     std::reverse(output_dims_reversed.begin(), output_dims_reversed.end());
     return Dims{output_dims_reversed};
+}
+
+void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to) {
+    auto from_shape = from->shape();
+    auto to_shape = to->shape();
+    if (from_shape != to_shape) {
+        auto broadcasted_shape = broadcast_shape(from_shape, to_shape);
+        if (broadcasted_shape != to_shape) {
+            ERR(InvalidUsageError, "shapes cannot be broadcasted: ", from_shape,
+                " -> ", to_shape);
+        }
+    }
 }
 
 std::string tolower(const std::string &str) {

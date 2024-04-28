@@ -1,18 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ops_scale.hpp"
+#include "ops_copy.hpp"
 
 #include "ops_common.hpp"
 
 namespace ark {
 
-ModelOpScale::ModelOpScale(ModelTensorRef input, float val,
-                           ModelTensorRef output)
-    : ModelOp("Scale") {
+ModelOpCopy::ModelOpCopy(ModelTensorRef input, ModelTensorRef output)
+    : ModelOp("Copy") {
     if (output) {
         check_match_data_type(input, output);
-        check_match_shape(input, output);
+        check_broadcast_shape(input, output);
     } else {
         output = std::make_shared<ModelTensor>(input->data_type(),
                                                std::make_shared<ModelBuffer>(),
@@ -23,12 +22,11 @@ ModelOpScale::ModelOpScale(ModelTensorRef input, float val,
     read_tensors_ = {input};
     write_tensors_ = {output};
     result_tensors_ = {result};
-    args_ = {{"Factor", val}};
 
     verify();
 }
 
-std::string ModelOpScale::impl_name(const nlohmann::json &config) const {
+std::string ModelOpCopy::impl_name(const nlohmann::json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required for Scale");
     } else if (!config.contains("Tile")) {
@@ -47,20 +45,15 @@ std::string ModelOpScale::impl_name(const nlohmann::json &config) const {
     template_args.emplace_back(vec_string(unit_out_dims.dims4()));
     template_args.emplace_back(std::to_string(num_warps));
     template_args.emplace_back(std::to_string(0));
-    return function_name_string("scale", template_args);
+    return function_name_string("copy", template_args);
 }
 
-std::vector<ModelOpArg> ModelOpScale::impl_args(
+std::vector<ModelOpArg> ModelOpCopy::impl_args(
     [[maybe_unused]] const nlohmann::json &config) const {
-    float factor = args_.at("Factor").value<float>();
-    std::vector<ModelOpArg> args;
-    args.emplace_back(result_tensors_[0]);
-    args.emplace_back(read_tensors_[0]);
-    args.emplace_back(factor);
-    return args;
+    return {result_tensors_[0], read_tensors_[0]};
 }
 
-nlohmann::ordered_json ModelOpScale::default_config() const {
+nlohmann::ordered_json ModelOpCopy::default_config() const {
     nlohmann::ordered_json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
@@ -82,9 +75,9 @@ nlohmann::ordered_json ModelOpScale::default_config() const {
     return config;
 }
 
-ModelTensorRef Model::scale(ModelTensorRef input, float val,
-                            ModelTensorRef output, const std::string &name) {
-    return impl_->create_op<ModelOpScale>(name, input, val, output)
+ModelTensorRef Model::copy(ModelTensorRef input, ModelTensorRef output,
+                           const std::string &name) {
+    return impl_->create_op<ModelOpCopy>(name, input, output)
         ->result_tensors()[0];
 }
 

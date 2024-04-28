@@ -16,6 +16,7 @@ namespace ark {
     };
 
 REGISTER_ERROR_TYPE(InvalidUsageError)
+REGISTER_ERROR_TYPE(NotFoundError)
 REGISTER_ERROR_TYPE(ModelError)
 REGISTER_ERROR_TYPE(SchedulerError)
 REGISTER_ERROR_TYPE(ExecutorError)

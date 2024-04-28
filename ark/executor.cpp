@@ -334,7 +334,13 @@ float Executor::Impl::stop() {
 
 void Executor::Impl::tensor_read(const ModelTensorRef tensor, void *data,
                                  size_t bytes) const {
-    const auto &tensor_info = codegen_->tensor_info(tensor->id());
+    CodeGenerator::TensorInfo tensor_info;
+    try {
+        tensor_info = codegen_->tensor_info(tensor->id());
+    } catch (const NotFoundError &e) {
+        ERR(NotFoundError, "Tried to read an unknown tensor (id=", tensor->id(),
+            ").");
+    }
     if (bytes < tensor->shape_bytes()) {
         ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
     }
@@ -348,11 +354,6 @@ void Executor::Impl::tensor_read(const ModelTensorRef tensor, void *data,
         GLOG(gpuMemcpyAsync(tensor_host.data(), src, tensor_info.bytes,
                             gpuMemcpyDeviceToHost, copy_stream_->get()));
         copy_stream_->sync();
-        // std::cout << "tensor_host read (offset " << tensor_info.offset << "):
-        // "; for (auto i : tensor_host) {
-        //     std::cout << i << " ";
-        // }
-        // std::cout << std::endl;
         tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
                        tensor->shape(), tensor->strides(), tensor->offsets(),
                        tensor->data_type()->bytes());
@@ -361,7 +362,13 @@ void Executor::Impl::tensor_read(const ModelTensorRef tensor, void *data,
 
 void Executor::Impl::tensor_write(const ModelTensorRef tensor, const void *data,
                                   size_t bytes) const {
-    const auto &tensor_info = codegen_->tensor_info(tensor->id());
+    CodeGenerator::TensorInfo tensor_info;
+    try {
+        tensor_info = codegen_->tensor_info(tensor->id());
+    } catch (const NotFoundError &e) {
+        ERR(NotFoundError,
+            "Tried to write on an unknown tensor (id=", tensor->id(), ").");
+    }
     if (bytes < tensor->shape_bytes()) {
         ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
     }
@@ -374,31 +381,9 @@ void Executor::Impl::tensor_write(const ModelTensorRef tensor, const void *data,
         GLOG(gpuMemcpyAsync(tensor_host.data(), dst, tensor_info.bytes,
                             gpuMemcpyDeviceToHost, copy_stream_->get()));
         copy_stream_->sync();
-        // std::cout << "tensor_host write (offset " << tensor_info.offset
-        //             << "): ";
-        // for (auto i = 0; i < tensor_host.size() * sizeof(T) / sizeof(float);
-        //         ++i) {
-        //     std::cout << *((float *)tensor_host.data() + i) << " ";
-        // }
-        // std::cout << std::endl;
-        // std::cout << "data write (offset " << tensor_info.offset << "): ";
-        // for (auto i = 0; i < data.size() * sizeof(T) / sizeof(float); ++i) {
-        //     std::cout << *((float *)data.data() + i) << " ";
-        // }
-        // std::cout << std::endl;
-        // std::cout << "tensor shape: " << tensor->shape() << std::endl;
-        // std::cout << "tensor strides: " << tensor->strides() << std::endl;
-        // std::cout << "tensor offsets: " << tensor->offsets() << std::endl;
         data_to_tensor(tensor_host.data(), static_cast<const int8_t *>(data),
                        tensor->shape(), tensor->strides(), tensor->offsets(),
                        tensor->data_type()->bytes());
-        // std::cout << "tensor_host write2 (offset " << tensor_info.offset
-        //             << "): ";
-        // for (auto i = 0; i < tensor_host.size() * sizeof(T) / sizeof(float);
-        //         ++i) {
-        //     std::cout << *((float *)tensor_host.data() + i) << " ";
-        // }
-        // std::cout << std::endl;
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_info.bytes,
                             gpuMemcpyHostToDevice, copy_stream_->get()));
     }
@@ -422,25 +407,11 @@ void Executor::wait() { impl_->wait(); }
 
 float Executor::stop() { return impl_->stop(); }
 
-// ///
-// std::shared_ptr<std::vector<char>> Executor::tensor_read(
-//     const ModelTensorRef tensor) const {
-//     return impl_->tensor_read<char>(tensor);
-// }
-
-// ///
-// void Executor::tensor_write(const ModelTensorRef tensor,
-//                             const std::vector<char> &data) const {
-//     impl_->tensor_write<char>(tensor, data);
-// }
-
-///
 void Executor::tensor_read(const ModelTensorRef tensor, void *data,
                            size_t bytes) const {
     impl_->tensor_read(tensor, data, bytes);
 }
 
-///
 void Executor::tensor_write(const ModelTensorRef tensor, const void *data,
                             size_t bytes) const {
     impl_->tensor_write(tensor, data, bytes);

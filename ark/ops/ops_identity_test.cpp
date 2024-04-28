@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/executor.hpp"
 #include "ark/model.hpp"
 #include "logging.h"
 #include "model/model_node.hpp"
@@ -8,7 +9,7 @@
 #include "model/model_tensor.hpp"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_model_op_identity() {
+ark::unittest::State test_identity_model() {
     // OpNode graph (parentheses indicate a OpNode):
     //
     //   (Relu,) --+
@@ -51,7 +52,39 @@ ark::unittest::State test_model_op_identity() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_identity() {
+    ark::Model model;
+    // float buf[2][3][4][5];
+    ark::ModelTensorRef tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
+    ark::ModelTensorRef tns1 = model.identity(tns0);
+
+    // For preventing optimize-out
+    model.noop(tns0);
+    model.noop(tns1);
+
+    // Create an executor
+    ark::DefaultExecutor exe(model);
+    exe.compile();
+
+    int num_elem = 2 * 3 * 4 * 5;
+
+    // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
+    std::vector<float> data_vec(num_elem);
+    std::iota(data_vec.begin(), data_vec.end(), 1.0f);
+    exe.tensor_write(tns0, data_vec);
+
+    // Check identity values
+    std::vector<float> ref_val(num_elem);
+    exe.tensor_read(tns1, ref_val);
+    for (int i = 0; i < num_elem; ++i) {
+        UNITTEST_EQ(ref_val[i], (float)(i + 1));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
-    UNITTEST(test_model_op_identity);
+    UNITTEST(test_identity_model);
+    UNITTEST(test_identity);
     return 0;
 }

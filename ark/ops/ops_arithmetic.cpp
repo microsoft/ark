@@ -72,11 +72,11 @@ nlohmann::ordered_json ModelOpArithmetic::default_config() const {
     size_t tile_x;
     size_t tile_y;
     if (shape[2] > shape[3]) {
-        tile_x = shape[2] > 64 ? 64 : shape[2];
+        tile_x = 64;
         tile_y = 1;
     } else {
         tile_x = 1;
-        tile_y = shape[3] > 64 ? 64 : shape[2];
+        tile_y = 64;
     }
     config["Tile"] = {tile_x, tile_y};
     size_t num_tasks = shape[0] * shape[1];
