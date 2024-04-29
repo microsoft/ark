@@ -15,6 +15,13 @@ class ModelOpMatmul : public ModelOp {
     ModelOpMatmul() = default;
     ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
                   ModelTensorRef output, bool trans_input, bool trans_other);
+
+    std::string impl_name(const nlohmann::json &config) const override;
+
+    std::vector<ModelOpArg> impl_args(
+        [[maybe_unused]] const nlohmann::json &config) const override;
+
+    nlohmann::ordered_json default_config() const override;
 };
 
 }  // namespace ark

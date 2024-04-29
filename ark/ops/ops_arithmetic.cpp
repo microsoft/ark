@@ -33,9 +33,10 @@ ModelOpArithmetic::ModelOpArithmetic(const std::string &type_name,
 
 std::string ModelOpArithmetic::impl_name(const nlohmann::json &config) const {
     if (!config.contains("NumWarps")) {
-        ERR(InvalidUsageError, "NumWarps is required for Scale");
+        ERR(InvalidUsageError, "NumWarps is required for ",
+            type()->type_name());
     } else if (!config.contains("Tile")) {
-        ERR(InvalidUsageError, "Tile is required for Scale");
+        ERR(InvalidUsageError, "Tile is required for ", type()->type_name());
     }
     int num_warps = config["NumWarps"];
     auto &tile_shape = config["Tile"];

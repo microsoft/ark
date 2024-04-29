@@ -116,19 +116,86 @@ ModelOpMatmul::ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
         trans_other ? strides_b[ndims_b - 2] : strides_b[ndims_b - 1]};
 
     // a.k.a. problem size
-    Dims shapes_mnk{m, n, k};
+    Dims shape_mnk{m, n, k};
 
     read_tensors_ = {input, other};
     write_tensors_ = {output};
     result_tensors_ = {result};
     args_["InputDimNC"] = nca;
     args_["OtherDimNC"] = ncb;
-    args_["ShapesMNK"] = shapes_mnk;
+    args_["ShapeMNK"] = shape_mnk;
     args_["StridesMNK"] = strides_mnk;
     args_["IsInputColumnMajor"] = trans_input;
     args_["IsOtherColumnMajor"] = trans_other;
 
     verify();
+}
+
+std::string ModelOpMatmul::impl_name(const nlohmann::json &config) const {
+    if (!config.contains("NumWarps")) {
+        ERR(InvalidUsageError, "NumWarps is required");
+    } else if (!config.contains("TileShapeMNK")) {
+        ERR(InvalidUsageError, "TileShapeMNK is required");
+    }
+    int num_warps = config["NumWarps"];
+    int smem_bytes = config["SramBytes"];
+    Dims tile_shape_mnk = config["TileShapeMNK"].get<std::vector<DimType>>();
+    Dims input_dim_nc = args_.at("InputDimNC").value<Dims>();
+    Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();
+    Dims shape_mnk = args_.at("ShapeMNK").value<Dims>();
+    Dims strides_mnk = args_.at("StridesMNK").value<Dims>();
+    bool is_input_column_major = args_.at("IsInputColumnMajor").value<bool>();
+    bool is_other_column_major = args_.at("IsOtherColumnMajor").value<bool>();
+
+    return function_name_string(
+        "matmul", {
+                      vec_string(write_tensors_[0]->shape().dims4()),
+                      vec_string(input_dim_nc),
+                      vec_string(other_dim_nc),
+                      vec_string(tile_shape_mnk),
+                      vec_string(shape_mnk),
+                      vec_string(strides_mnk),
+                      std::to_string(read_tensors_[0]->strides()[-1]),
+                      std::to_string(read_tensors_[1]->strides()[-2]),
+                      std::to_string(is_input_column_major),
+                      std::to_string(is_other_column_major),
+                      std::to_string(num_warps),
+                      std::to_string(smem_bytes),
+                  });
+}
+
+std::vector<ModelOpArg> ModelOpMatmul::impl_args(
+    [[maybe_unused]] const nlohmann::json &config) const {
+    return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
+}
+
+nlohmann::ordered_json ModelOpMatmul::default_config() const {
+    Dims shape_mnk = args_.at("ShapeMNK").value<Dims>();
+    Dims input_dim_nc = args_.at("InputDimNC").value<Dims>();
+    Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();
+    auto result = result_tensors_[0];
+    nlohmann::ordered_json config;
+    if (result->data_type() == FP32) {
+        config["NumWarps"] = 4;
+        config["SramBytes"] = 49152;
+        config["TileShapeMNK"] = {64, 64, 32};
+    } else if (result->data_type() == FP16) {
+        config["NumWarps"] = 4;
+        config["SramBytes"] = 98304;
+        config["TileShapeMNK"] = {64, 64, 64};
+    } else if (result->data_type() == BF16) {
+        config["NumWarps"] = 4;
+        config["SramBytes"] = 98304;
+        config["TileShapeMNK"] = {64, 64, 64};
+    }
+    size_t tile_x = config["TileShapeMNK"][0];
+    size_t tile_y = config["TileShapeMNK"][1];
+    size_t num_tasks = std::max(input_dim_nc[0], other_dim_nc[0]);
+    num_tasks *= std::max(input_dim_nc[1], other_dim_nc[1]);
+    num_tasks *= (shape_mnk[0] + tile_x - 1) / tile_x;
+    num_tasks *= (shape_mnk[1] + tile_y - 1) / tile_y;
+    config["NumTasks"] = num_tasks;
+    return config;
 }
 
 ModelTensorRef Model::matmul(ModelTensorRef input, ModelTensorRef other,
