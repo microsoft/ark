@@ -97,7 +97,7 @@ ModelOpMatmul::ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
 
     // Create an output Tensor.
     if (output) {
-        check_shape(output, output_shape);
+        check_match_shape(output, output_shape);
     } else {
         output = std::make_shared<ModelTensor>(
             input->data_type(), std::make_shared<ModelBuffer>(), output_shape);

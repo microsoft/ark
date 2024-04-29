@@ -133,34 +133,40 @@ using OpsTestBaseline = std::function<void(
 
 class Model;
 
-OpsTestResult op_test(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data = {},
-    bool print_on_error = false, int rank = 0, int world_size = 1,
-    int num_warps_per_sm = DEFAULT_OP_TEST_NUM_WARPS_PER_SM);
+OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
+                      const std::vector<ModelTensorRef> &inputs,
+                      const std::vector<ModelTensorRef> &outputs,
+                      OpsTestBaseline baseline,
+                      const std::vector<void *> &inputs_data = {},
+                      bool print_on_error = false, int rank = 0,
+                      int world_size = 1,
+                      int num_warps_per_sm = DEFAULT_OP_TEST_NUM_WARPS_PER_SM);
 
-OpsTestResult op_test_8(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data = {},
-    bool print_on_error = false, int rank = 0, int world_size = 1);
+OpsTestResult op_test_8(const std::string &test_name_prefix, const Model &model,
+                        const std::vector<ModelTensorRef> &inputs,
+                        const std::vector<ModelTensorRef> &outputs,
+                        OpsTestBaseline baseline,
+                        const std::vector<void *> &inputs_data = {},
+                        bool print_on_error = false, int rank = 0,
+                        int world_size = 1);
 
-OpsTestResult op_test_16(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data = {},
-    bool print_on_error = false, int rank = 0, int world_size = 1);
+OpsTestResult op_test_16(const std::string &test_name_prefix,
+                         const Model &model,
+                         const std::vector<ModelTensorRef> &inputs,
+                         const std::vector<ModelTensorRef> &outputs,
+                         OpsTestBaseline baseline,
+                         const std::vector<void *> &inputs_data = {},
+                         bool print_on_error = false, int rank = 0,
+                         int world_size = 1);
 
-OpsTestResult op_test_32(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data = {},
-    bool print_on_error = false, int rank = 0, int world_size = 1);
+OpsTestResult op_test_32(const std::string &test_name_prefix,
+                         const Model &model,
+                         const std::vector<ModelTensorRef> &inputs,
+                         const std::vector<ModelTensorRef> &outputs,
+                         OpsTestBaseline baseline,
+                         const std::vector<void *> &inputs_data = {},
+                         bool print_on_error = false, int rank = 0,
+                         int world_size = 1);
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size);
 

@@ -41,7 +41,7 @@ void check_match_shape(ModelTensorRef a, ModelTensorRef b) {
     }
 }
 
-void check_shape(ModelTensorRef tensor, const Dims &shape) {
+void check_match_shape(ModelTensorRef tensor, const Dims &shape) {
     if (tensor->shape() != shape) {
         ERR(InvalidUsageError, "shape mismatch: ", tensor->shape(),
             " != ", shape);

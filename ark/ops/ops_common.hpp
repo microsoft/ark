@@ -23,7 +23,7 @@ void check_match_data_type(ModelTensorRef a, ModelTensorRef b);
 
 void check_match_shape(ModelTensorRef a, ModelTensorRef b);
 
-void check_shape(ModelTensorRef tensor, const Dims &shape);
+void check_match_shape(ModelTensorRef tensor, const Dims &shape);
 
 /// Return the output shape of broadcasting between two shapes.
 /// Follow NumPy rules.

@@ -17,7 +17,7 @@ ModelOpArithmetic::ModelOpArithmetic(const std::string &type_name,
     }
     Dims output_shape = broadcast_shape(input->shape(), other->shape());
     if (output) {
-        check_shape(output, output_shape);
+        check_match_shape(output, output_shape);
     } else {
         output = std::make_shared<ModelTensor>(
             input->data_type(), std::make_shared<ModelBuffer>(), output_shape);

@@ -9,6 +9,7 @@
 #include "logging.h"
 #include "model_tensor.hpp"
 #include "ops/ops_arithmetic.hpp"
+#include "ops/ops_cast.hpp"
 #include "ops/ops_copy.hpp"
 #include "ops/ops_math.hpp"
 #include "ops/ops_matmul.hpp"
@@ -42,6 +43,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
     static std::unordered_map<std::string, ModelOpType> instances;
     if (instances.empty()) {
         MODEL_OP_TYPE_REGISTER(Add);
+        MODEL_OP_TYPE_REGISTER(Cast);
         MODEL_OP_TYPE_REGISTER(Copy);
         MODEL_OP_TYPE_REGISTER(Div);
         MODEL_OP_TYPE_REGISTER(Exp);

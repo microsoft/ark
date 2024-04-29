@@ -33,17 +33,18 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     return os;
 }
 
-OpsTestResult op_test(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data,
-    bool print_on_error, int rank, int world_size, int num_warps_per_sm) {
+OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
+                      const std::vector<ModelTensorRef> &inputs,
+                      const std::vector<ModelTensorRef> &outputs,
+                      OpsTestBaseline baseline,
+                      const std::vector<void *> &inputs_data,
+                      bool print_on_error, int rank, int world_size,
+                      int num_warps_per_sm) {
     DefaultExecutor exe(model);
     exe.compile();
 
     std::vector<std::shared_ptr<std::vector<char>>> inputs_data_storages;
-    std::vector<std::shared_ptr<std::vector<char>>> inputs_data_refs;
+    std::vector<void *> inputs_data_refs;
 
     if (inputs_data.empty()) {
         // Set random data.
@@ -81,13 +82,15 @@ OpsTestResult op_test(
             }
             exe.tensor_write(t, *buf);
             inputs_data_storages.push_back(buf);
-            inputs_data_refs.push_back(buf);
+            inputs_data_refs.push_back(buf->data());
         }
     } else {
         // Copy input data
         UNITTEST_EQ(inputs_data.size(), inputs.size());
         for (size_t i = 0; i < inputs.size(); i++) {
-            exe.tensor_write(inputs[i], *(inputs_data[i]));
+            std::vector<char> buf(inputs[i]->shape_bytes());
+            std::memcpy(buf.data(), inputs_data[i], buf.size());
+            exe.tensor_write(inputs[i], buf);
             inputs_data_refs.emplace_back(inputs_data[i]);
         }
     }
@@ -124,14 +127,10 @@ OpsTestResult op_test(
 
     // Calculate ground truth.
     std::vector<void *> gt_ptrs;
-    std::vector<void *> inputs_data_refs_ptrs;
     for (auto t : gt) {
         gt_ptrs.push_back(t->data());
     }
-    for (auto t : inputs_data_refs) {
-        inputs_data_refs_ptrs.push_back(t->data());
-    }
-    baseline(gt_ptrs, output_shapes, inputs_data_refs_ptrs, input_shapes, rank);
+    baseline(gt_ptrs, output_shapes, inputs_data_refs, input_shapes, rank);
 
     std::stringstream test_name;
     test_name << test_name_prefix;
@@ -220,32 +219,34 @@ OpsTestResult op_test(
     return result;
 }
 
-OpsTestResult op_test_8(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data,
-    bool print_on_error, int rank, int world_size) {
+OpsTestResult op_test_8(const std::string &test_name_prefix, const Model &model,
+                        const std::vector<ModelTensorRef> &inputs,
+                        const std::vector<ModelTensorRef> &outputs,
+                        OpsTestBaseline baseline,
+                        const std::vector<void *> &inputs_data,
+                        bool print_on_error, int rank, int world_size) {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
                    inputs_data, print_on_error, rank, world_size, 8);
 }
 
-OpsTestResult op_test_16(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data,
-    bool print_on_error, int rank, int world_size) {
+OpsTestResult op_test_16(const std::string &test_name_prefix,
+                         const Model &model,
+                         const std::vector<ModelTensorRef> &inputs,
+                         const std::vector<ModelTensorRef> &outputs,
+                         OpsTestBaseline baseline,
+                         const std::vector<void *> &inputs_data,
+                         bool print_on_error, int rank, int world_size) {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
                    inputs_data, print_on_error, rank, world_size, 16);
 }
 
-OpsTestResult op_test_32(
-    const std::string &test_name_prefix, const Model &model,
-    const std::vector<ModelTensorRef> &inputs,
-    const std::vector<ModelTensorRef> &outputs, OpsTestBaseline baseline,
-    const std::vector<std::shared_ptr<std::vector<char>>> &inputs_data,
-    bool print_on_error, int rank, int world_size) {
+OpsTestResult op_test_32(const std::string &test_name_prefix,
+                         const Model &model,
+                         const std::vector<ModelTensorRef> &inputs,
+                         const std::vector<ModelTensorRef> &outputs,
+                         OpsTestBaseline baseline,
+                         const std::vector<void *> &inputs_data,
+                         bool print_on_error, int rank, int world_size) {
     return op_test(test_name_prefix, model, inputs, outputs, baseline,
                    inputs_data, print_on_error, rank, world_size, 32);
 }
