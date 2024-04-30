@@ -14,6 +14,7 @@
 #include "ops/ops_math.hpp"
 #include "ops/ops_matmul.hpp"
 #include "ops/ops_noop.hpp"
+#include "ops/ops_reduce.hpp"
 #include "ops/ops_refer.hpp"
 #include "ops/ops_reshape.hpp"
 #include "ops/ops_scale.hpp"
@@ -53,6 +54,9 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Mul);
         MODEL_OP_TYPE_REGISTER(Noop);
         MODEL_OP_TYPE_REGISTER(Recv);
+        MODEL_OP_TYPE_REGISTER(ReduceMax);
+        MODEL_OP_TYPE_REGISTER(ReduceMean);
+        MODEL_OP_TYPE_REGISTER(ReduceSum);
         MODEL_OP_TYPE_REGISTER(Relu);
         MODEL_OP_TYPE_REGISTER(Reshape);
         MODEL_OP_TYPE_REGISTER(Rsqrt);
