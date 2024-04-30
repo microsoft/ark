@@ -114,7 +114,7 @@ struct Assign {
 
 template <typename InDims, typename InShape, typename WeightDims,
           typename WeightShape, typename OutDims, typename OutShape,
-          int EmbeddingDim, int NumWarps, typename DataType>
+          int NumWarps, typename DataType>
 DEVICE void embedding(DataType *output, int *input, DataType *weight,
                       int uop_idx, int) {
     // InShape:     Vec<D0, D1, D2, 1>
@@ -137,8 +137,8 @@ DEVICE void embedding(DataType *output, int *input, DataType *weight,
     // TODO: assert if emb_idx is still negative
     DataType *pWeight = &weight[emb_idx * WeightDims::W];
 
-    Broadcast1<Vec<1, 1, 1, WeightDims::W>, Vec<1, 1, 1, EmbeddingDim>, OutDims,
-               OutShape, UnitOutDims, NumWarps, 0,
+    Broadcast1<Vec<1, 1, 1, WeightDims::W>, Vec<1, 1, 1, WeightShape::W>,
+               OutDims, OutShape, UnitOutDims, NumWarps, 0,
                Assign<DataType>>::run(output, pWeight, uop_idx);
 }
 

@@ -11,6 +11,7 @@
 #include "ops/ops_arithmetic.hpp"
 #include "ops/ops_cast.hpp"
 #include "ops/ops_copy.hpp"
+#include "ops/ops_embedding.hpp"
 #include "ops/ops_math.hpp"
 #include "ops/ops_matmul.hpp"
 #include "ops/ops_noop.hpp"
@@ -48,6 +49,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Cast);
         MODEL_OP_TYPE_REGISTER(Copy);
         MODEL_OP_TYPE_REGISTER(Div);
+        MODEL_OP_TYPE_REGISTER(Embedding);
         MODEL_OP_TYPE_REGISTER(Exp);
         MODEL_OP_TYPE_REGISTER(Gelu);
         MODEL_OP_TYPE_REGISTER(Matmul);

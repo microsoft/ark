@@ -30,20 +30,18 @@ std::string ModelOpBroadcast1::impl_name(const nlohmann::json &config) const {
     } else if (!config.contains("Tile")) {
         ERR(InvalidUsageError, "Tile is required for ", type()->type_name());
     }
-    int num_warps = config["NumWarps"];
-    auto &tile_shape = config["Tile"];
+    int num_warps = config.at("NumWarps");
+    auto &tile_shape = config.at("Tile");
     Dims unit_out_dims{tile_shape[0], tile_shape[1]};
 
-    std::vector<std::string> template_args;
-    template_args.emplace_back(vec_string(read_tensors_[0]->strides().dims4()));
-    template_args.emplace_back(vec_string(read_tensors_[0]->shape().dims4()));
-    template_args.emplace_back(
-        vec_string(write_tensors_[0]->strides().dims4()));
-    template_args.emplace_back(vec_string(write_tensors_[0]->shape().dims4()));
-    template_args.emplace_back(vec_string(unit_out_dims.dims4()));
-    template_args.emplace_back(std::to_string(num_warps));
-    template_args.emplace_back(std::to_string(0));
-    return function_name_string(tolower(type()->type_name()), template_args);
+    return function_name_string(
+        tolower(type()->type_name()),
+        {vec_string(read_tensors_[0]->strides().dims4()),
+         vec_string(read_tensors_[0]->shape().dims4()),
+         vec_string(write_tensors_[0]->strides().dims4()),
+         vec_string(write_tensors_[0]->shape().dims4()),
+         vec_string(unit_out_dims.dims4()), std::to_string(num_warps),
+         std::to_string(0)});
 }
 
 std::vector<ModelOpArg> ModelOpBroadcast1::impl_args(
