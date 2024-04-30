@@ -530,7 +530,8 @@ ark::unittest::State test_matmul_fp16_batched_padded() {
     ark::Model m;
     ark::ModelTensorRef a = m.tensor({3, 7, 2, 9}, ark::FP16, {3, 7, 64, 64});
     ark::ModelTensorRef b = m.tensor({3, 7, 9, 2}, ark::FP16, {3, 7, 64, 64});
-    ark::ModelTensorRef c = m.matmul(a, b);
+    ark::ModelTensorRef c = m.tensor({3, 7, 2, 2}, ark::FP16, {3, 7, 64, 64});
+    m.matmul(a, b, c);
 
     auto result = ark::op_test("matmul_fp16_batched_padded", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
@@ -576,9 +577,9 @@ int main() {
     UNITTEST(test_matmul_fp16);
     UNITTEST(test_matmul_fp32);
     UNITTEST(test_matmul_bf16);
-    // UNITTEST(test_matmul_fp16_nt);
-    // UNITTEST(test_matmul_fp16_tn);
-    // UNITTEST(test_matmul_fp16_tt);
+    UNITTEST(test_matmul_fp16_nt);
+    UNITTEST(test_matmul_fp16_tn);
+    UNITTEST(test_matmul_fp16_tt);
     UNITTEST(test_matmul_fp16_batched);
     UNITTEST(test_matmul_fp16_batched_padded);
     UNITTEST(test_matmul_fp16_offset);

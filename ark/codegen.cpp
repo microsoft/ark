@@ -271,8 +271,20 @@ std::string CodeGenerator::Impl::def_task(const nlohmann::json &task_json) {
             auto &arg = impl_args[i];
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
+                auto st = tns->strides();
+                auto of = tns->offsets();
+                int ndims = st.ndims();
+                auto info = tensor_id_to_info_.at(tns->id());
+                size_t offset = info.offset;
+                for (int idx = ndims - 1; idx >= 0; --idx) {
+                    size_t inc = of[idx];
+                    for (int j = idx + 1; j < ndims; ++j) {
+                        inc *= st[j];
+                    }
+                    offset += inc * tns->data_type()->bytes();
+                }
                 ss << "(" << tns->data_type()->type_str() << "*)&_buf["
-                   << tensor_id_to_info_.at(tns->id()).offset << "]";
+                   << offset << "]";
             } else {
                 ss << arg.serialize()[1];
             }
