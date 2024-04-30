@@ -7,14 +7,13 @@
 #include <memory>
 #include <string>
 
-#include "gpu/gpu_buffer.h"
-#include "gpu/gpu_context.h"
+#include "gpu_buffer.h"
+#include "gpu_stream.h"
 
 namespace ark {
 
 class GpuKernel {
    public:
-    // GpuKernel() {}
     GpuKernel(int gpu_id, const std::string& codes,
               const std::array<int, 3>& block_dim,
               const std::array<int, 3>& grid_dim, size_t smem_bytes,

@@ -6,7 +6,6 @@
 #include "ark/dims.hpp"
 #include "ark/model.hpp"
 #include "codegen.hpp"
-#include "gpu/gpu_context.h"
 #include "model/model_data_type.hpp"
 #include "nlohmann/json.hpp"
 // #include "planner/planner.hpp"

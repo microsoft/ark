@@ -1,14 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_kernel.h"
+#include "gpu_kernel.h"
 
 #include <cassert>
 #include <cstring>
 
-#include "gpu/gpu.h"
-#include "gpu/gpu_compile.h"
-#include "gpu/gpu_logging.h"
+#include "gpu.h"
+#include "gpu_compile.h"
+#include "gpu_logging.h"
+#include "gpu_manager.h"
 
 namespace ark {
 

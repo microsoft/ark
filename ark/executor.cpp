@@ -15,6 +15,7 @@
 #include "gpu/gpu_event.h"
 #include "gpu/gpu_kernel.h"
 #include "gpu/gpu_logging.h"
+#include "gpu/gpu_manager.h"
 #include "logging.h"
 #include "model/model_tensor.hpp"
 
