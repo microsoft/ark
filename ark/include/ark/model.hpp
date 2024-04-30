@@ -137,10 +137,10 @@ class Model : public ModelGraph {
     ModelTensorRef layernorm(ModelTensorRef input,
                              ModelTensorRef output = nullptr,
                              const std::string &name = "");
-    // Transposes the `input` tensor according to the given `perm` permutation.
+    // Transposes the `input` tensor according to the given `permutation`.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
-    ModelTensorRef transpose(ModelTensorRef input, Dims perm,
+    ModelTensorRef transpose(ModelTensorRef input, const Dims &permutation,
                              ModelTensorRef output = nullptr,
                              const std::string &name = "");
     // Performs matrix multiplication between the `input` tensor and another

@@ -19,6 +19,7 @@
 #include "ops/ops_scale.hpp"
 #include "ops/ops_sendrecv.hpp"
 #include "ops/ops_tensor.hpp"
+#include "ops/ops_transpose.hpp"
 
 ///
 /// NOTE: how to add a new operator
@@ -62,6 +63,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Sqrt);
         MODEL_OP_TYPE_REGISTER(Sub);
         MODEL_OP_TYPE_REGISTER(Tensor);
+        MODEL_OP_TYPE_REGISTER(Transpose);
     }
     auto it = instances.find(type_name);
     if (it == instances.end()) {
