@@ -63,7 +63,7 @@ Dims Dims::dims4() const {
     for (auto i = data_.size(); i < DIMS_LEN; ++i) {
         vec.emplace_back(1);
     }
-    for (auto i = 0; i < data_.size(); ++i) {
+    for (size_t i = 0; i < data_.size(); ++i) {
         vec.emplace_back(data_[i]);
     }
     return vec;

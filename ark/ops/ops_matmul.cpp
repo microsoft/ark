@@ -230,12 +230,12 @@ nlohmann::ordered_json ModelOpMatmul::default_config() const {
     return config;
 }
 
-ModelTensorRef Model::matmul(ModelTensorRef input, ModelTensorRef other,
-                             ModelTensorRef output, bool trans_input,
-                             bool trans_other, const std::string &name) {
+Tensor Model::matmul(Tensor input, Tensor other, Tensor output,
+                     bool trans_input, bool trans_other,
+                     const std::string &name) {
     return impl_
-        ->create_op<ModelOpMatmul>(name, input, other, output, trans_input,
-                                   trans_other)
+        ->create_op<ModelOpMatmul>(name, input.ref_, other.ref_, output.ref_,
+                                   trans_input, trans_other)
         ->result_tensors()[0];
 }
 

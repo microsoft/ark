@@ -29,9 +29,9 @@ std::vector<ModelOpArg> ModelOpScale::impl_args(
     return {result_tensors_[0], read_tensors_[0], factor};
 }
 
-ModelTensorRef Model::scale(ModelTensorRef input, float val,
-                            ModelTensorRef output, const std::string &name) {
-    return impl_->create_op<ModelOpScale>(name, input, val, output)
+Tensor Model::scale(Tensor input, float val, Tensor output,
+                    const std::string &name) {
+    return impl_->create_op<ModelOpScale>(name, input.ref_, val, output.ref_)
         ->result_tensors()[0];
 }
 

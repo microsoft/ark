@@ -8,7 +8,7 @@
 #include <ostream>
 #include <string>
 
-#include "ark/dims.hpp"
+#include "ark/model.hpp"
 #include "ark/model_ref.hpp"
 #include "bfloat16.h"
 #include "half.h"
@@ -134,8 +134,8 @@ using OpsTestBaseline = std::function<void(
 class Model;
 
 OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
-                      const std::vector<ModelTensorRef> &inputs,
-                      const std::vector<ModelTensorRef> &outputs,
+                      const std::vector<Tensor> &inputs,
+                      const std::vector<Tensor> &outputs,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data = {},
                       bool print_on_error = false, int rank = 0,
@@ -143,26 +143,24 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       int num_warps_per_sm = DEFAULT_OP_TEST_NUM_WARPS_PER_SM);
 
 OpsTestResult op_test_8(const std::string &test_name_prefix, const Model &model,
-                        const std::vector<ModelTensorRef> &inputs,
-                        const std::vector<ModelTensorRef> &outputs,
+                        const std::vector<Tensor> &inputs,
+                        const std::vector<Tensor> &outputs,
                         OpsTestBaseline baseline,
                         const std::vector<void *> &inputs_data = {},
                         bool print_on_error = false, int rank = 0,
                         int world_size = 1);
 
 OpsTestResult op_test_16(const std::string &test_name_prefix,
-                         const Model &model,
-                         const std::vector<ModelTensorRef> &inputs,
-                         const std::vector<ModelTensorRef> &outputs,
+                         const Model &model, const std::vector<Tensor> &inputs,
+                         const std::vector<Tensor> &outputs,
                          OpsTestBaseline baseline,
                          const std::vector<void *> &inputs_data = {},
                          bool print_on_error = false, int rank = 0,
                          int world_size = 1);
 
 OpsTestResult op_test_32(const std::string &test_name_prefix,
-                         const Model &model,
-                         const std::vector<ModelTensorRef> &inputs,
-                         const std::vector<ModelTensorRef> &outputs,
+                         const Model &model, const std::vector<Tensor> &inputs,
+                         const std::vector<Tensor> &outputs,
                          OpsTestBaseline baseline,
                          const std::vector<void *> &inputs_data = {},
                          bool print_on_error = false, int rank = 0,

@@ -91,9 +91,10 @@ ModelOpAdd::ModelOpAdd(ModelTensorRef input, ModelTensorRef other,
                        ModelTensorRef output)
     : ModelOpArithmetic("Add", input, other, output) {}
 
-ModelTensorRef Model::add(ModelTensorRef input, ModelTensorRef other,
-                          ModelTensorRef output, const std::string &name) {
-    return impl_->create_op<ModelOpAdd>(name, input, other, output)
+Tensor Model::add(Tensor input, Tensor other, Tensor output,
+                  const std::string &name) {
+    return impl_
+        ->create_op<ModelOpAdd>(name, input.ref_, other.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
@@ -101,9 +102,10 @@ ModelOpMul::ModelOpMul(ModelTensorRef input, ModelTensorRef other,
                        ModelTensorRef output)
     : ModelOpArithmetic("Mul", input, other, output) {}
 
-ModelTensorRef Model::mul(ModelTensorRef input, ModelTensorRef other,
-                          ModelTensorRef output, const std::string &name) {
-    return impl_->create_op<ModelOpMul>(name, input, other, output)
+Tensor Model::mul(Tensor input, Tensor other, Tensor output,
+                  const std::string &name) {
+    return impl_
+        ->create_op<ModelOpMul>(name, input.ref_, other.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
@@ -111,9 +113,10 @@ ModelOpSub::ModelOpSub(ModelTensorRef input, ModelTensorRef other,
                        ModelTensorRef output)
     : ModelOpArithmetic("Sub", input, other, output) {}
 
-ModelTensorRef Model::sub(ModelTensorRef input, ModelTensorRef other,
-                          ModelTensorRef output, const std::string &name) {
-    return impl_->create_op<ModelOpSub>(name, input, other, output)
+Tensor Model::sub(Tensor input, Tensor other, Tensor output,
+                  const std::string &name) {
+    return impl_
+        ->create_op<ModelOpSub>(name, input.ref_, other.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
@@ -121,9 +124,10 @@ ModelOpDiv::ModelOpDiv(ModelTensorRef input, ModelTensorRef other,
                        ModelTensorRef output)
     : ModelOpArithmetic("Div", input, other, output) {}
 
-ModelTensorRef Model::div(ModelTensorRef input, ModelTensorRef other,
-                          ModelTensorRef output, const std::string &name) {
-    return impl_->create_op<ModelOpDiv>(name, input, other, output)
+Tensor Model::div(Tensor input, Tensor other, Tensor output,
+                  const std::string &name) {
+    return impl_
+        ->create_op<ModelOpDiv>(name, input.ref_, other.ref_, output.ref_)
         ->result_tensors()[0];
 }
 

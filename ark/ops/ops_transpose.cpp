@@ -5,9 +5,7 @@
 
 #include <sstream>
 
-#include "ark/model.hpp"
 #include "logging.h"
-#include "model/model_tensor.hpp"
 #include "ops_common.hpp"
 
 namespace ark {
@@ -40,7 +38,7 @@ ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
                                    const std::vector<int64_t> &permutation,
                                    ModelTensorRef output)
     : ModelOp("Transpose") {
-    check_null(input);
+    check_none(input);
     Dims perm(permutation);
     if (output) {
         check_match_data_type(input, output);
@@ -121,11 +119,11 @@ nlohmann::ordered_json ModelOpTranspose::default_config() const {
     return config;
 }
 
-ModelTensorRef Model::transpose(ModelTensorRef input,
-                                const std::vector<int64_t> &permutation,
-                                ModelTensorRef output,
-                                const std::string &name) {
-    return impl_->create_op<ModelOpTranspose>(name, input, permutation, output)
+Tensor Model::transpose(Tensor input, const std::vector<int64_t> &permutation,
+                        Tensor output, const std::string &name) {
+    return impl_
+        ->create_op<ModelOpTranspose>(name, input.ref_, permutation,
+                                      output.ref_)
         ->result_tensors()[0];
 }
 

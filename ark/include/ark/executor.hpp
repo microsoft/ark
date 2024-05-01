@@ -4,13 +4,11 @@
 #ifndef ARK_EXECUTOR_HPP
 #define ARK_EXECUTOR_HPP
 
+#include <ark/model_ref.hpp>
+#include <ark/tensor.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "ark/model_ref.hpp"
-#include "bfloat16.h"
-#include "half.h"
 
 namespace ark {
 
@@ -42,22 +40,20 @@ class Executor {
     float stop();
 
     template <typename T>
-    void tensor_read(const ModelTensorRef tensor, std::vector<T> &data) const {
+    void tensor_read(const Tensor tensor, std::vector<T> &data) const {
         tensor_read(tensor, reinterpret_cast<void *>(data.data()),
                     data.size() * sizeof(T));
     }
 
     template <typename T>
-    void tensor_write(const ModelTensorRef tensor,
-                      const std::vector<T> &data) const {
+    void tensor_write(const Tensor tensor, const std::vector<T> &data) const {
         tensor_write(tensor, reinterpret_cast<const void *>(data.data()),
                      data.size() * sizeof(T));
     }
 
-    void tensor_read(const ModelTensorRef tensor, void *data,
-                     size_t bytes) const;
+    void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
 
-    void tensor_write(const ModelTensorRef tensor, const void *data,
+    void tensor_write(const Tensor tensor, const void *data,
                       size_t bytes) const;
 
    private:

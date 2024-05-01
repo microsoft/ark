@@ -143,14 +143,13 @@ ModelOpReshape::ModelOpReshape(ModelTensorRef input, const Dims &shape,
 }
 
 //
-ModelTensorRef Model::reshape(ModelTensorRef input, const Dims &shape,
-                              bool allowzero, const std::string &name) {
+Tensor Model::reshape(Tensor input, const Dims &shape, bool allowzero,
+                      const std::string &name) {
     return this->reshape(input, shape.vector(), allowzero, name);
 }
 
-ModelTensorRef Model::reshape(ModelTensorRef input,
-                              const std::initializer_list<DimType> &shape,
-                              bool allowzero, const std::string &name) {
+Tensor Model::reshape(Tensor input, const std::initializer_list<DimType> &shape,
+                      bool allowzero, const std::string &name) {
     std::vector<DimType> shape_vec{shape};
     return this->reshape(input, shape_vec, allowzero, name);
 }
@@ -163,10 +162,9 @@ ModelTensorRef Model::reshape(ModelTensorRef input,
 // be an empty tensor. If `allowzero` is true, `shape` should not include both
 // 0 and -1 at the same time. If `shape` is an empty vector, `input` will be
 // converted to a scalar.
-ModelTensorRef Model::reshape(ModelTensorRef input,
-                              const std::vector<DimType> &shape, bool allowzero,
-                              const std::string &name) {
-    check_null(input);
+Tensor Model::reshape(Tensor input, const std::vector<DimType> &shape,
+                      bool allowzero, const std::string &name) {
+    check_none(input);
     // Infer -1 dimension if exists
     std::vector<DimType> inferred_shape;
     int neg_idx = -1;
@@ -198,22 +196,22 @@ ModelTensorRef Model::reshape(ModelTensorRef input,
         }
         // total_size is always positive at this point.
         // Infer the -1 dimension
-        if (input->shape().size() % total_size != 0) {
+        if (input.shape().size() % total_size != 0) {
             ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
-                input->shape(), " to ", Dims(shape));
+                input.shape(), " to ", Dims(shape));
         }
-        inferred_shape[neg_idx] = input->shape().size() / total_size;
-    } else if (!zero_exists && input->shape().size() != total_size) {
+        inferred_shape[neg_idx] = input.shape().size() / total_size;
+    } else if (!zero_exists && input.shape().size() != total_size) {
         ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
-            input->shape(), " to ", Dims(shape));
+            input.shape(), " to ", Dims(shape));
     }
     Dims new_shape;
     Dims new_strides;
     Dims new_offs;
-    reshape_helper(input, Dims{inferred_shape}, allowzero, new_shape,
+    reshape_helper(input.ref_, Dims{inferred_shape}, allowzero, new_shape,
                    new_strides, new_offs);
     return impl_
-        ->create_op<ModelOpReshape>(name, input, new_shape, new_strides,
+        ->create_op<ModelOpReshape>(name, input.ref_, new_shape, new_strides,
                                     new_offs)
         ->result_tensors()[0];
 }

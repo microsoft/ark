@@ -24,54 +24,48 @@ ModelOpMath::ModelOpMath(const std::string &type_name, ModelTensorRef input,
 ModelOpExp::ModelOpExp(ModelTensorRef input, ModelTensorRef output)
     : ModelOpMath("Exp", input, output) {}
 
-ModelTensorRef Model::exp(ModelTensorRef input, ModelTensorRef output,
-                          const std::string &name) {
-    return impl_->create_op<ModelOpExp>(name, input, output)
+Tensor Model::exp(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpExp>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
 ModelOpGelu::ModelOpGelu(ModelTensorRef input, ModelTensorRef output)
     : ModelOpMath("Gelu", input, output) {}
 
-ModelTensorRef Model::gelu(ModelTensorRef input, ModelTensorRef output,
-                           const std::string &name) {
-    return impl_->create_op<ModelOpGelu>(name, input, output)
+Tensor Model::gelu(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpGelu>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
 ModelOpRelu::ModelOpRelu(ModelTensorRef input, ModelTensorRef output)
     : ModelOpMath("Relu", input, output) {}
 
-ModelTensorRef Model::relu(ModelTensorRef input, ModelTensorRef output,
-                           const std::string &name) {
-    return impl_->create_op<ModelOpRelu>(name, input, output)
+Tensor Model::relu(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpRelu>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
 ModelOpRsqrt::ModelOpRsqrt(ModelTensorRef input, ModelTensorRef output)
     : ModelOpMath("Rsqrt", input, output) {}
 
-ModelTensorRef Model::rsqrt(ModelTensorRef input, ModelTensorRef output,
-                            const std::string &name) {
-    return impl_->create_op<ModelOpRsqrt>(name, input, output)
+Tensor Model::rsqrt(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpRsqrt>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
 ModelOpSigmoid::ModelOpSigmoid(ModelTensorRef input, ModelTensorRef output)
     : ModelOpMath("Sigmoid", input, output) {}
 
-ModelTensorRef Model::sigmoid(ModelTensorRef input, ModelTensorRef output,
-                              const std::string &name) {
-    return impl_->create_op<ModelOpSigmoid>(name, input, output)
+Tensor Model::sigmoid(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpSigmoid>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 
 ModelOpSqrt::ModelOpSqrt(ModelTensorRef input, ModelTensorRef output)
     : ModelOpMath("Sqrt", input, output) {}
 
-ModelTensorRef Model::sqrt(ModelTensorRef input, ModelTensorRef output,
-                           const std::string &name) {
-    return impl_->create_op<ModelOpSqrt>(name, input, output)
+Tensor Model::sqrt(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpSqrt>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 

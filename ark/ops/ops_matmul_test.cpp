@@ -3,14 +3,11 @@
 
 #include <algorithm>
 
-#include "ark/model.hpp"
 #include "gpu/gpu.h"
 #include "logging.h"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
-#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 #if defined(ARK_CUDA)
 
@@ -333,9 +330,8 @@ ark::unittest::State test_matmul_model() {
     unsigned int batch_size = 1;
 
     ark::Model m;
-    ark::ModelTensorRef input =
-        m.tensor({batch_size, channel, in_dim}, ark::FP16);
-    ark::ModelTensorRef weight = m.tensor({in_dim, units}, ark::FP16);
+    ark::Tensor input = m.tensor({batch_size, channel, in_dim}, ark::FP16);
+    ark::Tensor weight = m.tensor({in_dim, units}, ark::FP16);
     m.matmul(input, weight);
 
     UNITTEST_TRUE(m.verify());
@@ -348,9 +344,9 @@ ark::unittest::State test_matmul_model() {
 ark::unittest::State test_matmul_fp16() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(128, 64), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(64, 256), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(128, 64), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(64, 256), ark::FP16);
+        ark::Tensor c = m.matmul(a, b);
 
         auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
@@ -359,12 +355,12 @@ ark::unittest::State test_matmul_fp16() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(4096, 2048), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(2048, 16384), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(4096, 2048), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(2048, 16384), ark::FP16);
+        ark::Tensor c = m.matmul(a, b);
 
-        std::vector<ark::half_t> p_ones_a(a->shape().size(), ark::half_t(0.1f));
-        std::vector<ark::half_t> p_ones_b(b->shape().size(), ark::half_t(0.1f));
+        std::vector<ark::half_t> p_ones_a(a.shape().size(), ark::half_t(0.1f));
+        std::vector<ark::half_t> p_ones_b(b.shape().size(), ark::half_t(0.1f));
 
         auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>,
@@ -378,9 +374,9 @@ ark::unittest::State test_matmul_fp16() {
 ark::unittest::State test_matmul_fp32() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(128, 64), ark::FP32);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(64, 256), ark::FP32);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(128, 64), ark::FP32);
+        ark::Tensor b = m.tensor(ark::Dims(64, 256), ark::FP32);
+        ark::Tensor c = m.matmul(a, b);
 
         auto result = ark::op_test("matmul_fp32", m, {a, b}, {c},
                                    baseline_matmul_nn<float>);
@@ -389,12 +385,12 @@ ark::unittest::State test_matmul_fp32() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(4096, 8192), ark::FP32);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(8192, 16384), ark::FP32);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(4096, 8192), ark::FP32);
+        ark::Tensor b = m.tensor(ark::Dims(8192, 16384), ark::FP32);
+        ark::Tensor c = m.matmul(a, b);
 
-        std::vector<float> p_ones_a(a->shape().size(), float(0.1f));
-        std::vector<float> p_ones_b(b->shape().size(), float(0.1f));
+        std::vector<float> p_ones_a(a.shape().size(), float(0.1f));
+        std::vector<float> p_ones_b(b.shape().size(), float(0.1f));
 
         auto result = ark::op_test("matmul_fp32", m, {a, b}, {c},
                                    baseline_matmul_nn<float>,
@@ -411,9 +407,9 @@ ark::unittest::State test_matmul_fp32() {
 ark::unittest::State test_matmul_bf16() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(128, 64), ark::BF16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(64, 256), ark::BF16);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(128, 64), ark::BF16);
+        ark::Tensor b = m.tensor(ark::Dims(64, 256), ark::BF16);
+        ark::Tensor c = m.matmul(a, b);
 
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
@@ -422,9 +418,9 @@ ark::unittest::State test_matmul_bf16() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(4096, 256), ark::BF16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(256, 16384), ark::BF16);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(4096, 256), ark::BF16);
+        ark::Tensor b = m.tensor(ark::Dims(256, 16384), ark::BF16);
+        ark::Tensor c = m.matmul(a, b);
 
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
@@ -438,9 +434,9 @@ ark::unittest::State test_matmul_bf16() {
 ark::unittest::State test_matmul_fp16_nt() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(128, 64), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(256, 64), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b, nullptr, false, true);
+        ark::Tensor a = m.tensor(ark::Dims(128, 64), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(256, 64), ark::FP16);
+        ark::Tensor c = m.matmul(a, b, ark::NoneTensor, false, true);
 
         auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
@@ -449,9 +445,9 @@ ark::unittest::State test_matmul_fp16_nt() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(4096, 2048), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(16384, 2048), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b, nullptr, false, true);
+        ark::Tensor a = m.tensor(ark::Dims(4096, 2048), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(16384, 2048), ark::FP16);
+        ark::Tensor c = m.matmul(a, b, ark::NoneTensor, false, true);
 
         auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
@@ -464,9 +460,9 @@ ark::unittest::State test_matmul_fp16_nt() {
 ark::unittest::State test_matmul_fp16_tn() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(64, 128), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(64, 256), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b, nullptr, true, false);
+        ark::Tensor a = m.tensor(ark::Dims(64, 128), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(64, 256), ark::FP16);
+        ark::Tensor c = m.matmul(a, b, ark::NoneTensor, true, false);
 
         auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
@@ -475,9 +471,9 @@ ark::unittest::State test_matmul_fp16_tn() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(2048, 4096), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(2048, 16384), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b, nullptr, true, false);
+        ark::Tensor a = m.tensor(ark::Dims(2048, 4096), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(2048, 16384), ark::FP16);
+        ark::Tensor c = m.matmul(a, b, ark::NoneTensor, true, false);
 
         auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
@@ -490,9 +486,9 @@ ark::unittest::State test_matmul_fp16_tn() {
 ark::unittest::State test_matmul_fp16_tt() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(64, 128), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(256, 64), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b, nullptr, true, true);
+        ark::Tensor a = m.tensor(ark::Dims(64, 128), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(256, 64), ark::FP16);
+        ark::Tensor c = m.matmul(a, b, ark::NoneTensor, true, true);
 
         auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
@@ -501,9 +497,9 @@ ark::unittest::State test_matmul_fp16_tt() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(2048, 4096), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(16384, 2048), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b, nullptr, true, true);
+        ark::Tensor a = m.tensor(ark::Dims(2048, 4096), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(16384, 2048), ark::FP16);
+        ark::Tensor c = m.matmul(a, b, ark::NoneTensor, true, true);
 
         auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
@@ -515,9 +511,9 @@ ark::unittest::State test_matmul_fp16_tt() {
 
 ark::unittest::State test_matmul_fp16_batched() {
     ark::Model m;
-    ark::ModelTensorRef a = m.tensor(ark::Dims(3, 7, 64, 128), ark::FP16);
-    ark::ModelTensorRef b = m.tensor(ark::Dims(3, 7, 128, 256), ark::FP16);
-    ark::ModelTensorRef c = m.matmul(a, b);
+    ark::Tensor a = m.tensor(ark::Dims(3, 7, 64, 128), ark::FP16);
+    ark::Tensor b = m.tensor(ark::Dims(3, 7, 128, 256), ark::FP16);
+    ark::Tensor c = m.matmul(a, b);
 
     auto result = ark::op_test("matmul_fp16_batched", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
@@ -528,9 +524,9 @@ ark::unittest::State test_matmul_fp16_batched() {
 
 ark::unittest::State test_matmul_fp16_batched_padded() {
     ark::Model m;
-    ark::ModelTensorRef a = m.tensor({3, 7, 2, 9}, ark::FP16, {3, 7, 64, 64});
-    ark::ModelTensorRef b = m.tensor({3, 7, 9, 2}, ark::FP16, {3, 7, 64, 64});
-    ark::ModelTensorRef c = m.tensor({3, 7, 2, 2}, ark::FP16, {3, 7, 64, 64});
+    ark::Tensor a = m.tensor({3, 7, 2, 9}, ark::FP16, {3, 7, 64, 64});
+    ark::Tensor b = m.tensor({3, 7, 9, 2}, ark::FP16, {3, 7, 64, 64});
+    ark::Tensor c = m.tensor({3, 7, 2, 2}, ark::FP16, {3, 7, 64, 64});
     m.matmul(a, b, c);
 
     auto result = ark::op_test("matmul_fp16_batched_padded", m, {a, b}, {c},
@@ -542,11 +538,11 @@ ark::unittest::State test_matmul_fp16_batched_padded() {
 
 ark::unittest::State test_matmul_fp16_offset() {
     ark::Model m;
-    ark::ModelTensorRef a =
+    ark::Tensor a =
         m.tensor({1, 128, 64}, ark::FP16, {1, 128, 256}, {0, 0, 64});
-    ark::ModelTensorRef b =
+    ark::Tensor b =
         m.tensor({1, 64, 128}, ark::FP16, {1, 128, 256}, {0, 64, 0});
-    ark::ModelTensorRef c =
+    ark::Tensor c =
         m.tensor({1, 128, 128}, ark::FP16, {2, 256, 256}, {1, 64, 128});
     m.matmul(a, b, c);
 
@@ -560,9 +556,9 @@ ark::unittest::State test_matmul_fp16_offset() {
 ark::unittest::State test_matmul_fp16_perf() {
     {
         ark::Model m;
-        ark::ModelTensorRef a = m.tensor(ark::Dims(256, 8192), ark::FP16);
-        ark::ModelTensorRef b = m.tensor(ark::Dims(8192, 128), ark::FP16);
-        ark::ModelTensorRef c = m.matmul(a, b);
+        ark::Tensor a = m.tensor(ark::Dims(256, 8192), ark::FP16);
+        ark::Tensor b = m.tensor(ark::Dims(8192, 128), ark::FP16);
+        ark::Tensor c = m.matmul(a, b);
 
         auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);

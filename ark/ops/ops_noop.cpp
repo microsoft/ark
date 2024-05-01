@@ -30,8 +30,8 @@ nlohmann::ordered_json ModelOpNoop::default_config() const {
     return config;
 }
 
-void Model::noop(ModelTensorRef input, const std::string &name) {
-    impl_->create_op<ModelOpNoop>(name, input);
+void Model::noop(Tensor input, const std::string &name) {
+    impl_->create_op<ModelOpNoop>(name, input.ref_);
 }
 
 }  // namespace ark

@@ -4,7 +4,7 @@
 #include "model_op_arg.hpp"
 
 #include "ark/model.hpp"
-#include "model_tensor.hpp"
+#include "model/model_tensor.hpp"
 #include "unittest/unittest_utils.h"
 
 ark::unittest::State test_oparg() {
@@ -101,19 +101,19 @@ ark::unittest::State test_oparg() {
     {
         ark::Model m;
         auto data = m.tensor({1, 2, 3, 4}, ark::FP32);
-        auto arg = ark::ModelOpArg(data);
+        auto arg = ark::ModelOpArg(data.ref());
         UNITTEST_EQ(arg.type_name(), "TENSOR");
 
         ark::ModelTensorRef get_data = arg.value<ark::ModelTensorRef>();
         UNITTEST_NE(get_data, nullptr);
-        UNITTEST_EQ(get_data->shape(), data->shape());
+        UNITTEST_EQ(get_data->shape(), data.shape());
 
         auto arg2 = ark::ModelOpArg(arg);
         UNITTEST_EQ(arg2.type_name(), "TENSOR");
 
         get_data = arg2.value<ark::ModelTensorRef>();
         UNITTEST_NE(get_data, nullptr);
-        UNITTEST_EQ(get_data->shape(), data->shape());
+        UNITTEST_EQ(get_data->shape(), data.shape());
     }
 
     return ark::unittest::SUCCESS;

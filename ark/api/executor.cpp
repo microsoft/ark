@@ -17,6 +17,7 @@
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_manager.h"
 #include "logging.h"
+#include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 
 #define MAX_LOOP_COUNTER 10000000
@@ -140,9 +141,8 @@ class Executor::Impl {
     void wait();
     float stop();
 
-    void tensor_read(const ModelTensorRef tensor, void *data,
-                     size_t bytes) const;
-    void tensor_write(const ModelTensorRef tensor, const void *data,
+    void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
+    void tensor_write(const Tensor tensor, const void *data,
                       size_t bytes) const;
 
    protected:
@@ -333,20 +333,20 @@ float Executor::Impl::stop() {
     return elapsed_msec_;
 }
 
-void Executor::Impl::tensor_read(const ModelTensorRef tensor, void *data,
+void Executor::Impl::tensor_read(const Tensor tensor, void *data,
                                  size_t bytes) const {
     CodeGenerator::TensorInfo tensor_info;
     try {
-        tensor_info = codegen_->tensor_info(tensor->id());
+        tensor_info = codegen_->tensor_info(tensor.id());
     } catch (const NotFoundError &e) {
-        ERR(NotFoundError, "Tried to read an unknown tensor (id=", tensor->id(),
+        ERR(NotFoundError, "Tried to read an unknown tensor (id=", tensor.id(),
             ").");
     }
-    if (bytes < tensor->shape_bytes()) {
+    if (bytes < tensor.shape().size() * tensor.data_type()->bytes()) {
         ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
     }
     void *src = buffer_->ref(tensor_info.offset);
-    if (tensor->strides() == tensor->shape()) {
+    if (tensor.strides() == tensor.shape()) {
         GLOG(gpuMemcpyAsync(data, src, bytes, gpuMemcpyDeviceToHost,
                             copy_stream_->get()));
         copy_stream_->sync();
@@ -356,25 +356,25 @@ void Executor::Impl::tensor_read(const ModelTensorRef tensor, void *data,
                             gpuMemcpyDeviceToHost, copy_stream_->get()));
         copy_stream_->sync();
         tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
-                       tensor->shape(), tensor->strides(), tensor->offsets(),
-                       tensor->data_type()->bytes());
+                       tensor.shape(), tensor.strides(), tensor.offsets(),
+                       tensor.data_type()->bytes());
     }
 }
 
-void Executor::Impl::tensor_write(const ModelTensorRef tensor, const void *data,
+void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
                                   size_t bytes) const {
     CodeGenerator::TensorInfo tensor_info;
     try {
-        tensor_info = codegen_->tensor_info(tensor->id());
+        tensor_info = codegen_->tensor_info(tensor.id());
     } catch (const NotFoundError &e) {
         ERR(NotFoundError,
-            "Tried to write on an unknown tensor (id=", tensor->id(), ").");
+            "Tried to write on an unknown tensor (id=", tensor.id(), ").");
     }
-    if (bytes < tensor->shape_bytes()) {
+    if (bytes < tensor.shape().size() * tensor.data_type()->bytes()) {
         ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
     }
     void *dst = buffer_->ref(tensor_info.offset);
-    if (tensor->strides() == tensor->shape()) {
+    if (tensor.strides() == tensor.shape()) {
         GLOG(gpuMemcpyAsync(dst, data, tensor_info.bytes, gpuMemcpyHostToDevice,
                             copy_stream_->get()));
     } else {
@@ -383,8 +383,8 @@ void Executor::Impl::tensor_write(const ModelTensorRef tensor, const void *data,
                             gpuMemcpyDeviceToHost, copy_stream_->get()));
         copy_stream_->sync();
         data_to_tensor(tensor_host.data(), static_cast<const int8_t *>(data),
-                       tensor->shape(), tensor->strides(), tensor->offsets(),
-                       tensor->data_type()->bytes());
+                       tensor.shape(), tensor.strides(), tensor.offsets(),
+                       tensor.data_type()->bytes());
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_info.bytes,
                             gpuMemcpyHostToDevice, copy_stream_->get()));
     }
@@ -408,12 +408,12 @@ void Executor::wait() { impl_->wait(); }
 
 float Executor::stop() { return impl_->stop(); }
 
-void Executor::tensor_read(const ModelTensorRef tensor, void *data,
+void Executor::tensor_read(const Tensor tensor, void *data,
                            size_t bytes) const {
     impl_->tensor_read(tensor, data, bytes);
 }
 
-void Executor::tensor_write(const ModelTensorRef tensor, const void *data,
+void Executor::tensor_write(const Tensor tensor, const void *data,
                             size_t bytes) const {
     impl_->tensor_write(tensor, data, bytes);
 }

@@ -26,10 +26,13 @@ ModelOpIdentity::ModelOpIdentity(ModelTensorRef input,
     verify();
 }
 
-ModelTensorRef Model::identity(ModelTensorRef input,
-                               const std::vector<ModelTensorRef> &deps,
-                               const std::string &name) {
-    return impl_->create_op<ModelOpIdentity>(name, input, deps)
+Tensor Model::identity(Tensor input, const std::vector<Tensor> &deps,
+                       const std::string &name) {
+    std::vector<ModelTensorRef> deps_ref;
+    for (auto &dep : deps) {
+        deps_ref.emplace_back(dep.ref_);
+    }
+    return impl_->create_op<ModelOpIdentity>(name, input.ref_, deps_ref)
         ->result_tensors()[0];
 }
 

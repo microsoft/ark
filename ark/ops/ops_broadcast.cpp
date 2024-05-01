@@ -11,8 +11,8 @@ ModelOpBroadcast1::ModelOpBroadcast1(const std::string &type_name,
                                      ModelTensorRef input,
                                      ModelTensorRef output)
     : ModelOp(type_name) {
-    check_null(input);
-    check_null(output);
+    check_none(input);
+    check_none(output);
     check_match_shape(output, broadcast_shape(input->shape(), output->shape()));
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
 

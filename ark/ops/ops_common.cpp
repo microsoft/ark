@@ -12,38 +12,38 @@
 
 namespace ark {
 
-void check_null(ModelTensorRef tensor) {
-    if (!tensor) {
-        ERR(InvalidUsageError, "tensor is null");
+void check_none(Tensor tensor) {
+    if (tensor.is_none()) {
+        ERR(InvalidUsageError, "tensor is none");
     }
 }
 
-void check_match_data_type(ModelTensorRef t, ModelDataType dt) {
-    if (t->data_type() != dt) {
+void check_match_data_type(Tensor t, ModelDataType dt) {
+    if (t.data_type() != dt) {
         ERR(InvalidUsageError,
-            "data types mismatch: ", t->data_type()->type_name(),
+            "data types mismatch: ", t.data_type()->type_name(),
             " != ", dt->type_name());
     }
 }
 
-void check_match_data_type(ModelTensorRef a, ModelTensorRef b) {
-    if (a->data_type() != b->data_type()) {
+void check_match_data_type(Tensor a, Tensor b) {
+    if (a.data_type() != b.data_type()) {
         ERR(InvalidUsageError,
-            "data types mismatch: ", a->data_type()->type_name(),
-            " != ", b->data_type()->type_name());
+            "data types mismatch: ", a.data_type()->type_name(),
+            " != ", b.data_type()->type_name());
     }
 }
 
-void check_match_shape(ModelTensorRef a, ModelTensorRef b) {
-    if (a->shape() != b->shape()) {
-        ERR(InvalidUsageError, "shapes mismatch: ", a->shape(),
-            " != ", b->shape());
+void check_match_shape(Tensor a, Tensor b) {
+    if (a.shape() != b.shape()) {
+        ERR(InvalidUsageError, "shapes mismatch: ", a.shape(),
+            " != ", b.shape());
     }
 }
 
-void check_match_shape(ModelTensorRef tensor, const Dims &shape) {
-    if (tensor->shape() != shape) {
-        ERR(InvalidUsageError, "shape mismatch: ", tensor->shape(),
+void check_match_shape(Tensor tensor, const Dims &shape) {
+    if (tensor.shape() != shape) {
+        ERR(InvalidUsageError, "shape mismatch: ", tensor.shape(),
             " != ", shape);
     }
 }
@@ -69,9 +69,9 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2) {
     return Dims{output_dims_reversed};
 }
 
-void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to) {
-    auto from_shape = from->shape();
-    auto to_shape = to->shape();
+void check_broadcast_shape(Tensor from, Tensor to) {
+    auto from_shape = from.shape();
+    auto to_shape = to.shape();
     if (from_shape != to_shape) {
         auto broadcasted_shape = broadcast_shape(from_shape, to_shape);
         if (broadcasted_shape != to_shape) {

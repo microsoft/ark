@@ -6,7 +6,6 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
-#include "model_data_type.hpp"
 #include "nlohmann/json.hpp"
 
 namespace ark {
@@ -22,6 +21,9 @@ class ModelBuffer {
    private:
     size_t id_;
 };
+
+class ModelDataT;
+using ModelDataType = std::shared_ptr<ModelDataT>;
 
 /// Tensor is a view of a TensorBuf.
 ///
@@ -58,11 +60,9 @@ class ModelTensor {
 
     const Dims &pads() const { return pads_; }
 
-    size_t shape_bytes() const { return shape_.size() * data_type_->bytes(); }
+    size_t shape_bytes() const;
 
-    size_t strides_bytes() const {
-        return strides_.size() * data_type_->bytes();
-    }
+    size_t strides_bytes() const;
 
     bool exported() const { return exported_; }
 

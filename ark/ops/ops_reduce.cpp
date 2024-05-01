@@ -3,9 +3,7 @@
 
 #include "ops_reduce.hpp"
 
-#include "ark/model.hpp"
 #include "logging.h"
-#include "model/model_tensor.hpp"
 #include "ops_common.hpp"
 
 namespace ark {
@@ -13,7 +11,7 @@ namespace ark {
 ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
                              int axis, bool keepdims, ModelTensorRef output)
     : ModelOp(type_name) {
-    check_null(input);
+    check_none(input);
     Dims reduced_shape{input->shape()};
     if (axis < 0) {
         axis += reduced_shape.ndims();
@@ -126,27 +124,27 @@ nlohmann::ordered_json ModelOpReduce::default_config() const {
     return config;
 }
 
-ModelTensorRef Model::reduce_max(ModelTensorRef input, int axis, bool keepdims,
-                                 ModelTensorRef output,
-                                 const std::string &name) {
+Tensor Model::reduce_max(Tensor input, int axis, bool keepdims, Tensor output,
+                         const std::string &name) {
     return impl_
-        ->create_op<ModelOpReduceMax>(name, input, axis, keepdims, output)
+        ->create_op<ModelOpReduceMax>(name, input.ref_, axis, keepdims,
+                                      output.ref_)
         ->result_tensors()[0];
 }
 
-ModelTensorRef Model::reduce_mean(ModelTensorRef input, int axis, bool keepdims,
-                                  ModelTensorRef output,
-                                  const std::string &name) {
+Tensor Model::reduce_mean(Tensor input, int axis, bool keepdims, Tensor output,
+                          const std::string &name) {
     return impl_
-        ->create_op<ModelOpReduceMean>(name, input, axis, keepdims, output)
+        ->create_op<ModelOpReduceMean>(name, input.ref_, axis, keepdims,
+                                       output.ref_)
         ->result_tensors()[0];
 }
 
-ModelTensorRef Model::reduce_sum(ModelTensorRef input, int axis, bool keepdims,
-                                 ModelTensorRef output,
-                                 const std::string &name) {
+Tensor Model::reduce_sum(Tensor input, int axis, bool keepdims, Tensor output,
+                         const std::string &name) {
     return impl_
-        ->create_op<ModelOpReduceSum>(name, input, axis, keepdims, output)
+        ->create_op<ModelOpReduceSum>(name, input.ref_, axis, keepdims,
+                                      output.ref_)
         ->result_tensors()[0];
 }
 

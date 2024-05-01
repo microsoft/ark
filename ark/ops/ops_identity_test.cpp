@@ -2,12 +2,10 @@
 // Licensed under the MIT license.
 
 #include "ark/executor.hpp"
-#include "ark/model.hpp"
 #include "logging.h"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
-#include "model/model_tensor.hpp"
-#include "unittest/unittest_utils.h"
+#include "ops_test_common.hpp"
 
 ark::unittest::State test_identity_model() {
     // OpNode graph (parentheses indicate a OpNode):
@@ -18,15 +16,15 @@ ark::unittest::State test_identity_model() {
     //
 
     ark::Model model;
-    ark::ModelTensorRef t0 = model.tensor({1}, ark::FP32);
-    ark::ModelTensorRef t1 = model.tensor({1}, ark::FP32);
-    ark::ModelTensorRef t2 = model.tensor({1}, ark::FP32);
+    ark::Tensor t0 = model.tensor({1}, ark::FP32);
+    ark::Tensor t1 = model.tensor({1}, ark::FP32);
+    ark::Tensor t2 = model.tensor({1}, ark::FP32);
 
-    ark::ModelTensorRef r0 = model.relu(t0);
-    ark::ModelTensorRef r1 = model.relu(t1);
-    ark::ModelTensorRef t3 = model.identity(t2, {r0, r1});
+    ark::Tensor r0 = model.relu(t0);
+    ark::Tensor r1 = model.relu(t1);
+    ark::Tensor t3 = model.identity(t2, {r0, r1});
 
-    ark::ModelTensorRef t4 = model.relu(t3);
+    ark::Tensor t4 = model.relu(t3);
     UNITTEST_TRUE(model.verify());
 
     auto compressed = model.compress();
@@ -35,17 +33,17 @@ ark::unittest::State test_identity_model() {
 
     auto nodes_iter = nodes.begin();
     auto node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r0);
+    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r0.ref());
     UNITTEST_EQ(node->producers.size(), 0);
     UNITTEST_EQ(node->consumers.size(), 1);
 
     node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r1);
+    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r1.ref());
     UNITTEST_EQ(node->producers.size(), 0);
     UNITTEST_EQ(node->consumers.size(), 1);
 
     node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t4);
+    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t4.ref());
     UNITTEST_EQ(node->producers.size(), 2);
     UNITTEST_EQ(node->consumers.size(), 0);
 
@@ -55,8 +53,8 @@ ark::unittest::State test_identity_model() {
 ark::unittest::State test_identity() {
     ark::Model model;
     // float buf[2][3][4][5];
-    ark::ModelTensorRef tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
-    ark::ModelTensorRef tns1 = model.identity(tns0);
+    ark::Tensor tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
+    ark::Tensor tns1 = model.identity(tns0);
 
     // For preventing optimize-out
     model.noop(tns0);

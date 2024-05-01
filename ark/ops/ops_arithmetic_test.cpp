@@ -1,10 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/model.hpp"
-#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 template <typename T>
 void baseline_add(std::vector<void *> &outputs,
@@ -132,9 +129,9 @@ void baseline_div(std::vector<void *> &outputs,
 
 ark::unittest::State test_add_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef out = m.add(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP32);
+    ark::Tensor out = m.add(t0, t1);
 
     auto result =
         ark::op_test("add_fp32", m, {t0, t1}, {out}, baseline_add<float>);
@@ -145,9 +142,9 @@ ark::unittest::State test_add_fp32() {
 
 ark::unittest::State test_add_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef out = m.add(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+    ark::Tensor out = m.add(t0, t1);
 
     auto result =
         ark::op_test("add_fp16", m, {t0, t1}, {out}, baseline_add<ark::half_t>);
@@ -158,9 +155,9 @@ ark::unittest::State test_add_fp16() {
 
 ark::unittest::State test_add_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::BF16);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::BF16);
-    ark::ModelTensorRef out = m.add(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::BF16);
+    ark::Tensor t1 = m.tensor({8192}, ark::BF16);
+    ark::Tensor out = m.add(t0, t1);
 
     auto result = ark::op_test("add_bf16", m, {t0, t1}, {out},
                                baseline_add<ark::bfloat16_t>);
@@ -171,9 +168,9 @@ ark::unittest::State test_add_bf16() {
 
 ark::unittest::State test_add_overwrite() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef out = m.add(t0, t1, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+    ark::Tensor out = m.add(t0, t1, t1);
 
     auto result = ark::op_test("add_overwrite", m, {t0, t1}, {out},
                                baseline_add<ark::half_t>);
@@ -185,9 +182,9 @@ ark::unittest::State test_add_overwrite() {
 ark::unittest::State test_add_broadcast() {
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({4, 1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1, 1024}, ark::FP16);
-        ark::ModelTensorRef out = m.add(t0, t1);
+        ark::Tensor t0 = m.tensor({4, 1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1, 1024}, ark::FP16);
+        ark::Tensor out = m.add(t0, t1);
 
         auto result = ark::op_test("add_broadcast", m, {t0, t1}, {out},
                                    baseline_add<ark::half_t>);
@@ -196,9 +193,9 @@ ark::unittest::State test_add_broadcast() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({4, 64}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({4, 1}, ark::FP16, {4, 2});
-        ark::ModelTensorRef out = m.add(t0, t1);
+        ark::Tensor t0 = m.tensor({4, 64}, ark::FP16);
+        ark::Tensor t1 = m.tensor({4, 1}, ark::FP16, {4, 2});
+        ark::Tensor out = m.add(t0, t1);
 
         auto result = ark::op_test("add_broadcast", m, {t0, t1}, {out},
                                    baseline_add<ark::half_t>);
@@ -207,9 +204,9 @@ ark::unittest::State test_add_broadcast() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({3, 1, 1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1, 4, 1}, ark::FP16, {1, 4, 2});
-        ark::ModelTensorRef out = m.add(t0, t1);
+        ark::Tensor t0 = m.tensor({3, 1, 1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1, 4, 1}, ark::FP16, {1, 4, 2});
+        ark::Tensor out = m.add(t0, t1);
 
         auto result = ark::op_test("add_broadcast", m, {t0, t1}, {out},
                                    baseline_add<ark::half_t>);
@@ -222,22 +219,22 @@ ark::unittest::State test_add_broadcast() {
 ark::unittest::State test_add_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1024}, ark::FP32);
+        ark::Tensor t0 = m.tensor({1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1024}, ark::FP32);
         UNITTEST_THROW(m.add(t0, t1), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({8192}, ark::FP32);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor out = m.tensor({8192}, ark::FP32);
         UNITTEST_THROW(m.add(t0, t1, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({1024}, ark::FP16);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor out = m.tensor({1024}, ark::FP16);
         UNITTEST_THROW(m.add(t0, t1, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -245,9 +242,9 @@ ark::unittest::State test_add_invalid() {
 
 ark::unittest::State test_sub_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef out = m.sub(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP32);
+    ark::Tensor out = m.sub(t0, t1);
 
     auto result =
         ark::op_test("sub_fp32", m, {t0, t1}, {out}, baseline_sub<float>);
@@ -259,22 +256,22 @@ ark::unittest::State test_sub_fp32() {
 ark::unittest::State test_sub_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1024}, ark::FP32);
+        ark::Tensor t0 = m.tensor({1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1024}, ark::FP32);
         UNITTEST_THROW(m.sub(t0, t1), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({8192}, ark::FP32);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor out = m.tensor({8192}, ark::FP32);
         UNITTEST_THROW(m.sub(t0, t1, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({1024}, ark::FP16);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor out = m.tensor({1024}, ark::FP16);
         UNITTEST_THROW(m.sub(t0, t1, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -282,9 +279,9 @@ ark::unittest::State test_sub_invalid() {
 
 ark::unittest::State test_mul_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef out = m.mul(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP32);
+    ark::Tensor out = m.mul(t0, t1);
 
     auto result =
         ark::op_test("mul_fp32", m, {t0, t1}, {out}, baseline_mul<float>);
@@ -295,9 +292,9 @@ ark::unittest::State test_mul_fp32() {
 
 ark::unittest::State test_mul_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef out = m.mul(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+    ark::Tensor out = m.mul(t0, t1);
 
     auto result =
         ark::op_test("mul_fp16", m, {t0, t1}, {out}, baseline_mul<ark::half_t>);
@@ -308,9 +305,9 @@ ark::unittest::State test_mul_fp16() {
 
 ark::unittest::State test_mul_overwrite() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-    ark::ModelTensorRef out = m.mul(t0, t1, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+    ark::Tensor out = m.mul(t0, t1, t1);
 
     auto result = ark::op_test("mul_overwrite", m, {t0, t1}, {out},
                                baseline_mul<ark::half_t>);
@@ -322,9 +319,9 @@ ark::unittest::State test_mul_overwrite() {
 ark::unittest::State test_mul_broadcast() {
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({4, 1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1, 1024}, ark::FP16);
-        ark::ModelTensorRef out = m.mul(t0, t1);
+        ark::Tensor t0 = m.tensor({4, 1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1, 1024}, ark::FP16);
+        ark::Tensor out = m.mul(t0, t1);
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
@@ -333,9 +330,9 @@ ark::unittest::State test_mul_broadcast() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({4, 1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({4, 1}, ark::FP16, {4, 2});
-        ark::ModelTensorRef out = m.mul(t0, t1);
+        ark::Tensor t0 = m.tensor({4, 1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({4, 1}, ark::FP16, {4, 2});
+        ark::Tensor out = m.mul(t0, t1);
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
@@ -344,9 +341,9 @@ ark::unittest::State test_mul_broadcast() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({3, 1, 1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1, 4, 1}, ark::FP16, {1, 4, 2});
-        ark::ModelTensorRef out = m.mul(t0, t1);
+        ark::Tensor t0 = m.tensor({3, 1, 1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1, 4, 1}, ark::FP16, {1, 4, 2});
+        ark::Tensor out = m.mul(t0, t1);
 
         auto result = ark::op_test("mul_broadcast", m, {t0, t1}, {out},
                                    baseline_mul<ark::half_t>);
@@ -359,22 +356,22 @@ ark::unittest::State test_mul_broadcast() {
 ark::unittest::State test_mul_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({1024}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({1024}, ark::FP32);
+        ark::Tensor t0 = m.tensor({1024}, ark::FP16);
+        ark::Tensor t1 = m.tensor({1024}, ark::FP32);
         UNITTEST_THROW(m.mul(t0, t1), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({8192}, ark::FP32);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor out = m.tensor({8192}, ark::FP32);
         UNITTEST_THROW(m.mul(t0, t1, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({1024}, ark::FP16);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor out = m.tensor({1024}, ark::FP16);
         UNITTEST_THROW(m.mul(t0, t1, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -382,9 +379,9 @@ ark::unittest::State test_mul_invalid() {
 
 ark::unittest::State test_div_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP32);
-    ark::ModelTensorRef out = m.div(t0, t1);
+    ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+    ark::Tensor t1 = m.tensor({8192}, ark::FP32);
+    ark::Tensor out = m.div(t0, t1);
 
     auto result =
         ark::op_test("div_fp32", m, {t0, t1}, {out}, baseline_div<float>);
@@ -396,22 +393,22 @@ ark::unittest::State test_div_fp32() {
 ark::unittest::State test_div_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP16);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         UNITTEST_THROW(m.div(t0, t1), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP32);
-        ark::ModelTensorRef out = m.tensor({8192}, ark::FP16);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP32);
+        ark::Tensor out = m.tensor({8192}, ark::FP16);
         UNITTEST_THROW(m.div(t0, t1, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8192}, ark::FP32);
-        ark::ModelTensorRef t1 = m.tensor({8192}, ark::FP32);
-        ark::ModelTensorRef out = m.tensor({1024}, ark::FP16);
+        ark::Tensor t0 = m.tensor({8192}, ark::FP32);
+        ark::Tensor t1 = m.tensor({8192}, ark::FP32);
+        ark::Tensor out = m.tensor({1024}, ark::FP16);
         UNITTEST_THROW(m.div(t0, t1, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;

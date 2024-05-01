@@ -4,11 +4,8 @@
 #include <cassert>
 #include <type_traits>
 
-#include "ark/model.hpp"
 #include "ark/random.hpp"
-#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 template <typename T>
 void baseline_embedding(std::vector<void *> &outputs,
@@ -55,14 +52,14 @@ ark::unittest::State test_embedding() {
     }
 
     ark::Model m;
-    ark::ModelTensorRef ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
-    ark::ModelTensorRef tw = m.tensor(ark::Dims(num_emb, emb_dim), weight_type);
-    ark::ModelTensorRef to = m.embedding(ti, tw);
+    ark::Tensor ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
+    ark::Tensor tw = m.tensor(ark::Dims(num_emb, emb_dim), weight_type);
+    ark::Tensor to = m.embedding(ti, tw);
 
     ark::srand();
 
     std::vector<int> ti_data;
-    for (auto i = 0; i < ti->shape().size(); ++i) {
+    for (auto i = 0; i < ti.shape().size(); ++i) {
         // Random indices in [0, num_emb)
         int rand_idx = ark::rand() % num_emb;
         if (i % 9 == 0) {
@@ -71,8 +68,8 @@ ark::unittest::State test_embedding() {
         }
         ti_data.push_back(rand_idx);
     }
-    std::vector<T> tw_data(tw->shape().size());
-    for (auto i = 0; i < tw->shape().size(); ++i) {
+    std::vector<T> tw_data(tw.shape().size());
+    for (auto i = 0; i < tw.shape().size(); ++i) {
         tw_data[i] = ark::rand<T>(-1.0, 1.0);
     }
     std::string type_str = "";
@@ -104,14 +101,14 @@ ark::unittest::State test_embedding_bf16() {
 ark::unittest::State test_embedding_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef ti = m.tensor(ark::Dims(4, 8, 3, 64), ark::INT32);
-        ark::ModelTensorRef tw = m.tensor(ark::Dims(100, 1024), ark::FP32);
+        ark::Tensor ti = m.tensor(ark::Dims(4, 8, 3, 64), ark::INT32);
+        ark::Tensor tw = m.tensor(ark::Dims(100, 1024), ark::FP32);
         UNITTEST_THROW(m.embedding(ti, tw), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
-        ark::ModelTensorRef tw = m.tensor(ark::Dims(2, 100, 1024), ark::FP32);
+        ark::Tensor ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
+        ark::Tensor tw = m.tensor(ark::Dims(2, 100, 1024), ark::FP32);
         UNITTEST_THROW(m.embedding(ti, tw), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;

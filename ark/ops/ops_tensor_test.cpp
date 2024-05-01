@@ -5,9 +5,7 @@
 #include <numeric>
 
 #include "ark/executor.hpp"
-#include "ark/model.hpp"
-#include "model/model_tensor.hpp"
-#include "unittest/unittest_utils.h"
+#include "ops_test_common.hpp"
 
 using namespace std;
 
@@ -120,18 +118,17 @@ ark::unittest::State test_tensor_memcpy() {
 ark::unittest::State test_tensor_layout() {
     ark::Model model;
     // float buf[2][3][4][5];
-    ark::ModelTensorRef tns =
-        model.tensor({2, 3, 4, 5}, ark::FP32, {8, 7, 6, 5});
+    ark::Tensor tns = model.tensor({2, 3, 4, 5}, ark::FP32, {8, 7, 6, 5});
     // For preventing optimize-out
     model.noop(tns);
     // Refer to each value
-    ark::ModelTensorRef ref[2][3][4][5];
+    ark::Tensor ref[2][3][4][5];
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 3; ++j) {
             for (int k = 0; k < 4; ++k) {
                 for (int l = 0; l < 5; ++l) {
                     ref[i][j][k][l] = model.refer(tns, {1, 1, 1, 1},
-                                                  tns->strides(), {i, j, k, l});
+                                                  tns.strides(), {i, j, k, l});
                     // For preventing optimize-out
                     model.noop(ref[i][j][k][l]);
                 }

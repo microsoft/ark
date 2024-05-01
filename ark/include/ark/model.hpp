@@ -10,6 +10,7 @@
 #include "dims.hpp"
 #include "model_graph.hpp"
 #include "model_ref.hpp"
+#include "tensor.hpp"
 
 namespace ark {
 
@@ -45,7 +46,7 @@ class Model : public ModelGraph {
 
     Model compress() const;
 
-    void noop(ModelTensorRef input, const std::string &name = "");
+    void noop(Tensor input, const std::string &name = "");
 
     /// Returns a tensor object.
     ///
@@ -75,22 +76,19 @@ class Model : public ModelGraph {
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
-    ModelTensorRef tensor(const Dims &shape, ModelDataType data_type,
-                          const Dims &strides = {}, const Dims &offsets = {},
-                          const Dims &pads = {}, bool exported = false,
-                          int imported_rank = -1, const std::string &name = "");
+    Tensor tensor(const Dims &shape, ModelDataType data_type,
+                  const Dims &strides = {}, const Dims &offsets = {},
+                  const Dims &pads = {}, bool exported = false,
+                  int imported_rank = -1, const std::string &name = "");
 
-    ModelTensorRef refer(ModelTensorRef input, const Dims &shape = {},
-                         const Dims &strides = {}, const Dims &offsets = {},
-                         const Dims &pads = {}, const std::string &name = "");
+    Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
+                 const Dims &offsets = {}, const Dims &pads = {},
+                 const std::string &name = "");
 
-    ModelTensorRef reshape(ModelTensorRef input, const Dims &shape,
-                           bool allowzero = false,
-                           const std::string &name = "");
-    ModelTensorRef reshape(ModelTensorRef input,
-                           const std::initializer_list<DimType> &shape,
-                           bool allowzero = false,
-                           const std::string &name = "");
+    Tensor reshape(Tensor input, const Dims &shape, bool allowzero = false,
+                   const std::string &name = "");
+    Tensor reshape(Tensor input, const std::initializer_list<DimType> &shape,
+                   bool allowzero = false, const std::string &name = "");
     // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
     // inferred from the `input`. If one dimension of `shape` is 0, by default
     // (`allowzero` is false), that dimension is unchanged from the
@@ -99,122 +97,101 @@ class Model : public ModelGraph {
     // `input` should also be an empty tensor. If `allowzero` is true, `shape`
     // should not include both 0 and -1 at the same time. If `shape` is an empty
     // vector, `input` will be converted to a scalar.
-    ModelTensorRef reshape(ModelTensorRef input,
-                           const std::vector<DimType> &shape,
-                           bool allowzero = false,
-                           const std::string &name = "");
+    Tensor reshape(Tensor input, const std::vector<DimType> &shape,
+                   bool allowzero = false, const std::string &name = "");
     // Returns an identical tensor of `input` with execution dependencies
     // `deps`.
-    ModelTensorRef identity(ModelTensorRef input,
-                            const std::vector<ModelTensorRef> &deps = {},
-                            const std::string &name = "");
+    Tensor identity(Tensor input, const std::vector<Tensor> &deps = {},
+                    const std::string &name = "");
 
     // Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
-    std::vector<ModelTensorRef> sharding(ModelTensorRef input, DimType axis,
-                                         DimType dim_per_shard,
-                                         const std::string &name = "");
+    std::vector<Tensor> sharding(Tensor input, DimType axis,
+                                 DimType dim_per_shard,
+                                 const std::string &name = "");
     // Performs reduction along the `axis` of the `input` tensor and stores the
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
-    ModelTensorRef reduce_sum(ModelTensorRef input, int axis,
-                              bool keepdims = true,
-                              ModelTensorRef output = nullptr,
-                              const std::string &name = "");
-    ModelTensorRef reduce_mean(ModelTensorRef input, int axis,
-                               bool keepdims = true,
-                               ModelTensorRef output = nullptr,
-                               const std::string &name = "");
-    ModelTensorRef reduce_max(ModelTensorRef input, int axis,
-                              bool keepdims = true,
-                              ModelTensorRef output = nullptr,
-                              const std::string &name = "");
+    Tensor reduce_sum(Tensor input, int axis, bool keepdims = true,
+                      Tensor output = NoneTensor, const std::string &name = "");
+    Tensor reduce_mean(Tensor input, int axis, bool keepdims = true,
+                       Tensor output = NoneTensor,
+                       const std::string &name = "");
+    Tensor reduce_max(Tensor input, int axis, bool keepdims = true,
+                      Tensor output = NoneTensor, const std::string &name = "");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
-    ModelTensorRef layernorm(ModelTensorRef input,
-                             ModelTensorRef output = nullptr,
-                             const std::string &name = "");
+    Tensor layernorm(Tensor input, Tensor output = NoneTensor,
+                     const std::string &name = "");
     // Transposes the `input` tensor according to the given `permutation`.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
-    ModelTensorRef transpose(ModelTensorRef input,
-                             const std::vector<int64_t> &permutation,
-                             ModelTensorRef output = nullptr,
-                             const std::string &name = "");
+    Tensor transpose(Tensor input, const std::vector<int64_t> &permutation,
+                     Tensor output = NoneTensor, const std::string &name = "");
     // Performs matrix multiplication between the `input` tensor and another
     // `other` tensor, storing the result in `output`.
-    ModelTensorRef matmul(ModelTensorRef input, ModelTensorRef other,
-                          ModelTensorRef output = nullptr,
-                          bool trans_input = false, bool trans_other = false,
-                          const std::string &name = "");
+    Tensor matmul(Tensor input, Tensor other, Tensor output = NoneTensor,
+                  bool trans_input = false, bool trans_other = false,
+                  const std::string &name = "");
     // Implements the 'im2col' method for 2D convolution layers, which takes an
     // `input` tensor and reshapes it to a 2D matrix by extracting image patches
     // from the input tensor based on the provided parameters.
-    ModelTensorRef im2col(ModelTensorRef input, int kernel_height,
-                          int kernel_width, int stride_height, int stride_width,
-                          int pad_height, int pad_width, int dilation_height,
-                          int dilation_width, ModelTensorRef output = nullptr,
-                          const std::string &name = "");
+    Tensor im2col(Tensor input, int kernel_height, int kernel_width,
+                  int stride_height, int stride_width, int pad_height,
+                  int pad_width, int dilation_height, int dilation_width,
+                  Tensor output = NoneTensor, const std::string &name = "");
     // Applies max-pooling on the `input` tensor using `kernel_size` and
     // `stride`, reducing its spatial size. The output shape is calculated based
     // on the input tensor's shape and the stride value as follows: {is[0],
     // (is[1] + stride - 1) / stride, (is[2] + stride - 1) / stride, is[3]},
     // where 'is' represents the input tensor's shape.
-    ModelTensorRef max_pool(ModelTensorRef input, DimType kernel_size,
-                            DimType stride, ModelTensorRef output = nullptr,
-                            const std::string &name = "");
+    Tensor max_pool(Tensor input, DimType kernel_size, DimType stride,
+                    Tensor output = NoneTensor, const std::string &name = "");
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
-    ModelTensorRef scale(ModelTensorRef input, float val,
-                         ModelTensorRef output = nullptr,
-                         const std::string &name = "");
+    Tensor scale(Tensor input, float val, Tensor output = NoneTensor,
+                 const std::string &name = "");
     // Calculates the exponential of the `input` tensor, element-wise.
-    ModelTensorRef exp(ModelTensorRef input, ModelTensorRef output = nullptr,
-                       const std::string &name = "");
+    Tensor exp(Tensor input, Tensor output = NoneTensor,
+               const std::string &name = "");
     // Calculates the square root of the `input` tensor, element-wise.
-    ModelTensorRef sqrt(ModelTensorRef input, ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor sqrt(Tensor input, Tensor output = NoneTensor,
+                const std::string &name = "");
     // Calculates the reverse square root of the `input` tensor, element-wise.
-    ModelTensorRef rsqrt(ModelTensorRef input, ModelTensorRef output = nullptr,
-                         const std::string &name = "");
+    Tensor rsqrt(Tensor input, Tensor output = NoneTensor,
+                 const std::string &name = "");
     // ReLU activation
-    ModelTensorRef relu(ModelTensorRef input, ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor relu(Tensor input, Tensor output = NoneTensor,
+                const std::string &name = "");
     // Copy the `input` tensor to `output` tensor
-    ModelTensorRef copy(ModelTensorRef input, ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor copy(Tensor input, Tensor output = NoneTensor,
+                const std::string &name = "");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.
-    ModelTensorRef gelu(ModelTensorRef input, ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor gelu(Tensor input, Tensor output = NoneTensor,
+                const std::string &name = "");
     // Sigmoid activation
-    ModelTensorRef sigmoid(ModelTensorRef input,
-                           ModelTensorRef output = nullptr,
-                           const std::string &name = "");
+    Tensor sigmoid(Tensor input, Tensor output = NoneTensor,
+                   const std::string &name = "");
     // Performs rotary position embedding (RoPE) on the `input` tensor
-    ModelTensorRef rope(ModelTensorRef input, ModelTensorRef other,
-                        ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor rope(Tensor input, Tensor other, Tensor output = NoneTensor,
+                const std::string &name = "");
 
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
-    ModelTensorRef add(ModelTensorRef input, ModelTensorRef other,
-                       ModelTensorRef output = nullptr,
-                       const std::string &name = "");
+    Tensor add(Tensor input, Tensor other, Tensor output = NoneTensor,
+               const std::string &name = "");
     // Performs an element-wise subtraction operator between the `input` tensor
     // and the `other` tensor
-    ModelTensorRef sub(ModelTensorRef input, ModelTensorRef other,
-                       ModelTensorRef output = nullptr,
-                       const std::string &name = "");
+    Tensor sub(Tensor input, Tensor other, Tensor output = NoneTensor,
+               const std::string &name = "");
     // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
-    ModelTensorRef mul(ModelTensorRef input, ModelTensorRef other,
-                       ModelTensorRef output = nullptr,
-                       const std::string &name = "");
+    Tensor mul(Tensor input, Tensor other, Tensor output = NoneTensor,
+               const std::string &name = "");
     // Performs an element-wise division operator between the `input`
     // tensor and the `other` tensor,
-    ModelTensorRef div(ModelTensorRef input, ModelTensorRef other,
-                       ModelTensorRef output = nullptr,
-                       const std::string &name = "");
+    Tensor div(Tensor input, Tensor other, Tensor output = NoneTensor,
+               const std::string &name = "");
     /// Sends a tensor to a destination rank (@p dst_rank). Multiple tensors can
     /// be sent to the same rank,so an identifier `id` is required to
     /// distinguish the tensor. Each 'send' operator must have a corresponding
@@ -226,84 +203,71 @@ class Model : public ModelGraph {
     /// @param bytes
     /// @param name
     /// @return
-    ModelTensorRef send(ModelTensorRef input, int sid, int dst_rank,
-                        DimType bytes = 0, const std::string &name = "");
+    Tensor send(Tensor input, int sid, int dst_rank, DimType bytes = 0,
+                const std::string &name = "");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
-    ModelTensorRef send_done(ModelTensorRef input, int sid, int dst_rank,
-                             const std::string &name = "");
+    Tensor send_done(Tensor input, int sid, int dst_rank,
+                     const std::string &name = "");
     // Receives a tensor from a source rank (@p src_rank), identified by the
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
-    ModelTensorRef recv(int sid, int src_rank, DimType bytes = 0,
-                        ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor recv(int sid, int src_rank, DimType bytes = 0,
+                Tensor output = NoneTensor, const std::string &name = "");
     //
-    ModelTensorRef put_packet(ModelTensorRef input,
-                              ModelTensorRef local_tmp_buf,
-                              ModelTensorRef recv_buf, int id, int rank,
-                              int dst_rank, size_t dst_offset, int flag,
-                              const std::string &name = "");
+    Tensor put_packet(Tensor input, Tensor local_tmp_buf, Tensor recv_buf,
+                      int id, int rank, int dst_rank, size_t dst_offset,
+                      int flag, const std::string &name = "");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
-    ModelTensorRef all_reduce(ModelTensorRef input, int rank, int rank_num,
-                              ModelTensorRef output = nullptr,
-                              const std::string &name = "");
+    Tensor all_reduce(Tensor input, int rank, int rank_num,
+                      Tensor output = NoneTensor, const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each
     // containing the aggregated data from all ranks.
-    std::vector<ModelTensorRef> all_gather(
-        ModelTensorRef input, int rank, int rank_num,
-        const std::vector<ModelTensorRef> &output = {},
-        const std::string &name = "");
+    std::vector<Tensor> all_gather(Tensor input, int rank, int rank_num,
+                                   const std::vector<Tensor> &output = {},
+                                   const std::string &name = "");
     /// Embedding layer.
-    ModelTensorRef embedding(ModelTensorRef input, ModelTensorRef weight,
-                             ModelTensorRef output = nullptr,
-                             const std::string &name = "");
+    Tensor embedding(Tensor input, Tensor weight, Tensor output = NoneTensor,
+                     const std::string &name = "");
     /// Tensor type casting.
-    ModelTensorRef cast(ModelTensorRef input, ModelDataType data_type,
-                        ModelTensorRef output = nullptr,
-                        const std::string &name = "");
+    Tensor cast(Tensor input, ModelDataType data_type,
+                Tensor output = NoneTensor, const std::string &name = "");
 
     // sync across multi devices
-    ModelTensorRef device_sync(ModelTensorRef input, int npeers,
-                               const std::string &name = "");
+    Tensor device_sync(Tensor input, int npeers, const std::string &name = "");
 
     // local reduce scatter
-    ModelTensorRef local_reduce_scatter(ModelTensorRef input, int gpu_id,
-                                        int ngpus_per_node,
-                                        const std::string &name = "");
+    Tensor local_reduce_scatter(Tensor input, int gpu_id, int ngpus_per_node,
+                                const std::string &name = "");
 
     // local all gather
-    ModelTensorRef local_all_gather(ModelTensorRef input, int gpu_id,
-                                    int ngpus_per_node, int axis = 0,
-                                    const std::string &name = "");
+    Tensor local_all_gather(Tensor input, int gpu_id, int ngpus_per_node,
+                            int axis = 0, const std::string &name = "");
     // read data from remote and reduce to current buffer
-    ModelTensorRef read_and_reduce(ModelTensorRef input, int sid, int npeers,
-                                   size_t offset, size_t bytes,
-                                   const std::string &name = "");
+    Tensor read_and_reduce(Tensor input, int sid, int npeers, size_t offset,
+                           size_t bytes, const std::string &name = "");
     // gather from peers
-    ModelTensorRef gather_from_peers(ModelTensorRef input, ModelTensorRef tile,
-                                     int sid, int npeers, size_t chunkBytes,
-                                     const std::string &name = "");
+    Tensor gather_from_peers(Tensor input, Tensor tile, int sid, int npeers,
+                             size_t chunkBytes, const std::string &name = "");
 
-    ModelTensorRef local_all_reduce(ModelTensorRef input, int gpu_id,
-                                    int gpu_num, const std::string &name = "");
-    ModelTensorRef local_all_reduce_packet(ModelTensorRef input, int gpu_id,
-                                           int gpu_num,
-                                           const std::string &name = "");
+    Tensor local_all_reduce(Tensor input, int gpu_id, int gpu_num,
+                            const std::string &name = "");
+    Tensor local_all_reduce_packet(Tensor input, int gpu_id, int gpu_num,
+                                   const std::string &name = "");
 
-    ModelTensorRef reduce_and_write_packet(
-        ModelTensorRef input, ModelTensorRef scratch, ModelTensorRef output,
-        const std::vector<ModelTensorRef> &remote_peer_bufs, int id, int rank,
-        int npeers, size_t elems_per_rank, size_t scratch_offset,
-        size_t remote_dst_offset, int flag, const std::string &name = "");
-    ModelTensorRef get_packet(ModelTensorRef input, ModelTensorRef output,
-                              size_t src_offset, size_t dst_offset,
-                              size_t npackets, int flag,
-                              const std::string &name = "");
+    Tensor reduce_and_write_packet(Tensor input, Tensor scratch, Tensor output,
+                                   const std::vector<Tensor> &remote_peer_bufs,
+                                   int id, int rank, int npeers,
+                                   size_t elems_per_rank, size_t scratch_offset,
+                                   size_t remote_dst_offset, int flag,
+                                   const std::string &name = "");
+    Tensor get_packet(Tensor input, Tensor output, size_t src_offset,
+                      size_t dst_offset, size_t npackets, int flag,
+                      const std::string &name = "");
 };
 
 }  // namespace ark

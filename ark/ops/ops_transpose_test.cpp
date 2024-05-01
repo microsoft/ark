@@ -55,8 +55,8 @@ void baseline_transpose_0231(std::vector<void *> &outputs,
 
 ark::unittest::State test_transpose_0132_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({5, 3, 32, 128}, ark::FP32);
-    ark::ModelTensorRef out = m.transpose(t, {0, 1, 3, 2});
+    ark::Tensor t = m.tensor({5, 3, 32, 128}, ark::FP32);
+    ark::Tensor out = m.transpose(t, {0, 1, 3, 2});
 
     auto result = ark::op_test("transpose_0132_fp32", m, {t}, {out},
                                baseline_transpose_0132<float>);
@@ -67,8 +67,8 @@ ark::unittest::State test_transpose_0132_fp32() {
 
 ark::unittest::State test_transpose_0132_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({5, 3, 32, 128}, ark::FP16);
-    ark::ModelTensorRef out = m.transpose(t, {0, 1, 3, 2});
+    ark::Tensor t = m.tensor({5, 3, 32, 128}, ark::FP16);
+    ark::Tensor out = m.transpose(t, {0, 1, 3, 2});
 
     auto result = ark::op_test("transpose_0132_fp16", m, {t}, {out},
                                baseline_transpose_0132<ark::half_t>);
@@ -79,8 +79,8 @@ ark::unittest::State test_transpose_0132_fp16() {
 
 ark::unittest::State test_transpose_0132_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({5, 3, 32, 128}, ark::BF16);
-    ark::ModelTensorRef out = m.transpose(t, {0, 1, 3, 2});
+    ark::Tensor t = m.tensor({5, 3, 32, 128}, ark::BF16);
+    ark::Tensor out = m.transpose(t, {0, 1, 3, 2});
 
     auto result = ark::op_test("transpose_0132_bf16", m, {t}, {out},
                                baseline_transpose_0132<ark::bfloat16_t>);
@@ -91,8 +91,8 @@ ark::unittest::State test_transpose_0132_bf16() {
 
 ark::unittest::State test_transpose_0231_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({5, 3, 32, 128}, ark::FP32);
-    ark::ModelTensorRef out = m.transpose(t, {0, 2, 3, 1});
+    ark::Tensor t = m.tensor({5, 3, 32, 128}, ark::FP32);
+    ark::Tensor out = m.transpose(t, {0, 2, 3, 1});
 
     auto result = ark::op_test("transpose_0231_fp32", m, {t}, {out},
                                baseline_transpose_0231<float>);
@@ -103,8 +103,8 @@ ark::unittest::State test_transpose_0231_fp32() {
 
 ark::unittest::State test_transpose_0231_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({5, 3, 32, 128}, ark::FP16);
-    ark::ModelTensorRef out = m.transpose(t, {0, 2, 3, 1});
+    ark::Tensor t = m.tensor({5, 3, 32, 128}, ark::FP16);
+    ark::Tensor out = m.transpose(t, {0, 2, 3, 1});
 
     auto result = ark::op_test("transpose_0231_fp16", m, {t}, {out},
                                baseline_transpose_0231<ark::half_t>);
@@ -115,8 +115,8 @@ ark::unittest::State test_transpose_0231_fp16() {
 
 ark::unittest::State test_transpose_0231_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({5, 3, 32, 128}, ark::BF16);
-    ark::ModelTensorRef out = m.transpose(t, {0, 2, 3, 1});
+    ark::Tensor t = m.tensor({5, 3, 32, 128}, ark::BF16);
+    ark::Tensor out = m.transpose(t, {0, 2, 3, 1});
 
     auto result = ark::op_test("transpose_0231_bf16", m, {t}, {out},
                                baseline_transpose_0231<ark::bfloat16_t>);
@@ -128,22 +128,22 @@ ark::unittest::State test_transpose_0231_bf16() {
 ark::unittest::State test_transpose_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({5}, ark::FP32);
+        ark::Tensor t = m.tensor({5}, ark::FP32);
         UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({5, 128}, ark::FP32);
+        ark::Tensor t = m.tensor({5, 128}, ark::FP32);
         UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({5, 128}, ark::FP32);
+        ark::Tensor t = m.tensor({5, 128}, ark::FP32);
         UNITTEST_THROW(m.transpose(t, {0, 2}), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({5, 128}, ark::FP32);
+        ark::Tensor t = m.tensor({5, 128}, ark::FP32);
         UNITTEST_THROW(m.transpose(t, {1, 1}), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;

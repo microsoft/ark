@@ -20,9 +20,8 @@ ModelOpCopy::ModelOpCopy(ModelTensorRef input, ModelTensorRef output)
     verify();
 }
 
-ModelTensorRef Model::copy(ModelTensorRef input, ModelTensorRef output,
-                           const std::string &name) {
-    return impl_->create_op<ModelOpCopy>(name, input, output)
+Tensor Model::copy(Tensor input, Tensor output, const std::string &name) {
+    return impl_->create_op<ModelOpCopy>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 

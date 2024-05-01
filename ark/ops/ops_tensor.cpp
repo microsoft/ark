@@ -25,10 +25,10 @@ ModelOpTensor::ModelOpTensor(ModelBufferRef buffer, const Dims &shape,
     verify();
 }
 
-ModelTensorRef Model::tensor(const Dims &shape, ModelDataType data_type,
-                             const Dims &strides, const Dims &offsets,
-                             const Dims &pads, bool exported, int imported_rank,
-                             const std::string &name) {
+Tensor Model::tensor(const Dims &shape, ModelDataType data_type,
+                     const Dims &strides, const Dims &offsets, const Dims &pads,
+                     bool exported, int imported_rank,
+                     const std::string &name) {
     return impl_
         ->create_op<ModelOpTensor>(name, nullptr, shape, data_type, strides,
                                    offsets, pads, exported, imported_rank)

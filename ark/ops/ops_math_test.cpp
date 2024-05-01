@@ -95,8 +95,8 @@ void baseline_sqrt(std::vector<void *> &outputs,
 
 ark::unittest::State test_gelu_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP32);
-    ark::ModelTensorRef out = m.gelu(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
+    ark::Tensor out = m.gelu(t);
 
     auto result =
         ark::op_test("gelu_fp32", m, {t}, {out}, baseline_gelu<float>);
@@ -107,8 +107,8 @@ ark::unittest::State test_gelu_fp32() {
 
 ark::unittest::State test_gelu_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-    ark::ModelTensorRef out = m.gelu(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+    ark::Tensor out = m.gelu(t);
 
     auto result = ark::op_test("gelu_bf16", m, {t}, {out},
                                baseline_gelu<ark::bfloat16_t>);
@@ -120,14 +120,14 @@ ark::unittest::State test_gelu_bf16() {
 ark::unittest::State test_gelu_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 2, 1024}, ark::FP32);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
         UNITTEST_THROW(m.gelu(t, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 4, 1024}, ark::BF16);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
         UNITTEST_THROW(m.gelu(t, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -135,8 +135,8 @@ ark::unittest::State test_gelu_invalid() {
 
 ark::unittest::State test_exp_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP32);
-    ark::ModelTensorRef out = m.exp(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
+    ark::Tensor out = m.exp(t);
 
     auto result = ark::op_test("exp_fp32", m, {t}, {out}, baseline_exp<float>);
     UNITTEST_LOG(result);
@@ -146,8 +146,8 @@ ark::unittest::State test_exp_fp32() {
 
 ark::unittest::State test_exp_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP16);
-    ark::ModelTensorRef out = m.exp(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP16);
+    ark::Tensor out = m.exp(t);
 
     auto result =
         ark::op_test("exp_fp16", m, {t}, {out}, baseline_exp<ark::half_t>);
@@ -158,8 +158,8 @@ ark::unittest::State test_exp_fp16() {
 
 ark::unittest::State test_exp_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-    ark::ModelTensorRef out = m.exp(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+    ark::Tensor out = m.exp(t);
 
     auto result =
         ark::op_test("exp_bf16", m, {t}, {out}, baseline_exp<ark::bfloat16_t>);
@@ -171,14 +171,14 @@ ark::unittest::State test_exp_bf16() {
 ark::unittest::State test_exp_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 2, 1024}, ark::FP32);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
         UNITTEST_THROW(m.exp(t, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 4, 1024}, ark::BF16);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
         UNITTEST_THROW(m.exp(t, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -186,8 +186,8 @@ ark::unittest::State test_exp_invalid() {
 
 ark::unittest::State test_relu_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP32);
-    ark::ModelTensorRef out = m.relu(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
+    ark::Tensor out = m.relu(t);
 
     auto result =
         ark::op_test("relu_fp32", m, {t}, {out}, baseline_relu<float>);
@@ -198,8 +198,8 @@ ark::unittest::State test_relu_fp32() {
 
 ark::unittest::State test_relu_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP16);
-    ark::ModelTensorRef out = m.relu(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP16);
+    ark::Tensor out = m.relu(t);
 
     auto result =
         ark::op_test("relu_fp16", m, {t}, {out}, baseline_relu<ark::half_t>);
@@ -210,8 +210,8 @@ ark::unittest::State test_relu_fp16() {
 
 ark::unittest::State test_relu_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-    ark::ModelTensorRef out = m.relu(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+    ark::Tensor out = m.relu(t);
 
     auto result = ark::op_test("relu_bf16", m, {t}, {out},
                                baseline_relu<ark::bfloat16_t>);
@@ -223,14 +223,14 @@ ark::unittest::State test_relu_bf16() {
 ark::unittest::State test_relu_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 2, 1024}, ark::FP32);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
         UNITTEST_THROW(m.relu(t, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 4, 1024}, ark::BF16);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
         UNITTEST_THROW(m.relu(t, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -238,8 +238,8 @@ ark::unittest::State test_relu_invalid() {
 
 ark::unittest::State test_math_rsqrt_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP32);
-    ark::ModelTensorRef out = m.rsqrt(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
+    ark::Tensor out = m.rsqrt(t);
 
     auto result =
         ark::op_test("math_rsqrt_fp32", m, {t}, {out}, baseline_rsqrt<float>);
@@ -250,8 +250,8 @@ ark::unittest::State test_math_rsqrt_fp32() {
 
 ark::unittest::State test_sigmoid_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP32);
-    ark::ModelTensorRef out = m.sigmoid(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
+    ark::Tensor out = m.sigmoid(t);
 
     auto result =
         ark::op_test("sigmoid_fp32", m, {t}, {out}, baseline_sigmoid<float>);
@@ -262,8 +262,8 @@ ark::unittest::State test_sigmoid_fp32() {
 
 ark::unittest::State test_sigmoid_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-    ark::ModelTensorRef out = m.sigmoid(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+    ark::Tensor out = m.sigmoid(t);
 
     auto result = ark::op_test("sigmoid_bf16", m, {t}, {out},
                                baseline_sigmoid<ark::bfloat16_t>);
@@ -275,14 +275,14 @@ ark::unittest::State test_sigmoid_bf16() {
 ark::unittest::State test_sigmoid_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 2, 1024}, ark::FP32);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
         UNITTEST_THROW(m.sigmoid(t, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::BF16);
-        ark::ModelTensorRef out = m.tensor({4, 4, 1024}, ark::BF16);
+        ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
+        ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
         UNITTEST_THROW(m.sigmoid(t, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -290,8 +290,8 @@ ark::unittest::State test_sigmoid_invalid() {
 
 ark::unittest::State test_math_sqrt_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 2, 1024}, ark::FP32);
-    ark::ModelTensorRef out = m.sqrt(t);
+    ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
+    ark::Tensor out = m.sqrt(t);
 
     auto result =
         ark::op_test("math_sqrt_fp32", m, {t}, {out}, baseline_sqrt<float>);
@@ -302,8 +302,8 @@ ark::unittest::State test_math_sqrt_fp32() {
 
 ark::unittest::State test_math_sqrt_fp16_small_last_dim() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({4, 1024, 1}, ark::FP16, {4, 1024, 2});
-    ark::ModelTensorRef out = m.sqrt(t);
+    ark::Tensor t = m.tensor({4, 1024, 1}, ark::FP16, {4, 1024, 2});
+    ark::Tensor out = m.sqrt(t);
 
     auto result = ark::op_test("math_sqrt_fp16_small_last_dim", m, {t}, {out},
                                baseline_sqrt<ark::half_t>);
@@ -315,14 +315,14 @@ ark::unittest::State test_math_sqrt_fp16_small_last_dim() {
 ark::unittest::State test_math_sqrt_invalid() {
     {
         ark::Model model;
-        ark::ModelTensorRef input = model.tensor({1, 3, 16, 8192}, ark::FP32);
-        ark::ModelTensorRef output = model.tensor({1, 3, 16, 8192}, ark::FP16);
+        ark::Tensor input = model.tensor({1, 3, 16, 8192}, ark::FP32);
+        ark::Tensor output = model.tensor({1, 3, 16, 8192}, ark::FP16);
         UNITTEST_THROW(model.sqrt(input, output), ark::InvalidUsageError);
     }
     {
         ark::Model model;
-        ark::ModelTensorRef input = model.tensor({1, 3, 16, 8192}, ark::FP32);
-        ark::ModelTensorRef output = model.tensor({1, 3, 16, 1024}, ark::FP32);
+        ark::Tensor input = model.tensor({1, 3, 16, 8192}, ark::FP32);
+        ark::Tensor output = model.tensor({1, 3, 16, 1024}, ark::FP32);
         UNITTEST_THROW(model.sqrt(input, output), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;

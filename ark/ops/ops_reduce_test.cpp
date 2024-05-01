@@ -4,10 +4,7 @@
 #include <cassert>
 #include <numeric>
 
-#include "ark/model.hpp"
-#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 template <typename T, bool KeepDims = true>
 void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
@@ -145,8 +142,8 @@ void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
 
 ark::unittest::State test_reduce_axis0() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP32);
-    ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/0);
+    ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP32);
+    ark::Tensor out = m.reduce_sum(t, /*axis=*/0);
 
     auto result = ark::op_test("reduce_axis0", m, {t}, {out},
                                baseline_reduce_sum_axis0<float>);
@@ -157,8 +154,8 @@ ark::unittest::State test_reduce_axis0() {
 
 ark::unittest::State test_reduce_axis1() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
-    ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/1);
+    ark::Tensor t = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
+    ark::Tensor out = m.reduce_sum(t, /*axis=*/1);
 
     auto result = ark::op_test("reduce_axis1", m, {t}, {out},
                                baseline_reduce_sum_axis1<float>);
@@ -169,8 +166,8 @@ ark::unittest::State test_reduce_axis1() {
 
 ark::unittest::State test_reduce_axis2() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(1, 1, 7, 8192), ark::FP32);
-    ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/2);
+    ark::Tensor t = m.tensor(ark::Dims(1, 1, 7, 8192), ark::FP32);
+    ark::Tensor out = m.reduce_sum(t, /*axis=*/2);
 
     auto result = ark::op_test("reduce_axis2", m, {t}, {out},
                                baseline_reduce_sum_axis2<float>);
@@ -181,8 +178,8 @@ ark::unittest::State test_reduce_axis2() {
 
 ark::unittest::State test_reduce_axis3() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(1, 1, 2, 8192), ark::FP32);
-    ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/3);
+    ark::Tensor t = m.tensor(ark::Dims(1, 1, 2, 8192), ark::FP32);
+    ark::Tensor out = m.reduce_sum(t, /*axis=*/3);
 
     auto result = ark::op_test("reduce_axis3", m, {t}, {out},
                                baseline_reduce_sum_axis3<float>);
@@ -193,8 +190,8 @@ ark::unittest::State test_reduce_axis3() {
 
 ark::unittest::State test_reduce_axis3_padded() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(1, 1, 2, 8192), ark::FP32);
-    ark::ModelTensorRef out =
+    ark::Tensor t = m.tensor(ark::Dims(1, 1, 2, 8192), ark::FP32);
+    ark::Tensor out =
         m.tensor(ark::Dims(1, 1, 2, 1), ark::FP32, ark::Dims(1, 1, 2, 32));
     out = m.reduce_sum(t, /*axis=*/3, true, out);
 
@@ -208,8 +205,8 @@ ark::unittest::State test_reduce_axis3_padded() {
 ark::unittest::State test_reduce_fp16() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
-        ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/0);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
+        ark::Tensor out = m.reduce_sum(t, /*axis=*/0);
 
         auto result = ark::op_test("reduce_fp16_axis0", m, {t}, {out},
                                    baseline_reduce_sum_axis0<ark::half_t>);
@@ -218,8 +215,8 @@ ark::unittest::State test_reduce_fp16() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
-        ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/3);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
+        ark::Tensor out = m.reduce_sum(t, /*axis=*/3);
 
         auto result = ark::op_test("reduce_fp16_axis3", m, {t}, {out},
                                    baseline_reduce_sum_axis3<ark::half_t>);
@@ -236,8 +233,8 @@ ark::unittest::State test_reduce_bf16() {
 
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/0);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.reduce_sum(t, /*axis=*/0);
 
         auto result = ark::op_test("reduce_bf16_axis0", m, {t}, {out},
                                    baseline_reduce_sum_axis0<ark::bfloat16_t>,
@@ -247,8 +244,8 @@ ark::unittest::State test_reduce_bf16() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/3);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.reduce_sum(t, /*axis=*/3);
 
         auto result = ark::op_test("reduce_bf16_axis3", m, {t}, {out},
                                    baseline_reduce_sum_axis3<ark::bfloat16_t>,
@@ -261,10 +258,10 @@ ark::unittest::State test_reduce_bf16() {
 ark::unittest::State test_reduce_fp16_no_keepdims() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
-        ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/0, false);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
+        ark::Tensor out = m.reduce_sum(t, /*axis=*/0, false);
 
-        UNITTEST_EQ(out->shape(), ark::Dims(2, 4, 1024));
+        UNITTEST_EQ(out.shape(), ark::Dims(2, 4, 1024));
 
         auto result =
             ark::op_test("reduce_fp16_axis0", m, {t}, {out},
@@ -274,10 +271,10 @@ ark::unittest::State test_reduce_fp16_no_keepdims() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
-        ark::ModelTensorRef out = m.reduce_sum(t, /*axis=*/3, false);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP16);
+        ark::Tensor out = m.reduce_sum(t, /*axis=*/3, false);
 
-        UNITTEST_EQ(out->shape(), ark::Dims(7, 2, 4));
+        UNITTEST_EQ(out.shape(), ark::Dims(7, 2, 4));
 
         auto result =
             ark::op_test("reduce_fp16_axis3", m, {t}, {out},
@@ -290,49 +287,49 @@ ark::unittest::State test_reduce_fp16_no_keepdims() {
 ark::unittest::State test_reduce_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out),
                        ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(7, 2, 4, 1), ark::FP32);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(7, 2, 4, 1), ark::FP32);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out),
                        ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(1, 2, 4, 512), ark::BF16);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(1, 2, 4, 512), ark::BF16);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out),
                        ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(7, 1, 4, 1), ark::BF16);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(7, 1, 4, 1), ark::BF16);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out),
                        ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(3, 2, 4, 1024), ark::BF16);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(3, 2, 4, 1024), ark::BF16);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out),
                        ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(7, 2, 4, 3), ark::BF16);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(7, 2, 4, 3), ark::BF16);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out),
                        ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(7, 2, 4, 1), ark::BF16);
+        ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1), ark::BF16);
         UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, t),
                        ark::InvalidUsageError);
     }

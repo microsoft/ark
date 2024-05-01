@@ -18,8 +18,8 @@ ark::unittest::State test_model_op_all_reduce() {
     //                      +---------------+  +--------------+
 
     ark::Model model;
-    ark::ModelTensorRef input = model.tensor({1}, ark::FP32);
-    ark::ModelTensorRef output = model.all_reduce(input, 0, 4);
+    ark::Tensor input = model.tensor({1}, ark::FP32);
+    ark::Tensor output = model.all_reduce(input, 0, 4);
 
     UNITTEST_TRUE(model.verify());
 
@@ -59,7 +59,7 @@ ark::unittest::State test_model_op_all_reduce() {
     // "add_2;");
     UNITTEST_EQ(
         (*(node->consumers[1]->consumers.begin()))->ops[0]->result_tensors()[0],
-        output);
+        output.ref());
 
     return ark::unittest::SUCCESS;
 }

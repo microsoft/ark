@@ -10,8 +10,8 @@ namespace ark {
 ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
                                    ModelTensorRef output)
     : ModelOp("Embedding") {
-    check_null(input);
-    check_null(weight);
+    check_none(input);
+    check_none(weight);
     if (input->shape().ndims() > 3) {
         ERR(InvalidUsageError, "input shape ndims > 3: ", input->shape());
     }
@@ -67,10 +67,11 @@ nlohmann::ordered_json ModelOpEmbedding::default_config() const {
     return config;
 }
 
-ModelTensorRef Model::embedding(ModelTensorRef input, ModelTensorRef weight,
-                                ModelTensorRef output,
-                                const std::string &name) {
-    return impl_->create_op<ModelOpEmbedding>(name, input, weight, output)
+Tensor Model::embedding(Tensor input, Tensor weight, Tensor output,
+                        const std::string &name) {
+    return impl_
+        ->create_op<ModelOpEmbedding>(name, input.ref_, weight.ref_,
+                                      output.ref_)
         ->result_tensors()[0];
 }
 

@@ -36,10 +36,10 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int sid, int rank, int dst_rank,
     verify();
 }
 
-ModelTensorRef Model::send(ModelTensorRef input, int sid, int dst_rank,
-                           DimType bytes, const std::string &name) {
+Tensor Model::send(Tensor input, int sid, int dst_rank, DimType bytes,
+                   const std::string &name) {
     return impl_
-        ->create_op<ModelOpSend>(name, input, sid, rank_, dst_rank, bytes)
+        ->create_op<ModelOpSend>(name, input.ref_, sid, rank_, dst_rank, bytes)
         ->result_tensors()[0];
 }
 
@@ -55,9 +55,9 @@ ModelOpSendDone::ModelOpSendDone(ModelTensorRef input, int rank, int dst_rank)
     verify();
 }
 
-ModelTensorRef Model::send_done(ModelTensorRef input, int, int dst_rank,
-                                const std::string &name) {
-    return impl_->create_op<ModelOpSendDone>(name, input, rank_, dst_rank)
+Tensor Model::send_done(Tensor input, int, int dst_rank,
+                        const std::string &name) {
+    return impl_->create_op<ModelOpSendDone>(name, input.ref_, rank_, dst_rank)
         ->result_tensors()[0];
 }
 
@@ -90,10 +90,10 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int, int rank, int src_rank,
     verify();
 }
 
-ModelTensorRef Model::recv(int sid, int src_rank, DimType bytes,
-                           ModelTensorRef output, const std::string &name) {
+Tensor Model::recv(int sid, int src_rank, DimType bytes, Tensor output,
+                   const std::string &name) {
     return impl_
-        ->create_op<ModelOpRecv>(name, output, sid, rank_, src_rank, bytes)
+        ->create_op<ModelOpRecv>(name, output.ref_, sid, rank_, src_rank, bytes)
         ->result_tensors()[0];
 }
 

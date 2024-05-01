@@ -1,10 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/model.hpp"
-#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 template <typename FromType, typename ToType>
 void baseline_cast(std::vector<void *> &outputs,
@@ -49,8 +46,8 @@ void baseline_cast_to_byte(std::vector<void *> &outputs,
 
 ark::unittest::State test_cast_fp16_to_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
-    ark::ModelTensorRef out = m.cast(t, ark::FP32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+    ark::Tensor out = m.cast(t, ark::FP32);
 
     auto result = ark::op_test("cast_fp16_to_fp32", m, {t}, {out},
                                baseline_cast<ark::half_t, float>);
@@ -61,10 +58,10 @@ ark::unittest::State test_cast_fp16_to_fp32() {
 
 ark::unittest::State test_cast_fp16_to_int32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
-    ark::ModelTensorRef out = m.cast(t, ark::INT32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+    ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<ark::half_t> input_data(t->shape().size());
+    std::vector<ark::half_t> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = ark::half_t(int((i + 1) % 1000));
     }
@@ -79,8 +76,8 @@ ark::unittest::State test_cast_fp16_to_int32() {
 
 ark::unittest::State test_cast_fp32_to_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
-    ark::ModelTensorRef out = m.cast(t, ark::FP16);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+    ark::Tensor out = m.cast(t, ark::FP16);
 
     auto result = ark::op_test("cast_fp32_to_fp16", m, {t}, {out},
                                baseline_cast<float, ark::half_t>);
@@ -91,10 +88,10 @@ ark::unittest::State test_cast_fp32_to_fp16() {
 
 ark::unittest::State test_cast_fp32_to_int32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
-    ark::ModelTensorRef out = m.cast(t, ark::INT32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+    ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<float> input_data(t->shape().size());
+    std::vector<float> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = float((i + 1) % 1000);
     }
@@ -108,10 +105,10 @@ ark::unittest::State test_cast_fp32_to_int32() {
 
 ark::unittest::State test_cast_int32_to_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
-    ark::ModelTensorRef out = m.cast(t, ark::FP32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
+    ark::Tensor out = m.cast(t, ark::FP32);
 
-    std::vector<int> input_data(t->shape().size());
+    std::vector<int> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 1000;
     }
@@ -125,10 +122,10 @@ ark::unittest::State test_cast_int32_to_fp32() {
 
 ark::unittest::State test_cast_int32_to_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
-    ark::ModelTensorRef out = m.cast(t, ark::FP16);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
+    ark::Tensor out = m.cast(t, ark::FP16);
 
-    std::vector<int> input_data(t->shape().size());
+    std::vector<int> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 1000;
     }
@@ -143,10 +140,10 @@ ark::unittest::State test_cast_int32_to_fp16() {
 
 ark::unittest::State test_cast_byte_to_fp32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
-    ark::ModelTensorRef out = m.cast(t, ark::FP32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
+    ark::Tensor out = m.cast(t, ark::FP32);
 
-    std::vector<char> input_data(t->shape().size());
+    std::vector<char> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 256;
     }
@@ -165,10 +162,10 @@ ark::unittest::State test_cast_byte_to_fp32() {
 
 ark::unittest::State test_cast_byte_to_fp16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
-    ark::ModelTensorRef out = m.cast(t, ark::FP16);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
+    ark::Tensor out = m.cast(t, ark::FP16);
 
-    std::vector<char> input_data(t->shape().size());
+    std::vector<char> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 256;
     }
@@ -187,10 +184,10 @@ ark::unittest::State test_cast_byte_to_fp16() {
 
 ark::unittest::State test_cast_byte_to_int32() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
-    ark::ModelTensorRef out = m.cast(t, ark::INT32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
+    ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<char> input_data(t->shape().size());
+    std::vector<char> input_data(t.shape().size());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 256;
     }
@@ -209,8 +206,8 @@ ark::unittest::State test_cast_byte_to_int32() {
 
 ark::unittest::State test_cast_fp32_to_byte() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
-    ark::ModelTensorRef out = m.cast(t, ark::BYTE);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+    ark::Tensor out = m.cast(t, ark::BYTE);
 
     // For preventing optimize-out
     m.noop(t);
@@ -225,8 +222,8 @@ ark::unittest::State test_cast_fp32_to_byte() {
 
 ark::unittest::State test_cast_fp16_to_byte() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
-    ark::ModelTensorRef out = m.cast(t, ark::BYTE);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+    ark::Tensor out = m.cast(t, ark::BYTE);
 
     // For preventing optimize-out
     m.noop(t);
@@ -241,8 +238,8 @@ ark::unittest::State test_cast_fp16_to_byte() {
 
 ark::unittest::State test_cast_int32_to_byte() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
-    ark::ModelTensorRef out = m.cast(t, ark::BYTE);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
+    ark::Tensor out = m.cast(t, ark::BYTE);
 
     // For preventing optimize-out
     m.noop(t);
@@ -257,8 +254,8 @@ ark::unittest::State test_cast_int32_to_byte() {
 
 ark::unittest::State test_cast_bf16_to_float() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
-    ark::ModelTensorRef out = m.cast(t, ark::FP32);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+    ark::Tensor out = m.cast(t, ark::FP32);
 
     auto result = ark::op_test("cast_bf16_to_float", m, {t}, {out},
                                baseline_cast<ark::bfloat16_t, float>);
@@ -269,8 +266,8 @@ ark::unittest::State test_cast_bf16_to_float() {
 
 ark::unittest::State test_cast_float_to_bf16() {
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
-    ark::ModelTensorRef out = m.cast(t, ark::BF16);
+    ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+    ark::Tensor out = m.cast(t, ark::BF16);
 
     auto result = ark::op_test("cast_float_to_bf16", m, {t}, {out},
                                baseline_cast<float, ark::bfloat16_t>);
@@ -282,42 +279,41 @@ ark::unittest::State test_cast_float_to_bf16() {
 ark::unittest::State test_cast_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(1), ark::BYTE);
+        ark::Tensor t = m.tensor(ark::Dims(1), ark::BYTE);
         UNITTEST_THROW(m.cast(t, ark::FP32), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor(ark::Dims(4, 1), ark::BYTE);
+        ark::Tensor t0 = m.tensor(ark::Dims(4, 1), ark::BYTE);
         m.cast(t0, ark::FP32);  // ok
-        ark::ModelTensorRef t1 = m.tensor(ark::Dims(4, 1, 1), ark::BYTE);
+        ark::Tensor t1 = m.tensor(ark::Dims(4, 1, 1), ark::BYTE);
         m.cast(t1, ark::FP32);  // ok
-        ark::ModelTensorRef t2 = m.tensor(ark::Dims(4, 1, 1, 1), ark::BYTE);
+        ark::Tensor t2 = m.tensor(ark::Dims(4, 1, 1, 1), ark::BYTE);
         m.cast(t2, ark::FP32);  // ok
-        ark::ModelTensorRef t3 = m.tensor(ark::Dims(7, 1), ark::BYTE);
+        ark::Tensor t3 = m.tensor(ark::Dims(7, 1), ark::BYTE);
         UNITTEST_THROW(m.cast(t3, ark::FP32), ark::InvalidUsageError);
-        ark::ModelTensorRef t4 = m.tensor(ark::Dims(7, 1, 1), ark::BYTE);
+        ark::Tensor t4 = m.tensor(ark::Dims(7, 1, 1), ark::BYTE);
         UNITTEST_THROW(m.cast(t4, ark::FP32), ark::InvalidUsageError);
-        ark::ModelTensorRef t5 = m.tensor(ark::Dims(7, 1, 1, 1), ark::BYTE);
+        ark::Tensor t5 = m.tensor(ark::Dims(7, 1, 1, 1), ark::BYTE);
         UNITTEST_THROW(m.cast(t5, ark::FP32), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8, 1}, ark::BYTE);
+        ark::Tensor t0 = m.tensor({8, 1}, ark::BYTE);
         m.cast(t0, ark::FP32);  // ok
-        ark::ModelTensorRef t1 =
-            m.tensor({8, 1}, ark::BYTE, {9, 1}, {0, 0}, {3, 1});
+        ark::Tensor t1 = m.tensor({8, 1}, ark::BYTE, {9, 1}, {0, 0}, {3, 1});
         UNITTEST_THROW(m.cast(t1, ark::FP32), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8, 1}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({8, 1}, ark::INT32);
+        ark::Tensor t0 = m.tensor({8, 1}, ark::FP16);
+        ark::Tensor out = m.tensor({8, 1}, ark::INT32);
         UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t0 = m.tensor({8, 1}, ark::FP16);
-        ark::ModelTensorRef out = m.tensor({4, 1}, ark::FP32);
+        ark::Tensor t0 = m.tensor({8, 1}, ark::FP16);
+        ark::Tensor out = m.tensor({4, 1}, ark::FP32);
         UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;

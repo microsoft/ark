@@ -13,8 +13,8 @@
 
 // ark::unittest::State test_executor_scale() {
 //     ark::Model m;
-//     ark::ModelTensorRef input = m.tensor({32}, ark::FP32);
-//     ark::ModelTensorRef output = m.scale(input, 0.7);
+//     ark::Tensor input = m.tensor({32}, ark::FP32);
+//     ark::Tensor output = m.scale(input, 0.7);
 
 //     auto comp = m.compress();
 //     auto serialized = comp.serialize(2);

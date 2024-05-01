@@ -111,27 +111,29 @@ ModelOpByteCast::ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
     verify();
 }
 
-ModelTensorRef Model::cast(ModelTensorRef input, ModelDataType data_type,
-                           ModelTensorRef output, const std::string &name) {
-    check_null(input);
-    if (!output) {
-        if (input->data_type() == data_type) {
+Tensor Model::cast(Tensor input, ModelDataType data_type, Tensor output,
+                   const std::string &name) {
+    check_none(input);
+    if (output.is_none()) {
+        if (input.data_type() == data_type) {
             // Casting to the same type without the output tensor specified is
             // considered as an identity.
             return this->identity(input, {}, name);
-        } else if (data_type == BYTE || input->data_type() == BYTE) {
+        } else if (data_type == BYTE || input.data_type() == BYTE) {
             // Casting to/from BYTE without the output tensor specified is
             // handled by `ModelOpByteCast`.
             Dims new_shape, new_strides, new_offsets, new_pads;
-            byte_cast_helper(input, data_type, new_shape, new_strides,
+            byte_cast_helper(input.ref_, data_type, new_shape, new_strides,
                              new_offsets, new_pads);
             return impl_
-                ->create_op<ModelOpByteCast>(name, input, data_type, new_shape,
-                                             new_strides, new_offsets, new_pads)
+                ->create_op<ModelOpByteCast>(name, input.ref_, data_type,
+                                             new_shape, new_strides,
+                                             new_offsets, new_pads)
                 ->result_tensors()[0];
         }
     }
-    return impl_->create_op<ModelOpCast>(name, input, data_type, output)
+    return impl_
+        ->create_op<ModelOpCast>(name, input.ref_, data_type, output.ref_)
         ->result_tensors()[0];
 }
 

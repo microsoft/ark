@@ -23,8 +23,8 @@ void baseline_scale(std::vector<void *> &outputs,
 ark::unittest::State test_scale_fp32() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1), ark::FP32);
-        ark::ModelTensorRef out = m.scale(t, SCALE_FACTOR);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::FP32);
+        ark::Tensor out = m.scale(t, SCALE_FACTOR);
 
         auto result = ark::op_test("scale_fp32_small", m, {t}, {out},
                                    baseline_scale<float>);
@@ -32,8 +32,8 @@ ark::unittest::State test_scale_fp32() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
-        ark::ModelTensorRef out = m.scale(t, SCALE_FACTOR);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+        ark::Tensor out = m.scale(t, SCALE_FACTOR);
 
         auto result =
             ark::op_test("scale_fp32", m, {t}, {out}, baseline_scale<float>);
@@ -46,8 +46,8 @@ ark::unittest::State test_scale_fp32() {
 ark::unittest::State test_scale_fp16() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
-        ark::ModelTensorRef out = m.scale(t, SCALE_FACTOR);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
+        ark::Tensor out = m.scale(t, SCALE_FACTOR);
 
         auto result = ark::op_test("scale_fp16_small", m, {t}, {out},
                                    baseline_scale<ark::half_t>);
@@ -56,8 +56,8 @@ ark::unittest::State test_scale_fp16() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
-        ark::ModelTensorRef out = m.scale(t, SCALE_FACTOR);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+        ark::Tensor out = m.scale(t, SCALE_FACTOR);
 
         auto result = ark::op_test("scale_fp16", m, {t}, {out},
                                    baseline_scale<ark::half_t>);
@@ -70,8 +70,8 @@ ark::unittest::State test_scale_fp16() {
 ark::unittest::State test_scale_bf16() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1), ark::BF16);
-        ark::ModelTensorRef out = m.scale(t, SCALE_FACTOR);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::BF16);
+        ark::Tensor out = m.scale(t, SCALE_FACTOR);
 
         auto result = ark::op_test("scale_bf16_small", m, {t}, {out},
                                    baseline_scale<ark::bfloat16_t>);
@@ -80,8 +80,8 @@ ark::unittest::State test_scale_bf16() {
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.scale(t, SCALE_FACTOR);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+        ark::Tensor out = m.scale(t, SCALE_FACTOR);
 
         auto result = ark::op_test("scale_bf16", m, {t}, {out},
                                    baseline_scale<ark::bfloat16_t>);
@@ -94,14 +94,14 @@ ark::unittest::State test_scale_bf16() {
 ark::unittest::State test_scale_invalid() {
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
         UNITTEST_THROW(m.scale(t, 3, out), ark::InvalidUsageError);
     }
     {
         ark::Model m;
-        ark::ModelTensorRef t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
-        ark::ModelTensorRef out = m.tensor(ark::Dims(4, 4, 1024), ark::BF16);
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
+        ark::Tensor out = m.tensor(ark::Dims(4, 4, 1024), ark::BF16);
         UNITTEST_THROW(m.scale(t, 3, out), ark::InvalidUsageError);
     }
     return ark::unittest::SUCCESS;
@@ -111,8 +111,8 @@ ark::unittest::State test_scale_perf() {
     ark::DimType nelem = 8 * 1024 * 1024;
 
     ark::Model m;
-    ark::ModelTensorRef t = m.tensor({nelem}, ark::FP32);
-    ark::ModelTensorRef out = m.scale(t, 0.7);
+    ark::Tensor t = m.tensor({nelem}, ark::FP32);
+    ark::Tensor out = m.scale(t, 0.7);
 
     auto result =
         ark::op_test("scale_perf", m, {t}, {out}, baseline_scale<float>);

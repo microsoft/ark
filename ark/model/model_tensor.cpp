@@ -4,6 +4,7 @@
 #include "model_tensor.hpp"
 
 #include "logging.h"
+#include "model_data_type.hpp"
 
 namespace ark {
 
@@ -99,6 +100,14 @@ ModelTensor::ModelTensor(const ModelTensor &other) {
     pads_ = other.pads_;
     exported_ = other.exported_;
     imported_rank_ = other.imported_rank_;
+}
+
+size_t ModelTensor::shape_bytes() const {
+    return shape_.size() * data_type_->bytes();
+}
+
+size_t ModelTensor::strides_bytes() const {
+    return strides_.size() * data_type_->bytes();
 }
 
 bool ModelTensor::is_sequential() const {
