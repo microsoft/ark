@@ -4,14 +4,12 @@
 #ifndef ARK_TENSOR_HPP
 #define ARK_TENSOR_HPP
 
+#include <ark/data_type.hpp>
 #include <ark/dims.hpp>
 #include <ark/model_ref.hpp>
 #include <ostream>
 
 namespace ark {
-
-class ModelDataT;
-using ModelDataType = std::shared_ptr<ModelDataT>;
 
 class Tensor {
    protected:
@@ -41,10 +39,10 @@ class Tensor {
 
     Dims pads() const;
 
-    ModelDataType data_type() const;
+    const DataType &data_type() const;
 };
 
-const Tensor NoneTensor;
+const Tensor NullTensor;
 
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 

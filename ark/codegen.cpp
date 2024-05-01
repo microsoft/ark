@@ -5,6 +5,7 @@
 
 #include <set>
 
+#include "ark/data_type.hpp"
 #include "env.h"
 #include "file_io.h"
 #include "logging.h"
@@ -178,7 +179,7 @@ void CodeGenerator::Impl::plan_memory(const nlohmann::json &plan) {
     auto tensor_stride_bytes = [](const nlohmann::json &tns) {
         Dims strides(tns["Strides"].get<std::vector<DimType>>());
         size_t nelems = strides.nelems();
-        return nelems * ModelDataT::from_name(tns["DataType"])->bytes();
+        return nelems * DataType::from_name(tns["DataType"]).bytes();
     };
 
     auto retrieve_tensor_and_buffer_info = [&](const nlohmann::json &tensor,

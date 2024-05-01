@@ -204,17 +204,17 @@ nlohmann::ordered_json ModelOpMatmul::default_config() const {
     Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();
     auto result = result_tensors_[0];
     nlohmann::ordered_json config;
-    if (result->data_type() == FP32) {
+    if (result->data_type() == FP32.ref()) {
         config["NumWarps"] = 4;
         config["SramBytes"] = 49152;
         config["TileShapeMNK"] = {64, 64, 32};
         config["TilePadMNK"] = {64, 64, 32};
-    } else if (result->data_type() == FP16) {
+    } else if (result->data_type() == FP16.ref()) {
         config["NumWarps"] = 4;
         config["SramBytes"] = 98304;
         config["TileShapeMNK"] = {64, 64, 64};
         config["TilePadMNK"] = {64, 64, 64};
-    } else if (result->data_type() == BF16) {
+    } else if (result->data_type() == BF16.ref()) {
         config["NumWarps"] = 4;
         config["SramBytes"] = 98304;
         config["TileShapeMNK"] = {64, 64, 64};
@@ -234,7 +234,7 @@ Tensor Model::matmul(Tensor input, Tensor other, Tensor output,
                      bool trans_input, bool trans_other,
                      const std::string &name) {
     return impl_
-        ->create_op<ModelOpMatmul>(name, input.ref_, other.ref_, output.ref_,
+        ->create_op<ModelOpMatmul>(name, input.ref(), other.ref(), output.ref(),
                                    trans_input, trans_other)
         ->result_tensors()[0];
 }

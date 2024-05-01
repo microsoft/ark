@@ -39,7 +39,7 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int sid, int rank, int dst_rank,
 Tensor Model::send(Tensor input, int sid, int dst_rank, DimType bytes,
                    const std::string &name) {
     return impl_
-        ->create_op<ModelOpSend>(name, input.ref_, sid, rank_, dst_rank, bytes)
+        ->create_op<ModelOpSend>(name, input.ref(), sid, rank_, dst_rank, bytes)
         ->result_tensors()[0];
 }
 
@@ -57,7 +57,7 @@ ModelOpSendDone::ModelOpSendDone(ModelTensorRef input, int rank, int dst_rank)
 
 Tensor Model::send_done(Tensor input, int, int dst_rank,
                         const std::string &name) {
-    return impl_->create_op<ModelOpSendDone>(name, input.ref_, rank_, dst_rank)
+    return impl_->create_op<ModelOpSendDone>(name, input.ref(), rank_, dst_rank)
         ->result_tensors()[0];
 }
 
@@ -69,7 +69,7 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int, int rank, int src_rank,
             LOG(ERROR, "receive bytes cannot be 0");
         }
         output = std::make_shared<ModelTensor>(
-            BYTE, std::make_shared<ModelBuffer>(), Dims{bytes});
+            BYTE.ref(), std::make_shared<ModelBuffer>(), Dims{bytes});
     }
     output->set_exported();
     DimType max_bytes = output->shape().nelems() * output->data_type()->bytes();
@@ -93,7 +93,8 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int, int rank, int src_rank,
 Tensor Model::recv(int sid, int src_rank, DimType bytes, Tensor output,
                    const std::string &name) {
     return impl_
-        ->create_op<ModelOpRecv>(name, output.ref_, sid, rank_, src_rank, bytes)
+        ->create_op<ModelOpRecv>(name, output.ref(), sid, rank_, src_rank,
+                                 bytes)
         ->result_tensors()[0];
 }
 

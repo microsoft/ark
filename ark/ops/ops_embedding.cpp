@@ -10,8 +10,8 @@ namespace ark {
 ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
                                    ModelTensorRef output)
     : ModelOp("Embedding") {
-    check_none(input);
-    check_none(weight);
+    check_null(input);
+    check_null(weight);
     if (input->shape().ndims() > 3) {
         ERR(InvalidUsageError, "input shape ndims > 3: ", input->shape());
     }

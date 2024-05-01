@@ -49,7 +49,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
         // Set random data.
         for (auto t : inputs) {
             auto buf = std::make_shared<std::vector<char>>(
-                t.shape().nelems() * t.data_type()->bytes());
+                t.shape().nelems() * t.data_type().bytes());
 
             if (t.data_type() == FP32) {
                 float *data = reinterpret_cast<float *>(buf->data());
@@ -78,7 +78,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                 }
             } else {
                 ERR(UnitTestError,
-                    "Unsupported data type: ", t.data_type()->type_name());
+                    "Unsupported data type: ", t.data_type().name());
             }
             exe.tensor_write(t, *buf);
             inputs_data_storages.push_back(buf);
@@ -89,7 +89,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
         UNITTEST_EQ(inputs_data.size(), inputs.size());
         for (size_t i = 0; i < inputs.size(); i++) {
             std::vector<char> buf(inputs[i].shape().nelems() *
-                                  inputs[i].data_type()->bytes());
+                                  inputs[i].data_type().bytes());
             std::memcpy(buf.data(), inputs_data[i], buf.size());
             exe.tensor_write(inputs[i], buf);
             inputs_data_refs.emplace_back(inputs_data[i]);
@@ -107,7 +107,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
     std::vector<std::shared_ptr<std::vector<char>>> res;
     for (auto t : outputs) {
         auto buf = std::make_shared<std::vector<char>>(t.shape().nelems() *
-                                                       t.data_type()->bytes());
+                                                       t.data_type().bytes());
         exe.tensor_read(t, *buf);
         res.push_back(buf);
     }
@@ -115,7 +115,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
     std::vector<std::shared_ptr<std::vector<char>>> gt;
     for (auto t : outputs) {
         auto buf = std::make_shared<std::vector<char>>(t.shape().nelems() *
-                                                       t.data_type()->bytes());
+                                                       t.data_type().bytes());
         gt.push_back(buf);
     }
 
@@ -176,7 +176,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                                   outputs[i].shape().dims4(), print_on_error);
         } else {
             ERR(UnitTestError,
-                "Unsupported data type: ", outputs[i].data_type()->type_name());
+                "Unsupported data type: ", outputs[i].data_type().name());
         }
         result.mse.push_back(comp.mse);
         result.max_diff.push_back(comp.max_diff);

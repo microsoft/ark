@@ -38,7 +38,7 @@ ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
                                    const std::vector<int64_t> &permutation,
                                    ModelTensorRef output)
     : ModelOp("Transpose") {
-    check_none(input);
+    check_null(input);
     Dims perm(permutation);
     if (output) {
         check_match_data_type(input, output);

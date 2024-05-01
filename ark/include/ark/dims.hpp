@@ -60,10 +60,6 @@ class Dims {
     // Erase the dimension at the given index and return the erased dimension.
     DimType erase(int idx);
 
-    std::string serialize(int indent = -1) const;
-
-    static Dims deserialize(const std::string &serialized);
-
     DimType &operator[](int idx);
 
     const DimType &operator[](int idx) const;

@@ -3,6 +3,7 @@
 
 #include "ark/tensor.hpp"
 
+#include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 
 namespace ark {
@@ -42,11 +43,11 @@ Dims Tensor::pads() const {
     return Dims();
 }
 
-ModelDataType Tensor::data_type() const {
+const DataType &Tensor::data_type() const {
     if (ref_) {
-        return ref_->data_type();
+        return DataType::from_name(ref_->data_type()->type_name());
     }
-    return nullptr;
+    return NONE;
 }
 
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {

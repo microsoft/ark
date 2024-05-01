@@ -215,7 +215,7 @@ ark::unittest::State test_reshape_invalid() {
     {
         ark::Model model;
         std::vector<ark::DimType> new_shape = {64, 256};
-        UNITTEST_THROW(model.reshape(ark::NoneTensor, new_shape),
+        UNITTEST_THROW(model.reshape(ark::NullTensor, new_shape),
                        ark::InvalidUsageError);
     }
     {
@@ -256,7 +256,7 @@ ark::unittest::State test_reshape_invalid() {
     }
     {
         ark::Model model;
-        UNITTEST_THROW(model.reshape(ark::NoneTensor, {64, 256}),
+        UNITTEST_THROW(model.reshape(ark::NullTensor, {64, 256}),
                        ark::InvalidUsageError);
     }
     {

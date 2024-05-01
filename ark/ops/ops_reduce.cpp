@@ -11,7 +11,7 @@ namespace ark {
 ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
                              int axis, bool keepdims, ModelTensorRef output)
     : ModelOp(type_name) {
-    check_none(input);
+    check_null(input);
     Dims reduced_shape{input->shape()};
     if (axis < 0) {
         axis += reduced_shape.ndims();

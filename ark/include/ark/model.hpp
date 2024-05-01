@@ -4,6 +4,7 @@
 #ifndef ARK_MODEL_HPP
 #define ARK_MODEL_HPP
 
+#include <ark/data_type.hpp>
 #include <ark/dims.hpp>
 #include <ark/model_graph.hpp>
 #include <ark/model_ref.hpp>
@@ -12,19 +13,6 @@
 #include <vector>
 
 namespace ark {
-
-class ModelDataT;
-using ModelDataType = std::shared_ptr<ModelDataT>;
-
-extern const ModelDataType NONE;
-extern const ModelDataType FP32;
-extern const ModelDataType FP16;
-extern const ModelDataType BF16;
-extern const ModelDataType INT32;
-extern const ModelDataType UINT32;
-extern const ModelDataType INT8;
-extern const ModelDataType UINT8;
-extern const ModelDataType BYTE;
 
 class Model : public ModelGraph {
    private:
@@ -75,7 +63,7 @@ class Model : public ModelGraph {
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
-    Tensor tensor(const Dims &shape, ModelDataType data_type,
+    Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
                   const Dims &pads = {}, bool exported = false,
                   int imported_rank = -1, const std::string &name = "");
@@ -111,24 +99,24 @@ class Model : public ModelGraph {
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
     Tensor reduce_sum(Tensor input, int axis, bool keepdims = true,
-                      Tensor output = NoneTensor, const std::string &name = "");
+                      Tensor output = NullTensor, const std::string &name = "");
     Tensor reduce_mean(Tensor input, int axis, bool keepdims = true,
-                       Tensor output = NoneTensor,
+                       Tensor output = NullTensor,
                        const std::string &name = "");
     Tensor reduce_max(Tensor input, int axis, bool keepdims = true,
-                      Tensor output = NoneTensor, const std::string &name = "");
+                      Tensor output = NullTensor, const std::string &name = "");
     // Applies layer normalization to the `input` tensor and returns the
     // normalized tensor as `output`.
-    Tensor layernorm(Tensor input, Tensor output = NoneTensor,
+    Tensor layernorm(Tensor input, Tensor output = NullTensor,
                      const std::string &name = "");
     // Transposes the `input` tensor according to the given `permutation`.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
     Tensor transpose(Tensor input, const std::vector<int64_t> &permutation,
-                     Tensor output = NoneTensor, const std::string &name = "");
+                     Tensor output = NullTensor, const std::string &name = "");
     // Performs matrix multiplication between the `input` tensor and another
     // `other` tensor, storing the result in `output`.
-    Tensor matmul(Tensor input, Tensor other, Tensor output = NoneTensor,
+    Tensor matmul(Tensor input, Tensor other, Tensor output = NullTensor,
                   bool trans_input = false, bool trans_other = false,
                   const std::string &name = "");
     // Implements the 'im2col' method for 2D convolution layers, which takes an
@@ -137,59 +125,59 @@ class Model : public ModelGraph {
     Tensor im2col(Tensor input, int kernel_height, int kernel_width,
                   int stride_height, int stride_width, int pad_height,
                   int pad_width, int dilation_height, int dilation_width,
-                  Tensor output = NoneTensor, const std::string &name = "");
+                  Tensor output = NullTensor, const std::string &name = "");
     // Applies max-pooling on the `input` tensor using `kernel_size` and
     // `stride`, reducing its spatial size. The output shape is calculated based
     // on the input tensor's shape and the stride value as follows: {is[0],
     // (is[1] + stride - 1) / stride, (is[2] + stride - 1) / stride, is[3]},
     // where 'is' represents the input tensor's shape.
     Tensor max_pool(Tensor input, DimType kernel_size, DimType stride,
-                    Tensor output = NoneTensor, const std::string &name = "");
+                    Tensor output = NullTensor, const std::string &name = "");
     // Multiplies the `input` tensor by a scalar `val`, element-wise.
-    Tensor scale(Tensor input, float val, Tensor output = NoneTensor,
+    Tensor scale(Tensor input, float val, Tensor output = NullTensor,
                  const std::string &name = "");
     // Calculates the exponential of the `input` tensor, element-wise.
-    Tensor exp(Tensor input, Tensor output = NoneTensor,
+    Tensor exp(Tensor input, Tensor output = NullTensor,
                const std::string &name = "");
     // Calculates the square root of the `input` tensor, element-wise.
-    Tensor sqrt(Tensor input, Tensor output = NoneTensor,
+    Tensor sqrt(Tensor input, Tensor output = NullTensor,
                 const std::string &name = "");
     // Calculates the reverse square root of the `input` tensor, element-wise.
-    Tensor rsqrt(Tensor input, Tensor output = NoneTensor,
+    Tensor rsqrt(Tensor input, Tensor output = NullTensor,
                  const std::string &name = "");
     // ReLU activation
-    Tensor relu(Tensor input, Tensor output = NoneTensor,
+    Tensor relu(Tensor input, Tensor output = NullTensor,
                 const std::string &name = "");
     // Copy the `input` tensor to `output` tensor
-    Tensor copy(Tensor input, Tensor output = NoneTensor,
+    Tensor copy(Tensor input, Tensor output = NullTensor,
                 const std::string &name = "");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.
-    Tensor gelu(Tensor input, Tensor output = NoneTensor,
+    Tensor gelu(Tensor input, Tensor output = NullTensor,
                 const std::string &name = "");
     // Sigmoid activation
-    Tensor sigmoid(Tensor input, Tensor output = NoneTensor,
+    Tensor sigmoid(Tensor input, Tensor output = NullTensor,
                    const std::string &name = "");
     // Performs rotary position embedding (RoPE) on the `input` tensor
-    Tensor rope(Tensor input, Tensor other, Tensor output = NoneTensor,
+    Tensor rope(Tensor input, Tensor other, Tensor output = NullTensor,
                 const std::string &name = "");
 
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
-    Tensor add(Tensor input, Tensor other, Tensor output = NoneTensor,
+    Tensor add(Tensor input, Tensor other, Tensor output = NullTensor,
                const std::string &name = "");
     // Performs an element-wise subtraction operator between the `input` tensor
     // and the `other` tensor
-    Tensor sub(Tensor input, Tensor other, Tensor output = NoneTensor,
+    Tensor sub(Tensor input, Tensor other, Tensor output = NullTensor,
                const std::string &name = "");
     // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
-    Tensor mul(Tensor input, Tensor other, Tensor output = NoneTensor,
+    Tensor mul(Tensor input, Tensor other, Tensor output = NullTensor,
                const std::string &name = "");
     // Performs an element-wise division operator between the `input`
     // tensor and the `other` tensor,
-    Tensor div(Tensor input, Tensor other, Tensor output = NoneTensor,
+    Tensor div(Tensor input, Tensor other, Tensor output = NullTensor,
                const std::string &name = "");
     /// Sends a tensor to a destination rank (@p dst_rank). Multiple tensors can
     /// be sent to the same rank,so an identifier `id` is required to
@@ -212,7 +200,7 @@ class Model : public ModelGraph {
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
     Tensor recv(int sid, int src_rank, DimType bytes = 0,
-                Tensor output = NoneTensor, const std::string &name = "");
+                Tensor output = NullTensor, const std::string &name = "");
     //
     Tensor put_packet(Tensor input, Tensor local_tmp_buf, Tensor recv_buf,
                       int id, int rank, int dst_rank, size_t dst_offset,
@@ -221,7 +209,7 @@ class Model : public ModelGraph {
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
-                      Tensor output = NoneTensor, const std::string &name = "");
+                      Tensor output = NullTensor, const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each
@@ -230,11 +218,11 @@ class Model : public ModelGraph {
                                    const std::vector<Tensor> &output = {},
                                    const std::string &name = "");
     /// Embedding layer.
-    Tensor embedding(Tensor input, Tensor weight, Tensor output = NoneTensor,
+    Tensor embedding(Tensor input, Tensor weight, Tensor output = NullTensor,
                      const std::string &name = "");
     /// Tensor type casting.
-    Tensor cast(Tensor input, ModelDataType data_type,
-                Tensor output = NoneTensor, const std::string &name = "");
+    Tensor cast(Tensor input, const DataType &data_type,
+                Tensor output = NullTensor, const std::string &name = "");
 
     // sync across multi devices
     Tensor device_sync(Tensor input, int npeers, const std::string &name = "");

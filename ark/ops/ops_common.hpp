@@ -15,15 +15,15 @@
 
 namespace ark {
 
-void check_none(Tensor tensor);
+void check_null(ModelTensorRef tensor);
 
-void check_match_data_type(Tensor t, ModelDataType dt);
+void check_match_data_type(ModelTensorRef t, ModelDataType dt);
 
-void check_match_data_type(Tensor a, Tensor b);
+void check_match_data_type(ModelTensorRef a, ModelTensorRef b);
 
-void check_match_shape(Tensor a, Tensor b);
+void check_match_shape(ModelTensorRef a, ModelTensorRef b);
 
-void check_match_shape(Tensor tensor, const Dims &shape);
+void check_match_shape(ModelTensorRef tensor, const Dims &shape);
 
 /// Return the output shape of broadcasting between two shapes.
 /// Follow NumPy rules.
@@ -32,7 +32,7 @@ void check_match_shape(Tensor tensor, const Dims &shape);
 /// @param dims2 The second shape.
 Dims broadcast_shape(const Dims &dims1, const Dims &dims2);
 
-void check_broadcast_shape(Tensor from, Tensor to);
+void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to);
 
 std::string tolower(const std::string &str);
 

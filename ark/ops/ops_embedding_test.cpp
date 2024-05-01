@@ -44,7 +44,7 @@ ark::unittest::State test_embedding() {
     const int num_emb = 100;
     const int emb_dim = 4096;
 
-    ark::ModelDataType weight_type;
+    ark::DataType weight_type;
     if (std::is_same<T, float>::value) {
         weight_type = ark::FP32;
     } else {

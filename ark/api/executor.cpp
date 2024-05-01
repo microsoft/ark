@@ -44,9 +44,9 @@ static void atomicStoreRelaxed(int *ptr, int val) {
 namespace ark {
 
 ///
-void tensor_to_data(const int8_t *tensor, int8_t *data, const Dims &shape,
-                    const Dims &strides, const Dims &offsets,
-                    size_t elem_bytes) {
+static void tensor_to_data(const int8_t *tensor, int8_t *data,
+                           const Dims &shape, const Dims &strides,
+                           const Dims &offsets, size_t elem_bytes) {
     auto sh = shape;
     auto st = strides;
     auto of = offsets;
@@ -88,9 +88,9 @@ void tensor_to_data(const int8_t *tensor, int8_t *data, const Dims &shape,
 }
 
 ///
-void data_to_tensor(int8_t *tensor, const int8_t *data, const Dims &shape,
-                    const Dims &strides, const Dims &offsets,
-                    size_t elem_bytes) {
+static void data_to_tensor(int8_t *tensor, const int8_t *data,
+                           const Dims &shape, const Dims &strides,
+                           const Dims &offsets, size_t elem_bytes) {
     auto sh = shape;
     auto st = strides;
     auto of = offsets;
@@ -342,7 +342,7 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data,
         ERR(NotFoundError, "Tried to read an unknown tensor (id=", tensor.id(),
             ").");
     }
-    if (bytes < tensor.shape().nelems() * tensor.data_type()->bytes()) {
+    if (bytes < tensor.shape().nelems() * tensor.data_type().bytes()) {
         ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
     }
     void *src = buffer_->ref(tensor_info.offset);
@@ -357,7 +357,7 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data,
         copy_stream_->sync();
         tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
                        tensor.shape(), tensor.strides(), tensor.offsets(),
-                       tensor.data_type()->bytes());
+                       tensor.data_type().bytes());
     }
 }
 
@@ -370,7 +370,7 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
         ERR(NotFoundError,
             "Tried to write on an unknown tensor (id=", tensor.id(), ").");
     }
-    if (bytes < tensor.shape().nelems() * tensor.data_type()->bytes()) {
+    if (bytes < tensor.shape().nelems() * tensor.data_type().bytes()) {
         ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
     }
     void *dst = buffer_->ref(tensor_info.offset);
@@ -384,7 +384,7 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
         copy_stream_->sync();
         data_to_tensor(tensor_host.data(), static_cast<const int8_t *>(data),
                        tensor.shape(), tensor.strides(), tensor.offsets(),
-                       tensor.data_type()->bytes());
+                       tensor.data_type().bytes());
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_info.bytes,
                             gpuMemcpyHostToDevice, copy_stream_->get()));
     }

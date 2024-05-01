@@ -22,11 +22,9 @@ class ModelDataT : public NamedT {
 
     ModelDataT(const ModelDataT &) = default;
 
-    const std::string &type_str() const { return type_str_; }
+    const std::string &type_str() const;
 
-    size_t bytes() const { return bytes_; }
-
-    static const ModelDataType from_name(const std::string &type_name);
+    size_t bytes() const;
 
    private:
     std::string type_str_;

@@ -24,7 +24,7 @@ ModelOpCast::ModelOpCast(ModelTensorRef input, ModelDataType data_type,
 static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                              Dims &new_shape, Dims &new_strides,
                              Dims &new_offsets, Dims &new_pads) {
-    if (input->data_type() == BYTE) {
+    if (input->data_type() == BYTE.ref()) {
         if (input->shape_bytes() < data_type->bytes()) {
             ERR(InvalidUsageError, "input tensor is too small to be casted to ",
                 data_type);
@@ -86,7 +86,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
         if (new_pads[last_dim] > 1) {
             new_pads[last_dim] /= data_type->bytes();
         }
-    } else if (data_type == BYTE) {
+    } else if (data_type == BYTE.ref()) {
         new_shape = input->shape();
         new_strides = input->strides();
         new_offsets = input->offsets();
@@ -111,9 +111,9 @@ ModelOpByteCast::ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
     verify();
 }
 
-Tensor Model::cast(Tensor input, ModelDataType data_type, Tensor output,
+Tensor Model::cast(Tensor input, const DataType &data_type, Tensor output,
                    const std::string &name) {
-    check_none(input);
+    check_null(input.ref());
     if (output.is_none()) {
         if (input.data_type() == data_type) {
             // Casting to the same type without the output tensor specified is
@@ -123,17 +123,18 @@ Tensor Model::cast(Tensor input, ModelDataType data_type, Tensor output,
             // Casting to/from BYTE without the output tensor specified is
             // handled by `ModelOpByteCast`.
             Dims new_shape, new_strides, new_offsets, new_pads;
-            byte_cast_helper(input.ref_, data_type, new_shape, new_strides,
-                             new_offsets, new_pads);
+            byte_cast_helper(input.ref(), data_type.ref(), new_shape,
+                             new_strides, new_offsets, new_pads);
             return impl_
-                ->create_op<ModelOpByteCast>(name, input.ref_, data_type,
+                ->create_op<ModelOpByteCast>(name, input.ref(), data_type.ref(),
                                              new_shape, new_strides,
                                              new_offsets, new_pads)
                 ->result_tensors()[0];
         }
     }
     return impl_
-        ->create_op<ModelOpCast>(name, input.ref_, data_type, output.ref_)
+        ->create_op<ModelOpCast>(name, input.ref(), data_type.ref(),
+                                 output.ref())
         ->result_tensors()[0];
 }
 

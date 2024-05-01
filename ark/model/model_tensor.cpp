@@ -3,6 +3,7 @@
 
 #include "model_tensor.hpp"
 
+#include "ark/data_type.hpp"
 #include "logging.h"
 #include "model_data_type.hpp"
 
@@ -165,7 +166,7 @@ std::shared_ptr<ModelTensor> ModelTensor::deserialize(
             "ModelTensor deserialization failed: missing Id");
     }
     auto ret = std::make_shared<ModelTensor>(
-        ModelDataT::from_name(serialized["DataType"]),
+        DataType::from_name(serialized["DataType"]).ref(),
         std::make_shared<ModelBuffer>(serialized["BufferId"]),
         serialized["Shape"].get<std::vector<DimType>>(),
         serialized["Strides"].get<std::vector<DimType>>(),

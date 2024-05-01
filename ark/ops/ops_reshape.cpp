@@ -164,7 +164,7 @@ Tensor Model::reshape(Tensor input, const std::initializer_list<DimType> &shape,
 // converted to a scalar.
 Tensor Model::reshape(Tensor input, const std::vector<DimType> &shape,
                       bool allowzero, const std::string &name) {
-    check_none(input);
+    check_null(input.ref());
     // Infer -1 dimension if exists
     std::vector<DimType> inferred_shape;
     int neg_idx = -1;
