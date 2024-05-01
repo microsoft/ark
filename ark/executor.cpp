@@ -424,9 +424,9 @@ DefaultExecutor::DefaultExecutor(const Model &model, int gpu_id,
           model.rank(), model.world_size(),
           (gpu_id < 0) ? (model.rank() % get_env().num_ranks_per_host) : gpu_id,
           name,
-          Planner(model, (gpu_id < 0)
-                             ? (model.rank() % get_env().num_ranks_per_host)
-                             : gpu_id)
+          DefaultPlanner(model, (gpu_id < 0) ? (model.rank() %
+                                                get_env().num_ranks_per_host)
+                                             : gpu_id)
               .plan()) {}
 
 }  // namespace ark

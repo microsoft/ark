@@ -11,17 +11,17 @@
 
 namespace ark {
 
-class Planner::Impl {
+class DefaultPlanner::Impl {
    public:
     Impl(const Model &model, int gpu_id);
 
    protected:
-    friend class Planner;
+    friend class DefaultPlanner;
 
     nlohmann::ordered_json plan_;
 };
 
-Planner::Impl::Impl(const Model &model, int gpu_id) {
+DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
     const auto &gpu_info = GpuManager::get_instance(gpu_id)->info();
     size_t num_sm = gpu_info.num_sm;
     nlohmann::ordered_json task_infos;
@@ -73,12 +73,12 @@ Planner::Impl::Impl(const Model &model, int gpu_id) {
     plan_["ProcessorGroups"] = processor_groups;
 }
 
-Planner::Planner(const Model &model, int gpu_id)
+DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
     : impl_(std::make_unique<Impl>(model, gpu_id)) {}
 
-Planner::~Planner() = default;
+DefaultPlanner::~DefaultPlanner() = default;
 
-std::string Planner::plan(int indent) const {
+std::string DefaultPlanner::plan(int indent) const {
     return impl_->plan_.dump(indent);
 }
 

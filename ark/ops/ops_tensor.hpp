@@ -4,7 +4,6 @@
 #ifndef ARK_OPS_TENSOR_HPP_
 #define ARK_OPS_TENSOR_HPP_
 
-#include "ark/dims.hpp"
 #include "ark/model.hpp"
 #include "model/model_op.hpp"
 

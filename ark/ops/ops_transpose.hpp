@@ -4,8 +4,6 @@
 #ifndef ARK_OPS_TRANSPOSE_HPP_
 #define ARK_OPS_TRANSPOSE_HPP_
 
-#include "ark/dims.hpp"
-#include "ark/model.hpp"
 #include "model/model_op.hpp"
 
 namespace ark {
@@ -13,7 +11,8 @@ namespace ark {
 class ModelOpTranspose : public ModelOp {
    public:
     ModelOpTranspose() = default;
-    ModelOpTranspose(ModelTensorRef input, const Dims &permutation,
+    ModelOpTranspose(ModelTensorRef input,
+                     const std::vector<int64_t> &permutation,
                      ModelTensorRef output);
 
     std::string impl_name(const nlohmann::json &config) const override;

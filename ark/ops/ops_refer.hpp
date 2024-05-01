@@ -4,9 +4,6 @@
 #ifndef ARK_OPS_REFER_HPP_
 #define ARK_OPS_REFER_HPP_
 
-#include "ark/dims.hpp"
-#include "ark/model.hpp"
-#include "model/model_op.hpp"
 #include "ops_tensor.hpp"
 
 namespace ark {

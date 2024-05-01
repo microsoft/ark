@@ -4,8 +4,6 @@
 #ifndef ARK_RANDOM_HPP
 #define ARK_RANDOM_HPP
 
-#include <string>
-
 namespace ark {
 
 // set random seed

@@ -116,10 +116,6 @@ class Model : public ModelGraph {
     // Performs reduction along the `axis` of the `input` tensor and stores the
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
-    template <typename ReduceOpType>
-    ModelTensorRef reduce(ModelTensorRef input, int axis, bool keepdims = true,
-                          ModelTensorRef output = nullptr,
-                          const std::string &name = "");
     ModelTensorRef reduce_sum(ModelTensorRef input, int axis,
                               bool keepdims = true,
                               ModelTensorRef output = nullptr,
@@ -140,7 +136,8 @@ class Model : public ModelGraph {
     // Transposes the `input` tensor according to the given `permutation`.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
-    ModelTensorRef transpose(ModelTensorRef input, const Dims &permutation,
+    ModelTensorRef transpose(ModelTensorRef input,
+                             const std::vector<int64_t> &permutation,
                              ModelTensorRef output = nullptr,
                              const std::string &name = "");
     // Performs matrix multiplication between the `input` tensor and another
@@ -169,10 +166,6 @@ class Model : public ModelGraph {
     ModelTensorRef scale(ModelTensorRef input, float val,
                          ModelTensorRef output = nullptr,
                          const std::string &name = "");
-    //
-    template <typename MathOpType>
-    ModelTensorRef math(ModelTensorRef input, ModelTensorRef output = nullptr,
-                        const std::string &name = "");
     // Calculates the exponential of the `input` tensor, element-wise.
     ModelTensorRef exp(ModelTensorRef input, ModelTensorRef output = nullptr,
                        const std::string &name = "");

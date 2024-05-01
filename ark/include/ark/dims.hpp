@@ -21,12 +21,19 @@ constexpr DimType DIMS_LEN = 4;
 // Up-to-`DIMS_LEN`-dimensional vector.
 class Dims {
    private:
-    DimType data_[DIMS_LEN];
+    std::vector<DimType> data_;
 
    public:
-    // Construct with given four dimensions.
-    Dims(DimType d0 = NO_DIM, DimType d1 = NO_DIM, DimType d2 = NO_DIM,
-         DimType d3 = NO_DIM);
+    Dims();
+
+    Dims(DimType d0);
+
+    Dims(DimType d0, DimType d1);
+
+    Dims(DimType d0, DimType d1, DimType d2);
+
+    Dims(DimType d0, DimType d1, DimType d2, DimType d3);
+
     // Copy another Dims object.
     Dims(const Dims &dims_);
     // Construct from a vector. If the vector is shorter than DIMS_LEN, put
@@ -44,10 +51,12 @@ class Dims {
     bool is_zeros() const;
     // Return true if the dimensions are empty.
     bool is_no_dim() const;
+    //
+    bool has_negative() const;
     // Return true if the dimensions are invalid.
     bool is_invalid() const;
     // Return a vector of valid dimensions.
-    std::vector<DimType> vector() const;
+    const std::vector<DimType> &vector() const;
     // Insert a dimension at the given index.
     void insert(int idx, DimType dim);
     // Erase the dimension at the given index and return the erased dimension.

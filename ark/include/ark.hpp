@@ -11,7 +11,6 @@
 #define ARK_PATCH 0
 #define ARK_VERSION (ARK_MAJOR * 10000 + ARK_MINOR * 100 + ARK_PATCH)
 
-#include "ark/dims.hpp"
 // #include "ark/error.hpp"
 // #include "ark/executor.hpp"
 #include "ark/model.hpp"

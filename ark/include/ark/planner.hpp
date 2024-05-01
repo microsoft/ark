@@ -11,11 +11,11 @@ namespace ark {
 
 class Model;
 
-class Planner {
+class DefaultPlanner {
    public:
-    Planner(const Model &model, int gpu_id);
+    DefaultPlanner(const Model &model, int gpu_id);
 
-    ~Planner();
+    ~DefaultPlanner();
 
     std::string plan(int indent = -1) const;
 

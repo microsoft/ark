@@ -262,18 +262,18 @@ ark::unittest::State test_reshape_invalid() {
     }
     {
         ark::Model model;
-        UNITTEST_THROW(model.reshape(nullptr, ark::Dims(64, 256)),
+        UNITTEST_THROW(model.reshape(nullptr, {64, 256}),
                        ark::InvalidUsageError);
     }
     {
         ark::Model model;
         ark::ModelTensorRef tns = model.tensor({64, 256}, ark::FP32);
-        UNITTEST_THROW(model.reshape(tns, ark::Dims()), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, {}), ark::InvalidUsageError);
     }
     {
         ark::Model model;
         ark::ModelTensorRef tns = model.tensor({64, 256}, ark::FP32, {64, 512});
-        UNITTEST_THROW(model.reshape(tns, ark::Dims(16384)), ark::ModelError);
+        UNITTEST_THROW(model.reshape(tns, {16384}), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

@@ -37,45 +37,46 @@ static Dims permuted_shape(const Dims &shape, const Dims &permutation) {
 }
 
 ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
-                                   const Dims &permutation,
+                                   const std::vector<int64_t> &permutation,
                                    ModelTensorRef output)
     : ModelOp("Transpose") {
     check_null(input);
+    Dims perm(permutation);
     if (output) {
         check_match_data_type(input, output);
     } else {
         output = std::make_shared<ModelTensor>(
             input->data_type(), std::make_shared<ModelBuffer>(),
-            permuted_shape(input->shape(), permutation));
+            permuted_shape(input->shape(), perm));
     }
     int ndims = input->shape().ndims();
-    if (ndims != permutation.ndims()) {
+    if (ndims != perm.ndims()) {
         ERR(InvalidUsageError,
             "The number of dimensions of permutation should be the same as "
             "the number of dimensions of input. Given input shape: ",
-            input->shape(), ", permutation: ", permutation);
+            input->shape(), ", permutation: ", perm);
     }
     std::vector<int> count(ndims, 0);
     for (int i = 0; i < ndims; ++i) {
-        if (permutation[i] >= ndims) {
+        if (perm[i] >= ndims) {
             ERR(InvalidUsageError,
                 "Each value in permutation should be less than the number of "
                 "input dimensions. Given permutation: ",
-                permutation);
+                perm);
         }
-        if (count[permutation[i]] > 0) {
+        if (count[perm[i]] > 0) {
             ERR(InvalidUsageError,
                 "Each value in permutation should be unique. Given "
                 "permutation: ",
-                permutation);
+                perm);
         }
-        count[permutation[i]]++;
+        count[perm[i]]++;
     }
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
     read_tensors_ = {input};
     write_tensors_ = {output};
     result_tensors_ = {result};
-    args_.emplace("Permutation", permutation);
+    args_.emplace("Permutation", perm);
     verify();
 }
 
@@ -120,7 +121,8 @@ nlohmann::ordered_json ModelOpTranspose::default_config() const {
     return config;
 }
 
-ModelTensorRef Model::transpose(ModelTensorRef input, const Dims &permutation,
+ModelTensorRef Model::transpose(ModelTensorRef input,
+                                const std::vector<int64_t> &permutation,
                                 ModelTensorRef output,
                                 const std::string &name) {
     return impl_->create_op<ModelOpTranspose>(name, input, permutation, output)

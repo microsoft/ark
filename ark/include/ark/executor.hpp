@@ -54,13 +54,13 @@ class Executor {
                      data.size() * sizeof(T));
     }
 
-   private:
     void tensor_read(const ModelTensorRef tensor, void *data,
                      size_t bytes) const;
 
     void tensor_write(const ModelTensorRef tensor, const void *data,
                       size_t bytes) const;
 
+   private:
     class Impl;
     std::unique_ptr<Impl> impl_;
 };

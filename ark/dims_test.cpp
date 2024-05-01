@@ -24,19 +24,7 @@ ark::unittest::State test_dims_basic() {
 
     ark::Dims d2{2, 3, 4};
     d2[1] = -1;
-    UNITTEST_TRUE(d2.is_invalid());
-
-    // -1 in the middle is not allowed
-    auto lambda0 = []() { ark::Dims dims{2, -1, 5}; };
-    UNITTEST_THROW(lambda0(), ark::InvalidUsageError);
-
-    // constructing from invalid dims is not allowed
-    auto lambda1 = []() {
-        ark::Dims dims{2, 3, 4};
-        dims[1] = -1;
-        ark::Dims new_dims{dims};
-    };
-    UNITTEST_THROW(lambda1(), ark::InvalidUsageError);
+    UNITTEST_TRUE(!d2.is_invalid());
 
     // too long
     auto lambda2 = []() {
@@ -45,19 +33,6 @@ ark::unittest::State test_dims_basic() {
     };
     UNITTEST_THROW(lambda2(), ark::InvalidUsageError);
 
-    // -1 in the middle is not allowed
-    auto lambda3 = []() {
-        std::vector<ark::DimType> v0{5, -1, 2, 3};
-        ark::Dims d0{v0};
-    };
-    UNITTEST_THROW(lambda3(), ark::InvalidUsageError);
-
-    auto lambda4 = []() {
-        std::vector<ark::DimType> vec{1, 2, 3, -3};
-        ark::Dims dim{vec};
-    };
-    UNITTEST_THROW(lambda4(), ark::InvalidUsageError);
-
     return ark::unittest::SUCCESS;
 }
 
@@ -65,7 +40,7 @@ ark::unittest::State test_dims_no_dim() {
     ark::Dims d0{};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(d0.is_no_dim());
-    UNITTEST_EQ(d0.size(), -1);
+    UNITTEST_EQ(d0.size(), 0);
     UNITTEST_EQ(d0.ndims(), 0);
 
     std::stringstream ss;
@@ -169,13 +144,6 @@ ark::unittest::State test_dims_ostream() {
     std::stringstream ss;
     ss << d0;
     UNITTEST_EQ(ss.str(), "<10, 20, 30, 40>");
-
-    d0[1] = -1;
-    UNITTEST_TRUE(d0.is_invalid());
-    ss.str("");
-
-    auto lamda = [&]() { ss << d0; };
-    UNITTEST_THROW(lamda(), ark::InvalidUsageError);
 
     return ark::unittest::SUCCESS;
 }
