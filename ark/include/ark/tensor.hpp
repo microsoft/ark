@@ -6,8 +6,8 @@
 
 #include <ostream>
 
-#include "dims.hpp"
-#include "model_ref.hpp"
+#include <ark/dims.hpp>
+#include <ark/model_ref.hpp>
 
 namespace ark {
 

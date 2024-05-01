@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "model_ref.hpp"
+#include <ark/model_ref.hpp>
 
 namespace ark {
 

@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "dims.hpp"
-#include "model_graph.hpp"
-#include "model_ref.hpp"
-#include "tensor.hpp"
+#include <ark/dims.hpp>
+#include <ark/model_graph.hpp>
+#include <ark/model_ref.hpp>
+#include <ark/tensor.hpp>
 
 namespace ark {
 
