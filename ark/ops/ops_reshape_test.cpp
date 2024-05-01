@@ -11,13 +11,13 @@ void test_reshape_checker(ark::Model &m, ark::Tensor t0, ark::Tensor t1,
     ark::DefaultExecutor exe(m);
     exe.compile();
 
-    std::vector<float> data_vec(t0.shape().size());
+    std::vector<float> data_vec(t0.shape().nelems());
     std::iota(data_vec.begin(), data_vec.end(), 1.0f);
     exe.tensor_write(t0, data_vec);
 
-    std::vector<float> ref_val(t0.shape().size());
+    std::vector<float> ref_val(t0.shape().nelems());
     exe.tensor_read(t1, ref_val);
-    for (int i = 0; i < t0.shape().size(); ++i) {
+    for (int i = 0; i < t0.shape().nelems(); ++i) {
         UNITTEST_EQ(ref_val[i], i + 1);
     }
 }

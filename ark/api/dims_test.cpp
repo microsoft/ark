@@ -11,7 +11,7 @@ ark::unittest::State test_dims_basic() {
     ark::Dims d0{1, 5, 9};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
-    UNITTEST_EQ(d0.size(), 45);
+    UNITTEST_EQ(d0.nelems(), 45);
     UNITTEST_EQ(d0.ndims(), 3);
 
     std::stringstream ss;
@@ -20,7 +20,7 @@ ark::unittest::State test_dims_basic() {
 
     ark::Dims d1{1, 5, 9, 1};
     UNITTEST_NE(d0, d1);
-    UNITTEST_EQ(d0.size(), d1.size());
+    UNITTEST_EQ(d0.nelems(), d1.nelems());
 
     ark::Dims d2{2, 3, 4};
     d2[1] = -1;
@@ -40,7 +40,7 @@ ark::unittest::State test_dims_no_dim() {
     ark::Dims d0{};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(d0.is_no_dim());
-    UNITTEST_EQ(d0.size(), 0);
+    UNITTEST_EQ(d0.nelems(), 0);
     UNITTEST_EQ(d0.ndims(), 0);
 
     std::stringstream ss;
@@ -57,7 +57,7 @@ ark::unittest::State test_dims_zero() {
     ark::Dims d0{0, 10, 0};
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
-    UNITTEST_EQ(d0.size(), 0);
+    UNITTEST_EQ(d0.nelems(), 0);
     UNITTEST_EQ(d0.ndims(), 3);
 
     std::stringstream ss;
@@ -84,7 +84,7 @@ ark::unittest::State test_dims_from_vector() {
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
 
-    UNITTEST_EQ(d0.size(), 24);
+    UNITTEST_EQ(d0.nelems(), 24);
     UNITTEST_EQ(d0.ndims(), 4);
 
     UNITTEST_EQ(d0[0], 1);
@@ -127,7 +127,7 @@ ark::unittest::State test_dims_erase() {
     UNITTEST_EQ(d0[1], 30);
     UNITTEST_EQ(d0[2], 40);
     UNITTEST_EQ(d0.ndims(), 3);
-    UNITTEST_EQ(d0.size(), 12000);
+    UNITTEST_EQ(d0.nelems(), 12000);
     UNITTEST_TRUE(!d0.is_invalid());
     UNITTEST_TRUE(!d0.is_no_dim());
 

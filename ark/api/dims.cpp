@@ -44,7 +44,7 @@ Dims::Dims(const std::vector<DimType> &vec) {
 }
 
 // Return the volume of dimensions. If there is a negative dimension, return -1.
-DimType Dims::size() const {
+DimType Dims::nelems() const {
     if (this->has_negative()) return -1;
     if (data_.empty()) return 0;
     DimType ret = 1;

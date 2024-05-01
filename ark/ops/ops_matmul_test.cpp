@@ -190,9 +190,9 @@ void baseline_matmul_nn(std::vector<void *> &outputs,
 
     int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
-    auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
-    auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
-    auto memC = ark::to_gpu(outputs[0], output_shapes[0].size() * sizeof(T));
+    auto memA = ark::to_gpu(inputs[0], input_shapes[0].nelems() * sizeof(T));
+    auto memB = ark::to_gpu(inputs[1], input_shapes[1].nelems() * sizeof(T));
+    auto memC = ark::to_gpu(outputs[0], output_shapes[0].nelems() * sizeof(T));
 
     T *devA = static_cast<T *>(memA.get());
     T *devB = static_cast<T *>(memB.get());
@@ -223,9 +223,9 @@ void baseline_matmul_nt(std::vector<void *> &outputs,
 
     int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
-    auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
-    auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
-    auto memC = ark::to_gpu(outputs[0], output_shapes[0].size() * sizeof(T));
+    auto memA = ark::to_gpu(inputs[0], input_shapes[0].nelems() * sizeof(T));
+    auto memB = ark::to_gpu(inputs[1], input_shapes[1].nelems() * sizeof(T));
+    auto memC = ark::to_gpu(outputs[0], output_shapes[0].nelems() * sizeof(T));
 
     T *devA = static_cast<T *>(memA.get());
     T *devB = static_cast<T *>(memB.get());
@@ -256,9 +256,9 @@ void baseline_matmul_tn(std::vector<void *> &outputs,
 
     int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
-    auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
-    auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
-    auto memC = ark::to_gpu(outputs[0], output_shapes[0].size() * sizeof(T));
+    auto memA = ark::to_gpu(inputs[0], input_shapes[0].nelems() * sizeof(T));
+    auto memB = ark::to_gpu(inputs[1], input_shapes[1].nelems() * sizeof(T));
+    auto memC = ark::to_gpu(outputs[0], output_shapes[0].nelems() * sizeof(T));
 
     T *devA = static_cast<T *>(memA.get());
     T *devB = static_cast<T *>(memB.get());
@@ -289,9 +289,9 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
 
     int batch_size = out_shape_dims4[0] * out_shape_dims4[1];
 
-    auto memA = ark::to_gpu(inputs[0], input_shapes[0].size() * sizeof(T));
-    auto memB = ark::to_gpu(inputs[1], input_shapes[1].size() * sizeof(T));
-    auto memC = ark::to_gpu(outputs[0], output_shapes[0].size() * sizeof(T));
+    auto memA = ark::to_gpu(inputs[0], input_shapes[0].nelems() * sizeof(T));
+    auto memB = ark::to_gpu(inputs[1], input_shapes[1].nelems() * sizeof(T));
+    auto memC = ark::to_gpu(outputs[0], output_shapes[0].nelems() * sizeof(T));
 
     T *devA = static_cast<T *>(memA.get());
     T *devB = static_cast<T *>(memB.get());
@@ -359,8 +359,10 @@ ark::unittest::State test_matmul_fp16() {
         ark::Tensor b = m.tensor(ark::Dims(2048, 16384), ark::FP16);
         ark::Tensor c = m.matmul(a, b);
 
-        std::vector<ark::half_t> p_ones_a(a.shape().size(), ark::half_t(0.1f));
-        std::vector<ark::half_t> p_ones_b(b.shape().size(), ark::half_t(0.1f));
+        std::vector<ark::half_t> p_ones_a(a.shape().nelems(),
+                                          ark::half_t(0.1f));
+        std::vector<ark::half_t> p_ones_b(b.shape().nelems(),
+                                          ark::half_t(0.1f));
 
         auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>,
@@ -389,8 +391,8 @@ ark::unittest::State test_matmul_fp32() {
         ark::Tensor b = m.tensor(ark::Dims(8192, 16384), ark::FP32);
         ark::Tensor c = m.matmul(a, b);
 
-        std::vector<float> p_ones_a(a.shape().size(), float(0.1f));
-        std::vector<float> p_ones_b(b.shape().size(), float(0.1f));
+        std::vector<float> p_ones_a(a.shape().nelems(), float(0.1f));
+        std::vector<float> p_ones_b(b.shape().nelems(), float(0.1f));
 
         auto result = ark::op_test("matmul_fp32", m, {a, b}, {c},
                                    baseline_matmul_nn<float>,

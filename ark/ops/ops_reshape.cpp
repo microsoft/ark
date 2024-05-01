@@ -24,7 +24,7 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
     if (inferred_shape.ndims() == 0) {
         // Convert to a scalar
         new_shape_vec.emplace_back(1);
-        if (orig_shape.size() != 1) {
+        if (orig_shape.nelems() != 1) {
             ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
                 orig_shape, " to ", inferred_shape);
         }
@@ -45,7 +45,7 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
                 total_size *= inferred_shape[i];
             }
         }
-        if (orig_shape.size() != total_size) {
+        if (orig_shape.nelems() != total_size) {
             ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
                 orig_shape, " to ", inferred_shape);
         }
@@ -196,12 +196,12 @@ Tensor Model::reshape(Tensor input, const std::vector<DimType> &shape,
         }
         // total_size is always positive at this point.
         // Infer the -1 dimension
-        if (input.shape().size() % total_size != 0) {
+        if (input.shape().nelems() % total_size != 0) {
             ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
                 input.shape(), " to ", Dims(shape));
         }
-        inferred_shape[neg_idx] = input.shape().size() / total_size;
-    } else if (!zero_exists && input.shape().size() != total_size) {
+        inferred_shape[neg_idx] = input.shape().nelems() / total_size;
+    } else if (!zero_exists && input.shape().nelems() != total_size) {
         ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
             input.shape(), " to ", Dims(shape));
     }

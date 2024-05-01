@@ -15,7 +15,7 @@ void baseline_scale(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = input[i] * T(SCALE_FACTOR);
     }
 };

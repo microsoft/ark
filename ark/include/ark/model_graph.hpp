@@ -4,11 +4,10 @@
 #ifndef ARK_MODEL_GRAPH_HPP
 #define ARK_MODEL_GRAPH_HPP
 
+#include <ark/model_ref.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <ark/model_ref.hpp>
 
 namespace ark {
 

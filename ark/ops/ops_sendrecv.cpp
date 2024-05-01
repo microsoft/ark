@@ -10,7 +10,7 @@ namespace ark {
 ModelOpSend::ModelOpSend(ModelTensorRef input, int sid, int rank, int dst_rank,
                          DimType bytes)
     : ModelOp("Send") {
-    DimType max_bytes = input->strides().size() * input->data_type()->bytes();
+    DimType max_bytes = input->strides().nelems() * input->data_type()->bytes();
     if (max_bytes < bytes) {
         LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }
@@ -72,7 +72,7 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int, int rank, int src_rank,
             BYTE, std::make_shared<ModelBuffer>(), Dims{bytes});
     }
     output->set_exported();
-    DimType max_bytes = output->shape().size() * output->data_type()->bytes();
+    DimType max_bytes = output->shape().nelems() * output->data_type()->bytes();
     if (max_bytes < bytes) {
         LOG(ERROR, "invalid bytes: ", bytes, ", max: ", max_bytes);
     }

@@ -11,7 +11,7 @@ void baseline_cast(std::vector<void *> &outputs,
     ToType *out = static_cast<ToType *>(outputs[0]);
     FromType *input = static_cast<FromType *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = ToType(input[i]);
     }
 };
@@ -25,7 +25,7 @@ void baseline_cast_from_byte(std::vector<void *> &outputs,
     // input is a byte array, but force read it as ToType.
     ToType *input = reinterpret_cast<ToType *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = input[i];
     }
 };
@@ -39,7 +39,7 @@ void baseline_cast_to_byte(std::vector<void *> &outputs,
     FromType *out = reinterpret_cast<FromType *>(outputs[0]);
     FromType *input = static_cast<FromType *>(inputs[0]);
     ark::Dims ish = input_shapes[0];
-    for (ark::DimType i = 0; i < ish.size(); ++i) {
+    for (ark::DimType i = 0; i < ish.nelems(); ++i) {
         out[i] = input[i];
     }
 };
@@ -61,7 +61,7 @@ ark::unittest::State test_cast_fp16_to_int32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
     ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<ark::half_t> input_data(t.shape().size());
+    std::vector<ark::half_t> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = ark::half_t(int((i + 1) % 1000));
     }
@@ -91,7 +91,7 @@ ark::unittest::State test_cast_fp32_to_int32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
     ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<float> input_data(t.shape().size());
+    std::vector<float> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = float((i + 1) % 1000);
     }
@@ -108,7 +108,7 @@ ark::unittest::State test_cast_int32_to_fp32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
     ark::Tensor out = m.cast(t, ark::FP32);
 
-    std::vector<int> input_data(t.shape().size());
+    std::vector<int> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 1000;
     }
@@ -125,7 +125,7 @@ ark::unittest::State test_cast_int32_to_fp16() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::INT32);
     ark::Tensor out = m.cast(t, ark::FP16);
 
-    std::vector<int> input_data(t.shape().size());
+    std::vector<int> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 1000;
     }
@@ -143,7 +143,7 @@ ark::unittest::State test_cast_byte_to_fp32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
     ark::Tensor out = m.cast(t, ark::FP32);
 
-    std::vector<char> input_data(t.shape().size());
+    std::vector<char> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 256;
     }
@@ -165,7 +165,7 @@ ark::unittest::State test_cast_byte_to_fp16() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
     ark::Tensor out = m.cast(t, ark::FP16);
 
-    std::vector<char> input_data(t.shape().size());
+    std::vector<char> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 256;
     }
@@ -187,7 +187,7 @@ ark::unittest::State test_cast_byte_to_int32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
     ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<char> input_data(t.shape().size());
+    std::vector<char> input_data(t.shape().nelems());
     for (size_t i = 0; i < input_data.size(); ++i) {
         input_data[i] = (i + 1) % 256;
     }

@@ -23,7 +23,7 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
       buffer_(buffer),
       exported_(exported),
       imported_rank_(imported_rank) {
-    if (shape.size() == 0) {
+    if (shape.nelems() == 0) {
         ERR(InvalidUsageError,
             "Tensor shape should consist of positive numbers. Given: ", shape);
     } else if (shape.is_no_dim()) {
@@ -103,11 +103,11 @@ ModelTensor::ModelTensor(const ModelTensor &other) {
 }
 
 size_t ModelTensor::shape_bytes() const {
-    return shape_.size() * data_type_->bytes();
+    return shape_.nelems() * data_type_->bytes();
 }
 
 size_t ModelTensor::strides_bytes() const {
-    return strides_.size() * data_type_->bytes();
+    return strides_.nelems() * data_type_->bytes();
 }
 
 bool ModelTensor::is_sequential() const {

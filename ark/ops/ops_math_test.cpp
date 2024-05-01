@@ -19,7 +19,7 @@ void baseline_gelu(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = gelu(input[i]);
     }
 };
@@ -32,7 +32,7 @@ void baseline_exp(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = std::exp(input[i]);
     }
 };
@@ -47,7 +47,7 @@ void baseline_relu(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = relu(input[i]);
     }
 };
@@ -60,7 +60,7 @@ void baseline_rsqrt(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = 1.0f / std::sqrt(input[i]);
     }
 };
@@ -75,7 +75,7 @@ void baseline_sigmoid(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = sigmoid(input[i]);
     }
 };
@@ -88,7 +88,7 @@ void baseline_sqrt(std::vector<void *> &outputs,
     T *out = static_cast<T *>(outputs[0]);
     T *input = static_cast<T *>(inputs[0]);
     ark::Dims osh = output_shapes[0];
-    for (ark::DimType i = 0; i < osh.size(); ++i) {
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = std::sqrt(input[i]);
     }
 };

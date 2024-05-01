@@ -59,7 +59,7 @@ ark::unittest::State test_embedding() {
     ark::srand();
 
     std::vector<int> ti_data;
-    for (auto i = 0; i < ti.shape().size(); ++i) {
+    for (auto i = 0; i < ti.shape().nelems(); ++i) {
         // Random indices in [0, num_emb)
         int rand_idx = ark::rand() % num_emb;
         if (i % 9 == 0) {
@@ -68,8 +68,8 @@ ark::unittest::State test_embedding() {
         }
         ti_data.push_back(rand_idx);
     }
-    std::vector<T> tw_data(tw.shape().size());
-    for (auto i = 0; i < tw.shape().size(); ++i) {
+    std::vector<T> tw_data(tw.shape().nelems());
+    for (auto i = 0; i < tw.shape().nelems(); ++i) {
         tw_data[i] = ark::rand<T>(-1.0, 1.0);
     }
     std::string type_str = "";

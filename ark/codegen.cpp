@@ -177,7 +177,7 @@ void CodeGenerator::Impl::plan_memory(const nlohmann::json &plan) {
 
     auto tensor_stride_bytes = [](const nlohmann::json &tns) {
         Dims strides(tns["Strides"].get<std::vector<DimType>>());
-        size_t nelems = strides.size();
+        size_t nelems = strides.nelems();
         return nelems * ModelDataT::from_name(tns["DataType"])->bytes();
     };
 

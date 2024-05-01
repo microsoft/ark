@@ -23,16 +23,16 @@ ark::unittest::State test_tensor_strides() {
     exe.compile();
 
     // Fill buffer data: {1.0, 2.0, 3.0, 4.0}
-    std::vector<float> data(shape.size());
+    std::vector<float> data(shape.nelems());
     std::iota(data.begin(), data.end(), 1.0f);
     exe.tensor_write(tns, data);
 
     // Copy tensor data from GPU to CPU
-    std::vector<float> res(shape.size(), 0.0f);
+    std::vector<float> res(shape.nelems(), 0.0f);
     exe.tensor_read(tns, res);
 
     // Validate
-    for (auto i = 0; i < shape.size(); ++i) {
+    for (auto i = 0; i < shape.nelems(); ++i) {
         UNITTEST_EQ(res[i], i + 1);
     }
 
@@ -56,12 +56,12 @@ ark::unittest::State test_tensor_memcpy() {
     exe.compile();
 
     // Fill buffer data: {1.0, 2.0, 3.0, ..., 3024.0}
-    std::vector<float> data(strides.size());
+    std::vector<float> data(strides.nelems());
     std::iota(data.begin(), data.end(), 1.0f);
     exe.tensor_write(buffer, data);
 
     // Copy tensor data from GPU to CPU
-    std::vector<float> res(shape.size(), 0.0f);
+    std::vector<float> res(shape.nelems(), 0.0f);
     exe.tensor_read(tns, res);
 
     // Validate
@@ -87,7 +87,7 @@ ark::unittest::State test_tensor_memcpy() {
     exe.tensor_write(tns, res);
 
     // Copy buffer data from GPU to CPU
-    std::vector<float> res2(strides.size(), -1);
+    std::vector<float> res2(strides.nelems(), -1);
     exe.tensor_read(buffer, res2);
 
     // Validate

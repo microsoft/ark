@@ -4,10 +4,9 @@
 #ifndef ARK_TENSOR_HPP
 #define ARK_TENSOR_HPP
 
-#include <ostream>
-
 #include <ark/dims.hpp>
 #include <ark/model_ref.hpp>
+#include <ostream>
 
 namespace ark {
 

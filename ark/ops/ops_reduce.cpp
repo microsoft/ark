@@ -120,7 +120,7 @@ nlohmann::ordered_json ModelOpReduce::default_config() const {
         config["ImplType"] = "ElementWise";
         config["SramBytes"] = 0;
     }
-    config["NumTasks"] = result_tensors_[0]->shape().size();
+    config["NumTasks"] = result_tensors_[0]->shape().nelems();
     return config;
 }
 

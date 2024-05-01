@@ -13,9 +13,7 @@ namespace ark {
 // Data type for dimension.
 typedef int64_t DimType;
 
-// DIMS_LEN is the maximum number of dimensions of a tensor. If a tensor
-// has less than DIMS_LEN dimensions, the remaining dimensions will be NO_DIM.
-constexpr DimType NO_DIM = -1;
+// DIMS_LEN is the maximum number of dimensions of a tensor.
 constexpr DimType DIMS_LEN = 4;
 
 // Up-to-`DIMS_LEN`-dimensional vector.
@@ -40,9 +38,9 @@ class Dims {
     // following NO_DIMs. Raise an error if the vector is longer than DIMS_LEN.
     Dims(const std::vector<DimType> &vec);
 
-    // Return the volume of dimensions. If the dimensions are invalid, return
+    // Return the number of elements. If the dimensions are invalid, return
     // -1.
-    DimType size() const;
+    DimType nelems() const;
     // Return the number of valid dimensions.
     int ndims() const;
     // Return a new Dims object with 4 valid dimensions by prepending 1s.

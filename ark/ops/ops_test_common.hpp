@@ -49,7 +49,7 @@ float error_rate(T a, T b) {
 template <typename T>
 TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
                                    bool print = false) {
-    DimType nelem = shape.size();
+    DimType nelem = shape.nelems();
     int ndims = shape.ndims();
     float l2_loss = 0;
     float max_err = 0;

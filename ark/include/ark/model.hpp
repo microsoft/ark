@@ -4,13 +4,12 @@
 #ifndef ARK_MODEL_HPP
 #define ARK_MODEL_HPP
 
-#include <string>
-#include <vector>
-
 #include <ark/dims.hpp>
 #include <ark/model_graph.hpp>
 #include <ark/model_ref.hpp>
 #include <ark/tensor.hpp>
+#include <string>
+#include <vector>
 
 namespace ark {
 
