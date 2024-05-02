@@ -13,13 +13,15 @@ namespace py = pybind11;
 static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
                          py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
-    exe->tensor_write(tensor, reinterpret_cast<void *>(info.ptr), info.size);
+    exe->tensor_write(tensor, reinterpret_cast<void *>(info.ptr),
+                      info.size * info.itemsize);
 }
 
 static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
                         py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
-    exe->tensor_read(tensor, reinterpret_cast<void *>(info.ptr), info.size);
+    exe->tensor_read(tensor, reinterpret_cast<void *>(info.ptr),
+                     info.size * info.itemsize);
 }
 
 void register_executor(py::module &m) {
@@ -33,18 +35,6 @@ void register_executor(py::module &m) {
         .def("run", &ark::Executor::run, py::arg("iter"))
         .def("wait", &ark::Executor::wait)
         .def("stop", &ark::Executor::stop)
-        .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
-        .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
-
-    py::class_<ark::DefaultExecutor>(m, "_DefaultExecutor")
-        .def(py::init<const ark::Model &, int, const std::string &>(),
-             py::arg("model"), py::arg("gpu_id") = -1,
-             py::arg("name") = "DefaultExecutor")
-        .def("compile", &ark::DefaultExecutor::compile)
-        .def("launch", &ark::DefaultExecutor::launch)
-        .def("run", &ark::DefaultExecutor::run, py::arg("iter"))
-        .def("wait", &ark::DefaultExecutor::wait)
-        .def("stop", &ark::DefaultExecutor::stop)
         .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
         .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
 }

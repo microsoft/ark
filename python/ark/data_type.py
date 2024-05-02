@@ -92,7 +92,7 @@ class DataType(metaclass=MetaDataType):
         Raises:
             ValueError: If the data type is not defined.
         """
-        return DataType.from_name(ctype.name())
+        return DataType.from_name(ctype.name().lower())
 
     @staticmethod
     def to_numpy() -> numpy.dtype:

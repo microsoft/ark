@@ -342,8 +342,11 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data,
         ERR(NotFoundError, "Tried to read an unknown tensor (id=", tensor.id(),
             ").");
     }
-    if (bytes < tensor.shape().nelems() * tensor.data_type().bytes()) {
-        ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
+    size_t tensor_data_bytes =
+        tensor.shape().nelems() * tensor.data_type().bytes();
+    if (bytes < tensor_data_bytes) {
+        ERR(InvalidUsageError, "Data buffer (", bytes,
+            ") is smaller than the tensor data (", tensor_data_bytes, ").");
     }
     void *src = buffer_->ref(tensor_info.offset);
     if (tensor.strides() == tensor.shape()) {
@@ -370,8 +373,11 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
         ERR(NotFoundError,
             "Tried to write on an unknown tensor (id=", tensor.id(), ").");
     }
-    if (bytes < tensor.shape().nelems() * tensor.data_type().bytes()) {
-        ERR(InvalidUsageError, "Data buffer is smaller than the tensor data.");
+    size_t tensor_data_bytes =
+        tensor.shape().nelems() * tensor.data_type().bytes();
+    if (bytes < tensor_data_bytes) {
+        ERR(InvalidUsageError, "Data buffer (", bytes,
+            ") is smaller than the tensor data (", tensor_data_bytes, ").");
     }
     void *dst = buffer_->ref(tensor_info.offset);
     if (tensor.strides() == tensor.shape()) {

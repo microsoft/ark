@@ -6,7 +6,7 @@ import ark
 
 
 def quickstart_tutorial():
-    # Initialize the ARK runtime
+    # Initialize the ARK environments
     ark.init()
 
     M, N = 64, 64

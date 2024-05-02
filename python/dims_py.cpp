@@ -23,6 +23,7 @@ void register_dims(py::module &m) {
         .def(py::init<const std::vector<ark::DimType> &>())
         .def("nelems", &ark::Dims::nelems)
         .def("ndims", &ark::Dims::ndims)
+        .def("vector", &ark::Dims::vector, py::return_value_policy::reference)
         .def("__getitem__",
              [](const ark::Dims &d, ark::DimType idx) { return d[idx]; })
         .def("__setitem__", [](ark::Dims &d, ark::DimType idx,
