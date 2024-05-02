@@ -1,31 +1,20 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from typing import NewType
 from ._ark_core import _Model
 
-
-class _ModelState:
-    """
-    The _ModelState class is used to store the state of the model.
-    """
-
-    model: _Model = None
-    rank: int = 0
-    world_size: int = 1
+_ModelState = NewType("_ModelState", None)
 
 
-class Model:
-    """
-    Defines static methods to handle _ModelState.
-    """
-
+class Model(_Model):
     @staticmethod
     def get_model():
         """
         Get the underlying model.
         """
         if _ModelState.model is None:
-            _ModelState.model = _Model(_ModelState.rank)
+            _ModelState.model = Model(_ModelState.rank, _ModelState.world_size)
         return _ModelState.model
 
     @staticmethod
@@ -64,3 +53,13 @@ class Model:
         _ModelState.model = None
         _ModelState.rank = 0
         _ModelState.world_size = 1
+
+
+class _ModelState:
+    """
+    The _ModelState class is used to store the state of the model.
+    """
+
+    model: Model = None
+    rank: int = 0
+    world_size: int = 1

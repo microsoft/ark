@@ -4,12 +4,12 @@
 import numpy as np
 from typing import List
 
-from ._ark_core import _Dims, _Tensor, _TensorBuf
+from ._ark_core import _Dims, _Tensor, NullTensor
 from .data_type import DataType
 
 
-Dims = _Dims
-TensorBuf = _TensorBuf
+class Dims(_Dims):
+    pass
 
 
 class Tensor:
@@ -25,64 +25,19 @@ class Tensor:
         """
         Returns the shape of the tensor.
         """
-        return self._tensor.shape
+        return self._tensor.shape()
 
-    def ldims(self) -> List[int]:
+    def strides(self) -> List[int]:
         """
-        Returns the ldims of the tensor.
+        Returns the strides of the tensor.
         """
-        return self._tensor.ldims
-
-    def offset(self, i0=0, i1=0, i2=0, i3=0) -> int:
-        """
-        Returns the offset of the tensor at the specified indices.
-        """
-        return self._tensor.offset(i0, i1, i2, i3)
-
-    def size(self) -> int:
-        """
-        Returns the number of elements in the tensor excluding padding.
-        """
-        return self._tensor.size()
-
-    def ndims(self) -> int:
-        """
-        Returns the number of dimensions in the tensor.
-        """
-        return self._tensor.ndims()
-
-    def type_bytes(self) -> int:
-        """
-        Returns the number of bytes of each element in the tensor.
-        """
-        return self._tensor.type_bytes()
-
-    def shape_bytes(self) -> int:
-        """
-        Returns the number of bytes of the tensor.
-        """
-        return self._tensor.shape_bytes()
-
-    def ldims_bytes(self) -> int:
-        """
-        Returns the number of bytes of the TensorBuf.
-        """
-        return self._tensor.ldims_bytes()
-
-    def offset_bytes(self, i0=0, i1=0, i2=0, i3=0) -> int:
-        """
-        Returns the offset of the tensor at the specified indices in bytes.
-        """
-        return self._tensor.offset_bytes(i0, i1, i2, i3)
+        return self._tensor.strides()
 
     def dtype(self) -> DataType:
         """
         Returns the type of the tensor.
         """
-        return DataType.from_ttype(self._tensor.type)
-
-    def clear(self):
-        self._tensor.clear()
+        return DataType.from_ctype(self._tensor.ctype)
 
     def to_numpy(self, ndarray: np.ndarray = None) -> np.ndarray:
         """

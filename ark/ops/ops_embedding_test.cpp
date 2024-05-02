@@ -70,7 +70,7 @@ ark::unittest::State test_embedding() {
     }
     std::vector<T> tw_data(tw.shape().nelems());
     for (auto i = 0; i < tw.shape().nelems(); ++i) {
-        tw_data[i] = ark::rand<T>(-1.0, 1.0);
+        tw_data[i] = ark::random<T>(-1.0, 1.0);
     }
     std::string type_str = "";
     if (std::is_same<T, float>::value) {

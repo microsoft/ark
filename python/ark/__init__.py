@@ -43,7 +43,7 @@ def set_world_size(world_size):
     Model.set_world_size(world_size)
 
 
-from .tensor import Dims, Tensor, TensorBuf, Parameter
+from .tensor import Dims, Tensor, Parameter
 from .module import Module
 from .runtime import Runtime
 from .serialize import save, load

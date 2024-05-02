@@ -7,7 +7,7 @@
 
 namespace ark {
 
-ModelOpScale::ModelOpScale(ModelTensorRef input, float val,
+ModelOpScale::ModelOpScale(ModelTensorRef input, float factor,
                            ModelTensorRef output)
     : ModelOpBroadcast1(
           "Scale", input,
@@ -18,7 +18,7 @@ ModelOpScale::ModelOpScale(ModelTensorRef input, float val,
     if (output) {
         check_match_data_type(input, output);
     }
-    args_ = {{"Factor", val}};
+    args_ = {{"Factor", factor}};
 
     verify();
 }
@@ -29,9 +29,9 @@ std::vector<ModelOpArg> ModelOpScale::impl_args(
     return {result_tensors_[0], read_tensors_[0], factor};
 }
 
-Tensor Model::scale(Tensor input, float val, Tensor output,
+Tensor Model::scale(Tensor input, float factor, Tensor output,
                     const std::string &name) {
-    return impl_->create_op<ModelOpScale>(name, input.ref_, val, output.ref_)
+    return impl_->create_op<ModelOpScale>(name, input.ref_, factor, output.ref_)
         ->result_tensors()[0];
 }
 

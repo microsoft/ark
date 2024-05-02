@@ -10,6 +10,7 @@
 
 #include "ark/model.hpp"
 #include "ark/model_ref.hpp"
+#include "ark/random.hpp"
 #include "bfloat16.h"
 #include "half.h"
 #include "unittest/unittest_utils.h"
@@ -23,6 +24,13 @@ struct TensorCompareResult {
     size_t num_wrong;
     size_t num_total;
 };
+
+/// Generate a random value.
+template <typename T>
+T random(float min_val, float max_val) {
+    int mid = std::numeric_limits<int>::max() / 2;
+    return T((ark::rand() - mid) / (float)mid * (max_val - min_val) + min_val);
+}
 
 /// Calculate the error rate between two values.
 /// @tparam T Type of the values

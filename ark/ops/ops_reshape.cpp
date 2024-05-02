@@ -142,18 +142,6 @@ ModelOpReshape::ModelOpReshape(ModelTensorRef input, const Dims &shape,
     verify();
 }
 
-//
-Tensor Model::reshape(Tensor input, const Dims &shape, bool allowzero,
-                      const std::string &name) {
-    return this->reshape(input, shape.vector(), allowzero, name);
-}
-
-Tensor Model::reshape(Tensor input, const std::initializer_list<DimType> &shape,
-                      bool allowzero, const std::string &name) {
-    std::vector<DimType> shape_vec{shape};
-    return this->reshape(input, shape_vec, allowzero, name);
-}
-
 // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be
 // inferred from the `input`. If one dimension of `shape` is 0, by default
 // (`allowzero` is false), that dimension is unchanged from the corresponding
@@ -162,24 +150,24 @@ Tensor Model::reshape(Tensor input, const std::initializer_list<DimType> &shape,
 // be an empty tensor. If `allowzero` is true, `shape` should not include both
 // 0 and -1 at the same time. If `shape` is an empty vector, `input` will be
 // converted to a scalar.
-Tensor Model::reshape(Tensor input, const std::vector<DimType> &shape,
-                      bool allowzero, const std::string &name) {
+Tensor Model::reshape(Tensor input, const Dims &shape, bool allowzero,
+                      const std::string &name) {
     check_null(input.ref());
     // Infer -1 dimension if exists
     std::vector<DimType> inferred_shape;
     int neg_idx = -1;
     bool zero_exists = false;
     DimType total_size = 1;
-    for (size_t i = 0; i < shape.size(); i++) {
+    for (auto i = 0; i < shape.ndims(); i++) {
         if (shape[i] == -1) {
             if (neg_idx != -1) {
-                ERR(InvalidUsageError, "multiple -1 in shape: ", Dims(shape));
+                ERR(InvalidUsageError, "multiple -1 in shape: ", shape);
             }
             neg_idx = static_cast<int>(i);
         } else if (shape[i] < 0) {
             ERR(InvalidUsageError,
                 "shape cannot include negative values except -1. Given: ",
-                Dims(shape));
+                shape);
         } else {
             if (shape[i] == 0) {
                 zero_exists = true;
@@ -192,18 +180,18 @@ Tensor Model::reshape(Tensor input, const std::vector<DimType> &shape,
         if (zero_exists) {
             ERR(InvalidUsageError,
                 "shape cannot include both 0 and -1 at the same time. Given: ",
-                Dims(shape));
+                shape);
         }
         // total_size is always positive at this point.
         // Infer the -1 dimension
         if (input.shape().nelems() % total_size != 0) {
             ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
-                input.shape(), " to ", Dims(shape));
+                input.shape(), " to ", shape);
         }
         inferred_shape[neg_idx] = input.shape().nelems() / total_size;
     } else if (!zero_exists && input.shape().nelems() != total_size) {
         ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
-            input.shape(), " to ", Dims(shape));
+            input.shape(), " to ", shape);
     }
     Dims new_shape;
     Dims new_strides;

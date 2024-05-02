@@ -54,27 +54,27 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
             if (t.data_type() == FP32) {
                 float *data = reinterpret_cast<float *>(buf->data());
                 for (auto i = 0; i < t.shape().nelems(); ++i) {
-                    data[i] = ark::rand<float>(-0.1, 0.1);
+                    data[i] = random<float>(-0.1, 0.1);
                 }
             } else if (t.data_type() == FP16) {
                 half_t *data = reinterpret_cast<half_t *>(buf->data());
                 for (auto i = 0; i < t.shape().nelems(); ++i) {
-                    data[i] = ark::rand<ark::half_t>(-0.1, 0.1);
+                    data[i] = random<ark::half_t>(-0.1, 0.1);
                 }
             } else if (t.data_type() == BF16) {
                 bfloat16_t *data = reinterpret_cast<bfloat16_t *>(buf->data());
                 for (auto i = 0; i < t.shape().nelems(); ++i) {
-                    data[i] = ark::rand<ark::bfloat16_t>(-0.1, 0.1);
+                    data[i] = random<ark::bfloat16_t>(-0.1, 0.1);
                 }
             } else if (t.data_type() == INT32) {
                 int *data = reinterpret_cast<int *>(buf->data());
                 for (auto i = 0; i < t.shape().nelems(); ++i) {
-                    data[i] = ark::rand<int>(-10000, 10000);
+                    data[i] = random<int>(-10000, 10000);
                 }
             } else if (t.data_type() == BYTE) {
                 uint8_t *data = reinterpret_cast<uint8_t *>(buf->data());
                 for (auto i = 0; i < t.shape().nelems(); ++i) {
-                    data[i] = ark::rand<uint8_t>(0, 255);
+                    data[i] = random<uint8_t>(0, 255);
                 }
             } else {
                 ERR(UnitTestError,

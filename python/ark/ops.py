@@ -3,7 +3,7 @@
 
 from typing import List, Iterable
 
-from .tensor import Dims, Tensor, TensorBuf, Parameter
+from .tensor import Dims, Tensor, NullTensor, Parameter
 from .data_type import DataType, fp32
 from .model import Model
 
@@ -12,17 +12,64 @@ def _is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
 
 
+def add(
+    input: Tensor, other: Tensor, output: Tensor = NullTensor, name: str = ""
+) -> Tensor:
+    """
+    Performs an element-wise addition operator between the `input`
+    tensor and the `other` tensor.
+    Usage:
+    tensor_add = ark.add(tensor1, tensor2)
+    """
+    if output is not NullTensor:
+        output = output._tensor
+    return Tensor(
+        Model.get_model().add(input._tensor, other._tensor, output, name)
+    )
+
+
+def _tensor(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    pads: Iterable[int] = [],
+    exported: bool = False,
+    imported_rank: int = -1,
+    name: str = "",
+) -> Tensor:
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    if not _is_list_or_tuple(strides):
+        raise ValueError("strides should be a list or tuple of integers")
+    if not _is_list_or_tuple(offsets):
+        raise ValueError("offsets should be a list or tuple of integers")
+    if not _is_list_or_tuple(pads):
+        raise ValueError("pads should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if len(shape) > 4 or len(strides) > 4 or len(offsets) > 4 or len(pads) > 4:
+        raise ValueError("Only support tensors with up to 4 dimensions")
+    return Model.get_model().tensor(
+        Dims(shape),
+        dtype.ctype(),
+        Dims(strides),
+        Dims(offsets),
+        Dims(pads),
+        exported,
+        imported_rank,
+        name,
+    )
+
+
 def tensor(
     shape: Iterable[int],
     dtype: DataType = fp32,
-    buf: TensorBuf = None,
-    ldims: Dims = Dims(),
-    offs: Dims = Dims(),
-    pads: Dims = Dims(),
-    deps: list = [],
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    pads: Iterable[int] = [],
     exported: bool = False,
     imported_rank: int = -1,
-    name: str = "tensor",
+    name: str = "",
 ) -> Tensor:
     """
     Construct a tensor with given shape and data type.
@@ -30,59 +77,31 @@ def tensor(
     tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
-    # only support tensors with up to 4 dimensions
-    if len(shape) > 4:
-        raise ValueError("Only support tensors with up to 4 dimensions")
-    _tensor = Model.get_model().tensor(
-        Dims(*shape),
-        dtype.ttype(),
-        buf,
-        ldims,
-        offs,
-        pads,
-        deps,
-        exported,
-        imported_rank,
-        name,
+    return Tensor(
+        _tensor(
+            shape, dtype, strides, offsets, pads, exported, imported_rank, name
+        )
     )
-    return Tensor(_tensor)
 
 
 def parameter(
     shape: Iterable[int],
     dtype: DataType = fp32,
-    buf: TensorBuf = None,
-    ldims: Dims = Dims(),
-    offs: Dims = Dims(),
-    pads: Dims = Dims(),
-    deps: list = [],
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    pads: Iterable[int] = [],
     exported: bool = False,
     imported_rank: int = -1,
-    name: str = "parameter",
+    name: str = "",
 ) -> Parameter:
     """
     Construct a parameter with given shape and data type.
     """
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
-    # only support tensors with up to 4 dimensions
-    if len(shape) > 4:
-        raise ValueError("Only support tensors with up to 4 dimensions")
-    _tensor = Model.get_model().tensor(
-        Dims(*shape),
-        dtype.ttype(),
-        buf,
-        ldims,
-        offs,
-        pads,
-        deps,
-        exported,
-        imported_rank,
-        name,
+    return Parameter(
+        _tensor(
+            shape, dtype, strides, offsets, pads, exported, imported_rank, name
+        )
     )
-    return Parameter(_tensor)
 
 
 def reshape(
@@ -451,21 +470,6 @@ def sigmoid(
     if output is not None:
         output = output._tensor
     _tensor = Model.get_model().sigmoid(input._tensor, output, name)
-    return Tensor(_tensor)
-
-
-def add(
-    input: Tensor, other: Tensor, output: Tensor = None, name: str = "add"
-) -> Tensor:
-    """
-    Performs an element-wise addition operator between the `input`
-    tensor and the `other` tensor.
-    Usage:
-    tensor_add = ark.add(tensor1, tensor2)
-    """
-    if output is not None:
-        output = output._tensor
-    _tensor = Model.get_model().add(input._tensor, other._tensor, output, name)
     return Tensor(_tensor)
 
 

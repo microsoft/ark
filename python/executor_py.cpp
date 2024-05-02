@@ -5,18 +5,46 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "ark.h"
+#include <ark/executor.hpp>
+#include <ark/model.hpp>
 
 namespace py = pybind11;
 
+static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
+                         py::buffer host_buffer) {
+    py::buffer_info info = host_buffer.request();
+    exe->tensor_write(tensor, reinterpret_cast<void *>(info.ptr), info.size);
+}
+
+static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
+                        py::buffer host_buffer) {
+    py::buffer_info info = host_buffer.request();
+    exe->tensor_read(tensor, reinterpret_cast<void *>(info.ptr), info.size);
+}
+
 void register_executor(py::module &m) {
     py::class_<ark::Executor>(m, "_Executor")
-        .def(py::init<int, int, ark::Model &, const std::string &, int>(),
-             py::arg("rank"), py::arg("world_size"), py::arg("model"),
-             py::arg("name"), py::arg("num_warps_per_sm") = 16)
+        .def(
+            py::init<int, int, int, const std::string &, const std::string &>(),
+            py::arg("rank"), py::arg("world_size"), py::arg("gpu_id"),
+            py::arg("name"), py::arg("plan"))
         .def("compile", &ark::Executor::compile)
         .def("launch", &ark::Executor::launch)
         .def("run", &ark::Executor::run, py::arg("iter"))
         .def("wait", &ark::Executor::wait)
-        .def("stop", &ark::Executor::stop);
+        .def("stop", &ark::Executor::stop)
+        .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
+        .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
+
+    py::class_<ark::DefaultExecutor>(m, "_DefaultExecutor")
+        .def(py::init<const ark::Model &, int, const std::string &>(),
+             py::arg("model"), py::arg("gpu_id") = -1,
+             py::arg("name") = "DefaultExecutor")
+        .def("compile", &ark::DefaultExecutor::compile)
+        .def("launch", &ark::DefaultExecutor::launch)
+        .def("run", &ark::DefaultExecutor::run, py::arg("iter"))
+        .def("wait", &ark::DefaultExecutor::wait)
+        .def("stop", &ark::DefaultExecutor::stop)
+        .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
+        .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
 }

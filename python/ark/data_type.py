@@ -23,11 +23,11 @@ class MetaDataType(type):
         if name in _REGISTRY_DATA_TYPE:
             reg = _REGISTRY_DATA_TYPE[name]
             new_class.to_numpy = staticmethod(lambda: reg["np"])
-            new_class.ttype = staticmethod(
-                lambda: getattr(_ark_core, "_" + name.upper())
+            new_class.ctype = staticmethod(
+                lambda: getattr(_ark_core, name.upper())
             )
             new_class.element_size = staticmethod(
-                lambda: new_class.ttype().bytes()
+                lambda: new_class.ctype().bytes()
             )
         return new_class
 
@@ -79,12 +79,12 @@ class DataType(metaclass=MetaDataType):
         return ret
 
     @staticmethod
-    def from_ttype(ttype: _ark_core._TensorType) -> "DataType":
+    def from_ctype(ctype: _ark_core._DataType) -> "DataType":
         """
         Return the corresponding ark data type.
 
         Parameters:
-            ttype (_ark_core._TensorType): The tensor type.
+            ctype (_ark_core._DataType): The cpp type.
 
         Returns:
             DataType: The corresponding ark data type.
@@ -92,7 +92,7 @@ class DataType(metaclass=MetaDataType):
         Raises:
             ValueError: If the data type is not defined.
         """
-        return DataType.from_name(ttype.name())
+        return DataType.from_name(ctype.name())
 
     @staticmethod
     def to_numpy() -> numpy.dtype:
@@ -105,12 +105,12 @@ class DataType(metaclass=MetaDataType):
         ...
 
     @staticmethod
-    def ttype() -> _ark_core._TensorType:
+    def ctype() -> _ark_core._DataType:
         """
-        Return the corresponding tensor type.
+        Return the corresponding cpp type.
 
         Returns:
-            _ark_core._TensorType: The corresponding tensor type.
+            _ark_core._DataType: The corresponding cpp type.
         """
         ...
 
