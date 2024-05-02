@@ -5,8 +5,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include <ark/model_graph.hpp>
 #include <ark/model.hpp>
+#include <ark/model_graph.hpp>
 
 namespace py = pybind11;
 
