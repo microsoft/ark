@@ -129,9 +129,6 @@ class Model : public ModelGraph {
     // where 'is' represents the input tensor's shape.
     Tensor max_pool(Tensor input, DimType kernel_size, DimType stride,
                     Tensor output = NullTensor, const std::string &name = "");
-    // Multiplies the `input` tensor by a scalar `factor`, element-wise.
-    Tensor scale(Tensor input, float factor, Tensor output = NullTensor,
-                 const std::string &name = "");
     // Calculates the exponential of the `input` tensor, element-wise.
     Tensor exp(Tensor input, Tensor output = NullTensor,
                const std::string &name = "");
@@ -163,17 +160,25 @@ class Model : public ModelGraph {
     // and the `other` tensor
     Tensor add(Tensor input, Tensor other, Tensor output = NullTensor,
                const std::string &name = "");
+    Tensor add(Tensor input, float value, Tensor output = NullTensor,
+               const std::string &name = "");
     // Performs an element-wise subtraction operator between the `input` tensor
     // and the `other` tensor
     Tensor sub(Tensor input, Tensor other, Tensor output = NullTensor,
+               const std::string &name = "");
+    Tensor sub(Tensor input, float value, Tensor output = NullTensor,
                const std::string &name = "");
     // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
     Tensor mul(Tensor input, Tensor other, Tensor output = NullTensor,
                const std::string &name = "");
+    Tensor mul(Tensor input, float value, Tensor output = NullTensor,
+               const std::string &name = "");
     // Performs an element-wise division operator between the `input`
     // tensor and the `other` tensor,
     Tensor div(Tensor input, Tensor other, Tensor output = NullTensor,
+               const std::string &name = "");
+    Tensor div(Tensor input, float value, Tensor output = NullTensor,
                const std::string &name = "");
     /// Sends a tensor to a destination rank (@p dst_rank). Multiple tensors can
     /// be sent to the same rank,so an identifier `id` is required to

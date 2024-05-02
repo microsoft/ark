@@ -81,9 +81,14 @@ void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to) {
     }
 }
 
-std::string tolower(const std::string &str) {
-    std::string ret = str;
-    std::transform(ret.begin(), ret.end(), ret.begin(), ::tolower);
+std::string pascal_to_snake(const std::string &str) {
+    std::string ret;
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (i > 0 && isupper(str[i])) {
+            ret.push_back('_');
+        }
+        ret.push_back(tolower(str[i]));
+    }
     return ret;
 }
 

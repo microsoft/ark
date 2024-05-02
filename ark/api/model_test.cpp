@@ -343,8 +343,8 @@ ark::unittest::State test_model_dependent_inputs() {
     ark::Model m;
 
     ark::Tensor ones = m.tensor({256, 256}, ark::FP16);
-    ark::Tensor x0 = m.scale(m.scale(ones, 2), 2);
-    ark::Tensor x1 = m.scale(m.scale(x0, 2), 2);
+    ark::Tensor x0 = m.mul(m.mul(ones, 2), 2);
+    ark::Tensor x1 = m.mul(m.mul(x0, 2), 2);
 
     ark::Tensor x2 = m.mul(ones, x1);
     ark::Tensor x3 = m.mul(ones, x1);

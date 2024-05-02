@@ -119,7 +119,6 @@ CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
 
     std::stringstream body_ss;
     size_t pg_idx = 0;
-    size_t num_pgs = j["ProcessorGroups"].size();
     for (auto &pg : j["ProcessorGroups"]) {
         Range<size_t> proc_range(pg["ProcessorRange"][0],
                                  pg["ProcessorRange"][1]);
@@ -127,11 +126,7 @@ CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
         size_t end = *proc_range.end();
         if (end == begin) continue;
 
-        for (auto &rg : pg["ResourceGroups"]) {
-            body_ss << this->resource_group(rg, j["TaskInfos"], proc_range);
-        }
-
-        if (pg_idx + 1 < num_pgs) {
+        if (pg_idx > 0) {
             // sync pg
             if (begin == 0) {
                 body_ss << "  if (blockIdx.x < " << end << ") {";
@@ -145,6 +140,10 @@ CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
             body_ss << " sync_gpu<" << end - begin << ">(ARK_LOOP_SYNC_STATE_"
                     << state_id << "); }\n";
         }
+        for (auto &rg : pg["ResourceGroups"]) {
+            body_ss << this->resource_group(rg, j["TaskInfos"], proc_range);
+        }
+        pg_idx++;
     }
 
     for (auto &kv : sync_state_info) {

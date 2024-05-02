@@ -10,6 +10,7 @@ from .model import Model
 
 _RuntimeState = NewType("_RuntimeState", None)
 
+
 class Runtime:
     """
     Convenience class for running a model.
@@ -53,7 +54,10 @@ class Runtime:
         """
         Check if the runtime is launched.
         """
-        return self.state == Runtime.State.LaunchedNotRunning or self.state == Runtime.State.Running
+        return (
+            self.state == Runtime.State.LaunchedNotRunning
+            or self.state == Runtime.State.Running
+        )
 
     def running(self) -> bool:
         """
@@ -61,16 +65,21 @@ class Runtime:
         """
         return self.state == Runtime.State.Running
 
-    def launch(self, rank: int = 0, world_size: int = 1, gpu_id: int = 0, plan: str = "", plan_path: str = ""):
+    def launch(
+        self,
+        rank: int = 0,
+        world_size: int = 1,
+        gpu_id: int = 0,
+        plan: str = "",
+        plan_path: str = "",
+    ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
         the CUDA kernels. The GPU context and the connection between GPUs will be
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
         if self.launched():
-            logging.warn(
-                "Runtime is already launched, skip launching"
-            )
+            logging.warn("Runtime is already launched, skip launching")
             return
         if plan == "" and plan_path == "":
             plan = _DefaultPlanner(Model.get_model(), gpu_id).plan(indent=2)
@@ -122,9 +131,7 @@ class Runtime:
         Once this is called, we need to call `launch()` again to run the model again.
         """
         if not self.launched():
-            logging.warn(
-                "ARK runtime is never launched, skip stopping"
-            )
+            logging.warn("ARK runtime is never launched, skip stopping")
             return
         elapsed = self.executor.stop()
         self.state = Runtime.State.LaunchedNotRunning

@@ -34,7 +34,7 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2);
 
 void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to);
 
-std::string tolower(const std::string &str);
+std::string pascal_to_snake(const std::string &str);
 
 }  // namespace ark
 

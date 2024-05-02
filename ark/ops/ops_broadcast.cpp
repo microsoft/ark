@@ -35,7 +35,7 @@ std::string ModelOpBroadcast1::impl_name(const nlohmann::json &config) const {
     Dims unit_out_dims{tile_shape[0], tile_shape[1]};
 
     return function_name_string(
-        tolower(type()->type_name()),
+        pascal_to_snake(type()->type_name()),
         {vec_string(read_tensors_[0]->strides().dims4()),
          vec_string(read_tensors_[0]->shape().dims4()),
          vec_string(write_tensors_[0]->strides().dims4()),

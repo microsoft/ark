@@ -53,7 +53,8 @@ std::string ModelOpArithmetic::impl_name(const nlohmann::json &config) const {
     template_args.emplace_back(vec_string(unit_out_dims.dims4()));
     template_args.emplace_back(std::to_string(num_warps));
     template_args.emplace_back(std::to_string(0));
-    return function_name_string(tolower(type()->type_name()), template_args);
+    return function_name_string(pascal_to_snake(type()->type_name()),
+                                template_args);
 }
 
 std::vector<ModelOpArg> ModelOpArithmetic::impl_args(

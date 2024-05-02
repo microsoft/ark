@@ -424,7 +424,7 @@ class Attention(ark.Module):
         # (bs, n_local_heads, head_dim, seqlen)
         keys = ark.transpose(keys, [0, 2, 3, 1])
         scores = ark.matmul(xq, keys)
-        scores = ark.scale(scores, 1.0 / math.sqrt(self.head_dim))
+        scores = ark.mul(scores, 1.0 / math.sqrt(self.head_dim))
 
         if mask is not None:
             scores = ark.add(scores, mask)
