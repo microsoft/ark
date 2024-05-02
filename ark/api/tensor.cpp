@@ -51,7 +51,7 @@ const DataType &Tensor::data_type() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
-    if (tensor.is_none()) {
+    if (tensor.is_null()) {
         os << "null";
     } else {
         os << tensor.ref()->serialize().dump();

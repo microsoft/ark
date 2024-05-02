@@ -13,7 +13,7 @@ void register_data_type(py::module &m) {
     py::class_<ark::DataType>(m, "_DataType")
         .def("__eq__", &ark::DataType::operator==)
         .def("__ne__", &ark::DataType::operator!=)
-        .def("is_none", &ark::DataType::is_none)
+        .def("is_null", &ark::DataType::is_null)
         .def("bytes", &ark::DataType::bytes)
         .def("name", &ark::DataType::name, py::return_value_policy::reference)
         .def_static("from_name", &ark::DataType::from_name);

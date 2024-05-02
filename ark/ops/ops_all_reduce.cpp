@@ -13,7 +13,7 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
         int gpu_dst = (gpu_id + i) % gpu_num;
         int gpu_src = (gpu_id + gpu_num - i) % gpu_num;
         Tensor send_data;
-        if (prev_recv.is_none()) {
+        if (prev_recv.is_null()) {
             send_data = input;
         } else {
             send_data = this->identity(input, {prev_recv});

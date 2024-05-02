@@ -25,18 +25,6 @@ class ModelBuffer {
 class ModelDataT;
 using ModelDataType = std::shared_ptr<ModelDataT>;
 
-/// Tensor is a view of a TensorBuf.
-///
-/// Illustration of a single axis of a tensor:
-///
-/// 0           off                                                       stride
-/// |------------|-------------shape-------------|---------------------------|
-///       ^       <----------------------------->                ^
-///       |          data range of this tensor                   |
-///       +------------------------------------------+-----------+
-///                                                  |
-///                                        We call these "padding".
-///
 class ModelTensor {
    public:
     ModelTensor(ModelDataType data_type, ModelBufferRef buffer,

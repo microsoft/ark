@@ -38,7 +38,7 @@ class DataType {
     bool operator==(const DataType &other) const { return ref_ == other.ref_; }
     bool operator!=(const DataType &other) const { return ref_ != other.ref_; }
 
-    bool is_none() const { return !ref_; }
+    bool is_null() const { return !ref_; }
 
     ModelDataType ref() const { return ref_; }
 

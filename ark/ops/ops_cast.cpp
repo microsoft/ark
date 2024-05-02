@@ -114,7 +114,7 @@ ModelOpByteCast::ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
 Tensor Model::cast(Tensor input, const DataType &data_type, Tensor output,
                    const std::string &name) {
     check_null(input.ref());
-    if (output.is_none()) {
+    if (output.is_null()) {
         if (input.data_type() == data_type) {
             // Casting to the same type without the output tensor specified is
             // considered as an identity.

@@ -11,6 +11,16 @@
 
 namespace ark {
 
+///
+/// Tensor is a view of a memory space.
+///
+/// Illustration of a single axis of a tensor:
+///
+/// 0         offset                                                      stride
+/// |------------|-------------shape-------------|---------------------------|
+///               <----------------------------->
+///                  data range of this tensor
+///
 class Tensor {
    protected:
     friend class Model;
@@ -25,7 +35,7 @@ class Tensor {
     bool operator==(const Tensor &other) const { return ref_ == other.ref_; }
     bool operator!=(const Tensor &other) const { return ref_ != other.ref_; }
 
-    bool is_none() const { return !ref_; }
+    bool is_null() const { return !ref_; }
 
     ModelTensorRef ref() const { return ref_; }
 
