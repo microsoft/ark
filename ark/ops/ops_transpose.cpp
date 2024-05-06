@@ -99,8 +99,8 @@ std::string ModelOpTranspose::impl_name(const nlohmann::json &config) const {
         });
 }
 
-std::vector<ModelOpArg> ModelOpTranspose::impl_args(
-    [[maybe_unused]] const nlohmann::json &config) const {
+std::vector<ModelOpArg> ModelOpTranspose::impl_args([
+    [maybe_unused]] const nlohmann::json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 

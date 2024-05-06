@@ -13,8 +13,8 @@ class ModelOpScalarAdd : public ModelOpBroadcast1 {
     ModelOpScalarAdd() = default;
     ModelOpScalarAdd(ModelTensorRef input, float val, ModelTensorRef output);
 
-    std::vector<ModelOpArg> impl_args(
-        [[maybe_unused]] const nlohmann::json &config) const override;
+    std::vector<ModelOpArg> impl_args([
+        [maybe_unused]] const nlohmann::json &config) const override;
 };
 
 class ModelOpScalarMul : public ModelOpBroadcast1 {
@@ -22,8 +22,8 @@ class ModelOpScalarMul : public ModelOpBroadcast1 {
     ModelOpScalarMul() = default;
     ModelOpScalarMul(ModelTensorRef input, float val, ModelTensorRef output);
 
-    std::vector<ModelOpArg> impl_args(
-        [[maybe_unused]] const nlohmann::json &config) const override;
+    std::vector<ModelOpArg> impl_args([
+        [maybe_unused]] const nlohmann::json &config) const override;
 };
 
 }  // namespace ark

@@ -44,13 +44,13 @@ class ModelOp {
 
     ModelOp(const ModelOp &) = default;
 
-    virtual std::string impl_name(
-        [[maybe_unused]] const nlohmann::json &config) const {
+    virtual std::string impl_name([
+        [maybe_unused]] const nlohmann::json &config) const {
         return "";
     }
 
-    virtual std::vector<ModelOpArg> impl_args(
-        [[maybe_unused]] const nlohmann::json &config) const {
+    virtual std::vector<ModelOpArg> impl_args([
+        [maybe_unused]] const nlohmann::json &config) const {
         return {};
     }
 

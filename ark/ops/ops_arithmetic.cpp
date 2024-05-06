@@ -57,8 +57,8 @@ std::string ModelOpArithmetic::impl_name(const nlohmann::json &config) const {
                                 template_args);
 }
 
-std::vector<ModelOpArg> ModelOpArithmetic::impl_args(
-    [[maybe_unused]] const nlohmann::json &config) const {
+std::vector<ModelOpArg> ModelOpArithmetic::impl_args([
+    [maybe_unused]] const nlohmann::json &config) const {
     std::vector<ModelOpArg> args;
     args.emplace_back(result_tensors_[0]);
     args.emplace_back(read_tensors_[0]);

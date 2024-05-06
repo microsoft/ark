@@ -15,8 +15,8 @@ class ModelOpNoop : public ModelOp {
 
     std::string impl_name(const nlohmann::json &config) const override;
 
-    std::vector<ModelOpArg> impl_args(
-        [[maybe_unused]] const nlohmann::json &config) const override;
+    std::vector<ModelOpArg> impl_args([
+        [maybe_unused]] const nlohmann::json &config) const override;
 
     nlohmann::ordered_json default_config() const override;
 };

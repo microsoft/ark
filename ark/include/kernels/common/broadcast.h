@@ -40,17 +40,22 @@ struct Broadcast1Intrinsic {
     static constexpr int InConsecBytes = InConsecLen * sizeof(InputType);
 
     static constexpr int OutNelemPerThread =
-        (OutConsecBytes % 16 == 0)  ? 16 / sizeof(OutputType)
-        : (OutConsecBytes % 8 == 0) ? 8 / sizeof(OutputType)
-        : (OutConsecBytes % 4 == 0) ? 4 / sizeof(OutputType)
-        : (OutConsecBytes % 2 == 0) ? 2 / sizeof(OutputType)
-                                    : 1;
+        (OutConsecBytes % 16 == 0)
+            ? 16 / sizeof(OutputType)
+            : (OutConsecBytes % 8 == 0)
+                  ? 8 / sizeof(OutputType)
+                  : (OutConsecBytes % 4 == 0)
+                        ? 4 / sizeof(OutputType)
+                        : (OutConsecBytes % 2 == 0) ? 2 / sizeof(OutputType)
+                                                    : 1;
     static constexpr int InNelemPerThread =
-        (InConsecBytes % 16 == 0)  ? 16 / sizeof(InputType)
-        : (InConsecBytes % 8 == 0) ? 8 / sizeof(InputType)
-        : (InConsecBytes % 4 == 0) ? 4 / sizeof(InputType)
-        : (InConsecBytes % 2 == 0) ? 2 / sizeof(InputType)
-                                   : 1;
+        (InConsecBytes % 16 == 0)
+            ? 16 / sizeof(InputType)
+            : (InConsecBytes % 8 == 0)
+                  ? 8 / sizeof(InputType)
+                  : (InConsecBytes % 4 == 0)
+                        ? 4 / sizeof(InputType)
+                        : (InConsecBytes % 2 == 0) ? 2 / sizeof(InputType) : 1;
 
     static constexpr int NelemPerThread =
         BroadcastInput ? OutNelemPerThread
@@ -147,35 +152,43 @@ struct Broadcast2Intrinsic {
     static constexpr int In1ConsecBytes = In1ConsecLen * sizeof(InputType);
 
     static constexpr int OutNelemPerThread =
-        (OutConsecBytes % 16 == 0)  ? 16 / sizeof(OutputType)
-        : (OutConsecBytes % 8 == 0) ? 8 / sizeof(OutputType)
-        : (OutConsecBytes % 4 == 0) ? 4 / sizeof(OutputType)
-        : (OutConsecBytes % 2 == 0) ? 2 / sizeof(OutputType)
-                                    : 1;
+        (OutConsecBytes % 16 == 0)
+            ? 16 / sizeof(OutputType)
+            : (OutConsecBytes % 8 == 0)
+                  ? 8 / sizeof(OutputType)
+                  : (OutConsecBytes % 4 == 0)
+                        ? 4 / sizeof(OutputType)
+                        : (OutConsecBytes % 2 == 0) ? 2 / sizeof(OutputType)
+                                                    : 1;
 
     static constexpr int In0NelemPerThread =
-        (In0ConsecBytes % 16 == 0)  ? 16 / sizeof(InputType)
-        : (In0ConsecBytes % 8 == 0) ? 8 / sizeof(InputType)
-        : (In0ConsecBytes % 4 == 0) ? 4 / sizeof(InputType)
-        : (In0ConsecBytes % 2 == 0) ? 2 / sizeof(InputType)
-                                    : 1;
+        (In0ConsecBytes % 16 == 0)
+            ? 16 / sizeof(InputType)
+            : (In0ConsecBytes % 8 == 0)
+                  ? 8 / sizeof(InputType)
+                  : (In0ConsecBytes % 4 == 0)
+                        ? 4 / sizeof(InputType)
+                        : (In0ConsecBytes % 2 == 0) ? 2 / sizeof(InputType) : 1;
 
     static constexpr int In1NelemPerThread =
-        (In1ConsecBytes % 16 == 0)  ? 16 / sizeof(InputType)
-        : (In1ConsecBytes % 8 == 0) ? 8 / sizeof(InputType)
-        : (In1ConsecBytes % 4 == 0) ? 4 / sizeof(InputType)
-        : (In1ConsecBytes % 2 == 0) ? 2 / sizeof(InputType)
-                                    : 1;
+        (In1ConsecBytes % 16 == 0)
+            ? 16 / sizeof(InputType)
+            : (In1ConsecBytes % 8 == 0)
+                  ? 8 / sizeof(InputType)
+                  : (In1ConsecBytes % 4 == 0)
+                        ? 4 / sizeof(InputType)
+                        : (In1ConsecBytes % 2 == 0) ? 2 / sizeof(InputType) : 1;
 
     static constexpr int NelemPerThread =
-        (BroadcastInput0 && BroadcastInput1) ? OutNelemPerThread
-        : BroadcastInput0
-            ? math::gcd<OutNelemPerThread, In0NelemPerThread>::value
-        : BroadcastInput1
-            ? math::gcd<OutNelemPerThread, In1NelemPerThread>::value
-            : math::gcd<OutNelemPerThread,
-                        math::gcd<In0NelemPerThread,
-                                  In1NelemPerThread>::value>::value;
+        (BroadcastInput0 && BroadcastInput1)
+            ? OutNelemPerThread
+            : BroadcastInput0
+                  ? math::gcd<OutNelemPerThread, In0NelemPerThread>::value
+                  : BroadcastInput1
+                        ? math::gcd<OutNelemPerThread, In1NelemPerThread>::value
+                        : math::gcd<OutNelemPerThread,
+                                    math::gcd<In0NelemPerThread,
+                                              In1NelemPerThread>::value>::value;
 
     static_assert(math::is_pow2<NelemPerThread>::value,
                   "NelemPerThread must be power of 2");

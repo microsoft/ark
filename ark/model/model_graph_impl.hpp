@@ -26,7 +26,7 @@ class ModelGraph::Impl {
     Impl &operator=(const Impl &other);
 
     template <typename T, typename... Args>
-    ModelOpRef create_op(const std::string &name, Args &&...args) {
+    ModelOpRef create_op(const std::string &name, Args &&... args) {
         ModelOpRef op = std::make_shared<T>(std::forward<Args>(args)...);
         std::string name_copy;
         if (name.empty()) {

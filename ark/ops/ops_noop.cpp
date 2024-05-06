@@ -12,13 +12,13 @@ ModelOpNoop::ModelOpNoop(ModelTensorRef input) : ModelOp("Noop") {
     verify();
 }
 
-std::string ModelOpNoop::impl_name(
-    [[maybe_unused]] const nlohmann::json &config) const {
+std::string ModelOpNoop::impl_name([
+    [maybe_unused]] const nlohmann::json &config) const {
     return function_name_string("noop");
 }
 
-std::vector<ModelOpArg> ModelOpNoop::impl_args(
-    [[maybe_unused]] const nlohmann::json &config) const {
+std::vector<ModelOpArg> ModelOpNoop::impl_args([
+    [maybe_unused]] const nlohmann::json &config) const {
     return {};
 }
 
