@@ -9,7 +9,7 @@ baseImageTable=(
     ["cuda12.2"]="nvidia/cuda:12.2.2-devel-ubuntu20.04"
     ["rocm5.7"]="rocm/dev-ubuntu-20.04:5.7-complete"
     ["rocm6.0"]="rocm/dev-ubuntu-20.04:6.0-complete"
-    ["rocm6.1"]="rocm/dev-ubuntu-20.04:6.1"
+    ["rocm6.1"]="rocm/dev-ubuntu-20.04:6.1-complete"
 )
 
 declare -A extraLdPathTable

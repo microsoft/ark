@@ -18,7 +18,7 @@ jobs:
       matrix:
         language: [ 'cpp' ]
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-cuda-${{ github.ref }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
@@ -63,7 +63,7 @@ jobs:
       matrix:
         language: [ 'cpp' ]
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-rocm-${{ github.ref }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
