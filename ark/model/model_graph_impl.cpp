@@ -427,8 +427,7 @@ void ModelGraph::Impl::recursive_merge_nodes(
     this->recursive_merge_nodes(seen_nodes, new_boundary_nodes);
 }
 
-ordered_json ModelGraph::Impl::to_json(
-    const ModelNodeRef &node) const {
+ordered_json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
     ordered_json j;
     j["Id"] = nodes_.index(node);
     j["ProducerNodeIds"] = json::array();
