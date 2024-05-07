@@ -57,11 +57,12 @@ jobs:
           lcov --remove coverage.info \
               '/usr/*' \
               '/tmp/*' \
+              '*/build/*' \
               '*/third_party/*' \
               '*/ark/*_test.*' \
               '*/examples/*' \
               '*/python/*' \
-              '*/ark/unittest/unittest_utils.cc' \
+              '*/ark/unittest/unittest_utils.cpp' \
               --output-file coverage.info
           lcov --list coverage.info
           bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
