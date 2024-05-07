@@ -43,12 +43,13 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
 //     }
 //     ark::Dims ori_shape = input->shape;
 //     Tensor *input_reshaped = this->reshape(input, {input->shape.size()});
-//     Tensor *out = this->local_reduce_scatter(input_reshaped, gpu_id, gpu_num);
-//     Tensor *res = this->local_all_gather(out, gpu_id, gpu_num);
+//     Tensor *out = this->local_reduce_scatter(input_reshaped, gpu_id,
+//     gpu_num); Tensor *res = this->local_all_gather(out, gpu_id, gpu_num);
 //     return this->reshape(res, ori_shape);
 // }
 
-// Tensor *Model::local_all_reduce_packet(Tensor *input, int gpu_id, int gpu_num,
+// Tensor *Model::local_all_reduce_packet(Tensor *input, int gpu_id, int
+// gpu_num,
 //                                        const std::string &) {
 //     assert(input != nullptr);
 //     // We only support out-of-place all_reduce
@@ -79,8 +80,9 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
 //     size_t scratch_base_offset =
 //         (flag & 1) ? 0 : num_packets * MSCCLPP_PACKET_SIZE;
 //     size_t scratch_result_offset = (flag & 1)
-//                                        ? 2 * num_packets * MSCCLPP_PACKET_SIZE
-//                                        : 3 * num_packets * MSCCLPP_PACKET_SIZE;
+//                                        ? 2 * num_packets *
+//                                        MSCCLPP_PACKET_SIZE : 3 * num_packets
+//                                        * MSCCLPP_PACKET_SIZE;
 //     int id = this->impl->next_eid;
 //     std::vector<Tensor *> sharded_inputs =
 //         this->sharding(input, 0, nelems_per_rank);
@@ -93,7 +95,8 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
 //         Tensor *out =
 //             this->put_packet(sharded_inputs[remote_rank], scratch,
 //                              remote_scratch, id, gpu_id, remote_rank,
-//                              scratch_base_offset + npackets_per_rank * gpu_id *
+//                              scratch_base_offset + npackets_per_rank * gpu_id
+//                              *
 //                                                        MSCCLPP_PACKET_SIZE,
 //                              flag);
 //         outputs.push_back(out);
@@ -101,16 +104,17 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
 //     Tensor *input_sharded = this->identity(sharded_inputs[gpu_id], outputs);
 //     // This op should reduce from the scratch buffer and write to the remote.
 //     Tensor *out_stage2 = this->reduce_and_write_packet(
-//         input_sharded, scratch, sharded_outputs[gpu_id], remote_scratches, id,
-//         gpu_id, npeer, nelems_per_rank, scratch_base_offset,
+//         input_sharded, scratch, sharded_outputs[gpu_id], remote_scratches,
+//         id, gpu_id, npeer, nelems_per_rank, scratch_base_offset,
 //         scratch_result_offset, flag);
 //     // Get the result from the scratch buffer.
 //     Tensor *scratch_stage3 = this->identity(scratch, {out_stage2});
 //     outputs.clear();
 //     for (int i = 0; i < npeer; ++i) {
 //         int remote_rank = i < gpu_id ? i : i + 1;
-//         size_t dst_offset = nelems_per_rank * remote_rank * input->type_bytes();
-//         size_t src_offset = scratch_result_offset + npackets_per_rank *
+//         size_t dst_offset = nelems_per_rank * remote_rank *
+//         input->type_bytes(); size_t src_offset = scratch_result_offset +
+//         npackets_per_rank *
 //                                                         remote_rank *
 //                                                         MSCCLPP_PACKET_SIZE;
 //         Tensor *res = this->get_packet(scratch_stage3, out, src_offset,
