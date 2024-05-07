@@ -32,12 +32,12 @@ void ModelBuffer::tag_recv(int remote_rank, int tag) {
     recv_tags_.insert(TagInfo{remote_rank, tag});
 }
 
-nlohmann::ordered_json ModelBuffer::serialize() const {
-    nlohmann::ordered_json j;
+ordered_json ModelBuffer::serialize() const {
+    ordered_json j;
     j["Id"] = id_;
     j["Rank"] = rank_;
-    nlohmann::ordered_json send_tags = json::array();
-    nlohmann::ordered_json recv_tags = json::array();
+    ordered_json send_tags = json::array();
+    ordered_json recv_tags = json::array();
     for (const auto &info : send_tags_) {
         send_tags.push_back({info.first, info.second});
     }

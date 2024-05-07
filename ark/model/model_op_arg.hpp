@@ -45,7 +45,7 @@ class ModelOpArg : public NamedT {
 
     const std::string &type_str() const { return type_str_; }
 
-    nlohmann::ordered_json serialize() const;
+    ordered_json serialize() const;
 
     static ModelOpArg deserialize(const json &serialized);
 

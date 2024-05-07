@@ -26,8 +26,8 @@ ModelOffset::ModelOffset(ModelTensorRef tensor) {
     value_ = offset;
 }
 
-nlohmann::ordered_json ModelOffset::serialize() const {
-    nlohmann::ordered_json j;
+ordered_json ModelOffset::serialize() const {
+    ordered_json j;
     j["BufferId"] = buffer_id_;
     j["Value"] = value_;
     return j;

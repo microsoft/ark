@@ -18,14 +18,14 @@ class DefaultPlanner::Impl {
    protected:
     friend class DefaultPlanner;
 
-    nlohmann::ordered_json plan_;
+    ordered_json plan_;
 };
 
 DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
     const auto &gpu_info = GpuManager::get_instance(gpu_id)->info();
     size_t num_sm = gpu_info.num_sm;
-    nlohmann::ordered_json task_infos;
-    nlohmann::ordered_json processor_groups;
+    ordered_json task_infos;
+    ordered_json processor_groups;
     size_t max_num_warps = 1;
     size_t max_num_processors = 1;
     size_t next_node_id = 0;
@@ -34,7 +34,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
         for (const auto &op : node->ops) {
             if (op->is_virtual()) continue;
 
-            nlohmann::ordered_json task_info;
+            ordered_json task_info;
             task_info["Id"] = next_node_id++;
             task_info["Ops"] = {op->serialize()};
 
@@ -50,7 +50,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
             task_info["SramBytes"] = sram_bytes;
             task_infos.push_back(task_info);
 
-            nlohmann::ordered_json resource_group;
+            ordered_json resource_group;
             size_t num_processors = std::min(num_sm, num_tasks);
             max_num_processors = std::max(max_num_processors, num_processors);
             resource_group["ProcessorRange"] = {0, num_processors};
@@ -60,7 +60,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
                                              {"TaskRange", {0, num_tasks}},
                                              {"Granularity", 1}}};
 
-            nlohmann::ordered_json processor_group;
+            ordered_json processor_group;
             processor_group["ProcessorRange"] = {0, num_processors};
             processor_group["ResourceGroups"] = {resource_group};
             processor_groups.push_back(processor_group);

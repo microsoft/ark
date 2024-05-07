@@ -70,7 +70,7 @@ class ModelGraph::Impl {
     void recursive_merge_nodes(UniqueList<ModelNodeRef> &seen_nodes,
                                const std::vector<ModelNodeRef> &boundary_nodes);
 
-    nlohmann::ordered_json to_json(const ModelNodeRef &node) const;
+    ordered_json to_json(const ModelNodeRef &node) const;
 
     /// The list of @ref ModelNode in the graph.
     UniqueList<ModelNodeRef> nodes_;

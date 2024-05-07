@@ -41,7 +41,7 @@ class ModelTensor {
 
     bool is_sequential() const;
 
-    nlohmann::ordered_json serialize() const;
+    ordered_json serialize() const;
 
     static std::shared_ptr<ModelTensor> deserialize(const json &serialized);
 

@@ -109,8 +109,8 @@ std::vector<ModelOpArg> ModelOpReduce::impl_args([
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-nlohmann::ordered_json ModelOpReduce::default_config() const {
-    nlohmann::ordered_json config;
+ordered_json ModelOpReduce::default_config() const {
+    ordered_json config;
     config["NumWarps"] = 1;
     int axis = args_.at("Axis").value<int>();
     if (axis == read_tensors_[0]->shape().ndims() - 1 || axis == -1) {

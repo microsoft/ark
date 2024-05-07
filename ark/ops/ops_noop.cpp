@@ -21,8 +21,8 @@ std::vector<ModelOpArg> ModelOpNoop::impl_args([
     return {};
 }
 
-nlohmann::ordered_json ModelOpNoop::default_config() const {
-    nlohmann::ordered_json config;
+ordered_json ModelOpNoop::default_config() const {
+    ordered_json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     config["NumTasks"] = 0;

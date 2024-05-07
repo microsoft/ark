@@ -24,7 +24,7 @@ class ModelOffset {
 
     size_t value() const { return value_; }
 
-    nlohmann::ordered_json serialize() const;
+    ordered_json serialize() const;
 
     static std::shared_ptr<ModelOffset> deserialize(const json &serialized);
 };

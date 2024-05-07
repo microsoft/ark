@@ -51,7 +51,7 @@ std::vector<ModelOpArg> ModelOpSend::impl_args([
     return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[0])};
 }
 
-nlohmann::ordered_json ModelOpSend::default_config() const {
+ordered_json ModelOpSend::default_config() const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 
@@ -76,7 +76,7 @@ std::vector<ModelOpArg> ModelOpSendDone::impl_args([
     return {};
 }
 
-nlohmann::ordered_json ModelOpSendDone::default_config() const {
+ordered_json ModelOpSendDone::default_config() const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 
@@ -107,7 +107,7 @@ std::vector<ModelOpArg> ModelOpRecv::impl_args([
     return {};
 }
 
-nlohmann::ordered_json ModelOpRecv::default_config() const {
+ordered_json ModelOpRecv::default_config() const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 

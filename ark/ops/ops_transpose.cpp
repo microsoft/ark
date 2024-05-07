@@ -104,8 +104,8 @@ std::vector<ModelOpArg> ModelOpTranspose::impl_args([
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-nlohmann::ordered_json ModelOpTranspose::default_config() const {
-    nlohmann::ordered_json config;
+ordered_json ModelOpTranspose::default_config() const {
+    ordered_json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     size_t tile_x = 8;

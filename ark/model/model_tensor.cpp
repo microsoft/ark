@@ -109,8 +109,8 @@ bool ModelTensor::is_sequential() const {
     return true;
 }
 
-nlohmann::ordered_json ModelTensor::serialize() const {
-    nlohmann::ordered_json j;
+ordered_json ModelTensor::serialize() const {
+    ordered_json j;
     j["Id"] = id_;
     j["DataType"] = data_type_->type_name();
     j["Buffer"] = buffer_->serialize();

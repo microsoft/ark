@@ -150,24 +150,24 @@ std::string ModelOp::function_name_string(
     return ss.str();
 }
 
-nlohmann::ordered_json ModelOp::serialize() const {
-    nlohmann::ordered_json j;
+ordered_json ModelOp::serialize() const {
+    ordered_json j;
     j["Type"] = type_->type_name();
     j["Name"] = name_;
     j["IsVirtual"] = is_virtual_;
-    j["ReadTensors"] = nlohmann::ordered_json::array();
+    j["ReadTensors"] = ordered_json::array();
     for (auto &t : read_tensors_) {
         j["ReadTensors"].push_back(t->serialize());
     }
-    j["WriteTensors"] = nlohmann::ordered_json::array();
+    j["WriteTensors"] = ordered_json::array();
     for (auto &t : write_tensors_) {
         j["WriteTensors"].push_back(t->serialize());
     }
-    j["ResultTensors"] = nlohmann::ordered_json::array();
+    j["ResultTensors"] = ordered_json::array();
     for (auto &t : result_tensors_) {
         j["ResultTensors"].push_back(t->serialize());
     }
-    j["Args"] = nlohmann::ordered_json::object();
+    j["Args"] = ordered_json::object();
     for (auto &arg : args_) {
         j["Args"][arg.first] = arg.second.serialize();
     }

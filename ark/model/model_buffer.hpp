@@ -34,7 +34,7 @@ class ModelBuffer {
 
     void tag_recv(int remote_rank, int tag);
 
-    nlohmann::ordered_json serialize() const;
+    ordered_json serialize() const;
 
     static std::shared_ptr<ModelBuffer> deserialize(const json &serialized);
 

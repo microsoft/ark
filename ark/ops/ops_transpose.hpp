@@ -20,7 +20,7 @@ class ModelOpTranspose : public ModelOp {
     std::vector<ModelOpArg> impl_args([
         [maybe_unused]] const json &config) const override;
 
-    nlohmann::ordered_json default_config() const override;
+    ordered_json default_config() const override;
 };
 
 }  // namespace ark

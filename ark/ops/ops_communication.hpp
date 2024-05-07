@@ -19,7 +19,7 @@ class ModelOpSend : public ModelOp {
     std::vector<ModelOpArg> impl_args([
         [maybe_unused]] const json &config) const override;
 
-    nlohmann::ordered_json default_config() const override;
+    ordered_json default_config() const override;
 };
 
 class ModelOpSendDone : public ModelOp {
@@ -32,7 +32,7 @@ class ModelOpSendDone : public ModelOp {
     std::vector<ModelOpArg> impl_args([
         [maybe_unused]] const json &config) const override;
 
-    nlohmann::ordered_json default_config() const override;
+    ordered_json default_config() const override;
 };
 
 class ModelOpRecv : public ModelOp {
@@ -45,7 +45,7 @@ class ModelOpRecv : public ModelOp {
     std::vector<ModelOpArg> impl_args([
         [maybe_unused]] const json &config) const override;
 
-    nlohmann::ordered_json default_config() const override;
+    ordered_json default_config() const override;
 };
 
 }  // namespace ark

@@ -58,8 +58,8 @@ std::vector<ModelOpArg> ModelOpEmbedding::impl_args([
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-nlohmann::ordered_json ModelOpEmbedding::default_config() const {
-    nlohmann::ordered_json config;
+ordered_json ModelOpEmbedding::default_config() const {
+    ordered_json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     const auto &shape = result_tensors_[0]->shape().dims4();

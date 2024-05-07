@@ -427,9 +427,9 @@ void ModelGraph::Impl::recursive_merge_nodes(
     this->recursive_merge_nodes(seen_nodes, new_boundary_nodes);
 }
 
-nlohmann::ordered_json ModelGraph::Impl::to_json(
+ordered_json ModelGraph::Impl::to_json(
     const ModelNodeRef &node) const {
-    nlohmann::ordered_json j;
+    ordered_json j;
     j["Id"] = nodes_.index(node);
     j["ProducerNodeIds"] = json::array();
     for (auto producer : node->producers) {
@@ -447,7 +447,7 @@ nlohmann::ordered_json ModelGraph::Impl::to_json(
 }
 
 std::string ModelGraph::Impl::serialize(int indent) const {
-    nlohmann::ordered_json j;
+    ordered_json j;
     j["Nodes"] = json::array();
     for (const auto &node : nodes_) {
         j["Nodes"].emplace_back(this->to_json(node));

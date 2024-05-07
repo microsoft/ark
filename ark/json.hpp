@@ -10,6 +10,8 @@ namespace ark {
 
 using json = ::nlohmann::json;
 
+using ordered_json = ::nlohmann::ordered_json;
+
 }  // namespace ark
 
 #endif  // ARK_JSON_HPP_

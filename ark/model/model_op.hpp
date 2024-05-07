@@ -53,7 +53,7 @@ class ModelOp {
         return {};
     }
 
-    virtual nlohmann::ordered_json default_config() const {
+    virtual ordered_json default_config() const {
         return {{"NumTasks", 0}, {"NumWarps", 0}, {"SramBytes", 0}};
     }
 
@@ -83,7 +83,7 @@ class ModelOp {
 
     void verify() const;
 
-    nlohmann::ordered_json serialize() const;
+    ordered_json serialize() const;
 
     static std::shared_ptr<ModelOp> deserialize(const json &serialized);
 
