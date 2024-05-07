@@ -4,7 +4,6 @@
 set(MSCCLPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp/include)
 set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include)
 set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include)
-set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json/include PARENT_SCOPE)
 
 include(FetchContent)
 
@@ -31,6 +30,7 @@ FetchContent_GetProperties(json)
 if (NOT json_POPULATED)
     FetchContent_Populate(json)
 endif()
+set(JSON_INCLUDE_DIRS ${json_SOURCE_DIR}/include PARENT_SCOPE)
 
 if(USE_CUDA)
     # Configure CUTLASS
