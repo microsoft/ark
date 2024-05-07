@@ -8,13 +8,13 @@
 #include <memory>
 #include <string>
 
-#include "nlohmann/json.hpp"
+#include "json.hpp"
 
 namespace ark {
 
 class CodeGenerator {
    public:
-    CodeGenerator(const nlohmann::json &plan,
+    CodeGenerator(const json &plan,
                   const std::map<size_t, size_t> &buffer_id_to_offset,
                   const std::string &name = "ark_kernel");
 

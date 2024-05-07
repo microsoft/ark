@@ -24,7 +24,7 @@ ModelOpScalarAdd::ModelOpScalarAdd(ModelTensorRef input, float factor,
 }
 
 std::vector<ModelOpArg> ModelOpScalarAdd::impl_args([
-    [maybe_unused]] const nlohmann::json &config) const {
+    [maybe_unused]] const json &config) const {
     float factor = args_.at("Factor").value<float>();
     return {result_tensors_[0], read_tensors_[0], factor};
 }
@@ -46,7 +46,7 @@ ModelOpScalarMul::ModelOpScalarMul(ModelTensorRef input, float factor,
 }
 
 std::vector<ModelOpArg> ModelOpScalarMul::impl_args([
-    [maybe_unused]] const nlohmann::json &config) const {
+    [maybe_unused]] const json &config) const {
     float factor = args_.at("Factor").value<float>();
     return {result_tensors_[0], read_tensors_[0], factor};
 }

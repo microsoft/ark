@@ -14,10 +14,10 @@ class ModelOpReduce : public ModelOp {
     ModelOpReduce(const std::string &type_name, ModelTensorRef input, int axis,
                   bool keepdims, ModelTensorRef output);
 
-    std::string impl_name(const nlohmann::json &config) const override;
+    std::string impl_name(const json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const nlohmann::json &config) const override;
+        [maybe_unused]] const json &config) const override;
 
     nlohmann::ordered_json default_config() const override;
 };

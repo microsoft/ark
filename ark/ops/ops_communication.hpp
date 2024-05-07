@@ -14,10 +14,10 @@ class ModelOpSend : public ModelOp {
     ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
                 ModelTensorRef output);
 
-    std::string impl_name(const nlohmann::json &config) const override;
+    std::string impl_name(const json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const nlohmann::json &config) const override;
+        [maybe_unused]] const json &config) const override;
 
     nlohmann::ordered_json default_config() const override;
 };
@@ -27,10 +27,10 @@ class ModelOpSendDone : public ModelOp {
     ModelOpSendDone() = default;
     ModelOpSendDone(ModelTensorRef input);
 
-    std::string impl_name(const nlohmann::json &config) const override;
+    std::string impl_name(const json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const nlohmann::json &config) const override;
+        [maybe_unused]] const json &config) const override;
 
     nlohmann::ordered_json default_config() const override;
 };
@@ -40,10 +40,10 @@ class ModelOpRecv : public ModelOp {
     ModelOpRecv() = default;
     ModelOpRecv(ModelTensorRef output, int remote_rank, int tag);
 
-    std::string impl_name(const nlohmann::json &config) const override;
+    std::string impl_name(const json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const nlohmann::json &config) const override;
+        [maybe_unused]] const json &config) const override;
 
     nlohmann::ordered_json default_config() const override;
 };

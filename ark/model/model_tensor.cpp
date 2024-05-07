@@ -38,8 +38,8 @@ nlohmann::ordered_json ModelBuffer::serialize() const {
     nlohmann::ordered_json j;
     j["Id"] = id_;
     j["Rank"] = rank_;
-    nlohmann::ordered_json send_tags = nlohmann::json::array();
-    nlohmann::ordered_json recv_tags = nlohmann::json::array();
+    nlohmann::ordered_json send_tags = json::array();
+    nlohmann::ordered_json recv_tags = json::array();
     for (const auto &info : send_tags_) {
         send_tags.push_back({info.first, info.second});
     }
@@ -51,8 +51,7 @@ nlohmann::ordered_json ModelBuffer::serialize() const {
     return j;
 }
 
-std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(
-    const nlohmann::json &serialized) {
+std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const json &serialized) {
     if (!serialized.contains("Id")) {
         ERR(InvalidUsageError,
             "ModelBuffer deserialization failed: missing Id");
@@ -182,8 +181,7 @@ nlohmann::ordered_json ModelTensor::serialize() const {
     return j;
 }
 
-std::shared_ptr<ModelTensor> ModelTensor::deserialize(
-    const nlohmann::json &serialized) {
+std::shared_ptr<ModelTensor> ModelTensor::deserialize(const json &serialized) {
     if (!serialized.contains("DataType")) {
         ERR(InvalidUsageError,
             "ModelTensor deserialization failed: missing DataType");

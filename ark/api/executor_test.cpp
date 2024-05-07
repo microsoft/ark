@@ -6,8 +6,8 @@
 #include "ark/dims.hpp"
 #include "ark/model.hpp"
 #include "codegen.hpp"
+#include "json.hpp"
 #include "model/model_data_type.hpp"
-#include "nlohmann/json.hpp"
 // #include "planner/planner.hpp"
 #include "unittest/unittest_utils.h"
 
@@ -20,7 +20,7 @@
 //     auto serialized = comp.serialize(2);
 //     UNITTEST_LOG(serialized);
 
-//     auto comp_json = nlohmann::json::parse(serialized);
+//     auto comp_json = json::parse(serialized);
 //     std::map<size_t, size_t> buf_id_to_bytes;
 //     for (auto &tns : comp_json["Tensors"]) {
 //         size_t nelems;
@@ -42,15 +42,15 @@
 //         }
 //     }
 
-//     // nlohmann::json j;
+//     // json j;
 //     // j["NumProcessors"] = 1;
 //     // j["NumWarpsPerProcessor"] = 1;
 
-//     // j["TaskInfos"] = {nlohmann::json()};
+//     // j["TaskInfos"] = {json()};
 //     // j["TaskInfos"][0]["Id"] = 0;
 //     // j["TaskInfos"][0]["NumWarps"] = 1;
 //     // j["TaskInfos"][0]["SramBytes"] = 0;
-//     // j["TaskInfos"][0]["Ops"] = {nlohmann::json()};
+//     // j["TaskInfos"][0]["Ops"] = {json()};
 //     // j["TaskInfos"][0]["Ops"][0]["Type"] = "Scale";
 //     // j["TaskInfos"][0]["Ops"][0]["Name"] = "scale";
 //     // j["TaskInfos"][0]["Ops"][0]["IsVirtual"] = false;
@@ -62,20 +62,20 @@
 //     {comp_json["Tensors"][2]};
 //     // j["TaskInfos"][0]["Ops"][0]["Args"] = {
 //     //     {"Factor", {"FLOAT", 0.699999988079071}}};
-//     // j["TaskInfos"][0]["Ops"][0]["Config"] = nlohmann::json();
+//     // j["TaskInfos"][0]["Ops"][0]["Config"] = json();
 //     // j["TaskInfos"][0]["Ops"][0]["Config"]["NumWarps"] = 1;
 //     // j["TaskInfos"][0]["Ops"][0]["Config"]["SramBytes"] = 0;
 //     // j["TaskInfos"][0]["Ops"][0]["Config"]["Tile"] = {1, 32};
 
-//     // j["ProcessorGroups"] = {nlohmann::json()};
+//     // j["ProcessorGroups"] = {json()};
 //     // j["ProcessorGroups"][0]["ProcessorRange"] = {0, 1};
-//     // j["ProcessorGroups"][0]["ResourceGroups"] = {nlohmann::json()};
+//     // j["ProcessorGroups"][0]["ResourceGroups"] = {json()};
 //     // j["ProcessorGroups"][0]["ResourceGroups"][0]["ProcessorRange"] = {0,
 //     1};
 //     // j["ProcessorGroups"][0]["ResourceGroups"][0]["WarpRange"] = {0, 1};
 //     // j["ProcessorGroups"][0]["ResourceGroups"][0]["SramRange"] = {0, 1};
 //     // j["ProcessorGroups"][0]["ResourceGroups"][0]["TaskGroups"] = {
-//     //     nlohmann::json()};
+//     //     json()};
 //     //
 //     j["ProcessorGroups"][0]["ResourceGroups"][0]["TaskGroups"][0]["TaskId"] =
 //     // 0;
@@ -106,8 +106,8 @@
 //     //     UNITTEST_LOG("Tensor ", tns["Id"], ": offset ", offset);
 //     // }
 
-//     // j["Context"] = nlohmann::json();
-//     // j["Context"]["TensorIdToOffset"] = nlohmann::json();
+//     // j["Context"] = json();
+//     // j["Context"]["TensorIdToOffset"] = json();
 //     // for (auto &kv : tns_id_to_offset) {
 //     //     j["Context"]["TensorIdToOffset"][std::to_string(kv.first)] =
 //     //     kv.second;

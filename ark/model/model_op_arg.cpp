@@ -37,7 +37,7 @@ nlohmann::ordered_json ModelOpArg::serialize() const {
     return j;
 }
 
-ModelOpArg ModelOpArg::deserialize(const nlohmann::json &serialized) {
+ModelOpArg ModelOpArg::deserialize(const json &serialized) {
     try {
         const std::string &type_name = serialized[0];
         auto &value = serialized[1];

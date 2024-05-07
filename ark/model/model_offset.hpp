@@ -5,7 +5,7 @@
 #define ARK_MODEL_OFFSET_HPP_
 
 #include "ark/model_ref.hpp"
-#include "nlohmann/json.hpp"
+#include "json.hpp"
 
 namespace ark {
 
@@ -26,8 +26,7 @@ class ModelOffset {
 
     nlohmann::ordered_json serialize() const;
 
-    static std::shared_ptr<ModelOffset> deserialize(
-        const nlohmann::json &serialized);
+    static std::shared_ptr<ModelOffset> deserialize(const json &serialized);
 };
 
 }  // namespace ark

@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "error.hpp"
+#include "json.hpp"
 #include "logging.h"
-#include "nlohmann/json.hpp"
 
 namespace ark {
 

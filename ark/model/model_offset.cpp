@@ -32,8 +32,7 @@ nlohmann::ordered_json ModelOffset::serialize() const {
     return j;
 }
 
-std::shared_ptr<ModelOffset> ModelOffset::deserialize(
-    const nlohmann::json &serialized) {
+std::shared_ptr<ModelOffset> ModelOffset::deserialize(const json &serialized) {
     if (!serialized.contains("BufferId")) {
         ERR(ModelError, "ModelOffset deserialization failed: missing BufferId");
     } else if (!serialized.contains("Value")) {

@@ -174,8 +174,7 @@ nlohmann::ordered_json ModelOp::serialize() const {
     return j;
 }
 
-std::shared_ptr<ModelOp> ModelOp::deserialize(
-    const nlohmann::json &serialized) {
+std::shared_ptr<ModelOp> ModelOp::deserialize(const json &serialized) {
     if (!serialized.contains("Type")) {
         ERR(InvalidUsageError, "ModelOp deserialization failed: missing Type");
     } else if (!serialized.contains("Name")) {

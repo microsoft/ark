@@ -11,8 +11,8 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_graph.hpp"
+#include "json.hpp"
 #include "model_op.hpp"
-#include "nlohmann/json.hpp"
 #include "unique_list.hpp"
 
 namespace ark {

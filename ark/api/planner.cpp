@@ -5,9 +5,9 @@
 
 #include "ark/model.hpp"
 #include "gpu/gpu_manager.h"
+#include "json.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
-#include "nlohmann/json.hpp"
 
 namespace ark {
 

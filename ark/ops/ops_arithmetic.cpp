@@ -31,7 +31,7 @@ ModelOpArithmetic::ModelOpArithmetic(const std::string &type_name,
     verify();
 }
 
-std::string ModelOpArithmetic::impl_name(const nlohmann::json &config) const {
+std::string ModelOpArithmetic::impl_name(const json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required for ",
             type()->type_name());
@@ -58,7 +58,7 @@ std::string ModelOpArithmetic::impl_name(const nlohmann::json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpArithmetic::impl_args([
-    [maybe_unused]] const nlohmann::json &config) const {
+    [maybe_unused]] const json &config) const {
     std::vector<ModelOpArg> args;
     args.emplace_back(result_tensors_[0]);
     args.emplace_back(read_tensors_[0]);

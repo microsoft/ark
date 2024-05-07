@@ -128,7 +128,7 @@ ModelOpMatmul::ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
     verify();
 }
 
-std::string ModelOpMatmul::impl_name(const nlohmann::json &config) const {
+std::string ModelOpMatmul::impl_name(const json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required");
     } else if (!config.contains("TileShapeMNK")) {
@@ -194,7 +194,7 @@ std::string ModelOpMatmul::impl_name(const nlohmann::json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpMatmul::impl_args([
-    [maybe_unused]] const nlohmann::json &config) const {
+    [maybe_unused]] const json &config) const {
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 

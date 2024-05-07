@@ -431,15 +431,15 @@ nlohmann::ordered_json ModelGraph::Impl::to_json(
     const ModelNodeRef &node) const {
     nlohmann::ordered_json j;
     j["Id"] = nodes_.index(node);
-    j["ProducerNodeIds"] = nlohmann::json::array();
+    j["ProducerNodeIds"] = json::array();
     for (auto producer : node->producers) {
         j["ProducerNodeIds"].emplace_back(nodes_.index(producer));
     }
-    j["ConsumerNodeIds"] = nlohmann::json::array();
+    j["ConsumerNodeIds"] = json::array();
     for (auto consumer : node->consumers) {
         j["ConsumerNodeIds"].emplace_back(nodes_.index(consumer));
     }
-    j["Ops"] = nlohmann::json::array();
+    j["Ops"] = json::array();
     for (auto op : node->ops) {
         j["Ops"].emplace_back(op->serialize());
     }
@@ -448,11 +448,11 @@ nlohmann::ordered_json ModelGraph::Impl::to_json(
 
 std::string ModelGraph::Impl::serialize(int indent) const {
     nlohmann::ordered_json j;
-    j["Nodes"] = nlohmann::json::array();
+    j["Nodes"] = json::array();
     for (const auto &node : nodes_) {
         j["Nodes"].emplace_back(this->to_json(node));
     }
-    j["Tensors"] = nlohmann::json::array();
+    j["Tensors"] = json::array();
     for (const auto &tensor_and_op : tensor_to_producer_op_) {
         j["Tensors"].emplace_back(tensor_and_op.first->serialize());
     }

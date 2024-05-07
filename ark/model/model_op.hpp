@@ -12,10 +12,10 @@
 #include <vector>
 
 #include "ark/model_ref.hpp"
+#include "json.hpp"
 #include "logging.h"
 #include "model_op_arg.hpp"
 #include "model_op_config.hpp"
-#include "nlohmann/json.hpp"
 
 namespace ark {
 
@@ -44,13 +44,12 @@ class ModelOp {
 
     ModelOp(const ModelOp &) = default;
 
-    virtual std::string impl_name([
-        [maybe_unused]] const nlohmann::json &config) const {
+    virtual std::string impl_name([[maybe_unused]] const json &config) const {
         return "";
     }
 
     virtual std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const nlohmann::json &config) const {
+        [maybe_unused]] const json &config) const {
         return {};
     }
 
@@ -86,8 +85,7 @@ class ModelOp {
 
     nlohmann::ordered_json serialize() const;
 
-    static std::shared_ptr<ModelOp> deserialize(
-        const nlohmann::json &serialized);
+    static std::shared_ptr<ModelOp> deserialize(const json &serialized);
 
    protected:
     friend class ModelGraph;

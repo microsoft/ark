@@ -34,7 +34,7 @@ ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
     verify();
 }
 
-std::string ModelOpEmbedding::impl_name(const nlohmann::json &config) const {
+std::string ModelOpEmbedding::impl_name(const json &config) const {
     int num_warps = config.at("NumWarps");
 
     auto in_strides = read_tensors_[0]->strides().dims4();
@@ -54,7 +54,7 @@ std::string ModelOpEmbedding::impl_name(const nlohmann::json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpEmbedding::impl_args([
-    [maybe_unused]] const nlohmann::json &config) const {
+    [maybe_unused]] const json &config) const {
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 

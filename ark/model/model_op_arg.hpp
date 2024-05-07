@@ -10,9 +10,9 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
+#include "json.hpp"
 #include "model_offset.hpp"
 #include "named_type.hpp"
-#include "nlohmann/json.hpp"
 
 namespace ark {
 
@@ -47,7 +47,7 @@ class ModelOpArg : public NamedT {
 
     nlohmann::ordered_json serialize() const;
 
-    static ModelOpArg deserialize(const nlohmann::json &serialized);
+    static ModelOpArg deserialize(const json &serialized);
 
    private:
     std::string type_str_;

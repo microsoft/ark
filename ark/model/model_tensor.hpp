@@ -9,7 +9,7 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
-#include "nlohmann/json.hpp"
+#include "json.hpp"
 
 namespace ark {
 
@@ -37,8 +37,7 @@ class ModelBuffer {
 
     nlohmann::ordered_json serialize() const;
 
-    static std::shared_ptr<ModelBuffer> deserialize(
-        const nlohmann::json &serialized);
+    static std::shared_ptr<ModelBuffer> deserialize(const json &serialized);
 
    private:
     size_t id_;
@@ -80,8 +79,7 @@ class ModelTensor {
 
     nlohmann::ordered_json serialize() const;
 
-    static std::shared_ptr<ModelTensor> deserialize(
-        const nlohmann::json &serialized);
+    static std::shared_ptr<ModelTensor> deserialize(const json &serialized);
 
    private:
     static size_t next_id();

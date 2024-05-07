@@ -23,7 +23,7 @@ ModelOpBroadcast1::ModelOpBroadcast1(const std::string &type_name,
     verify();
 }
 
-std::string ModelOpBroadcast1::impl_name(const nlohmann::json &config) const {
+std::string ModelOpBroadcast1::impl_name(const json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required for ",
             type()->type_name());
@@ -45,7 +45,7 @@ std::string ModelOpBroadcast1::impl_name(const nlohmann::json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpBroadcast1::impl_args([
-    [maybe_unused]] const nlohmann::json &config) const {
+    [maybe_unused]] const json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 
