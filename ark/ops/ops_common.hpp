@@ -8,6 +8,7 @@
 
 #include "ark/model.hpp"
 #include "logging.h"
+#include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_graph_impl.hpp"
 #include "model/model_offset.hpp"

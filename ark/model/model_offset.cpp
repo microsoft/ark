@@ -4,6 +4,7 @@
 #include "model_offset.hpp"
 
 #include "logging.h"
+#include "model_buffer.hpp"
 #include "model_data_type.hpp"
 #include "model_tensor.hpp"
 
