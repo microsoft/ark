@@ -9,6 +9,7 @@
 #include <ark/model_graph.hpp>
 #include <ark/model_ref.hpp>
 #include <ark/tensor.hpp>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@ class Model : public ModelGraph {
    private:
     int rank_;
     int world_size_;
+    std::set<int> tags_;
 
    public:
     Model(int rank = 0, int world_size = 1)
@@ -32,6 +34,8 @@ class Model : public ModelGraph {
     int world_size() const { return world_size_; }
 
     Model compress() const;
+
+    int unique_tag();
 
     void noop(Tensor input, const std::string &name = "");
 
@@ -52,21 +56,12 @@ class Model : public ModelGraph {
     /// sets the last dimension of @p pads to 3, then the corresponding ldim
     /// will be the minimum multiple of 2x3=6 that is larger than or equal to
     /// the corresponding dimension of @p offsets + @p shape.
-    /// @param exported Whether the tensor is exported to other processes. This
-    /// should be set to true if the tensor is used as an input or output of a
-    /// remote process.
-    /// @param imported_rank The rank of the process that exports the tensor.
-    /// If @p imported_rank is set to a non-negative value, the tensor will be
-    /// considered as a remote tensor, hence no memory will be allocated for it
-    /// on the local. @p imported_rank should be set to -1 if the tensor resides
-    /// on the local.
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
     Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
-                  const Dims &pads = {}, bool exported = false,
-                  int imported_rank = -1, const std::string &name = "");
+                  const Dims &pads = {}, const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
                  const Dims &offsets = {}, const Dims &pads = {},
@@ -180,28 +175,17 @@ class Model : public ModelGraph {
                const std::string &name = "");
     Tensor div(Tensor input, float value, Tensor output = NullTensor,
                const std::string &name = "");
-    /// Sends a tensor to a destination rank (@p dst_rank). Multiple tensors can
-    /// be sent to the same rank,so an identifier `id` is required to
-    /// distinguish the tensor. Each 'send' operator must have a corresponding
-    /// 'recv' operator that have the same id in another rank's model.
-    ///
-    /// @param input
-    /// @param id
-    /// @param dst_rank Rank of the GPU to send to.
-    /// @param bytes
-    /// @param name
-    /// @return
-    Tensor send(Tensor input, int sid, int dst_rank, DimType bytes = 0,
-                const std::string &name = "");
+
+    Tensor send(Tensor input, int remote_rank, int tag,
+                Tensor output = NullTensor, const std::string &name = "");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
-    Tensor send_done(Tensor input, int sid, int dst_rank,
-                     const std::string &name = "");
+    Tensor send_done(Tensor input, const std::string &name = "");
     // Receives a tensor from a source rank (@p src_rank), identified by the
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
-    Tensor recv(int sid, int src_rank, DimType bytes = 0,
-                Tensor output = NullTensor, const std::string &name = "");
+    Tensor recv(Tensor output, int remote_rank, int tag,
+                const std::string &name = "");
     //
     Tensor put_packet(Tensor input, Tensor local_tmp_buf, Tensor recv_buf,
                       int id, int rank, int dst_rank, size_t dst_offset,

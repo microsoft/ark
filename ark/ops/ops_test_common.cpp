@@ -96,12 +96,14 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
         }
     }
 
+    exe.barrier();
     exe.launch();
 
     // Correctness test.
     exe.run(1);
     exe.wait();
     exe.stop();
+    exe.barrier();
 
     // Copy results of the loop kernel routine into CPU memory.
     std::vector<std::shared_ptr<std::vector<char>>> res;

@@ -4,14 +4,18 @@
 #ifndef ARK_CODEGEN_HPP_
 #define ARK_CODEGEN_HPP_
 
+#include <map>
 #include <memory>
 #include <string>
+
+#include "nlohmann/json.hpp"
 
 namespace ark {
 
 class CodeGenerator {
    public:
-    CodeGenerator(const std::string &plan,
+    CodeGenerator(const nlohmann::json &plan,
+                  const std::map<size_t, size_t> &buffer_id_to_offset,
                   const std::string &name = "ark_kernel");
 
     ~CodeGenerator() = default;
@@ -21,16 +25,6 @@ class CodeGenerator {
     size_t num_procs() const;
 
     size_t num_warps_per_proc() const;
-
-    size_t total_memory_bytes() const;
-
-    struct TensorInfo {
-        size_t id;
-        size_t bytes;
-        size_t offset;
-    };
-
-    const TensorInfo &tensor_info(size_t tensor_id) const;
 
    private:
     class Impl;

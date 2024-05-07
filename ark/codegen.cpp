@@ -3,8 +3,6 @@
 
 #include "codegen.hpp"
 
-#include <set>
-
 #include "ark/data_type.hpp"
 #include "env.h"
 #include "file_io.h"
@@ -31,31 +29,6 @@ static std::string replace(
 
 namespace ark {
 
-class BufferInfo {
-   public:
-    BufferInfo(size_t id) : id(id), bytes(0), is_input(true), is_output(true) {}
-
-    // ID of this buffer
-    const size_t id;
-
-    // Total bytes of this buffer
-    size_t bytes;
-
-    // True if none of tensors in this buffer is a result tensor or a write
-    // tensor of a non-virtual Op, i.e., this buffer is an input buffer
-    bool is_input;
-
-    // True if none of tensors in this buffer is a read tensor of a non-virtual
-    // Op, i.e., this buffer is an output buffer
-    bool is_output;
-
-    // IDs of tensors in this buffer
-    std::set<size_t> tensor_ids;
-
-    // IDs of tasks that read/write from/to this buffer
-    std::set<size_t> task_ids;
-};
-
 class SyncStateInfo {
    public:
     SyncStateInfo() {
@@ -68,16 +41,18 @@ class SyncStateInfo {
 
 class CodeGenerator::Impl {
    public:
-    Impl(const std::string &plan, const std::string &name);
+    Impl(const nlohmann::json &plan,
+         const std::map<size_t, size_t> &buffer_id_to_offset,
+         const std::string &name);
     ~Impl() = default;
 
    private:
-    void plan_memory(const nlohmann::json &plan);
-
     std::string def_op(const nlohmann::json &op_json, size_t task_id,
                        size_t op_idx);
 
     std::string def_task(const nlohmann::json &task_json);
+
+    std::string def_channels(int world_size);
 
     std::string task_seq(size_t proc_b, size_t proc_e, size_t proc_s,
                          size_t proc_cur, size_t task_b, size_t task_e,
@@ -92,34 +67,38 @@ class CodeGenerator::Impl {
    protected:
     friend class CodeGenerator;
 
+    std::map<size_t, size_t> buffer_id_to_offset_;
     std::string name_;
+    int rank_;
+    int world_size_;
     size_t num_procs_;
     size_t num_warps_per_proc_;
-    std::map<size_t, std::shared_ptr<BufferInfo>> buffer_id_to_info_;
-    std::map<size_t, size_t> buffer_id_to_offset_;
-    std::map<size_t, CodeGenerator::TensorInfo> tensor_id_to_info_;
-    size_t total_bytes_;
     std::string code_;
 };
 
-CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
-    : name_(name) {
-    auto j = nlohmann::json::parse(plan);
-    this->plan_memory(j);
-
-    num_procs_ = j["NumProcessors"];
-    num_warps_per_proc_ = j["NumWarpsPerProcessor"];
+CodeGenerator::Impl::Impl(const nlohmann::json &plan,
+                          const std::map<size_t, size_t> &buffer_id_to_offset,
+                          const std::string &name)
+    : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
+    rank_ = plan.at("Rank");
+    world_size_ = plan.at("WorldSize");
+    num_procs_ = plan.at("NumProcessors");
+    num_warps_per_proc_ = plan.at("NumWarpsPerProcessor");
 
     std::stringstream definitions_ss;
-    for (auto &task_json : j["TaskInfos"]) {
+    for (auto &task_json : plan.at("TaskInfos")) {
         definitions_ss << this->def_task(task_json);
+    }
+
+    if (world_size_ > 1) {
+        definitions_ss << this->def_channels(world_size_);
     }
 
     std::map<Range<size_t>, SyncStateInfo> sync_state_info;
 
     std::stringstream body_ss;
     size_t pg_idx = 0;
-    for (auto &pg : j["ProcessorGroups"]) {
+    for (auto &pg : plan.at("ProcessorGroups")) {
         Range<size_t> proc_range(pg["ProcessorRange"][0],
                                  pg["ProcessorRange"][1]);
         size_t begin = *proc_range.begin();
@@ -141,7 +120,8 @@ CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
                     << state_id << "); }\n";
         }
         for (auto &rg : pg["ResourceGroups"]) {
-            body_ss << this->resource_group(rg, j["TaskInfos"], proc_range);
+            body_ss << this->resource_group(rg, plan.at("TaskInfos"),
+                                            proc_range);
         }
         pg_idx++;
     }
@@ -154,6 +134,9 @@ CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
     const std::string &ark_root = get_env().path_root_dir;
     const std::string &template_path =
         ark_root + "/include/kernels/kernel_template.in";
+    if (!is_file(template_path)) {
+        ERR(SchedulerError, "kernel template file not found: ", template_path);
+    }
     std::string template_code = read_file(template_path);
     std::map<std::string, std::string> replacements = {
         {"@NUM_BLOCKS@", std::to_string(num_procs_)},
@@ -163,69 +146,6 @@ CodeGenerator::Impl::Impl(const std::string &plan, const std::string &name)
         {"@NAME@", name_},
     };
     code_ = replace(template_code, replacements);
-}
-
-void CodeGenerator::Impl::plan_memory(const nlohmann::json &plan) {
-    auto get_or_create_buffer_info = [&](size_t buffer_id) {
-        if (buffer_id_to_info_.find(buffer_id) == buffer_id_to_info_.end()) {
-            auto buf_info = std::make_shared<BufferInfo>(buffer_id);
-            buffer_id_to_info_[buffer_id] = buf_info;
-            return buf_info;
-        }
-        return buffer_id_to_info_[buffer_id];
-    };
-
-    auto tensor_stride_bytes = [](const nlohmann::json &tns) {
-        Dims strides(tns["Strides"].get<std::vector<DimType>>());
-        size_t nelems = strides.nelems();
-        return nelems * DataType::from_name(tns["DataType"]).bytes();
-    };
-
-    auto retrieve_tensor_and_buffer_info = [&](const nlohmann::json &tensor,
-                                               size_t task_id, bool is_input,
-                                               bool is_output) {
-        size_t tensor_id = tensor["Id"].get<size_t>();
-        auto buf_info = get_or_create_buffer_info(tensor["BufferId"]);
-        buf_info->bytes =
-            std::max(buf_info->bytes, tensor_stride_bytes(tensor));
-        buf_info->is_input = is_input;
-        buf_info->is_output = is_output;
-        buf_info->tensor_ids.insert(tensor_id);
-        buf_info->task_ids.insert(task_id);
-        if (tensor_id_to_info_.find(tensor_id) == tensor_id_to_info_.end()) {
-            CodeGenerator::TensorInfo info;
-            info.id = tensor_id;
-            info.bytes = tensor_stride_bytes(tensor);
-            // offset is undetermined yet
-            tensor_id_to_info_.emplace(tensor_id, info);
-        }
-    };
-
-    for (auto &task_info : plan["TaskInfos"]) {
-        for (auto &op : task_info["Ops"]) {
-            size_t task_id = task_info["Id"].get<size_t>();
-            for (auto &tns : op["ReadTensors"]) {
-                retrieve_tensor_and_buffer_info(tns, task_id, true, false);
-            }
-            for (auto &tns : op["WriteTensors"]) {
-                retrieve_tensor_and_buffer_info(tns, task_id, false, true);
-            }
-            for (auto &tns : op["ResultTensors"]) {
-                retrieve_tensor_and_buffer_info(tns, task_id, false, true);
-            }
-        }
-    }
-
-    // TODO: improve memory planning
-    size_t offset = 0;
-    for (auto &kv : buffer_id_to_info_) {
-        buffer_id_to_offset_[kv.first] = offset;
-        for (auto &tns_id : kv.second->tensor_ids) {
-            tensor_id_to_info_.at(tns_id).offset = offset;
-        }
-        offset += kv.second->bytes;
-    }
-    total_bytes_ = offset;
 }
 
 std::string CodeGenerator::Impl::def_op(const nlohmann::json &op_json,
@@ -241,6 +161,8 @@ std::string CodeGenerator::Impl::def_op(const nlohmann::json &op_json,
         if (arg.type_name() == "TENSOR") {
             auto tns = arg.value<ModelTensorRef>();
             ss << tns->data_type()->type_str() << "*";
+        } else if (arg.type_name() == "OFFSET") {
+            ss << "uint64_t";
         } else {
             ss << arg.type_str();
         }
@@ -271,20 +193,17 @@ std::string CodeGenerator::Impl::def_task(const nlohmann::json &task_json) {
             auto &arg = impl_args[i];
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
-                auto st = tns->strides();
-                auto of = tns->offsets();
-                int ndims = st.ndims();
-                auto info = tensor_id_to_info_.at(tns->id());
-                size_t offset = info.offset;
-                for (int idx = ndims - 1; idx >= 0; --idx) {
-                    size_t inc = of[idx];
-                    for (int j = idx + 1; j < ndims; ++j) {
-                        inc *= st[j];
-                    }
-                    offset += inc * tns->data_type()->bytes();
-                }
+                size_t buffer_offset =
+                    buffer_id_to_offset_.at(tns->buffer()->id());
+                size_t offset = buffer_offset + ModelOffset(tns).value();
                 ss << "(" << tns->data_type()->type_str() << "*)&_buf["
                    << offset << "]";
+            } else if (arg.type_name() == "OFFSET") {
+                auto moff = arg.value<ModelOffset>();
+                size_t buffer_offset =
+                    buffer_id_to_offset_.at(moff.buffer_id());
+                size_t offset = buffer_offset + moff.value();
+                ss << offset;
             } else {
                 ss << arg.serialize()[1];
             }
@@ -293,6 +212,17 @@ std::string CodeGenerator::Impl::def_task(const nlohmann::json &task_json) {
         ss << "_idx, _spw);\n";
     }
     ss << "}\n";
+    return ss.str();
+}
+
+std::string CodeGenerator::Impl::def_channels(int world_size) {
+    std::stringstream ss;
+    ss << "__constant__ mscclpp::SimpleProxyChannelDeviceHandle ";
+    ss << "ARK_PROXY_CHANS[" << world_size << "];\n";
+    ss << "__constant__ mscclpp::SimpleProxyChannelDeviceHandle ";
+    ss << "ARK_PROXY_SECONDARY_CHANS[" << world_size << "];\n";
+    ss << "__constant__ mscclpp::SmChannelDeviceHandle ";
+    ss << "ARK_SM_CHANS[" << world_size << "];\n";
     return ss.str();
 }
 
@@ -430,8 +360,11 @@ std::string CodeGenerator::Impl::resource_group(
     return ss.str();
 }
 
-CodeGenerator::CodeGenerator(const std::string &plan, const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, name)) {}
+CodeGenerator::CodeGenerator(
+    const nlohmann::json &plan,
+    const std::map<size_t, size_t> &buffer_id_to_offset,
+    const std::string &name)
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 
@@ -439,17 +372,6 @@ size_t CodeGenerator::num_procs() const { return impl_->num_procs_; }
 
 size_t CodeGenerator::num_warps_per_proc() const {
     return impl_->num_warps_per_proc_;
-}
-
-size_t CodeGenerator::total_memory_bytes() const { return impl_->total_bytes_; }
-
-const CodeGenerator::TensorInfo &CodeGenerator::tensor_info(
-    size_t tensor_id) const {
-    auto it = impl_->tensor_id_to_info_.find(tensor_id);
-    if (it == impl_->tensor_id_to_info_.end()) {
-        ERR(NotFoundError, "tensor ID not found: ", tensor_id);
-    }
-    return it->second;
 }
 
 }  // namespace ark

@@ -137,7 +137,7 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
 ModelOpReshape::ModelOpReshape(ModelTensorRef input, const Dims &shape,
                                const Dims &strides, const Dims &offsets)
     : ModelOpTensor(input->buffer(), shape, input->data_type(), strides,
-                    offsets, {}, input->exported(), input->imported_rank()) {
+                    offsets, {}) {
     read_tensors_ = {input};
     verify();
 }

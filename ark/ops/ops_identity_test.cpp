@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 #include "ark/executor.hpp"
-#include "logging.h"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"

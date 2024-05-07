@@ -10,6 +10,7 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
+#include "model_offset.hpp"
 #include "named_type.hpp"
 #include "nlohmann/json.hpp"
 
@@ -60,6 +61,7 @@ REGISTER_MODEL_OP_ARG_TYPE(BOOL, bool)
 REGISTER_MODEL_OP_ARG_TYPE(FLOAT, float)
 REGISTER_MODEL_OP_ARG_TYPE(DIMS, Dims)
 REGISTER_MODEL_OP_ARG_TYPE(TENSOR, ModelTensorRef)
+REGISTER_MODEL_OP_ARG_TYPE(OFFSET, ModelOffset)
 
 }  // namespace ark
 

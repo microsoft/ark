@@ -9,21 +9,72 @@
 
 namespace ark {
 
-ModelBuffer::ModelBuffer() {
+ModelBuffer::ModelBuffer(int rank) : rank_(rank) {
     static size_t id = 0;
     id_ = id++;
 }
 
-ModelBuffer::ModelBuffer(size_t id) { id_ = id; }
+ModelBuffer::ModelBuffer(size_t id, int rank,
+                         const std::vector<TagInfo> &send_tags,
+                         const std::vector<TagInfo> &recv_tags)
+    : id_(id), rank_(rank) {
+    for (const auto &info : send_tags) {
+        send_tags_.insert(info);
+    }
+    for (const auto &info : recv_tags) {
+        recv_tags_.insert(info);
+    }
+}
+
+void ModelBuffer::tag_send(int remote_rank, int tag) {
+    send_tags_.insert(TagInfo{remote_rank, tag});
+}
+
+void ModelBuffer::tag_recv(int remote_rank, int tag) {
+    recv_tags_.insert(TagInfo{remote_rank, tag});
+}
+
+nlohmann::ordered_json ModelBuffer::serialize() const {
+    nlohmann::ordered_json j;
+    j["Id"] = id_;
+    j["Rank"] = rank_;
+    nlohmann::ordered_json send_tags = nlohmann::json::array();
+    nlohmann::ordered_json recv_tags = nlohmann::json::array();
+    for (const auto &info : send_tags_) {
+        send_tags.push_back({info.first, info.second});
+    }
+    for (const auto &info : recv_tags_) {
+        recv_tags.push_back({info.first, info.second});
+    }
+    j["SendTags"] = send_tags;
+    j["RecvTags"] = recv_tags;
+    return j;
+}
+
+std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(
+    const nlohmann::json &serialized) {
+    if (!serialized.contains("Id")) {
+        ERR(InvalidUsageError,
+            "ModelBuffer deserialization failed: missing Id");
+    } else if (!serialized.contains("Rank")) {
+        ERR(InvalidUsageError,
+            "ModelBuffer deserialization failed: missing Rank");
+    } else if (!serialized.contains("SendTags")) {
+        ERR(InvalidUsageError,
+            "ModelBuffer deserialization failed: missing SendTags");
+    } else if (!serialized.contains("RecvTags")) {
+        ERR(InvalidUsageError,
+            "ModelBuffer deserialization failed: missing RecvTags");
+    }
+    return std::make_shared<ModelBuffer>(serialized["Id"], serialized["Rank"],
+                                         serialized["SendTags"],
+                                         serialized["RecvTags"]);
+}
 
 ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
                          const Dims &shape, const Dims &strides,
-                         const Dims &offsets, const Dims &pads, bool exported,
-                         int imported_rank)
-    : data_type_(data_type),
-      buffer_(buffer),
-      exported_(exported),
-      imported_rank_(imported_rank) {
+                         const Dims &offsets, const Dims &pads)
+    : data_type_(data_type), buffer_(buffer) {
     if (shape.nelems() == 0) {
         ERR(InvalidUsageError,
             "Tensor shape should consist of positive numbers. Given: ", shape);
@@ -99,8 +150,6 @@ ModelTensor::ModelTensor(const ModelTensor &other) {
     strides_ = other.strides_;
     offsets_ = other.offsets_;
     pads_ = other.pads_;
-    exported_ = other.exported_;
-    imported_rank_ = other.imported_rank_;
 }
 
 size_t ModelTensor::shape_bytes() const {
@@ -125,13 +174,11 @@ nlohmann::ordered_json ModelTensor::serialize() const {
     nlohmann::ordered_json j;
     j["Id"] = id_;
     j["DataType"] = data_type_->type_name();
-    j["BufferId"] = buffer_->id();
+    j["Buffer"] = buffer_->serialize();
     j["Shape"] = shape_.vector();
     j["Strides"] = strides_.vector();
     j["Offsets"] = offsets_.vector();
     j["Pads"] = pads_.vector();
-    j["Exported"] = exported_;
-    j["ImportedRank"] = imported_rank_;
     return j;
 }
 
@@ -140,9 +187,9 @@ std::shared_ptr<ModelTensor> ModelTensor::deserialize(
     if (!serialized.contains("DataType")) {
         ERR(InvalidUsageError,
             "ModelTensor deserialization failed: missing DataType");
-    } else if (!serialized.contains("BufferId")) {
+    } else if (!serialized.contains("Buffer")) {
         ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing BufferId");
+            "ModelTensor deserialization failed: missing Buffer");
     } else if (!serialized.contains("Shape")) {
         ERR(InvalidUsageError,
             "ModelTensor deserialization failed: missing Shape");
@@ -155,25 +202,17 @@ std::shared_ptr<ModelTensor> ModelTensor::deserialize(
     } else if (!serialized.contains("Pads")) {
         ERR(InvalidUsageError,
             "ModelTensor deserialization failed: missing Pads");
-    } else if (!serialized.contains("Exported")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing Exported");
-    } else if (!serialized.contains("ImportedRank")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing ImportedRank");
     } else if (!serialized.contains("Id")) {
         ERR(InvalidUsageError,
             "ModelTensor deserialization failed: missing Id");
     }
     auto ret = std::make_shared<ModelTensor>(
         DataType::from_name(serialized["DataType"]).ref(),
-        std::make_shared<ModelBuffer>(serialized["BufferId"]),
+        ModelBuffer::deserialize(serialized["Buffer"]),
         serialized["Shape"].get<std::vector<DimType>>(),
         serialized["Strides"].get<std::vector<DimType>>(),
         serialized["Offsets"].get<std::vector<DimType>>(),
-        serialized["Pads"].get<std::vector<DimType>>(),
-        serialized["Exported"].get<bool>(),
-        serialized["ImportedRank"].get<int>());
+        serialized["Pads"].get<std::vector<DimType>>());
     ret->id_ = serialized["Id"];
     return ret;
 }

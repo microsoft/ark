@@ -12,8 +12,7 @@ namespace ark {
 ModelOpIdentity::ModelOpIdentity(ModelTensorRef input,
                                  const std::vector<ModelTensorRef> &deps)
     : ModelOpTensor(input->buffer(), input->shape(), input->data_type(),
-                    input->strides(), input->offsets(), input->pads(),
-                    input->exported(), input->imported_rank()) {
+                    input->strides(), input->offsets(), input->pads()) {
     std::set<ModelTensorRef> dep_set;
     dep_set.emplace(input);
     read_tensors_.emplace_back(input);

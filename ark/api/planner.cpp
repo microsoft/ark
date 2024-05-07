@@ -67,6 +67,8 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
         }
     }
 
+    plan_["Rank"] = model.rank();
+    plan_["WorldSize"] = model.world_size();
     plan_["NumProcessors"] = max_num_processors;
     plan_["NumWarpsPerProcessor"] = max_num_warps;
     plan_["TaskInfos"] = task_infos;

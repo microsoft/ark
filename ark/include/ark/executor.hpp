@@ -26,18 +26,20 @@ class Executor {
 
     /// Launch the model (not running yet). This must be called after
     /// `compile()`.
-    void launch();
+    void launch(int64_t max_spin_count = -1);
 
     /// Run the model for `iter` iterations.
     void run(int iter);
 
     /// Wait for the previous run to finish.
-    void wait();
+    void wait(int64_t max_spin_count = -1);
 
     /// Stop the model and return the elapsed time in milliseconds.
     /// Once this is called, we need to call `launch()` again to run the model
     /// again.
-    float stop();
+    float stop(int64_t max_spin_count = -1);
+
+    void barrier();
 
     template <typename T>
     void tensor_read(const Tensor tensor, std::vector<T> &data) const {

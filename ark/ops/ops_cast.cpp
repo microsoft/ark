@@ -105,8 +105,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
 ModelOpByteCast::ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
                                  const Dims &shape, const Dims &strides,
                                  const Dims &offsets, const Dims &pads)
-    : ModelOpTensor(input->buffer(), shape, data_type, strides, offsets, pads,
-                    input->exported(), input->imported_rank()) {
+    : ModelOpTensor(input->buffer(), shape, data_type, strides, offsets, pads) {
     read_tensors_ = {input};
     verify();
 }

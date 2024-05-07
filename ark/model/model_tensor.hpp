@@ -4,6 +4,9 @@
 #ifndef ARK_MODEL_TENSOR_HPP_
 #define ARK_MODEL_TENSOR_HPP_
 
+#include <set>
+#include <vector>
+
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
 #include "nlohmann/json.hpp"
@@ -12,14 +15,36 @@ namespace ark {
 
 class ModelBuffer {
    public:
-    ModelBuffer();
+    // (remote_rank, tag)
+    using TagInfo = std::pair<int, int>;
 
-    ModelBuffer(size_t id);
+    ModelBuffer(int rank = -1);
+
+    ModelBuffer(size_t id, int rank, const std::vector<TagInfo> &send_tags,
+                const std::vector<TagInfo> &recv_tags);
 
     size_t id() const { return id_; }
 
+    int rank() const { return rank_; }
+
+    const std::set<TagInfo> &send_tags() const { return send_tags_; }
+
+    const std::set<TagInfo> &recv_tags() const { return recv_tags_; }
+
+    void tag_send(int remote_rank, int tag);
+
+    void tag_recv(int remote_rank, int tag);
+
+    nlohmann::ordered_json serialize() const;
+
+    static std::shared_ptr<ModelBuffer> deserialize(
+        const nlohmann::json &serialized);
+
    private:
     size_t id_;
+    int rank_;
+    std::set<TagInfo> send_tags_;
+    std::set<TagInfo> recv_tags_;
 };
 
 class ModelDataT;
@@ -29,8 +54,7 @@ class ModelTensor {
    public:
     ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
                 const Dims &shape, const Dims &strides = {},
-                const Dims &offsets = {}, const Dims &pads = {},
-                bool exported = false, int imported_rank = -1);
+                const Dims &offsets = {}, const Dims &pads = {});
 
     ModelTensor(const ModelTensor &other);
 
@@ -38,7 +62,7 @@ class ModelTensor {
 
     ModelDataType data_type() const { return data_type_; }
 
-    const ModelBufferRef buffer() const { return buffer_; }
+    ModelBufferRef buffer() const { return buffer_; }
 
     const Dims &shape() const { return shape_; }
 
@@ -52,15 +76,7 @@ class ModelTensor {
 
     size_t strides_bytes() const;
 
-    bool exported() const { return exported_; }
-
-    int imported_rank() const { return imported_rank_; }
-
     bool is_sequential() const;
-
-    void set_exported() { exported_ = true; }
-
-    void set_imported_rank(int rank) { imported_rank_ = rank; }
 
     nlohmann::ordered_json serialize() const;
 
@@ -77,8 +93,6 @@ class ModelTensor {
     Dims strides_;
     Dims offsets_;
     Dims pads_;
-    bool exported_;
-    int imported_rank_;
 };
 
 }  // namespace ark

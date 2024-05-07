@@ -9,16 +9,14 @@ namespace ark {
 
 ModelOpTensor::ModelOpTensor(ModelBufferRef buffer, const Dims &shape,
                              ModelDataType data_type, const Dims &strides,
-                             const Dims &offsets, const Dims &pads,
-                             bool exported, int imported_rank)
+                             const Dims &offsets, const Dims &pads)
     : ModelOp("Tensor", true) {
     if (!buffer) {
         buffer = std::make_shared<ModelBuffer>();
     }
 
-    ModelTensorRef tensor =
-        std::make_shared<ModelTensor>(data_type, buffer, shape, strides,
-                                      offsets, pads, exported, imported_rank);
+    ModelTensorRef tensor = std::make_shared<ModelTensor>(
+        data_type, buffer, shape, strides, offsets, pads);
 
     result_tensors_.emplace_back(tensor);
 
@@ -27,12 +25,10 @@ ModelOpTensor::ModelOpTensor(ModelBufferRef buffer, const Dims &shape,
 
 Tensor Model::tensor(const Dims &shape, const DataType &data_type,
                      const Dims &strides, const Dims &offsets, const Dims &pads,
-                     bool exported, int imported_rank,
                      const std::string &name) {
     return impl_
         ->create_op<ModelOpTensor>(name, nullptr, shape, data_type.ref(),
-                                   strides, offsets, pads, exported,
-                                   imported_rank)
+                                   strides, offsets, pads)
         ->result_tensors()[0];
 }
 

@@ -10,6 +10,7 @@
 #include "model_tensor.hpp"
 #include "ops/ops_arithmetic.hpp"
 #include "ops/ops_cast.hpp"
+#include "ops/ops_communication.hpp"
 #include "ops/ops_copy.hpp"
 #include "ops/ops_embedding.hpp"
 #include "ops/ops_math.hpp"
@@ -19,7 +20,6 @@
 #include "ops/ops_refer.hpp"
 #include "ops/ops_reshape.hpp"
 #include "ops/ops_scalar.hpp"
-#include "ops/ops_sendrecv.hpp"
 #include "ops/ops_tensor.hpp"
 #include "ops/ops_transpose.hpp"
 

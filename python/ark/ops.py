@@ -18,8 +18,6 @@ def _tensor(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     pads: Iterable[int] = [],
-    exported: bool = False,
-    imported_rank: int = -1,
     name: str = "",
 ) -> Tensor:
     if not _is_list_or_tuple(shape):
@@ -39,8 +37,6 @@ def _tensor(
         Dims(strides),
         Dims(offsets),
         Dims(pads),
-        exported,
-        imported_rank,
         name,
     )
 
@@ -228,8 +224,6 @@ def parameter(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     pads: Iterable[int] = [],
-    exported: bool = False,
-    imported_rank: int = -1,
     name: str = "",
 ) -> Parameter:
     """
@@ -237,7 +231,7 @@ def parameter(
     """
     return Parameter(
         _tensor(
-            shape, dtype, strides, offsets, pads, exported, imported_rank, name
+            shape, dtype, strides, offsets, pads, name
         )
     )
 
@@ -439,8 +433,6 @@ def tensor(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     pads: Iterable[int] = [],
-    exported: bool = False,
-    imported_rank: int = -1,
     name: str = "",
 ) -> Tensor:
     """
@@ -451,7 +443,7 @@ def tensor(
     """
     return Tensor(
         _tensor(
-            shape, dtype, strides, offsets, pads, exported, imported_rank, name
+            shape, dtype, strides, offsets, pads, name
         )
     )
 

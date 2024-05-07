@@ -31,10 +31,10 @@ void register_executor(py::module &m) {
             py::arg("rank"), py::arg("world_size"), py::arg("gpu_id"),
             py::arg("name"), py::arg("plan"))
         .def("compile", &ark::Executor::compile)
-        .def("launch", &ark::Executor::launch)
+        .def("launch", &ark::Executor::launch, py::arg("max_spin_count") = -1)
         .def("run", &ark::Executor::run, py::arg("iter"))
-        .def("wait", &ark::Executor::wait)
-        .def("stop", &ark::Executor::stop)
+        .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
+        .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
         .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
         .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
 }

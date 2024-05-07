@@ -12,7 +12,7 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG e7d3e2d44b114b0aecfe53e27c752474e868c462
+    GIT_TAG 6226556ce277a3e26f5de91a8bf3a36e01613f55
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)

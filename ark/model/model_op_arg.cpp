@@ -16,6 +16,8 @@ nlohmann::ordered_json ModelOpArg::serialize() const {
     j.push_back(type_name);
     if (type_name == "TENSOR") {
         j.push_back(this->value<ModelTensorRef>()->serialize());
+    } else if (type_name == "OFFSET") {
+        j.push_back(this->value<ModelOffset>().serialize());
     } else if (type_name == "DIMS") {
         j.push_back(this->value<Dims>().vector());
     } else if (type_name == "INT") {
@@ -41,6 +43,8 @@ ModelOpArg ModelOpArg::deserialize(const nlohmann::json &serialized) {
         auto &value = serialized[1];
         if (type_name == "TENSOR") {
             return ModelOpArg(ModelTensor::deserialize(value));
+        } else if (type_name == "OFFSET") {
+            return ModelOpArg(*ModelOffset::deserialize(value));
         } else if (type_name == "DIMS") {
             return ModelOpArg(Dims(value.get<std::vector<DimType>>()));
         } else if (type_name == "INT") {

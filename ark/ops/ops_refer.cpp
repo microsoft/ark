@@ -11,7 +11,7 @@ ModelOpRefer::ModelOpRefer(ModelTensorRef input, const Dims &shape,
                            const Dims &strides, const Dims &offsets,
                            const Dims &pads)
     : ModelOpTensor(input->buffer(), shape, input->data_type(), strides,
-                    offsets, pads, input->exported(), input->imported_rank()) {
+                    offsets, pads) {
     read_tensors_ = {input};
     verify();
 }
