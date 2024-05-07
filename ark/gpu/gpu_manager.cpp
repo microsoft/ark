@@ -187,15 +187,6 @@ void GpuManager::memset(void *dst, unsigned int val, size_t bytes,
     }
 }
 
-void GpuManager::memset_d32(void *dst, unsigned int val, size_t nelems,
-                            bool async) const {
-    this->set_current();
-    pimpl_->memset_d32_async(dst, val, nelems);
-    if (!async) {
-        this->sync();
-    }
-}
-
 void GpuManager::memcpy_htod(void *dst, size_t dst_offset, void *src,
                              size_t src_offset, size_t bytes,
                              bool async) const {

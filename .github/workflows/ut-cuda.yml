@@ -51,6 +51,8 @@ jobs:
           cd build && ARK_ROOT=$PWD ARK_IGNORE_BINARY_CACHE=1 ctest --stop-on-failure --verbose --schedule-random
 
       - name: ReportCoverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
           cd build
           lcov --capture --directory . --output-file coverage.info

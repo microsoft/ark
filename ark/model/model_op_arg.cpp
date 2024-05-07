@@ -8,7 +8,7 @@
 
 namespace ark {
 
-ModelOpArg::ModelOpArg() : NamedT("") {}
+ModelOpArg::ModelOpArg() : ModelNamedT("") {}
 
 ordered_json ModelOpArg::serialize() const {
     const std::string &type_name = this->type_name();

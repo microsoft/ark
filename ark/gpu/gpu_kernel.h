@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 
-#include "gpu_buffer.h"
 #include "gpu_stream.h"
 
 namespace ark {
@@ -28,8 +27,8 @@ class GpuKernel {
     void compile();
     void launch(std::shared_ptr<GpuStream> stream);
 
-    GpuPtr get_global(const std::string& name,
-                      bool ignore_not_found = false) const;
+    gpuDeviceptr get_global(const std::string& name,
+                            bool ignore_not_found = false) const;
     bool is_compiled() const { return function_ != nullptr; }
 
    protected:

@@ -5,19 +5,19 @@
 
 namespace ark {
 
-ModelOpConfigArchT::ModelOpConfigArchT() : NamedT("ANY"){};
+ModelOpConfigArchT::ModelOpConfigArchT() : ModelNamedT("ANY"){};
 
 ModelOpConfigArchT::ModelOpConfigArchT(const std::string &c0)
-    : NamedT(c0), category_({c0}) {}
+    : ModelNamedT(c0), category_({c0}) {}
 
 ModelOpConfigArchT::ModelOpConfigArchT(const std::string &c0,
                                        const std::string &c1)
-    : NamedT(c0 + "_" + c1), category_({c0, c1}) {}
+    : ModelNamedT(c0 + "_" + c1), category_({c0, c1}) {}
 
 ModelOpConfigArchT::ModelOpConfigArchT(const std::string &c0,
                                        const std::string &c1,
                                        const std::string &c2)
-    : NamedT(c0 + "_" + c1 + "_" + c2), category_({c0, c1, c2}) {}
+    : ModelNamedT(c0 + "_" + c1 + "_" + c2), category_({c0, c1, c2}) {}
 
 bool ModelOpConfigArchT::belongs_to(
     const std::shared_ptr<ModelOpConfigArchT> arch) const {

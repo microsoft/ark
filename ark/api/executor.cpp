@@ -566,19 +566,19 @@ void Executor::Impl::launch(int64_t max_spin_count) {
     // Initialize global variables in the loop kernel.
     auto gpu_manager = GpuManager::get_instance(gpu_id_);
     void *buf_ptr_val = buffer_->ref();
-    GpuPtr lss_ptr_addr = kernel_->get_global("ARK_LOOP_SYNC_STATE");
-    GpuPtr buf_ptr_addr = kernel_->get_global("ARK_BUF");
+    gpuDeviceptr lss_ptr_addr = kernel_->get_global("ARK_LOOP_SYNC_STATE");
+    gpuDeviceptr buf_ptr_addr = kernel_->get_global("ARK_BUF");
     std::array<int, 4> data = {0, 0, 0, 0};
     gpu_manager->memcpy_htod((void *)lss_ptr_addr, 0, data.data(), 0,
                              sizeof(int) * data.size());
     gpu_manager->memcpy_htod((void *)buf_ptr_addr, 0, &buf_ptr_val, 0,
-                             sizeof(GpuPtr));
+                             sizeof(gpuDeviceptr));
 
     if (world_size_ > 1) {
-        GpuPtr proxy_chan_addr = kernel_->get_global("ARK_PROXY_CHANS");
-        GpuPtr proxy_secondary_chan_addr =
+        gpuDeviceptr proxy_chan_addr = kernel_->get_global("ARK_PROXY_CHANS");
+        gpuDeviceptr proxy_secondary_chan_addr =
             kernel_->get_global("ARK_PROXY_SECONDARY_CHANS");
-        GpuPtr sm_chan_addr = kernel_->get_global("ARK_SM_CHANS");
+        gpuDeviceptr sm_chan_addr = kernel_->get_global("ARK_SM_CHANS");
         std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> proxy_handles(
             world_size_);
         std::vector<mscclpp::SimpleProxyChannel::DeviceHandle>

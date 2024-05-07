@@ -26,9 +26,9 @@ using ModelOpType = std::shared_ptr<ModelOpT>;
 
 class ModelOp;
 
-class ModelOpT : public NamedT {
+class ModelOpT : public ModelNamedT {
    public:
-    ModelOpT(const std::string &type_name) : NamedT(type_name) {}
+    ModelOpT(const std::string &type_name) : ModelNamedT(type_name) {}
 
     ModelOpT(const ModelOpT &) = default;
 

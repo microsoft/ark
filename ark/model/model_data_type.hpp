@@ -7,18 +7,18 @@
 #include <memory>
 #include <string>
 
-#include "named_type.hpp"
+#include "model_named_type.hpp"
 
 namespace ark {
 
 class ModelDataT;
 using ModelDataType = std::shared_ptr<ModelDataT>;
 
-class ModelDataT : public NamedT {
+class ModelDataT : public ModelNamedT {
    public:
     ModelDataT(const std::string &type_name, const std::string &type_str,
                size_t bytes)
-        : NamedT(type_name), type_str_(type_str), bytes_(bytes) {}
+        : ModelNamedT(type_name), type_str_(type_str), bytes_(bytes) {}
 
     ModelDataT(const ModelDataT &) = default;
 

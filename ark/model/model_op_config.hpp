@@ -8,11 +8,11 @@
 #include <memory>
 #include <vector>
 
-#include "named_type.hpp"
+#include "model_named_type.hpp"
 
 namespace ark {
 
-class ModelOpConfigArchT : public NamedT {
+class ModelOpConfigArchT : public ModelNamedT {
    public:
     ModelOpConfigArchT();
 

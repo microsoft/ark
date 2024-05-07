@@ -76,13 +76,13 @@ void GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
                          params_ptr_.data(), nullptr);
 }
 
-GpuPtr GpuKernel::get_global(const std::string& name,
-                             bool ignore_not_found) const {
-    GpuPtr ret;
+gpuDeviceptr GpuKernel::get_global(const std::string& name,
+                                   bool ignore_not_found) const {
+    gpuDeviceptr ret;
     size_t tmp;
     gpuDrvError err = gpuModuleGetGlobal(&ret, &tmp, module_, name.c_str());
     if ((err == gpuErrorNotFound) && ignore_not_found) {
-        return GpuPtr(0);
+        return gpuDeviceptr(0);
     } else if (err != gpuDrvSuccess) {
         ERR(GpuError, "Failed to get global variable: ", name);
     }

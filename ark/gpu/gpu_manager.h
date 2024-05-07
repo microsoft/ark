@@ -30,8 +30,6 @@ class GpuManager {
 
     void memset(void *dst, unsigned int val, size_t bytes,
                 bool async = false) const;
-    void memset_d32(void *dst, unsigned int val, size_t nelems,
-                    bool async = false) const;
     void memcpy_htod(void *dst, size_t dst_offset, void *src, size_t src_offset,
                      size_t bytes, bool async = false) const;
     void memcpy_dtoh(void *dst, size_t dst_offset, void *src, size_t src_offset,

@@ -11,8 +11,8 @@
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
 #include "json.hpp"
+#include "model_named_type.hpp"
 #include "model_offset.hpp"
-#include "named_type.hpp"
 
 namespace ark {
 
@@ -28,13 +28,13 @@ class ModelOpArgTName;
         const std::string type_str;                           \
     };
 
-class ModelOpArg : public NamedT {
+class ModelOpArg : public ModelNamedT {
    public:
     ModelOpArg();
 
     template <typename T>
     ModelOpArg(T val)
-        : NamedT(ModelOpArgTName<T>().name),
+        : ModelNamedT(ModelOpArgTName<T>().name),
           type_str_(ModelOpArgTName<T>().type_str),
           val_(val) {}
 
