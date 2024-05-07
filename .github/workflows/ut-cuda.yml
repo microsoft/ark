@@ -36,13 +36,9 @@ jobs:
             sudo nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
           done
 
-      - name: UpdateSubmodules
+      - name: Dubious ownership exception
         run: |
           git config --global --add safe.directory /__w/ark/ark
-          git submodule foreach --recursive git reset --hard
-          git submodule foreach --recursive git clean -fdx
-          git submodule foreach git fetch
-          git submodule update --init --recursive
 
       - name: Build
         run: |

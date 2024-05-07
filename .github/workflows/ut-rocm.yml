@@ -28,13 +28,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: UpdateSubmodules
+      - name: Dubious ownership exception
         run: |
           git config --global --add safe.directory /__w/ark/ark
-          git submodule foreach --recursive git reset --hard
-          git submodule foreach --recursive git clean -fdx
-          git submodule foreach git fetch
-          git submodule update --init --recursive
 
       - name: Build
         run: |
