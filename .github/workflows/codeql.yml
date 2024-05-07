@@ -48,7 +48,8 @@ jobs:
 
     - name: Build
       run: |
-        cmake -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON .
+        mkdir build && cd build
+        cmake -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON ..
         make -j build
 
     - name: Perform CodeQL Analysis
@@ -67,7 +68,7 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/ark/ark:base-dev-rocm6.1
+      image: ghcr.io/microsoft/ark/ark:base-dev-rocm6.0
     permissions:
       actions: read
       contents: read
@@ -93,7 +94,8 @@ jobs:
 
     - name: Build
       run: |
-        CXX=/opt/rocm/bin/hipcc cmake -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON .
+        mkdir build && cd build
+        CXX=/opt/rocm/bin/hipcc cmake -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON ..
         make -j build
 
     - name: Perform CodeQL Analysis
