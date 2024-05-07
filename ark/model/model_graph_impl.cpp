@@ -61,32 +61,6 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     return *this;
 }
 
-ModelNodeRef ModelGraph::Impl::break_node(ModelNodeRef node, size_t op_idx) {
-    if (op_idx == 0) {
-        return node;
-    }
-    if (op_idx >= node->ops.size()) {
-        ERR(ModelError, "unexpected error: op_idx out of range");
-    }
-    ModelNodeRef new_node = std::make_shared<ModelNode>();
-    nodes_.push_back(new_node);
-    new_node->ops.insert(new_node->ops.end(), node->ops.begin() + op_idx,
-                         node->ops.end());
-    for (auto &op : new_node->ops) {
-        op_to_node_[op] = new_node;
-    }
-    new_node->consumers = node->consumers;
-    new_node->producers.push_back(node);
-    for (auto &consumer : node->consumers) {
-        consumer->producers.erase(node);
-        consumer->producers.push_back(new_node);
-    }
-    node->ops.erase(node->ops.begin() + op_idx, node->ops.end());
-    node->consumers.clear();
-    node->consumers.push_back(new_node);
-    return new_node;
-}
-
 void ModelGraph::Impl::compress_nodes() {
     this->recursive_remove_virtual_nodes();
     this->recursive_merge_nodes();

@@ -44,8 +44,6 @@ class ModelGraph::Impl {
         return op;
     }
 
-    ModelNodeRef break_node(ModelNodeRef node, size_t op_idx);
-
     void compress_nodes();
 
     bool verify() const;

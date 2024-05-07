@@ -21,10 +21,6 @@ ModelGraph &ModelGraph::operator=(const ModelGraph &other) {
     return *this;
 }
 
-ModelNodeRef ModelGraph::break_node(ModelNodeRef node, size_t op_idx) {
-    return impl_->break_node(node, op_idx);
-}
-
 /// Get the list of @ref ModelNode in the graph.
 std::vector<ModelNodeRef> ModelGraph::nodes() const { return impl_->nodes(); }
 
