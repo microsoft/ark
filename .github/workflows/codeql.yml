@@ -67,7 +67,7 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/microsoft/ark/ark:base-dev-rocm6.0
+      image: ghcr.io/microsoft/ark/ark:base-dev-rocm6.1
     permissions:
       actions: read
       contents: read
@@ -93,7 +93,7 @@ jobs:
 
     - name: Build
       run: |
-        cmake -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON .
+        CXX=/opt/rocm/bin/hipcc cmake -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON .
         make -j build
 
     - name: Perform CodeQL Analysis
