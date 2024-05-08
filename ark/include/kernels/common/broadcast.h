@@ -397,7 +397,8 @@ struct Broadcast1 {
 
         static constexpr size_t StepSize = NelemPerThread * UnitOp::NumThreads;
 
-        for (int tid = UnitOp::thread_id();; tid += StepSize) {
+        for (size_t tid = NelemPerThread * UnitOp::thread_id();;
+             tid += StepSize) {
             size_t tid_n = tid / UnitOutDims::CHW;
             size_t tid_c = (tid / UnitOutDims::HW) % UnitOutDims::C;
             size_t tid_h = (tid / UnitOutDims::W) % UnitOutDims::H;
@@ -424,10 +425,11 @@ struct Broadcast1 {
                           VecIsEq<InDims, OutDims>::value) {
                 idx_in = idx_out;
             } else {
-                idx_in = idx_w + idx_h * InDims::W + idx_c * InDims::HW +
-                         idx_n * InDims::CHW;
+                idx_in = ((InShape::W == 1) ? 0 : idx_w) +
+                         ((InShape::H == 1) ? 0 : idx_h * InDims::W) +
+                         ((InShape::C == 1) ? 0 : idx_c * InDims::HW) +
+                         ((InShape::N == 1) ? 0 : idx_n * InDims::CHW);
             }
-
             Intrinsic::compute(&out[idx_out], &in[idx_in]);
         }
 
@@ -464,7 +466,8 @@ struct Broadcast2 {
 
         static constexpr size_t StepSize = NelemPerThread * UnitOp::NumThreads;
 
-        for (size_t tid = UnitOp::thread_id();; tid += StepSize) {
+        for (size_t tid = NelemPerThread * UnitOp::thread_id();;
+             tid += StepSize) {
             size_t tid_n = tid / UnitOutDims::CHW;
             size_t tid_c = (tid / UnitOutDims::HW) % UnitOutDims::C;
             size_t tid_h = (tid / UnitOutDims::W) % UnitOutDims::H;
@@ -492,8 +495,10 @@ struct Broadcast2 {
                           VecIsEq<In0Dims, OutDims>::value) {
                 idx_in0 = idx_out;
             } else {
-                idx_in0 = idx_w + idx_h * In0Dims::W + idx_c * In0Dims::HW +
-                          idx_n * In0Dims::CHW;
+                idx_in0 = ((In0Shape::W == 1) ? 0 : idx_w) +
+                          ((In0Shape::H == 1) ? 0 : idx_h * In0Dims::W) +
+                          ((In0Shape::C == 1) ? 0 : idx_c * In0Dims::HW) +
+                          ((In0Shape::N == 1) ? 0 : idx_n * In0Dims::CHW);
             }
 
             if constexpr (VecIsEq<In1Shape, OutShape>::value &&
@@ -503,8 +508,10 @@ struct Broadcast2 {
                                  VecIsEq<In1Dims, In0Dims>::value) {
                 idx_in1 = idx_in0;
             } else {
-                idx_in1 = idx_w + idx_h * In1Dims::W + idx_c * In1Dims::HW +
-                          idx_n * In1Dims::CHW;
+                idx_in1 = ((In1Shape::W == 1) ? 0 : idx_w) +
+                          ((In1Shape::H == 1) ? 0 : idx_h * In1Dims::W) +
+                          ((In1Shape::C == 1) ? 0 : idx_c * In1Dims::HW) +
+                          ((In1Shape::N == 1) ? 0 : idx_n * In1Dims::CHW);
             }
             Intrinsic::compute(&out[idx_out], &in0[idx_in0], &in1[idx_in1]);
         }
