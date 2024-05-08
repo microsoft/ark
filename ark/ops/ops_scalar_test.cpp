@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/executor.hpp"
 #include "ark/model.hpp"
 #include "ops_test_common.hpp"
 #include "unittest/unittest_utils.h"
@@ -107,6 +108,39 @@ ark::unittest::State test_scalar_mul_invalid() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_scalar_mul_fp16_offset() {
+    {
+        ark::Model m;
+        ark::Tensor buf = m.tensor({1024}, ark::FP16);
+        ark::Tensor tns = m.refer(buf, {2}, {1024}, {3});
+        ark::Tensor out = m.mul(tns, 2, tns);
+
+        ark::DefaultExecutor exe(m);
+        exe.compile();
+
+        std::vector<ark::half_t> data(1024, ark::half_t(2));
+        exe.tensor_write(buf, data);
+
+        exe.launch();
+        exe.run(1);
+        exe.stop();
+
+        data.clear();
+        data.resize(1024);
+
+        exe.tensor_read(buf, data);
+
+        for (size_t i = 0; i < data.size(); ++i) {
+            if (i == 3 || i == 4) {
+                UNITTEST_EQ(data[i], 4);
+            } else {
+                UNITTEST_EQ(data[i], 2);
+            }
+        }
+    }
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_scalar_mul_perf() {
     ark::DimType nelem = 8 * 1024 * 1024;
 
@@ -130,6 +164,7 @@ int main() {
     UNITTEST(test_scalar_mul_fp16);
     UNITTEST(test_scalar_mul_bf16);
     UNITTEST(test_scalar_mul_invalid);
+    UNITTEST(test_scalar_mul_fp16_offset);
     UNITTEST(test_scalar_mul_perf);
     return ark::unittest::SUCCESS;
 }
