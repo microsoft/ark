@@ -229,11 +229,7 @@ def parameter(
     """
     Construct a parameter with given shape and data type.
     """
-    return Parameter(
-        _tensor(
-            shape, dtype, strides, offsets, pads, name
-        )
-    )
+    return Parameter(_tensor(shape, dtype, strides, offsets, pads, name))
 
 
 def reduce_max(
@@ -441,11 +437,7 @@ def tensor(
     tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
-    return Tensor(
-        _tensor(
-            shape, dtype, strides, offsets, pads, name
-        )
-    )
+    return Tensor(_tensor(shape, dtype, strides, offsets, pads, name))
 
 
 def transpose(
