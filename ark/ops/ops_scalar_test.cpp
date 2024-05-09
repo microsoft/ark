@@ -21,6 +21,49 @@ void baseline_scalar_mul(std::vector<void *> &outputs,
     }
 };
 
+ark::unittest::State test_scalar_assign_fp16() {
+    {
+        ark::Model m;
+        ark::Tensor t = m.constant(7, ark::Dims(4, 2, 50), ark::FP16);
+
+        ark::DefaultExecutor exe(m);
+        exe.compile();
+
+        exe.launch();
+        exe.run(1);
+        exe.stop();
+
+        std::vector<ark::half_t> data(4 * 2 * 50);
+        exe.tensor_read(t, data);
+        for (auto v : data) {
+            UNITTEST_EQ(v, ark::half_t(7));
+        }
+    }
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 50), ark::FP16);
+        ark::Tensor out = m.copy(7, t);
+
+        ark::DefaultExecutor exe(m);
+        exe.compile();
+
+        std::vector<ark::half_t> data(4 * 2 * 50, 3);
+        exe.tensor_write(t, data);
+
+        exe.launch();
+        exe.run(1);
+        exe.stop();
+
+        data.clear();
+        data.resize(4 * 2 * 50);
+        exe.tensor_read(t, data);
+        for (auto v : data) {
+            UNITTEST_EQ(v, ark::half_t(7));
+        }
+    }
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_scalar_mul_fp32() {
     {
         ark::Model m;
@@ -160,6 +203,7 @@ ark::unittest::State test_scalar_mul_perf() {
 
 int main() {
     ark::init();
+    UNITTEST(test_scalar_assign_fp16);
     UNITTEST(test_scalar_mul_fp32);
     UNITTEST(test_scalar_mul_fp16);
     UNITTEST(test_scalar_mul_bf16);

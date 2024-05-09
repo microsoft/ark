@@ -63,6 +63,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Reshape);
         MODEL_OP_TYPE_REGISTER(Rsqrt);
         MODEL_OP_TYPE_REGISTER(ScalarAdd);
+        MODEL_OP_TYPE_REGISTER(ScalarAssign);
         MODEL_OP_TYPE_REGISTER(ScalarMul);
         MODEL_OP_TYPE_REGISTER(Send);
         MODEL_OP_TYPE_REGISTER(SendDone);

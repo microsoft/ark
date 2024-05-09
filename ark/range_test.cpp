@@ -46,6 +46,12 @@ ark::unittest::State test_range() {
     }
     UNITTEST_EQ(cnt, 0);
 
+    ark::Range r5(2, 19, 3);  // 2, 5, 8, 11, 14, 17
+    ark::Range r6(3, 17, 2);  // 3, 5, 7, 9, 11, 13, 15
+    auto intersec = r5.intersection(r6);
+    UNITTEST_EQ(intersec[0], 5);
+    UNITTEST_EQ(intersec[1], 11);
+
     return ark::unittest::State::SUCCESS;
 }
 

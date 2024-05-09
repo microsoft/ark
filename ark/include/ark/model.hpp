@@ -37,6 +37,9 @@ class Model : public ModelGraph {
 
     int unique_tag();
 
+    Tensor constant(float val, const Dims &shape, DataType data_type,
+                    const std::string &name = "");
+
     void noop(Tensor input, const std::string &name = "");
 
     /// Returns a tensor object.
@@ -96,10 +99,7 @@ class Model : public ModelGraph {
                        const std::string &name = "");
     Tensor reduce_max(Tensor input, int axis, bool keepdims = true,
                       Tensor output = NullTensor, const std::string &name = "");
-    // Applies layer normalization to the `input` tensor and returns the
-    // normalized tensor as `output`.
-    Tensor layernorm(Tensor input, Tensor output = NullTensor,
-                     const std::string &name = "");
+
     // Transposes the `input` tensor according to the given `permutation`.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
@@ -138,6 +138,8 @@ class Model : public ModelGraph {
                 const std::string &name = "");
     // Copy the `input` tensor to `output` tensor
     Tensor copy(Tensor input, Tensor output = NullTensor,
+                const std::string &name = "");
+    Tensor copy(float val, Tensor output = NullTensor,
                 const std::string &name = "");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the

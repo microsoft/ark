@@ -4,9 +4,24 @@
 #ifndef ARK_OPS_SCALAR_HPP_
 #define ARK_OPS_SCALAR_HPP_
 
+#include "ark/data_type.hpp"
 #include "ops_broadcast.hpp"
 
 namespace ark {
+
+class ModelOpScalarAssign : public ModelOp {
+   public:
+    ModelOpScalarAssign() = default;
+    ModelOpScalarAssign(float val, const Dims &shape, ModelDataType data_type,
+                        ModelTensorRef output);
+
+    std::string impl_name(const json &config) const override;
+
+    std::vector<ModelOpArg> impl_args([
+        [maybe_unused]] const json &config) const override;
+
+    ordered_json default_config() const override;
+};
 
 class ModelOpScalarAdd : public ModelOpBroadcast1 {
    public:

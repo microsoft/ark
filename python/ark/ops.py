@@ -42,22 +42,33 @@ def _tensor(
 
 
 def add(
-    input: Tensor,
+    input: Union[Tensor, float],
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
     name: str = "add",
-) -> Tensor:
+) -> Union[Tensor, float]:
     """
     Performs an element-wise addition operator between the `input`
     tensor and the `other` tensor.
     Usage:
     tensor_add = ark.add(tensor1, tensor2)
     """
+    if isinstance(input, Tensor) and isinstance(other, Tensor):
+        a = input._tensor
+        b = other._tensor
+    elif isinstance(input, Tensor):
+        a = input._tensor
+        b = other
+    elif isinstance(other, Tensor):
+        a = other._tensor
+        b = input
+    elif output is NullTensor:
+        return input + other
+    else:
+        return Tensor(Model.get_model().copy(input + other, output._tensor, name))
     if output is not NullTensor:
         output = output._tensor
-    if isinstance(other, Tensor):
-        other = other._tensor
-    return Tensor(Model.get_model().add(input._tensor, other, output, name))
+    return Tensor(Model.get_model().add(a, b, output, name))
 
 
 def cast(
@@ -74,13 +85,22 @@ def cast(
     )
 
 
-def copy(
-    input: Tensor, output: Tensor = NullTensor, name: str = "copy"
+def constant(
+    value: float, shape: Iterable[int], dtype: DataType = fp32, name: str = "constant"
 ) -> Tensor:
-    """Type casting."""
+    """Constant."""
+    return Tensor(Model.get_model().constant(value, Dims(shape), dtype.ctype(), name))
+
+
+def copy(
+    input: Union[Tensor, float], output: Tensor = NullTensor, name: str = "copy"
+) -> Tensor:
+    """Data caopy."""
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().copy(input._tensor, output, name))
+    if isinstance(input, Tensor):
+        intput = intput._tensor
+    return Tensor(Model.get_model().copy(intput, output, name))
 
 
 def div(
@@ -216,20 +236,6 @@ def noop(input: Tensor, name: str = "noop"):
     No operation. Returns nothing.
     """
     Model.get_model().noop(input._tensor, name)
-
-
-def parameter(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    strides: Iterable[int] = [],
-    offsets: Iterable[int] = [],
-    pads: Iterable[int] = [],
-    name: str = "",
-) -> Parameter:
-    """
-    Construct a parameter with given shape and data type.
-    """
-    return Parameter(_tensor(shape, dtype, strides, offsets, pads, name))
 
 
 def reduce_max(
@@ -470,6 +476,27 @@ def transpose(
 ################################################################################
 
 
+def ones(
+    shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
+) -> Tensor:
+    """Ones."""
+    return Tensor(Model.get_model().constant(1, Dims(shape), dtype.ctype(), name))
+
+
+def parameter(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    pads: Iterable[int] = [],
+    name: str = "",
+) -> Parameter:
+    """
+    Construct a parameter with given shape and data type.
+    """
+    return Parameter(_tensor(shape, dtype, strides, offsets, pads, name))
+
+
 def softmax(
     input: Tensor, output: Tensor = NullTensor, name: str = "softmax"
 ) -> Tensor:
@@ -497,6 +524,13 @@ def layernorm(
     variance = reduce_mean(mul(x, x), axis=-1)
     output = mul(x, rsqrt(add(variance, eps)), output=output)
     return output
+
+
+def zeros(
+    shape: Iterable[int], dtype: DataType = fp32, name: str = "zeros"
+) -> Tensor:
+    """Zeros."""
+    return Tensor(Model.get_model().constant(0, Dims(shape), dtype.ctype(), name))
 
 
 # def im2col(

@@ -93,4 +93,7 @@ from .ops import (
     # local_all_reduce_packet,
     embedding,
     cast,
+    constant,
+    ones,
+    zeros
 )

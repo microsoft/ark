@@ -248,6 +248,20 @@ ark::unittest::State test_math_rsqrt_fp32() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_math_rsqrt_fp16() {
+    ark::Model m;
+    ark::Tensor t = m.tensor({1, 64, 1}, ark::FP16);
+    ark::Tensor out = m.rsqrt(t);
+
+    std::vector<ark::half_t> data(64, 4);
+
+    auto result = ark::op_test("math_rsqrt_fp16", m, {t}, {out},
+                               baseline_rsqrt<ark::half_t>, {data.data()});
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_sigmoid_fp32() {
     ark::Model m;
     ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
@@ -341,6 +355,7 @@ int main() {
     UNITTEST(test_relu_bf16);
     UNITTEST(test_relu_invalid);
     UNITTEST(test_math_rsqrt_fp32);
+    UNITTEST(test_math_rsqrt_fp16);
     UNITTEST(test_sigmoid_fp32);
     UNITTEST(test_sigmoid_bf16);
     UNITTEST(test_sigmoid_invalid);

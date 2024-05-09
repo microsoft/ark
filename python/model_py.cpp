@@ -28,8 +28,16 @@ void register_model(py::module &m) {
              py::arg("name"))
         .def("cast", &ark::Model::cast, py::arg("input"), py::arg("data_type"),
              py::arg("output"), py::arg("name"))
-        .def("copy", &ark::Model::copy, py::arg("input"), py::arg("output"),
-             py::arg("name"))
+        .def("constant", &ark::Model::constant, py::arg("value"),
+             py::arg("shape"), py::arg("data_type"), py::arg("name"))
+        .def("copy",
+             py::overload_cast<ark::Tensor, ark::Tensor, const std::string &>(
+                 &ark::Model::copy),
+             py::arg("input"), py::arg("output"), py::arg("name"))
+        .def("copy",
+             py::overload_cast<float, ark::Tensor, const std::string &>(
+                 &ark::Model::copy),
+             py::arg("input"), py::arg("output"), py::arg("name"))
         .def("div",
              py::overload_cast<ark::Tensor, ark::Tensor, ark::Tensor,
                                const std::string &>(&ark::Model::div),

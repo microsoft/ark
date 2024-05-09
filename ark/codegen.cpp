@@ -3,6 +3,8 @@
 
 #include "codegen.hpp"
 
+#include <list>
+
 #include "ark/data_type.hpp"
 #include "env.h"
 #include "file_io.h"
@@ -62,6 +64,8 @@ class CodeGenerator::Impl {
     std::string resource_group(const json &rg_json, const json &task_infos,
                                const Range<size_t> &proc_range);
 
+    std::string sync_process_range(const Range<size_t> &ranges, int state_id);
+
    protected:
     friend class CodeGenerator;
 
@@ -94,6 +98,7 @@ CodeGenerator::Impl::Impl(const json &plan,
 
     std::map<Range<size_t>, SyncStateInfo> sync_state_info;
 
+    std::list<Range<size_t>> unsynced;
     std::stringstream body_ss;
     size_t pg_idx = 0;
     for (auto &pg : plan.at("ProcessorGroups")) {
@@ -104,23 +109,37 @@ CodeGenerator::Impl::Impl(const json &plan,
         if (end == begin) continue;
 
         if (pg_idx > 0) {
-            // sync pg
-            if (begin == 0) {
-                body_ss << "  if (blockIdx.x < " << end << ") {";
-            } else if (begin + 1 == end) {
-                body_ss << "  if (blockIdx.x == " << begin << ") {";
-            } else {
-                body_ss << "  if (blockIdx.x >= " << begin
-                        << " && blockIdx.x < " << end << ") {";
+            bool need_sync = false;
+            auto it = unsynced.begin();
+            while (it != unsynced.end()) {
+                auto &range = *it;
+                auto intersec = proc_range.intersection(range);
+                if (intersec.empty()) {
+                    it++;
+                    continue;
+                }
+                // no need to sync if range is a part of proc_range.
+                if (intersec.size() < range.size()) {
+                    size_t state_id = sync_state_info[range].id;
+                    body_ss << sync_process_range(range, state_id);
+                    if (intersec.size() < proc_range.size()) {
+                        need_sync = true;
+                    }
+                } else {
+                    need_sync = true;
+                }
+                it = unsynced.erase(it);
             }
-            size_t state_id = sync_state_info[proc_range].id;
-            body_ss << " sync_gpu<" << end - begin << ">(ARK_LOOP_SYNC_STATE_"
-                    << state_id << "); }\n";
+            if (need_sync) {
+                size_t state_id = sync_state_info[proc_range].id;
+                body_ss << sync_process_range(proc_range, state_id);
+            }
         }
         for (auto &rg : pg["ResourceGroups"]) {
             body_ss << this->resource_group(rg, plan.at("TaskInfos"),
                                             proc_range);
         }
+        unsynced.push_back(proc_range);
         pg_idx++;
     }
 
@@ -356,6 +375,35 @@ std::string CodeGenerator::Impl::resource_group(
                              slot_n_sram, task_id);
     }
     return ss.str();
+}
+
+std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
+                                                    int state_id) {
+    std::stringstream cond;
+    if (range.size() == 1) {
+        cond << "blockIdx.x == " << *range.begin();
+    } else {
+        if (*range.begin() == 0) {
+            cond << "blockIdx.x < " << *range.end();
+        } else {
+            cond << "blockIdx.x >= " << *range.begin() << " && blockIdx.x < "
+                 << *range.end();
+        }
+        if (range.step() > 1) {
+            cond << " && ";
+            if (*range.begin() == 0) {
+                cond << "blockIdx.x % " << range.step() << " == 0";
+            } else {
+                cond << "(blockIdx.x - " << *range.begin() << ") % "
+                     << range.step() << " == 0";
+            }
+        }
+    }
+    std::stringstream ret;
+    ret << "  if (" << cond.str() << ") { ";
+    ret << "sync_gpu<" << range.size() << ">(ARK_LOOP_SYNC_STATE_" << state_id
+        << "); }\n";
+    return ret.str();
 }
 
 CodeGenerator::CodeGenerator(

@@ -8,6 +8,17 @@
 
 namespace ark {
 
+template <typename OutDims, typename OutShape, typename UnitOutDims,
+          int NumWarps, int SmemBytes, typename OutDataType>
+DEVICE void scalar_assign(OutDataType *out, float val, int uop_idx, int) {
+    OutDataType val_cast = type::Cast::compute<OutDataType>(val);
+    using ValDims = Vec<1, 1, 1, 1>;
+    using ValShape = Vec<1, 1, 1, 1>;
+    DefaultBroadcast1<ValDims, ValShape, OutDataType, OutDims, OutShape,
+                      OutDataType, type::Identity, UnitOutDims, NumWarps,
+                      SmemBytes>::run(out, &val_cast, uop_idx);
+}
+
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename InDataType, typename OutDataType>

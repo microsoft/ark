@@ -4,6 +4,8 @@
 #ifndef ARK_RANGE_HPP_
 #define ARK_RANGE_HPP_
 
+#include <vector>
+
 namespace ark {
 
 template <typename T = int>
@@ -68,6 +70,33 @@ class Range {
     T step() const { return step_; }
 
     T size() const { return (end_ - begin_) / step_; }
+
+    std::vector<T> intersection(const Range<T> &other) {
+        T begin, step;
+        T opp_begin, opp_step;
+        if (begin_ > other.begin_) {
+            begin = begin_;
+            step = step_;
+            opp_begin = other.begin_;
+            opp_step = other.step_;
+        } else {
+            begin = other.begin_;
+            step = other.step_;
+            opp_begin = begin_;
+            opp_step = step_;
+        }
+        T end = std::min(end_, other.end_);
+        if (begin >= end) {
+            return {};
+        }
+        std::vector<T> result;
+        for (T i = begin; i < end; i += step) {
+            if ((i - opp_begin) % opp_step == 0) {
+                result.push_back(i);
+            }
+        }
+        return result;
+    }
 
    private:
     T begin_;
