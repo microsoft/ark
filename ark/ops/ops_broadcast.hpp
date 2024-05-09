@@ -22,6 +22,20 @@ class ModelOpBroadcast1 : public ModelOp {
     ordered_json default_config() const override;
 };
 
+class ModelOpBroadcast2 : public ModelOp {
+   public:
+    ModelOpBroadcast2() = default;
+    ModelOpBroadcast2(const std::string &type_name, ModelTensorRef input,
+                      ModelTensorRef other, ModelTensorRef output);
+
+    std::string impl_name(const json &config) const override;
+
+    std::vector<ModelOpArg> impl_args([
+        [maybe_unused]] const json &config) const override;
+
+    ordered_json default_config() const override;
+};
+
 }  // namespace ark
 
 #endif  // ARK_OPS_BROADCAST_HPP_

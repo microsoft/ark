@@ -4,46 +4,32 @@
 #ifndef ARK_OPS_ARITHMETIC_HPP_
 #define ARK_OPS_ARITHMETIC_HPP_
 
-#include "model/model_op.hpp"
+#include "ops_broadcast.hpp"
 
 namespace ark {
 
-class ModelOpArithmetic : public ModelOp {
-   public:
-    ModelOpArithmetic() = default;
-    ModelOpArithmetic(const std::string &type_name, ModelTensorRef input,
-                      ModelTensorRef other, ModelTensorRef output);
-
-    std::string impl_name(const json &config) const override;
-
-    std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const override;
-
-    ordered_json default_config() const override;
-};
-
-class ModelOpAdd : public ModelOpArithmetic {
+class ModelOpAdd : public ModelOpBroadcast2 {
    public:
     ModelOpAdd() = default;
     ModelOpAdd(ModelTensorRef input, ModelTensorRef other,
                ModelTensorRef output);
 };
 
-class ModelOpMul : public ModelOpArithmetic {
+class ModelOpMul : public ModelOpBroadcast2 {
    public:
     ModelOpMul() = default;
     ModelOpMul(ModelTensorRef input, ModelTensorRef other,
                ModelTensorRef output);
 };
 
-class ModelOpSub : public ModelOpArithmetic {
+class ModelOpSub : public ModelOpBroadcast2 {
    public:
     ModelOpSub() = default;
     ModelOpSub(ModelTensorRef input, ModelTensorRef other,
                ModelTensorRef output);
 };
 
-class ModelOpDiv : public ModelOpArithmetic {
+class ModelOpDiv : public ModelOpBroadcast2 {
    public:
     ModelOpDiv() = default;
     ModelOpDiv(ModelTensorRef input, ModelTensorRef other,

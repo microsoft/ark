@@ -19,6 +19,7 @@
 #include "ops/ops_reduce.hpp"
 #include "ops/ops_refer.hpp"
 #include "ops/ops_reshape.hpp"
+#include "ops/ops_rope.hpp"
 #include "ops/ops_scalar.hpp"
 #include "ops/ops_tensor.hpp"
 #include "ops/ops_transpose.hpp"
@@ -61,6 +62,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(ReduceSum);
         MODEL_OP_TYPE_REGISTER(Relu);
         MODEL_OP_TYPE_REGISTER(Reshape);
+        MODEL_OP_TYPE_REGISTER(Rope);
         MODEL_OP_TYPE_REGISTER(Rsqrt);
         MODEL_OP_TYPE_REGISTER(ScalarAdd);
         MODEL_OP_TYPE_REGISTER(ScalarAssign);
