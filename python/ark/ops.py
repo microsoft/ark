@@ -65,7 +65,9 @@ def add(
     elif output is NullTensor:
         return input + other
     else:
-        return Tensor(Model.get_model().copy(input + other, output._tensor, name))
+        return Tensor(
+            Model.get_model().copy(input + other, output._tensor, name)
+        )
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().add(a, b, output, name))
@@ -86,10 +88,15 @@ def cast(
 
 
 def constant(
-    value: float, shape: Iterable[int], dtype: DataType = fp32, name: str = "constant"
+    value: float,
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    name: str = "constant",
 ) -> Tensor:
     """Constant."""
-    return Tensor(Model.get_model().constant(value, Dims(shape), dtype.ctype(), name))
+    return Tensor(
+        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name)
+    )
 
 
 def copy(
@@ -480,7 +487,9 @@ def ones(
     shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
 ) -> Tensor:
     """Ones."""
-    return Tensor(Model.get_model().constant(1, Dims(shape), dtype.ctype(), name))
+    return Tensor(
+        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name)
+    )
 
 
 def parameter(
@@ -530,7 +539,9 @@ def zeros(
     shape: Iterable[int], dtype: DataType = fp32, name: str = "zeros"
 ) -> Tensor:
     """Zeros."""
-    return Tensor(Model.get_model().constant(0, Dims(shape), dtype.ctype(), name))
+    return Tensor(
+        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name)
+    )
 
 
 # def im2col(

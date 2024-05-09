@@ -95,5 +95,5 @@ from .ops import (
     cast,
     constant,
     ones,
-    zeros
+    zeros,
 )
