@@ -26,14 +26,14 @@ ModelOffset::ModelOffset(ModelTensorRef tensor) {
     value_ = offset;
 }
 
-ordered_json ModelOffset::serialize() const {
-    ordered_json j;
+Json ModelOffset::serialize() const {
+    Json j;
     j["BufferId"] = buffer_id_;
     j["Value"] = value_;
     return j;
 }
 
-std::shared_ptr<ModelOffset> ModelOffset::deserialize(const json &serialized) {
+std::shared_ptr<ModelOffset> ModelOffset::deserialize(const Json &serialized) {
     if (!serialized.contains("BufferId")) {
         ERR(ModelError, "ModelOffset deserialization failed: missing BufferId");
     } else if (!serialized.contains("Value")) {

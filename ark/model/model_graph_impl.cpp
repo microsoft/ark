@@ -427,18 +427,18 @@ void ModelGraph::Impl::recursive_merge_nodes(
     this->recursive_merge_nodes(seen_nodes, new_boundary_nodes);
 }
 
-ordered_json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
-    ordered_json j;
+Json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
+    Json j;
     j["Id"] = nodes_.index(node);
-    j["ProducerNodeIds"] = json::array();
+    j["ProducerNodeIds"] = Json::array();
     for (auto producer : node->producers) {
         j["ProducerNodeIds"].emplace_back(nodes_.index(producer));
     }
-    j["ConsumerNodeIds"] = json::array();
+    j["ConsumerNodeIds"] = Json::array();
     for (auto consumer : node->consumers) {
         j["ConsumerNodeIds"].emplace_back(nodes_.index(consumer));
     }
-    j["Ops"] = json::array();
+    j["Ops"] = Json::array();
     for (auto op : node->ops) {
         j["Ops"].emplace_back(op->serialize());
     }
@@ -446,12 +446,12 @@ ordered_json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
 }
 
 std::string ModelGraph::Impl::serialize(int indent) const {
-    ordered_json j;
-    j["Nodes"] = json::array();
+    Json j;
+    j["Nodes"] = Json::array();
     for (const auto &node : nodes_) {
         j["Nodes"].emplace_back(this->to_json(node));
     }
-    j["Tensors"] = json::array();
+    j["Tensors"] = Json::array();
     for (const auto &tensor_and_op : tensor_to_producer_op_) {
         j["Tensors"].emplace_back(tensor_and_op.first->serialize());
     }

@@ -14,12 +14,12 @@ class ModelOpBroadcast1 : public ModelOp {
     ModelOpBroadcast1(const std::string &type_name, ModelTensorRef input,
                       ModelTensorRef output);
 
-    std::string impl_name(const json &config) const override;
+    std::string impl_name(const Json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const override;
+        [maybe_unused]] const Json &config) const override;
 
-    ordered_json default_config() const override;
+    Json default_config() const override;
 };
 
 class ModelOpBroadcast2 : public ModelOp {
@@ -28,12 +28,12 @@ class ModelOpBroadcast2 : public ModelOp {
     ModelOpBroadcast2(const std::string &type_name, ModelTensorRef input,
                       ModelTensorRef other, ModelTensorRef output);
 
-    std::string impl_name(const json &config) const override;
+    std::string impl_name(const Json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const override;
+        [maybe_unused]] const Json &config) const override;
 
-    ordered_json default_config() const override;
+    Json default_config() const override;
 };
 
 }  // namespace ark

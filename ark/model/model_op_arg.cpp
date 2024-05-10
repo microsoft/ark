@@ -10,9 +10,9 @@ namespace ark {
 
 ModelOpArg::ModelOpArg() : ModelNamedT("") {}
 
-ordered_json ModelOpArg::serialize() const {
+Json ModelOpArg::serialize() const {
     const std::string &type_name = this->type_name();
-    ordered_json j;
+    Json j;
     j.push_back(type_name);
     if (type_name == "TENSOR") {
         j.push_back(this->value<ModelTensorRef>()->serialize());
@@ -37,7 +37,7 @@ ordered_json ModelOpArg::serialize() const {
     return j;
 }
 
-ModelOpArg ModelOpArg::deserialize(const json &serialized) {
+ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
     try {
         const std::string &type_name = serialized[0];
         auto &value = serialized[1];

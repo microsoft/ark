@@ -109,8 +109,8 @@ bool ModelTensor::is_sequential() const {
     return true;
 }
 
-ordered_json ModelTensor::serialize() const {
-    ordered_json j;
+Json ModelTensor::serialize() const {
+    Json j;
     j["Id"] = id_;
     j["DataType"] = data_type_->type_name();
     j["Buffer"] = buffer_->serialize();
@@ -121,7 +121,7 @@ ordered_json ModelTensor::serialize() const {
     return j;
 }
 
-std::shared_ptr<ModelTensor> ModelTensor::deserialize(const json &serialized) {
+std::shared_ptr<ModelTensor> ModelTensor::deserialize(const Json &serialized) {
     if (!serialized.contains("DataType")) {
         ERR(InvalidUsageError,
             "ModelTensor deserialization failed: missing DataType");

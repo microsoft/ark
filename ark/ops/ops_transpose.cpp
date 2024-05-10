@@ -78,7 +78,7 @@ ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
     verify();
 }
 
-std::string ModelOpTranspose::impl_name(const json &config) const {
+std::string ModelOpTranspose::impl_name(const Json &config) const {
     auto permutation = args_.at("Permutation").value<Dims>();
     auto perm_str = permutation_str(permutation);
     int num_warps = config["NumWarps"];
@@ -100,12 +100,12 @@ std::string ModelOpTranspose::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpTranspose::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-ordered_json ModelOpTranspose::default_config() const {
-    ordered_json config;
+Json ModelOpTranspose::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     size_t tile_x = 8;

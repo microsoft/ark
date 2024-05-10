@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "error.hpp"
-#include "json.hpp"
 #include "logging.h"
 
 namespace ark {

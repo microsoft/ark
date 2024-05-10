@@ -34,7 +34,7 @@ ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
     verify();
 }
 
-std::string ModelOpEmbedding::impl_name(const json &config) const {
+std::string ModelOpEmbedding::impl_name(const Json &config) const {
     int num_warps = config.at("NumWarps");
 
     auto in_strides = read_tensors_[0]->strides().dims4();
@@ -54,12 +54,12 @@ std::string ModelOpEmbedding::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpEmbedding::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-ordered_json ModelOpEmbedding::default_config() const {
-    ordered_json config;
+Json ModelOpEmbedding::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     const auto &shape = result_tensors_[0]->shape().dims4();

@@ -26,7 +26,7 @@ ModelOpScalarAssign::ModelOpScalarAssign(float val, const Dims &shape,
     verify();
 }
 
-std::string ModelOpScalarAssign::impl_name(const json &config) const {
+std::string ModelOpScalarAssign::impl_name(const Json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required for ",
             type()->type_name());
@@ -45,13 +45,13 @@ std::string ModelOpScalarAssign::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpScalarAssign::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     float val = args_.at("Value").value<float>();
     return {result_tensors_[0], val};
 }
 
-ordered_json ModelOpScalarAssign::default_config() const {
-    ordered_json config;
+Json ModelOpScalarAssign::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     const auto &shape = result_tensors_[0]->shape().dims4();
@@ -89,7 +89,7 @@ ModelOpScalarAdd::ModelOpScalarAdd(ModelTensorRef input, float factor,
 }
 
 std::vector<ModelOpArg> ModelOpScalarAdd::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     float factor = args_.at("Factor").value<float>();
     return {result_tensors_[0], read_tensors_[0], factor};
 }
@@ -111,7 +111,7 @@ ModelOpScalarMul::ModelOpScalarMul(ModelTensorRef input, float factor,
 }
 
 std::vector<ModelOpArg> ModelOpScalarMul::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     float factor = args_.at("Factor").value<float>();
     return {result_tensors_[0], read_tensors_[0], factor};
 }

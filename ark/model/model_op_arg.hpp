@@ -10,7 +10,7 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
-#include "json.hpp"
+#include "model_json.hpp"
 #include "model_named_type.hpp"
 #include "model_offset.hpp"
 
@@ -45,9 +45,9 @@ class ModelOpArg : public ModelNamedT {
 
     const std::string &type_str() const { return type_str_; }
 
-    ordered_json serialize() const;
+    Json serialize() const;
 
-    static ModelOpArg deserialize(const json &serialized);
+    static ModelOpArg deserialize(const Json &serialized);
 
    private:
     std::string type_str_;

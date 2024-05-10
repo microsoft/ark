@@ -15,12 +15,12 @@ class ModelOpScalarAssign : public ModelOp {
     ModelOpScalarAssign(float val, const Dims &shape, ModelDataType data_type,
                         ModelTensorRef output);
 
-    std::string impl_name(const json &config) const override;
+    std::string impl_name(const Json &config) const override;
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const override;
+        [maybe_unused]] const Json &config) const override;
 
-    ordered_json default_config() const override;
+    Json default_config() const override;
 };
 
 class ModelOpScalarAdd : public ModelOpBroadcast1 {
@@ -29,7 +29,7 @@ class ModelOpScalarAdd : public ModelOpBroadcast1 {
     ModelOpScalarAdd(ModelTensorRef input, float val, ModelTensorRef output);
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const override;
+        [maybe_unused]] const Json &config) const override;
 };
 
 class ModelOpScalarMul : public ModelOpBroadcast1 {
@@ -38,7 +38,7 @@ class ModelOpScalarMul : public ModelOpBroadcast1 {
     ModelOpScalarMul(ModelTensorRef input, float val, ModelTensorRef output);
 
     std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const override;
+        [maybe_unused]] const Json &config) const override;
 };
 
 }  // namespace ark

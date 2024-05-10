@@ -8,7 +8,7 @@
 #include <set>
 #include <vector>
 
-#include "json.hpp"
+#include "model_json.hpp"
 
 namespace ark {
 
@@ -34,9 +34,9 @@ class ModelBuffer {
 
     void tag_recv(int remote_rank, int tag);
 
-    ordered_json serialize() const;
+    Json serialize() const;
 
-    static std::shared_ptr<ModelBuffer> deserialize(const json &serialized);
+    static std::shared_ptr<ModelBuffer> deserialize(const Json &serialized);
 
    private:
     size_t id_;

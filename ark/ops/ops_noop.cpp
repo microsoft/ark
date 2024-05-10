@@ -12,17 +12,17 @@ ModelOpNoop::ModelOpNoop(ModelTensorRef input) : ModelOp("Noop") {
     verify();
 }
 
-std::string ModelOpNoop::impl_name([[maybe_unused]] const json &config) const {
+std::string ModelOpNoop::impl_name([[maybe_unused]] const Json &config) const {
     return function_name_string("noop");
 }
 
 std::vector<ModelOpArg> ModelOpNoop::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {};
 }
 
-ordered_json ModelOpNoop::default_config() const {
-    ordered_json config;
+Json ModelOpNoop::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     config["NumTasks"] = 0;

@@ -5,7 +5,7 @@
 
 #include "ark/model.hpp"
 #include "gpu/gpu_manager.h"
-#include "json.hpp"
+#include "model/model_json.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 
@@ -18,14 +18,14 @@ class DefaultPlanner::Impl {
    protected:
     friend class DefaultPlanner;
 
-    ordered_json plan_;
+    Json plan_;
 };
 
 DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
     const auto &gpu_info = GpuManager::get_instance(gpu_id)->info();
     size_t num_sm = gpu_info.num_sm;
-    ordered_json task_infos;
-    ordered_json processor_groups;
+    Json task_infos;
+    Json processor_groups;
     size_t max_num_warps = 1;
     size_t max_num_processors = 1;
     size_t next_node_id = 0;
@@ -34,7 +34,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
         for (const auto &op : node->ops) {
             if (op->is_virtual()) continue;
 
-            ordered_json task_info;
+            Json task_info;
             task_info["Id"] = next_node_id++;
             task_info["Ops"] = {op->serialize()};
 
@@ -50,7 +50,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
             task_info["SramBytes"] = sram_bytes;
             task_infos.push_back(task_info);
 
-            ordered_json resource_group;
+            Json resource_group;
             size_t num_processors = std::min(num_sm, num_tasks);
             max_num_processors = std::max(max_num_processors, num_processors);
             resource_group["ProcessorRange"] = {0, num_processors};
@@ -60,7 +60,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
                                              {"TaskRange", {0, num_tasks}},
                                              {"Granularity", 1}}};
 
-            ordered_json processor_group;
+            Json processor_group;
             processor_group["ProcessorRange"] = {0, num_processors};
             processor_group["ResourceGroups"] = {resource_group};
             processor_groups.push_back(processor_group);

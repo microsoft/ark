@@ -11,7 +11,7 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_graph.hpp"
-#include "json.hpp"
+#include "model_json.hpp"
 #include "model_op.hpp"
 #include "unique_list.hpp"
 
@@ -70,7 +70,7 @@ class ModelGraph::Impl {
     void recursive_merge_nodes(UniqueList<ModelNodeRef> &seen_nodes,
                                const std::vector<ModelNodeRef> &boundary_nodes);
 
-    ordered_json to_json(const ModelNodeRef &node) const;
+    Json to_json(const ModelNodeRef &node) const;
 
     /// The list of @ref ModelNode in the graph.
     UniqueList<ModelNodeRef> nodes_;

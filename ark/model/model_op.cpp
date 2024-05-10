@@ -153,31 +153,31 @@ std::string ModelOp::function_name_string(
     return ss.str();
 }
 
-ordered_json ModelOp::serialize() const {
-    ordered_json j;
+Json ModelOp::serialize() const {
+    Json j;
     j["Type"] = type_->type_name();
     j["Name"] = name_;
     j["IsVirtual"] = is_virtual_;
-    j["ReadTensors"] = ordered_json::array();
+    j["ReadTensors"] = Json::array();
     for (auto &t : read_tensors_) {
         j["ReadTensors"].push_back(t->serialize());
     }
-    j["WriteTensors"] = ordered_json::array();
+    j["WriteTensors"] = Json::array();
     for (auto &t : write_tensors_) {
         j["WriteTensors"].push_back(t->serialize());
     }
-    j["ResultTensors"] = ordered_json::array();
+    j["ResultTensors"] = Json::array();
     for (auto &t : result_tensors_) {
         j["ResultTensors"].push_back(t->serialize());
     }
-    j["Args"] = ordered_json::object();
+    j["Args"] = Json::object();
     for (auto &arg : args_) {
         j["Args"][arg.first] = arg.second.serialize();
     }
     return j;
 }
 
-std::shared_ptr<ModelOp> ModelOp::deserialize(const json &serialized) {
+std::shared_ptr<ModelOp> ModelOp::deserialize(const Json &serialized) {
     if (!serialized.contains("Type")) {
         ERR(InvalidUsageError, "ModelOp deserialization failed: missing Type");
     } else if (!serialized.contains("Name")) {

@@ -12,8 +12,8 @@
 #include <vector>
 
 #include "ark/model_ref.hpp"
-#include "json.hpp"
 #include "logging.h"
+#include "model_json.hpp"
 #include "model_op_arg.hpp"
 #include "model_op_config.hpp"
 
@@ -44,16 +44,16 @@ class ModelOp {
 
     ModelOp(const ModelOp &) = default;
 
-    virtual std::string impl_name([[maybe_unused]] const json &config) const {
+    virtual std::string impl_name([[maybe_unused]] const Json &config) const {
         return "";
     }
 
     virtual std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const json &config) const {
+        [maybe_unused]] const Json &config) const {
         return {};
     }
 
-    virtual ordered_json default_config() const {
+    virtual Json default_config() const {
         return {{"NumTasks", 0}, {"NumWarps", 0}, {"SramBytes", 0}};
     }
 
@@ -83,9 +83,9 @@ class ModelOp {
 
     void verify() const;
 
-    ordered_json serialize() const;
+    Json serialize() const;
 
-    static std::shared_ptr<ModelOp> deserialize(const json &serialized);
+    static std::shared_ptr<ModelOp> deserialize(const Json &serialized);
 
    protected:
     friend class ModelGraph;

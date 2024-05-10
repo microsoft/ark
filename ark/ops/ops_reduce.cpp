@@ -48,7 +48,7 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
     verify();
 }
 
-std::string ModelOpReduce::impl_name(const json &config) const {
+std::string ModelOpReduce::impl_name(const Json &config) const {
     std::string red_type;
     if (type()->type_name() == "ReduceSum") {
         red_type = "sum";
@@ -105,12 +105,12 @@ std::string ModelOpReduce::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpReduce::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-ordered_json ModelOpReduce::default_config() const {
-    ordered_json config;
+Json ModelOpReduce::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     int axis = args_.at("Axis").value<int>();
     if (axis == read_tensors_[0]->shape().ndims() - 1 || axis == -1) {

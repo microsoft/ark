@@ -6,7 +6,7 @@
 
 #include "ark/dims.hpp"
 #include "ark/model_ref.hpp"
-#include "json.hpp"
+#include "model_json.hpp"
 
 namespace ark {
 
@@ -41,9 +41,9 @@ class ModelTensor {
 
     bool is_sequential() const;
 
-    ordered_json serialize() const;
+    Json serialize() const;
 
-    static std::shared_ptr<ModelTensor> deserialize(const json &serialized);
+    static std::shared_ptr<ModelTensor> deserialize(const Json &serialized);
 
    private:
     static size_t next_id();

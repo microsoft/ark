@@ -128,7 +128,7 @@ ModelOpMatmul::ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
     verify();
 }
 
-std::string ModelOpMatmul::impl_name(const json &config) const {
+std::string ModelOpMatmul::impl_name(const Json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required");
     } else if (!config.contains("TileShapeMNK")) {
@@ -194,16 +194,16 @@ std::string ModelOpMatmul::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpMatmul::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-ordered_json ModelOpMatmul::default_config() const {
+Json ModelOpMatmul::default_config() const {
     Dims shape_mnk = args_.at("ShapeMNK").value<Dims>();
     Dims input_dim_nc = args_.at("InputDimNC").value<Dims>();
     Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();
     auto result = result_tensors_[0];
-    ordered_json config;
+    Json config;
     if (result->data_type() == FP32.ref()) {
         config["NumWarps"] = 4;
         config["SramBytes"] = 49152;

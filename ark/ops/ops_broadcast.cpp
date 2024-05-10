@@ -23,7 +23,7 @@ ModelOpBroadcast1::ModelOpBroadcast1(const std::string &type_name,
     verify();
 }
 
-std::string ModelOpBroadcast1::impl_name(const json &config) const {
+std::string ModelOpBroadcast1::impl_name(const Json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required for ",
             type()->type_name());
@@ -45,12 +45,12 @@ std::string ModelOpBroadcast1::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpBroadcast1::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-ordered_json ModelOpBroadcast1::default_config() const {
-    ordered_json config;
+Json ModelOpBroadcast1::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     const auto &shape = result_tensors_[0]->shape().dims4();
@@ -95,7 +95,7 @@ ModelOpBroadcast2::ModelOpBroadcast2(const std::string &type_name,
     verify();
 }
 
-std::string ModelOpBroadcast2::impl_name(const json &config) const {
+std::string ModelOpBroadcast2::impl_name(const Json &config) const {
     if (!config.contains("NumWarps")) {
         ERR(InvalidUsageError, "NumWarps is required for ",
             type()->type_name());
@@ -118,7 +118,7 @@ std::string ModelOpBroadcast2::impl_name(const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpBroadcast2::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     std::vector<ModelOpArg> args;
     args.emplace_back(result_tensors_[0]);
     args.emplace_back(read_tensors_[0]);
@@ -126,8 +126,8 @@ std::vector<ModelOpArg> ModelOpBroadcast2::impl_args([
     return args;
 }
 
-ordered_json ModelOpBroadcast2::default_config() const {
-    ordered_json config;
+Json ModelOpBroadcast2::default_config() const {
+    Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
     const auto &shape = result_tensors_[0]->shape().dims4();

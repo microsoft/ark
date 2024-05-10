@@ -8,7 +8,6 @@
 #include "ark/data_type.hpp"
 #include "env.h"
 #include "file_io.h"
-#include "json.hpp"
 #include "logging.h"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
@@ -44,14 +43,14 @@ class SyncStateInfo {
 
 class CodeGenerator::Impl {
    public:
-    Impl(const json &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    Impl(const Json &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
          const std::string &name);
     ~Impl() = default;
 
    private:
-    std::string def_op(const json &op_json, size_t task_id, size_t op_idx);
+    std::string def_op(const Json &op_json, size_t task_id, size_t op_idx);
 
-    std::string def_task(const json &task_json);
+    std::string def_task(const Json &task_json);
 
     std::string def_channels(int world_size);
 
@@ -61,7 +60,7 @@ class CodeGenerator::Impl {
                          size_t slot_num_warps, size_t slot_sram_bytes,
                          size_t task_id);
 
-    std::string resource_group(const json &rg_json, const json &task_infos,
+    std::string resource_group(const Json &rg_json, const Json &task_infos,
                                const Range<size_t> &proc_range);
 
     std::string sync_process_range(const Range<size_t> &ranges, int state_id);
@@ -78,7 +77,7 @@ class CodeGenerator::Impl {
     std::string code_;
 };
 
-CodeGenerator::Impl::Impl(const json &plan,
+CodeGenerator::Impl::Impl(const Json &plan,
                           const std::map<size_t, size_t> &buffer_id_to_offset,
                           const std::string &name)
     : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
@@ -165,7 +164,7 @@ CodeGenerator::Impl::Impl(const json &plan,
     code_ = replace(template_code, replacements);
 }
 
-std::string CodeGenerator::Impl::def_op(const json &op_json, size_t task_id,
+std::string CodeGenerator::Impl::def_op(const Json &op_json, size_t task_id,
                                         size_t op_idx) {
     auto op = ModelOp::deserialize(op_json);
     auto impl_name = op->impl_name(op_json["Config"]);
@@ -193,7 +192,7 @@ std::string CodeGenerator::Impl::def_op(const json &op_json, size_t task_id,
     return ss.str();
 }
 
-std::string CodeGenerator::Impl::def_task(const json &task_json) {
+std::string CodeGenerator::Impl::def_task(const Json &task_json) {
     std::stringstream ss;
     size_t op_idx = 0;
     for (auto &op_json : task_json["Ops"]) {
@@ -256,7 +255,7 @@ std::string CodeGenerator::Impl::task_seq(
 }
 
 std::string CodeGenerator::Impl::resource_group(
-    const json &rg_json, const json &task_infos,
+    const Json &rg_json, const Json &task_infos,
     const Range<size_t> &proc_range) {
     Range<size_t> rg_proc_range(rg_json["ProcessorRange"][0],
                                 rg_json["ProcessorRange"][1]);
@@ -407,7 +406,7 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 }
 
 CodeGenerator::CodeGenerator(
-    const json &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    const Json &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
     const std::string &name)
     : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
 

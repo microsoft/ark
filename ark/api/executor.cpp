@@ -132,7 +132,7 @@ static void data_to_tensor(int8_t *tensor, const int8_t *data,
     }
 }
 
-static size_t tensor_stride_bytes(const json &tensor) {
+static size_t tensor_stride_bytes(const Json &tensor) {
     Dims strides(tensor["Strides"].get<std::vector<DimType>>());
     size_t nelems = strides.nelems();
     return nelems * DataType::from_name(tensor["DataType"]).bytes();
@@ -157,8 +157,8 @@ class Executor::Impl {
 
    private:
     void init_communicator();
-    std::map<size_t, size_t> init_buffers(const json &plan_json);
-    std::set<int> init_remote_ranks(const json &plan_json) const;
+    std::map<size_t, size_t> init_buffers(const Json &plan_json);
+    std::set<int> init_remote_ranks(const Json &plan_json) const;
     void init_channels(const std::set<int> &remote_ranks);
 
    protected:
@@ -204,13 +204,13 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
         init_communicator();
     }
 
-    json plan_json;
+    Json plan_json;
     auto &plan_path = get_env().enforce_plan_path;
     if (!plan_path.empty()) {
         LOG(INFO, "Enforce executor plan path: ", plan_path);
-        plan_json = json::parse(read_file(plan_path));
+        plan_json = Json::parse(read_file(plan_path));
     } else {
-        plan_json = json::parse(plan);
+        plan_json = Json::parse(plan);
     }
 
     buffer_id_to_offset_ = init_buffers(plan_json);
@@ -260,7 +260,7 @@ void Executor::Impl::init_communicator() {
     comm_ = std::make_shared<mscclpp::Communicator>(bootstrap);
 }
 
-std::map<size_t, size_t> Executor::Impl::init_buffers(const json &plan_json) {
+std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
     class BufferInfo {
        public:
         BufferInfo(const std::shared_ptr<ModelBuffer> buffer)
@@ -290,7 +290,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const json &plan_json) {
     std::map<size_t, size_t> buffer_id_to_offset;
     std::map<size_t, std::shared_ptr<BufferInfo>> buffer_id_to_info;
 
-    auto get_or_create_buffer_info = [&](const json &buffer_json) {
+    auto get_or_create_buffer_info = [&](const Json &buffer_json) {
         auto buffer = ModelBuffer::deserialize(buffer_json);
         if (buffer_id_to_info.find(buffer->id()) == buffer_id_to_info.end()) {
             auto buf_info = std::make_shared<BufferInfo>(buffer);
@@ -300,7 +300,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const json &plan_json) {
         return buffer_id_to_info[buffer->id()];
     };
 
-    auto retrieve_buffer_info = [&](const json &tensor, size_t task_id,
+    auto retrieve_buffer_info = [&](const Json &tensor, size_t task_id,
                                     bool is_input, bool is_output) {
         size_t tensor_id = tensor["Id"].get<size_t>();
         auto buf_info = get_or_create_buffer_info(tensor["Buffer"]);
@@ -432,7 +432,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const json &plan_json) {
     return buffer_id_to_offset;
 }
 
-std::set<int> Executor::Impl::init_remote_ranks(const json &plan_json) const {
+std::set<int> Executor::Impl::init_remote_ranks(const Json &plan_json) const {
     std::set<int> remote_ranks;
     for (auto &task_info : plan_json["TaskInfos"]) {
         for (auto &op : task_info["Ops"]) {

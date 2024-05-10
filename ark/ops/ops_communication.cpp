@@ -32,7 +32,7 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
     verify();
 }
 
-std::string ModelOpSend::impl_name([[maybe_unused]] const json &config) const {
+std::string ModelOpSend::impl_name([[maybe_unused]] const Json &config) const {
     auto &input = read_tensors_[0];
     auto &output = write_tensors_[0];
     int channel_id = output->buffer()->rank();
@@ -47,11 +47,11 @@ std::string ModelOpSend::impl_name([[maybe_unused]] const json &config) const {
 }
 
 std::vector<ModelOpArg> ModelOpSend::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[0])};
 }
 
-ordered_json ModelOpSend::default_config() const {
+Json ModelOpSend::default_config() const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 
@@ -65,18 +65,18 @@ ModelOpSendDone::ModelOpSendDone(ModelTensorRef input) : ModelOp("SendDone") {
 }
 
 std::string ModelOpSendDone::impl_name([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     auto &input = read_tensors_[0];
     int channel_id = input->buffer()->rank();
     return function_name_string("send_done", {std::to_string(channel_id)});
 }
 
 std::vector<ModelOpArg> ModelOpSendDone::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {};
 }
 
-ordered_json ModelOpSendDone::default_config() const {
+Json ModelOpSendDone::default_config() const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 
@@ -96,18 +96,18 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int remote_rank, int tag)
     verify();
 }
 
-std::string ModelOpRecv::impl_name([[maybe_unused]] const json &config) const {
+std::string ModelOpRecv::impl_name([[maybe_unused]] const Json &config) const {
     auto &input = read_tensors_[0];
     int channel_id = input->buffer()->rank();
     return function_name_string("recv", {std::to_string(channel_id)});
 }
 
 std::vector<ModelOpArg> ModelOpRecv::impl_args([
-    [maybe_unused]] const json &config) const {
+    [maybe_unused]] const Json &config) const {
     return {};
 }
 
-ordered_json ModelOpRecv::default_config() const {
+Json ModelOpRecv::default_config() const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 

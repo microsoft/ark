@@ -32,12 +32,12 @@ void ModelBuffer::tag_recv(int remote_rank, int tag) {
     recv_tags_.insert(TagInfo{remote_rank, tag});
 }
 
-ordered_json ModelBuffer::serialize() const {
-    ordered_json j;
+Json ModelBuffer::serialize() const {
+    Json j;
     j["Id"] = id_;
     j["Rank"] = rank_;
-    ordered_json send_tags = json::array();
-    ordered_json recv_tags = json::array();
+    Json send_tags = Json::array();
+    Json recv_tags = Json::array();
     for (const auto &info : send_tags_) {
         send_tags.push_back({info.first, info.second});
     }
@@ -49,7 +49,7 @@ ordered_json ModelBuffer::serialize() const {
     return j;
 }
 
-std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const json &serialized) {
+std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const Json &serialized) {
     if (!serialized.contains("Id")) {
         ERR(InvalidUsageError,
             "ModelBuffer deserialization failed: missing Id");
