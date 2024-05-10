@@ -44,6 +44,15 @@ ark::unittest::State test_bfloat16() {
     --b;
     UNITTEST_EQ(float(b), 2.0f);
 
+    b -= ark::bfloat16_t(1.0f);
+    UNITTEST_EQ(float(b), 1.0f);
+
+    b *= ark::bfloat16_t(4.0f);
+    UNITTEST_EQ(float(b), 4.0f);
+
+    b /= ark::bfloat16_t(2.0f);
+    UNITTEST_EQ(float(b), 2.0f);
+
     ark::bfloat16_t k = ark::bfloat16_t(1.0f);
     UNITTEST_TRUE(k == a);
     UNITTEST_TRUE(k != b);
@@ -220,9 +229,12 @@ ark::unittest::State test_bfloat16() {
     fpclassify = ark::fpclassify(ark::bfloat16_t(0.0f / 0.0f));
     UNITTEST_EQ(fpclassify, FP_NAN);
 
-    ark::bfloat16_t s =
+    ark::bfloat16_t s = ark::sqrt(ark::bfloat16_t(9.0f));
+    UNITTEST_EQ(float(s), 3.0f);
+
+    ark::bfloat16_t t =
         ark::copysign(ark::bfloat16_t(1.0f), ark::bfloat16_t(-1.0f));
-    UNITTEST_EQ(float(s), -1.0f);
+    UNITTEST_EQ(float(t), -1.0f);
 
     return ark::unittest::SUCCESS;
 }
@@ -237,7 +249,6 @@ ark::unittest::State test_bfloat16_error() {
     }
 
     // max diff = 2^(-8) * x * 2 * reduce_length = 0.2
-    UNITTEST_LOG(float(sum));
     UNITTEST_TRUE(float(sum) >= 2.36f);
     UNITTEST_TRUE(float(sum) <= 2.76f);
 

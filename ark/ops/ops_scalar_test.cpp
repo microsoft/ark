@@ -310,6 +310,7 @@ ark::unittest::State test_scalar_mul_perf() {
 }
 
 ark::unittest::State test_scalar_div_fp16() {
+    float rel_err_bound = ark::division_rel_error_bound<ark::half_t>(FACTOR);
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
@@ -318,7 +319,7 @@ ark::unittest::State test_scalar_div_fp16() {
         auto result = ark::op_test("scalar_div_fp16_small", m, {t}, {out},
                                    baseline_scalar_div<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 1e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < rel_err_bound);
     }
     {
         ark::Model m;
@@ -328,7 +329,7 @@ ark::unittest::State test_scalar_div_fp16() {
         auto result = ark::op_test("scalar_div_fp16", m, {t}, {out},
                                    baseline_scalar_div<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < 1e-3f);
+        UNITTEST_TRUE(result.max_err_rate[0] < rel_err_bound);
     }
     return ark::unittest::SUCCESS;
 }
