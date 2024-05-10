@@ -114,6 +114,12 @@ bool ModelGraph::Impl::verify() const {
             }
         }
     }
+    try {
+        [[maybe_unused]] auto j = Json::parse(this->serialize(-1));
+    } catch (const Json::parse_error &e) {
+        LOG(DEBUG, "failed to serialize/parse the model graph: ", e.what());
+        return false;
+    }
     return true;
 }
 
@@ -450,10 +456,6 @@ std::string ModelGraph::Impl::serialize(int indent) const {
     j["Nodes"] = Json::array();
     for (const auto &node : nodes_) {
         j["Nodes"].emplace_back(this->to_json(node));
-    }
-    j["Tensors"] = Json::array();
-    for (const auto &tensor_and_op : tensor_to_producer_op_) {
-        j["Tensors"].emplace_back(tensor_and_op.first->serialize());
     }
     return j.dump(indent);
 }

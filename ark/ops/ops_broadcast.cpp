@@ -4,6 +4,7 @@
 #include "ops_broadcast.hpp"
 
 #include "ops_common.hpp"
+#include "utils/utils_string.hpp"
 
 namespace ark {
 

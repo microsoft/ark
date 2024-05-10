@@ -81,15 +81,4 @@ void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to) {
     }
 }
 
-std::string pascal_to_snake(const std::string &str) {
-    std::string ret;
-    for (size_t i = 0; i < str.size(); ++i) {
-        if (i > 0 && isupper(str[i])) {
-            ret.push_back('_');
-        }
-        ret.push_back(tolower(str[i]));
-    }
-    return ret;
-}
-
 }  // namespace ark

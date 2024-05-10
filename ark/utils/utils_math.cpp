@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "math_utils.h"
+#include "utils/utils_math.hpp"
 
 #include "logging.h"
 

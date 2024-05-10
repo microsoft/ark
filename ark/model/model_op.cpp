@@ -23,6 +23,7 @@
 #include "ops/ops_scalar.hpp"
 #include "ops/ops_tensor.hpp"
 #include "ops/ops_transpose.hpp"
+#include "utils/utils_string.hpp"
 
 ///
 /// NOTE: how to add a new operator
@@ -39,8 +40,12 @@ std::shared_ptr<ModelOpFactory> model_op_factory() {
     return factory;
 }
 
-#define MODEL_OP_TYPE_REGISTER(_name)                       \
-    instances[#_name] = std::make_shared<ModelOpT>(#_name); \
+#define MODEL_OP_TYPE_REGISTER(_name)                                   \
+    if (!is_pascal(#_name)) {                                           \
+        ERR(ModelError,                                                 \
+            "only a Pascal case name is allowed for an operator type"); \
+    }                                                                   \
+    instances[#_name] = std::make_shared<ModelOpT>(#_name);             \
     model_op_factory()->register_op<ModelOp##_name>(#_name);
 
 const ModelOpType ModelOpT::from_name(const std::string &type_name) {

@@ -14,6 +14,7 @@
 #include "model_json.hpp"
 #include "model_op.hpp"
 #include "unique_list.hpp"
+#include "utils/utils_string.hpp"
 
 namespace ark {
 
@@ -30,7 +31,7 @@ class ModelGraph::Impl {
         ModelOpRef op = std::make_shared<T>(std::forward<Args>(args)...);
         std::string name_copy;
         if (name.empty()) {
-            name_copy = op->type()->type_name();
+            name_copy = pascal_to_snake(op->type()->type_name());
         } else {
             name_copy = name;
         }

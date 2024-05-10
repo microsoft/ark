@@ -36,8 +36,6 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2);
 
 void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to);
 
-std::string pascal_to_snake(const std::string &str);
-
 }  // namespace ark
 
 #endif  // ARK_OPS_COMMON_HPP_

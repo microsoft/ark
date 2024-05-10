@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "math_utils.h"
+#include "utils/utils_math.hpp"
 
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_math() {
+ark::unittest::State test_utils_math() {
     UNITTEST_EQ(ark::math::div_up(0, 1), 0);
     UNITTEST_EQ(ark::math::div_up(1, 1), 1);
     UNITTEST_EQ(ark::math::div_up(1, 2), 1);
@@ -101,6 +101,6 @@ ark::unittest::State test_math() {
 }
 
 int main() {
-    UNITTEST(test_math);
+    UNITTEST(test_utils_math);
     return 0;
 }

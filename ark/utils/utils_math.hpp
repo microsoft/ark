@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_MATH_UTILS_H_
-#define ARK_MATH_UTILS_H_
+#ifndef ARK_UTILS_MATH_HPP_
+#define ARK_UTILS_MATH_HPP_
 
 #include <cstddef>
 
@@ -19,4 +19,4 @@ size_t lcm(size_t a, size_t b);
 }  // namespace math
 }  // namespace ark
 
-#endif  // ARK_MATH_UTILS_H_
+#endif  // ARK_UTILS_MATH_HPP_

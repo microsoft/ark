@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "math_utils.h"
 #include "ops_common.hpp"
+#include "utils/utils_math.hpp"
 
 namespace ark {
 
