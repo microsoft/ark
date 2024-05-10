@@ -28,8 +28,9 @@ struct TensorCompareResult {
 /// Generate a random value.
 template <typename T>
 T random(float min_val, float max_val) {
-    int mid = std::numeric_limits<int>::max() / 2;
-    return T((ark::rand() - mid) / (float)mid * (max_val - min_val) + min_val);
+    int rand_val = ark::rand();
+    float r = float(rand_val) / RAND_MAX;
+    return T(min_val + r * (max_val - min_val));
 }
 
 /// Calculate the error rate between two values.
@@ -45,6 +46,25 @@ float error_rate(T a, T b) {
         return 0;
     }
     return (float)diff / (float)max;
+}
+
+template <typename T>
+float reduction_abs_error_bound(float max_abs, int reduction_length) {
+    static_assert(std::is_same_v<T, float> || std::is_same_v<T, ark::half_t> ||
+                      std::is_same_v<T, ark::bfloat16_t>,
+                  "unsuppored float type");
+    constexpr int NumFracBits =
+        (std::is_same_v<T, float> ? 23
+                                  : (std::is_same_v<T, ark::half_t> ? 10 : 7));
+    // If the reduction length is too large, the error will be dominated by
+    // the rounding error of the reduction itself.
+    if (reduction_length > (1 << (NumFracBits + 1))) {
+        UNITTEST_FEXIT("reduction length is too large");
+    }
+    float max_diff =
+        reduction_length * 2 * max_abs * 1.0f / (1 << (NumFracBits + 1));
+    // *2 because the baseline is also a computed value.
+    return max_diff * 2;
 }
 
 /// Return mean squared error and max error rate between two tensors.

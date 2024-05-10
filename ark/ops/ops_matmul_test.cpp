@@ -305,20 +305,6 @@ void baseline_matmul_tt(std::vector<void *> &outputs,
     ark::from_gpu(memC, outputs[0]);
 }
 
-template <typename T>
-float max_diff(float max_abs, int reduction_length) {
-    constexpr int NumFracBits =
-        (std::is_same_v<T, float> ? 23
-                                  : (std::is_same_v<T, ark::half_t> ? 10 : 7));
-    // If the reduction length is too large, the error will be dominated by
-    // the rounding error of the reduction itself.
-    assert(reduction_length <= (1 << (NumFracBits + 1)));
-    float max_diff =
-        reduction_length * 2 * max_abs * 1.0f / (1 << (NumFracBits + 1));
-    // *2 because the baseline is also a computed value.
-    return max_diff * 2;
-}
-
 ark::unittest::State test_matmul_model() {
     // Hidden dimension of the dense layer.
     unsigned int units = 1024;
@@ -351,7 +337,8 @@ ark::unittest::State test_matmul_fp16() {
         auto result = ark::op_test("matmul_fp16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 64));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 64));
     }
     {
         ark::Model m;
@@ -368,7 +355,8 @@ ark::unittest::State test_matmul_fp16() {
                                    baseline_matmul_nn<ark::half_t>,
                                    {p_ones_a.data(), p_ones_b.data()});
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 2048));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 2048));
     }
     return ark::unittest::SUCCESS;
 }
@@ -383,7 +371,8 @@ ark::unittest::State test_matmul_fp32() {
         auto result = ark::op_test("matmul_fp32", m, {a, b}, {c},
                                    baseline_matmul_nn<float>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<float>(0.1f, 64));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<float>(0.1f, 64));
     }
     {
         ark::Model m;
@@ -400,7 +389,8 @@ ark::unittest::State test_matmul_fp32() {
         UNITTEST_LOG(result);
         // TODO: #199
 #if defined(ARK_CUDA)
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<float>(0.1f, 8192));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<float>(0.1f, 8192));
 #endif  // defined(ARK_CUDA)
     }
     return ark::unittest::SUCCESS;
@@ -416,7 +406,9 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::bfloat16_t>(0.1f, 64));
+        UNITTEST_TRUE(
+            result.max_diff[0] <
+            ark::reduction_abs_error_bound<ark::bfloat16_t>(0.1f, 64));
     }
     {
         ark::Model m;
@@ -427,8 +419,9 @@ ark::unittest::State test_matmul_bf16() {
         auto result = ark::op_test("matmul_bf16", m, {a, b}, {c},
                                    baseline_matmul_nn<ark::bfloat16_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] <
-                      max_diff<ark::bfloat16_t>(0.1f, 256));
+        UNITTEST_TRUE(
+            result.max_diff[0] <
+            ark::reduction_abs_error_bound<ark::bfloat16_t>(0.1f, 256));
     }
     return ark::unittest::SUCCESS;
 }
@@ -443,7 +436,8 @@ ark::unittest::State test_matmul_fp16_nt() {
         auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 64));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 64));
     }
     {
         ark::Model m;
@@ -454,7 +448,8 @@ ark::unittest::State test_matmul_fp16_nt() {
         auto result = ark::op_test("matmul_fp16_nt", m, {a, b}, {c},
                                    baseline_matmul_nt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 2048));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 2048));
     }
     return ark::unittest::SUCCESS;
 }
@@ -469,7 +464,8 @@ ark::unittest::State test_matmul_fp16_tn() {
         auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 64));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 64));
     }
     {
         ark::Model m;
@@ -480,7 +476,8 @@ ark::unittest::State test_matmul_fp16_tn() {
         auto result = ark::op_test("matmul_fp16_tn", m, {a, b}, {c},
                                    baseline_matmul_tn<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 2048));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 2048));
     }
     return ark::unittest::SUCCESS;
 }
@@ -495,7 +492,8 @@ ark::unittest::State test_matmul_fp16_tt() {
         auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 64));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 64));
     }
     {
         ark::Model m;
@@ -506,7 +504,8 @@ ark::unittest::State test_matmul_fp16_tt() {
         auto result = ark::op_test("matmul_fp16_tt", m, {a, b}, {c},
                                    baseline_matmul_tt<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 2048));
+        UNITTEST_TRUE(result.max_diff[0] <
+                      ark::reduction_abs_error_bound<ark::half_t>(0.1f, 2048));
     }
     return ark::unittest::SUCCESS;
 }
@@ -520,7 +519,8 @@ ark::unittest::State test_matmul_fp16_batched() {
     auto result = ark::op_test("matmul_fp16_batched", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 128));
+    UNITTEST_TRUE(result.max_diff[0] <
+                  ark::reduction_abs_error_bound<ark::half_t>(0.1f, 128));
     return ark::unittest::SUCCESS;
 }
 
@@ -534,7 +534,8 @@ ark::unittest::State test_matmul_fp16_batched_padded() {
     auto result = ark::op_test("matmul_fp16_batched_padded", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 9));
+    UNITTEST_TRUE(result.max_diff[0] <
+                  ark::reduction_abs_error_bound<ark::half_t>(0.1f, 9));
     return ark::unittest::SUCCESS;
 }
 
@@ -551,7 +552,8 @@ ark::unittest::State test_matmul_fp16_offset() {
     auto result = ark::op_test("matmul_fp16_offset", m, {a, b}, {c},
                                baseline_matmul_nn<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < max_diff<ark::half_t>(0.1f, 64));
+    UNITTEST_TRUE(result.max_diff[0] <
+                  ark::reduction_abs_error_bound<ark::half_t>(0.1f, 64));
     return ark::unittest::SUCCESS;
 }
 

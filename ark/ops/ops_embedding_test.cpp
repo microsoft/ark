@@ -56,8 +56,6 @@ ark::unittest::State test_embedding() {
     ark::Tensor tw = m.tensor(ark::Dims(num_emb, emb_dim), weight_type);
     ark::Tensor to = m.embedding(ti, tw);
 
-    ark::srand();
-
     std::vector<int> ti_data;
     for (auto i = 0; i < ti.shape().nelems(); ++i) {
         // Random indices in [0, num_emb)

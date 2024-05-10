@@ -144,7 +144,6 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
     // (code, file name prefix) pairs
     std::vector<std::pair<std::string, std::string> > items;
     items.reserve(codes.size());
-    srand();
     for (auto &code : codes) {
         std::string hash_str = fnv1a_hash(code);
         items.emplace_back(code, "/tmp/ark_" + hash_str);

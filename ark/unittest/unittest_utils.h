@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #include "ark/init.hpp"
+#include "ark/random.hpp"
 #include "cpu_timer.h"
 #include "logging.h"
 
@@ -46,19 +47,21 @@ std::string get_kernel_code(const std::string &name);
 }  // namespace ark
 
 // Run the given test function.
-#define UNITTEST(test_func)                                          \
-    do {                                                             \
-        ark::init();                                                 \
-        LOG(ark::INFO, "unittest start: " #test_func);               \
-        double _s = ark::cpu_timer();                                \
-        ark::unittest::State _ret;                                   \
-        _ret = ark::unittest::test(test_func);                       \
-        double _e = ark::cpu_timer() - _s;                           \
-        if (_ret != ark::unittest::SUCCESS) {                        \
-            UNITTEST_EXIT(_ret, "unittest failed");                  \
-        }                                                            \
-        LOG(ark::INFO, "unittest succeed: " #test_func " (elapsed ", \
-            std::setprecision(4), _e, "s)");                         \
+#define UNITTEST(test_func)                                                  \
+    do {                                                                     \
+        ark::init();                                                         \
+        int seed = clock();                                                  \
+        LOG(ark::INFO, "unittest start: " #test_func, " (seed ", seed, ")"); \
+        ark::srand(seed);                                                    \
+        double _s = ark::cpu_timer();                                        \
+        ark::unittest::State _ret;                                           \
+        _ret = ark::unittest::test(test_func);                               \
+        double _e = ark::cpu_timer() - _s;                                   \
+        if (_ret != ark::unittest::SUCCESS) {                                \
+            UNITTEST_EXIT(_ret, "unittest failed");                          \
+        }                                                                    \
+        LOG(ark::INFO, "unittest succeed: " #test_func " (elapsed ",         \
+            std::setprecision(4), _e, "s)");                                 \
     } while (0)
 
 // Exit with proper error messages and return values.
