@@ -73,14 +73,13 @@ static std::string fnv1a_hash(const std::string &str) {
 
 static const std::string gpu_compile_command(
     const std::string &code_file_path, const std::string &ark_root,
-    const std::string &arch, [[maybe_unused]] unsigned int max_reg_cnt,
+    const Arch &arch, [[maybe_unused]] unsigned int max_reg_cnt,
     const std::string &output_file_path) {
 #if defined(ARK_CUDA)
-    // Remove prepending "cuda_" from arch to get the compute capability
-    if (arch.size() < 5 || arch.substr(0, 5) != "cuda_") {
-        ERR(InvalidUsageError, "Invalid architecture: ", arch);
+    if (!arch.belongs_to(ARCH_CUDA)) {
+        ERR(InvalidUsageError, "Invalid architecture: ", arch.name());
     }
-    std::string cc = arch.substr(5);
+    const std::string &cc = arch.category()[1];
 
     std::vector<std::string> args;
 
@@ -106,10 +105,10 @@ static const std::string gpu_compile_command(
 
 #elif defined(ARK_ROCM)
     // Remove prepending "rocm_" from arch to get the compute capability
-    if (arch.size() < 5 || arch.substr(0, 5) != "rocm_") {
-        ERR(InvalidUsageError, "Invalid architecture: ", arch);
+    if (!arch.belongs_to(ARCH_ROCM)) {
+        ERR(InvalidUsageError, "Invalid architecture: ", arch.name());
     }
-    std::string cc = arch.substr(5);
+    const std::string &cc = to_lower(arch.category()[1]);
 
     std::vector<std::string> args;
 
@@ -139,8 +138,7 @@ static const std::string gpu_compile_command(
 }
 
 const std::string gpu_compile(const std::vector<std::string> &codes,
-                              const std::string &arch,
-                              unsigned int max_reg_cnt) {
+                              const Arch &arch, unsigned int max_reg_cnt) {
     const std::string &ark_root = get_env().path_root_dir;
 
     // (code, file name prefix) pairs

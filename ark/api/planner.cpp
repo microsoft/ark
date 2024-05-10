@@ -38,7 +38,7 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
             task_info["Id"] = next_node_id++;
             task_info["Ops"] = {op->serialize()};
 
-            const auto &config = op->default_config();
+            const auto &config = op->default_config(gpu_info.arch);
             size_t num_warps = config["NumWarps"];
             size_t num_tasks = config["NumTasks"];
             size_t sram_bytes = config["SramBytes"];

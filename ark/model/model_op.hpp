@@ -11,11 +11,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "arch.hpp"
 #include "ark/model_ref.hpp"
 #include "logging.h"
 #include "model_json.hpp"
 #include "model_op_arg.hpp"
-#include "model_op_config.hpp"
 
 namespace ark {
 
@@ -53,7 +53,8 @@ class ModelOp {
         return {};
     }
 
-    virtual Json default_config() const {
+    virtual Json default_config(
+        [[maybe_unused]] const Arch &arch = ARCH_ANY) const {
         return {{"NumTasks", 0}, {"NumWarps", 0}, {"SramBytes", 0}};
     }
 

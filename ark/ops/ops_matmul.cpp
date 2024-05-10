@@ -198,7 +198,7 @@ std::vector<ModelOpArg> ModelOpMatmul::impl_args([
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-Json ModelOpMatmul::default_config() const {
+Json ModelOpMatmul::default_config([[maybe_unused]] const Arch &arch) const {
     Dims shape_mnk = args_.at("ShapeMNK").value<Dims>();
     Dims input_dim_nc = args_.at("InputDimNC").value<Dims>();
     Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();

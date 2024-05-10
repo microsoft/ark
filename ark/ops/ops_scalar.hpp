@@ -20,7 +20,7 @@ class ModelOpScalarAssign : public ModelOp {
     std::vector<ModelOpArg> impl_args([
         [maybe_unused]] const Json &config) const override;
 
-    Json default_config() const override;
+    Json default_config(const Arch &arch = ARCH_ANY) const override;
 };
 
 class ModelOpScalarAdd : public ModelOpBroadcast1 {

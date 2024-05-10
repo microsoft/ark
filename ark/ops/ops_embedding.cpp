@@ -58,7 +58,7 @@ std::vector<ModelOpArg> ModelOpEmbedding::impl_args([
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-Json ModelOpEmbedding::default_config() const {
+Json ModelOpEmbedding::default_config([[maybe_unused]] const Arch &arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

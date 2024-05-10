@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "arch.hpp"
 #include "gpu/gpu.h"
 #include "gpu/gpu_event.h"
 #include "gpu/gpu_memory.h"
@@ -15,8 +16,9 @@ namespace ark {
 class GpuManager {
    public:
     static std::shared_ptr<GpuManager> get_instance(int gpu_id);
-    ~GpuManager() = default;
+
     GpuManager(const GpuManager &) = delete;
+    ~GpuManager() = default;
     GpuManager &operator=(const GpuManager &) = delete;
 
     void set_current() const;
@@ -51,7 +53,7 @@ class GpuManager {
         int min_threads_per_block =
             max_registers_per_block / max_registers_per_thread;
         int smem_align = 128;  // TODO: how to get this?
-        std::string arch;
+        Arch arch;
     };
 
    private:

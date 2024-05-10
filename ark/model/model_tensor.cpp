@@ -95,20 +95,6 @@ size_t ModelTensor::shape_bytes() const {
     return shape_.nelems() * data_type_->bytes();
 }
 
-size_t ModelTensor::strides_bytes() const {
-    return strides_.nelems() * data_type_->bytes();
-}
-
-bool ModelTensor::is_sequential() const {
-    // Shape and strides should be the same except for the first dimension.
-    for (int i = 1; i < shape_.ndims(); ++i) {
-        if (shape_[i] != strides_[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
 Json ModelTensor::serialize() const {
     Json j;
     j["Id"] = id_;

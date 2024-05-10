@@ -50,7 +50,8 @@ std::vector<ModelOpArg> ModelOpScalarAssign::impl_args([
     return {result_tensors_[0], val};
 }
 
-Json ModelOpScalarAssign::default_config() const {
+Json ModelOpScalarAssign::default_config([
+    [maybe_unused]] const Arch &arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

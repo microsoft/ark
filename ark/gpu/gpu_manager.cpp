@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "gpu/gpu_logging.h"
+#include "utils/utils_string.hpp"
 
 namespace ark {
 class GpuManager::Impl {
@@ -53,7 +54,8 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
     size_t gmem_free;
     GLOG(gpuMemGetInfo(&gmem_free, &(info_.gmem_total)));
 #if defined(ARK_CUDA)
-    info_.arch = "cuda_" + std::to_string(info_.cc_major * 10 + info_.cc_minor);
+    auto arch_name =
+        "CUDA_" + std::to_string(info_.cc_major * 10 + info_.cc_minor);
 #elif defined(ARK_ROCM)
     hipDeviceProp_t prop;
     GLOG(hipGetDeviceProperties(&prop, gpu_id));
@@ -66,9 +68,10 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
     if (pos_e == std::string::npos) {
         ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
     }
-    // E.g.: "90a"
-    info_.arch = "rocm_" + gcn_arch_name.substr(3, pos_e - 3);
+    // E.g.: "ROCM_90A"
+    auto arch_name = "ROCM_" + to_upper(gcn_arch_name.substr(3, pos_e - 3));
 #endif
+    info_.arch = Arch::from_name(arch_name);
 }
 
 void GpuManager::Impl::launch(gpuFunction kernel,

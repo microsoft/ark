@@ -37,10 +37,6 @@ class ModelTensor {
 
     size_t shape_bytes() const;
 
-    size_t strides_bytes() const;
-
-    bool is_sequential() const;
-
     Json serialize() const;
 
     static std::shared_ptr<ModelTensor> deserialize(const Json &serialized);

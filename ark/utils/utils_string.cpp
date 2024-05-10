@@ -37,4 +37,20 @@ std::string pascal_to_snake(const std::string &str) {
     return ret;
 }
 
+std::string to_upper(const std::string &str) {
+    std::string ret;
+    for (size_t i = 0; i < str.size(); ++i) {
+        ret.push_back(std::toupper(str[i]));
+    }
+    return ret;
+}
+
+std::string to_lower(const std::string &str) {
+    std::string ret;
+    for (size_t i = 0; i < str.size(); ++i) {
+        ret.push_back(std::tolower(str[i]));
+    }
+    return ret;
+}
+
 }  // namespace ark
