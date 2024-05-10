@@ -73,7 +73,9 @@ GpuMemory::Impl::Impl(const GpuManager& manager, size_t bytes, size_t align,
                                     (gpuDeviceptr)dev_ptr_aligned_));
 
     // Initialize.
-    manager_.memset(dev_ptr_raw_, 0, bytes_raw_);
+    auto stream = manager_.create_stream();
+    GLOG(gpuMemsetAsync(dev_ptr_raw_, 0, bytes_raw_, stream->get()));
+    stream->sync();
     LOG(DEBUG, "Created GpuMemory addr 0x", std::hex, dev_ptr_aligned_,
         std::dec, " bytes ", bytes_);
 }

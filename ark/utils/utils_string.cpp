@@ -24,7 +24,8 @@ bool is_pascal(const std::string &str) {
 
 std::string pascal_to_snake(const std::string &str) {
     if (!is_pascal(str)) {
-        ERR(InvalidUsageError, "given string (", str, ") is not in Pascal case");
+        ERR(InvalidUsageError, "given string (", str,
+            ") is not in Pascal case");
     }
     std::string ret;
     for (size_t i = 0; i < str.size(); ++i) {

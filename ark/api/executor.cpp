@@ -563,22 +563,24 @@ void Executor::Impl::launch(int64_t max_spin_count) {
         this->wait(max_spin_count);
         return;
     }
+    auto get_global_rt = [&](const std::string &symbol) {
+        return reinterpret_cast<void *>(kernel_->get_global(symbol));
+    };
     // Initialize global variables in the loop kernel.
-    auto gpu_manager = GpuManager::get_instance(gpu_id_);
+    GLOG(gpuSetDevice(gpu_id_));
     void *buf_ptr_val = buffer_->ref();
-    gpuDeviceptr lss_ptr_addr = kernel_->get_global("ARK_LOOP_SYNC_STATE");
-    gpuDeviceptr buf_ptr_addr = kernel_->get_global("ARK_BUF");
+    void *lss_ptr_addr = get_global_rt("ARK_LOOP_SYNC_STATE");
+    void *buf_ptr_addr = get_global_rt("ARK_BUF");
     std::array<int, 4> data = {0, 0, 0, 0};
-    gpu_manager->memcpy_htod((void *)lss_ptr_addr, 0, data.data(), 0,
-                             sizeof(int) * data.size());
-    gpu_manager->memcpy_htod((void *)buf_ptr_addr, 0, &buf_ptr_val, 0,
-                             sizeof(gpuDeviceptr));
-
+    GLOG(gpuMemcpyAsync(lss_ptr_addr, data.data(), sizeof(int) * data.size(),
+                        gpuMemcpyHostToDevice, copy_stream_->get()));
+    GLOG(gpuMemcpyAsync(buf_ptr_addr, &buf_ptr_val, sizeof(gpuDeviceptr),
+                        gpuMemcpyHostToDevice, copy_stream_->get()));
     if (world_size_ > 1) {
-        gpuDeviceptr proxy_chan_addr = kernel_->get_global("ARK_PROXY_CHANS");
-        gpuDeviceptr proxy_secondary_chan_addr =
-            kernel_->get_global("ARK_PROXY_SECONDARY_CHANS");
-        gpuDeviceptr sm_chan_addr = kernel_->get_global("ARK_SM_CHANS");
+        void *proxy_chan_addr = get_global_rt("ARK_PROXY_CHANS");
+        void *proxy_secondary_chan_addr =
+            get_global_rt("ARK_PROXY_SECONDARY_CHANS");
+        void *sm_chan_addr = get_global_rt("ARK_SM_CHANS");
         std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> proxy_handles(
             world_size_);
         std::vector<mscclpp::SimpleProxyChannel::DeviceHandle>
@@ -597,19 +599,22 @@ void Executor::Impl::launch(int64_t max_spin_count) {
                 sm_handles[i] = it2->second[0]->deviceHandle();
             }
         }
-        gpu_manager->memcpy_htod(
-            (void *)proxy_chan_addr, 0, proxy_handles.data(), 0,
+        GLOG(gpuMemcpyAsync(
+            proxy_chan_addr, proxy_handles.data(),
             proxy_handles.size() *
-                sizeof(mscclpp::SimpleProxyChannel::DeviceHandle));
-        gpu_manager->memcpy_htod(
-            (void *)proxy_secondary_chan_addr, 0,
-            proxy_secondary_handles.data(), 0,
+                sizeof(mscclpp::SimpleProxyChannel::DeviceHandle),
+            gpuMemcpyHostToDevice, copy_stream_->get()));
+        GLOG(gpuMemcpyAsync(
+            proxy_secondary_chan_addr, proxy_secondary_handles.data(),
             proxy_secondary_handles.size() *
-                sizeof(mscclpp::SimpleProxyChannel::DeviceHandle));
-        gpu_manager->memcpy_htod(
-            (void *)sm_chan_addr, 0, sm_handles.data(), 0,
-            sm_handles.size() * sizeof(mscclpp::SmChannel::DeviceHandle));
+                sizeof(mscclpp::SimpleProxyChannel::DeviceHandle),
+            gpuMemcpyHostToDevice, copy_stream_->get()));
+        GLOG(gpuMemcpyAsync(
+            sm_chan_addr, sm_handles.data(),
+            sm_handles.size() * sizeof(mscclpp::SmChannel::DeviceHandle),
+            gpuMemcpyHostToDevice, copy_stream_->get()));
     }
+    copy_stream_->sync();
 
     elapsed_msec_ = -1;
     if (!kernel_->is_compiled()) {
@@ -689,6 +694,7 @@ void Executor::Impl::barrier() {
 
 void Executor::Impl::tensor_read(const Tensor tensor, void *data,
                                  size_t bytes) const {
+    GLOG(gpuSetDevice(gpu_id_));
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
     if (bytes < tensor_data_bytes) {
@@ -716,6 +722,7 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data,
 
 void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
                                   size_t bytes) const {
+    GLOG(gpuSetDevice(gpu_id_));
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
     if (bytes < tensor_data_bytes) {

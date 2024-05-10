@@ -9,6 +9,32 @@
 #define FACTOR 0.7
 
 template <typename T>
+void baseline_scalar_add(std::vector<void *> &outputs,
+                         const std::vector<ark::Dims> &output_shapes,
+                         const std::vector<void *> &inputs,
+                         const std::vector<ark::Dims> &, int) {
+    T *out = static_cast<T *>(outputs[0]);
+    T *input = static_cast<T *>(inputs[0]);
+    ark::Dims osh = output_shapes[0];
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
+        out[i] = input[i] + T(FACTOR);
+    }
+};
+
+template <typename T>
+void baseline_scalar_sub(std::vector<void *> &outputs,
+                         const std::vector<ark::Dims> &output_shapes,
+                         const std::vector<void *> &inputs,
+                         const std::vector<ark::Dims> &, int) {
+    T *out = static_cast<T *>(outputs[0]);
+    T *input = static_cast<T *>(inputs[0]);
+    ark::Dims osh = output_shapes[0];
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
+        out[i] = input[i] - T(FACTOR);
+    }
+};
+
+template <typename T>
 void baseline_scalar_mul(std::vector<void *> &outputs,
                          const std::vector<ark::Dims> &output_shapes,
                          const std::vector<void *> &inputs,
@@ -18,6 +44,19 @@ void baseline_scalar_mul(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     for (ark::DimType i = 0; i < osh.nelems(); ++i) {
         out[i] = input[i] * T(FACTOR);
+    }
+};
+
+template <typename T>
+void baseline_scalar_div(std::vector<void *> &outputs,
+                         const std::vector<ark::Dims> &output_shapes,
+                         const std::vector<void *> &inputs,
+                         const std::vector<ark::Dims> &, int) {
+    T *out = static_cast<T *>(outputs[0]);
+    T *input = static_cast<T *>(inputs[0]);
+    ark::Dims osh = output_shapes[0];
+    for (ark::DimType i = 0; i < osh.nelems(); ++i) {
+        out[i] = input[i] / T(FACTOR);
     }
 };
 
@@ -60,6 +99,71 @@ ark::unittest::State test_scalar_assign_fp16() {
         for (auto v : data) {
             UNITTEST_EQ(v, ark::half_t(7));
         }
+    }
+    {
+        ark::Model m;
+        ark::Tensor out = m.copy(7);
+
+        ark::DefaultExecutor exe(m);
+        exe.compile();
+
+        exe.launch();
+        exe.run(1);
+        exe.stop();
+
+        std::vector<ark::half_t> data(1);
+        exe.tensor_read(out, data);
+        for (auto v : data) {
+            UNITTEST_EQ(v, ark::half_t(7));
+        }
+    }
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_scalar_add_fp16() {
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
+        ark::Tensor out = m.mul(t, FACTOR);
+
+        auto result = ark::op_test("scalar_add_fp16_small", m, {t}, {out},
+                                   baseline_scalar_add<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+        ark::Tensor out = m.mul(t, FACTOR);
+
+        auto result = ark::op_test("scalar_add_fp16", m, {t}, {out},
+                                   baseline_scalar_add<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_scalar_sub_fp16() {
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
+        ark::Tensor out = m.mul(t, FACTOR);
+
+        auto result = ark::op_test("scalar_sub_fp16_small", m, {t}, {out},
+                                   baseline_scalar_sub<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+        ark::Tensor out = m.mul(t, FACTOR);
+
+        auto result = ark::op_test("scalar_sub_fp16", m, {t}, {out},
+                                   baseline_scalar_sub<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
@@ -201,14 +305,41 @@ ark::unittest::State test_scalar_mul_perf() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_scalar_div_fp16() {
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1), ark::FP16);
+        ark::Tensor out = m.mul(t, FACTOR);
+
+        auto result = ark::op_test("scalar_div_fp16_small", m, {t}, {out},
+                                   baseline_scalar_div<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    {
+        ark::Model m;
+        ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::FP16);
+        ark::Tensor out = m.mul(t, FACTOR);
+
+        auto result = ark::op_test("scalar_div_fp16", m, {t}, {out},
+                                   baseline_scalar_div<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_scalar_assign_fp16);
+    UNITTEST(test_scalar_add_fp16);
+    UNITTEST(test_scalar_sub_fp16);
     UNITTEST(test_scalar_mul_fp32);
     UNITTEST(test_scalar_mul_fp16);
     UNITTEST(test_scalar_mul_bf16);
     UNITTEST(test_scalar_mul_invalid);
     UNITTEST(test_scalar_mul_fp16_offset);
     UNITTEST(test_scalar_mul_perf);
+    UNITTEST(test_scalar_div_fp16);
     return ark::unittest::SUCCESS;
 }
