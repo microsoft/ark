@@ -21,20 +21,12 @@ struct Env {
     bool keep_tmp;
     // Hostfile.
     std::string hostfile;
-    // Base value of listen socket ports.
-    int ipc_listen_port_base;
     // Number of ranks per host.
     int num_ranks_per_host;
-    // Disable P2P GPU memcpy.
-    bool disable_p2p_memcpy;
     // Disable IB
     bool disable_ib;
-    // Disable the heuristic ARK graph optimization.
-    bool disable_graph_opt;
     // Ignore compiled binary cache.
     bool ignore_binary_cache;
-    // Prefix of shared memory file names.
-    std::string shm_name_prefix;
     // Enforce to compile a specific plan file.
     std::string enforce_plan_path;
     // MSCCL++ bootstrap port.

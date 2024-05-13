@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_IPC_HOSTS_H_
-#define ARK_IPC_HOSTS_H_
+#ifndef ARK_UTILS_NET_HPP_
+#define ARK_UTILS_NET_HPP_
 
 #include <string>
 
@@ -16,4 +16,4 @@ const std::string get_host(int idx, bool reset = false);
 
 }  // namespace ark
 
-#endif  // ARK_IPC_HOSTS_H_
+#endif  // ARK_UTILS_NET_HPP_

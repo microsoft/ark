@@ -12,13 +12,9 @@
 #define DEFAULT_ARK_TMP "/tmp/ark"
 #define DEFAULT_ARK_KEEP_TMP true
 #define DEFAULT_ARK_HOSTFILE_NAME "hostfile"
-#define DEFAULT_ARK_IPC_LISTEN_PORT_BASE 42000
 #define DEFAULT_ARK_NUM_RANKS_PER_HOST 8
-#define DEFAULT_ARK_DISABLE_P2P_MEMCPY false
 #define DEFAULT_ARK_DISABLE_IB false
-#define DEFAULT_ARK_DISABLE_GRAPH_OPT false
 #define DEFAULT_ARK_IGNORE_BINARY_CACHE true
-#define DEFAULT_ARK_SHM_NAME_PREFIX "ark."
 #define DEFAULT_ARK_ENFORCE_PLAN_PATH ""
 #define DEFAULT_ARK_MSCCLPP_PORT 50051
 
@@ -54,26 +50,14 @@ Env::Env() {
     // Get the hostfile path.
     this->hostfile = env<std::string>(
         "ARK_HOSTFILE", this->path_root_dir + "/" + DEFAULT_ARK_HOSTFILE_NAME);
-    // Get the listen socket port.
-    this->ipc_listen_port_base =
-        env<int>("ARK_IPC_LISTEN_PORT_BASE", DEFAULT_ARK_IPC_LISTEN_PORT_BASE);
     // Get the number of ranks per host.
     this->num_ranks_per_host =
         env<int>("ARK_NUM_RANKS_PER_HOST", DEFAULT_ARK_NUM_RANKS_PER_HOST);
-    // If `ARK_DISABLE_P2P_MEMCPY=1`, we disable P2P memcpy between GPUs.
-    this->disable_p2p_memcpy =
-        env<bool>("ARK_DISABLE_P2P_MEMCPY", DEFAULT_ARK_DISABLE_P2P_MEMCPY);
     // If `ARK_DISABLE_IB=1`, we disable IB.
     this->disable_ib = env<bool>("ARK_DISABLE_IB", DEFAULT_ARK_DISABLE_IB);
-    // If `ARK_DISABLE_GRAPH_OPT=1`, we disable graph optimization.
-    this->disable_graph_opt =
-        env<bool>("ARK_DISABLE_GRAPH_OPT", DEFAULT_ARK_DISABLE_GRAPH_OPT);
     // If `ARK_IGNORE_BINARY_CACHE=1`, we ignore compiled binary cache.
     this->ignore_binary_cache =
         env<bool>("ARK_IGNORE_BINARY_CACHE", DEFAULT_ARK_IGNORE_BINARY_CACHE);
-    //
-    this->shm_name_prefix =
-        env<std::string>("ARK_SHM_NAME_PREFIX", DEFAULT_ARK_SHM_NAME_PREFIX);
     //
     this->enforce_plan_path = env<std::string>("ARK_ENFORCE_PLAN_PATH",
                                                DEFAULT_ARK_ENFORCE_PLAN_PATH);

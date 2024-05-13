@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ipc/ipc_hosts.h"
+#include "utils_net.hpp"
 
 #include <arpa/inet.h>
 #include <netdb.h>
