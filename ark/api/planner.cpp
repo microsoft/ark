@@ -36,18 +36,18 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
 
             Json task_info;
             task_info["Id"] = next_node_id++;
-            task_info["Ops"] = {op->serialize()};
 
             const auto &config = op->default_config(gpu_info.arch);
             size_t num_warps = config["NumWarps"];
             size_t num_tasks = config["NumTasks"];
             size_t sram_bytes = config["SramBytes"];
+            task_info["NumWarps"] = num_warps;
+            task_info["SramBytes"] = sram_bytes;
 
             max_num_warps = std::max(max_num_warps, num_warps);
 
+            task_info["Ops"] = {op->serialize()};
             task_info["Ops"][0]["Config"] = config;
-            task_info["NumWarps"] = num_warps;
-            task_info["SramBytes"] = sram_bytes;
             task_infos.push_back(task_info);
 
             Json resource_group;

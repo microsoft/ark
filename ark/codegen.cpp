@@ -14,6 +14,7 @@
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"
 #include "range.hpp"
+#include "utils/utils_math.hpp"
 
 static std::string replace(
     const std::string &template_str,
@@ -356,9 +357,10 @@ std::string CodeGenerator::Impl::resource_group(
         //     (blockIdx.x < proc_e) &&
         //     ((blockIdx.x - proc_b) % proc_s == 0)) {
         //   size_t p = ((blockIdx.x + gridDim.x - proc_cur) % gridDim.x) /
-        //   proc_s; size_t k = threadIdx.x / warp_size / slot_n_warps; size_t
-        //   task_id_base = task_b + task_s*p*task_gran; for (size_t t = k; ; t
-        //   += n_slots) {
+        //              proc_s;
+        //   size_t k = threadIdx.x / warp_size / slot_n_warps;
+        //   size_t task_id_base = task_b + task_s*p*task_gran;
+        //   for (size_t t = k; ; t += n_slots) {
         //     size_t task_id = task_id_base + task_s*(
         //       t/task_gran*task_gran*n_procs + t%task_gran
         //     );
@@ -372,6 +374,14 @@ std::string CodeGenerator::Impl::resource_group(
         ss << this->task_seq(proc_b, proc_e, proc_s, proc_cur, task_b, task_e,
                              task_s, task_gran, n_slots, slot_n_warps,
                              slot_n_sram, task_id);
+
+        // Update `proc_cur` to the next of the last scheduled one
+        size_t n_procs = rg_proc_range.size();
+        size_t n_tasks = task_range.size();
+        size_t proc_cur_idx = (proc_cur - proc_b) / proc_s;
+        proc_cur_idx += math::div_up(n_tasks, task_gran);
+        proc_cur_idx = proc_cur_idx % n_procs;
+        proc_cur = proc_b + proc_cur_idx * proc_s;
     }
     return ss.str();
 }

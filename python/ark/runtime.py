@@ -13,7 +13,7 @@ _RuntimeState = NewType("_RuntimeState", None)
 
 class DefaultPlanner(_DefaultPlanner):
     def __init__(self, gpu_id: int = 0):
-        super().__init__(Model.get_model(), gpu_id)
+        super().__init__(Model.get_model().compress(), gpu_id)
 
 
 class Runtime:
