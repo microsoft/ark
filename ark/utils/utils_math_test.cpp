@@ -19,6 +19,8 @@ ark::unittest::State test_utils_math() {
     UNITTEST_EQ(ark::math::div_up(7, 7), 1);
     UNITTEST_EQ(ark::math::div_up(7, 8), 1);
 
+    UNITTEST_THROW(ark::math::div_up(5, 0), ark::InvalidUsageError);
+
     UNITTEST_EQ(ark::math::pad(0, 1), 0);
     UNITTEST_EQ(ark::math::pad(1, 1), 1);
     UNITTEST_EQ(ark::math::pad(1, 2), 2);
@@ -32,6 +34,7 @@ ark::unittest::State test_utils_math() {
     UNITTEST_EQ(ark::math::pad(7, 7), 7);
     UNITTEST_EQ(ark::math::pad(7, 8), 8);
 
+    UNITTEST_FALSE(ark::math::is_pow2(0));
     UNITTEST_TRUE(ark::math::is_pow2(1));
     UNITTEST_TRUE(ark::math::is_pow2(2));
     UNITTEST_FALSE(ark::math::is_pow2(3));
@@ -57,6 +60,8 @@ ark::unittest::State test_utils_math() {
     UNITTEST_EQ(ark::math::ilog2(32), 5);
     UNITTEST_EQ(ark::math::ilog2(64), 6);
 
+    UNITTEST_THROW(ark::math::ilog2(0), ark::InvalidUsageError);
+
     UNITTEST_EQ(ark::math::gcd(1, 1), 1);
     UNITTEST_EQ(ark::math::gcd(1, 2), 1);
     UNITTEST_EQ(ark::math::gcd(2, 1), 1);
@@ -76,6 +81,8 @@ ark::unittest::State test_utils_math() {
     UNITTEST_EQ(ark::math::gcd(32, 58), 2);
     UNITTEST_EQ(ark::math::gcd(58, 32), 2);
     UNITTEST_EQ(ark::math::gcd(72, 78), 6);
+    UNITTEST_EQ(ark::math::gcd(72, 0), 72);
+    UNITTEST_EQ(ark::math::gcd(0, 78), 78);
 
     UNITTEST_EQ(ark::math::lcm(1, 1), 1);
     UNITTEST_EQ(ark::math::lcm(1, 2), 2);
