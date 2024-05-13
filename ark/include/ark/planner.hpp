@@ -17,7 +17,7 @@ class DefaultPlanner {
 
     ~DefaultPlanner();
 
-    std::string plan(int indent = -1) const;
+    std::string plan(bool pretty = true) const;
 
    private:
     class Impl;

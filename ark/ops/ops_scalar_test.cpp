@@ -319,7 +319,7 @@ ark::unittest::State test_scalar_div_fp16() {
         auto result = ark::op_test("scalar_div_fp16_small", m, {t}, {out},
                                    baseline_scalar_div<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < rel_err_bound);
+        UNITTEST_LT(result.max_err_rate[0], rel_err_bound);
     }
     {
         ark::Model m;
@@ -329,7 +329,7 @@ ark::unittest::State test_scalar_div_fp16() {
         auto result = ark::op_test("scalar_div_fp16", m, {t}, {out},
                                    baseline_scalar_div<ark::half_t>);
         UNITTEST_LOG(result);
-        UNITTEST_TRUE(result.max_err_rate[0] < rel_err_bound);
+        UNITTEST_LT(result.max_err_rate[0], rel_err_bound);
     }
     return ark::unittest::SUCCESS;
 }

@@ -451,13 +451,16 @@ Json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
     return j;
 }
 
-std::string ModelGraph::Impl::serialize(int indent) const {
+std::string ModelGraph::Impl::serialize(bool pretty) const {
     Json j;
     j["Nodes"] = Json::array();
     for (const auto &node : nodes_) {
         j["Nodes"].emplace_back(this->to_json(node));
     }
-    return j.dump(indent);
+    if (pretty) {
+        return ModelJson(j).dump_pretty();
+    }
+    return j.dump(-1);
 }
 
 std::vector<ModelNodeRef> ModelGraph::Impl::nodes() const {

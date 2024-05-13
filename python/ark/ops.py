@@ -331,7 +331,6 @@ def reshape(
     input: Tensor,
     shape: Iterable[int],
     allowzero: bool = False,
-    output: Tensor = NullTensor,
     name: str = "reshape",
 ) -> Tensor:
     """
@@ -352,10 +351,26 @@ def reshape(
     # only support tensors with up to 4 dimensions
     if len(shape) > 4:
         raise ValueError("Only support tensors with up to 4 dimensions")
+    return Tensor(
+        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name)
+    )
+
+
+def rope(
+    input: Tensor,
+    other: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "rope",
+) -> Tensor:
+    """
+    Calculates the square root of the `input` tensor, element-wise.
+    Usage:
+    tensor_rsqrt = ark.rsqrt(tensor)
+    """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().reshape(input._tensor, shape, allowzero, output, name)
+        Model.get_model().rope(input._tensor, other._tensor, output, name)
     )
 
 
@@ -455,7 +470,7 @@ def tensor(
 
 def transpose(
     input: Tensor,
-    perm: list,
+    perm: Iterable[int],
     output: Tensor = NullTensor,
     name: str = "transpose",
 ) -> Tensor:
@@ -476,11 +491,22 @@ def transpose(
     if len(perm) > 4:
         raise ValueError("Only support perm up to 4 dimensions")
     return Tensor(
-        Model.get_model().transpose(input._tensor, Dims(*perm), output, name)
+        Model.get_model().transpose(input._tensor, perm, output, name)
     )
 
 
 ################################################################################
+
+
+def mean(
+    input: Tensor,
+    axis: int,
+    keepdims: bool = True,
+    output: Tensor = NullTensor,
+    name: str = "mean",
+) -> Tensor:
+    """Alias of reduce_mean."""
+    return reduce_mean(input, axis, keepdims, output, name)
 
 
 def ones(

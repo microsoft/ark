@@ -49,7 +49,7 @@ class ModelGraph::Impl {
 
     bool verify() const;
 
-    std::string serialize(int indent) const;
+    std::string serialize(bool pretty = true) const;
 
     std::vector<ModelNodeRef> nodes() const;
 

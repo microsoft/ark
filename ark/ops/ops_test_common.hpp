@@ -72,7 +72,10 @@ float division_rel_error_bound(float divisor) {
     static_assert(std::is_same_v<T, float> || std::is_same_v<T, ark::half_t> ||
                       std::is_same_v<T, ark::bfloat16_t>,
                   "unsuppored float type");
-    return float(std::numeric_limits<T>::epsilon()) / std::abs(divisor);
+    float max_diff =
+        float(std::numeric_limits<T>::epsilon()) / std::abs(divisor);
+    // *2 because the baseline is also a computed value.
+    return max_diff * 2;
 }
 
 /// Return mean squared error and max error rate between two tensors.

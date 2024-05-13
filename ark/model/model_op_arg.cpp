@@ -13,23 +13,22 @@ ModelOpArg::ModelOpArg() : ModelNamedT("") {}
 Json ModelOpArg::serialize() const {
     const std::string &type_name = this->type_name();
     Json j;
-    j.push_back(type_name);
     if (type_name == "TENSOR") {
-        j.push_back(this->value<ModelTensorRef>()->serialize());
+        j[type_name] = this->value<ModelTensorRef>()->serialize();
     } else if (type_name == "OFFSET") {
-        j.push_back(this->value<ModelOffset>().serialize());
+        j[type_name] = this->value<ModelOffset>().serialize();
     } else if (type_name == "DIMS") {
-        j.push_back(this->value<Dims>().vector());
+        j[type_name] = this->value<Dims>().vector();
     } else if (type_name == "INT") {
-        j.push_back(this->value<int>());
+        j[type_name] = this->value<int>();
     } else if (type_name == "INT64") {
-        j.push_back(this->value<int64_t>());
+        j[type_name] = this->value<int64_t>();
     } else if (type_name == "UINT64") {
-        j.push_back(this->value<uint64_t>());
+        j[type_name] = this->value<uint64_t>();
     } else if (type_name == "BOOL") {
-        j.push_back(this->value<bool>());
+        j[type_name] = this->value<bool>();
     } else if (type_name == "FLOAT") {
-        j.push_back(this->value<float>());
+        j[type_name] = this->value<float>();
     } else {
         ERR(InvalidUsageError,
             "Tried to serialize an unknown type of argument: ", type_name);
@@ -39,8 +38,8 @@ Json ModelOpArg::serialize() const {
 
 ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
     try {
-        const std::string &type_name = serialized[0];
-        auto &value = serialized[1];
+        const std::string &type_name = serialized.begin().key();
+        auto &value = serialized.begin().value();
         if (type_name == "TENSOR") {
             return ModelOpArg(ModelTensor::deserialize(value));
         } else if (type_name == "OFFSET") {
@@ -62,8 +61,8 @@ ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
         ERR(InvalidUsageError, "Failed to deserialize `", serialized.dump(),
             "`: ", e.what());
     }
-    ERR(InvalidUsageError,
-        "Tried to deserialize an unknown type of argument: ", serialized[0]);
+    ERR(InvalidUsageError, "Tried to deserialize an unknown type of argument: ",
+        serialized.dump());
     return ModelOpArg();
 }
 

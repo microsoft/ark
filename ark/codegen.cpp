@@ -221,7 +221,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                 size_t offset = buffer_offset + moff.value();
                 ss << offset;
             } else {
-                ss << arg.serialize()[1];
+                ss << arg.serialize().begin().value();
             }
             ss << ", ";
         }

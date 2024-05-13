@@ -83,6 +83,8 @@ void register_model(py::module &m) {
              py::arg("name"))
         .def("reshape", &ark::Model::reshape, py::arg("input"),
              py::arg("shape"), py::arg("allowzero"), py::arg("name"))
+        .def("rope", &ark::Model::rope, py::arg("input"), py::arg("other"),
+             py::arg("output"), py::arg("name"))
         .def("rsqrt", &ark::Model::rsqrt, py::arg("input"), py::arg("output"),
              py::arg("name"))
         .def("sharding", &ark::Model::sharding, py::arg("input"),

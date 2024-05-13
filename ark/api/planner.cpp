@@ -80,8 +80,11 @@ DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
 
 DefaultPlanner::~DefaultPlanner() = default;
 
-std::string DefaultPlanner::plan(int indent) const {
-    return impl_->plan_.dump(indent);
+std::string DefaultPlanner::plan(bool pretty) const {
+    if (pretty) {
+        return PlanJson(impl_->plan_).dump_pretty();
+    }
+    return impl_->plan_.dump();
 }
 
 }  // namespace ark

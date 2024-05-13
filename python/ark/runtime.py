@@ -11,6 +11,11 @@ from .model import Model
 _RuntimeState = NewType("_RuntimeState", None)
 
 
+class DefaultPlanner(_DefaultPlanner):
+    def __init__(self, gpu_id: int = 0):
+        super().__init__(Model.get_model(), gpu_id)
+
+
 class Runtime:
     """
     Convenience class for running a model.
@@ -81,14 +86,15 @@ class Runtime:
         if self.launched():
             logging.warn("Runtime is already launched, skip launching")
             return
-        if plan == "" and plan_path == "":
-            plan = _DefaultPlanner(Model.get_model(), gpu_id).plan(indent=2)
-            # Write plan to a file
-            with open("plan.json", "w") as f:
-                f.write(plan)
-        else:
-            with open(plan_path, "r") as f:
-                plan = f.read()
+        if not plan:
+            if not plan_path:
+                plan = DefaultPlanner(gpu_id).plan(indent=2)
+                # Write plan to a file
+                with open("plan.json", "w") as f:
+                    f.write(plan)
+            else:
+                with open(plan_path, "r") as f:
+                    plan = f.read()
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
