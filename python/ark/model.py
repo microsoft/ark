@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 from typing import NewType
-from ._ark_core import _Model
+from _ark_core import _Model
 
 _ModelState = NewType("_ModelState", None)
 

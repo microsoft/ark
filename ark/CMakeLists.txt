@@ -11,7 +11,7 @@ if(USE_ROCM)
     set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
-set(COMMON_LIBS ARK::numa ARK::ibverbs mscclpp mscclpp_static pthread rt)
+set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -42,7 +42,7 @@ if(USE_ROCM)
 endif()
 
 target_sources(ark_obj PRIVATE ${SOURCES})
-target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
+target_link_libraries(ark_obj PUBLIC mscclpp_static PRIVATE ${COMMON_LIBS})
 
 # ARK unit tests
 foreach(ut_source IN ITEMS ${UT_SOURCES})

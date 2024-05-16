@@ -11,13 +11,17 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG 6226556ce277a3e26f5de91a8bf3a36e01613f55
+    GIT_TAG v0.5.0
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
-FetchContent_MakeAvailable(mscclpp)
+FetchContent_GetProperties(mscclpp)
+if (NOT mscclpp_POPULATED)
+    FetchContent_Populate(mscclpp)
+    add_subdirectory(${mscclpp_SOURCE_DIR} ${mscclpp_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 # JSON
 FetchContent_Declare(

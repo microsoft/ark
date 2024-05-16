@@ -35,6 +35,9 @@ void register_executor(py::module &m) {
         .def("run", &ark::Executor::run, py::arg("iter"))
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
+        .def("barrier", &ark::Executor::barrier)
+        .def("destroy", &ark::Executor::destroy)
+        .def("destroyed", &ark::Executor::destroyed)
         .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
         .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
 }

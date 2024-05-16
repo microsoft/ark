@@ -3,17 +3,28 @@
 
 import logging
 from enum import Enum
-from typing import NewType
+import traceback
 
-from ._ark_core import _Executor, _DefaultPlanner
+from _ark_core import _Executor, _DefaultPlanner
 from .model import Model
 
-_RuntimeState = NewType("_RuntimeState", None)
+class _RuntimeState:
+    """
+    The _RuntimeState class is used to store the state of the model.
+    """
+
+    runtime = None
+    executor = None
 
 
 class DefaultPlanner(_DefaultPlanner):
     def __init__(self, gpu_id: int = 0):
-        super().__init__(Model.get_model().compress(), gpu_id)
+        compressed = Model.get_model().compress()
+        super().__init__(compressed, gpu_id)
+
+
+class Executor(_Executor):
+    pass
 
 
 class Runtime:
@@ -31,7 +42,7 @@ class Runtime:
         Running = 2
 
     @staticmethod
-    def get_runtime():
+    def get_runtime() -> "Runtime":
         """
         Get the runtime.
         """
@@ -40,20 +51,18 @@ class Runtime:
         return _RuntimeState.runtime
 
     def __init__(self):
-        if _RuntimeState.runtime is not None:
-            logging.error("Runtime is already created")
-            raise RuntimeError("Runtime is already created")
-        self.executor: _Executor = None
+        self.executor: Executor = None
         self.state: Runtime.State = Runtime.State.Init
         _RuntimeState.runtime = self
 
     def __del__(self):
-        """
-        Destroy the ARK runtime and release all the resources.
-        """
-        if self.launched():
-            self.stop()
-        self.executor = None
+        self.reset()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.reset()
 
     def launched(self) -> bool:
         """
@@ -88,23 +97,26 @@ class Runtime:
             return
         if not plan:
             if not plan_path:
-                plan = DefaultPlanner(gpu_id).plan(indent=2)
-                # Write plan to a file
-                with open("plan.json", "w") as f:
-                    f.write(plan)
+                plan = DefaultPlanner(gpu_id).plan()
             else:
                 with open(plan_path, "r") as f:
                     plan = f.read()
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
-            self.executor = _Executor(
+            if _RuntimeState.executor is not None:
+                if not _RuntimeState.executor.destroyed():
+                    logging.warn("Destroying an old executor")
+                    _RuntimeState.executor.destroy()
+
+            _RuntimeState.executor = Executor(
                 rank,
                 world_size,
                 gpu_id,
                 "ArkRuntime",
                 plan,
             )
+            self.executor = _RuntimeState.executor
             self.executor.compile()
         self.executor.launch()
         self.state = Runtime.State.LaunchedNotRunning
@@ -143,10 +155,14 @@ class Runtime:
         self.state = Runtime.State.LaunchedNotRunning
         return elapsed
 
-
-class _RuntimeState:
-    """
-    The _RuntimeState class is used to store the state of the model.
-    """
-
-    runtime: Runtime = None
+    def reset(self):
+        """
+        Reset the runtime.
+        """
+        if self.launched():
+            self.stop()
+        if self.executor is not None:
+            if not self.executor.destroyed():
+                self.executor.destroy()
+            self.executor = None
+        self.state = Runtime.State.Init

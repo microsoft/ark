@@ -41,6 +41,10 @@ class Executor {
 
     void barrier();
 
+    void destroy();
+
+    bool destroyed() const;
+
     template <typename T>
     void tensor_read(const Tensor tensor, std::vector<T> &data) const {
         tensor_read(tensor, reinterpret_cast<void *>(data.data()),

@@ -4,7 +4,7 @@
 import numpy as np
 from typing import List
 
-from ._ark_core import _Dims, _Tensor, _NullTensor
+from _ark_core import _Dims, _Tensor, _NullTensor
 from .data_type import DataType
 from .runtime import Runtime
 

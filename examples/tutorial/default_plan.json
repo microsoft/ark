@@ -1,0 +1,505 @@
+{
+  "Rank": 0,
+  "WorldSize": 0,
+  "NumProcessors": 108,
+  "NumWarpsPerProcessor": 4,
+  "TaskInfos": [
+    {
+      "Id": 0,
+      "NumWarps": 4,
+      "SramBytes": 98304,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {
+              "Id": 0,
+              "DataType": "FP16",
+              "Buffer": {"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,4096],
+              "Strides": [1,512,4096],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            },
+            {
+              "Id": 1,
+              "DataType": "FP16",
+              "Buffer": {"Id":1,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [11008,4096],
+              "Strides": [11008,4096],
+              "Offsets": [0,0],
+              "Pads": [1,1]
+            }
+          ],
+          "WriteTensors": [
+            {
+              "Id": 4,
+              "DataType": "FP16",
+              "Buffer": {"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "ResultTensors": [
+            {
+              "Id": 5,
+              "DataType": "FP16",
+              "Buffer": {"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "Args": {
+            "InputDimNC": {
+              "DIMS": [1,1]
+            },
+            "IsInputColumnMajor": {
+              "BOOL": false
+            },
+            "IsOtherColumnMajor": {
+              "BOOL": true
+            },
+            "OtherDimNC": {
+              "DIMS": [1,1]
+            },
+            "ShapeMNK": {
+              "DIMS": [512,11008,4096]
+            },
+            "StridesACDB": {
+              "DIMS": [4096,11008,11008,4096]
+            }
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 98304,
+            "TileShapeMNK": [64,64,64],
+            "TilePadMNK": [64,64,64],
+            "NumTasks": 1376
+          }
+        }
+      ]
+    },
+    {
+      "Id": 1,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Sigmoid",
+          "Name": "sigmoid",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {
+              "Id": 5,
+              "DataType": "FP16",
+              "Buffer": {"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "WriteTensors": [
+            {
+              "Id": 6,
+              "DataType": "FP16",
+              "Buffer": {"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "ResultTensors": [
+            {
+              "Id": 7,
+              "DataType": "FP16",
+              "Buffer": {"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,64],
+            "NumTasks": 88064
+          }
+        }
+      ]
+    },
+    {
+      "Id": 2,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Mul",
+          "Name": "mul",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {
+              "Id": 5,
+              "DataType": "FP16",
+              "Buffer": {"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            },
+            {
+              "Id": 7,
+              "DataType": "FP16",
+              "Buffer": {"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "WriteTensors": [
+            {
+              "Id": 8,
+              "DataType": "FP16",
+              "Buffer": {"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "ResultTensors": [
+            {
+              "Id": 9,
+              "DataType": "FP16",
+              "Buffer": {"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,64],
+            "NumTasks": 88064
+          }
+        }
+      ]
+    },
+    {
+      "Id": 3,
+      "NumWarps": 4,
+      "SramBytes": 98304,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {
+              "Id": 0,
+              "DataType": "FP16",
+              "Buffer": {"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,4096],
+              "Strides": [1,512,4096],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            },
+            {
+              "Id": 3,
+              "DataType": "FP16",
+              "Buffer": {"Id":3,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [11008,4096],
+              "Strides": [11008,4096],
+              "Offsets": [0,0],
+              "Pads": [1,1]
+            }
+          ],
+          "WriteTensors": [
+            {
+              "Id": 10,
+              "DataType": "FP16",
+              "Buffer": {"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "ResultTensors": [
+            {
+              "Id": 11,
+              "DataType": "FP16",
+              "Buffer": {"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "Args": {
+            "InputDimNC": {
+              "DIMS": [1,1]
+            },
+            "IsInputColumnMajor": {
+              "BOOL": false
+            },
+            "IsOtherColumnMajor": {
+              "BOOL": true
+            },
+            "OtherDimNC": {
+              "DIMS": [1,1]
+            },
+            "ShapeMNK": {
+              "DIMS": [512,11008,4096]
+            },
+            "StridesACDB": {
+              "DIMS": [4096,11008,11008,4096]
+            }
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 98304,
+            "TileShapeMNK": [64,64,64],
+            "TilePadMNK": [64,64,64],
+            "NumTasks": 1376
+          }
+        }
+      ]
+    },
+    {
+      "Id": 4,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Mul",
+          "Name": "mul_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {
+              "Id": 9,
+              "DataType": "FP16",
+              "Buffer": {"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            },
+            {
+              "Id": 11,
+              "DataType": "FP16",
+              "Buffer": {"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "WriteTensors": [
+            {
+              "Id": 12,
+              "DataType": "FP16",
+              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "ResultTensors": [
+            {
+              "Id": 13,
+              "DataType": "FP16",
+              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,64],
+            "NumTasks": 88064
+          }
+        }
+      ]
+    },
+    {
+      "Id": 5,
+      "NumWarps": 4,
+      "SramBytes": 98304,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {
+              "Id": 13,
+              "DataType": "FP16",
+              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,11008],
+              "Strides": [1,512,11008],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            },
+            {
+              "Id": 2,
+              "DataType": "FP16",
+              "Buffer": {"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [4096,11008],
+              "Strides": [4096,11008],
+              "Offsets": [0,0],
+              "Pads": [1,1]
+            }
+          ],
+          "WriteTensors": [
+            {
+              "Id": 14,
+              "DataType": "FP16",
+              "Buffer": {"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,4096],
+              "Strides": [1,512,4096],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "ResultTensors": [
+            {
+              "Id": 15,
+              "DataType": "FP16",
+              "Buffer": {"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Shape": [1,512,4096],
+              "Strides": [1,512,4096],
+              "Offsets": [0,0,0],
+              "Pads": [1,1,1]
+            }
+          ],
+          "Args": {
+            "InputDimNC": {
+              "DIMS": [1,1]
+            },
+            "IsInputColumnMajor": {
+              "BOOL": false
+            },
+            "IsOtherColumnMajor": {
+              "BOOL": true
+            },
+            "OtherDimNC": {
+              "DIMS": [1,1]
+            },
+            "ShapeMNK": {
+              "DIMS": [512,4096,11008]
+            },
+            "StridesACDB": {
+              "DIMS": [11008,4096,4096,11008]
+            }
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 98304,
+            "TileShapeMNK": [64,64,64],
+            "TilePadMNK": [64,64,64],
+            "NumTasks": 512
+          }
+        }
+      ]
+    }
+  ],
+  "ProcessorGroups": [
+    {
+      "ProcessorRange": [0,108],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,108],
+          "WarpRange": [0,4],
+          "SramRange": [0,98304],
+          "TaskGroups": [
+            {"TaskId":0,"TaskRange":[0,1376],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,108],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,108],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":1,"TaskRange":[0,88064],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,108],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,108],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":2,"TaskRange":[0,88064],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,108],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,108],
+          "WarpRange": [0,4],
+          "SramRange": [0,98304],
+          "TaskGroups": [
+            {"TaskId":3,"TaskRange":[0,1376],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,108],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,108],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":4,"TaskRange":[0,88064],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,108],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,108],
+          "WarpRange": [0,4],
+          "SramRange": [0,98304],
+          "TaskGroups": [
+            {"TaskId":5,"TaskRange":[0,512],"Granularity":1}
+          ]
+        }
+      ]
+    }
+  ]
+}
