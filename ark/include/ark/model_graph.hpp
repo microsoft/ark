@@ -25,7 +25,7 @@ class ModelGraph {
 
     bool verify() const;
 
-    std::string serialize(int indent = -1) const;
+    std::string serialize(bool pretty = true) const;
 
     /// Get the list of @ref ModelNode in the graph.
     std::vector<ModelNodeRef> nodes() const;

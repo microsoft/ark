@@ -24,8 +24,8 @@ ModelGraph &ModelGraph::operator=(const ModelGraph &other) {
 /// Get the list of @ref ModelNode in the graph.
 std::vector<ModelNodeRef> ModelGraph::nodes() const { return impl_->nodes(); }
 
-std::string ModelGraph::serialize(int indent) const {
-    return impl_->serialize(indent);
+std::string ModelGraph::serialize(bool pretty) const {
+    return impl_->serialize(pretty);
 }
 
 void ModelGraph::compress_nodes() { impl_->compress_nodes(); }

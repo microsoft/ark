@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_PLANNER_HPP_
-#define ARK_PLANNER_HPP_
+#ifndef ARK_PLANNER_HPP
+#define ARK_PLANNER_HPP
 
 #include <memory>
 #include <string>
@@ -26,4 +26,4 @@ class DefaultPlanner {
 
 }  // namespace ark
 
-#endif  // ARK_PLANNER_HPP_
+#endif  // ARK_PLANNER_HPP
