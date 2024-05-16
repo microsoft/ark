@@ -58,12 +58,16 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
         op_to_node_[p.first] = it->second;
     }
     tensor_to_producer_op_ = other.tensor_to_producer_op_;
+    compressed_ = other.compressed_;
     return *this;
 }
 
 void ModelGraph::Impl::compress_nodes() {
-    this->recursive_remove_virtual_nodes();
-    this->recursive_merge_nodes();
+    if (!compressed_) {
+        this->recursive_remove_virtual_nodes();
+        this->recursive_merge_nodes();
+        compressed_ = true;
+    }
 }
 
 bool ModelGraph::Impl::verify() const {

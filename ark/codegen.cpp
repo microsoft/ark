@@ -34,10 +34,7 @@ namespace ark {
 
 class SyncStateInfo {
    public:
-    SyncStateInfo() {
-        static size_t next_id = 0;
-        id = next_id++;
-    }
+    SyncStateInfo(size_t id) : id(id) {}
 
     size_t id;
 };
@@ -98,6 +95,16 @@ CodeGenerator::Impl::Impl(const Json &plan,
 
     std::map<Range<size_t>, SyncStateInfo> sync_state_info;
 
+    auto get_state_id = [&sync_state_info](const Range<size_t> &range) {
+        auto it = sync_state_info.find(range);
+        if (it == sync_state_info.end()) {
+            size_t id = sync_state_info.size();
+            sync_state_info.emplace(range, SyncStateInfo(id));
+            return id;
+        }
+        return it->second.id;
+    };
+
     std::list<Range<size_t>> unsynced;
     std::stringstream body_ss;
     size_t pg_idx = 0;
@@ -120,7 +127,7 @@ CodeGenerator::Impl::Impl(const Json &plan,
                 }
                 // no need to sync if range is a part of proc_range.
                 if (intersec.size() < range.size()) {
-                    size_t state_id = sync_state_info[range].id;
+                    size_t state_id = get_state_id(range);
                     body_ss << sync_process_range(range, state_id);
                     if (intersec.size() < proc_range.size()) {
                         need_sync = true;
@@ -131,7 +138,7 @@ CodeGenerator::Impl::Impl(const Json &plan,
                 it = unsynced.erase(it);
             }
             if (need_sync) {
-                size_t state_id = sync_state_info[proc_range].id;
+                size_t state_id = get_state_id(proc_range);
                 body_ss << sync_process_range(proc_range, state_id);
             }
         }

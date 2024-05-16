@@ -23,6 +23,8 @@ class ModelGraph {
 
     void compress_nodes();
 
+    bool compressed() const;
+
     bool verify() const;
 
     std::string serialize(bool pretty = true) const;

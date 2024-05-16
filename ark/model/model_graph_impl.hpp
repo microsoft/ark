@@ -20,7 +20,7 @@ namespace ark {
 
 class ModelGraph::Impl {
    public:
-    Impl(){};
+    Impl() : compressed_(false) {};
 
     Impl(const Impl &other);
 
@@ -46,6 +46,8 @@ class ModelGraph::Impl {
     }
 
     void compress_nodes();
+
+    bool compressed() const { return compressed_; }
 
     bool verify() const;
 
@@ -84,6 +86,9 @@ class ModelGraph::Impl {
 
     /// The mapping from @ref ModelOp to the @ref ModelNode that contains it.
     std::map<ModelOpRef, ModelNodeRef> op_to_node_;
+
+    /// True if `compress_nodes` has been called.
+    bool compressed_;
 };
 
 }  // namespace ark

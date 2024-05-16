@@ -30,6 +30,8 @@ std::string ModelGraph::serialize(bool pretty) const {
 
 void ModelGraph::compress_nodes() { impl_->compress_nodes(); }
 
+bool ModelGraph::compressed() const { return impl_->compressed(); }
+
 bool ModelGraph::verify() const { return impl_->verify(); }
 
 }  // namespace ark

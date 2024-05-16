@@ -29,6 +29,7 @@ ark::unittest::State test_model_basics() {
     ark::Tensor t2 = model.add(t0, t1);
 
     UNITTEST_TRUE(model.verify());
+    UNITTEST_FALSE(model.compressed());
 
     // OpNode graph (parentheses indicate a OpNode):
     //
@@ -37,6 +38,7 @@ ark::unittest::State test_model_basics() {
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
+    UNITTEST_TRUE(compressed.compressed());
     UNITTEST_EQ(compressed.nodes().size(), 1);
 
     auto node = compressed.nodes().front();
