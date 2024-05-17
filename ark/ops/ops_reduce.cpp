@@ -44,7 +44,7 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
     read_tensors_ = {input};
     write_tensors_ = {output};
     result_tensors_ = {result};
-    args_ = {{"Axis", axis}, {"KeepDims", keepdims}};
+    args_ = {{"Axis", axis}, {"KeepDim", keepdims}};
     verify();
 }
 
@@ -65,7 +65,7 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
     int sram_bytes = config.at("SramBytes");
     std::string impl_type = config.at("ImplType");
     int axis = args_.at("Axis").value<int>();
-    bool keep_dims = args_.at("KeepDims").value<bool>();
+    bool keep_dims = args_.at("KeepDim").value<bool>();
 
     // Translate the axis value into 4D representation.
     axis += 4 - read_tensors_[0]->shape().ndims();

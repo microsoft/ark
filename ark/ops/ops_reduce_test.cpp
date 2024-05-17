@@ -7,7 +7,7 @@
 
 #include "ops_test_common.hpp"
 
-template <typename T, bool KeepDims = true>
+template <typename T, bool KeepDim = true>
 void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
@@ -19,7 +19,7 @@ void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     ark::Dims ish = input_shapes[0].dims4();
 
-    if (KeepDims) {
+    if (KeepDim) {
         assert(osh[0] == 1);
     } else {
         osh.insert(0, 1);
@@ -40,7 +40,7 @@ void baseline_reduce_sum_axis0(std::vector<void *> &outputs,
     }
 }
 
-template <typename T, bool KeepDims = true>
+template <typename T, bool KeepDim = true>
 void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
@@ -52,7 +52,7 @@ void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     ark::Dims ish = input_shapes[0].dims4();
 
-    if (KeepDims) {
+    if (KeepDim) {
         assert(osh[1] == 1);
     } else {
         osh.insert(1, 1);
@@ -73,7 +73,7 @@ void baseline_reduce_sum_axis1(std::vector<void *> &outputs,
     }
 }
 
-template <typename T, bool KeepDims = true>
+template <typename T, bool KeepDim = true>
 void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
@@ -85,7 +85,7 @@ void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     ark::Dims ish = input_shapes[0].dims4();
 
-    if (KeepDims) {
+    if (KeepDim) {
         assert(osh[2] == 1);
     } else {
         osh.insert(2, 1);
@@ -107,7 +107,7 @@ void baseline_reduce_sum_axis2(std::vector<void *> &outputs,
     }
 };
 
-template <typename T, bool KeepDims = true>
+template <typename T, bool KeepDim = true>
 void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
@@ -119,7 +119,7 @@ void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     ark::Dims ish = input_shapes[0].dims4();
 
-    if (KeepDims) {
+    if (KeepDim) {
         assert(osh[3] == 1);
     } else {
         osh.insert(3, 1);
@@ -141,7 +141,7 @@ void baseline_reduce_sum_axis3(std::vector<void *> &outputs,
     }
 };
 
-template <typename T, bool KeepDims = true>
+template <typename T, bool KeepDim = true>
 void baseline_reduce_max_axis3(std::vector<void *> &outputs,
                                const std::vector<ark::Dims> &output_shapes,
                                const std::vector<void *> &inputs,
@@ -153,7 +153,7 @@ void baseline_reduce_max_axis3(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     ark::Dims ish = input_shapes[0].dims4();
 
-    if (KeepDims) {
+    if (KeepDim) {
         assert(osh[3] == 1);
     } else {
         osh.insert(3, 1);
@@ -177,7 +177,7 @@ void baseline_reduce_max_axis3(std::vector<void *> &outputs,
     }
 };
 
-template <typename T, bool KeepDims = true>
+template <typename T, bool KeepDim = true>
 void baseline_reduce_mean_axis3(std::vector<void *> &outputs,
                                 const std::vector<ark::Dims> &output_shapes,
                                 const std::vector<void *> &inputs,
@@ -189,7 +189,7 @@ void baseline_reduce_mean_axis3(std::vector<void *> &outputs,
     ark::Dims osh = output_shapes[0];
     ark::Dims ish = input_shapes[0].dims4();
 
-    if (KeepDims) {
+    if (KeepDim) {
         assert(osh[3] == 1);
     } else {
         osh.insert(3, 1);

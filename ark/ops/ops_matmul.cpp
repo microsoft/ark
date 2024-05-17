@@ -122,8 +122,8 @@ ModelOpMatmul::ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
     args_["OtherDimNC"] = ncb;
     args_["ShapeMNK"] = shape_mnk;
     args_["StridesACDB"] = strides_acdb;
-    args_["IsInputColumnMajor"] = trans_input;
-    args_["IsOtherColumnMajor"] = trans_other;
+    args_["TransposeInput"] = trans_input;
+    args_["TransposeOther"] = trans_other;
 
     verify();
 }
@@ -142,8 +142,8 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
     Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();
     Dims shape_mnk = args_.at("ShapeMNK").value<Dims>();
     Dims strides_acdb = args_.at("StridesACDB").value<Dims>();
-    bool is_input_column_major = args_.at("IsInputColumnMajor").value<bool>();
-    bool is_other_column_major = args_.at("IsOtherColumnMajor").value<bool>();
+    bool is_input_column_major = args_.at("TransposeInput").value<bool>();
+    bool is_other_column_major = args_.at("TransposeOther").value<bool>();
 
     if (tile_shape_mnk.ndims() != tile_pad_mnk.ndims()) {
         ERR(InvalidUsageError,
