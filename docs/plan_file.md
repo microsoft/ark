@@ -99,6 +99,10 @@ The followings describe `Config` structure of different types of operators.
 
 ## ProcessorGroup
 
+A `ProcessorGroup` object describes computing tasks of a group of processors (e.g., streaming multiprocessor of NVIDIA architectures). `ProcessorRange` field is an integer array [Begin, End, Step] that describes the set of processor IDs used by this processor group. A processor group consists of a sequence of `ResourceGroup`s. Each resource group should use the whole or a part of the processors used by the processor group.
+
+Multiple processor groups are executed in the order as appears in the plan file, but not necessarily in sequence. Specifically, if a later processor group uses a part of processors used by an earlier processor group, the executor will put a processor barrier to synchronize all processors in both processor groups. Otherwise, if a later processor group does not use any processors of earlier processor groups, the later processor group will be executed immediately without a processor barrier, which may run concurrently with earlier processor groups.
+
 ## ResourceGroup
 
 ## TaskGroup
