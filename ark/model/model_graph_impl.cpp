@@ -58,6 +58,8 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
         op_to_node_[p.first] = it->second;
     }
     tensor_to_producer_op_ = other.tensor_to_producer_op_;
+    rank_ = other.rank_;
+    world_size_ = other.world_size_;
     compressed_ = other.compressed_;
     return *this;
 }
@@ -457,6 +459,8 @@ Json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
 
 std::string ModelGraph::Impl::serialize(bool pretty) const {
     Json j;
+    j["Rank"] = rank_;
+    j["WorldSize"] = world_size_;
     j["Nodes"] = Json::array();
     for (const auto &node : nodes_) {
         j["Nodes"].emplace_back(this->to_json(node));

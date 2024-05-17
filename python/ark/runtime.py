@@ -8,6 +8,7 @@ import traceback
 from _ark_core import _Executor, _DefaultPlanner
 from .model import Model
 
+
 class _RuntimeState:
     """
     The _RuntimeState class is used to store the state of the model.

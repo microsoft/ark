@@ -9,7 +9,8 @@
 
 namespace ark {
 
-ModelGraph::ModelGraph() : impl_(std::make_unique<ModelGraph::Impl>()) {}
+ModelGraph::ModelGraph(int rank, int world_size)
+    : impl_(std::make_unique<ModelGraph::Impl>(rank, world_size)) {}
 
 ModelGraph::ModelGraph(const ModelGraph &other)
     : impl_(std::make_unique<ModelGraph::Impl>(*other.impl_)) {}
@@ -27,6 +28,10 @@ std::vector<ModelNodeRef> ModelGraph::nodes() const { return impl_->nodes(); }
 std::string ModelGraph::serialize(bool pretty) const {
     return impl_->serialize(pretty);
 }
+
+int ModelGraph::rank() const { return impl_->rank(); }
+
+int ModelGraph::world_size() const { return impl_->world_size(); }
 
 void ModelGraph::compress_nodes() { impl_->compress_nodes(); }
 

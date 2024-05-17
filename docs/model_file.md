@@ -2,6 +2,8 @@
 
 ## Hierarchy
 
+    - Rank (Int)
+    - WorldSize (Int)
     - Nodes (Array of Node)
         - Node (Object)
             - Id (Int)
@@ -111,4 +113,26 @@ The followings describe arguments of different types of operators. Those that ar
 
 ## Tensor
 
-A `Tensor` object describes an N-dimensional (0 < N <= 4) data patch over the memory. A tensor points to the whole or a part of memory of a `Buffer` object. Since a tensor itself is not a buffer, multiple tensors may point to the same or overlapped address space, while buffers represent an exclusive address space from each other. Also, while a buffer represents only a sequential address space, a tensor can refer to a strided address space. For example, if `Shape` of a tensor is [x0, x1, x2, x3] and `Strides` of a tensor is [y0, y1, y2, y3], 
+A `Tensor` object describes an N-dimensional (0 < N <= 4) data patch over the memory. A tensor points to the whole or a part of memory space of a `Buffer` object. Since a tensor itself is not a buffer, multiple tensors may point to the same or overlapped address space, while buffers represent an exclusive address space from each other. Also, while a buffer represents only a sequential address space, a tensor can refer to a strided address space. For example, if `Shape` is `[s_0, s_1, s_2, s_3]`, `Strides` is `[t_0, t_1, t_2, t_3]`, and `Offsets` is `[f_0, f_1, f_2, f_3]` (where `t_i` >= `s_i` + `f_i`), the tensor refers to data elements from index `f_i` to index `f_i + s_i - 1` in each dimension, among the entire dimension from `0` to `t_i - 1`. `Shape`, `Strides`, and `Offsets` should have the same number of dimensions.
+
+`DataType` field of a tensor represents the data type of each element. Currently, the following data types are supported.
+
+- `FP32`
+- `FP16`
+- `BF16`
+- `INT32`
+- `UINT32`
+- `INT8`
+- `UINT8`
+- `BYTE`
+
+`Pads` field is currently unused and will be used in the future. For now, `Pads` should be an array of ones with the same number of dimension as `Shape`.
+
+## Buffer
+
+As explained in the Tensor section, a `Buffer` object represents a unique and sequential memory space. Buffer objects have following fields.
+
+- `Id`: a unique buffer ID.
+- `Rank`: rank of the model that physically allocates this buffer. If -1, it refers to the local rank (the rank of this model file).
+- `SendTags`: a list of (`RemoteRank`, `Tag`) tuples, which indicates that the data of this buffer may be copied to a remote buffer allocated by `RemoteRank`. `Tag` is an integer to identify the corresponding `RecvTags` entry of the remote buffer, i.e., the remote buffer should have a corresponding (`Rank`, `Tag`) entry in its `RecvTags`, where `Rank` is the local rank and the same `Tag` value.
+- `RecvTags`: a list of (`RemoteRank`, `Tag`) tuples, which indicates that this buffer may be overwritten by data from a remote buffer allocated by `RemoteRank`. `Tag` is an integer to identify the corresponding `SendTags` entry of the remote buffer, i.e., the remote buffer should have a corresponding (`Rank`, `Tag`) entry in its `SendTags`, where `Rank` is the local rank and the same `Tag` value.

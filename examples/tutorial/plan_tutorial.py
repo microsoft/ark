@@ -342,8 +342,6 @@ def main(plan_path: str):
     with ark.Runtime.get_runtime() as rt:
         rt.launch(plan_path=plan_path)
 
-        assert(rt.launched() == True)
-
         # Initialize
         InputModule.initialize()
         FeedForwardModule.initialize()

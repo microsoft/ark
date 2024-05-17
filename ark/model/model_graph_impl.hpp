@@ -20,7 +20,8 @@ namespace ark {
 
 class ModelGraph::Impl {
    public:
-    Impl() : compressed_(false) {};
+    Impl(int rank, int world_size)
+        : rank_(rank), world_size_(world_size), compressed_(false){};
 
     Impl(const Impl &other);
 
@@ -44,6 +45,10 @@ class ModelGraph::Impl {
         add_op(op);
         return op;
     }
+
+    int rank() const { return rank_; }
+
+    int world_size() const { return world_size_; }
 
     void compress_nodes();
 
@@ -86,6 +91,12 @@ class ModelGraph::Impl {
 
     /// The mapping from @ref ModelOp to the @ref ModelNode that contains it.
     std::map<ModelOpRef, ModelNodeRef> op_to_node_;
+
+    /// Rank
+    int rank_;
+
+    /// World size
+    int world_size_;
 
     /// True if `compress_nodes` has been called.
     bool compressed_;

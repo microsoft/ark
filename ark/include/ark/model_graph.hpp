@@ -13,13 +13,17 @@ namespace ark {
 
 class ModelGraph {
    public:
-    ModelGraph();
+    ModelGraph(int rank, int world_size);
 
     ModelGraph(const ModelGraph &other);
 
     ~ModelGraph();
 
     ModelGraph &operator=(const ModelGraph &other);
+
+    int rank() const;
+
+    int world_size() const;
 
     void compress_nodes();
 

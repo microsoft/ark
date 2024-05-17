@@ -771,13 +771,9 @@ float Executor::stop(int64_t max_spin_count) {
 
 void Executor::barrier() { impl_->barrier(); }
 
-void Executor::destroy() {
-    impl_.reset(nullptr);
-}
+void Executor::destroy() { impl_.reset(nullptr); }
 
-bool Executor::destroyed() const {
-    return impl_.get() == nullptr;
-}
+bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
 void Executor::tensor_read(const Tensor tensor, void *data,
                            size_t bytes) const {

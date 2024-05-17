@@ -1,13 +1,11 @@
 {
   "Rank": 0,
   "WorldSize": 1,
-  "NumProcessors": 108,
-  "NumWarpsPerProcessor": 4,
-  "TaskInfos": [
+  "Nodes": [
     {
       "Id": 0,
-      "NumWarps": 4,
-      "SramBytes": 98304,
+      "ProducerNodeIds": [],
+      "ConsumerNodeIds": [2],
       "Ops": [
         {
           "Type": "Matmul",
@@ -74,22 +72,8 @@
             "TransposeOther": {
               "BOOL": true
             }
-          },
-          "Config": {
-            "NumWarps": 4,
-            "SramBytes": 98304,
-            "TileShapeMNK": [64,64,64],
-            "TilePadMNK": [64,64,64],
-            "NumTasks": 1376
           }
-        }
-      ]
-    },
-    {
-      "Id": 1,
-      "NumWarps": 1,
-      "SramBytes": 0,
-      "Ops": [
+        },
         {
           "Type": "Sigmoid",
           "Name": "sigmoid",
@@ -127,21 +111,8 @@
               "Pads": [1,1,1]
             }
           ],
-          "Args": {},
-          "Config": {
-            "NumWarps": 1,
-            "SramBytes": 0,
-            "Tile": [1,64],
-            "NumTasks": 88064
-          }
-        }
-      ]
-    },
-    {
-      "Id": 2,
-      "NumWarps": 1,
-      "SramBytes": 0,
-      "Ops": [
+          "Args": {}
+        },
         {
           "Type": "Mul",
           "Name": "mul",
@@ -188,20 +159,14 @@
               "Pads": [1,1,1]
             }
           ],
-          "Args": {},
-          "Config": {
-            "NumWarps": 1,
-            "SramBytes": 0,
-            "Tile": [1,64],
-            "NumTasks": 88064
-          }
+          "Args": {}
         }
       ]
     },
     {
-      "Id": 3,
-      "NumWarps": 4,
-      "SramBytes": 98304,
+      "Id": 1,
+      "ProducerNodeIds": [],
+      "ConsumerNodeIds": [2],
       "Ops": [
         {
           "Type": "Matmul",
@@ -268,21 +233,14 @@
             "TransposeOther": {
               "BOOL": true
             }
-          },
-          "Config": {
-            "NumWarps": 4,
-            "SramBytes": 98304,
-            "TileShapeMNK": [64,64,64],
-            "TilePadMNK": [64,64,64],
-            "NumTasks": 1376
           }
         }
       ]
     },
     {
-      "Id": 4,
-      "NumWarps": 1,
-      "SramBytes": 0,
+      "Id": 2,
+      "ProducerNodeIds": [1,0],
+      "ConsumerNodeIds": [],
       "Ops": [
         {
           "Type": "Mul",
@@ -330,21 +288,8 @@
               "Pads": [1,1,1]
             }
           ],
-          "Args": {},
-          "Config": {
-            "NumWarps": 1,
-            "SramBytes": 0,
-            "Tile": [1,64],
-            "NumTasks": 88064
-          }
-        }
-      ]
-    },
-    {
-      "Id": 5,
-      "NumWarps": 4,
-      "SramBytes": 98304,
-      "Ops": [
+          "Args": {}
+        },
         {
           "Type": "Matmul",
           "Name": "matmul_1",
@@ -410,94 +355,7 @@
             "TransposeOther": {
               "BOOL": true
             }
-          },
-          "Config": {
-            "NumWarps": 4,
-            "SramBytes": 98304,
-            "TileShapeMNK": [64,64,64],
-            "TilePadMNK": [64,64,64],
-            "NumTasks": 512
           }
-        }
-      ]
-    }
-  ],
-  "ProcessorGroups": [
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,108],
-          "WarpRange": [0,4],
-          "SramRange": [0,98304],
-          "TaskGroups": [
-            {"TaskId":0,"TaskRange":[0,1376],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,108],
-          "WarpRange": [0,1],
-          "SramRange": [0,0],
-          "TaskGroups": [
-            {"TaskId":1,"TaskRange":[0,88064],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,108],
-          "WarpRange": [0,1],
-          "SramRange": [0,0],
-          "TaskGroups": [
-            {"TaskId":2,"TaskRange":[0,88064],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,108],
-          "WarpRange": [0,4],
-          "SramRange": [0,98304],
-          "TaskGroups": [
-            {"TaskId":3,"TaskRange":[0,1376],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,108],
-          "WarpRange": [0,1],
-          "SramRange": [0,0],
-          "TaskGroups": [
-            {"TaskId":4,"TaskRange":[0,88064],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,108],
-          "WarpRange": [0,4],
-          "SramRange": [0,98304],
-          "TaskGroups": [
-            {"TaskId":5,"TaskRange":[0,512],"Granularity":1}
-          ]
         }
       ]
     }
