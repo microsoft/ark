@@ -59,10 +59,10 @@
             "InputDimNC": {
               "DIMS": [1,1]
             },
-            "IsInputColumnMajor": {
+            "TransposeInput": {
               "BOOL": false
             },
-            "IsOtherColumnMajor": {
+            "TransposeOther": {
               "BOOL": true
             },
             "OtherDimNC": {
@@ -253,10 +253,10 @@
             "InputDimNC": {
               "DIMS": [1,1]
             },
-            "IsInputColumnMajor": {
+            "TransposeInput": {
               "BOOL": false
             },
-            "IsOtherColumnMajor": {
+            "TransposeOther": {
               "BOOL": true
             },
             "OtherDimNC": {
@@ -395,10 +395,10 @@
             "InputDimNC": {
               "DIMS": [1,1]
             },
-            "IsInputColumnMajor": {
+            "TransposeInput": {
               "BOOL": false
             },
-            "IsOtherColumnMajor": {
+            "TransposeOther": {
               "BOOL": true
             },
             "OtherDimNC": {
