@@ -198,28 +198,50 @@ std::vector<ModelOpArg> ModelOpMatmul::impl_args([
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-Json ModelOpMatmul::default_config([[maybe_unused]] const Arch &arch) const {
+static const Json get_default_config(const ArchRef arch,
+                                     const ModelDataType &data_type) {
+    if (arch->belongs_to(ARCH_CUDA_80) && data_type == FP32.ref()) {
+        return {{"NumWarps", 8},
+                {"SramBytes", 147456},
+                {"TileShapeMNK", {128, 256, 32}},
+                {"TilePadMNK", {128, 256, 32}}};
+    } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == FP16.ref()) {
+        return {{"NumWarps", 8},
+                {"SramBytes", 147456},
+                {"TileShapeMNK", {128, 256, 64}},
+                {"TilePadMNK", {128, 256, 64}}};
+    } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == BF16.ref()) {
+        return {{"NumWarps", 8},
+                {"SramBytes", 147456},
+                {"TileShapeMNK", {128, 256, 64}},
+                {"TilePadMNK", {128, 256, 64}}};
+    } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP32.ref()) {
+        return {{"NumWarps", 4},
+                {"SramBytes", 24672},
+                {"TileShapeMNK", {256, 128, 16}},
+                {"TilePadMNK", {256, 128, 16}}};
+    } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP16.ref()) {
+        return {{"NumWarps", 4},
+                {"SramBytes", 24672},
+                {"TileShapeMNK", {256, 128, 32}},
+                {"TilePadMNK", {256, 128, 32}}};
+    } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == BF16.ref()) {
+        return {{"NumWarps", 4},
+                {"SramBytes", 24672},
+                {"TileShapeMNK", {256, 128, 32}},
+                {"TilePadMNK", {256, 128, 32}}};
+    }
+    ERR(InvalidUsageError, "Unsupported arch and data type: ", arch->name(),
+        " and ", data_type->type_name());
+    return {};
+}
+
+Json ModelOpMatmul::default_config(const ArchRef arch) const {
     Dims shape_mnk = args_.at("ShapeMNK").value<Dims>();
     Dims input_dim_nc = args_.at("InputDimNC").value<Dims>();
     Dims other_dim_nc = args_.at("OtherDimNC").value<Dims>();
     auto result = result_tensors_[0];
-    Json config;
-    if (result->data_type() == FP32.ref()) {
-        config["NumWarps"] = 4;
-        config["SramBytes"] = 49152;
-        config["TileShapeMNK"] = {64, 64, 32};
-        config["TilePadMNK"] = {64, 64, 32};
-    } else if (result->data_type() == FP16.ref()) {
-        config["NumWarps"] = 4;
-        config["SramBytes"] = 98304;
-        config["TileShapeMNK"] = {64, 64, 64};
-        config["TilePadMNK"] = {64, 64, 64};
-    } else if (result->data_type() == BF16.ref()) {
-        config["NumWarps"] = 4;
-        config["SramBytes"] = 98304;
-        config["TileShapeMNK"] = {64, 64, 64};
-        config["TilePadMNK"] = {64, 64, 64};
-    }
+    Json config = get_default_config(arch, result->data_type());
     size_t tile_x = config.at("TileShapeMNK")[0];
     size_t tile_y = config.at("TileShapeMNK")[1];
     size_t num_tasks = std::max(input_dim_nc[0], other_dim_nc[0]);

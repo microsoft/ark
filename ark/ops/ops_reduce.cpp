@@ -109,7 +109,7 @@ std::vector<ModelOpArg> ModelOpReduce::impl_args([
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-Json ModelOpReduce::default_config([[maybe_unused]] const Arch &arch) const {
+Json ModelOpReduce::default_config([[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     int axis = args_.at("Axis").value<int>();

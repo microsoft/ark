@@ -104,7 +104,8 @@ std::vector<ModelOpArg> ModelOpTranspose::impl_args([
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-Json ModelOpTranspose::default_config([[maybe_unused]] const Arch &arch) const {
+Json ModelOpTranspose::default_config([
+    [maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

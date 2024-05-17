@@ -19,7 +19,7 @@ class ModelOpTranspose : public ModelOp {
 
     std::vector<ModelOpArg> impl_args(const Json &config) const override;
 
-    Json default_config(const Arch &arch = ARCH_ANY) const override;
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
 }  // namespace ark

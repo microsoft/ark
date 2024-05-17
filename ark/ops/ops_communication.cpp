@@ -51,7 +51,7 @@ std::vector<ModelOpArg> ModelOpSend::impl_args([
     return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[0])};
 }
 
-Json ModelOpSend::default_config([[maybe_unused]] const Arch &arch) const {
+Json ModelOpSend::default_config([[maybe_unused]] const ArchRef arch) const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 
@@ -76,7 +76,8 @@ std::vector<ModelOpArg> ModelOpSendDone::impl_args([
     return {};
 }
 
-Json ModelOpSendDone::default_config([[maybe_unused]] const Arch &arch) const {
+Json ModelOpSendDone::default_config([
+    [maybe_unused]] const ArchRef arch) const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 
@@ -107,7 +108,7 @@ std::vector<ModelOpArg> ModelOpRecv::impl_args([
     return {};
 }
 
-Json ModelOpRecv::default_config([[maybe_unused]] const Arch &arch) const {
+Json ModelOpRecv::default_config([[maybe_unused]] const ArchRef arch) const {
     return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
 }
 

@@ -90,21 +90,21 @@ std::string get_kernel_code(const std::string &name);
 #define UNITTEST_SEXIT() UNITTEST_EXIT(ark::unittest::SUCCESS, "")
 
 // Check if the given condition is true.
-#define UNITTEST_TRUE(cond)                             \
-    do {                                                \
-        if (cond) {                                     \
-            break;                                      \
-        }                                               \
-        UNITTEST_FEXIT("condition `" #cond "` failed"); \
+#define UNITTEST_TRUE(cond)                               \
+    do {                                                  \
+        if (cond) {                                       \
+            break;                                        \
+        }                                                 \
+        UNITTEST_FEXIT("condition `" #cond "` is false"); \
     } while (0)
 
 // Check if the given condition is false.
-#define UNITTEST_FALSE(cond)                                \
-    do {                                                    \
-        if (cond) {                                         \
-            UNITTEST_FEXIT("condition `" #cond "` failed"); \
-        }                                                   \
-        break;                                              \
+#define UNITTEST_FALSE(cond)                                 \
+    do {                                                     \
+        if (cond) {                                          \
+            UNITTEST_FEXIT("condition `" #cond "` is true"); \
+        }                                                    \
+        break;                                               \
     } while (0)
 
 // Check if the given expressions are equal.

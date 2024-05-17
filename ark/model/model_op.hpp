@@ -54,7 +54,7 @@ class ModelOp {
     }
 
     virtual Json default_config(
-        [[maybe_unused]] const Arch &arch = ARCH_ANY) const {
+        [[maybe_unused]] const ArchRef arch = ARCH_ANY) const {
         return {{"NumTasks", 0}, {"NumWarps", 0}, {"SramBytes", 0}};
     }
 

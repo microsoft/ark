@@ -4,10 +4,14 @@
 #ifndef ARK_ARCH_HPP_
 #define ARK_ARCH_HPP_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace ark {
+
+class Arch;
+using ArchRef = std::shared_ptr<Arch>;
 
 class Arch {
    private:
@@ -25,6 +29,8 @@ class Arch {
 
     Arch(const Arch &other) = default;
 
+    Arch &operator=(const Arch &other);
+
     const std::string &name() const { return name_; }
 
     bool operator==(const Arch &other) const;
@@ -33,23 +39,23 @@ class Arch {
 
     const std::vector<std::string> &category() const { return category_; }
 
-    bool belongs_to(const Arch &arch) const;
+    bool belongs_to(const ArchRef arch) const;
 
-    bool later_than(const Arch &arch) const;
+    bool later_than(const ArchRef arch) const;
 
-    static const Arch &from_name(const std::string &name);
+    static const ArchRef from_name(const std::string &name);
 };
 
-extern const Arch ARCH_ANY;
+extern const ArchRef ARCH_ANY;
 
-extern const Arch ARCH_CUDA;
-extern const Arch ARCH_CUDA_70;
-extern const Arch ARCH_CUDA_80;
-extern const Arch ARCH_CUDA_90;
+extern const ArchRef ARCH_CUDA;
+extern const ArchRef ARCH_CUDA_70;
+extern const ArchRef ARCH_CUDA_80;
+extern const ArchRef ARCH_CUDA_90;
 
-extern const Arch ARCH_ROCM;
-extern const Arch ARCH_ROCM_90A;
-extern const Arch ARCH_ROCM_942;
+extern const ArchRef ARCH_ROCM;
+extern const ArchRef ARCH_ROCM_90A;
+extern const ArchRef ARCH_ROCM_942;
 
 }  // namespace ark
 

@@ -51,7 +51,7 @@ std::vector<ModelOpArg> ModelOpBroadcast1::impl_args([
 }
 
 Json ModelOpBroadcast1::default_config([
-    [maybe_unused]] const Arch &arch) const {
+    [maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
@@ -129,7 +129,7 @@ std::vector<ModelOpArg> ModelOpBroadcast2::impl_args([
 }
 
 Json ModelOpBroadcast2::default_config([
-    [maybe_unused]] const Arch &arch) const {
+    [maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

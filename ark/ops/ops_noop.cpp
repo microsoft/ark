@@ -21,7 +21,7 @@ std::vector<ModelOpArg> ModelOpNoop::impl_args([
     return {};
 }
 
-Json ModelOpNoop::default_config([[maybe_unused]] const Arch &arch) const {
+Json ModelOpNoop::default_config([[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

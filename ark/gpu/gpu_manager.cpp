@@ -9,12 +9,11 @@
 #include "utils/utils_string.hpp"
 
 namespace ark {
+
 class GpuManager::Impl {
    public:
     Impl(int gpu_id);
     ~Impl() = default;
-    Impl(const Impl &) = delete;
-    Impl &operator=(const Impl &) = delete;
 
    private:
     friend class GpuManager;

@@ -13,6 +13,7 @@
 #include "gpu/gpu_stream.h"
 
 namespace ark {
+
 class GpuManager {
    public:
     static std::shared_ptr<GpuManager> get_instance(int gpu_id);
@@ -53,7 +54,7 @@ class GpuManager {
         int min_threads_per_block =
             max_registers_per_block / max_registers_per_thread;
         int smem_align = 128;  // TODO: how to get this?
-        Arch arch;
+        ArchRef arch;
     };
 
    private:

@@ -51,7 +51,7 @@ std::vector<ModelOpArg> ModelOpScalarAssign::impl_args([
 }
 
 Json ModelOpScalarAssign::default_config([
-    [maybe_unused]] const Arch &arch) const {
+    [maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
