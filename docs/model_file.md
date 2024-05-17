@@ -1,5 +1,7 @@
 # Model File Format
 
+See an example model file: [Example 1](../examples/tutorial/model.json).
+
 ## Hierarchy
 
     - Rank (Int)
