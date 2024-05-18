@@ -15,6 +15,9 @@ __forceinline__ __device__ void task_seq(char *_buf) {
     constexpr size_t SramBytesPerWarp = SlotSramBytes / SlotNumWarps;
     size_t p = ((blockIdx.x + gridDim.x - ProcCurrent) % gridDim.x) / ProcStep;
     size_t k = threadIdx.x / SlotNumThreads;
+    if constexpr (ARK_WARPS_PER_BLOCK > SlotNumWarps) {
+      if (k >= NumSlots) return;
+    }
     size_t task_id_base = TaskBegin + p * TaskStep * TaskGranularity;
     for (size_t t = k; ; t += NumSlots) {
       size_t task_id = task_id_base + TaskStep *
@@ -22,7 +25,6 @@ __forceinline__ __device__ void task_seq(char *_buf) {
       if (task_id >= TaskEnd) break;
       task(_buf, task_id, SramBytesPerWarp);
     }
-    __syncthreads();
   }
 }
 

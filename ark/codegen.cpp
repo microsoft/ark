@@ -143,8 +143,7 @@ CodeGenerator::Impl::Impl(const Json &plan,
             }
         }
         for (auto &rg : pg["ResourceGroups"]) {
-            body_ss << this->resource_group(rg, plan.at("TaskInfos"),
-                                            proc_range);
+            body_ss << resource_group(rg, plan.at("TaskInfos"), proc_range);
         }
         unsynced.push_back(proc_range);
         pg_idx++;

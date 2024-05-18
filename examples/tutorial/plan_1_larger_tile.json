@@ -109,7 +109,7 @@
             {
               "Id": 6,
               "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Buffer": {"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
@@ -120,7 +120,7 @@
             {
               "Id": 7,
               "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Buffer": {"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
@@ -159,7 +159,7 @@
             {
               "Id": 7,
               "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Buffer": {"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
@@ -170,7 +170,7 @@
             {
               "Id": 8,
               "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Buffer": {"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
@@ -181,7 +181,7 @@
             {
               "Id": 9,
               "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Buffer": {"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
@@ -292,7 +292,7 @@
             {
               "Id": 9,
               "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
+              "Buffer": {"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
@@ -351,19 +351,19 @@
           "IsVirtual": false,
           "ReadTensors": [
             {
-              "Id": 16,
+              "Id": 13,
               "DataType": "FP16",
               "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,8320],
+              "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
               "Pads": [1,1,1]
             },
             {
-              "Id": 17,
+              "Id": 2,
               "DataType": "FP16",
               "Buffer": {"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [4096,8320],
+              "Shape": [4096,11008],
               "Strides": [4096,11008],
               "Offsets": [0,0],
               "Pads": [1,1]
@@ -372,168 +372,6 @@
           "WriteTensors": [
             {
               "Id": 14,
-              "DataType": "FP16",
-              "Buffer": {"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,4096],
-              "Strides": [1,512,4096],
-              "Offsets": [0,0,0],
-              "Pads": [1,1,1]
-            }
-          ],
-          "ResultTensors": [
-            {
-              "Id": 22,
-              "DataType": "FP16",
-              "Buffer": {"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,4096],
-              "Strides": [1,512,4096],
-              "Offsets": [0,0,0],
-              "Pads": [1,1,1]
-            }
-          ],
-          "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,4096,8320]
-            },
-            "StridesACDB": {
-              "DIMS": [11008,4096,4096,11008]
-            },
-            "TransposeInput": {
-              "BOOL": false
-            },
-            "TransposeOther": {
-              "BOOL": true
-            }
-          },
-          "Config": {
-            "NumWarps": 8,
-            "SramBytes": 147456,
-            "TileShapeMNK": [128,256,64],
-            "TilePadMNK": [128,256,64],
-            "NumTasks": 64
-          }
-        }
-      ]
-    },
-    {
-      "Id": 6,
-      "NumWarps": 8,
-      "SramBytes": 147456,
-      "Ops": [
-        {
-          "Type": "Matmul",
-          "Name": "matmul_1",
-          "IsVirtual": false,
-          "ReadTensors": [
-            {
-              "Id": 18,
-              "DataType": "FP16",
-              "Buffer": {"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,2688],
-              "Strides": [1,512,11008],
-              "Offsets": [0,0,8320],
-              "Pads": [1,1,1]
-            },
-            {
-              "Id": 19,
-              "DataType": "FP16",
-              "Buffer": {"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [4096,2688],
-              "Strides": [4096,11008],
-              "Offsets": [0,8320],
-              "Pads": [1,1]
-            }
-          ],
-          "WriteTensors": [
-            {
-              "Id": 20,
-              "DataType": "FP16",
-              "Buffer": {"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,4096],
-              "Strides": [1,512,4096],
-              "Offsets": [0,0,0],
-              "Pads": [1,1,1]
-            }
-          ],
-          "ResultTensors": [
-            {
-              "Id": 21,
-              "DataType": "FP16",
-              "Buffer": {"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,4096],
-              "Strides": [1,512,4096],
-              "Offsets": [0,0,0],
-              "Pads": [1,1,1]
-            }
-          ],
-          "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,4096,2688]
-            },
-            "StridesACDB": {
-              "DIMS": [11008,4096,4096,11008]
-            },
-            "TransposeInput": {
-              "BOOL": false
-            },
-            "TransposeOther": {
-              "BOOL": true
-            }
-          },
-          "Config": {
-            "NumWarps": 8,
-            "SramBytes": 147456,
-            "TileShapeMNK": [128,256,64],
-            "TilePadMNK": [128,256,64],
-            "NumTasks": 64
-          }
-        }
-      ]
-    },
-    {
-      "Id": 7,
-      "NumWarps": 8,
-      "SramBytes": 0,
-      "Ops": [
-        {
-          "Type": "Add",
-          "Name": "add_1",
-          "IsVirtual": false,
-          "ReadTensors": [
-            {
-              "Id": 22,
-              "DataType": "FP16",
-              "Buffer": {"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,4096],
-              "Strides": [1,512,4096],
-              "Offsets": [0,0,0],
-              "Pads": [1,1,1]
-            },
-            {
-              "Id": 21,
-              "DataType": "FP16",
-              "Buffer": {"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[]},
-              "Shape": [1,512,4096],
-              "Strides": [1,512,4096],
-              "Offsets": [0,0,0],
-              "Pads": [1,1,1]
-            }
-          ],
-          "WriteTensors": [
-            {
-              "Id": 23,
               "DataType": "FP16",
               "Buffer": {"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},
               "Shape": [1,512,4096],
@@ -553,11 +391,31 @@
               "Pads": [1,1,1]
             }
           ],
-          "Args": {},
+          "Args": {
+            "InputDimNC": {
+              "DIMS": [1,1]
+            },
+            "OtherDimNC": {
+              "DIMS": [1,1]
+            },
+            "ShapeMNK": {
+              "DIMS": [512,4096,11008]
+            },
+            "StridesACDB": {
+              "DIMS": [11008,4096,4096,11008]
+            },
+            "TransposeInput": {
+              "BOOL": false
+            },
+            "TransposeOther": {
+              "BOOL": true
+            }
+          },
           "Config": {
             "NumWarps": 8,
-            "SramBytes": 0,
-            "Tile": [128,256],
+            "SramBytes": 147456,
+            "TileShapeMNK": [128,256,64],
+            "TilePadMNK": [128,256,64],
             "NumTasks": 64
           }
         }
@@ -639,32 +497,6 @@
           "SramRange": [0,147456],
           "TaskGroups": [
             {"TaskId":5,"TaskRange":[0,64],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [64,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [64,108],
-          "WarpRange": [0,8],
-          "SramRange": [0,147456],
-          "TaskGroups": [
-            {"TaskId":6,"TaskRange":[0,64],"Granularity":1}
-          ]
-        }
-      ]
-    },
-    {
-      "ProcessorRange": [0,108],
-      "ResourceGroups": [
-        {
-          "ProcessorRange": [0,64],
-          "WarpRange": [0,8],
-          "SramRange": [0,0],
-          "TaskGroups": [
-            {"TaskId":7,"TaskRange":[0,64],"Granularity":1}
           ]
         }
       ]
