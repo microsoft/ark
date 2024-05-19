@@ -57,26 +57,30 @@ Each node may produce or consume tensors. Produced tensors are those that appear
 
 ## Op
 
-An `Op` object describes computation that reads from `ReadTensors`, reads & writes on `WriteTensors`, and returns `ResultTensors`. `Type` is a string that describes the type of computation, and `Name` is a user-provided name just for readability of the model file. `IsVirtual` is a boolean value that is `true` only if this operator does not perform any real computation, so called a virtual operator. `Args` is a key-value object with a flexible structure that describes a few details of the operator computation. A key of `Args` is a name of an argument, and the value is another key-value object, of which key is the data type of the argument and value is the actual value of the argument. The following is an example of `Args` of a `Matmul` type operator (explanation of each field follows below).
+An `Op` object describes computation that reads from `ReadTensors`, reads & writes on `WriteTensors`, and returns `ResultTensors`. `Type` is a string that describes the type of computation, and `Name` is a user-provided name just for readability of the model file. `IsVirtual` is a boolean value that is `true` only if this operator does not perform any real computation, so called a virtual operator. `Args` is a key-value object with a flexible structure that describes a few details of the operator computation. A key of `Args` is a name of an argument, and the value is another key-value object, of which key is the data type of the argument and value is the actual value of the argument. The following is an example of `Args`.
 
     "Args": {
-        "InputDimNC": {
-            "DIMS": [1,1]
+        "Arg1Name": {
+            "INT": 42
         },
-        "TransposeInput": {
+        "Arg2Name": {
             "BOOL": false
         },
-        "TransposeOther": {
-            "BOOL": true
+        "Arg3Name": {
+            "FLOAT": 3.1415
         },
-        "OtherDimNC": {
-            "DIMS": [1,1]
+        "Arg4Name": {
+            "DIMS": [4,1,7,1024]
         },
-        "ShapeMNK": {
-            "DIMS": [512,4096,11008]
+        "Arg5Name": {
+            "TENSOR": {
+                "Id": 0,
+                "DataType": "FP16",
+                ...
+            }
         },
-        "StridesACDB": {
-            "DIMS": [11008,4096,4096,11008]
+        "Arg6Name": {
+            "OFFSET": 8192
         }
     }
 
@@ -96,10 +100,6 @@ The followings are possible data types of an argument.
 The followings describe arguments of different types of operators. Those that are not listed here would mean that they do not need any arguments.
 
 - `Matmul`
-    - `InputDimNC` (type: `DIMS`): considering 4-dimensional matrix multiplication between [N,C,H,W] format tensors, `InputDimNC` argument represents the [N,C] value of the first input tensor. If the tensor is 3-dimensional ([C,H,W]), N is set to 1. If the tensor is 2-dimensional ([H,W]), both N and C are set to 1.
-    - `OtherDimNC` (type: `DIMS`): considering 4-dimensional matrix multiplication between [N,C,H,W] format tensors, `OtherDimNC` argument represents the [N,C] value of the second input tensor. If the tensor is 3-dimensional ([C,H,W]), N is set to 1. If the tensor is 2-dimensional ([H,W]), both N and C are set to 1.
-    - `ShapeMNK` (type: `DIMS`): problem shape of matrix multiplication in the [M,N,K] format.
-    - `StridesACDB` (type: `DIMS`): stride length of the lowest dimension of matrix A, C, D, and B, in order. Matrix A and B refer to the first and the second tensors, respectively, and both of matrix C and D refer to the output tensor.
     - `TransposeInput` (type: `BOOL`): true if the last two dimensions of the first input tensor should be transposed before computation, and vice versa.
     - `TransposeOther` (type: `BOOL`): true if the last two dimensions of the second input tensor should be transposed before computation, and vice versa.
 
