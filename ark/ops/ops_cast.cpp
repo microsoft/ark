@@ -23,7 +23,7 @@ ModelOpCast::ModelOpCast(ModelTensorRef input, ModelDataType data_type,
 
 static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                              Dims &new_shape, Dims &new_strides,
-                             Dims &new_offsets, Dims &new_pads) {
+                             Dims &new_offsets, Dims &new_padded_shape) {
     if (input->data_type() == BYTE.ref()) {
         if (input->shape_bytes() < data_type->bytes()) {
             ERR(InvalidUsageError, "input tensor is too small to be casted to ",
@@ -64,39 +64,32 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                 "tensor type (",
                 data_type->bytes(), ")");
         }
-        if (input->pads()[last_dim] > 1) {
-            // we can ignore pads if it is 1
-            if ((input->pads()[last_dim] % data_type->bytes()) != 0) {
-                ERR(InvalidUsageError,
-                    "the last greater-than-1 dimension of the "
-                    "input tensor pads ",
-                    input->pads()[last_dim],
-                    " is not divisible by the size of the output "
-                    "tensor type (",
-                    data_type->bytes(), ")");
-            }
+        if ((input->padded_shape()[last_dim] % data_type->bytes()) != 0) {
+            ERR(InvalidUsageError,
+                "the last greater-than-1 dimension of the "
+                "input tensor padded_shape ",
+                input->padded_shape()[last_dim],
+                " is not divisible by the size of the output "
+                "tensor type (",
+                data_type->bytes(), ")");
         }
         new_shape = input->shape();
         new_strides = input->strides();
         new_offsets = input->offsets();
-        new_pads = input->pads();
+        new_padded_shape = input->padded_shape();
         new_shape[last_dim] /= data_type->bytes();
         new_strides[last_dim] /= data_type->bytes();
         new_offsets[last_dim] /= data_type->bytes();
-        if (new_pads[last_dim] > 1) {
-            new_pads[last_dim] /= data_type->bytes();
-        }
+        new_padded_shape[last_dim] /= data_type->bytes();
     } else if (data_type == BYTE.ref()) {
         new_shape = input->shape();
         new_strides = input->strides();
         new_offsets = input->offsets();
-        new_pads = input->pads();
+        new_padded_shape = input->padded_shape();
         new_shape[-1] *= input->data_type()->bytes();
         new_strides[-1] *= input->data_type()->bytes();
         new_offsets[-1] *= input->data_type()->bytes();
-        if (new_pads[-1] > 1) {
-            new_pads[-1] *= input->data_type()->bytes();
-        }
+        new_padded_shape[-1] *= input->data_type()->bytes();
     } else {
         ERR(ModelError, "unexpected error");
     }
@@ -104,8 +97,9 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
 
 ModelOpByteCast::ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
                                  const Dims &shape, const Dims &strides,
-                                 const Dims &offsets, const Dims &pads)
-    : ModelOpTensor(input->buffer(), shape, data_type, strides, offsets, pads) {
+                                 const Dims &offsets, const Dims &padded_shape)
+    : ModelOpTensor(input->buffer(), shape, data_type, strides, offsets,
+                    padded_shape) {
     read_tensors_ = {input};
     verify();
 }
@@ -121,13 +115,13 @@ Tensor Model::cast(Tensor input, const DataType &data_type, Tensor output,
         } else if (data_type == BYTE || input.data_type() == BYTE) {
             // Casting to/from BYTE without the output tensor specified is
             // handled by `ModelOpByteCast`.
-            Dims new_shape, new_strides, new_offsets, new_pads;
+            Dims new_shape, new_strides, new_offsets, new_padded_shape;
             byte_cast_helper(input.ref(), data_type.ref(), new_shape,
-                             new_strides, new_offsets, new_pads);
+                             new_strides, new_offsets, new_padded_shape);
             return impl_
                 ->create_op<ModelOpByteCast>(name, input.ref(), data_type.ref(),
                                              new_shape, new_strides,
-                                             new_offsets, new_pads)
+                                             new_offsets, new_padded_shape)
                 ->result_tensors()[0];
         }
     }

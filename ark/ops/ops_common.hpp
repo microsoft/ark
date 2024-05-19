@@ -27,6 +27,10 @@ void check_match_shape(ModelTensorRef a, ModelTensorRef b);
 
 void check_match_shape(ModelTensorRef tensor, const Dims &shape);
 
+void check_match_padded_shape(ModelTensorRef a, ModelTensorRef b);
+
+void check_match_padded_shape(ModelTensorRef tensor, const Dims &padded_shape);
+
 /// Return the output shape of broadcasting between two shapes.
 /// Follow NumPy rules.
 /// https://numpy.org/doc/stable/user/basics.broadcasting.html

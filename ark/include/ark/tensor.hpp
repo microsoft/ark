@@ -47,7 +47,7 @@ class Tensor {
 
     Dims offsets() const;
 
-    Dims pads() const;
+    Dims padded_shape() const;
 
     const DataType &data_type() const;
 };

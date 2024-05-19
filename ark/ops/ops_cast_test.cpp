@@ -301,7 +301,7 @@ ark::unittest::State test_cast_invalid() {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8, 1}, ark::BYTE);
         m.cast(t0, ark::FP32);  // ok
-        ark::Tensor t1 = m.tensor({8, 1}, ark::BYTE, {9, 1}, {0, 0}, {3, 1});
+        ark::Tensor t1 = m.tensor({8, 1}, ark::BYTE, {13, 1}, {0, 0}, {9, 1});
         UNITTEST_THROW(m.cast(t1, ark::FP32), ark::InvalidUsageError);
     }
     {

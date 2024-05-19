@@ -48,6 +48,21 @@ void check_match_shape(ModelTensorRef tensor, const Dims &shape) {
     }
 }
 
+void check_match_padded_shape(ModelTensorRef a, ModelTensorRef b) {
+    if (a->padded_shape() != b->padded_shape()) {
+        ERR(InvalidUsageError, "padded shapes mismatch: ", a->padded_shape(),
+            " != ", b->padded_shape());
+    }
+}
+
+void check_match_padded_shape(ModelTensorRef tensor, const Dims &padded_shape) {
+    if (tensor->padded_shape() != padded_shape) {
+        ERR(InvalidUsageError,
+            "padded shape mismatch: ", tensor->padded_shape(),
+            " != ", padded_shape);
+    }
+}
+
 Dims broadcast_shape(const Dims &dims1, const Dims &dims2) {
     std::vector<DimType> output_dims_reversed;
     int ndims = std::max(dims1.ndims(), dims2.ndims());

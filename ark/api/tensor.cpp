@@ -36,9 +36,9 @@ Dims Tensor::offsets() const {
     return Dims();
 }
 
-Dims Tensor::pads() const {
+Dims Tensor::padded_shape() const {
     if (ref_) {
-        return ref_->pads();
+        return ref_->padded_shape();
     }
     return Dims();
 }

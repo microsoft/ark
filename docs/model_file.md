@@ -37,7 +37,7 @@ A `Tensor` object has the following structure:
         - Shape (Array of Int)
         - Strides (Array of Int)
         - Offsets (Array of Int)
-        - Pads (Array of Int)
+        - PaddedShape (Array of Int)
 
 An `Args` object has a flexible structure depending on the type of `Op`, which would look like as follows.
 
@@ -115,9 +115,18 @@ The followings describe arguments of different types of operators. Those that ar
 
 ## Tensor
 
-A `Tensor` object describes an N-dimensional (0 < N <= 4) data patch over the memory. A tensor points to the whole or a part of memory space of a `Buffer` object. Since a tensor itself is not a buffer, multiple tensors may point to the same or overlapped address space, while buffers represent an exclusive address space from each other. Also, while a buffer represents only a sequential address space, a tensor can refer to a strided address space. For example, if `Shape` is `[s_0, s_1, s_2, s_3]`, `Strides` is `[t_0, t_1, t_2, t_3]`, and `Offsets` is `[f_0, f_1, f_2, f_3]` (where `t_i` >= `s_i` + `f_i`), the tensor refers to data elements from index `f_i` to index `f_i + s_i - 1` in each dimension, among the entire dimension from `0` to `t_i - 1`. `Shape`, `Strides`, and `Offsets` should have the same number of dimensions.
+A `Tensor` object describes an N-dimensional (0 < N <= 4) data patch over the memory. A tensor points to the whole or a part of memory space of a `Buffer` object. Since a tensor itself is not a buffer, multiple tensors may point to the same or overlapped address space, while buffers represent an exclusive address space from each other.
 
-`DataType` field of a tensor represents the data type of each element. Currently, the following data types are supported.
+`Shape`, `Strides`, `Offsets`, and `PaddedShape` are N-dimensional arrays that collectively represent a strided address space that the tensor refers to. The following is a brief description of each field.
+
+- `Shape`: N-dimensional shape of the tensor.
+- `Strides`: strides of each dimensions of the tensor. This can be considered as the actual shape of the underlying memory space (`Buffer`). `Strides` should have the same number of dimensions as `Shape`, and each dimension length should be equal to or larger than that of `Shape`.
+- `Offsets`: offsets of each dimensions of the tensor. This is used to locate the first element that the tensor refers to when `Strides` is larger than `Shape`. `Offsets` should have the same number of dimensions as `Shape`, and if `Shape` is the same as `Strides`, `Offsets` should be a zero array.
+- `PaddedShape`: shape of the tensor with paddings. This is used to reserve extra memory space for the tensor when computation requires it. `PaddedShape` should have the same number of dimensions as `Shape`. Each dimension length of `PaddedShape` should be equal to or larger than that of `Shape`, and equal to or smaller than that of `Strides`. Data on the padded region is allowed to be accessed by computation, but it is not considered as the actual data of this tensor. The padded region is initialized to zero only when the tensor is first allocated.
+
+For example, if `Shape` is `[s_0, s_1, s_2, s_3]`, `Strides` is `[t_0, t_1, t_2, t_3]`, `Offsets` is `[f_0, f_1, f_2, f_3]`, and `PaddedShape` is `[p_0, p_1, p_2, p_3]` (where `f_i + s_i <= f_i + p_i <= t_i`), the tensor refers to data elements from index `f_i` to index `f_i + s_i - 1` in each dimension, among the entire dimension from `0` to `t_i - 1`. The padded region is from index `f_i + s_i` to `f_i + p_i - 1`.
+
+`DataType` field represents the data type of each element. Currently, the following data types are supported.
 
 - `FP32`
 - `FP16`
@@ -127,8 +136,6 @@ A `Tensor` object describes an N-dimensional (0 < N <= 4) data patch over the me
 - `INT8`
 - `UINT8`
 - `BYTE`
-
-`Pads` field is currently unused and will be used in the future. For now, `Pads` should be an array of ones with the same number of dimension as `Shape`.
 
 ## Buffer
 

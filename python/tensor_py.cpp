@@ -17,7 +17,8 @@ void register_tensor(py::module &m) {
              py::return_value_policy::reference)
         .def("offsets", &ark::Tensor::offsets,
              py::return_value_policy::reference)
-        .def("pads", &ark::Tensor::pads, py::return_value_policy::reference)
+        .def("padded_shape", &ark::Tensor::padded_shape,
+             py::return_value_policy::reference)
         .def("data_type", &ark::Tensor::data_type,
              py::return_value_policy::reference);
 

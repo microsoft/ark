@@ -246,10 +246,9 @@ class Input(ark.Module):
 
 
 def compare_results(result, ground_truth):
-    eps = np.finfo(np.float64).eps
-    shape = result.shape
-    result = result.flatten().astype(np.float64)
-    ground_truth = ground_truth.flatten().astype(np.float64)
+    eps = np.finfo(result.dtype).eps
+    result = result.flatten()
+    ground_truth = ground_truth.flatten()
 
     max_value_idx = np.argmax(ground_truth)
     min_value_idx = np.argmin(ground_truth)

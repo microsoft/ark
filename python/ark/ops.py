@@ -17,7 +17,7 @@ def _tensor(
     dtype: DataType = fp32,
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
-    pads: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
     name: str = "",
 ) -> Tensor:
     if not _is_list_or_tuple(shape):
@@ -26,17 +26,22 @@ def _tensor(
         raise ValueError("strides should be a list or tuple of integers")
     if not _is_list_or_tuple(offsets):
         raise ValueError("offsets should be a list or tuple of integers")
-    if not _is_list_or_tuple(pads):
-        raise ValueError("pads should be a list or tuple of integers")
+    if not _is_list_or_tuple(padded_shape):
+        raise ValueError("padded_shape should be a list or tuple of integers")
     # only support tensors with up to 4 dimensions
-    if len(shape) > 4 or len(strides) > 4 or len(offsets) > 4 or len(pads) > 4:
+    if (
+        len(shape) > 4
+        or len(strides) > 4
+        or len(offsets) > 4
+        or len(padded_shape) > 4
+    ):
         raise ValueError("Only support tensors with up to 4 dimensions")
     return Model.get_model().tensor(
         Dims(shape),
         dtype.ctype(),
         Dims(strides),
         Dims(offsets),
-        Dims(pads),
+        Dims(padded_shape),
         name,
     )
 
@@ -456,7 +461,7 @@ def tensor(
     dtype: DataType = fp32,
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
-    pads: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
     name: str = "",
 ) -> Tensor:
     """
@@ -465,7 +470,7 @@ def tensor(
     tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
-    return Tensor(_tensor(shape, dtype, strides, offsets, pads, name))
+    return Tensor(_tensor(shape, dtype, strides, offsets, padded_shape, name))
 
 
 def transpose(
@@ -523,13 +528,15 @@ def parameter(
     dtype: DataType = fp32,
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
-    pads: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
     name: str = "",
 ) -> Parameter:
     """
     Construct a parameter with given shape and data type.
     """
-    return Parameter(_tensor(shape, dtype, strides, offsets, pads, name))
+    return Parameter(
+        _tensor(shape, dtype, strides, offsets, padded_shape, name)
+    )
 
 
 def softmax(

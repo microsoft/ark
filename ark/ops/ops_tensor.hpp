@@ -14,7 +14,7 @@ class ModelOpTensor : public ModelOp {
     ModelOpTensor() = default;
     ModelOpTensor(ModelBufferRef buffer, const Dims &shape,
                   ModelDataType data_type, const Dims &strides,
-                  const Dims &offsets, const Dims &pads);
+                  const Dims &offsets, const Dims &padded_shape);
 };
 
 }  // namespace ark

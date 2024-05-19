@@ -17,7 +17,7 @@ class ModelTensor {
    public:
     ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
                 const Dims &shape, const Dims &strides = {},
-                const Dims &offsets = {}, const Dims &pads = {});
+                const Dims &offsets = {}, const Dims &padded_shape = {});
 
     ModelTensor(const ModelTensor &other);
 
@@ -33,7 +33,7 @@ class ModelTensor {
 
     const Dims &offsets() const { return offsets_; }
 
-    const Dims &pads() const { return pads_; }
+    const Dims &padded_shape() const { return padded_shape_; }
 
     size_t shape_bytes() const;
 
@@ -50,7 +50,7 @@ class ModelTensor {
     Dims shape_;
     Dims strides_;
     Dims offsets_;
-    Dims pads_;
+    Dims padded_shape_;
 };
 
 }  // namespace ark

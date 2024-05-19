@@ -105,7 +105,7 @@ void register_model(py::module &m) {
              py::arg("name"))
         .def("tensor", &ark::Model::tensor, py::arg("shape"),
              py::arg("data_type"), py::arg("strides"), py::arg("offsets"),
-             py::arg("pads"), py::arg("name"))
+             py::arg("padded_shape"), py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"));
 }

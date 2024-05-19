@@ -21,7 +21,7 @@ class ModelOpByteCast : public ModelOpTensor {
     ModelOpByteCast() = default;
     ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
                     const Dims &shape, const Dims &strides, const Dims &offsets,
-                    const Dims &pads);
+                    const Dims &padded_shape);
 };
 
 }  // namespace ark

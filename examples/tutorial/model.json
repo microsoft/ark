@@ -19,7 +19,7 @@
               "Shape": [1,512,4096],
               "Strides": [1,512,4096],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,4096]
             },
             {
               "Id": 1,
@@ -28,7 +28,7 @@
               "Shape": [11008,4096],
               "Strides": [11008,4096],
               "Offsets": [0,0],
-              "Pads": [1,1]
+              "PaddedShape": [11008,4096]
             }
           ],
           "WriteTensors": [
@@ -39,7 +39,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "ResultTensors": [
@@ -50,7 +50,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "Args": {
@@ -59,6 +59,9 @@
             },
             "OtherDimNC": {
               "DIMS": [1,1]
+            },
+            "PaddedShapeMNK": {
+              "DIMS": [512,11008,4096]
             },
             "ShapeMNK": {
               "DIMS": [512,11008,4096]
@@ -86,7 +89,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "WriteTensors": [
@@ -97,7 +100,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "ResultTensors": [
@@ -108,7 +111,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "Args": {}
@@ -125,7 +128,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             },
             {
               "Id": 7,
@@ -134,7 +137,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "WriteTensors": [
@@ -145,7 +148,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "ResultTensors": [
@@ -156,7 +159,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "Args": {}
@@ -180,7 +183,7 @@
               "Shape": [1,512,4096],
               "Strides": [1,512,4096],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,4096]
             },
             {
               "Id": 3,
@@ -189,7 +192,7 @@
               "Shape": [11008,4096],
               "Strides": [11008,4096],
               "Offsets": [0,0],
-              "Pads": [1,1]
+              "PaddedShape": [11008,4096]
             }
           ],
           "WriteTensors": [
@@ -200,7 +203,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "ResultTensors": [
@@ -211,7 +214,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "Args": {
@@ -220,6 +223,9 @@
             },
             "OtherDimNC": {
               "DIMS": [1,1]
+            },
+            "PaddedShapeMNK": {
+              "DIMS": [512,11008,4096]
             },
             "ShapeMNK": {
               "DIMS": [512,11008,4096]
@@ -254,7 +260,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             },
             {
               "Id": 11,
@@ -263,7 +269,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "WriteTensors": [
@@ -274,7 +280,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "ResultTensors": [
@@ -285,7 +291,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             }
           ],
           "Args": {}
@@ -302,7 +308,7 @@
               "Shape": [1,512,11008],
               "Strides": [1,512,11008],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,11008]
             },
             {
               "Id": 2,
@@ -311,7 +317,7 @@
               "Shape": [4096,11008],
               "Strides": [4096,11008],
               "Offsets": [0,0],
-              "Pads": [1,1]
+              "PaddedShape": [4096,11008]
             }
           ],
           "WriteTensors": [
@@ -322,7 +328,7 @@
               "Shape": [1,512,4096],
               "Strides": [1,512,4096],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,4096]
             }
           ],
           "ResultTensors": [
@@ -333,7 +339,7 @@
               "Shape": [1,512,4096],
               "Strides": [1,512,4096],
               "Offsets": [0,0,0],
-              "Pads": [1,1,1]
+              "PaddedShape": [1,512,4096]
             }
           ],
           "Args": {
@@ -342,6 +348,9 @@
             },
             "OtherDimNC": {
               "DIMS": [1,1]
+            },
+            "PaddedShapeMNK": {
+              "DIMS": [512,4096,11008]
             },
             "ShapeMNK": {
               "DIMS": [512,4096,11008]

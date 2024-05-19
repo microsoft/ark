@@ -12,7 +12,7 @@ class ModelOpRefer : public ModelOpTensor {
    public:
     ModelOpRefer() = default;
     ModelOpRefer(ModelTensorRef input, const Dims &shape, const Dims &strides,
-                 const Dims &offsets, const Dims &pads);
+                 const Dims &offsets, const Dims &padded_shape);
 };
 
 }  // namespace ark

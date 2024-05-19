@@ -9,19 +9,19 @@ namespace ark {
 
 ModelOpRefer::ModelOpRefer(ModelTensorRef input, const Dims &shape,
                            const Dims &strides, const Dims &offsets,
-                           const Dims &pads)
+                           const Dims &padded_shape)
     : ModelOpTensor(input->buffer(), shape, input->data_type(), strides,
-                    offsets, pads) {
+                    offsets, padded_shape) {
     read_tensors_ = {input};
     verify();
 }
 
 Tensor Model::refer(Tensor input, const Dims &shape, const Dims &strides,
-                    const Dims &offsets, const Dims &pads,
+                    const Dims &offsets, const Dims &padded_shape,
                     const std::string &name) {
     return impl_
         ->create_op<ModelOpRefer>(name, input.ref_, shape, strides, offsets,
-                                  pads)
+                                  padded_shape)
         ->result_tensors()[0];
 }
 

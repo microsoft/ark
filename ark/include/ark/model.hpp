@@ -39,28 +39,29 @@ class Model : public ModelGraph {
     ///
     /// @param shape Shape of the tensor, where the data of interest is.
     /// @param dtype Type of the tensor data.
-    /// @param strides Leading dimensions (ldim) of the tensor, which may be
+    /// @param strides Strides of each dimensions of the tensor, which may be
     /// different from the shape. @p strides can be considered as the actual
-    /// shape of the underlying data buffer (@ref TensorBuf).
+    /// shape of the underlying data buffer (@ref ModelBuffer).
     /// @param offsets Offsets of the tensor. The data of interest starts at
-    /// @p offsets and ends at @p offsets + @p shape.
-    /// @param pads If a dimension of @p pads is set to larger than 1, the
-    /// corresponding ldim will be set to the minimum multiple of @p pads that
-    /// is larger than or equal to the previous ldim. Padding is accumulated
-    /// across all tensors that share the same @ref TensorBuf. For example, if
-    /// one tensor sets the last dimension of @p pads to 2, and another tensor
-    /// sets the last dimension of @p pads to 3, then the corresponding ldim
-    /// will be the minimum multiple of 2x3=6 that is larger than or equal to
-    /// the corresponding dimension of @p offsets + @p shape.
+    /// @p offsets and ends at @p offsets + @p padded_shape.
+    /// @param padded_shape Padded shape of the tensor. Padding is used to
+    /// reserve extra space for the tensor when computation requires it.
+    /// Data on the padded region is allowed to be accessed by computation,
+    /// but it is not considered as the data of interest. The padded region is
+    /// initialized to zero only once when the Executor is launched. The padded
+    /// shape should be greater than or equal to the @p shape, and the
+    /// @p strides should be greater than or equal to the padded shape. If the
+    /// @p strides are not provided, they are set to the padded shape. If the
+    /// padded shape is not provided, it is set to the @p shape.
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
     Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
-                  const Dims &pads = {}, const std::string &name = "");
+                  const Dims &padded_shape = {}, const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
-                 const Dims &offsets = {}, const Dims &pads = {},
+                 const Dims &offsets = {}, const Dims &padded_shape = {},
                  const std::string &name = "");
 
     // Reshape `input` to `shape`. If one dimension of `shape` is -1, it will be

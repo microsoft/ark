@@ -20,7 +20,8 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
     } else {
         output = std::make_shared<ModelTensor>(
             input->data_type(), std::make_shared<ModelBuffer>(remote_rank),
-            input->shape(), input->strides(), input->offsets(), input->pads());
+            input->shape(), input->strides(), input->offsets(),
+            input->padded_shape());
     }
     input->buffer()->tag_send(remote_rank, tag);
     output->buffer()->tag_recv(-1, tag);
@@ -87,7 +88,8 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int remote_rank, int tag)
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
     ModelTensorRef input = std::make_shared<ModelTensor>(
         output->data_type(), std::make_shared<ModelBuffer>(remote_rank),
-        output->shape(), output->strides(), output->offsets(), output->pads());
+        output->shape(), output->strides(), output->offsets(),
+        output->padded_shape());
     input->buffer()->tag_send(-1, tag);
     output->buffer()->tag_recv(remote_rank, tag);
 
