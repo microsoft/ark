@@ -56,21 +56,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "StridesACDB": {
-              "DIMS": [4096,11008,11008,4096]
-            },
             "TransposeInput": {
               "BOOL": false
             },
@@ -82,7 +67,6 @@
             "NumWarps": 8,
             "SramBytes": 147456,
             "TileShapeMNK": [128,256,64],
-            "TilePadMNK": [128,256,64],
             "NumTasks": 172
           }
         }
@@ -253,21 +237,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "StridesACDB": {
-              "DIMS": [4096,11008,11008,4096]
-            },
             "TransposeInput": {
               "BOOL": false
             },
@@ -279,7 +248,6 @@
             "NumWarps": 8,
             "SramBytes": 147456,
             "TileShapeMNK": [128,256,64],
-            "TilePadMNK": [128,256,64],
             "NumTasks": 172
           }
         }
@@ -398,21 +366,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,4096,8320]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,4096,8320]
-            },
-            "StridesACDB": {
-              "DIMS": [11008,4096,4096,11008]
-            },
             "TransposeInput": {
               "BOOL": false
             },
@@ -424,7 +377,6 @@
             "NumWarps": 8,
             "SramBytes": 147456,
             "TileShapeMNK": [128,256,64],
-            "TilePadMNK": [128,256,64],
             "NumTasks": 64
           }
         }
@@ -482,21 +434,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,4096,2688]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,4096,2688]
-            },
-            "StridesACDB": {
-              "DIMS": [11008,4096,4096,11008]
-            },
             "TransposeInput": {
               "BOOL": false
             },
@@ -508,7 +445,6 @@
             "NumWarps": 8,
             "SramBytes": 147456,
             "TileShapeMNK": [128,256,64],
-            "TilePadMNK": [128,256,64],
             "NumTasks": 64
           }
         }

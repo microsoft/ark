@@ -40,6 +40,12 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2);
 
 void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to);
 
+void check_fields_config(const Json &config,
+                         const std::vector<std::string> &fields);
+
+void check_fields_args(const std::map<std::string, ModelOpArg> &args,
+                       const std::vector<std::string> &fields);
+
 }  // namespace ark
 
 #endif  // ARK_OPS_COMMON_HPP_

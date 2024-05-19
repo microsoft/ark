@@ -54,21 +54,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "StridesACDB": {
-              "DIMS": [4096,11008,11008,4096]
-            },
             "TransposeInput": {
               "BOOL": false
             },
@@ -218,21 +203,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,11008,4096]
-            },
-            "StridesACDB": {
-              "DIMS": [4096,11008,11008,4096]
-            },
             "TransposeInput": {
               "BOOL": false
             },
@@ -343,21 +313,6 @@
             }
           ],
           "Args": {
-            "InputDimNC": {
-              "DIMS": [1,1]
-            },
-            "OtherDimNC": {
-              "DIMS": [1,1]
-            },
-            "PaddedShapeMNK": {
-              "DIMS": [512,4096,11008]
-            },
-            "ShapeMNK": {
-              "DIMS": [512,4096,11008]
-            },
-            "StridesACDB": {
-              "DIMS": [11008,4096,4096,11008]
-            },
             "TransposeInput": {
               "BOOL": false
             },

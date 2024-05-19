@@ -96,4 +96,22 @@ void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to) {
     }
 }
 
+void check_fields_config(const Json &config,
+                         const std::vector<std::string> &fields) {
+    for (const auto &field : fields) {
+        if (config.find(field) == config.end()) {
+            ERR(InvalidUsageError, "missing field: ", field);
+        }
+    }
+}
+
+void check_fields_args(const std::map<std::string, ModelOpArg> &args,
+                       const std::vector<std::string> &fields) {
+    for (const auto &field : fields) {
+        if (args.find(field) == args.end()) {
+            ERR(InvalidUsageError, "missing field: ", field);
+        }
+    }
+}
+
 }  // namespace ark
