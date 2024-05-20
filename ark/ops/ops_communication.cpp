@@ -36,15 +36,15 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
 std::string ModelOpSend::impl_name([[maybe_unused]] const Json &config) const {
     auto &input = read_tensors_[0];
     auto &output = write_tensors_[0];
-    int channel_id = output->buffer()->rank();
+    int remote_rank = output->buffer()->rank();
     return function_name_string(
-        "send",
-        {std::to_string(channel_id), vec_string(input->strides().dims4()),
-         vec_string(input->shape().dims4()),
-         vec_string(output->strides().dims4()),
-         vec_string(output->shape().dims4()),
-         vec_string(output->strides().dims4()), std::to_string(1),
-         std::to_string(0), output->data_type()->type_str()});
+        "send", {"comm::ChannelType::Proxy", std::to_string(remote_rank),
+                 vec_string(input->strides().dims4()),
+                 vec_string(input->shape().dims4()),
+                 vec_string(output->strides().dims4()),
+                 vec_string(output->shape().dims4()),
+                 vec_string(output->strides().dims4()), std::to_string(1),
+                 std::to_string(0), output->data_type()->type_str()});
 }
 
 std::vector<ModelOpArg> ModelOpSend::impl_args([
@@ -68,8 +68,9 @@ ModelOpSendDone::ModelOpSendDone(ModelTensorRef input) : ModelOp("SendDone") {
 std::string ModelOpSendDone::impl_name([
     [maybe_unused]] const Json &config) const {
     auto &input = read_tensors_[0];
-    int channel_id = input->buffer()->rank();
-    return function_name_string("send_done", {std::to_string(channel_id)});
+    int remote_rank = input->buffer()->rank();
+    return function_name_string(
+        "send_done", {"comm::ChannelType::Proxy", std::to_string(remote_rank)});
 }
 
 std::vector<ModelOpArg> ModelOpSendDone::impl_args([
@@ -101,8 +102,11 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int remote_rank, int tag)
 
 std::string ModelOpRecv::impl_name([[maybe_unused]] const Json &config) const {
     auto &input = read_tensors_[0];
-    int channel_id = input->buffer()->rank();
-    return function_name_string("recv", {std::to_string(channel_id)});
+    int remote_rank = input->buffer()->rank();
+    int max_spin_cnt = -1;
+    return function_name_string(
+        "recv", {"comm::ChannelType::Proxy", std::to_string(remote_rank),
+                 std::to_string(max_spin_cnt)});
 }
 
 std::vector<ModelOpArg> ModelOpRecv::impl_args([
