@@ -37,10 +37,10 @@ class ModelGraph::Impl {
             name_copy = name;
         }
         size_t count = op_names_.count(name_copy);
+        op_names_.insert(name_copy);
         if (count > 0) {
             name_copy += "_" + std::to_string(count);
         }
-        op_names_.insert(name_copy);
         op->set_name(name_copy);
         add_op(op);
         return op;

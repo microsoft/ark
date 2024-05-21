@@ -146,7 +146,7 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
     items.reserve(codes.size());
     for (auto &code : codes) {
         std::string hash_str = fnv1a_hash(code);
-        items.emplace_back(code, "/tmp/ark_" + hash_str);
+        items.emplace_back(code, get_env().path_tmp_dir + "/" + hash_str);
     }
     assert(items.size() == 1);
     para_exec<std::pair<std::string, std::string> >(
