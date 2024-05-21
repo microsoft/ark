@@ -129,7 +129,7 @@ static std::stringstream &dump_pretty_object(const Json &json,
 
 std::string ModelJson::dump_pretty(int indent, int indent_step) const {
     std::stringstream ss;
-    dump_pretty_object(*this, "", 6, ss, indent, indent_step) << "\n";
+    dump_pretty_object(*this, "", 5, ss, indent, indent_step) << "\n";
     return ss.str();
 }
 
@@ -148,7 +148,7 @@ static std::stringstream &dump_pretty_plan(const Json &json,
     dump_pretty_item(json.at("NumWarpsPerProcessor"), "NumWarpsPerProcessor",
                      ss, indent + indent_step)
         << ",\n";
-    dump_pretty_array(json.at("TaskInfos"), "TaskInfos", 5, ss,
+    dump_pretty_array(json.at("TaskInfos"), "TaskInfos", 4, ss,
                       indent + indent_step, indent_step)
         << ",\n";
     dump_pretty_array(json.at("ProcessorGroups"), "ProcessorGroups", 4, ss,

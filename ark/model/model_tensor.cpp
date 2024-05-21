@@ -96,11 +96,11 @@ Json ModelTensor::serialize() const {
     Json j;
     j["Id"] = id_;
     j["DataType"] = data_type_->type_name();
-    j["Buffer"] = buffer_->serialize();
     j["Shape"] = shape_.vector();
     j["Strides"] = strides_.vector();
     j["Offsets"] = offsets_.vector();
     j["PaddedShape"] = padded_shape_.vector();
+    j["Buffer"] = buffer_->serialize();
     return j;
 }
 
