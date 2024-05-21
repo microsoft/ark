@@ -4,6 +4,8 @@
 #include "ark/planner.hpp"
 
 #include "ark/model.hpp"
+#include "env.h"
+#include "file_io.h"
 #include "gpu/gpu_manager.h"
 #include "model/model_json.hpp"
 #include "model/model_node.hpp"
@@ -73,6 +75,8 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
     plan_["NumWarpsPerProcessor"] = max_num_warps;
     plan_["TaskInfos"] = task_infos;
     plan_["ProcessorGroups"] = processor_groups;
+
+    write_file(get_env().path_tmp_dir + "/model.json", compressed.serialize());
 }
 
 DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
@@ -81,10 +85,14 @@ DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
 DefaultPlanner::~DefaultPlanner() = default;
 
 std::string DefaultPlanner::plan(bool pretty) const {
+    std::string plan_str;
     if (pretty) {
-        return PlanJson(impl_->plan_).dump_pretty();
+        plan_str = PlanJson(impl_->plan_).dump_pretty();
+    } else {
+        plan_str = impl_->plan_.dump();
     }
-    return impl_->plan_.dump();
+    write_file(get_env().path_tmp_dir + "/plan.json", plan_str);
+    return plan_str;
 }
 
 }  // namespace ark
