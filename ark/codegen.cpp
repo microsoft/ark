@@ -125,14 +125,21 @@ CodeGenerator::Impl::Impl(const Json &plan,
                     it++;
                     continue;
                 }
-                // no need to sync if range is a part of proc_range.
                 if (intersec.size() < range.size()) {
+                    // range is not a part of proc_range, so we need to
+                    // sync range here.
                     size_t state_id = get_state_id(range);
                     body_ss << sync_process_range(range, state_id);
                     if (intersec.size() < proc_range.size()) {
+                        // proc_range is not a part of range, so we need to
+                        // sync proc_range later.
                         need_sync = true;
                     }
                 } else {
+                    // intersec.size() == range.size(), which means that
+                    // range is a part of proc_range. In this case, we don't
+                    // need to sync range here, because we will sync
+                    // proc_range later by setting `need_sync` to true.
                     need_sync = true;
                 }
                 it = unsynced.erase(it);
@@ -373,7 +380,6 @@ std::string CodeGenerator::Impl::resource_group(
         //     if (task_id >= task_e) break;
         //     task_func(_buf, task_id, sram_per_warp);
         //   }
-        //   __syncthreads();
         // }
         // ```
         ss << "  ";
