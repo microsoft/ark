@@ -143,18 +143,12 @@ ark::unittest::State test_cast_byte_to_fp32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
     ark::Tensor out = m.cast(t, ark::FP32);
 
-    std::vector<char> input_data(t.shape().nelems());
-    for (size_t i = 0; i < input_data.size(); ++i) {
-        input_data[i] = (i + 1) % 256;
-    }
-
     // For preventing optimize-out
     m.noop(t);
     m.noop(out);
 
-    auto result =
-        ark::op_test("cast_byte_to_fp32", m, {t}, {out},
-                     baseline_cast_from_byte<float>, {input_data.data()});
+    auto result = ark::op_test("cast_byte_to_fp32", m, {t}, {out},
+                               baseline_cast_from_byte<float>);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
@@ -165,18 +159,12 @@ ark::unittest::State test_cast_byte_to_fp16() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
     ark::Tensor out = m.cast(t, ark::FP16);
 
-    std::vector<char> input_data(t.shape().nelems());
-    for (size_t i = 0; i < input_data.size(); ++i) {
-        input_data[i] = (i + 1) % 256;
-    }
-
     // For preventing optimize-out
     m.noop(t);
     m.noop(out);
 
-    auto result =
-        ark::op_test("cast_byte_to_fp16", m, {t}, {out},
-                     baseline_cast_from_byte<ark::half_t>, {input_data.data()});
+    auto result = ark::op_test("cast_byte_to_fp16", m, {t}, {out},
+                               baseline_cast_from_byte<ark::half_t>);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;
@@ -187,18 +175,12 @@ ark::unittest::State test_cast_byte_to_int32() {
     ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BYTE);
     ark::Tensor out = m.cast(t, ark::INT32);
 
-    std::vector<char> input_data(t.shape().nelems());
-    for (size_t i = 0; i < input_data.size(); ++i) {
-        input_data[i] = (i + 1) % 256;
-    }
-
     // For preventing optimize-out
     m.noop(t);
     m.noop(out);
 
-    auto result =
-        ark::op_test("cast_byte_to_int32", m, {t}, {out},
-                     baseline_cast_from_byte<float>, {input_data.data()});
+    auto result = ark::op_test("cast_byte_to_int32", m, {t}, {out},
+                               baseline_cast_from_byte<float>);
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;

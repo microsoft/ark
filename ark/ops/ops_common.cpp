@@ -34,24 +34,10 @@ void check_match_data_type(ModelTensorRef a, ModelTensorRef b) {
     }
 }
 
-void check_match_shape(ModelTensorRef a, ModelTensorRef b) {
-    if (a->shape() != b->shape()) {
-        ERR(InvalidUsageError, "shapes mismatch: ", a->shape(),
-            " != ", b->shape());
-    }
-}
-
 void check_match_shape(ModelTensorRef tensor, const Dims &shape) {
     if (tensor->shape() != shape) {
         ERR(InvalidUsageError, "shape mismatch: ", tensor->shape(),
             " != ", shape);
-    }
-}
-
-void check_match_padded_shape(ModelTensorRef a, ModelTensorRef b) {
-    if (a->padded_shape() != b->padded_shape()) {
-        ERR(InvalidUsageError, "padded shapes mismatch: ", a->padded_shape(),
-            " != ", b->padded_shape());
     }
 }
 
@@ -82,18 +68,6 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2) {
     }
     std::reverse(output_dims_reversed.begin(), output_dims_reversed.end());
     return Dims{output_dims_reversed};
-}
-
-void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to) {
-    auto from_shape = from->shape();
-    auto to_shape = to->shape();
-    if (from_shape != to_shape) {
-        auto broadcasted_shape = broadcast_shape(from_shape, to_shape);
-        if (broadcasted_shape != to_shape) {
-            ERR(InvalidUsageError, "shapes cannot be broadcasted: ", from_shape,
-                " -> ", to_shape);
-        }
-    }
 }
 
 void check_fields_config(const Json &config,

@@ -163,10 +163,26 @@ ark::unittest::State test_tensor_layout() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_tensor_invalid() {
+    ark::Model model;
+    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3, 4}),
+                   ark::InvalidUsageError);
+    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 0, 0}),
+                   ark::InvalidUsageError);
+    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 0}, {1, 1, 2}),
+                   ark::InvalidUsageError);
+    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 0}, {1, 1}),
+                   ark::InvalidUsageError);
+    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 3}, {1, 2}),
+                   ark::InvalidUsageError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_tensor_strides);
     UNITTEST(test_tensor_memcpy);
     UNITTEST(test_tensor_layout);
+    UNITTEST(test_tensor_invalid);
     return ark::unittest::SUCCESS;
 }

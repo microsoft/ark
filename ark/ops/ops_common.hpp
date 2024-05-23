@@ -23,11 +23,7 @@ void check_match_data_type(ModelTensorRef t, ModelDataType dt);
 
 void check_match_data_type(ModelTensorRef a, ModelTensorRef b);
 
-void check_match_shape(ModelTensorRef a, ModelTensorRef b);
-
 void check_match_shape(ModelTensorRef tensor, const Dims &shape);
-
-void check_match_padded_shape(ModelTensorRef a, ModelTensorRef b);
 
 void check_match_padded_shape(ModelTensorRef tensor, const Dims &padded_shape);
 
@@ -37,8 +33,6 @@ void check_match_padded_shape(ModelTensorRef tensor, const Dims &padded_shape);
 /// @param dims1 The first shape.
 /// @param dims2 The second shape.
 Dims broadcast_shape(const Dims &dims1, const Dims &dims2);
-
-void check_broadcast_shape(ModelTensorRef from, ModelTensorRef to);
 
 void check_fields_config(const Json &config,
                          const std::vector<std::string> &fields);

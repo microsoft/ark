@@ -19,9 +19,8 @@
 namespace ark {
 
 std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
-    os << "op test: " << result.test_name << " #warp/sm "
-       << result.num_warps_per_sm << ", #iter " << result.iter << ", msec/iter "
-       << result.msec_per_iter;
+    os << "op test: " << result.test_name << ", #iter " << result.iter
+       << ", msec/iter " << result.msec_per_iter;
     os << std::setprecision(4);
     for (size_t i = 0; i < result.mse.size(); i++) {
         float err_pcnt = result.max_err_rate[i] * 100;
@@ -37,8 +36,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       const std::vector<Tensor> &outputs,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data,
-                      bool print_on_error, int rank, int world_size,
-                      int num_warps_per_sm) {
+                      bool print_on_error, int rank, int world_size) {
     DefaultExecutor exe(model);
     exe.compile();
 
@@ -149,7 +147,6 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
 
     OpsTestResult result;
     result.test_name = test_name.str();
-    result.num_warps_per_sm = num_warps_per_sm;
 
     // Compare results with the ground truth.
     for (size_t i = 0; i < outputs.size(); i++) {
@@ -224,36 +221,6 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
     return result;
 }
 
-OpsTestResult op_test_8(const std::string &test_name_prefix, const Model &model,
-                        const std::vector<Tensor> &inputs,
-                        const std::vector<Tensor> &outputs,
-                        OpsTestBaseline baseline,
-                        const std::vector<void *> &inputs_data,
-                        bool print_on_error, int rank, int world_size) {
-    return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   inputs_data, print_on_error, rank, world_size, 8);
-}
-
-OpsTestResult op_test_16(const std::string &test_name_prefix,
-                         const Model &model, const std::vector<Tensor> &inputs,
-                         const std::vector<Tensor> &outputs,
-                         OpsTestBaseline baseline,
-                         const std::vector<void *> &inputs_data,
-                         bool print_on_error, int rank, int world_size) {
-    return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   inputs_data, print_on_error, rank, world_size, 16);
-}
-
-OpsTestResult op_test_32(const std::string &test_name_prefix,
-                         const Model &model, const std::vector<Tensor> &inputs,
-                         const std::vector<Tensor> &outputs,
-                         OpsTestBaseline baseline,
-                         const std::vector<void *> &inputs_data,
-                         bool print_on_error, int rank, int world_size) {
-    return op_test(test_name_prefix, model, inputs, outputs, baseline,
-                   inputs_data, print_on_error, rank, world_size, 32);
-}
-
 OpsTestGpuMem::OpsTestGpuMem(size_t size) : size_(size) {
     GLOG(gpuMalloc(&this->gpu_ptr_, size));
 }
@@ -275,9 +242,6 @@ OpsTestGpuMem to_gpu(void *host_ptr, size_t size) {
 }
 
 void *from_gpu(const OpsTestGpuMem &test_gpu_mem, void *host_ptr) {
-    if (host_ptr == nullptr) {
-        host_ptr = ::malloc(test_gpu_mem.size());
-    }
     GLOG(gpuMemcpy(host_ptr, test_gpu_mem.get(), test_gpu_mem.size(),
                    gpuMemcpyDeviceToHost));
     return host_ptr;

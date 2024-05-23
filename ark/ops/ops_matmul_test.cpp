@@ -560,6 +560,18 @@ ark::unittest::State test_matmul_fp16_offset() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_matmul_invalid() {
+    ark::Model m;
+    ark::Tensor a = m.tensor(ark::Dims(128, 64), ark::FP16);
+    ark::Tensor b = m.tensor(ark::Dims(128, 256), ark::FP16);
+    UNITTEST_THROW(m.matmul(a, b), ark::InvalidUsageError);
+
+    ark::Tensor c = m.tensor(ark::Dims(3, 3, 128, 128), ark::FP16);
+    ark::Tensor d = m.tensor(ark::Dims(2, 3, 128, 128), ark::FP16);
+    UNITTEST_THROW(m.matmul(c, d), ark::InvalidUsageError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_matmul_model);
@@ -572,5 +584,6 @@ int main() {
     UNITTEST(test_matmul_fp16_batched);
     UNITTEST(test_matmul_fp16_batched_padded);
     UNITTEST(test_matmul_fp16_offset);
+    UNITTEST(test_matmul_invalid);
     return ark::unittest::SUCCESS;
 }
