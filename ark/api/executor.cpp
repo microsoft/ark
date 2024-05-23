@@ -370,6 +370,39 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
     }
     total_bytes_ = offset;
 
+    //
+    // Send each tag (SendTag or RecvTag) and the corresponding offset to
+    // remote ranks.
+    //
+    // If Rank 0 sends a local `Buffer X` data to `Buffer Y` in Rank 1 with
+    // tag `t`, Rank 0 will declare another `Buffer Z` that represents
+    // `Buffer Y` locally. Likewise, Rank 1 will declare `Buffer W` that
+    // represents `Buffer X` locally. See the following example:
+    //
+    //         Rank 0 (Sender)               Rank 1 (Receiver)
+    //    +----------------------+       +----------------------+
+    //    | Buffer X             |       | Buffer Y             |
+    //    | Rank: 0              |       | Rank: 1              |
+    //    | Offset: 0x1000       |       | Offset: 0x2000       |
+    //    | SendTag: [[1,t],...] |       | RecvTag: [[0,t],...] |
+    //    +----------------------+       +----------------------+
+    //    +----------------------+       +----------------------+
+    //    | Buffer Z             |       | Buffer W             |
+    //    | Rank: 1              |       | Rank: 0              |
+    //    | Offset: ???          |       | Offset: ???          |
+    //    | RecvTag: [[0,t],...] |       | SendTag: [[1,t],...] |
+    //    +----------------------+       +----------------------+
+    //
+    // Offsets of Buffer Z and Buffer W are unknown at this point, because
+    // they are determined by Rank 1 and Rank 0, respectively. To retrieve
+    // the offsets, Rank 0 will go through SendTag of Buffer X and will send
+    // the tag `t` and the offset `0x1000` to Rank 1. Rank 1 can then
+    // determine the offset of Buffer W as `0x1000`, because Buffer W's rank
+    // is 0 and it has a SendTag `t`. Likewise, Rank 1 will send the RecvTag `t`
+    // and the offset `0x2000` to Rank 0, so that Rank 0 can determine the
+    // offset of Buffer Z as `0x2000`.
+    //
+
     for (auto &kv : remote_rank_to_send_tags_and_offsets) {
         auto remote_rank = kv.first;
         if (remote_rank == -1) continue;

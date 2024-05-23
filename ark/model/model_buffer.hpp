@@ -30,8 +30,14 @@ class ModelBuffer {
 
     const std::set<TagInfo> &recv_tags() const { return recv_tags_; }
 
+    // Identify this buffer as `tag` when sending data to `remote_rank`.
+    // The same buffer can be tagged multiple times with different tags,
+    // but the same tag can only be used for one sending buffer.
     void tag_send(int remote_rank, int tag);
 
+    // Identify this buffer as `tag` when receiving from `remote_rank`.
+    // The same buffer can be tagged multiple times with different tags,
+    // but the same tag can only be used for one receiving buffer.
     void tag_recv(int remote_rank, int tag);
 
     Json serialize() const;
