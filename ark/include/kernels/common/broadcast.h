@@ -21,7 +21,8 @@ namespace ark {
 
 template <typename InDims, typename InShape, typename InDataType,
           typename OutDims, typename OutShape, typename OutDataType,
-          typename IntrinsicType, typename UnitOutDims>
+          typename IntrinsicType, bool AtomicLoad, bool AtomicStore,
+          typename UnitOutDims>
 struct Broadcast1Intrinsic {
     using InputType = InDataType;
     using OutputType = OutDataType;
@@ -76,7 +77,8 @@ struct Broadcast1Intrinsic {
         if constexpr (BroadcastInput) {
             *stage = *in;
         } else {
-            ark::load<NelemPerThread * sizeof(InputType)>(stage, in);
+            ark::load<NelemPerThread * sizeof(InputType), AtomicLoad>(stage,
+                                                                      in);
         }
     }
 
@@ -102,7 +104,8 @@ struct Broadcast1Intrinsic {
     }
 
     static DEVICE void store(OutputType *out, const OutputType *result) {
-        ark::store<NelemPerThread * sizeof(OutputType)>(out, result);
+        ark::store<NelemPerThread * sizeof(OutputType), AtomicStore>(out,
+                                                                     result);
     }
 
     static DEVICE void compute(OutputType *out, const InputType *in) {
@@ -524,13 +527,14 @@ struct Broadcast2 {
 
 template <typename InDims, typename InShape, typename InDataType,
           typename OutDims, typename OutShape, typename OutDataType,
-          typename IntrinsicType, typename UnitOutDims, int NumWarps,
-          int SmemBytes>
+          typename IntrinsicType, bool AtomicLoad, bool AtomicStore,
+          typename UnitOutDims, int NumWarps, int SmemBytes>
 struct DefaultBroadcast1
     : public Broadcast1<
           InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes,
           Broadcast1Intrinsic<InDims, InShape, InDataType, OutDims, OutShape,
-                              OutDataType, IntrinsicType, UnitOutDims>> {};
+                              OutDataType, IntrinsicType, AtomicLoad,
+                              AtomicStore, UnitOutDims>> {};
 
 ////////////////////////////////////////////////////////////////////////////////
 

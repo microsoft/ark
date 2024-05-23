@@ -33,18 +33,26 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
     verify();
 }
 
-std::string ModelOpSend::impl_name([[maybe_unused]] const Json &config) const {
+std::string ModelOpSend::impl_name(const Json &config) const {
+    check_fields_config(config,
+                        {"ChannelType", "NumTasks", "NumWarps", "SramBytes"});
     auto &input = read_tensors_[0];
     auto &output = write_tensors_[0];
     int remote_rank = output->buffer()->rank();
+    std::string channel_type = config["ChannelType"];
+    if (channel_type != "Proxy" && channel_type != "SecondaryProxy" &&
+        channel_type != "Sm") {
+        ERR(ModelError, "invalid channel type: ", channel_type);
+    }
     return function_name_string(
-        "send", {"comm::ChannelType::Proxy", std::to_string(remote_rank),
-                 vec_string(input->strides().dims4()),
-                 vec_string(input->shape().dims4()),
-                 vec_string(output->strides().dims4()),
-                 vec_string(output->shape().dims4()),
-                 vec_string(output->strides().dims4()), std::to_string(1),
-                 std::to_string(0), output->data_type()->type_str()});
+        "put",
+        {"comm::ChannelType::" + channel_type, std::to_string(true),
+         std::to_string(remote_rank), vec_string(input->strides().dims4()),
+         vec_string(input->shape().dims4()),
+         vec_string(output->strides().dims4()),
+         vec_string(output->shape().dims4()),
+         vec_string(output->strides().dims4()), std::to_string(1),
+         std::to_string(0), output->data_type()->type_str()});
 }
 
 std::vector<ModelOpArg> ModelOpSend::impl_args([
@@ -53,7 +61,11 @@ std::vector<ModelOpArg> ModelOpSend::impl_args([
 }
 
 Json ModelOpSend::default_config([[maybe_unused]] const ArchRef arch) const {
-    return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
+    return {{"ChannelType", "Proxy"},
+            {"Signal", true},
+            {"NumTasks", 1},
+            {"NumWarps", 1},
+            {"SramBytes", 0}};
 }
 
 ModelOpSendDone::ModelOpSendDone(ModelTensorRef input) : ModelOp("SendDone") {
@@ -65,12 +77,18 @@ ModelOpSendDone::ModelOpSendDone(ModelTensorRef input) : ModelOp("SendDone") {
     verify();
 }
 
-std::string ModelOpSendDone::impl_name([
-    [maybe_unused]] const Json &config) const {
+std::string ModelOpSendDone::impl_name(const Json &config) const {
+    check_fields_config(config,
+                        {"ChannelType", "NumTasks", "NumWarps", "SramBytes"});
+    std::string channel_type = config["ChannelType"];
+    if (channel_type != "Proxy" && channel_type != "SecondaryProxy" &&
+        channel_type != "Sm") {
+        ERR(ModelError, "invalid channel type: ", channel_type);
+    }
     auto &input = read_tensors_[0];
     int remote_rank = input->buffer()->rank();
-    return function_name_string(
-        "send_done", {"comm::ChannelType::Proxy", std::to_string(remote_rank)});
+    return function_name_string("flush", {"comm::ChannelType::" + channel_type,
+                                          std::to_string(remote_rank)});
 }
 
 std::vector<ModelOpArg> ModelOpSendDone::impl_args([
@@ -80,7 +98,10 @@ std::vector<ModelOpArg> ModelOpSendDone::impl_args([
 
 Json ModelOpSendDone::default_config([
     [maybe_unused]] const ArchRef arch) const {
-    return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
+    return {{"ChannelType", "Proxy"},
+            {"NumTasks", 1},
+            {"NumWarps", 1},
+            {"SramBytes", 0}};
 }
 
 ModelOpRecv::ModelOpRecv(ModelTensorRef output, int remote_rank, int tag)
@@ -100,13 +121,20 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int remote_rank, int tag)
     verify();
 }
 
-std::string ModelOpRecv::impl_name([[maybe_unused]] const Json &config) const {
+std::string ModelOpRecv::impl_name(const Json &config) const {
+    check_fields_config(config,
+                        {"ChannelType", "NumTasks", "NumWarps", "SramBytes"});
+    std::string channel_type = config["ChannelType"];
+    if (channel_type != "Proxy" && channel_type != "SecondaryProxy" &&
+        channel_type != "Sm") {
+        ERR(ModelError, "invalid channel type: ", channel_type);
+    }
     auto &input = read_tensors_[0];
     int remote_rank = input->buffer()->rank();
     int max_spin_cnt = -1;
     return function_name_string(
-        "recv", {"comm::ChannelType::Proxy", std::to_string(remote_rank),
-                 std::to_string(max_spin_cnt)});
+        "wait", {"comm::ChannelType::" + channel_type,
+                 std::to_string(remote_rank), std::to_string(max_spin_cnt)});
 }
 
 std::vector<ModelOpArg> ModelOpRecv::impl_args([
@@ -115,7 +143,10 @@ std::vector<ModelOpArg> ModelOpRecv::impl_args([
 }
 
 Json ModelOpRecv::default_config([[maybe_unused]] const ArchRef arch) const {
-    return {{"NumTasks", 1}, {"NumWarps", 1}, {"SramBytes", 0}};
+    return {{"ChannelType", "Proxy"},
+            {"NumTasks", 1},
+            {"NumWarps", 1},
+            {"SramBytes", 0}};
 }
 
 Tensor Model::send(Tensor input, int remote_rank, int tag, Tensor output,

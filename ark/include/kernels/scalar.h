@@ -15,8 +15,8 @@ DEVICE void scalar_assign(OutDataType *out, float val, int uop_idx, int) {
     using ValDims = Vec<1, 1, 1, 1>;
     using ValShape = Vec<1, 1, 1, 1>;
     DefaultBroadcast1<ValDims, ValShape, OutDataType, OutDims, OutShape,
-                      OutDataType, type::Identity, UnitOutDims, NumWarps,
-                      SmemBytes>::run(out, &val_cast, uop_idx);
+                      OutDataType, type::Identity, false, false, UnitOutDims,
+                      NumWarps, SmemBytes>::run(out, &val_cast, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,

@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <nlohmann/json.hpp>
 #include <numeric>
 
 #include "ark/executor.hpp"
+#include "ark/planner.hpp"
 #include "half.h"
 #include "ops_test_common.hpp"
 
@@ -187,9 +189,127 @@ ark::unittest::State test_communication_send_recv_bidir() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_communication_send_recv_bidir_sm() {
+    auto config_rule = [](const std::string op_str, const std::string) {
+        auto op = nlohmann::json::parse(op_str);
+        nlohmann::json config;
+        if (op.at("Type") == "Send") {
+            config["ChannelType"] = "Sm";
+            config["Signal"] = true;
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 4;
+            config["SramBytes"] = 0;
+        } else if (op.at("Type") == "SendDone") {
+            config["ChannelType"] = "Sm";
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 1;
+            config["SramBytes"] = 0;
+        } else if (op.at("Type") == "Recv") {
+            config["ChannelType"] = "Sm";
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 1;
+            config["SramBytes"] = 0;
+        }
+        return config.dump();
+    };
+
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, config_rule]() {
+            int remote_gpu_id = (gpu_id + 1) % 2;
+            int tag = 0;
+
+            ark::Model model(gpu_id, 2);
+            ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
+            ark::Tensor tns = model.send(tns_data, remote_gpu_id, tag);
+            tns = model.send_done(tns);
+
+            ark::Tensor tns2_data = model.tensor({1024}, ark::FP16);
+            // build dependency (send_done --> recv)
+            ark::Tensor tns2 = model.identity(tns2_data, {tns});
+            tns2 = model.recv(tns2_data, remote_gpu_id, tag);
+
+            ark::DefaultPlanner planner(model, gpu_id);
+            planner.install_config_rule(config_rule);
+            ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
+            exe.compile();
+
+            std::vector<ark::half_t> data(1024);
+            std::iota(data.begin(), data.end(), ark::half_t(gpu_id + 1));
+            exe.tensor_write(tns_data, data);
+
+            exe.barrier();
+
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+
+            exe.barrier();
+
+            data.clear();
+            data.resize(1024);
+            exe.tensor_read(tns2_data, data);
+            for (int i = 0; i < 1024; ++i) {
+                UNITTEST_EQ(data[i], ark::half_t(remote_gpu_id + i + 1));
+            }
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
+
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, config_rule]() {
+            int remote_gpu_id = (gpu_id + 1) % 2;
+            int tag = 0;
+
+            ark::Model model(gpu_id, 2);
+            ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
+            ark::Tensor tns = model.send(tns_data, remote_gpu_id, tag);
+            tns = model.send_done(tns);
+
+            ark::Tensor tns2_data = model.tensor({1024}, ark::FP16);
+            // build dependency (send_done --> recv)
+            ark::Tensor tns2 = model.identity(tns2_data, {tns});
+            tns2 = model.recv(tns2_data, remote_gpu_id, tag);
+
+            ark::Tensor sum = model.add(tns2, tns_data);
+
+            ark::DefaultPlanner planner(model, gpu_id);
+            planner.install_config_rule(config_rule);
+            ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
+            exe.compile();
+
+            std::vector<ark::half_t> data(1024);
+            std::iota(data.begin(), data.end(), ark::half_t(gpu_id + 1));
+            exe.tensor_write(tns_data, data);
+
+            exe.barrier();
+
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+
+            exe.barrier();
+
+            data.clear();
+            data.resize(1024);
+            exe.tensor_read(sum, data);
+            for (int i = 0; i < 1024; ++i) {
+                UNITTEST_EQ(data[i],
+                            ark::half_t(gpu_id + remote_gpu_id + 2 * i + 2));
+            }
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_communication_send_recv_unidir);
     UNITTEST(test_communication_send_recv_bidir);
+    UNITTEST(test_communication_send_recv_bidir_sm);
     return ark::unittest::SUCCESS;
 }

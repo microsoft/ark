@@ -17,29 +17,63 @@ class DefaultPlanner::Impl {
    public:
     Impl(const Model &model, int gpu_id);
 
+    void install_config_rule(DefaultPlanner::ConfigRule rule);
+
+    std::string plan(bool pretty) const;
+
    protected:
     friend class DefaultPlanner;
 
-    Json plan_;
+    Model model_;
+    int gpu_id_;
+    std::vector<DefaultPlanner::ConfigRule> config_rules_;
 };
 
-DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
-    const auto &gpu_info = GpuManager::get_instance(gpu_id)->info();
+DefaultPlanner::Impl::Impl(const Model &model, int gpu_id)
+    : model_(model.compress()), gpu_id_(gpu_id) {}
+
+void DefaultPlanner::Impl::install_config_rule(
+    DefaultPlanner::ConfigRule rule) {
+    config_rules_.push_back(
+        [rule](const std::string &op, const std::string &arch) -> std::string {
+            try {
+                return rule(op, arch);
+            } catch (const std::exception &e) {
+                LOG(WARN, "Skipping a config rule due to an error: ", e.what());
+                return "";
+            }
+        });
+}
+
+std::string DefaultPlanner::Impl::plan(bool pretty) const {
+    const auto gpu_info = GpuManager::get_instance(gpu_id_)->info();
     size_t num_sm = gpu_info.num_sm;
     Json task_infos;
     Json processor_groups;
     size_t max_num_warps = 1;
     size_t max_num_processors = 1;
     size_t next_node_id = 0;
-    const auto &compressed = model.compress();
-    for (const auto &node : compressed.nodes()) {
+    for (const auto &node : model_.nodes()) {
         for (const auto &op : node->ops) {
             if (op->is_virtual()) continue;
 
             Json task_info;
             task_info["Id"] = next_node_id++;
 
-            const auto &config = op->default_config(gpu_info.arch);
+            Json config;
+            if (!config_rules_.empty()) {
+                const std::string op_str = op->serialize().dump();
+                for (auto &rule : config_rules_) {
+                    auto config_str = rule(op_str, gpu_info.arch->name());
+                    if (!config_str.empty()) {
+                        config = Json::parse(config_str);
+                        break;
+                    }
+                }
+            }
+            if (config.empty()) {
+                config = op->default_config(gpu_info.arch);
+            }
             size_t num_warps = config["NumWarps"];
             size_t num_tasks = config["NumTasks"];
             size_t sram_bytes = config["SramBytes"];
@@ -69,14 +103,25 @@ DefaultPlanner::Impl::Impl(const Model &model, int gpu_id) {
         }
     }
 
-    plan_["Rank"] = model.rank();
-    plan_["WorldSize"] = model.world_size();
-    plan_["NumProcessors"] = max_num_processors;
-    plan_["NumWarpsPerProcessor"] = max_num_warps;
-    plan_["TaskInfos"] = task_infos;
-    plan_["ProcessorGroups"] = processor_groups;
+    Json plan;
+    plan["Rank"] = model_.rank();
+    plan["WorldSize"] = model_.world_size();
+    plan["NumProcessors"] = max_num_processors;
+    plan["NumWarpsPerProcessor"] = max_num_warps;
+    plan["TaskInfos"] = task_infos;
+    plan["ProcessorGroups"] = processor_groups;
 
-    write_file(get_env().path_tmp_dir + "/model.json", compressed.serialize());
+    std::string plan_str;
+    if (pretty) {
+        plan_str = PlanJson(plan).dump_pretty();
+    } else {
+        plan_str = plan.dump();
+    }
+    const auto &tmp = get_env().path_tmp_dir;
+    write_file(tmp + "/model_gpu" + std::to_string(gpu_id_) + ".json",
+               model_.serialize());
+    write_file(tmp + "/plan_gpu" + std::to_string(gpu_id_) + ".json", plan_str);
+    return plan_str;
 }
 
 DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
@@ -84,15 +129,12 @@ DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
 
 DefaultPlanner::~DefaultPlanner() = default;
 
+void DefaultPlanner::install_config_rule(DefaultPlanner::ConfigRule rule) {
+    impl_->install_config_rule(rule);
+}
+
 std::string DefaultPlanner::plan(bool pretty) const {
-    std::string plan_str;
-    if (pretty) {
-        plan_str = PlanJson(impl_->plan_).dump_pretty();
-    } else {
-        plan_str = impl_->plan_.dump();
-    }
-    write_file(get_env().path_tmp_dir + "/plan.json", plan_str);
-    return plan_str;
+    return impl_->plan(pretty);
 }
 
 }  // namespace ark

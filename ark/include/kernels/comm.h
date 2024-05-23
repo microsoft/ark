@@ -8,6 +8,7 @@
 #include <mscclpp/sm_channel_device.hpp>
 
 #include "common/atomic.h"
+#include "common/broadcast.h"
 #include "common/fp16.h"
 #include "common/unit_op.h"
 
@@ -21,7 +22,7 @@ namespace comm {
 
 enum class ChannelType {
     Proxy,
-    ProxySecondary,
+    SecondaryProxy,
     Sm,
 };
 
@@ -29,7 +30,7 @@ template <ChannelType ChanType>
 DEVICE void signal(int ChanId) {
     if constexpr (ChanType == ChannelType::Proxy) {
         ARK_PROXY_CHANS[ChanId].signal();
-    } else if constexpr (ChanType == ChannelType::ProxySecondary) {
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
         ARK_PROXY_SECONDARY_CHANS[ChanId].signal();
     } else if constexpr (ChanType == ChannelType::Sm) {
         ARK_SM_CHANS[ChanId].signal();
@@ -40,7 +41,7 @@ template <ChannelType ChanType, int64_t MaxSpinCount = -1>
 DEVICE void wait(int ChanId) {
     if constexpr (ChanType == ChannelType::Proxy) {
         ARK_PROXY_CHANS[ChanId].wait(MaxSpinCount);
-    } else if constexpr (ChanType == ChannelType::ProxySecondary) {
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
         ARK_PROXY_SECONDARY_CHANS[ChanId].wait(MaxSpinCount);
     } else if constexpr (ChanType == ChannelType::Sm) {
         ARK_SM_CHANS[ChanId].wait(MaxSpinCount);
@@ -50,13 +51,72 @@ DEVICE void wait(int ChanId) {
 template <ChannelType ChanType>
 DEVICE void flush(int ChanId) {
     static_assert(ChanType == ChannelType::Proxy ||
-                      ChanType == ChannelType::ProxySecondary,
+                      ChanType == ChannelType::SecondaryProxy,
                   "Invalid channel type");
     if constexpr (ChanType == ChannelType::Proxy) {
         ARK_PROXY_CHANS[ChanId].flush();
-    } else if constexpr (ChanType == ChannelType::ProxySecondary) {
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
         ARK_PROXY_SECONDARY_CHANS[ChanId].flush();
     }
+}
+
+template <ChannelType ChanType>
+DEVICE void put(int ChanId, size_t remote_offset, size_t local_offset,
+                size_t bytes) {
+    static_assert(ChanType == ChannelType::Proxy ||
+                      ChanType == ChannelType::SecondaryProxy,
+                  "Invalid channel type");
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].put(remote_offset, local_offset, bytes);
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].put(remote_offset, local_offset,
+                                              bytes);
+    }
+}
+
+template <ChannelType ChanType>
+DEVICE void putWithSignal(int ChanId, size_t remote_offset, size_t local_offset,
+                          size_t bytes) {
+    static_assert(ChanType == ChannelType::Proxy ||
+                      ChanType == ChannelType::SecondaryProxy,
+                  "Invalid channel type");
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].putWithSignal(remote_offset, local_offset,
+                                              bytes);
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].putWithSignal(remote_offset,
+                                                        local_offset, bytes);
+    }
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
+DEVICE void read(int ChanId, size_t remote_offset, size_t local_offset,
+                 int uop_idx, [[maybe_unused]] int smem_per_warp) {
+    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
+    char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
+    DataType *local_data = reinterpret_cast<DataType *>(local);
+    DataType *remote_data = reinterpret_cast<DataType *>(remote);
+    DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
+                      type::Identity, true, false, UnitOutDims, NumWarps,
+                      SmemBytes>::run(local_data, remote_data, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
+DEVICE void write(int ChanId, size_t remote_offset, size_t local_offset,
+                  int uop_idx, [[maybe_unused]] int smem_per_warp) {
+    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
+    char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
+    DataType *local_data = reinterpret_cast<DataType *>(local);
+    DataType *remote_data = reinterpret_cast<DataType *>(remote);
+    DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
+                      type::Identity, false, true, UnitOutDims, NumWarps,
+                      SmemBytes>::run(remote_data, local_data, uop_idx);
 }
 
 template <int NBytes>
@@ -435,51 +495,55 @@ DEVICE void get_from_packet(void *dst, void *src, int uop_idx, int) {
 
 }  // namespace comm
 
-template <comm::ChannelType ChanType, int RemoteRank, typename InDims,
-          typename InShape, typename OutDims, typename OutShape,
-          typename UnitOutDims, int NumWarps, int SmemBytes, typename DataType>
-DEVICE void send(size_t dst_offset, size_t src_offset, int uop_idx, int) {
-    static_assert(ChanType == comm::ChannelType::Proxy ||
-                      ChanType == comm::ChannelType::ProxySecondary,
-                  "Invalid channel type");
-    mscclpp::SimpleProxyChannelDeviceHandle *chan;
-    if constexpr (ChanType == comm::ChannelType::Proxy) {
-        chan = &ARK_PROXY_CHANS[RemoteRank];
-    } else {
-        chan = &ARK_PROXY_SECONDARY_CHANS[RemoteRank];
-    }
-    // TODO: support multi-dimensional input/output.
-    static_assert(InDims::W == InShape::W && InDims::H == InShape::H &&
-                      InDims::C == InShape::C,
-                  "multi-dimensional input is not supported");
-    static_assert(OutDims::W == OutShape::W && OutDims::H == OutShape::H &&
-                      OutDims::C == OutShape::C,
-                  "multi-dimensional output is not supported");
-    static_assert(InShape::NCHW == OutShape::NCHW,
-                  "input and output sizes must be the same");
+template <comm::ChannelType ChanType, bool Signal, int RemoteRank,
+          typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
+DEVICE void put(size_t dst_offset, size_t src_offset, int uop_idx, int) {
     using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
-    if (UnitOp::thread_id() == 0) {
-        constexpr size_t Bytes = sizeof(DataType) * InShape::NCHW;
-        chan->putWithSignal(dst_offset, src_offset, Bytes);
+    if constexpr (ChanType == comm::ChannelType::Sm) {
+        comm::write<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+                    SmemBytes, DataType>(RemoteRank, dst_offset, src_offset,
+                                         uop_idx, 0);
+        if constexpr (Signal) {
+            if (UnitOp::thread_id() == 0) {
+                comm::signal<ChanType>(RemoteRank);
+            }
+        }
+    } else {
+        // TODO: support multi-dimensional input/output.
+        static_assert(InDims::W == InShape::W && InDims::H == InShape::H &&
+                          InDims::C == InShape::C,
+                      "multi-dimensional input is not supported");
+        static_assert(OutDims::W == OutShape::W && OutDims::H == OutShape::H &&
+                          OutDims::C == OutShape::C,
+                      "multi-dimensional output is not supported");
+        static_assert(InShape::NCHW == OutShape::NCHW,
+                      "input and output sizes must be the same");
+        if (UnitOp::thread_id() == 0) {
+            constexpr size_t Bytes = sizeof(DataType) * InShape::NCHW;
+            if constexpr (Signal) {
+                comm::putWithSignal<ChanType>(RemoteRank, dst_offset,
+                                              src_offset, Bytes);
+            } else {
+                comm::put<ChanType>(RemoteRank, dst_offset, src_offset, Bytes);
+            }
+        }
     }
 }
 
 template <comm::ChannelType ChanType, int RemoteRank>
-DEVICE void send_done(int, int) {
-    static_assert(ChanType == comm::ChannelType::Proxy ||
-                      ChanType == comm::ChannelType::ProxySecondary,
-                  "Invalid channel type");
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
-    if (UnitOp::thread_id() == 0) {
-        comm::flush<ChanType>(RemoteRank);
+DEVICE void flush(int, int) {
+    if constexpr (ChanType != comm::ChannelType::Sm) {
+        using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
+        if (UnitOp::thread_id() == 0) {
+            comm::flush<ChanType>(RemoteRank);
+        }
     }
 }
 
 template <comm::ChannelType ChanType, int RemoteRank, int64_t MaxSpinCount = -1>
-DEVICE void recv(int, int) {
-    static_assert(ChanType == comm::ChannelType::Proxy ||
-                      ChanType == comm::ChannelType::ProxySecondary,
-                  "Invalid channel type");
+DEVICE void wait(int, int) {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
     if (UnitOp::thread_id() == 0) {
         comm::wait<ChanType, MaxSpinCount>(RemoteRank);
