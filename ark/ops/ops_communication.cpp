@@ -44,6 +44,13 @@ std::string ModelOpSend::impl_name(const Json &config) const {
         channel_type != "Sm") {
         ERR(ModelError, "invalid channel type: ", channel_type);
     }
+    Dims unit_out_dims;
+    if (config.find("Tile") != config.end()) {
+        auto &tile_shape = config.at("Tile");
+        unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
+    } else {
+        unit_out_dims = output->strides().dims4();
+    }
     return function_name_string(
         "put",
         {"comm::ChannelType::" + channel_type, std::to_string(true),
@@ -51,7 +58,7 @@ std::string ModelOpSend::impl_name(const Json &config) const {
          vec_string(input->shape().dims4()),
          vec_string(output->strides().dims4()),
          vec_string(output->shape().dims4()),
-         vec_string(output->strides().dims4()), std::to_string(1),
+         vec_string(unit_out_dims), std::to_string(1),
          std::to_string(0), output->data_type()->type_str()});
 }
 
