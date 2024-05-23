@@ -57,9 +57,9 @@ std::string ModelOpSend::impl_name(const Json &config) const {
          std::to_string(remote_rank), vec_string(input->strides().dims4()),
          vec_string(input->shape().dims4()),
          vec_string(output->strides().dims4()),
-         vec_string(output->shape().dims4()),
-         vec_string(unit_out_dims), std::to_string(1),
-         std::to_string(0), output->data_type()->type_str()});
+         vec_string(output->shape().dims4()), vec_string(unit_out_dims),
+         std::to_string(1), std::to_string(0),
+         output->data_type()->type_str()});
 }
 
 std::vector<ModelOpArg> ModelOpSend::impl_args([

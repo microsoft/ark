@@ -79,6 +79,9 @@ ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
 }
 
 std::string ModelOpTranspose::impl_name(const Json &config) const {
+    check_fields_config(config, {"NumWarps", "Tile"});
+    check_fields_args(args_, {"Permutation"});
+
     auto permutation = args_.at("Permutation").value<Dims>();
     auto perm_str = permutation_str(permutation);
     int num_warps = config["NumWarps"];

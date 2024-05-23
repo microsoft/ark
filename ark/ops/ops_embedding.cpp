@@ -35,6 +35,7 @@ ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
 }
 
 std::string ModelOpEmbedding::impl_name(const Json &config) const {
+    check_fields_config(config, {"NumWarps"});
     int num_warps = config.at("NumWarps");
 
     auto in_strides = read_tensors_[0]->strides().dims4();

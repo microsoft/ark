@@ -49,6 +49,9 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
 }
 
 std::string ModelOpReduce::impl_name(const Json &config) const {
+    check_fields_config(config, {"NumWarps", "SramBytes", "ImplType"});
+    check_fields_args(args_, {"Axis", "KeepDim"});
+
     std::string red_type;
     if (type()->type_name() == "ReduceSum") {
         red_type = "sum";

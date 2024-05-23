@@ -25,12 +25,7 @@ ModelOpBroadcast1::ModelOpBroadcast1(const std::string &type_name,
 }
 
 std::string ModelOpBroadcast1::impl_name(const Json &config) const {
-    if (!config.contains("NumWarps")) {
-        ERR(InvalidUsageError, "NumWarps is required for ",
-            type()->type_name());
-    } else if (!config.contains("Tile")) {
-        ERR(InvalidUsageError, "Tile is required for ", type()->type_name());
-    }
+    check_fields_config(config, {"NumWarps", "Tile"});
     int num_warps = config.at("NumWarps");
     auto &tile_shape = config.at("Tile");
     Dims unit_out_dims{tile_shape[0], tile_shape[1]};
@@ -98,12 +93,7 @@ ModelOpBroadcast2::ModelOpBroadcast2(const std::string &type_name,
 }
 
 std::string ModelOpBroadcast2::impl_name(const Json &config) const {
-    if (!config.contains("NumWarps")) {
-        ERR(InvalidUsageError, "NumWarps is required for ",
-            type()->type_name());
-    } else if (!config.contains("Tile")) {
-        ERR(InvalidUsageError, "Tile is required for ", type()->type_name());
-    }
+    check_fields_config(config, {"NumWarps", "Tile"});
     int num_warps = config["NumWarps"];
     auto &tile_shape = config["Tile"];
 
