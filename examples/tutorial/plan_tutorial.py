@@ -4,6 +4,7 @@
 import argparse
 import ark
 import time
+import json
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
@@ -281,6 +282,24 @@ def compare_results(result, ground_truth):
     )
 
 
+def config_rule_larger_tile(op: str, arch: str) -> str:
+    j = json.loads(op)
+    op_type = j["Type"]
+    if op_type == "Sigmoid" or op_type == "Mul":
+        pshape = j["ResultTensors"][0]["PaddedShape"]
+        if len(pshape) < 2 or pshape[-2] % 128 != 0 or pshape[-1] % 256 != 0:
+            return ""
+        num_tasks = pshape[-2] // 128 * pshape[-1] // 256
+        cfg = {
+            "NumWarps": 8,
+            "SramBytes": 0,
+            "Tile": [128, 256],
+            "NumTasks": num_tasks,
+        }
+        return json.dumps(cfg)
+    return ""
+
+
 def main(plan_path: str):
     args = ModelArgs()
     batch_size = 1
@@ -312,7 +331,13 @@ def main(plan_path: str):
     # Calculate default result
     ground_truth = None
     with ark.Runtime.get_runtime() as rt:
-        plan = ark.DefaultPlanner().plan()
+        planner = ark.DefaultPlanner()
+
+        # If this rule is installed, default planner will perform the same as
+        # `plan_1_larger_tile.json` on A100.
+        # planner.install_config_rule(config_rule_larger_tile)
+
+        plan = planner.plan()
         with open("default_plan.json", "w") as f:
             f.write(plan)
         rt.launch(plan=plan)
