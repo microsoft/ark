@@ -51,7 +51,7 @@ class GpuManager {
         int max_registers_per_block;
         int max_threads_per_block;
         int max_registers_per_thread = 256;  // TODO: how to get this?
-        int smem_align = 128;  // TODO: how to get this?
+        int smem_align = 128;                // TODO: how to get this?
         ArchRef arch;
     };
 
