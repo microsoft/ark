@@ -9,7 +9,7 @@
 namespace ark {
 class GpuStream::Impl {
    public:
-    Impl(const GpuManager &manager);
+    Impl();
     ~Impl();
     Impl(const Impl &) = delete;
     Impl &operator=(const Impl &) = delete;
@@ -20,11 +20,9 @@ class GpuStream::Impl {
 
    private:
     gpuStream gpu_stream_;
-    const GpuManager &manager_;
 };
 
-GpuStream::GpuStream(const GpuManager &manager)
-    : pimpl_(std::make_shared<Impl>(manager)) {}
+GpuStream::GpuStream() : pimpl_(std::make_shared<Impl>()) {}
 
 void GpuStream::sync() const { pimpl_->sync(); }
 
@@ -32,7 +30,7 @@ gpuError GpuStream::query() const { return pimpl_->query(); }
 
 gpuStream GpuStream::get() const { return pimpl_->get(); }
 
-GpuStream::Impl::Impl(const GpuManager &manager) : manager_(manager) {
+GpuStream::Impl::Impl() {
     GLOG(gpuStreamCreateWithFlags(&gpu_stream_, gpuStreamNonBlocking));
 }
 

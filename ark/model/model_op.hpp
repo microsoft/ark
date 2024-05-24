@@ -44,6 +44,8 @@ class ModelOp {
 
     ModelOp(const ModelOp &) = default;
 
+    virtual ~ModelOp() = default;
+
     virtual std::string impl_name([[maybe_unused]] const Json &config) const {
         return "";
     }

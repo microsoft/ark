@@ -170,8 +170,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                                   reinterpret_cast<int *>(res[i]->data()),
                                   outputs[i].shape().dims4(), print_on_error);
         } else if (outputs[i].data_type() == BYTE) {
-            comp = tensor_compare(reinterpret_cast<uint8_t *>(gt[i]->data()),
-                                  reinterpret_cast<uint8_t *>(res[i]->data()),
+            comp = tensor_compare(reinterpret_cast<int8_t *>(gt[i]->data()),
+                                  reinterpret_cast<int8_t *>(res[i]->data()),
                                   outputs[i].shape().dims4(), print_on_error);
         } else {
             ERR(UnitTestError,

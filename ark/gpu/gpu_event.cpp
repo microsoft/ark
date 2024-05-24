@@ -10,7 +10,7 @@
 namespace ark {
 class GpuEvent::Impl {
    public:
-    Impl(const GpuManager& manager, bool disable_timing);
+    Impl(bool disable_timing);
     ~Impl();
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
@@ -19,12 +19,10 @@ class GpuEvent::Impl {
     float elapsed_msec(const GpuEvent& other) const;
 
    private:
-    const GpuManager& manager_;
     gpuEvent event_;
 };
 
-GpuEvent::Impl::Impl(const GpuManager& manager, bool disable_timing)
-    : manager_(manager) {
+GpuEvent::Impl::Impl(bool disable_timing) {
     unsigned int flags = 0;
     if (disable_timing) {
         flags |= gpuEventDisableTiming;
@@ -44,8 +42,8 @@ float GpuEvent::Impl::elapsed_msec(const GpuEvent& other) const {
     return elapsed;
 }
 
-GpuEvent::GpuEvent(const GpuManager& manager, bool disable_timing)
-    : pimpl_(std::make_shared<Impl>(manager, disable_timing)) {}
+GpuEvent::GpuEvent(bool disable_timing)
+    : pimpl_(std::make_shared<Impl>(disable_timing)) {}
 
 void GpuEvent::record(std::shared_ptr<GpuStream> stream) {
     pimpl_->record(stream);

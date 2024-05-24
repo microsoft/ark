@@ -17,13 +17,14 @@ Model Model::compress() const {
 
 int Model::unique_tag() {
     size_t num_ints = size_t(std::numeric_limits<int>::max()) * 2 + 2;
+    if (tags_.size() == num_ints) {
+        ERR(ModelError, "no more unique tags");
+    }
     int next_val;
     if (tags_.empty()) {
         next_val = std::numeric_limits<int>::min();
     } else if (*tags_.rbegin() < std::numeric_limits<int>::max()) {
         next_val = *tags_.rbegin() + 1;
-    } else if (tags_.size() == num_ints) {
-        ERR(ModelError, "no more unique tags");
     } else {
         next_val = std::numeric_limits<int>::min();
         for (int tag : tags_) {

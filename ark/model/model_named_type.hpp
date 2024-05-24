@@ -11,7 +11,6 @@ namespace ark {
 class ModelNamedT {
    public:
     ModelNamedT(const std::string &type_name) : type_name_(type_name) {}
-    ModelNamedT &operator=(const ModelNamedT &) = default;
 
     const std::string &type_name() const { return type_name_; }
 

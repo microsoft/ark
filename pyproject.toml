@@ -13,7 +13,7 @@ cmake.verbose = false
 cmake.build-type = "Release"
 cmake.targets = ["ark_py"]
 wheel.packages = ["python/ark"]
-wheel.license-files = ["LICENSE", "CITATION.cff", "CODE_OF_CONDUCT.md", "SECURITY.md", "SUPPORT.md"]
+wheel.license-files = ["LICENSE", "CITATION.cff", "CODE_OF_CONDUCT.md", "README.md", "SECURITY.md", "SUPPORT.md"]
 install.strip = true
 build-dir = "build/{wheel_tag}"
 

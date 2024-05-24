@@ -23,6 +23,7 @@
 #include "env.h"
 #include "file_io.h"
 #include "gpu/gpu_logging.h"
+#include "utils/utils_string.hpp"
 
 #define ARK_DEBUG_KERNEL 0
 

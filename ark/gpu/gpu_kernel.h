@@ -11,6 +11,8 @@
 
 namespace ark {
 
+class GpuManager;
+
 class GpuKernel {
    public:
     GpuKernel(int gpu_id, const std::string& codes,

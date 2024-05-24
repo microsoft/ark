@@ -103,8 +103,7 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
 }
 
 GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {
-    this->pimpl_->main_stream_ =
-        std::shared_ptr<GpuStream>(new GpuStream(*this));
+    this->pimpl_->main_stream_ = std::shared_ptr<GpuStream>(new GpuStream());
 }
 
 std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align,
@@ -120,11 +119,11 @@ std::shared_ptr<GpuHostMemory> GpuManager::malloc_host(size_t bytes,
 }
 
 std::shared_ptr<GpuEvent> GpuManager::create_event(bool disable_timing) const {
-    return std::shared_ptr<GpuEvent>(new GpuEvent(*this, disable_timing));
+    return std::shared_ptr<GpuEvent>(new GpuEvent(disable_timing));
 }
 
 std::shared_ptr<GpuStream> GpuManager::create_stream() const {
-    return std::shared_ptr<GpuStream>(new GpuStream(*this));
+    return std::shared_ptr<GpuStream>(new GpuStream());
 }
 
 int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }

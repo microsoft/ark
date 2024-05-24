@@ -80,9 +80,9 @@ void baseline_all_reduce(std::vector<void *> &outputs,
 }
 
 template <int NumGpus>
-void test_all_reduce_internal(ark::DimType nelem, int iter) {
+void test_all_reduce_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
-        ark::unittest::spawn_process([gpu_id, nelem, iter]() {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
@@ -153,14 +153,14 @@ void test_all_reduce_internal(ark::DimType nelem, int iter) {
 // }
 
 ark::unittest::State test_all_reduce_4gpus() {
-    test_all_reduce_internal<4>(64, 1);
-    test_all_reduce_internal<4>(8192, 1);
+    test_all_reduce_internal<4>(64);
+    test_all_reduce_internal<4>(8192);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_8gpus() {
-    test_all_reduce_internal<8>(64, 1);
-    test_all_reduce_internal<8>(8192, 1);
+    test_all_reduce_internal<8>(64);
+    test_all_reduce_internal<8>(8192);
     return ark::unittest::SUCCESS;
 }
 

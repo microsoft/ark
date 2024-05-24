@@ -29,7 +29,7 @@ struct TensorCompareResult {
 template <typename T>
 T random(float min_val, float max_val) {
     int rand_val = ark::rand();
-    float r = float(rand_val) / RAND_MAX;
+    float r = float(rand_val) / float(RAND_MAX);
     return T(min_val + r * (max_val - min_val));
 }
 
