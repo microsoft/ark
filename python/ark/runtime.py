@@ -3,7 +3,7 @@
 
 import logging
 from enum import Enum
-import traceback
+from typing import Callable
 
 from _ark_core import _Executor, _DefaultPlanner
 from .model import Model
@@ -22,6 +22,25 @@ class DefaultPlanner(_DefaultPlanner):
     def __init__(self, gpu_id: int = 0):
         compressed = Model.get_model().compress()
         super().__init__(compressed, gpu_id)
+
+    def install_config_rule(self, rule: Callable[[str, str], str]):
+        """
+        Install a configuration rule.
+
+        Args:
+            rule: A function that takes an operator description and a target
+            architecture name and returns a configuration description.
+        """
+        super().install_config_rule(rule)
+
+    def plan(self, pretty: bool = True) -> str:
+        """
+        Generate an execution plan.
+
+        Args:
+            pretty: Whether to generate a pretty plan.
+        """
+        return super().plan(pretty)
 
 
 class Executor(_Executor):

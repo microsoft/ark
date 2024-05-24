@@ -21,12 +21,6 @@ def version():
     return __version__
 
 
-def init():
-    """Initializes ARK."""
-    _ark_core.init()
-    Model.reset()
-
-
 def srand(seed):
     """Sets the seed for random number generation."""
     _ark_core.srand(seed)
@@ -42,6 +36,7 @@ def set_world_size(world_size):
     Model.set_world_size(world_size)
 
 
+from .init import init
 from .tensor import Dims, Tensor, Parameter
 from .module import Module
 from .runtime import Runtime, DefaultPlanner

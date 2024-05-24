@@ -54,6 +54,24 @@ class Model(_Model):
         _ModelState.rank = 0
         _ModelState.world_size = 1
 
+    def compress(self) -> "Model":
+        """
+        Compress the model.
+        """
+        return super().compress()
+
+    def serialize(self, pretty: bool = True) -> str:
+        """
+        Serialize the model.
+
+        Args:
+            pretty: Whether to pretty print the model.
+
+        Returns:
+            The serialized model.
+        """
+        return super().serialize(pretty)
+
 
 class _ModelState:
     """

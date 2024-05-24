@@ -13,3 +13,13 @@ coverage:
       default:
         target: 85%
         threshold: 1%
+
+ignore:
+  - "/usr/*"
+  - "/tmp/*"
+  - "*/build/*"
+  - "*/third_party/*"
+  - "*/ark/*_test.*"
+  - "*/examples/*"
+  - "*/python/unittest/*"
+  - "*/ark/unittest/*"

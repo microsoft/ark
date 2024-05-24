@@ -45,6 +45,14 @@ void DefaultPlanner::Impl::install_config_rule(
         });
 }
 
+static void check_config_field(const ModelOpRef op, const Json &config,
+                               const std::string &field) {
+    if (!config.contains(field)) {
+        ERR(NotFoundError, "Config field not found: ", field, " in ",
+            op->name());
+    }
+}
+
 std::string DefaultPlanner::Impl::plan(bool pretty) const {
     const auto gpu_info = GpuManager::get_instance(gpu_id_)->info();
     size_t num_sm = gpu_info.num_sm;
@@ -74,6 +82,9 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
             if (config.empty()) {
                 config = op->default_config(gpu_info.arch);
             }
+            check_config_field(op, config, "NumWarps");
+            check_config_field(op, config, "NumTasks");
+            check_config_field(op, config, "SramBytes");
             size_t num_warps = config["NumWarps"];
             size_t num_tasks = config["NumTasks"];
             size_t sram_bytes = config["SramBytes"];
