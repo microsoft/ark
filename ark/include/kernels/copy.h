@@ -14,8 +14,8 @@ template <typename InDims, typename InShape, typename OutDims,
 DEVICE void copy(OutDataType *out, InDataType *in, int uop_idx,
                  [[maybe_unused]] int smem_per_warp) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, type::Identity, UnitOutDims, NumWarps,
-                      SmemBytes>::run(out, in, uop_idx);
+                      OutDataType, type::Identity, false, false, UnitOutDims,
+                      NumWarps, SmemBytes>::run(out, in, uop_idx);
 }
 
 }  // namespace ark

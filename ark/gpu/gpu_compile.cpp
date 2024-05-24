@@ -120,6 +120,7 @@ static const std::string gpu_compile_command(
     args.emplace_back("-O0");
 #endif  // (ARK_DEBUG_KERNEL)
     args.emplace_back("-std=c++17");
+    args.emplace_back("--define-macro=__HIP_PLATFORM_AMD__=1");
     args.emplace_back("--define-macro=ARK_TARGET_ROCM_ARCH=" + cc);
     args.emplace_back("-I" + ark_root + "/include");
     args.emplace_back("-I" + ark_root + "/include/kernels");
