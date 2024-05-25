@@ -11,24 +11,8 @@ on:
     - cron: '42 20 * * 4'
 
 jobs:
-  free-space:
-    name: Free Disk Space
-    runs-on: ubuntu-latest
-    steps:
-    - name: Free disk space
-      run: |
-        sudo apt-get remove -y '^dotnet-.*'
-        sudo apt-get remove -y '^llvm-.*'
-        sudo apt-get remove -y azure-cli google-cloud-cli google-chrome-stable firefox powershell mono-devel
-        sudo apt-get autoremove -y
-        sudo apt-get clean
-        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
-        rm -rf /opt/hostedtoolcache
-        df -h
-
   analyze-cuda:
     name: Analyze (CUDA)
-    needs: free-space
     strategy:
       fail-fast: false
       matrix:
@@ -48,8 +32,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Check disk space
+    - name: Free disk space
       run: |
+        sudo apt-get remove -y '^dotnet-.*'
+        sudo apt-get remove -y '^llvm-.*'
+        sudo apt-get remove -y azure-cli google-cloud-cli google-chrome-stable firefox powershell mono-devel
+        sudo apt-get autoremove -y
+        sudo apt-get clean
+        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+        rm -rf /opt/hostedtoolcache
         df -h
 
     # Initializes the CodeQL tools for scanning.
