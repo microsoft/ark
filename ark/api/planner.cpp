@@ -93,7 +93,8 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
 
             max_num_warps = std::max(max_num_warps, num_warps);
 
-            task_info["Ops"] = {op->serialize()};
+            task_info["Ops"] = Json::array();
+            task_info["Ops"].push_back(op->serialize());
             task_info["Ops"][0]["Config"] = config;
             task_infos.push_back(task_info);
 
