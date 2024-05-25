@@ -17,6 +17,7 @@ jobs:
     steps:
     - name: Free disk space
       run: |
+        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
         rm -rf /opt/hostedtoolcache
         df -h
 
