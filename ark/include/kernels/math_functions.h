@@ -78,7 +78,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void gelu(OutDataType *out, InDataType *in, int uop_idx, int) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, Gelu, UnitOutDims, NumWarps,
+                      OutDataType, Gelu, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(out, in, uop_idx);
 }
 
@@ -87,8 +87,8 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void exp(OutDataType *out, const InDataType *in, int uop_idx, int) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, type::Exp, UnitOutDims, NumWarps,
-                      SmemBytes>::run(out, in, uop_idx);
+                      OutDataType, type::Exp, false, false, UnitOutDims,
+                      NumWarps, SmemBytes>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
@@ -96,7 +96,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void relu(OutDataType *out, InDataType *in, int uop_idx, int) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, Relu, UnitOutDims, NumWarps,
+                      OutDataType, Relu, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(out, in, uop_idx);
 }
 
@@ -105,8 +105,8 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void rsqrt(OutDataType *out, const InDataType *in, int uop_idx, int) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, type::Rsqrt, UnitOutDims, NumWarps,
-                      SmemBytes>::run(out, in, uop_idx);
+                      OutDataType, type::Rsqrt, false, false, UnitOutDims,
+                      NumWarps, SmemBytes>::run(out, in, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
@@ -114,7 +114,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void sigmoid(OutDataType *out, InDataType *in, int uop_idx, int) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, Sigmoid, UnitOutDims, NumWarps,
+                      OutDataType, Sigmoid, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(out, in, uop_idx);
 }
 
@@ -123,8 +123,8 @@ template <typename InDims, typename InShape, typename OutDims,
           typename InDataType, typename OutDataType>
 DEVICE void sqrt(OutDataType *out, const InDataType *in, int uop_idx, int) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, type::Sqrt, UnitOutDims, NumWarps,
-                      SmemBytes>::run(out, in, uop_idx);
+                      OutDataType, type::Sqrt, false, false, UnitOutDims,
+                      NumWarps, SmemBytes>::run(out, in, uop_idx);
 }
 
 }  // namespace ark

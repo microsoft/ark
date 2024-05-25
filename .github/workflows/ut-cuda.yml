@@ -36,41 +36,55 @@ jobs:
             sudo nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
           done
 
-      - name: UpdateSubmodules
+      - name: Dubious ownership exception
         run: |
           git config --global --add safe.directory /__w/ark/ark
-          git submodule foreach --recursive git reset --hard
-          git submodule foreach --recursive git clean -fdx
-          git submodule foreach git fetch
-          git submodule update --init --recursive
 
       - name: Build
         run: |
           mkdir build && cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug ..
-          make -j ut
+          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_PYTHON=ON ..
+          make -j ut ark_py
 
-      - name: RunUT
-        run: |
-          cd build && ARK_ROOT=$PWD ARK_IGNORE_BINARY_CACHE=1 ctest --stop-on-failure --verbose --schedule-random
-
-      - name: ReportCoverage
+      - name: Run C++ UT
         run: |
           cd build
-          lcov --capture --directory . --output-file coverage.info
-          lcov --remove coverage.info \
+          ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+          lcov --capture --directory . --output-file cpp_coverage.info
+          lcov --remove cpp_coverage.info \
               '/usr/*' \
               '/tmp/*' \
+              '*/build/*' \
               '*/third_party/*' \
               '*/ark/*_test.*' \
               '*/examples/*' \
               '*/python/*' \
-              '*/ark/unittest/unittest_utils.cc' \
-              --output-file coverage.info
-          lcov --list coverage.info
-          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+              '*/ark/unittest/unittest_utils.cpp' \
+              --output-file cpp_coverage.info
+          lcov --list cpp_coverage.info
 
-      - name: BuildPython
+      - name: Install Python Dependencies
         run: |
           python3 -m pip install -r requirements.txt
+
+      - name: Run Python UT
+        run: |
+          cd build
+          ARK_ROOT=$PWD pytest --cov --verbose ../python/unittest/test.py
+
+      - name: Report Coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          cd build
+          bash <(curl -s https://codecov.io/bash) -f cpp_coverage.info || echo "Codecov did not collect C++ coverage reports"
+          bash <(curl -s https://codecov.io/bash) -f .coverage || echo "Codecov did not collect Python coverage reports"
+
+      - name: Install Python
+        run: |
           python3 -m pip install .
+
+      - name: Run Tutorials
+        run: |
+          python3 ./examples/tutorial/quickstart_tutorial.py
+          python3 ./examples/tutorial/plan_tutorial.py

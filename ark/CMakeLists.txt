@@ -1,9 +1,9 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cc)
-file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cc *_test.cu)
-file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unittest/*.cc)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS *.cpp)
+file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cpp)
+file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unittest/*.cpp)
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 
 if(USE_ROCM)
@@ -11,13 +11,13 @@ if(USE_ROCM)
     set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
-set(COMMON_LIBS ARK::numa ARK::ibverbs mscclpp mscclpp_static pthread rt)
+set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(ark_obj PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(ark_obj SYSTEM PRIVATE
-    ${PROJECT_SOURCE_DIR}/third_party/json
+    ${JSON_INCLUDE_DIRS}
     ${MSCCLPP_INCLUDE_DIRS}
     ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
@@ -42,7 +42,7 @@ if(USE_ROCM)
 endif()
 
 target_sources(ark_obj PRIVATE ${SOURCES})
-target_link_libraries(ark_obj PRIVATE ${COMMON_LIBS})
+target_link_libraries(ark_obj PUBLIC mscclpp_static PRIVATE ${COMMON_LIBS})
 
 # ARK unit tests
 foreach(ut_source IN ITEMS ${UT_SOURCES})
@@ -52,7 +52,7 @@ foreach(ut_source IN ITEMS ${UT_SOURCES})
     set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)
     target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(${exe_name} SYSTEM PRIVATE
-        ${PROJECT_SOURCE_DIR}/third_party/json
+        ${JSON_INCLUDE_DIRS}
         ${IBVERBS_INCLUDE_DIRS}
         ${NUMA_INCLUDE_DIRS}
     )

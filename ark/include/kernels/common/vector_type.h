@@ -193,8 +193,9 @@ struct VectorCompute {
 template <typename OutDims, typename OutDataType, typename UnitOutDims>
 struct DefaultNelemPerThread {
     static constexpr int ConsecutiveDimLen =
-        (OutDims::W == 1 && UnitOutDims::W == 1) ? UnitOutDims::H
-                                                 : UnitOutDims::W;
+        (OutDims::W == 1 && UnitOutDims::W == 1)
+            ? math::min<OutDims::H, UnitOutDims::H>::value
+            : math::min<OutDims::W, UnitOutDims::W>::value;
 
     static const int value =
         (sizeof(OutDataType) <= 2 && ConsecutiveDimLen % 8 == 0)

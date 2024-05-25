@@ -21,7 +21,7 @@ namespace ark {
 /// @tparam OutDims (ark::Vec) Output tensor leading dimensions.
 /// @tparam NCA (ark::Vec) A 2D vector with N and C dimensions of matrix A.
 /// @tparam NCB (ark::Vec) A 2D vector with N and C dimensions of matrix B.
-/// @tparam Shape (ark::Vec) The tile shape of matmul computation (m, n, k).
+/// @tparam TileShape (ark::Vec) The tile shape of matmul computation (m, n, k).
 /// @tparam ProblemSize (ark::Vec) The problem size of matmul computation
 /// (m, n, k).
 /// @tparam LeadingDims (ark::Vec) The leading dimensions of matrix inputs
@@ -33,7 +33,7 @@ namespace ark {
 /// @tparam NumWarps (int) The number of warps per uop.
 /// @tparam SmemBytes (int) The size of shared memory per uop.
 ///
-template <typename OutDims, typename NCA, typename NCB, typename Shape,
+template <typename OutDims, typename NCA, typename NCB, typename TileShape,
           typename ProblemSize, typename LeadingDims, int InnerLdimA,
           int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
           int SmemBytes, typename DataTypeA, typename DataTypeB,
@@ -44,7 +44,7 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                   "NCA should be two dimensional.");
     static_assert(NCB::D2 == 1 && NCB::D3 == 1,
                   "NCB should be two dimensional.");
-    static_assert(Shape::D3 == 1, "Shape should be three dimensional.");
+    static_assert(TileShape::D3 == 1, "TileShape should be three dimensional.");
     static_assert(ProblemSize::D3 == 1,
                   "ProblemSize should be three dimensional.");
 
@@ -54,7 +54,7 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     constexpr int CC = (NCA::D1 > NCB::D1) ? NCA::D1 : NCB::D1;
 
     using OutShape = Vec<NC, CC, ProblemSize::D0, ProblemSize::D1>;
-    using UnitOutDims = Vec<1, 1, Shape::D0, Shape::D1>;
+    using UnitOutDims = Vec<1, 1, TileShape::D0, TileShape::D1>;
     using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     constexpr int LeadingDimA = LeadingDims::D0;
@@ -63,9 +63,9 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     constexpr int ProblemSizeM = ProblemSize::D0;
     constexpr int ProblemSizeN = ProblemSize::D1;
     constexpr int ProblemSizeK = ProblemSize::D2;
-    constexpr int TileSizeM = Shape::D0;
-    constexpr int TileSizeN = Shape::D1;
-    constexpr int TileSizeK = Shape::D2;
+    constexpr int TileSizeM = TileShape::D0;
+    constexpr int TileSizeN = TileShape::D1;
+    constexpr int TileSizeK = TileShape::D2;
 
     constexpr DimType SizeA = math::mul<OutDims::H, InnerLdimA>::value;
     constexpr DimType SizeB = math::mul<OutDims::W, InnerLdimB>::value;

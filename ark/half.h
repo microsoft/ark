@@ -234,6 +234,8 @@ struct alignas(2) half_t {
     int mantissa() const { return int(storage & 0x3ff); }
 };
 
+using fp16 = half_t;
+
 /// Assignment from half_t
 template <>
 half_t& half_t::operator=(half_t const& x);

@@ -6,14 +6,14 @@ import ark
 
 
 def quickstart_tutorial():
-    # Initialize the ARK runtime
+    # Initialize the ARK environments
     ark.init()
 
     M, N = 64, 64
     # Create an input tensor
-    input_tensor = ark.tensor([M, N], ark.fp32)
+    input_tensor = ark.tensor([M, N], ark.fp16)
     # Create another tensor
-    other_tensor = ark.tensor([M, N], ark.fp32)
+    other_tensor = ark.tensor([M, N], ark.fp16)
 
     # Add the two tensors
     output_tensor = ark.add(input_tensor, other_tensor)
@@ -25,9 +25,9 @@ def quickstart_tutorial():
     runtime.launch()
 
     # Initialize the input and other tensor with random values
-    input_tensor_host = np.random.rand(M, N).astype(np.float32)
+    input_tensor_host = np.random.rand(M, N).astype(np.float16)
     input_tensor.from_numpy(input_tensor_host)
-    other_tensor_host = np.random.rand(M, N).astype(np.float32)
+    other_tensor_host = np.random.rand(M, N).astype(np.float16)
     other_tensor.from_numpy(other_tensor_host)
 
     # Run the ARK program
@@ -40,6 +40,12 @@ def quickstart_tutorial():
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
     )
+
+    # Stop the ARK runtime (undo Runtime.launch())
+    runtime.stop()
+
+    # Reset the ARK runtime (free all resources)
+    runtime.reset()
 
     print("Quickstart tutorial is successful!")
 

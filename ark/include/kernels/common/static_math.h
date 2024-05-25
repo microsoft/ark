@@ -76,6 +76,17 @@ struct lm {
     enum { value = mul<div_up<A, B>::value, B>::value };
 };
 
+// Greatest common divisor
+template <long long int A, long long int B>
+struct gcd {
+    enum { value = gcd<B, A % B>::value };
+};
+
+template <long long int A>
+struct gcd<A, 0> {
+    enum { value = A };
+};
+
 // Integer subtraction
 template <long long int A, long long int B>
 struct sub {
@@ -148,6 +159,28 @@ static DEVICE long long int mod(long long int x) {
 template <long long int Divisor>
 static DEVICE long long int gm(long long int x) {
     return math::div<Divisor>(x) * Divisor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <size_t Rhs>
+DEVICE bool geq(size_t x) {
+    return x >= Rhs;
+}
+
+template <>
+DEVICE bool geq<0>(size_t x) {
+    return true;
+}
+
+template <size_t Rhs>
+DEVICE bool le(size_t x) {
+    return x < Rhs;
+}
+
+template <>
+DEVICE bool le<0>(size_t x) {
+    return false;
 }
 
 }  // namespace math

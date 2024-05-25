@@ -7,11 +7,12 @@
 #include <string>
 #include <vector>
 
+#include "arch.hpp"
+
 namespace ark {
 
 const std::string gpu_compile(const std::vector<std::string> &codes,
-                              const std::string &arch,
-                              unsigned int max_reg_cnt);
+                              const ArchRef arch, unsigned int max_reg_cnt);
 
 }  // namespace ark
 

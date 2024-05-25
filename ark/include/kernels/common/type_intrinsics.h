@@ -145,12 +145,12 @@ struct Replicate {
             return __halves2half2(input, input);
         } else if constexpr (std::is_same<DataType, bf16>::value && Size == 2) {
             return __halves2bfloat162(input, input);
-        } else if constexpr (IsBuiltinVector2<DataType>::value && Size == 2) {
+        } else if constexpr (IsBuiltinVector2<VecType>::value && Size == 2) {
             VecType ret;
             ret.x = input;
             ret.y = input;
             return ret;
-        } else if constexpr (IsBuiltinVector4<DataType>::value && Size == 4) {
+        } else if constexpr (IsBuiltinVector4<VecType>::value && Size == 4) {
             VecType ret;
             ret.x = input;
             ret.y = input;

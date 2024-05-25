@@ -8,6 +8,8 @@
 #include <sstream>
 #include <string>
 
+#include "error.hpp"
+
 namespace ark {
 
 typedef enum { DEBUG, INFO, WARN, ERROR } LogLevel;

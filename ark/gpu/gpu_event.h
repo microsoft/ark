@@ -6,10 +6,11 @@
 
 #include <memory>
 
-#include "gpu/gpu_stream.h"
-
 namespace ark {
+
+class GpuStream;
 class GpuManager;
+
 class GpuEvent {
    public:
     ~GpuEvent() = default;
@@ -19,10 +20,12 @@ class GpuEvent {
     void record(std::shared_ptr<GpuStream> stream);
     float elapsed_msec(const GpuEvent &other) const;
 
-   private:
+   protected:
     friend class GpuManager;
-    GpuEvent(const GpuManager &manager, bool disable_timing = false);
 
+    GpuEvent(bool disable_timing = false);
+
+   private:
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 };

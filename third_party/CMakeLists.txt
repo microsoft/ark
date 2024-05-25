@@ -4,7 +4,6 @@
 set(MSCCLPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp/include)
 set(CUTLASS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include)
 set(CK_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/composable_kernel/include)
-set(JSON_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/json)
 
 include(FetchContent)
 
@@ -12,13 +11,30 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG e7d3e2d44b114b0aecfe53e27c752474e868c462
+    GIT_TAG v0.5.0
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
-FetchContent_MakeAvailable(mscclpp)
+FetchContent_GetProperties(mscclpp)
+if (NOT mscclpp_POPULATED)
+    FetchContent_Populate(mscclpp)
+    add_subdirectory(${mscclpp_SOURCE_DIR} ${mscclpp_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
+# JSON
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG v3.11.3
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/json
+)
+FetchContent_GetProperties(json)
+if (NOT json_POPULATED)
+    FetchContent_Populate(json)
+endif()
+set(JSON_INCLUDE_DIRS ${json_SOURCE_DIR}/include PARENT_SCOPE)
 
 if(USE_CUDA)
     # Configure CUTLASS

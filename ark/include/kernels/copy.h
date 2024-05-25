@@ -12,10 +12,10 @@ template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename InDataType, typename OutDataType>
 DEVICE void copy(OutDataType *out, InDataType *in, int uop_idx,
-                 int smem_per_warp) {
+                 [[maybe_unused]] int smem_per_warp) {
     DefaultBroadcast1<InDims, InShape, InDataType, OutDims, OutShape,
-                      OutDataType, type::Identity, UnitOutDims, NumWarps,
-                      SmemBytes>::run(out, in, uop_idx);
+                      OutDataType, type::Identity, false, false, UnitOutDims,
+                      NumWarps, SmemBytes>::run(out, in, uop_idx);
 }
 
 }  // namespace ark

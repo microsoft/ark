@@ -8,13 +8,116 @@
 #include <mscclpp/sm_channel_device.hpp>
 
 #include "common/atomic.h"
+#include "common/broadcast.h"
+#include "common/fp16.h"
 #include "common/unit_op.h"
 
-extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle _ARK_PROXY_CHANS[];
-extern __constant__ mscclpp::SmChannelDeviceHandle _ARK_SM_CHANS[];
+extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle ARK_PROXY_CHANS[];
+extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle
+    ARK_PROXY_SECONDARY_CHANS[];
+extern __constant__ mscclpp::SmChannelDeviceHandle ARK_SM_CHANS[];
 
 namespace ark {
 namespace comm {
+
+enum class ChannelType {
+    Proxy,
+    SecondaryProxy,
+    Sm,
+};
+
+template <ChannelType ChanType>
+DEVICE void signal(int ChanId) {
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].signal();
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].signal();
+    } else if constexpr (ChanType == ChannelType::Sm) {
+        ARK_SM_CHANS[ChanId].signal();
+    }
+}
+
+template <ChannelType ChanType, int64_t MaxSpinCount = -1>
+DEVICE void wait(int ChanId) {
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].wait(MaxSpinCount);
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].wait(MaxSpinCount);
+    } else if constexpr (ChanType == ChannelType::Sm) {
+        ARK_SM_CHANS[ChanId].wait(MaxSpinCount);
+    }
+}
+
+template <ChannelType ChanType>
+DEVICE void flush(int ChanId) {
+    static_assert(ChanType == ChannelType::Proxy ||
+                      ChanType == ChannelType::SecondaryProxy,
+                  "Invalid channel type");
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].flush();
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].flush();
+    }
+}
+
+template <ChannelType ChanType>
+DEVICE void put(int ChanId, size_t remote_offset, size_t local_offset,
+                size_t bytes) {
+    static_assert(ChanType == ChannelType::Proxy ||
+                      ChanType == ChannelType::SecondaryProxy,
+                  "Invalid channel type");
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].put(remote_offset, local_offset, bytes);
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].put(remote_offset, local_offset,
+                                              bytes);
+    }
+}
+
+template <ChannelType ChanType>
+DEVICE void putWithSignal(int ChanId, size_t remote_offset, size_t local_offset,
+                          size_t bytes) {
+    static_assert(ChanType == ChannelType::Proxy ||
+                      ChanType == ChannelType::SecondaryProxy,
+                  "Invalid channel type");
+    if constexpr (ChanType == ChannelType::Proxy) {
+        ARK_PROXY_CHANS[ChanId].putWithSignal(remote_offset, local_offset,
+                                              bytes);
+    } else if constexpr (ChanType == ChannelType::SecondaryProxy) {
+        ARK_PROXY_SECONDARY_CHANS[ChanId].putWithSignal(remote_offset,
+                                                        local_offset, bytes);
+    }
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
+DEVICE void read(int ChanId, size_t remote_offset, size_t local_offset,
+                 int uop_idx, [[maybe_unused]] int smem_per_warp) {
+    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
+    char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
+    DataType *local_data = reinterpret_cast<DataType *>(local);
+    DataType *remote_data = reinterpret_cast<DataType *>(remote);
+    DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
+                      type::Identity, true, false, UnitOutDims, NumWarps,
+                      SmemBytes>::run(local_data, remote_data, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
+DEVICE void write(int ChanId, size_t remote_offset, size_t local_offset,
+                  int uop_idx, [[maybe_unused]] int smem_per_warp) {
+    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
+    char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
+    DataType *local_data = reinterpret_cast<DataType *>(local);
+    DataType *remote_data = reinterpret_cast<DataType *>(remote);
+    DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
+                      type::Identity, false, true, UnitOutDims, NumWarps,
+                      SmemBytes>::run(remote_data, local_data, uop_idx);
+}
 
 template <int NBytes>
 union BytesPack {};
@@ -81,43 +184,6 @@ DEVICE void add_half4(BytesPack<8> &dst, BytesPack<8> &src) {
     }
 }
 
-// Send a trigger to proxy to request transaction.
-template <unsigned int Rank, unsigned int DstRank,
-          unsigned long long int Length>
-DEVICE void send(size_t dst_offset, size_t src_offset, int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
-    if (UnitOp::thread_id() != 0) {
-        return;
-    }
-    constexpr unsigned int cid = DstRank < Rank ? DstRank : DstRank - 1;
-    mscclpp::SimpleProxyChannelDeviceHandle &proxy_chan = _ARK_PROXY_CHANS[cid];
-    proxy_chan.putWithSignal(dst_offset, src_offset, Length);
-}
-
-// Poll SC and reset.
-template <unsigned int Rank, unsigned int DstRank>
-DEVICE void send_done(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
-    if (UnitOp::thread_id() != 0) {
-        return;
-    }
-    constexpr unsigned int cid = DstRank < Rank ? DstRank : DstRank - 1;
-    mscclpp::SimpleProxyChannelDeviceHandle &proxy_chan = _ARK_PROXY_CHANS[cid];
-    proxy_chan.flush();
-}
-
-//
-template <unsigned int Rank, unsigned int DstRank>
-DEVICE void recv(int, int) {
-    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
-    if (UnitOp::thread_id() != 0) {
-        return;
-    }
-    constexpr unsigned int cid = DstRank < Rank ? DstRank : DstRank - 1;
-    mscclpp::SimpleProxyChannelDeviceHandle &proxy_chan = _ARK_PROXY_CHANS[cid];
-    proxy_chan.wait();
-}
-
 template <unsigned int NRanks>
 DEVICE void device_sync(int, int) {
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
@@ -125,10 +191,10 @@ DEVICE void device_sync(int, int) {
         return;
     }
     for (int i = 0; i < NRanks - 1; ++i) {
-        _ARK_SM_CHANS[i].signal();
+        ARK_SM_CHANS[i].signal();
     }
     for (int i = 0; i < NRanks - 1; ++i) {
-        _ARK_SM_CHANS[i].wait(-1);
+        ARK_SM_CHANS[i].wait(-1);
     }
 }
 
@@ -164,7 +230,7 @@ DEVICE void ring_read_and_reduce(size_t src_offset_0, size_t src_offset_1,
         } ret;
         for (int idx = tid; idx < nInt4; idx += total_threads) {
             BytesPack<16> tmp = dst[idx];
-            ret.val = _ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
+            ret.val = ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
             add_half8(tmp, ret.data);
             store((ulonglong2 *)&dst[idx], tmp);
         }
@@ -203,7 +269,7 @@ DEVICE void parallel_read_and_reduce(size_t src_offset_0, size_t src_offset_1,
                 BytesPack<16> data;
                 int4 val;
             } ret;
-            ret.val = _ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
+            ret.val = ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
             add_half8(tmp, ret.data);
         }
         store((ulonglong2 *)&dst[idx], tmp);
@@ -264,9 +330,9 @@ DEVICE void ring_gather_from_peers(
              j < tile_hid * UnitOutDims::H + UnitOutDims::H; ++j) {
             size_t offset =
                 shape_width * remote_rank + j * stride + offset_in_width;
-            _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-                                        ori_offset + offset, bytes_per_width,
-                                        tid, UnitOp::NumThreads);
+            ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
+                                       ori_offset + offset, bytes_per_width,
+                                       tid, UnitOp::NumThreads);
         }
     }
 }
@@ -307,9 +373,9 @@ DEVICE void parallel_gather_from_peers(
                 int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
                 size_t offset = shape_width * remote_rank + i * stride +
                                 offset_in_width + base;
-                _ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-                                            ori_offset + offset, unit_size, tid,
-                                            UnitOp::NumThreads);
+                ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
+                                           ori_offset + offset, unit_size, tid,
+                                           UnitOp::NumThreads);
             }
         }
         if (base < bytes_per_width) {
@@ -319,7 +385,7 @@ DEVICE void parallel_gather_from_peers(
                 int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
                 size_t offset = shape_width * remote_rank + i * stride +
                                 offset_in_width + base;
-                _ARK_SM_CHANS[chan_idx].get(
+                ARK_SM_CHANS[chan_idx].get(
                     peer_offsets[chan_idx] + offset, ori_offset + offset,
                     bytes_per_width - base, tid, UnitOp::NumThreads);
             }
@@ -359,8 +425,8 @@ DEVICE void put_packet(size_t dst_offset, size_t src_offset, int uop_idx, int) {
     constexpr int total_threads = total_tiles * UnitOp::NumThreads;
     constexpr int chan_idx = DstRank < Rank ? DstRank : DstRank - 1;
     const int tid = uop_idx * UnitOp::NumThreads + UnitOp::thread_id();
-    _ARK_SM_CHANS[chan_idx].putPackets(dst_offset + DstOffset, src_offset,
-                                       Length, tid, total_threads, Flag);
+    ARK_SM_CHANS[chan_idx].putPackets(dst_offset + DstOffset, src_offset,
+                                      Length, tid, total_threads, Flag);
 }
 
 template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
@@ -400,7 +466,7 @@ DEVICE void reduce_and_write_packet(ark::fp16 *dst, ark::fp16 *src,
         store((uint64_t *)dst + idx, data);
         for (int index = 0; index < NPeers; index++) {
             mscclpp::LLPacket *dst_pkt =
-                (mscclpp::LLPacket *)((char *)_ARK_SM_CHANS[index].dst_ +
+                (mscclpp::LLPacket *)((char *)ARK_SM_CHANS[index].dst_ +
                                       peer_offsets[index] + RemoteDstOffset);
             dst_pkt[idx + Rank * npackets_per_rank].write(data.u32[0],
                                                           data.u32[1], Flag);
@@ -428,6 +494,62 @@ DEVICE void get_from_packet(void *dst, void *src, int uop_idx, int) {
 }
 
 }  // namespace comm
+
+template <comm::ChannelType ChanType, bool Signal, int RemoteRank,
+          typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename DataType>
+DEVICE void put(size_t dst_offset, size_t src_offset, int uop_idx, int) {
+    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
+    if constexpr (ChanType == comm::ChannelType::Sm) {
+        comm::write<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+                    SmemBytes, DataType>(RemoteRank, dst_offset, src_offset,
+                                         uop_idx, 0);
+        if constexpr (Signal) {
+            if (UnitOp::thread_id() == 0) {
+                comm::signal<ChanType>(RemoteRank);
+            }
+        }
+    } else {
+        // TODO: support multi-dimensional input/output.
+        static_assert(InDims::W == InShape::W && InDims::H == InShape::H &&
+                          InDims::C == InShape::C,
+                      "multi-dimensional input is not supported");
+        static_assert(OutDims::W == OutShape::W && OutDims::H == OutShape::H &&
+                          OutDims::C == OutShape::C,
+                      "multi-dimensional output is not supported");
+        static_assert(InShape::NCHW == OutShape::NCHW,
+                      "input and output sizes must be the same");
+        if (UnitOp::thread_id() == 0) {
+            constexpr size_t Bytes = sizeof(DataType) * InShape::NCHW;
+            if constexpr (Signal) {
+                comm::putWithSignal<ChanType>(RemoteRank, dst_offset,
+                                              src_offset, Bytes);
+            } else {
+                comm::put<ChanType>(RemoteRank, dst_offset, src_offset, Bytes);
+            }
+        }
+    }
+}
+
+template <comm::ChannelType ChanType, int RemoteRank>
+DEVICE void flush(int, int) {
+    if constexpr (ChanType != comm::ChannelType::Sm) {
+        using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
+        if (UnitOp::thread_id() == 0) {
+            comm::flush<ChanType>(RemoteRank);
+        }
+    }
+}
+
+template <comm::ChannelType ChanType, int RemoteRank, int64_t MaxSpinCount = -1>
+DEVICE void wait(int, int) {
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
+    if (UnitOp::thread_id() == 0) {
+        comm::wait<ChanType, MaxSpinCount>(RemoteRank);
+    }
+}
+
 }  // namespace ark
 
 #endif  // ARK_KERNELS_COMM_H_

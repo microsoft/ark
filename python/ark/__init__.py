@@ -1,16 +1,15 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import sys
 import os
 
 if os.environ.get("ARK_ROOT", None) is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
-import ctypes
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-ctypes.CDLL(os.environ["ARK_ROOT"] + "/lib/libmscclpp.so")
-
-from . import _ark_core
+import _ark_core
 from .model import Model
 
 
@@ -20,12 +19,6 @@ __version__ = _ark_core.version()
 def version():
     """Returns the version of ARK."""
     return __version__
-
-
-def init():
-    """Initializes ARK."""
-    _ark_core.init()
-    Model.reset()
 
 
 def srand(seed):
@@ -43,9 +36,10 @@ def set_world_size(world_size):
     Model.set_world_size(world_size)
 
 
-from .tensor import Dims, Tensor, TensorBuf, Parameter
+from .init import init
+from .tensor import Dims, Tensor, Parameter
 from .module import Module
-from .runtime import Runtime
+from .runtime import Runtime, DefaultPlanner
 from .serialize import save, load
 from .data_type import (
     DataType,
@@ -70,8 +64,7 @@ from .ops import (
     softmax,
     transpose,
     matmul,
-    im2col,
-    scale,
+    # im2col,
     exp,
     sqrt,
     rsqrt,
@@ -83,15 +76,18 @@ from .ops import (
     sub,
     mul,
     div,
-    send,
-    send_done,
-    recv,
-    all_gather,
-    local_all_gather,
-    local_reduce_scatter,
-    all_reduce,
-    local_all_reduce,
-    local_all_reduce_packet,
+    # send,
+    # send_done,
+    # recv,
+    # all_gather,
+    # local_all_gather,
+    # local_reduce_scatter,
+    # all_reduce,
+    # local_all_reduce,
+    # local_all_reduce_packet,
     embedding,
     cast,
+    constant,
+    ones,
+    zeros,
 )

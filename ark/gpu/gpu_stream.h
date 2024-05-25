@@ -11,6 +11,7 @@
 namespace ark {
 
 class GpuManager;
+
 class GpuStream {
    public:
     ~GpuStream() = default;
@@ -18,10 +19,12 @@ class GpuStream {
     gpuError query() const;
     gpuStream get() const;
 
-   private:
+   protected:
     friend class GpuManager;
-    GpuStream(const GpuManager& manager);
 
+    GpuStream();
+
+   private:
     class Impl;
     std::shared_ptr<Impl> pimpl_;
 };

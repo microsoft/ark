@@ -6,10 +6,22 @@ flag_management:
     carryforward: true
     paths:
       - ark/
+      - python/ark/
 
 coverage:
   status:
     project:
       default:
-        target: 80%
+        target: 85%
         threshold: 1%
+
+ignore:
+  - "/usr/*"
+  - "/tmp/*"
+  - "*/build/*"
+  - "*/dist-packages/*"
+  - "*/third_party/*"
+  - "*/ark/*_test.*"
+  - "*/examples/*"
+  - "*/python/unittest/*"
+  - "*/ark/unittest/*"

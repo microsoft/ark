@@ -52,19 +52,6 @@ DEVICE void div(OutDataType *c, const In0DataType *a, const In1DataType *b,
                       UnitOutDims, NumWarps, SmemBytes>::run(c, a, b, uop_idx);
 }
 
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
-          typename InDataType, typename OutDataType>
-DEVICE void scale(OutDataType *y, InDataType *x, float val, int uop_idx, int) {
-    InDataType val_cast = type::Cast::compute<InDataType>(val);
-    using ValDims = Vec<1, 1, 1, 1>;
-    using ValShape = Vec<1, 1, 1, 1>;
-    DefaultBroadcast2<InDims, InShape, InDataType, ValDims, ValShape,
-                      InDataType, OutDims, OutShape, OutDataType, type::Mul,
-                      UnitOutDims, NumWarps, SmemBytes>::run(y, x, &val_cast,
-                                                             uop_idx);
-}
-
 }  // namespace ark
 
 #endif  // ARK_KERNELS_ARITHMETIC_H_

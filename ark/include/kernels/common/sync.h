@@ -86,7 +86,7 @@ DEVICE void sync_warps() {
         __syncwarp();
     } else if constexpr (NumWarps == 2) {
         static_assert(
-            ARK_THREADS_PER_BLOCK <= 512,
+            ARK_WARPS_PER_BLOCK <= 16,
             "2-warp barrier is not supported for block sizes larger than 512");
         asm volatile("barrier.sync %0, 64;" ::"r"((threadIdx.x >> 6) + 8));
     } else if constexpr (NumWarps == 4) {

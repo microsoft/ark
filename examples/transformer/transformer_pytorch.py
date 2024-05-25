@@ -10,9 +10,14 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         pos_table = np.array(
             [
-                [pos / np.power(10000, 2 * i / d_model) for i in range(d_model)]
-                if pos != 0
-                else np.zeros(d_model)
+                (
+                    [
+                        pos / np.power(10000, 2 * i / d_model)
+                        for i in range(d_model)
+                    ]
+                    if pos != 0
+                    else np.zeros(d_model)
+                )
                 for pos in range(max_len)
             ]
         )

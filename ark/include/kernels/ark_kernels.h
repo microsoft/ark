@@ -6,6 +6,9 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
+#include <mscclpp/proxy_channel_device.hpp>
+#include <mscclpp/sm_channel_device.hpp>
+
 #include "arithmetic.h"
 #include "cast.h"
 #include "comm.h"
@@ -15,7 +18,9 @@
 #include "layernorm.h"
 #include "math_functions.h"
 #include "matmul.h"
+#include "noop.h"
 #include "reduce.h"
+#include "scalar.h"
 #include "transpose.h"
 
 #endif  // ARK_KERNELS_H_

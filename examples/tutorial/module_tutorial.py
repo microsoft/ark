@@ -30,7 +30,7 @@ class SubModuleARK(ark.Module):
     def __init__(self):
         super(SubModuleARK, self).__init__()
         # Define the parameters of the submodule
-        self.weight_2 = ark.parameter([d_ff, d_model], ark.fp16)
+        self.weight_2 = ark.parameter([d_ff, d_model], ark.fp32)
 
     def forward(self, inputs):
         # Perform the forward pass of the submodule
@@ -42,7 +42,7 @@ class TestModelARK(ark.Module):
     def __init__(self):
         super(TestModelARK, self).__init__()
         # Define the parameters of the module
-        self.weight_1 = ark.parameter([d_model, d_ff], ark.fp16)
+        self.weight_1 = ark.parameter([d_model, d_ff], ark.fp32)
         # Create a submodule of the module
         self.submodule = SubModuleARK()
 
@@ -60,7 +60,7 @@ class TestModelARK(ark.Module):
 class SubModulePytorch(nn.Module):
     def __init__(self):
         super(SubModulePytorch, self).__init__()
-        self.weight_2 = nn.Parameter(torch.FloatTensor(d_ff, d_model))
+        self.weight_2 = nn.Parameter(torch.ones(d_ff, d_model))
 
     def forward(self, inputs):
         middle_result1 = torch.matmul(inputs, self.weight_2)
@@ -71,7 +71,7 @@ class TestModelPytorch(nn.Module):
     def __init__(self):
         super(TestModelPytorch, self).__init__()
         # Define the parameters of the module
-        self.weight_1 = nn.Parameter(torch.FloatTensor(d_model, d_ff))
+        self.weight_1 = nn.Parameter(torch.ones(d_model, d_ff))
         # Create a submodule of the module
         self.submodule = SubModulePytorch()
 
@@ -87,7 +87,7 @@ class TestModelPytorch(nn.Module):
 # An example of using the ARK module
 def module_test():
     # Create an input tensor
-    input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.fp16)
+    input_tensor = ark.tensor([batch_size, seq_len, d_model], ark.fp32)
 
     # Create an ARK module
     ark_model = TestModelARK()
@@ -104,15 +104,15 @@ def module_test():
     # Initialize the input tensor
     input_tensor_host = (
         (np.random.rand(batch_size, seq_len, d_model) - 0.5) * 0.1
-    ).astype(np.float16)
+    ).astype(np.float32)
     input_tensor.from_numpy(input_tensor_host)
 
     # Initialize the parameters of the ARK module using numpy state_dict
     weight_1_host = ((np.random.rand(d_model, d_ff) - 0.5) * 0.1).astype(
-        np.float16
+        np.float32
     )
     weight_2_host = ((np.random.rand(d_ff, d_model) - 0.5) * 0.1).astype(
-        np.float16
+        np.float32
     )
     state_dict = {
         "weight_1": weight_1_host,
@@ -140,7 +140,7 @@ def module_test():
     torch_model.load_state_dict(torch_state_dict)
 
     # Run the pytorch model to compute the ground truth
-    gt = torch_model(torch_input).detach().numpy().astype(np.float16)
+    gt = torch_model(torch_input).detach().numpy()
 
     # Test if the result is correct
     max_error = np.max(np.abs(output_tensor_host - gt))
