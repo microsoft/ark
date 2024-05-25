@@ -20,9 +20,7 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-cuda-${{ github.ref }}
       cancel-in-progress: true
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/microsoft/ark/ark:base-dev-cuda12.2
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
@@ -46,10 +44,17 @@ jobs:
       run: |
         git config --global --add safe.directory /__w/ark/ark
 
+    - name: Install CMake
+      run: |
+        rm -rf cmake-3.26.4-linux-x86_64*
+        curl -L "https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-linux-x86_64.tar.gz" -o cmake-3.26.4-linux-x86_64.tar.gz
+        tar xzf cmake-3.26.4-linux-x86_64.tar.gz
+        rm cmake-3.26.4-linux-x86_64.tar.gz
+
     - name: Build
       run: |
         mkdir build && cd build
-        cmake -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON ..
+        ../cmake-3.26.4-linux-x86_64/bin/cmake -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON ..
         make -j build
 
     - name: Perform CodeQL Analysis
@@ -66,9 +71,7 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-rocm-${{ github.ref }}
       cancel-in-progress: true
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/microsoft/ark/ark:base-dev-rocm6.0
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
@@ -92,10 +95,17 @@ jobs:
       run: |
         git config --global --add safe.directory /__w/ark/ark
 
+    - name: Install CMake
+      run: |
+        rm -rf cmake-3.26.4-linux-x86_64*
+        curl -L "https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-linux-x86_64.tar.gz" -o cmake-3.26.4-linux-x86_64.tar.gz
+        tar xzf cmake-3.26.4-linux-x86_64.tar.gz
+        rm cmake-3.26.4-linux-x86_64.tar.gz
+
     - name: Build
       run: |
         mkdir build && cd build
-        CXX=/opt/rocm/bin/hipcc cmake -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON ..
+        CXX=/opt/rocm/bin/hipcc ../cmake-3.26.4-linux-x86_64/bin/cmake -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON ..
         make -j build
 
     - name: Perform CodeQL Analysis
