@@ -6,6 +6,7 @@ flag_management:
     carryforward: true
     paths:
       - ark/
+      - python/ark/
 
 coverage:
   status:
@@ -18,6 +19,7 @@ ignore:
   - "/usr/*"
   - "/tmp/*"
   - "*/build/*"
+  - "*/dist-packages/*"
   - "*/third_party/*"
   - "*/ark/*_test.*"
   - "*/examples/*"
