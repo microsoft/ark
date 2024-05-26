@@ -121,21 +121,12 @@ bool ModelGraph::Impl::verify() const {
         }
     }
     try {
-        // TODO: improve verification
-        auto j = Json::parse(this->serialize(-1));
-        if (!j.contains("Rank")) {
-            LOG(DEBUG, "serialized graph does not contain Rank");
+        ModelJson j(Json::parse(this->serialize(-1)));
+        // avoid compiler optimization
+        if (j.is_null()) {
             return false;
         }
-        if (!j.contains("WorldSize")) {
-            LOG(DEBUG, "serialized graph does not contain WorldSize");
-            return false;
-        }
-        if (!j.contains("Nodes")) {
-            LOG(DEBUG, "serialized graph does not contain Nodes");
-            return false;
-        }
-    } catch (const Json::parse_error &e) {
+    } catch (const BaseError &e) {
         LOG(DEBUG, "failed to serialize/parse the model graph: ", e.what());
         return false;
     }

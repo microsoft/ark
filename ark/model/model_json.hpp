@@ -12,13 +12,13 @@ using Json = ::nlohmann::ordered_json;
 
 class ModelJson : public Json {
    public:
-    ModelJson(const Json &json) : Json(json) {}
+    ModelJson(const Json &json);
     std::string dump_pretty(int indent = 0, int indent_step = 2) const;
 };
 
 class PlanJson : public Json {
    public:
-    PlanJson(const Json &json) : Json(json) {}
+    PlanJson(const Json &json);
     std::string dump_pretty(int indent = 0, int indent_step = 2) const;
 };
 
