@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_H
-#define ARK_H
+#ifndef ARK_HPP
+#define ARK_HPP
 
 // clang-format off
 #include <ark/version.hpp>
@@ -19,4 +19,4 @@
 #include <ark/random.hpp>
 #include <ark/tensor.hpp>
 
-#endif  // ARK_H
+#endif  // ARK_HPP

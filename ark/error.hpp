@@ -9,10 +9,15 @@
 
 namespace ark {
 
-#define REGISTER_ERROR_TYPE(_name)                                 \
-    class _name : public std::runtime_error {                      \
-       public:                                                     \
-        _name(const std::string &msg) : std::runtime_error(msg) {} \
+class BaseError : public std::runtime_error {
+   public:
+    BaseError(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+#define REGISTER_ERROR_TYPE(_name)                        \
+    class _name : public BaseError {                      \
+       public:                                            \
+        _name(const std::string &msg) : BaseError(msg) {} \
     };
 
 REGISTER_ERROR_TYPE(InvalidUsageError)
