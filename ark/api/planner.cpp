@@ -110,7 +110,8 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
 
             Json processor_group;
             processor_group["ProcessorRange"] = {0, num_processors};
-            processor_group["ResourceGroups"] = {resource_group};
+            processor_group["ResourceGroups"] = Json::array();
+            processor_group["ResourceGroups"].push_back(resource_group);
             processor_groups.push_back(processor_group);
         }
     }

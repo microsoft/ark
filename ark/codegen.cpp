@@ -41,7 +41,8 @@ class SyncStateInfo {
 
 class CodeGenerator::Impl {
    public:
-    Impl(const Json &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    Impl(const PlanJson &plan,
+         const std::map<size_t, size_t> &buffer_id_to_offset,
          const std::string &name);
     ~Impl() = default;
 
@@ -75,7 +76,7 @@ class CodeGenerator::Impl {
     std::string code_;
 };
 
-CodeGenerator::Impl::Impl(const Json &plan,
+CodeGenerator::Impl::Impl(const PlanJson &plan,
                           const std::map<size_t, size_t> &buffer_id_to_offset,
                           const std::string &name)
     : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
@@ -428,7 +429,7 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 }
 
 CodeGenerator::CodeGenerator(
-    const Json &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
     const std::string &name)
     : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
 
