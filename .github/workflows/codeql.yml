@@ -49,8 +49,8 @@ jobs:
     - name: Build
       run: |
         mkdir build && cd build
-        cmake -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON ..
-        make -j build
+        cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_PYTHON=ON -DBYPASS_GPU_CHECK=ON -DUSE_CUDA=ON -DBUILD_TESTS=OFF ..
+        make -j build ark_py
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3

@@ -14,7 +14,6 @@ FetchContent_Declare(
     GIT_TAG v0.5.0
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
-set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
 FetchContent_GetProperties(mscclpp)
