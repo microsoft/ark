@@ -56,3 +56,49 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+
+  analyze-rocm:
+    name: Analyze (ROCM)
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+    concurrency:
+      group: ${{ github.workflow }}-rocm-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/microsoft/ark/ark:build-rocm6.1
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check disk space
+      run: |
+        df -h
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Dubious ownership exception
+      run: |
+        git config --global --add safe.directory /__w/ark/ark
+
+    - name: Build
+      run: |
+        mkdir build && cd build
+        CXX=/opt/rocm/bin/hipcc cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_PYTHON=ON -DBYPASS_GPU_CHECK=ON -DUSE_ROCM=ON -DBUILD_TESTS=OFF ..
+        make -j build ark_py
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"

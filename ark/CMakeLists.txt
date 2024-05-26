@@ -45,35 +45,37 @@ target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PUBLIC mscclpp_static PRIVATE ${COMMON_LIBS})
 
 # ARK unit tests
-foreach(ut_source IN ITEMS ${UT_SOURCES})
-    get_filename_component(exe_name ${ut_source} NAME_WE)
-    add_executable(${exe_name} ${ut_source} ${UT_COMMON_SOURCES})
-    add_dependencies(${exe_name} build)
-    set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)
-    target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    target_include_directories(${exe_name} SYSTEM PRIVATE
-        ${JSON_INCLUDE_DIRS}
-        ${IBVERBS_INCLUDE_DIRS}
-        ${NUMA_INCLUDE_DIRS}
-    )
-
-    if(USE_CUDA)
-        target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
+if(BUILD_TESTS)
+    foreach(ut_source IN ITEMS ${UT_SOURCES})
+        get_filename_component(exe_name ${ut_source} NAME_WE)
+        add_executable(${exe_name} ${ut_source} ${UT_COMMON_SOURCES})
+        add_dependencies(${exe_name} build)
+        set_target_properties(${exe_name} PROPERTIES EXCLUDE_FROM_ALL TRUE)
+        target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
         target_include_directories(${exe_name} SYSTEM PRIVATE
-            ${CUDAToolkit_INCLUDE_DIRS}
+            ${JSON_INCLUDE_DIRS}
+            ${IBVERBS_INCLUDE_DIRS}
+            ${NUMA_INCLUDE_DIRS}
         )
-    else()
-        find_package(rocblas REQUIRED)
-        target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} roc::rocblas)
-        target_include_directories(${exe_name} SYSTEM PRIVATE
-            /opt/rocm/include
-        )
-    endif()
 
-    add_test(NAME ${exe_name}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        COMMAND ${exe_name}
-    )
-    set_tests_properties(${exe_name} PROPERTIES TIMEOUT 3600)
-    add_dependencies(ut ${exe_name})
-endforeach()
+        if(USE_CUDA)
+            target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
+            target_include_directories(${exe_name} SYSTEM PRIVATE
+                ${CUDAToolkit_INCLUDE_DIRS}
+            )
+        else()
+            find_package(rocblas REQUIRED)
+            target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} roc::rocblas)
+            target_include_directories(${exe_name} SYSTEM PRIVATE
+                /opt/rocm/include
+            )
+        endif()
+
+        add_test(NAME ${exe_name}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMAND ${exe_name}
+        )
+        set_tests_properties(${exe_name} PROPERTIES TIMEOUT 3600)
+        add_dependencies(ut ${exe_name})
+    endforeach()
+endif()
