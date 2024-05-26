@@ -14,9 +14,9 @@ class BaseError : public std::runtime_error {
     BaseError(const std::string &msg) : std::runtime_error(msg) {}
 };
 
-#define REGISTER_ERROR_TYPE(_name)                                 \
+#define REGISTER_ERROR_TYPE(_name)                        \
     class _name : public BaseError {                      \
-       public:                                                     \
+       public:                                            \
         _name(const std::string &msg) : BaseError(msg) {} \
     };
 

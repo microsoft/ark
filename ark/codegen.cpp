@@ -41,7 +41,8 @@ class SyncStateInfo {
 
 class CodeGenerator::Impl {
    public:
-    Impl(const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    Impl(const PlanJson &plan,
+         const std::map<size_t, size_t> &buffer_id_to_offset,
          const std::string &name);
     ~Impl() = default;
 
