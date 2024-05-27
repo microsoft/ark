@@ -3,13 +3,18 @@
 
 import logging
 import numpy as np
-from typing import Any, Dict, Union
-from .tensor import Parameter
+from typing import Any, Dict, List, Union
+from .tensor import Tensor, Parameter
+from .runtime import Runtime, DefaultPlanner
 
 try:
     import torch
+
+    _no_torch = False
 except ImportError:
     from . import torch_mock as torch
+
+    _no_torch = True
 
 
 class Module:
@@ -109,3 +114,65 @@ class Module:
     def forward(self, *args: Any, **kwargs: Any) -> Any: ...
 
     def backward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def initialize(self):
+        for param in self.parameters.values():
+            param.initialize()
+        for module in self.sub_modules.values():
+            module.initialize()
+
+
+def _recursive_ark_to_torch(object):
+    if isinstance(object, Tensor):
+        return object.to_torch()
+    if isinstance(object, dict):
+        return {k: _recursive_ark_to_torch(v) for k, v in object.items()}
+    if isinstance(object, list):
+        return [_recursive_ark_to_torch(v) for v in object]
+    return object
+
+
+class RuntimeModule(Module):
+    def __init__(self):
+        if _no_torch:
+            raise ImportError("torch is not available")
+        super().__init__()
+        self.built_forward = False
+        self.built_backward = False
+        self.forward_input_tensor_args: List[Tensor] = []
+        self.forward_input_tensor_kwargs: Dict[str, Tensor] = {}
+        self.forward_output = None
+        self.backward_tensor_args = []
+        self.backward_tensor_kwargs = {}
+
+    def build_forward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def build_backward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
+        if not self.built_forward:
+            for arg in args:
+                if isinstance(arg, torch.Tensor):
+                    self.forward_input_tensor_args.append(
+                        Tensor.from_torch(arg)
+                    )
+            for key, value in kwargs.items():
+                if isinstance(value, torch.Tensor):
+                    self.forward_input_tensor_kwargs[key] = Tensor.from_torch(
+                        value
+                    )
+            self.forward_output = self.build_forward(
+                *self.forward_input_tensor_args,
+                **self.forward_input_tensor_kwargs,
+            )
+            self.built_forward = True
+
+        with Runtime.get_runtime() as rt:
+            rt.launch(plan=DefaultPlanner().plan())
+            for arg in self.forward_input_tensor_args:
+                arg.initialize()
+            for value in self.forward_input_tensor_kwargs.values():
+                value.initialize()
+
+            rt.run()
+            return _recursive_ark_to_torch(self.forward_output)

@@ -65,6 +65,28 @@ class DataType(metaclass=MetaDataType):
         )
 
     @staticmethod
+    def from_torch(torch_type: torch.dtype) -> "DataType":
+        """
+        Return the corresponding ark data type.
+
+        Parameters:
+            torch_type (torch.dtype): The torch data type.
+
+        Returns:
+            DataType: The corresponding ark data type.
+
+        Raises:
+            ValueError: If there is no defined conversion from torch data type to ark data type.
+        """
+        for type_name, reg in _REGISTRY_DATA_TYPE.items():
+            if reg["torch"] == torch_type:
+                return DataType.from_name(type_name)
+        raise ValueError(
+            f"Undefined conversion from torch data type {torch_type}"
+            f" to ark data type."
+        )
+
+    @staticmethod
     def from_name(type_name: str) -> "DataType":
         """
         Return the corresponding ark data type.

@@ -56,8 +56,8 @@ static void check_config_field(const ModelOpRef op, const Json &config,
 std::string DefaultPlanner::Impl::plan(bool pretty) const {
     const auto gpu_info = GpuManager::get_instance(gpu_id_)->info();
     size_t num_sm = gpu_info.num_sm;
-    Json task_infos;
-    Json processor_groups;
+    Json task_infos = Json::array();
+    Json processor_groups = Json::array();
     size_t max_num_warps = 1;
     size_t max_num_processors = 1;
     size_t next_node_id = 0;

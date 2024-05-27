@@ -2,11 +2,12 @@
 # Licensed under the MIT license.
 
 import numpy as np
-from typing import List
+from typing import Callable, List, Union, Type
 
 from _ark_core import _Dims, _Tensor, _NullTensor
 from .data_type import DataType
 from .runtime import Runtime
+from .model import Model
 
 try:
     import torch
@@ -24,14 +25,19 @@ class Dims(_Dims):
     pass
 
 
+Initializer = Type[Callable[[], Union[torch.Tensor, np.ndarray]]]
+
+
 class Tensor:
-    def __init__(self, _tensor: _Tensor):
+    def __init__(self, _tensor: _Tensor, initializer: Initializer = None):
         """
         Initializes a new instance of the Tensor class.
         Args:
             _tensor (_ark_core._Tensor): The underlying _Tensor object.
         """
         self._tensor = _tensor
+        self.initializer: Initializer = initializer
+        Model.get_model().add_tensor(self)
 
     def shape(self) -> List[int]:
         """
@@ -80,24 +86,6 @@ class Tensor:
         rt.executor.tensor_read(self._tensor, ndarray)
         return ndarray
 
-    def from_numpy(self, ndarray: np.ndarray) -> "Tensor":
-        """
-        Copies the tensor from a host numpy array to the device.
-        """
-        rt = Runtime.get_runtime()
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.from_numpy()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
-        ndarray = ndarray.astype(self.dtype().to_numpy())
-        if not ndarray.flags["C_CONTIGUOUS"]:
-            ndarray = np.ascontiguousarray(ndarray)
-        if ndarray.nbytes != self.nelems() * self.dtype().element_size():
-            raise ValueError("ndarray size does not match the tensor")
-        rt.executor.tensor_write(self._tensor, ndarray)
-        return self
-
     def to_torch(self, tensor: torch.Tensor = None) -> torch.Tensor:
         """ """
         if _no_torch:
@@ -116,13 +104,62 @@ class Tensor:
         tensor.copy_(torch.from_numpy(self.to_numpy()))
         return tensor
 
-    def from_torch(self, tensor: torch.Tensor) -> "Tensor":
-        """ """
-        if _no_torch:
-            raise ImportError("torch is not available")
-        if tensor.is_cuda:
-            tensor = tensor.cpu()
-        return self.from_numpy(tensor.numpy())
+    @staticmethod
+    def from_numpy(ndarray: np.ndarray):
+        return Tensor(
+            Model.get_model().tensor(
+                Dims(list(ndarray.shape)),
+                DataType.from_numpy(ndarray.dtype).ctype(),
+                Dims(),
+                Dims(),
+                Dims(),
+                "",
+            ),
+            lambda: ndarray,
+        )
+
+    @staticmethod
+    def from_torch(tensor: torch.Tensor):
+        return Tensor(
+            Model.get_model().tensor(
+                Dims(list(tensor.shape)),
+                DataType.from_torch(tensor.dtype).ctype(),
+                Dims(),
+                Dims(),
+                Dims(),
+                "",
+            ),
+            lambda: tensor,
+        )
+
+    def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
+        """
+        Copies the tensor from a host numpy array to the device.
+        """
+        rt = Runtime.get_runtime()
+        if not rt.launched():
+            raise RuntimeError(
+                "Tensor is not allocated yet. `Tensor.from_numpy()` is "
+                "usable only after you call `Runtime.launch()`."
+            )
+        if isinstance(data, torch.Tensor):
+            data = data.cpu().numpy()
+        data = data.astype(self.dtype().to_numpy())
+        if not data.flags["C_CONTIGUOUS"]:
+            data = np.ascontiguousarray(data)
+        if data.nbytes != self.nelems() * self.dtype().element_size():
+            raise ValueError("data size does not match the tensor")
+        rt.executor.tensor_write(self._tensor, data)
+        return self
+
+    def initialize(self) -> "Tensor":
+        """
+        Initializes the tensor.
+        """
+        if self.initializer is not None:
+            data = self.initializer()
+            self.copy(data)
+        return self
 
 
 class Parameter(Tensor):
