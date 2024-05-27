@@ -64,13 +64,13 @@ static void tensor_to_data(const int8_t *tensor, int8_t *data,
         ::memcpy(data, tensor + of[0], sh[0]);
         return;
     }
-    for (auto i = 0; i < sh[0]; ++i) {
+    for (DimType i = 0; i < sh[0]; ++i) {
         if (sh.ndims() == 2) {
             ::memcpy(data + i * sh[1], tensor + ((i + of[0]) * st[1] + of[1]),
                      sh[1]);
             continue;
         }
-        for (auto j = 0; j < sh[1]; ++j) {
+        for (DimType j = 0; j < sh[1]; ++j) {
             if (sh.ndims() == 3) {
                 ::memcpy(data + ((i * sh[1] + j) * sh[2]),
                          tensor + (((i + of[0]) * st[1] + j + of[1]) * st[2] +
@@ -78,7 +78,7 @@ static void tensor_to_data(const int8_t *tensor, int8_t *data,
                          sh[2]);
                 continue;
             }
-            for (auto k = 0; k < sh[2]; ++k) {
+            for (DimType k = 0; k < sh[2]; ++k) {
                 ::memcpy(data + (((i * sh[1] + j) * sh[2] + k) * sh[3]),
                          tensor + ((((i + of[0]) * st[1] + j + of[1]) * st[2] +
                                     k + of[2]) *
@@ -108,20 +108,20 @@ static void data_to_tensor(int8_t *tensor, const int8_t *data,
         ::memcpy(tensor + of[0], data, sh[0]);
         return;
     }
-    for (auto i = 0; i < sh[0]; ++i) {
+    for (DimType i = 0; i < sh[0]; ++i) {
         if (sh.ndims() == 2) {
             ::memcpy(tensor + ((i + of[0]) * st[1] + of[1]), data + i * sh[1],
                      sh[1]);
             continue;
         }
-        for (auto j = 0; j < sh[1]; ++j) {
+        for (DimType j = 0; j < sh[1]; ++j) {
             if (sh.ndims() == 3) {
                 ::memcpy(tensor + (((i + of[0]) * st[1] + j + of[1]) * st[2] +
                                    of[2]),
                          data + ((i * sh[1] + j) * sh[2]), sh[2]);
                 continue;
             }
-            for (auto k = 0; k < sh[2]; ++k) {
+            for (DimType k = 0; k < sh[2]; ++k) {
                 ::memcpy(tensor + ((((i + of[0]) * st[1] + j + of[1]) * st[2] +
                                     k + of[2]) *
                                        st[3] +
