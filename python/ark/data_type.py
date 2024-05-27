@@ -3,19 +3,21 @@
 
 import numpy
 from . import _ark_core
-
+try:
+    import torch
+except ImportError:
+    from . import torch_mock as torch
 
 _REGISTRY_DATA_TYPE = {
-    "fp32": {"np": numpy.float32},
-    "fp16": {"np": numpy.float16},
-    "bf16": {"np": None},
-    "int32": {"np": numpy.int32},
-    "uint32": {"np": numpy.uint32},
-    "int8": {"np": numpy.int8},
-    "uint8": {"np": numpy.uint8},
-    "byte": {"np": numpy.ubyte},
+    "fp32": {"np": numpy.float32, "torch": torch.float32},
+    "fp16": {"np": numpy.float16, "torch": torch.float16},
+    "bf16": {"np": None, "torch": torch.bfloat16},
+    "int32": {"np": numpy.int32, "torch": torch.int32},
+    "uint32": {"np": numpy.uint32, "torch": None},
+    "int8": {"np": numpy.int8, "torch": torch.int8},
+    "uint8": {"np": numpy.uint8, "torch": torch.uint8},
+    "byte": {"np": numpy.ubyte, "torch": torch.uint8},
 }
-
 
 class MetaDataType(type):
     def __new__(cls, name, bases, attrs):
@@ -23,6 +25,7 @@ class MetaDataType(type):
         if name in _REGISTRY_DATA_TYPE:
             reg = _REGISTRY_DATA_TYPE[name]
             new_class.to_numpy = staticmethod(lambda: reg["np"])
+            new_class.to_torch = staticmethod(lambda: reg["torch"])
             new_class.ctype = staticmethod(
                 lambda: getattr(_ark_core, name.upper())
             )
@@ -101,6 +104,16 @@ class DataType(metaclass=MetaDataType):
 
         Returns:
             numpy.dtype: The corresponding numpy data type.
+        """
+        ...
+
+    @staticmethod
+    def to_torch() -> torch.dtype:
+        """
+        Return the corresponding torch data type.
+
+        Returns:
+            torch.dtype: The corresponding torch data type.
         """
         ...
 
