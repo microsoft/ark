@@ -37,7 +37,6 @@ class Tensor:
         """
         self._tensor = _tensor
         self.initializer: Initializer = initializer
-        Model.get_model().add_tensor(self)
 
     def shape(self) -> List[int]:
         """
