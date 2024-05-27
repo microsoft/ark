@@ -3,8 +3,13 @@
 
 import logging
 import numpy as np
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from .tensor import Parameter
+
+try:
+    import torch
+except ImportError:
+    from . import torch_mock as torch
 
 
 class Module:
@@ -57,7 +62,9 @@ class Module:
         return params_dict
 
     def load_state_dict(
-        self, state_dict: Dict[str, np.ndarray], prefix: str = ""
+        self,
+        state_dict: Dict[str, Union[np.ndarray, torch.Tensor]],
+        prefix: str = "",
     ):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
@@ -68,20 +75,36 @@ class Module:
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
         for name, param in pd.items():
-            param.from_numpy(state_dict[name])
+            data = state_dict.get(name, None)
+            if isinstance(data, np.ndarray):
+                param.from_numpy(data)
+            elif isinstance(data, torch.Tensor):
+                param.from_torch(data)
+            else:
+                continue
             all_keys.remove(name)
         if all_keys:
             logging.warning(
                 f"{len(all_keys)} unused parameter(s) in state_dict"
             )
 
-    def state_dict(self, prefix: str = "") -> Dict[str, np.ndarray]:
+    def state_dict(
+        self, prefix: str = "", mode: str = "numpy"
+    ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         """
         Copies the parameters from the device GPU to the host and saves the
         model to a state_dict.
         Must be called after the executor is launched.
         """
-        return {k: v.to_numpy() for k, v in self.params_dict(prefix).items()}
+        if mode == "numpy":
+            return {
+                k: v.to_numpy() for k, v in self.params_dict(prefix).items()
+            }
+        elif mode == "torch":
+            return {
+                k: v.to_torch() for k, v in self.params_dict(prefix).items()
+            }
+        raise ValueError(f"Unsupported mode: {mode}")
 
     def forward(self, *args: Any, **kwargs: Any) -> Any: ...
 

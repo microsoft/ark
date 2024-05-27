@@ -8,6 +8,15 @@ from _ark_core import _Dims, _Tensor, _NullTensor
 from .data_type import DataType
 from .runtime import Runtime
 
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
+
 NullTensor = _NullTensor
 
 
@@ -88,6 +97,32 @@ class Tensor:
             raise ValueError("ndarray size does not match the tensor")
         rt.executor.tensor_write(self._tensor, ndarray)
         return self
+
+    def to_torch(self, tensor: torch.Tensor = None) -> torch.Tensor:
+        """ """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        torch_type = self.dtype().to_torch()
+        if tensor is None:
+            return torch.from_numpy(self.to_numpy())
+        elif tensor.shape != self.shape():
+            raise ValueError("torch tensor shape does not match the tensor")
+        elif tensor.dtype != torch_type:
+            raise ValueError("torch tensor dtype does not match the tensor")
+        elif not tensor.is_contiguous():
+            raise ValueError("torch tensor is not contiguous in memory")
+        elif tensor.numel() != self.nelems():
+            raise ValueError("torch tensor size does not match the tensor")
+        tensor.copy_(torch.from_numpy(self.to_numpy()))
+        return tensor
+
+    def from_torch(self, tensor: torch.Tensor) -> "Tensor":
+        """ """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        if tensor.is_cuda:
+            tensor = tensor.cpu()
+        return self.from_numpy(tensor.numpy())
 
 
 class Parameter(Tensor):

@@ -3,6 +3,7 @@
 
 import numpy
 from . import _ark_core
+
 try:
     import torch
 except ImportError:
@@ -18,6 +19,7 @@ _REGISTRY_DATA_TYPE = {
     "uint8": {"np": numpy.uint8, "torch": torch.uint8},
     "byte": {"np": numpy.ubyte, "torch": torch.uint8},
 }
+
 
 class MetaDataType(type):
     def __new__(cls, name, bases, attrs):
