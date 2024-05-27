@@ -6,6 +6,8 @@ import numpy as np
 from typing import Any, Dict, List, Union
 from .tensor import Tensor, Parameter
 from .runtime import Runtime, DefaultPlanner
+from .ops import tensor
+from .data_type import DataType
 
 try:
     import torch
@@ -154,12 +156,16 @@ class RuntimeModule(Module):
             for arg in args:
                 if isinstance(arg, torch.Tensor):
                     self.forward_input_tensor_args.append(
-                        Tensor.from_torch(arg)
+                        tensor(
+                            list(arg.shape),
+                            DataType.from_torch(arg.dtype),
+                        )
                     )
             for key, value in kwargs.items():
                 if isinstance(value, torch.Tensor):
-                    self.forward_input_tensor_kwargs[key] = Tensor.from_torch(
-                        value
+                    self.forward_input_tensor_kwargs[key] = tensor(
+                        list(value.shape),
+                        DataType.from_torch(value.dtype),
                     )
             self.forward_output = self.build_forward(
                 *self.forward_input_tensor_args,
@@ -169,10 +175,10 @@ class RuntimeModule(Module):
 
         with Runtime.get_runtime() as rt:
             rt.launch(plan=DefaultPlanner().plan())
-            for arg in self.forward_input_tensor_args:
-                arg.initialize()
-            for value in self.forward_input_tensor_kwargs.values():
-                value.initialize()
+            for tns, arg in zip(self.forward_input_tensor_args, args):
+                tns.copy(arg)
+            for key, value in self.forward_input_tensor_kwargs.items():
+                value.copy(kwargs[key])
 
             rt.run()
             return _recursive_ark_to_torch(self.forward_output)
