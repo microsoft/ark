@@ -17,6 +17,11 @@ static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
                       info.size * info.itemsize);
 }
 
+static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
+                         size_t host_address, size_t bytes) {
+    exe->tensor_write(tensor, reinterpret_cast<void *>(host_address), bytes);
+}
+
 static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
                         py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
@@ -39,5 +44,13 @@ void register_executor(py::module &m) {
         .def("destroy", &ark::Executor::destroy)
         .def("destroyed", &ark::Executor::destroyed)
         .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
-        .def("tensor_write", &tensor_write, py::arg("tensor"), py::arg("data"));
+        .def(
+            "tensor_write",
+            py::overload_cast<ark::Executor *, const ark::Tensor &, py::buffer>(
+                &tensor_write),
+            py::arg("tensor"), py::arg("data"))
+        .def("tensor_write",
+             py::overload_cast<ark::Executor *, const ark::Tensor &, size_t,
+                               size_t>(&tensor_write),
+             py::arg("tensor"), py::arg("address"), py::arg("bytes"));
 }

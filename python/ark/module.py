@@ -83,12 +83,9 @@ class Module:
         pd = self.params_dict(prefix)
         for name, param in pd.items():
             data = state_dict.get(name, None)
-            if isinstance(data, np.ndarray):
-                param.from_numpy(data)
-            elif isinstance(data, torch.Tensor):
-                param.from_torch(data)
-            else:
+            if data is None:
                 continue
+            param.copy(data)
             all_keys.remove(name)
         if all_keys:
             logging.warning(
@@ -143,6 +140,8 @@ class RuntimeModule(Module):
         self.built_backward = False
         self.forward_input_tensor_args: List[Tensor] = []
         self.forward_input_tensor_kwargs: Dict[str, Tensor] = {}
+        self.forward_input_args = []
+        self.forward_input_kwargs = {}
         self.forward_output = None
         self.backward_tensor_args = []
         self.backward_tensor_kwargs = {}
@@ -161,15 +160,25 @@ class RuntimeModule(Module):
                             DataType.from_torch(arg.dtype),
                         )
                     )
+                    self.forward_input_args.append(
+                        self.forward_input_tensor_args[-1]
+                    )
+                else:
+                    self.forward_input_args.append(arg)
             for key, value in kwargs.items():
                 if isinstance(value, torch.Tensor):
                     self.forward_input_tensor_kwargs[key] = tensor(
                         list(value.shape),
                         DataType.from_torch(value.dtype),
                     )
+                    self.forward_input_kwargs[key] = (
+                        self.forward_input_tensor_kwargs[key]
+                    )
+                else:
+                    self.forward_input_kwargs[key] = value
             self.forward_output = self.build_forward(
-                *self.forward_input_tensor_args,
-                **self.forward_input_tensor_kwargs,
+                *self.forward_input_args,
+                **self.forward_input_kwargs,
             )
             self.built_forward = True
 

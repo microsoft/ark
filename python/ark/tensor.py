@@ -142,13 +142,27 @@ class Tensor:
                 "usable only after you call `Runtime.launch()`."
             )
         if isinstance(data, torch.Tensor):
-            data = data.cpu().numpy()
-        data = data.astype(self.dtype().to_numpy())
-        if not data.flags["C_CONTIGUOUS"]:
-            data = np.ascontiguousarray(data)
-        if data.nbytes != self.nelems() * self.dtype().element_size():
-            raise ValueError("data size does not match the tensor")
-        rt.executor.tensor_write(self._tensor, data)
+            if data.dtype != self.dtype().to_torch():
+                raise ValueError("data dtype does not match the tensor")
+            if not data.is_contiguous():
+                data = data.contiguous()
+            if data.numel() != self.nelems():
+                raise ValueError("data size does not match the tensor")
+            rt.executor.tensor_write(
+                self._tensor,
+                data.data_ptr(),
+                data.numel() * data.element_size(),
+            )
+        elif isinstance(data, np.ndarray):
+            if data.dtype != self.dtype().to_numpy():
+                raise ValueError("data dtype does not match the tensor")
+            if not data.flags["C_CONTIGUOUS"]:
+                data = np.ascontiguousarray(data)
+            if data.nbytes != self.nelems() * self.dtype().element_size():
+                raise ValueError("data size does not match the tensor")
+            rt.executor.tensor_write(self._tensor, data)
+        else:
+            raise ValueError("data must be a numpy array or a torch tensor")
         return self
 
     def initialize(self) -> "Tensor":
