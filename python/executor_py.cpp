@@ -1,13 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <dlpack/dlpack.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 #include <ark/executor.hpp>
 #include <ark/model.hpp>
-
+#include <iostream>
 namespace py = pybind11;
 
 static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
@@ -27,6 +28,29 @@ static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
     py::buffer_info info = host_buffer.request();
     exe->tensor_read(tensor, reinterpret_cast<void *>(info.ptr),
                      info.size * info.itemsize);
+}
+
+DLManagedTensor *to_dlpack(ark::Executor &exe, const ark::Tensor &tensor) {
+    DLManagedTensor *dl_tensor = exe.get_dl_tensor(tensor);
+    return dl_tensor;
+}
+
+void free_capsule(PyObject *capsule) {
+    const char *name = PyCapsule_GetName(capsule);
+    auto *dl_managed_tensor =
+        static_cast<DLManagedTensor *>(PyCapsule_GetPointer(capsule, name));
+    if (dl_managed_tensor) {
+        dl_managed_tensor->deleter(dl_managed_tensor);
+        dl_managed_tensor = nullptr;
+    }
+}
+
+py::capsule to_dlpack_capsule(ark::Executor &self, const ark::Tensor &tensor) {
+    DLManagedTensor *dl_managed_tensor = to_dlpack(self, tensor);
+    const char *capsule_name = "dltensor";
+    PyObject *dl_capsule = PyCapsule_New(static_cast<void *>(dl_managed_tensor),
+                                         capsule_name, free_capsule);
+    return py::reinterpret_steal<py::capsule>(dl_capsule);
 }
 
 void register_executor(py::module &m) {
@@ -52,5 +76,7 @@ void register_executor(py::module &m) {
         .def("tensor_write",
              py::overload_cast<ark::Executor *, const ark::Tensor &, size_t,
                                size_t>(&tensor_write),
-             py::arg("tensor"), py::arg("address"), py::arg("bytes"));
+             py::arg("tensor"), py::arg("address"), py::arg("bytes"))
+        .def("get_dl_tensor", &to_dlpack_capsule),
+        py::arg("tensor");
 }

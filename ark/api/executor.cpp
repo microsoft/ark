@@ -3,12 +3,15 @@
 
 #include "ark/executor.hpp"
 
+#include <dlpack/dlpack.h>
+
 #include <cmath>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
 
+#include "ark/data_type.hpp"
 #include "ark/model.hpp"
 #include "ark/planner.hpp"
 #include "codegen.hpp"
@@ -154,6 +157,8 @@ class Executor::Impl {
     void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
     void tensor_write(const Tensor tensor, const void *data,
                       size_t bytes) const;
+    DLDeviceType get_device_type() const;
+    DLManagedTensor *get_dl_tensor(const Tensor &tensor) const;
 
    private:
     void init_communicator();
@@ -783,6 +788,94 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
     copy_stream_->sync();
 }
 
+DLDeviceType Executor::Impl::get_device_type() const {
+#if defined(ARK_CUDA)
+    return kDLCUDA;
+#elif defined(ARK_ROCM)
+    return kDLROCM;
+#else
+    return kDLCPU;
+#endif
+}
+
+DLDataType get_dl_dtype(const DataType &ark_data_type) {
+    DLDataType dl_data_type;
+    dl_data_type.lanes = 1;
+    if (ark_data_type == FP32) {
+        dl_data_type.code = kDLFloat;
+        dl_data_type.bits = 32;
+    } else if (ark_data_type == FP16) {
+        dl_data_type.code = kDLFloat;
+        dl_data_type.bits = 16;
+    } else if (ark_data_type == BF16) {
+        dl_data_type.code = kDLBfloat;
+        dl_data_type.bits = 16;
+    } else if (ark_data_type == INT32) {
+        dl_data_type.code = kDLInt;
+        dl_data_type.bits = 32;
+    } else if (ark_data_type == UINT32) {
+        dl_data_type.code = kDLUInt;
+        dl_data_type.bits = 32;
+    } else if (ark_data_type == INT8) {
+        dl_data_type.code = kDLInt;
+        dl_data_type.bits = 8;
+    } else if (ark_data_type == UINT8) {
+        dl_data_type.code = kDLUInt;
+        dl_data_type.bits = 8;
+    } else if (ark_data_type == BYTE) {
+        dl_data_type.code = kDLUInt;
+        dl_data_type.bits = 8;
+    } else {
+        ERR(InvalidUsageError, "Unsupported data type");
+    }
+    return dl_data_type;
+}
+
+DLManagedTensor *Executor::Impl::get_dl_tensor(const Tensor &tensor) const {
+    DLTensor dl_tensor;
+    dl_tensor.data =
+        buffer_->ref(buffer_id_to_offset_.at(tensor.ref()->buffer()->id()));
+    size_t offset_in_elements =
+        tensor.offsets().is_no_dim() ? 0 : tensor.offsets().vector()[0];
+    dl_tensor.byte_offset = offset_in_elements * tensor.data_type().bytes();
+    dl_tensor.device.device_type = get_device_type();
+    dl_tensor.device.device_id = static_cast<int32_t>(gpu_id_);
+    dl_tensor.ndim = static_cast<int32_t>(tensor.shape().ndims());
+    dl_tensor.dtype = get_dl_dtype(tensor.data_type());
+
+    dl_tensor.shape =
+        tensor.shape().is_no_dim() ? nullptr : new int64_t[dl_tensor.ndim];
+    dl_tensor.strides =
+        tensor.strides().is_no_dim() ? nullptr : new int64_t[dl_tensor.ndim];
+    auto shape = tensor.shape();
+    if (dl_tensor.shape) {
+        for (int i = 0; i < dl_tensor.ndim; ++i) {
+            dl_tensor.shape[i] = shape[i];
+        }
+    }
+    if (dl_tensor.strides) {
+        dl_tensor.strides[dl_tensor.ndim - 1] = 1;
+        for (int i = dl_tensor.ndim - 2; i >= 0; --i) {
+            dl_tensor.strides[i] =
+                dl_tensor.shape[i + 1] * dl_tensor.strides[i + 1];
+        }
+    }
+    DLManagedTensor *dl_managed_tensor = new DLManagedTensor();
+    dl_managed_tensor->dl_tensor = dl_tensor;
+    dl_managed_tensor->manager_ctx = nullptr;
+    dl_managed_tensor->deleter = [](DLManagedTensor *self) {
+        if (self->dl_tensor.shape) {
+            delete[] self->dl_tensor.shape;
+            self->dl_tensor.shape = nullptr;
+        }
+        if (self->dl_tensor.strides) {
+            delete[] self->dl_tensor.strides;
+            self->dl_tensor.strides = nullptr;
+        }
+    };
+    return dl_managed_tensor;
+}
+
 Executor::Executor(int rank, int world_size, int gpu_id,
                    const std::string &name, const std::string &plan)
     : impl_(std::make_unique<Executor::Impl>(rank, world_size, gpu_id, name,
@@ -816,6 +909,14 @@ void Executor::tensor_read(const Tensor tensor, void *data,
 void Executor::tensor_write(const Tensor tensor, const void *data,
                             size_t bytes) const {
     impl_->tensor_write(tensor, data, bytes);
+}
+
+DLDeviceType Executor::get_device_type() const {
+    return impl_->get_device_type();
+}
+
+DLManagedTensor *Executor::get_dl_tensor(const Tensor &tensor) const {
+    return impl_->get_dl_tensor(tensor);
 }
 
 DefaultExecutor::DefaultExecutor(const Model &model, int gpu_id,
