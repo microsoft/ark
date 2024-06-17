@@ -29,14 +29,22 @@ Initializer = Type[Callable[[], Union[torch.Tensor, np.ndarray]]]
 
 
 class Tensor:
-    def __init__(self, _tensor: _Tensor, initializer: Initializer = None):
+    def __init__(
+        self,
+        _tensor: _Tensor,
+        initializer: Initializer = None,
+        runtime_id: int = -1,
+    ):
         """
         Initializes a new instance of the Tensor class.
         Args:
             _tensor (_ark_core._Tensor): The underlying _Tensor object.
+            intializer (Initializer): The initializer for the Tensor.
+            runtime_id (int): The ID of the Runtime to use. Defaults to -1, which is the default Runtime.
         """
         self._tensor = _tensor
         self.initializer: Initializer = initializer
+        self.runtime_id = runtime_id
 
     def shape(self) -> List[int]:
         """
@@ -69,7 +77,7 @@ class Tensor:
         an empty numpy array without the data buffer will be returned.
         """
         np_type = self.dtype().to_numpy()
-        rt = Runtime.get_runtime()
+        rt = Runtime.get_runtime(self.runtime_id)
         if not rt.launched():
             return np.ndarray(self.shape(), dtype=np_type, buffer=None)
         if ndarray is None:
@@ -85,7 +93,9 @@ class Tensor:
         rt.executor.tensor_read(self._tensor, ndarray)
         return ndarray
 
-    def to_torch(self, tensor: torch.Tensor = None) -> torch.Tensor:
+    def to_torch(
+        self, tensor: torch.Tensor = None, runtime_id: int = -1
+    ) -> torch.Tensor:
         """ """
         if _no_torch:
             raise ImportError("torch is not available")
@@ -100,22 +110,42 @@ class Tensor:
             raise ValueError("torch tensor is not contiguous in memory")
         elif tensor.numel() != self.nelems():
             raise ValueError("torch tensor size does not match the tensor")
-        tensor.copy_(torch.from_numpy(self.to_numpy()))
+        tensor.copy_(torch.from_numpy(self.to_numpy(self.runtime_id)))
         return tensor
 
-    @staticmethod
-    def from_numpy(ndarray: np.ndarray):
-        return Tensor(
-            Model.get_model().tensor(
-                Dims(list(ndarray.shape)),
-                DataType.from_numpy(ndarray.dtype).ctype(),
-                Dims(),
-                Dims(),
-                Dims(),
-                "",
-            ),
-            lambda: ndarray,
-        )
+    def get_torch_view(self) -> torch.Tensor:
+        """
+        Returns a torch tensor that shares the same memory with the device tensor.
+        """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        rt = Runtime.get_runtime(self.runtime_id)
+        if not rt.launched():
+            raise RuntimeError(
+                "Tensor is not allocated yet. `Tensor.get_torch_view()` is "
+                "usable only after you call `Runtime.launch()`."
+            )
+        dl_tensor = rt.executor.get_dl_tensor(self._tensor)
+        torch_view = torch.utils.dlpack.from_dlpack(dl_tensor)
+        return torch_view
+
+    def from_numpy(self, ndarray: np.ndarray) -> "Tensor":
+        """
+        Copies the tensor from a host numpy array to the device.
+        """
+        rt = Runtime.get_runtime(self.runtime_id)
+        if not rt.launched():
+            raise RuntimeError(
+                "Tensor is not allocated yet. `Tensor.from_numpy()` is "
+                "usable only after you call `Runtime.launch()`."
+            )
+        ndarray = ndarray.astype(self.dtype().to_numpy())
+        if not ndarray.flags["C_CONTIGUOUS"]:
+            ndarray = np.ascontiguousarray(ndarray)
+        if ndarray.nbytes != self.nelems() * self.dtype().element_size():
+            raise ValueError("ndarray size does not match the tensor")
+        rt.executor.tensor_write(self._tensor, ndarray)
+        return self
 
     @staticmethod
     def from_torch(tensor: torch.Tensor):
@@ -135,7 +165,7 @@ class Tensor:
         """
         Copies the tensor from a host numpy array to the device.
         """
-        rt = Runtime.get_runtime()
+        rt = Runtime.get_runtime(self.runtime_id)
         if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.from_numpy()` is "
@@ -180,8 +210,9 @@ class Parameter(Tensor):
     A tensor as a parameter.
     """
 
-    def __init__(self, _tensor: _Tensor):
+    def __init__(self, _tensor: _Tensor, runtime_id: int = -1):
         """
         Initializes a new instance of the Parameter class.
         """
         super().__init__(_tensor)
+        self.runtime_id = runtime_id

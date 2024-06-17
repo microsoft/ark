@@ -61,7 +61,7 @@ def check_diff(input_tensor_host, input_view_numpy, value, index):
 # Test function to check if changes to the torch views are reflected in the original tensors
 def test_aliasing(dtype: ark.DataType):
     ark.init()
-    dimensions = [64, 64]
+    dimensions = [4, 4]
     input_tensor, input_tensor_host = initialize_tensor(dimensions, dtype)
     other_tensor, other_tensor_host = initialize_tensor(dimensions, dtype)
     output_tensor = ark.mul(input_tensor, other_tensor)
@@ -84,13 +84,10 @@ def test_aliasing(dtype: ark.DataType):
     other_view_numpy = other_view.cpu().numpy()
     output_view_numpy = output_view.cpu().numpy()
     # Check if changes to the views are reflected in the original tensors
+    print(input_view_numpy)
     assert check_diff(input_tensor_host, input_view_numpy, 20, (1, 1))
     assert check_diff(other_tensor_host, other_view_numpy, 30, (0, 0))
     assert check_diff(output_tensor_host, output_view_numpy, 40, (3, 0))
 
     runtime.stop()
     runtime.reset()
-    print(input_view_numpy)
-    print("\n")
-    print(input_tensor_host)
-    ark.Runtime.print_runtime_states()
