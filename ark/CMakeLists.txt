@@ -17,6 +17,7 @@ set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(ark_obj PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(ark_obj SYSTEM PRIVATE
+    ${DLPACK_INCLUDE_DIRS}
     ${JSON_INCLUDE_DIRS}
     ${MSCCLPP_INCLUDE_DIRS}
     ${IBVERBS_INCLUDE_DIRS}

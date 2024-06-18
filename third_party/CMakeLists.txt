@@ -35,6 +35,19 @@ if (NOT json_POPULATED)
 endif()
 set(JSON_INCLUDE_DIRS ${json_SOURCE_DIR}/include PARENT_SCOPE)
 
+# DLPack
+FetchContent_Declare(
+    dlpack
+    GIT_REPOSITORY https://github.com/dmlc/dlpack
+    GIT_TAG v0.8
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dlpack
+)
+FetchContent_GetProperties(dlpack)
+if (NOT dlpack_POPULATED)
+    FetchContent_Populate(dlpack)
+endif()
+set(DLPACK_INCLUDE_DIRS ${dlpack_SOURCE_DIR}/include PARENT_SCOPE)
+
 if(USE_CUDA)
     # Configure CUTLASS
     FetchContent_Declare(
