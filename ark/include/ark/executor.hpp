@@ -4,6 +4,8 @@
 #ifndef ARK_EXECUTOR_HPP
 #define ARK_EXECUTOR_HPP
 
+#include <dlpack/dlpack.h>
+
 #include <ark/model_ref.hpp>
 #include <ark/tensor.hpp>
 #include <memory>
@@ -61,6 +63,10 @@ class Executor {
 
     void tensor_write(const Tensor tensor, const void *data,
                       size_t bytes) const;
+
+    DLManagedTensor *get_dl_tensor(const Tensor &tensor) const;
+
+    DLDeviceType get_device_type() const;
 
    private:
     class Impl;
