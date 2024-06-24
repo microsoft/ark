@@ -158,8 +158,8 @@ class Executor::Impl {
 
     void tensor_read(const Tensor tensor, void *data, size_t bytes,
                      bool is_d2d) const;
-    void tensor_write(const Tensor tensor, const void *data,
-                      size_t bytes, bool is_d2d) const;
+    void tensor_write(const Tensor tensor, const void *data, size_t bytes,
+                      bool is_d2d) const;
     DLDeviceType get_device_type() const;
     DLManagedTensor *get_dl_tensor(const Tensor &tensor) const;
 
@@ -733,8 +733,8 @@ void Executor::Impl::barrier() {
     }
 }
 
-void Executor::Impl::tensor_read(const Tensor tensor, void *data,
-                                 size_t bytes, bool is_d2d) const {
+void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
+                                 bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
@@ -760,15 +760,15 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data,
         copy_stream_->sync();
         if (!is_d2d) {
             tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
-                    tensor.shape(), tensor.strides(), tensor.offsets(),
-                    tensor.data_type().bytes());
+                           tensor.shape(), tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
             return;
         }
         // TODO: convert data layout on the device directly
         std::vector<int8_t> data_host(bytes);
-        tensor_to_data(tensor_host.data(), data_host.data(),
-                tensor.shape(), tensor.strides(), tensor.offsets(),
-                tensor.data_type().bytes());
+        tensor_to_data(tensor_host.data(), data_host.data(), tensor.shape(),
+                       tensor.strides(), tensor.offsets(),
+                       tensor.data_type().bytes());
         GLOG(gpuMemcpyAsync(data, data_host.data(), bytes,
                             gpuMemcpyHostToDevice, copy_stream_->get()));
     }
@@ -794,22 +794,24 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
     auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyHostToDevice;
     void *dst = buffer_->ref(offset);
     if (tensor.strides() == tensor.shape()) {
-        GLOG(gpuMemcpyAsync(dst, data, tensor_bytes, kind, copy_stream_->get()));
+        GLOG(
+            gpuMemcpyAsync(dst, data, tensor_bytes, kind, copy_stream_->get()));
     } else {
         std::vector<int8_t> tensor_host(tensor_bytes);
         if (!is_d2d) {
-            data_to_tensor(tensor_host.data(), static_cast<const int8_t *>(data),
-                        tensor.shape(), tensor.strides(), tensor.offsets(),
-                        tensor.data_type().bytes());
+            data_to_tensor(tensor_host.data(),
+                           static_cast<const int8_t *>(data), tensor.shape(),
+                           tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
         } else {
             // TODO: convert data layout on the device directly
             std::vector<int8_t> tmp(bytes);
-            GLOG(gpuMemcpyAsync(tmp.data(), data, bytes,
-                                gpuMemcpyDeviceToHost, copy_stream_->get()));
+            GLOG(gpuMemcpyAsync(tmp.data(), data, bytes, gpuMemcpyDeviceToHost,
+                                copy_stream_->get()));
             copy_stream_->sync();
-            data_to_tensor(tensor_host.data(), tmp.data(),
-                        tensor.shape(), tensor.strides(), tensor.offsets(),
-                        tensor.data_type().bytes());
+            data_to_tensor(tensor_host.data(), tmp.data(), tensor.shape(),
+                           tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
         }
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_bytes,
                             gpuMemcpyHostToDevice, copy_stream_->get()));
@@ -932,13 +934,13 @@ void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
-void Executor::tensor_read(const Tensor tensor, void *data,
-                           size_t bytes, bool is_d2d) const {
+void Executor::tensor_read(const Tensor tensor, void *data, size_t bytes,
+                           bool is_d2d) const {
     impl_->tensor_read(tensor, data, bytes, is_d2d);
 }
 
-void Executor::tensor_write(const Tensor tensor, const void *data,
-                            size_t bytes, bool is_d2d) const {
+void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
+                            bool is_d2d) const {
     impl_->tensor_write(tensor, data, bytes, is_d2d);
 }
 
