@@ -77,10 +77,17 @@ class Tensor:
         an empty numpy array without the data buffer will be returned.
         """
         np_type = self.dtype().to_numpy()
+        if np_type is None:
+            raise ValueError(
+                f"Tensor data type {self.dtype().__name__} is not supported by numpy."
+            )
         rt = Runtime.get_runtime(self.runtime_id)
         if not rt.launched():
-            return np.ndarray(self.shape(), dtype=np_type, buffer=None)
-        if ndarray is None:
+            raise RuntimeError(
+                "Tensor is not allocated yet. `Tensor.to_numpy()` is "
+                "usable only after you call `Runtime.launch()`."
+            )
+        elif ndarray is None:
             ndarray = np.zeros(self.shape(), dtype=np_type)
         elif not ndarray.flags["C_CONTIGUOUS"]:
             raise ValueError("ndarray is not contiguous in memory")
@@ -99,9 +106,18 @@ class Tensor:
         """ """
         if _no_torch:
             raise ImportError("torch is not available")
+        rt = Runtime.get_runtime(self.runtime_id)
+        if not rt.launched():
+            raise RuntimeError(
+                "Tensor is not allocated yet. `Tensor.to_torch()` is "
+                "usable only after you call `Runtime.launch()`."
+            )
         torch_type = self.dtype().to_torch()
         if tensor is None:
-            return torch.from_numpy(self.to_numpy())
+            dev_name = f"cuda:{rt.executor.gpu_id()}"
+            tensor = torch.zeros(
+                self.shape(), dtype=torch_type, device=torch.device(dev_name)
+            )
         elif tensor.shape != self.shape():
             raise ValueError("torch tensor shape does not match the tensor")
         elif tensor.dtype != torch_type:
@@ -110,7 +126,10 @@ class Tensor:
             raise ValueError("torch tensor is not contiguous in memory")
         elif tensor.numel() != self.nelems():
             raise ValueError("torch tensor size does not match the tensor")
-        tensor.copy_(torch.from_numpy(self.to_numpy(self.runtime_id)))
+        tensor_bytes = self.nelems() * self.dtype().element_size()
+        rt.executor.tensor_read(
+            self._tensor, tensor.data_ptr(), tensor_bytes, True
+        )
         return tensor
 
     def get_torch_view(self) -> torch.Tensor:
@@ -163,7 +182,8 @@ class Tensor:
 
     def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
         """
-        Copies the tensor from a host numpy array to the device.
+        Copies data into this tensor. The data type may differ,
+        but the size must match.
         """
         rt = Runtime.get_runtime(self.runtime_id)
         if not rt.launched():
@@ -171,24 +191,22 @@ class Tensor:
                 "Tensor is not allocated yet. `Tensor.from_numpy()` is "
                 "usable only after you call `Runtime.launch()`."
             )
+        tensor_bytes = self.nelems() * self.dtype().element_size()
         if isinstance(data, torch.Tensor):
-            if data.dtype != self.dtype().to_torch():
-                raise ValueError("data dtype does not match the tensor")
             if not data.is_contiguous():
                 data = data.contiguous()
-            if data.numel() != self.nelems():
+            if data.numel() * data.element_size() != tensor_bytes:
                 raise ValueError("data size does not match the tensor")
             rt.executor.tensor_write(
                 self._tensor,
                 data.data_ptr(),
-                data.numel() * data.element_size(),
+                tensor_bytes,
+                data.device.type == "cuda",
             )
         elif isinstance(data, np.ndarray):
-            if data.dtype != self.dtype().to_numpy():
-                raise ValueError("data dtype does not match the tensor")
             if not data.flags["C_CONTIGUOUS"]:
                 data = np.ascontiguousarray(data)
-            if data.nbytes != self.nelems() * self.dtype().element_size():
+            if data.nbytes != tensor_bytes:
                 raise ValueError("data size does not match the tensor")
             rt.executor.tensor_write(self._tensor, data)
         else:

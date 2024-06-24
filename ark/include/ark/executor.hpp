@@ -23,6 +23,9 @@ class Executor {
 
     ~Executor();
 
+    /// Return the GPU ID.
+    int gpu_id() const;
+
     /// Compile the model. This must be called before `launch()`.
     void compile();
 
@@ -59,10 +62,11 @@ class Executor {
                      data.size() * sizeof(T));
     }
 
-    void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
+    void tensor_read(const Tensor tensor, void *data, size_t bytes,
+                     bool is_d2d = false) const;
 
-    void tensor_write(const Tensor tensor, const void *data,
-                      size_t bytes) const;
+    void tensor_write(const Tensor tensor, const void *data, size_t bytes,
+                      bool is_d2d = false) const;
 
     DLManagedTensor *get_dl_tensor(const Tensor &tensor) const;
 

@@ -15,19 +15,24 @@ static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
                          py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
     exe->tensor_write(tensor, reinterpret_cast<void *>(info.ptr),
-                      info.size * info.itemsize);
+                      info.size * info.itemsize, false);
 }
 
 static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
-                         size_t host_address, size_t bytes) {
-    exe->tensor_write(tensor, reinterpret_cast<void *>(host_address), bytes);
+                         size_t address, size_t bytes, bool is_d2d) {
+    exe->tensor_write(tensor, reinterpret_cast<void *>(address), bytes, is_d2d);
 }
 
 static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
                         py::buffer host_buffer) {
     py::buffer_info info = host_buffer.request();
     exe->tensor_read(tensor, reinterpret_cast<void *>(info.ptr),
-                     info.size * info.itemsize);
+                     info.size * info.itemsize, false);
+}
+
+static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
+                        size_t address, size_t bytes, bool is_d2d) {
+    exe->tensor_read(tensor, reinterpret_cast<void *>(address), bytes, is_d2d);
 }
 
 DLManagedTensor *to_dlpack(ark::Executor &exe, const ark::Tensor &tensor) {
@@ -59,6 +64,7 @@ void register_executor(py::module &m) {
             py::init<int, int, int, const std::string &, const std::string &>(),
             py::arg("rank"), py::arg("world_size"), py::arg("gpu_id"),
             py::arg("name"), py::arg("plan"))
+        .def("gpu_id", &ark::Executor::gpu_id)
         .def("compile", &ark::Executor::compile)
         .def("launch", &ark::Executor::launch, py::arg("max_spin_count") = -1)
         .def("run", &ark::Executor::run, py::arg("iter"))
@@ -67,7 +73,16 @@ void register_executor(py::module &m) {
         .def("barrier", &ark::Executor::barrier)
         .def("destroy", &ark::Executor::destroy)
         .def("destroyed", &ark::Executor::destroyed)
-        .def("tensor_read", &tensor_read, py::arg("tensor"), py::arg("data"))
+        .def(
+            "tensor_read",
+            py::overload_cast<ark::Executor *, const ark::Tensor &, py::buffer>(
+                &tensor_read),
+            py::arg("tensor"), py::arg("data"))
+        .def("tensor_read",
+             py::overload_cast<ark::Executor *, const ark::Tensor &, size_t,
+                               size_t, bool>(&tensor_read),
+             py::arg("tensor"), py::arg("address"), py::arg("bytes"),
+             py::arg("is_d2d"))
         .def(
             "tensor_write",
             py::overload_cast<ark::Executor *, const ark::Tensor &, py::buffer>(
@@ -75,8 +90,8 @@ void register_executor(py::module &m) {
             py::arg("tensor"), py::arg("data"))
         .def("tensor_write",
              py::overload_cast<ark::Executor *, const ark::Tensor &, size_t,
-                               size_t>(&tensor_write),
-             py::arg("tensor"), py::arg("address"), py::arg("bytes"))
-        .def("get_dl_tensor", &to_dlpack_capsule),
-        py::arg("tensor");
+                               size_t, bool>(&tensor_write),
+             py::arg("tensor"), py::arg("address"), py::arg("bytes"),
+             py::arg("is_d2d"))
+        .def("get_dl_tensor", &to_dlpack_capsule);
 }

@@ -1,6 +1,13 @@
-import torch
+import pytest
 import numpy as np
 import ark
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    _no_torch = True
 
 
 def initialize_tensor(dimensions, dtype):
@@ -11,6 +18,8 @@ def initialize_tensor(dimensions, dtype):
 
 # Test function to validate the integrity of the PyTorch view of the ARK tensor,
 # including its data and attributes such as shape and data type.
+@pytest.mark.parametrize("num_dims,size", [(1, 5), (1, 1024), (2, 5), (2, 32)])
+@pytest.mark.parametrize("dtype", [ark.fp16, ark.fp32])
 def test_values_fixed_dims(num_dims: int, size: int, dtype: ark.DataType):
     ark.init()
     dimensions = [size] * num_dims
@@ -59,6 +68,7 @@ def check_diff(input_tensor_host, input_view_numpy, value, index):
 
 
 # Test function to check if changes to the torch views are reflected in the original tensors
+@pytest.mark.parametrize("dtype", [ark.fp16, ark.fp32])
 def test_aliasing(dtype: ark.DataType):
     ark.init()
     dimensions = [4, 4]
@@ -91,3 +101,28 @@ def test_aliasing(dtype: ark.DataType):
 
     runtime.stop()
     runtime.reset()
+
+
+def test_conversion_torch():
+    if _no_torch:
+        pytest.skip("PyTorch not available")
+
+    dimensions = [4, 4]
+
+    ark.init()
+    t = ark.constant(7, dimensions)
+
+    with ark.Runtime() as rt:
+        rt.launch()
+
+        torch_tensor = t.to_torch()
+
+        assert torch_tensor.shape == (4, 4)
+        assert torch_tensor.dtype == torch.float32
+        assert torch_tensor.device.type == "cuda"
+        assert torch.all(torch_tensor == 0)
+
+        rt.run()
+
+        torch_tensor = t.to_torch()
+        assert torch.all(torch_tensor == 7)
