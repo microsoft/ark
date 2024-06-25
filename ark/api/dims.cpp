@@ -5,7 +5,6 @@
 
 #include <vector>
 
-#include "error.hpp"
 #include "logging.h"
 
 namespace ark {

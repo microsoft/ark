@@ -8,7 +8,7 @@
 #include <sstream>
 #include <string>
 
-#include "error.hpp"
+#include "ark/error.hpp"
 
 namespace ark {
 
