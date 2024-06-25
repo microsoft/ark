@@ -4,8 +4,6 @@
 #ifndef ARK_EXECUTOR_HPP
 #define ARK_EXECUTOR_HPP
 
-#include <dlpack/dlpack.h>
-
 #include <ark/model_ref.hpp>
 #include <ark/tensor.hpp>
 #include <memory>
@@ -50,6 +48,8 @@ class Executor {
 
     bool destroyed() const;
 
+    uintptr_t tensor_address(const Tensor tensor) const;
+
     template <typename T>
     void tensor_read(const Tensor tensor, std::vector<T> &data) const {
         tensor_read(tensor, reinterpret_cast<void *>(data.data()),
@@ -67,10 +67,6 @@ class Executor {
 
     void tensor_write(const Tensor tensor, const void *data, size_t bytes,
                       bool is_d2d = false) const;
-
-    DLManagedTensor *get_dl_tensor(const Tensor &tensor) const;
-
-    DLDeviceType get_device_type() const;
 
    private:
     class Impl;
