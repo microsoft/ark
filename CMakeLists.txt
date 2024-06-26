@@ -17,6 +17,7 @@ option(USE_CUDA "Use NVIDIA/CUDA." OFF)
 option(USE_ROCM "Use AMD/ROCm." OFF)
 option(BYPASS_GPU_CHECK "Bypass GPU check." OFF)
 option(BUILD_TESTS "Build unit tests." ON)
+option(BUILD_PYTHON "Build Python module." ON)
 
 if(BYPASS_GPU_CHECK)
     if(USE_CUDA)
