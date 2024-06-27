@@ -180,6 +180,22 @@ class Tensor:
             lambda: tensor,
         )
 
+    @staticmethod
+    def get_ark_view(tensor: torch.Tensor, runtime_id: int = -1) -> "Tensor":
+        """
+        Returns an ARK tensor that shares the same memory with the torch tensor.
+        """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        elif not tensor.is_contiguous():
+            raise ValueError("Torch tensor must be contiguous.")
+        elif tensor.device.type == "cpu":
+            raise ValueError("Torch tensor must be on a device.")
+        ark_dtype = DataType.torch_to_ark_dtype_name(tensor.dtype)
+        dl_capsule = torch.utils.dlpack.to_dlpack(tensor)
+        ark_tensor = _Tensor(dl_capsule, ark_dtype)
+        return Tensor(ark_tensor, runtime_id=runtime_id)
+
     def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
         """
         Copies data into this tensor. The data type may differ,

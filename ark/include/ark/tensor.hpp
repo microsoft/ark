@@ -31,6 +31,8 @@ class Tensor {
     Tensor(ModelTensorRef ref) : ref_(ref) {}
     Tensor(const Tensor &other) = default;
     Tensor &operator=(const Tensor &other) = default;
+    Tensor(void *data_ptr, int32_t device_id, int8_t dtype_bytes,
+           const std::vector<int64_t> &shape, const std::string &ark_type_str);
 
     bool operator==(const Tensor &other) const { return ref_ == other.ref_; }
     bool operator!=(const Tensor &other) const { return ref_ != other.ref_; }

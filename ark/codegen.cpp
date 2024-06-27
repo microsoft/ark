@@ -10,6 +10,7 @@
 #include "file_io.h"
 #include "logging.h"
 #include "model/model_buffer.hpp"
+#include "model/model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"
@@ -43,7 +44,7 @@ class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
          const std::map<size_t, size_t> &buffer_id_to_offset,
-         const std::string &name);
+         const std::string &name, ModelBufferManager *buffer_manager);
     ~Impl() = default;
 
    private:
@@ -64,6 +65,8 @@ class CodeGenerator::Impl {
 
     std::string sync_process_range(const Range<size_t> &ranges, int state_id);
 
+    ModelBufferManager *buffer_manager_;
+
    protected:
     friend class CodeGenerator;
 
@@ -78,14 +81,22 @@ class CodeGenerator::Impl {
 
 CodeGenerator::Impl::Impl(const PlanJson &plan,
                           const std::map<size_t, size_t> &buffer_id_to_offset,
-                          const std::string &name)
-    : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
+                          const std::string &name,
+                          ModelBufferManager *buffer_manager)
+    : buffer_id_to_offset_(buffer_id_to_offset),
+      name_(name),
+      buffer_manager_(buffer_manager) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
     num_procs_ = plan.at("NumProcessors");
     num_warps_per_proc_ = plan.at("NumWarpsPerProcessor");
 
     std::stringstream definitions_ss;
+    if (buffer_manager_) {
+        definitions_ss << "__device__ void* ARK_EXTERNAL_BUFFERS["
+                       << buffer_manager_->getCompactIdSize() << "];\n";
+    }
+
     for (auto &task_json : plan.at("TaskInfos")) {
         definitions_ss << this->def_task(task_json);
     }
@@ -224,11 +235,18 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             auto &arg = impl_args[i];
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(tns->buffer()->id());
-                size_t offset = buffer_offset + ModelOffset(tns).value();
-                ss << "(" << tns->data_type()->type_str() << "*)&_buf["
-                   << offset << "]";
+                if (tns->buffer()->is_external()) {
+                    size_t compactId =
+                        buffer_manager_->getCompactId(tns->buffer()->id());
+                    ss << "(" << tns->data_type()->type_str()
+                       << "*)ARK_EXTERNAL_BUFFERS[" << compactId << "]";
+                } else {
+                    size_t buffer_offset =
+                        buffer_id_to_offset_.at(tns->buffer()->id());
+                    size_t offset = buffer_offset + ModelOffset(tns).value();
+                    ss << "(" << tns->data_type()->type_str() << "*)&_buf["
+                       << offset << "]";
+                }
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_offset =
@@ -430,8 +448,9 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 
 CodeGenerator::CodeGenerator(
     const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
-    const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
+    const std::string &name, ModelBufferManager *buffer_manager)
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name,
+                                   buffer_manager)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

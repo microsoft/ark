@@ -87,6 +87,28 @@ class DataType(metaclass=MetaDataType):
         )
 
     @staticmethod
+    def torch_to_ark_dtype_name(torch_type: torch.dtype) -> str:
+        """
+        Converts a PyTorch data type to its corresponding ARK data type string representation.
+
+        Parameters:
+            torch_type (torch.dtype): The PyTorch data type to convert.
+
+        Returns:
+            str: The corresponding ARK data type as a string in uppercase.
+
+        Raises:
+            ValueError: If there is no defined conversion from the given PyTorch data type to an ARK data type.
+        """
+        for type_name, reg in _REGISTRY_DATA_TYPE.items():
+            if reg["torch"] == torch_type:
+                return type_name.upper()
+        raise ValueError(
+            f"Undefined conversion from torch data type {torch_type}"
+            f" to ark data type."
+        )
+
+    @staticmethod
     def from_name(type_name: str) -> "DataType":
         """
         Return the corresponding ark data type.

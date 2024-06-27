@@ -10,6 +10,7 @@
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
+#include <tuple>
 
 #include "ark/data_type.hpp"
 #include "ark/model.hpp"
@@ -24,6 +25,7 @@
 #include "gpu/gpu_manager.h"
 #include "logging.h"
 #include "model/model_buffer.hpp"
+#include "model/model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 #include "utils/utils_net.hpp"
@@ -229,8 +231,16 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
             std::to_string(kv.first) + ": " + std::to_string(kv.second) + ", ";
     }
 
-    codegen_ =
-        std::make_shared<CodeGenerator>(plan_json, buffer_id_to_offset_, name);
+    ModelBufferManager &buffer_manager = ModelBufferManager::getInstance();
+    std::shared_ptr<ark::CodeGenerator> codegen_;
+
+    if (!buffer_manager.isEmpty()) {
+        codegen_ = std::make_shared<CodeGenerator>(
+            plan_json, buffer_id_to_offset_, name, &buffer_manager);
+    } else {
+        codegen_ = std::make_shared<CodeGenerator>(plan_json,
+                                                   buffer_id_to_offset_, name);
+    }
 
     auto gpu_manager = GpuManager::get_instance(gpu_id_);
     timer_begin_ = gpu_manager->create_event();
@@ -361,7 +371,16 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
-        buffer_id_to_offset[buf_info->buffer->id()] = offset;
+        if (buf_info->buffer->is_external()) {
+            if (buf_info->buffer->device_id() != gpu_id_) {
+                ERR(InvalidUsageError,
+                    "PyTorch tensor and model execution are on different GPUs");
+            }
+            continue;
+        } else {
+            buffer_id_to_offset[buf_info->buffer->id()] = offset;
+            offset += buf_info->bytes;
+        }
         for (const auto &tag_info : buf_info->buffer->send_tags()) {
             remote_rank_to_send_tags_and_offsets[tag_info.first]
                 .first.push_back(tag_info.second);
@@ -374,7 +393,6 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             remote_rank_to_recv_tags_and_offsets[tag_info.first]
                 .second.push_back(offset);
         }
-        offset += buf_info->bytes;
     }
     total_bytes_ = offset;
 
@@ -450,7 +468,11 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 1);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 2);
         for (int i = 0; i < len; ++i) {
-            buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] = offsets[i];
+            if (!buffer_id_to_info[send_tag_to_buffer_id[tags[i]]]
+                     ->buffer->is_external()) {
+                buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] =
+                    offsets[i];
+            }
         }
     }
     for (auto &kv : remote_rank_to_recv_tag_to_buffer_id) {
@@ -466,10 +488,13 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 4);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 5);
         for (int i = 0; i < len; ++i) {
-            buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] = offsets[i];
+            if (!buffer_id_to_info[recv_tag_to_buffer_id[tags[i]]]
+                     ->buffer->is_external()) {
+                buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] =
+                    offsets[i];
+            }
         }
     }
-
     return buffer_id_to_offset;
 }
 
@@ -617,6 +642,22 @@ void Executor::Impl::launch(int64_t max_spin_count) {
                         gpuMemcpyHostToDevice, copy_stream_->get()));
     GLOG(gpuMemcpyAsync(buf_ptr_addr, &buf_ptr_val, sizeof(gpuDeviceptr),
                         gpuMemcpyHostToDevice, copy_stream_->get()));
+
+    // Handle external buffers
+    ModelBufferManager &buffer_manager = ModelBufferManager::getInstance();
+    if (!buffer_manager.isEmpty()) {
+        void *ext_buf_addr = get_global_rt("ARK_EXTERNAL_BUFFERS");
+        std::vector<void *> ext_buffers(buffer_manager.getCompactIdSize());
+        for (const auto &[id, buffer_info] : buffer_manager.getBuffers()) {
+            size_t compactId = buffer_manager.getCompactId(id);
+            void *buffer_address = std::get<0>(buffer_info);
+            ext_buffers[compactId] = buffer_address;
+        }
+        GLOG(gpuMemcpyAsync(ext_buf_addr, ext_buffers.data(),
+                            ext_buffers.size() * sizeof(void *),
+                            gpuMemcpyHostToDevice, copy_stream_->get()));
+    }
+
     if (world_size_ > 1) {
         void *proxy_chan_addr = get_global_rt("ARK_PROXY_CHANS");
         void *proxy_secondary_chan_addr =
@@ -745,6 +786,11 @@ uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
 void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
                                  bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
+    if (tensor.ref()->buffer()->is_external()) {
+        ERR(InvalidUsageError,
+            "Reading data from a tensor preallocated by PyTorch is not "
+            "supported. Use PyTorch's native methods.");
+    }
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
     if (bytes != tensor_data_bytes) {
@@ -782,6 +828,11 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
 void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
                                   size_t bytes, bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
+    if (tensor.ref()->buffer()->is_external()) {
+        ERR(InvalidUsageError,
+            "Writing data to a tensor preallocated by PyTorch is not "
+            "supported. Use PyTorch's native methods.");
+    }
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
     if (bytes != tensor_data_bytes) {
@@ -841,7 +892,10 @@ float Executor::stop(int64_t max_spin_count) {
 
 void Executor::barrier() { impl_->barrier(); }
 
-void Executor::destroy() { impl_.reset(nullptr); }
+void Executor::destroy() {
+    ModelBufferManager::getInstance().clearBuffers();
+    impl_.reset(nullptr);
+}
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
