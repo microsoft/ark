@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef MODEL_BUFFER_MANAGER_HPP
-#define MODEL_BUFFER_MANAGER_HPP
+#ifndef ARK_MODEL_BUFFER_MANAGER_HPP_
+#define ARK_MODEL_BUFFER_MANAGER_HPP_
 
 #include <tuple>
 #include <unordered_map>
@@ -87,4 +87,4 @@ class ModelBufferManager {
 };
 }  // namespace ark
 
-#endif  // MODEL_BUFFER_MANAGER_HPP
+#endif  // ARK_MODEL_BUFFER_MANAGER_HPP_

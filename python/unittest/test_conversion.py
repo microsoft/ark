@@ -105,7 +105,7 @@ def test_ark_to_torch_aliasing(dtype: ark.DataType):
     runtime.stop()
     runtime.reset()
 
-@pytest.mark.skip(reason="Not implemented")
+
 def test_conversion_torch():
     if _no_torch:
         pytest.skip("PyTorch not available")

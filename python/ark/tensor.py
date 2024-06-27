@@ -191,9 +191,9 @@ class Tensor:
             raise ValueError("Torch tensor must be contiguous.")
         elif tensor.device.type == "cpu":
             raise ValueError("Torch tensor must be on a device.")
-        ark_dtype = DataType.torch_to_ark_dtype_name(tensor.dtype)
+        ark_dtype = DataType.from_torch(tensor.dtype)
         dl_capsule = torch.utils.dlpack.to_dlpack(tensor)
-        ark_tensor = _Tensor(dl_capsule, ark_dtype)
+        ark_tensor = _Tensor(dl_capsule, ark_dtype.ctype())
         return Tensor(ark_tensor, runtime_id=runtime_id)
 
     def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":

@@ -232,7 +232,6 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
     }
 
     ModelBufferManager &buffer_manager = ModelBufferManager::getInstance();
-    std::shared_ptr<ark::CodeGenerator> codegen_;
 
     if (!buffer_manager.isEmpty()) {
         codegen_ = std::make_shared<CodeGenerator>(

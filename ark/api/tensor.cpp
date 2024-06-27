@@ -3,26 +3,21 @@
 
 #include "ark/tensor.hpp"
 
-#include <ark/tensor.hpp>
-
-#include "ark/dims.hpp"
-#include "logging.h"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 
 namespace ark {
 
-Tensor::Tensor(void* data_ptr, int32_t device_id, int8_t dtype_bytes,
+Tensor::Tensor(void* data_ptr, int32_t device_id,
                const std::vector<int64_t>& shape,
-               const std::string& ark_type_str) {
+               const DataType& dtype) {
     size_t external_data_size = std::accumulate(shape.begin(), shape.end(), 1,
                                                 std::multiplies<int64_t>()) *
-                                dtype_bytes;
+                                dtype.bytes();
     auto buffer =
         std::make_shared<ModelBuffer>(data_ptr, external_data_size, device_id);
-    ark::ModelDataType dtype = DataType::from_name(ark_type_str).ref();
-    auto tensor = std::make_shared<ModelTensor>(dtype, buffer, Dims(shape),
+    auto tensor = std::make_shared<ModelTensor>(dtype.ref(), buffer, Dims(shape),
                                                 Dims(shape), Dims(), Dims());
     ref_ = tensor;
 }
