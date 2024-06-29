@@ -1,23 +1,23 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-# clang-format
-find_program(CLANG_FORMAT clang-format)
-if(CLANG_FORMAT)
-    message(STATUS "Found clang-format: ${CLANG_FORMAT}")
+# git-clang-format
+find_program(GIT_CLANG_FORMAT git-clang-format)
+if(GIT_CLANG_FORMAT)
+    message(STATUS "Found git-clang-format: ${GIT_CLANG_FORMAT}")
     set(FIND_DIRS
         ${PROJECT_SOURCE_DIR}/ark
         ${PROJECT_SOURCE_DIR}/python
         ${PROJECT_SOURCE_DIR}/examples
     )
     add_custom_target(cpplint
-        COMMAND ${CLANG_FORMAT} -style=file --dry-run `find ${FIND_DIRS} -type f -name *.h -o -name *.hpp -o -name *.c -o -name *.cc -o -name *.cpp -o -name *.cu`
+        COMMAND ${GIT_CLANG_FORMAT} --style=file --diff || true
     )
     add_custom_target(cpplint-autofix
-        COMMAND ${CLANG_FORMAT} -style=file -i `find ${FIND_DIRS} -type f -name *.h -o -name *.hpp -o -name *.c -o -name *.cc -o -name *.cpp -o -name *.cu`
+        COMMAND ${GIT_CLANG_FORMAT} --style=file || true
     )
 else()
-    message(STATUS "clang-format not found.")
+    message(STATUS "git-clang-format not found.")
 endif()
 
 # black
