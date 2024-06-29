@@ -64,5 +64,6 @@ void @NAME@(char *_buf, int *_iter) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
       atomicStoreRelaxed(_iter, 0);
     }
+    sync_gpu<@NUM_BLOCKS@>(ARK_LOOP_SYNC_STATE);
   }
 }
