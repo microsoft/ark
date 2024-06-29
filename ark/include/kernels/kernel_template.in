@@ -28,9 +28,8 @@ __forceinline__ __device__ void task_seq(char *_buf) {
   }
 }
 
-__device__ int ARK_ITER = 0;
+__device__ int ARK_ITER;
 __device__ sync::State ARK_LOOP_SYNC_STATE;
-__device__ char *ARK_BUF;
 
 @DEFINITIONS@
 
@@ -39,8 +38,7 @@ __device__ void ark_loop_body(char *_buf, int _iter) {
 }
 
 extern "C" __global__ __launch_bounds__(ARK_WARPS_PER_BLOCK * Arch::ThreadsPerWarp, 1)
-void @NAME@(int *_iter) {
-  char *_buf = ARK_BUF;
+void @NAME@(char *_buf, int *_iter) {
   int *shared_mem = (int *)_ARK_SMEM;
   for (int i = threadIdx.x; i < ARK_SMEM_RESERVED_BYTES / sizeof(int); i += blockDim.x) {
     shared_mem[i] = 0;

@@ -253,10 +253,11 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
         init_channels(remote_ranks);
     }
 
-    kernel_ = std::shared_ptr<GpuKernel>(
-        new GpuKernel(gpu_id_, codegen_->code(), {threads_per_block, 1, 1},
-                      {num_sm, 1, 1}, std::max(smem_block_total, size_t(4)),
-                      name, {std::pair<void *, size_t>{flag, sizeof(flag)}}));
+    kernel_ = std::shared_ptr<GpuKernel>(new GpuKernel(
+        gpu_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
+        std::max(smem_block_total, size_t(4)), name,
+        {std::pair<void *, size_t>{buffer_->ref(), sizeof(buffer_->ref())},
+         std::pair<void *, size_t>{flag, sizeof(flag)}}));
 }
 
 void Executor::Impl::init_communicator() {
@@ -607,16 +608,6 @@ void Executor::Impl::launch(int64_t max_spin_count) {
     auto get_global_rt = [&](const std::string &symbol) {
         return reinterpret_cast<void *>(kernel_->get_global(symbol));
     };
-    // Initialize global variables in the loop kernel.
-    GLOG(gpuSetDevice(gpu_id_));
-    void *buf_ptr_val = buffer_->ref();
-    void *lss_ptr_addr = get_global_rt("ARK_LOOP_SYNC_STATE");
-    void *buf_ptr_addr = get_global_rt("ARK_BUF");
-    std::array<int, 4> data = {0, 0, 0, 0};
-    GLOG(gpuMemcpyAsync(lss_ptr_addr, data.data(), sizeof(int) * data.size(),
-                        gpuMemcpyHostToDevice, copy_stream_->get()));
-    GLOG(gpuMemcpyAsync(buf_ptr_addr, &buf_ptr_val, sizeof(gpuDeviceptr),
-                        gpuMemcpyHostToDevice, copy_stream_->get()));
     if (world_size_ > 1) {
         void *proxy_chan_addr = get_global_rt("ARK_PROXY_CHANS");
         void *proxy_secondary_chan_addr =
@@ -640,6 +631,7 @@ void Executor::Impl::launch(int64_t max_spin_count) {
                 sm_handles[i] = it2->second[0]->deviceHandle();
             }
         }
+        GLOG(gpuSetDevice(gpu_id_));
         GLOG(gpuMemcpyAsync(
             proxy_chan_addr, proxy_handles.data(),
             proxy_handles.size() *
@@ -654,8 +646,8 @@ void Executor::Impl::launch(int64_t max_spin_count) {
             sm_chan_addr, sm_handles.data(),
             sm_handles.size() * sizeof(mscclpp::SmChannel::DeviceHandle),
             gpuMemcpyHostToDevice, copy_stream_->get()));
+        copy_stream_->sync();
     }
-    copy_stream_->sync();
 
     elapsed_msec_ = -1;
     if (!kernel_->is_compiled()) {
