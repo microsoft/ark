@@ -5,7 +5,7 @@ import logging
 from enum import Enum
 from typing import Callable, Dict, List
 
-from _ark_core import _Executor, _DefaultPlanner
+from ._ark_core import _Executor, _DefaultPlanner
 from .model import Model
 
 
