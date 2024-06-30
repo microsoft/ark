@@ -642,21 +642,6 @@ void Executor::Impl::launch(int64_t max_spin_count) {
     GLOG(gpuMemcpyAsync(buf_ptr_addr, &buf_ptr_val, sizeof(gpuDeviceptr),
                         gpuMemcpyHostToDevice, copy_stream_->get()));
 
-    // Handle external buffers
-    ModelBufferManager &buffer_manager = ModelBufferManager::get_instance();
-    if (!buffer_manager.is_empty()) {
-        void *ext_buf_addr = get_global_rt("ARK_EXTERNAL_BUFFERS");
-        std::vector<void *> ext_buffers(buffer_manager.get_compact_id_size());
-        for (const auto &[id, buffer_info] : buffer_manager.get_buffers()) {
-            size_t compactId = buffer_manager.get_compact_id(id);
-            void *buffer_address = std::get<0>(buffer_info);
-            ext_buffers[compactId] = buffer_address;
-        }
-        GLOG(gpuMemcpyAsync(ext_buf_addr, ext_buffers.data(),
-                            ext_buffers.size() * sizeof(void *),
-                            gpuMemcpyHostToDevice, copy_stream_->get()));
-    }
-
     if (world_size_ > 1) {
         void *proxy_chan_addr = get_global_rt("ARK_PROXY_CHANS");
         void *proxy_secondary_chan_addr =

@@ -92,10 +92,6 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     num_warps_per_proc_ = plan.at("NumWarpsPerProcessor");
 
     std::stringstream definitions_ss;
-    if (buffer_manager_) {
-        definitions_ss << "__device__ void* ARK_EXTERNAL_BUFFERS["
-                       << buffer_manager_->get_compact_id_size() << "];\n";
-    }
 
     for (auto &task_json : plan.at("TaskInfos")) {
         definitions_ss << this->def_task(task_json);
@@ -236,10 +232,11 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
                 if (tns->buffer()->is_external()) {
-                    size_t compactId =
-                        buffer_manager_->get_compact_id(tns->buffer()->id());
-                    ss << "(" << tns->data_type()->type_str()
-                       << "*)ARK_EXTERNAL_BUFFERS[" << compactId << "]";
+                    void *buf_addr =
+                        ModelBufferManager::get_instance().get_buffer(
+                            tns->buffer()->id());
+                    ss << "(" << tns->data_type()->type_str() << "*)"
+                       << buf_addr;
                 } else {
                     size_t buffer_offset =
                         buffer_id_to_offset_.at(tns->buffer()->id());
