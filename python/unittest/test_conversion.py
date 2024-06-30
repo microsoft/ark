@@ -149,8 +149,8 @@ def test_bin_op(dtype, ark_op: ArkBinOp, torch_op: TorchBinOp, tensor_dims):
     input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     other_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     expected_output = torch_op(input_tensor, other_tensor).cpu().numpy()
-    input_ark_view = ark.Tensor.get_ark_view(input_tensor)
-    other_ark_view = ark.Tensor.get_ark_view(other_tensor)
+    input_ark_view = ark.Tensor.from_torch(input_tensor)
+    other_ark_view = ark.Tensor.from_torch(other_tensor)
     output = ark_op(input_ark_view, other_ark_view)
     runtime = ark.Runtime()
     runtime.launch()
@@ -170,7 +170,7 @@ def test_unary_op(dtype, ark_op: ArkUnOp, torch_op: TorchUnOp, tensor_dims):
     ark.init()
     input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     expected_output = torch_op(input_tensor).cpu().numpy()
-    input_ark_view = ark.Tensor.get_ark_view(input_tensor)
+    input_ark_view = ark.Tensor.from_torch(input_tensor)
     output = ark_op(input_ark_view)
     runtime = ark.Runtime()
     runtime.launch()
@@ -189,8 +189,8 @@ def test_torch_to_ark_aliasing(dtype, tensor_dims):
     input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     other_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
 
-    input_ark_view = ark.Tensor.get_ark_view(input_tensor)
-    other_ark_view = ark.Tensor.get_ark_view(other_tensor)
+    input_ark_view = ark.Tensor.from_torch(input_tensor)
+    other_ark_view = ark.Tensor.from_torch(other_tensor)
 
     output = ark.add(input_ark_view, other_ark_view)
     # Perform in place operations

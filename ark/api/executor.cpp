@@ -231,9 +231,9 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
             std::to_string(kv.first) + ": " + std::to_string(kv.second) + ", ";
     }
 
-    ModelBufferManager &buffer_manager = ModelBufferManager::getInstance();
+    ModelBufferManager &buffer_manager = ModelBufferManager::get_instance();
 
-    if (!buffer_manager.isEmpty()) {
+    if (!buffer_manager.is_empty()) {
         codegen_ = std::make_shared<CodeGenerator>(
             plan_json, buffer_id_to_offset_, name, &buffer_manager);
     } else {
@@ -643,12 +643,12 @@ void Executor::Impl::launch(int64_t max_spin_count) {
                         gpuMemcpyHostToDevice, copy_stream_->get()));
 
     // Handle external buffers
-    ModelBufferManager &buffer_manager = ModelBufferManager::getInstance();
-    if (!buffer_manager.isEmpty()) {
+    ModelBufferManager &buffer_manager = ModelBufferManager::get_instance();
+    if (!buffer_manager.is_empty()) {
         void *ext_buf_addr = get_global_rt("ARK_EXTERNAL_BUFFERS");
-        std::vector<void *> ext_buffers(buffer_manager.getCompactIdSize());
-        for (const auto &[id, buffer_info] : buffer_manager.getBuffers()) {
-            size_t compactId = buffer_manager.getCompactId(id);
+        std::vector<void *> ext_buffers(buffer_manager.get_compact_id_size());
+        for (const auto &[id, buffer_info] : buffer_manager.get_buffers()) {
+            size_t compactId = buffer_manager.get_compact_id(id);
             void *buffer_address = std::get<0>(buffer_info);
             ext_buffers[compactId] = buffer_address;
         }
@@ -892,7 +892,7 @@ float Executor::stop(int64_t max_spin_count) {
 void Executor::barrier() { impl_->barrier(); }
 
 void Executor::destroy() {
-    ModelBufferManager::getInstance().clearBuffers();
+    ModelBufferManager::get_instance().clear_buffers();
     impl_.reset(nullptr);
 }
 

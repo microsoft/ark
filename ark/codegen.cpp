@@ -94,7 +94,7 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     std::stringstream definitions_ss;
     if (buffer_manager_) {
         definitions_ss << "__device__ void* ARK_EXTERNAL_BUFFERS["
-                       << buffer_manager_->getCompactIdSize() << "];\n";
+                       << buffer_manager_->get_compact_id_size() << "];\n";
     }
 
     for (auto &task_json : plan.at("TaskInfos")) {
@@ -237,7 +237,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                 auto tns = arg.value<ModelTensorRef>();
                 if (tns->buffer()->is_external()) {
                     size_t compactId =
-                        buffer_manager_->getCompactId(tns->buffer()->id());
+                        buffer_manager_->get_compact_id(tns->buffer()->id());
                     ss << "(" << tns->data_type()->type_str()
                        << "*)ARK_EXTERNAL_BUFFERS[" << compactId << "]";
                 } else {

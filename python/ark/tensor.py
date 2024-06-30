@@ -167,21 +167,7 @@ class Tensor:
         return self
 
     @staticmethod
-    def from_torch(tensor: torch.Tensor):
-        return Tensor(
-            Model.get_model().tensor(
-                Dims(list(tensor.shape)),
-                DataType.from_torch(tensor.dtype).ctype(),
-                Dims(),
-                Dims(),
-                Dims(),
-                "",
-            ),
-            lambda: tensor,
-        )
-
-    @staticmethod
-    def get_ark_view(tensor: torch.Tensor, runtime_id: int = -1) -> "Tensor":
+    def from_torch(tensor: torch.Tensor, runtime_id: int = -1) -> "Tensor":
         """
         Returns an ARK tensor that shares the same memory with the torch tensor.
         """

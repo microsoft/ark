@@ -8,34 +8,22 @@
 #include <unordered_map>
 
 namespace ark {
-/**
- * @brief Manages externally allocated buffers not in the ARK memory space.
- *
- * Details:
- * - `buffers_`: Maps external buffer IDs to their pointers and sizes.
- * - `externalIdMap_`: Maps external buffer IDs to their corresponding compact
- *   IDs. During the code generation phase, an array of buffer addresses
- *   (ARK_EXTERNAL_BUFFERS) is preallocated to hold addresses of external
- * buffers. Accessing an external buffer utilizes its compact ID to index into
- * this array, ensuring that each index *i* in ARK_EXTERNAL_BUFFERS corresponds
- * to the buffer with compact ID *i*, facilitating mixed allocation patterns
- *   (e.g., internal, internal, external, internal).
- */
+// Manages externally allocated buffers not in the ARK memory space.
 class ModelBufferManager {
    public:
-    static ModelBufferManager& getInstance() {
+    static ModelBufferManager& get_instance() {
         static ModelBufferManager instance;
         return instance;
     }
 
-    void registerBuffer(size_t id, void* data, size_t size) {
+    void register_buffer(size_t id, void* data, size_t size) {
         buffers_[id] = std::make_tuple(data, size);
-        if (externalIdMap_.find(id) == externalIdMap_.end()) {
-            externalIdMap_[id] = nextCompactId_++;
+        if (external_id_map_.find(id) == external_id_map_.end()) {
+            external_id_map_[id] = next_compact_id_++;
         }
     }
 
-    void* getBuffer(size_t id) {
+    void* get_buffer(size_t id) {
         auto it = buffers_.find(id);
         if (it != buffers_.end()) {
             return std::get<0>(it->second);
@@ -43,7 +31,7 @@ class ModelBufferManager {
         return nullptr;
     }
 
-    size_t getBufferSize(size_t id) {
+    size_t get_buffer_size(size_t id) {
         auto it = buffers_.find(id);
         if (it != buffers_.end()) {
             return std::get<1>(it->second);
@@ -51,36 +39,36 @@ class ModelBufferManager {
         return 0;
     }
 
-    size_t getCompactIdSize() { return nextCompactId_; }
+    size_t get_compact_id_size() { return next_compact_id_; }
 
-    size_t getCompactId(size_t id) {
-        auto it = externalIdMap_.find(id);
-        if (it != externalIdMap_.end()) {
+    size_t get_compact_id(size_t id) {
+        auto it = external_id_map_.find(id);
+        if (it != external_id_map_.end()) {
             return it->second;
         }
         return 0;
     }
 
-    const std::unordered_map<size_t, std::tuple<void*, size_t>>& getBuffers()
+    const std::unordered_map<size_t, std::tuple<void*, size_t>>& get_buffers()
         const {
         return buffers_;
     }
 
-    void clearBuffers() {
+    void clear_buffers() {
         buffers_.clear();
-        externalIdMap_.clear();
-        nextCompactId_ = 0;
+        external_id_map_.clear();
+        next_compact_id_ = 0;
     }
 
-    bool isEmpty() const { return buffers_.empty(); }
+    bool is_empty() const { return buffers_.empty(); }
 
    private:
     std::unordered_map<size_t, std::tuple<void*, size_t>>
         buffers_;  // Maps buffer IDs to pointers and sizes.
     std::unordered_map<size_t, size_t>
-        externalIdMap_;  // Maps original buffer IDs to compact IDs for external
-                         // buffers.
-    size_t nextCompactId_ = 0;
+        external_id_map_;  // Maps original buffer IDs to compact IDs for
+                           // external buffers.
+    size_t next_compact_id_ = 0;
     ModelBufferManager() {}
     ModelBufferManager(const ModelBufferManager&) = delete;
     ModelBufferManager& operator=(const ModelBufferManager&) = delete;

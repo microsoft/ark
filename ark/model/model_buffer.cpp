@@ -65,8 +65,8 @@ Json ModelBuffer::serialize() const {
     j["RecvTags"] = recv_tags;
     j["IsExternal"] = is_external_;
     if (is_external_) {
-        ModelBufferManager::getInstance().registerBuffer(id_, external_data_,
-                                                         external_data_size_);
+        ModelBufferManager::get_instance().register_buffer(id_, external_data_,
+                                                           external_data_size_);
         j["ExternalDataSize"] = external_data_size_;
         j["DeviceId"] = device_id_;
     }
@@ -100,7 +100,7 @@ std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const Json &serialized) {
                 "ModelBuffer deserialization failed: missing DeviceId");
         }
         void *data_ptr =
-            ModelBufferManager::getInstance().getBuffer(serialized["Id"]);
+            ModelBufferManager::get_instance().get_buffer(serialized["Id"]);
         if (!data_ptr) {
             ERR(InvalidUsageError,
                 "ModelBuffer deserialization failed: external buffer not found "
