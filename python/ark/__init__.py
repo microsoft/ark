@@ -7,9 +7,7 @@ import os
 if os.environ.get("ARK_ROOT", None) is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-import _ark_core
+from . import _ark_core
 from .model import Model
 
 
@@ -102,4 +100,3 @@ from .error import (
     GpuError,
     RuntimeError,
 )
-
