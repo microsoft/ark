@@ -3,12 +3,15 @@
 
 #include "ark/executor.hpp"
 
+#include <dlpack/dlpack.h>
+
 #include <cmath>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
 
+#include "ark/data_type.hpp"
 #include "ark/model.hpp"
 #include "ark/planner.hpp"
 #include "codegen.hpp"
@@ -140,9 +143,13 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl(int rank, int world_size, int gpu_id, const std::string &name,
-         const std::string &plan);
+    Impl(int rank, int world_size, int gpu_id, const std::string &name);
     ~Impl() = default;
+
+    void init(const std::string &plan);
+
+    int gpu_id() const { return gpu_id_; }
+    std::string plan() const { return plan_json_.dump_pretty(); }
 
     void compile();
     void launch(int64_t max_spin_count);
@@ -151,9 +158,12 @@ class Executor::Impl {
     float stop(int64_t max_spin_count);
     void barrier();
 
-    void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
-    void tensor_write(const Tensor tensor, const void *data,
-                      size_t bytes) const;
+    uintptr_t tensor_address(const Tensor tensor) const;
+
+    void tensor_read(const Tensor tensor, void *data, size_t bytes,
+                     bool is_d2d) const;
+    void tensor_write(const Tensor tensor, const void *data, size_t bytes,
+                      bool is_d2d) const;
 
    private:
     void init_communicator();
@@ -165,11 +175,13 @@ class Executor::Impl {
     const int rank_;
     const int world_size_;
     int gpu_id_;
+    std::string name_;
 
     bool is_launched_ = false;
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
+    PlanJson plan_json_;
     std::map<size_t, size_t> buffer_id_to_offset_;
     size_t total_bytes_;
     std::shared_ptr<CodeGenerator> codegen_;
@@ -191,8 +203,8 @@ class Executor::Impl {
 };
 
 Executor::Impl::Impl(int rank, int world_size, int gpu_id,
-                     const std::string &name, const std::string &plan)
-    : rank_(rank), world_size_(world_size), gpu_id_(gpu_id) {
+                     const std::string &name)
+    : rank_(rank), world_size_(world_size), gpu_id_(gpu_id), name_(name) {
     if (rank < 0 || rank >= world_size) {
         ERR(InvalidUsageError, "Invalid rank ", rank, " with world size ",
             world_size);
@@ -203,17 +215,18 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
     if (world_size_ > 1) {
         init_communicator();
     }
+}
 
-    Json plan_json;
+void Executor::Impl::init(const std::string &plan) {
     auto &plan_path = get_env().enforce_plan_path;
     if (!plan_path.empty()) {
         LOG(INFO, "Enforce executor plan path: ", plan_path);
-        plan_json = Json::parse(read_file(plan_path));
+        plan_json_ = Json::parse(read_file(plan_path));
     } else {
-        plan_json = Json::parse(plan);
+        plan_json_ = Json::parse(plan);
     }
 
-    buffer_id_to_offset_ = init_buffers(plan_json);
+    buffer_id_to_offset_ = init_buffers(plan_json_);
 
     std::string buffer_id_to_offset_str;
     for (const auto &kv : buffer_id_to_offset_) {
@@ -222,7 +235,7 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
     }
 
     codegen_ =
-        std::make_shared<CodeGenerator>(plan_json, buffer_id_to_offset_, name);
+        std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_, name_);
 
     auto gpu_manager = GpuManager::get_instance(gpu_id_);
     timer_begin_ = gpu_manager->create_event();
@@ -241,13 +254,13 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
         static_cast<size_t>(gpu_manager->info().smem_block_total);
 
     if (world_size_ > 1) {
-        auto remote_ranks = init_remote_ranks(plan_json);
+        auto remote_ranks = init_remote_ranks(plan_json_);
         init_channels(remote_ranks);
     }
 
     kernel_ = std::shared_ptr<GpuKernel>(new GpuKernel(
         gpu_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
-        std::max(smem_block_total, size_t(4)), name,
+        std::max(smem_block_total, size_t(4)), name_,
         {std::pair<void *, size_t>{buffer_->ref(), sizeof(buffer_->ref())},
          std::pair<void *, size_t>{flag, sizeof(flag)}}));
 }
@@ -717,58 +730,85 @@ void Executor::Impl::barrier() {
     }
 }
 
-void Executor::Impl::tensor_read(const Tensor tensor, void *data,
-                                 size_t bytes) const {
+uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
+    size_t buffer_id = tensor.ref()->buffer()->id();
+    if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
+        ERR(NotFoundError, "Invalid buffer ID: ", buffer_id);
+    }
+    size_t offset = buffer_id_to_offset_.at(buffer_id);
+    return reinterpret_cast<uintptr_t>(buffer_->ref(offset));
+}
+
+void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
+                                 bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
-    if (bytes < tensor_data_bytes) {
-        ERR(InvalidUsageError, "Data buffer (", bytes,
-            ") is smaller than the tensor data (", tensor_data_bytes, ").");
+    if (bytes != tensor_data_bytes) {
+        ERR(InvalidUsageError, "Destination bytes (", bytes,
+            ") mismatches the tensor data bytes (", tensor_data_bytes, ").");
     }
-    size_t tensor_bytes =
-        tensor.strides().nelems() * tensor.data_type().bytes();
-    void *src =
-        buffer_->ref(buffer_id_to_offset_.at(tensor.ref()->buffer()->id()));
+    auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyDeviceToHost;
+    void *src = reinterpret_cast<void *>(tensor_address(tensor));
     if (tensor.strides() == tensor.shape()) {
-        GLOG(gpuMemcpyAsync(data, src, bytes, gpuMemcpyDeviceToHost,
-                            copy_stream_->get()));
-        copy_stream_->sync();
+        GLOG(gpuMemcpyAsync(data, src, bytes, kind, copy_stream_->get()));
     } else {
+        size_t tensor_bytes =
+            tensor.strides().nelems() * tensor.data_type().bytes();
         std::vector<int8_t> tensor_host(tensor_bytes);
         GLOG(gpuMemcpyAsync(tensor_host.data(), src, tensor_bytes,
                             gpuMemcpyDeviceToHost, copy_stream_->get()));
         copy_stream_->sync();
-        tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
-                       tensor.shape(), tensor.strides(), tensor.offsets(),
+        if (!is_d2d) {
+            tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
+                           tensor.shape(), tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
+            return;
+        }
+        // TODO: convert data layout on the device directly
+        std::vector<int8_t> data_host(bytes);
+        tensor_to_data(tensor_host.data(), data_host.data(), tensor.shape(),
+                       tensor.strides(), tensor.offsets(),
                        tensor.data_type().bytes());
+        GLOG(gpuMemcpyAsync(data, data_host.data(), bytes,
+                            gpuMemcpyHostToDevice, copy_stream_->get()));
     }
+    copy_stream_->sync();
 }
 
 void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
-                                  size_t bytes) const {
+                                  size_t bytes, bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
-    if (bytes < tensor_data_bytes) {
-        ERR(InvalidUsageError, "Data buffer (", bytes,
-            ") is smaller than the tensor data (", tensor_data_bytes, ").");
+    if (bytes != tensor_data_bytes) {
+        ERR(InvalidUsageError, "Source bytes (", bytes,
+            ") mismatches the tensor data bytes (", tensor_data_bytes, ").");
     }
     size_t tensor_bytes =
         tensor.strides().nelems() * tensor.data_type().bytes();
-    void *dst =
-        buffer_->ref(buffer_id_to_offset_.at(tensor.ref()->buffer()->id()));
+    auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyHostToDevice;
+    void *dst = reinterpret_cast<void *>(tensor_address(tensor));
     if (tensor.strides() == tensor.shape()) {
-        GLOG(gpuMemcpyAsync(dst, data, tensor_bytes, gpuMemcpyHostToDevice,
-                            copy_stream_->get()));
+        GLOG(
+            gpuMemcpyAsync(dst, data, tensor_bytes, kind, copy_stream_->get()));
     } else {
         std::vector<int8_t> tensor_host(tensor_bytes);
-        GLOG(gpuMemcpyAsync(tensor_host.data(), dst, tensor_bytes,
-                            gpuMemcpyDeviceToHost, copy_stream_->get()));
-        copy_stream_->sync();
-        data_to_tensor(tensor_host.data(), static_cast<const int8_t *>(data),
-                       tensor.shape(), tensor.strides(), tensor.offsets(),
-                       tensor.data_type().bytes());
+        if (!is_d2d) {
+            data_to_tensor(tensor_host.data(),
+                           static_cast<const int8_t *>(data), tensor.shape(),
+                           tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
+        } else {
+            // TODO: convert data layout on the device directly
+            std::vector<int8_t> tmp(bytes);
+            GLOG(gpuMemcpyAsync(tmp.data(), data, bytes, gpuMemcpyDeviceToHost,
+                                copy_stream_->get()));
+            copy_stream_->sync();
+            data_to_tensor(tensor_host.data(), tmp.data(), tensor.shape(),
+                           tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
+        }
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_bytes,
                             gpuMemcpyHostToDevice, copy_stream_->get()));
     }
@@ -777,10 +817,17 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
 
 Executor::Executor(int rank, int world_size, int gpu_id,
                    const std::string &name, const std::string &plan)
-    : impl_(std::make_unique<Executor::Impl>(rank, world_size, gpu_id, name,
-                                             plan)) {}
+    : impl_(std::make_unique<Executor::Impl>(rank, world_size, gpu_id, name)) {
+    if (!plan.empty()) {
+        impl_->init(plan);
+    }
+}
 
 Executor::~Executor() = default;
+
+int Executor::gpu_id() const { return impl_->gpu_id(); }
+
+std::string Executor::plan() const { return impl_->plan(); }
 
 void Executor::compile() { impl_->compile(); }
 
@@ -800,25 +847,32 @@ void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
-void Executor::tensor_read(const Tensor tensor, void *data,
-                           size_t bytes) const {
-    impl_->tensor_read(tensor, data, bytes);
+uintptr_t Executor::tensor_address(const Tensor tensor) const {
+    return impl_->tensor_address(tensor);
 }
 
-void Executor::tensor_write(const Tensor tensor, const void *data,
-                            size_t bytes) const {
-    impl_->tensor_write(tensor, data, bytes);
+void Executor::tensor_read(const Tensor tensor, void *data, size_t bytes,
+                           bool is_d2d) const {
+    impl_->tensor_read(tensor, data, bytes, is_d2d);
+}
+
+void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
+                            bool is_d2d) const {
+    impl_->tensor_write(tensor, data, bytes, is_d2d);
 }
 
 DefaultExecutor::DefaultExecutor(const Model &model, int gpu_id,
-                                 const std::string &name)
+                                 const std::vector<DefaultPlanner::ConfigRule>& config_rules,
+                                 const std::string& name)
     : Executor(
           model.rank(), model.world_size(),
           (gpu_id < 0) ? (model.rank() % get_env().num_ranks_per_host) : gpu_id,
-          name,
-          DefaultPlanner(model, (gpu_id < 0) ? (model.rank() %
-                                                get_env().num_ranks_per_host)
-                                             : gpu_id)
-              .plan()) {}
+          name, "") {
+    DefaultPlanner planner(model, impl_->gpu_id());
+    for (const auto &rule : config_rules) {
+        planner.install_config_rule(rule);
+    }
+    impl_->init(planner.plan());
+}
 
 }  // namespace ark

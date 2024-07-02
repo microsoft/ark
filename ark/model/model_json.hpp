@@ -18,7 +18,7 @@ class ModelJson : public Json {
 
 class PlanJson : public Json {
    public:
-    PlanJson(const Json &json);
+    PlanJson(const Json &json = nullptr);
     std::string dump_pretty(int indent = 0, int indent_step = 2) const;
 };
 

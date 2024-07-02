@@ -305,7 +305,8 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(SchedulerError, "not enough resources for task group");
+            ERR(SchedulerError, "not enough resources for task group: ",
+                tg.dump());
         }
 
         size_t task_b = *task_range.begin();

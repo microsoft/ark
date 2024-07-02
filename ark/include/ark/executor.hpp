@@ -5,6 +5,7 @@
 #define ARK_EXECUTOR_HPP
 
 #include <ark/model_ref.hpp>
+#include <ark/planner.hpp>
 #include <ark/tensor.hpp>
 #include <memory>
 #include <string>
@@ -20,6 +21,12 @@ class Executor {
              const std::string &plan);
 
     ~Executor();
+
+    /// Return the GPU ID.
+    int gpu_id() const;
+
+    /// Return the plan string.
+    std::string plan() const;
 
     /// Compile the model. This must be called before `launch()`.
     void compile();
@@ -45,6 +52,8 @@ class Executor {
 
     bool destroyed() const;
 
+    uintptr_t tensor_address(const Tensor tensor) const;
+
     template <typename T>
     void tensor_read(const Tensor tensor, std::vector<T> &data) const {
         tensor_read(tensor, reinterpret_cast<void *>(data.data()),
@@ -57,12 +66,13 @@ class Executor {
                      data.size() * sizeof(T));
     }
 
-    void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
+    void tensor_read(const Tensor tensor, void *data, size_t bytes,
+                     bool is_d2d = false) const;
 
-    void tensor_write(const Tensor tensor, const void *data,
-                      size_t bytes) const;
+    void tensor_write(const Tensor tensor, const void *data, size_t bytes,
+                      bool is_d2d = false) const;
 
-   private:
+   protected:
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
@@ -72,6 +82,7 @@ class Model;
 class DefaultExecutor : public Executor {
    public:
     DefaultExecutor(const Model &model, int gpu_id = -1,
+                    const std::vector<DefaultPlanner::ConfigRule>& config_rules = {},
                     const std::string &name = "DefaultExecutor");
 };
 
