@@ -5,6 +5,7 @@
 #define ARK_EXECUTOR_HPP
 
 #include <ark/model_ref.hpp>
+#include <ark/planner.hpp>
 #include <ark/tensor.hpp>
 #include <memory>
 #include <string>
@@ -23,6 +24,9 @@ class Executor {
 
     /// Return the GPU ID.
     int gpu_id() const;
+
+    /// Return the plan string.
+    std::string plan() const;
 
     /// Compile the model. This must be called before `launch()`.
     void compile();
@@ -68,7 +72,7 @@ class Executor {
     void tensor_write(const Tensor tensor, const void *data, size_t bytes,
                       bool is_d2d = false) const;
 
-   private:
+   protected:
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
@@ -78,6 +82,7 @@ class Model;
 class DefaultExecutor : public Executor {
    public:
     DefaultExecutor(const Model &model, int gpu_id = -1,
+                    const std::vector<DefaultPlanner::ConfigRule>& config_rules = {},
                     const std::string &name = "DefaultExecutor");
 };
 

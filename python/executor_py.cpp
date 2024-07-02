@@ -149,6 +149,7 @@ void register_executor(py::module &m) {
             py::arg("rank"), py::arg("world_size"), py::arg("gpu_id"),
             py::arg("name"), py::arg("plan"))
         .def("gpu_id", &ark::Executor::gpu_id)
+        .def("plan", &ark::Executor::plan)
         .def("compile", &ark::Executor::compile)
         .def("launch", &ark::Executor::launch, py::arg("max_spin_count") = -1)
         .def("run", &ark::Executor::run, py::arg("iter"))

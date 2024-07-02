@@ -80,7 +80,7 @@ ark::unittest::State test_embedding() {
     }
     auto result = ark::op_test("embedding_" + type_str, m, {ti, tw}, {to},
                                baseline_embedding<T>,
-                               {ti_data.data(), tw_data.data()}, true);
+                               {ti_data.data(), tw_data.data()});
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;

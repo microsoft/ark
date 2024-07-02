@@ -186,9 +186,9 @@ struct Broadcast2Intrinsic {
         (BroadcastInput0 && BroadcastInput1)
             ? OutNelemPerThread
             : BroadcastInput0
-                  ? math::gcd<OutNelemPerThread, In0NelemPerThread>::value
+                  ? math::gcd<OutNelemPerThread, In1NelemPerThread>::value
                   : BroadcastInput1
-                        ? math::gcd<OutNelemPerThread, In1NelemPerThread>::value
+                        ? math::gcd<OutNelemPerThread, In0NelemPerThread>::value
                         : math::gcd<OutNelemPerThread,
                                     math::gcd<In0NelemPerThread,
                                               In1NelemPerThread>::value>::value;

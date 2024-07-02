@@ -58,30 +58,34 @@ def run_ark(
     ]
     output = module(*module_inputs)
 
-    runtime = ark.Runtime()
-    # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
-    runtime.launch(num_warps_per_sm=8)
+    with ark.Runtime() as rt:
+        rt.launch(plan_path="/mnt/changhohwang/ark/plan_gpu0.json")
 
-    # Load model parameters
-    if state_dict:
-        module.load_state_dict(state_dict)
+        # Load model parameters
+        if state_dict:
+            print("Loading state_dict")
+            module.load_state_dict(state_dict)
+            print("Loading state_dict done")
 
-    # Load input data into tensors
-    tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
-    tensor_data = [i for i in inputs if isinstance(i, np.ndarray)]
-    for tensor, ndarray in zip(tensors, tensor_data):
-        tensor.from_numpy(ndarray)
+        # Load input data into tensors
+        tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
+        tensor_data = [i for i in inputs if isinstance(i, np.ndarray)]
+        for tensor, ndarray in zip(tensors, tensor_data):
+            tensor.from_numpy(ndarray)
 
-    start_time = time.time()
+        start_time = time.time()
 
-    # Run the model
-    runtime.run(iter=iterations)
+        # Run the model
+        print("Run:", iterations)
 
-    end_time = time.time()
+        rt.run(iter=iterations)
+        print("Run done")
 
-    if isinstance(output, list) or isinstance(output, tuple):
-        outputs = [o.to_numpy() for o in output]
-    outputs = [output.to_numpy()]
+        end_time = time.time()
+
+        if isinstance(output, list) or isinstance(output, tuple):
+            outputs = [o.to_numpy() for o in output]
+        outputs = [output.to_numpy()]
 
     return RunResults(outputs=outputs, runtime=end_time - start_time)
 
@@ -160,7 +164,9 @@ def test_module(
         else:
             prefix = module_name_prefix + "." if module_name_prefix else ""
             # Load the state_dict from the given path
+            print("Loading ckpt:", ckpt_path)
             state_dict_pt = torch.load(ckpt_path)
+            print("Loading ckpt done")
             state_dict_pt = {
                 k[len(prefix) :]: v
                 for k, v in state_dict_pt.items()
@@ -182,6 +188,7 @@ def test_module(
         rank=rank,
         world_size=world_size,
     )
+    print("Run ARK done")
 
     if not test_thru_ark_only:
         # PyTorch module
@@ -195,6 +202,7 @@ def test_module(
             inputs_pt,
             iterations=test_thru_iterations if test_thru else 1,
         )
+        print("Run PyTorch done")
 
         if test_thru:
             print(
@@ -447,26 +455,26 @@ def test_transformer_block(
     )
     output = module(feature_tensor, 0, freqs_cis_ark_tensor, None)
 
-    ark.Model.get_model().create_nodes()
-    print(ark.Model.get_model().serialize())
+    # print(ark.Model.get_model().serialize())
 
-    # test_module(
-    #     module_class_ark=model_ark.TransformerBlock,
-    #     module_args_ark=[
-    #         0,
-    #         args,
-    #         ark.DataType.from_numpy(dtype),
-    #         rank,
-    #         world_size,
-    #     ],
-    #     inputs_ark=[feature, 0, freqs_cis_ark, None],
-    #     module_class_pt=model_pt.TransformerBlock,
-    #     module_args_pt=[0, args],
-    #     inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
-    #     module_name_prefix="layers.0",
-    #     rank=rank,
-    #     world_size=world_size,
-    # )
+    test_module(
+        module_class_ark=model_ark.TransformerBlock,
+        module_args_ark=[
+            0,
+            args,
+            ark.DataType.from_numpy(dtype),
+            rank,
+            world_size,
+        ],
+        inputs_ark=[feature, 0, freqs_cis_ark, None],
+        module_class_pt=model_pt.TransformerBlock,
+        module_args_pt=[0, args],
+        inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
+        module_name_prefix="layers.0",
+        rank=rank,
+        world_size=world_size,
+        test_thru=True,
+    )
 
 
 def test_transformer(
@@ -570,7 +578,7 @@ if __name__ == "__main__":
     # Configurations
     args = ModelArgs7B()
     batch_size = 1
-    seq_len = 512
+    seq_len = 2048
     dtype = np.float16
     world_size = ngpus
 
@@ -578,7 +586,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 512
+    args.max_seq_len = 2048
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size

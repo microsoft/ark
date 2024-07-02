@@ -10,6 +10,7 @@
 
 #include "ark/model.hpp"
 #include "ark/model_ref.hpp"
+#include "ark/planner.hpp"
 #include "ark/random.hpp"
 #include "bfloat16.h"
 #include "half.h"
@@ -133,6 +134,7 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
 
 struct OpsTestResult {
     std::string test_name;
+    std::string plan;
     int iter;
     float msec_per_iter;
     std::vector<float> mse;
@@ -170,8 +172,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       const std::vector<Tensor> &outputs,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data = {},
-                      bool print_on_error = false, int rank = 0,
-                      int world_size = 1);
+                      const std::vector<DefaultPlanner::ConfigRule>& config_rules = {},
+                      bool print_on_error = false);
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size);
 
