@@ -10,7 +10,7 @@
 #include "file_io.h"
 #include "logging.h"
 #include "model/model_buffer.hpp"
-#include "model/model_buffer_manager.hpp"
+#include "model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"

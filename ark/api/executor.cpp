@@ -25,7 +25,7 @@
 #include "gpu/gpu_manager.h"
 #include "logging.h"
 #include "model/model_buffer.hpp"
-#include "model/model_buffer_manager.hpp"
+#include "model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 #include "utils/utils_net.hpp"
