@@ -10,6 +10,7 @@
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
+#include <tuple>
 
 #include "ark/data_type.hpp"
 #include "ark/model.hpp"
@@ -24,6 +25,7 @@
 #include "gpu/gpu_manager.h"
 #include "logging.h"
 #include "model/model_buffer.hpp"
+#include "model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 #include "utils/utils_net.hpp"
@@ -234,8 +236,15 @@ void Executor::Impl::init(const std::string &plan) {
             std::to_string(kv.first) + ": " + std::to_string(kv.second) + ", ";
     }
 
-    codegen_ =
-        std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_, name_);
+    ModelBufferManager &buffer_manager = ModelBufferManager::get_instance();
+
+    if (!buffer_manager.is_empty()) {
+        codegen_ = std::make_shared<CodeGenerator>(
+            plan_json_, buffer_id_to_offset_, name, &buffer_manager);
+    } else {
+        codegen_ = std::make_shared<CodeGenerator>(plan_json_,
+                                                   buffer_id_to_offset_, name);
+    }
 
     auto gpu_manager = GpuManager::get_instance(gpu_id_);
     timer_begin_ = gpu_manager->create_event();
@@ -367,7 +376,16 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
-        buffer_id_to_offset[buf_info->buffer->id()] = offset;
+        if (buf_info->buffer->is_external()) {
+            if (buf_info->buffer->device_id() != gpu_id_) {
+                ERR(InvalidUsageError,
+                    "PyTorch tensor and model execution are on different GPUs");
+            }
+            continue;
+        } else {
+            buffer_id_to_offset[buf_info->buffer->id()] = offset;
+            offset += buf_info->bytes;
+        }
         for (const auto &tag_info : buf_info->buffer->send_tags()) {
             remote_rank_to_send_tags_and_offsets[tag_info.first]
                 .first.push_back(tag_info.second);
@@ -380,7 +398,6 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             remote_rank_to_recv_tags_and_offsets[tag_info.first]
                 .second.push_back(offset);
         }
-        offset += buf_info->bytes;
     }
     total_bytes_ = offset;
 
@@ -456,7 +473,11 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 1);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 2);
         for (int i = 0; i < len; ++i) {
-            buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] = offsets[i];
+            if (!buffer_id_to_info[send_tag_to_buffer_id[tags[i]]]
+                     ->buffer->is_external()) {
+                buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] =
+                    offsets[i];
+            }
         }
     }
     for (auto &kv : remote_rank_to_recv_tag_to_buffer_id) {
@@ -472,10 +493,13 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 4);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 5);
         for (int i = 0; i < len; ++i) {
-            buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] = offsets[i];
+            if (!buffer_id_to_info[recv_tag_to_buffer_id[tags[i]]]
+                     ->buffer->is_external()) {
+                buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] =
+                    offsets[i];
+            }
         }
     }
-
     return buffer_id_to_offset;
 }
 
@@ -742,6 +766,11 @@ uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
 void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
                                  bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
+    if (tensor.ref()->buffer()->is_external()) {
+        ERR(InvalidUsageError,
+            "Reading data from a tensor preallocated by PyTorch is not "
+            "supported. Use PyTorch's native methods.");
+    }
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
     if (bytes != tensor_data_bytes) {
@@ -779,6 +808,11 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
 void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
                                   size_t bytes, bool is_d2d) const {
     GLOG(gpuSetDevice(gpu_id_));
+    if (tensor.ref()->buffer()->is_external()) {
+        ERR(InvalidUsageError,
+            "Writing data to a tensor preallocated by PyTorch is not "
+            "supported. Use PyTorch's native methods.");
+    }
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
     if (bytes != tensor_data_bytes) {
@@ -843,7 +877,10 @@ float Executor::stop(int64_t max_spin_count) {
 
 void Executor::barrier() { impl_->barrier(); }
 
-void Executor::destroy() { impl_.reset(nullptr); }
+void Executor::destroy() {
+    ModelBufferManager::get_instance().clear_buffers();
+    impl_.reset(nullptr);
+}
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 

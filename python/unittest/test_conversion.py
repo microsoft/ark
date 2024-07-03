@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import ark
+from typing import Callable
 
 try:
     import torch
@@ -8,6 +9,8 @@ try:
     _no_torch = False
 except ImportError:
     _no_torch = True
+
+# ARK to Torch tests
 
 
 def initialize_tensor(dimensions, dtype):
@@ -69,7 +72,7 @@ def check_diff(input_tensor_host, input_view_numpy, value, index):
 
 # Test function to check if changes to the torch views are reflected in the original tensors
 @pytest.mark.parametrize("dtype", [ark.fp16, ark.fp32])
-def test_aliasing(dtype: ark.DataType):
+def test_ark_to_torch_aliasing(dtype: ark.DataType):
     ark.init()
     dimensions = [4, 4]
     input_tensor, input_tensor_host = initialize_tensor(dimensions, dtype)
@@ -126,3 +129,79 @@ def test_conversion_torch():
 
         torch_tensor = t.to_torch()
         assert torch.all(torch_tensor == 7)
+
+
+# Torch to ARK tests
+
+ArkBinOp = Callable[[ark.Tensor, ark.Tensor], ark.Tensor]
+TorchBinOp = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+ArkUnOp = Callable[[ark.Tensor], ark.Tensor]
+TorchUnOp = Callable[[torch.Tensor], torch.Tensor]
+
+
+# Verify the accuracy of binary operations involving ARK view tensors
+@pytest.mark.parametrize(
+    "dtype, ark_op, torch_op, tensor_dims",
+    [(torch.float16, ark.add, torch.add, (2, 3))],
+)
+def test_bin_op(dtype, ark_op: ArkBinOp, torch_op: TorchBinOp, tensor_dims):
+    ark.init()
+    input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
+    other_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
+    expected_output = torch_op(input_tensor, other_tensor).cpu().numpy()
+    input_ark_view = ark.Tensor.from_torch(input_tensor)
+    other_ark_view = ark.Tensor.from_torch(other_tensor)
+    output = ark_op(input_ark_view, other_ark_view)
+    runtime = ark.Runtime()
+    runtime.launch()
+    runtime.run()
+    output_host = output.to_numpy()
+    runtime.stop()
+    runtime.reset()
+    assert np.allclose(output_host, expected_output)
+
+
+# Verify the accuracy of unary operations involving ARK view tensors
+@pytest.mark.parametrize(
+    "dtype, ark_op, torch_op, tensor_dims",
+    [(torch.float16, ark.exp, torch.exp, (3, 3))],
+)
+def test_unary_op(dtype, ark_op: ArkUnOp, torch_op: TorchUnOp, tensor_dims):
+    ark.init()
+    input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
+    expected_output = torch_op(input_tensor).cpu().numpy()
+    input_ark_view = ark.Tensor.from_torch(input_tensor)
+    output = ark_op(input_ark_view)
+    runtime = ark.Runtime()
+    runtime.launch()
+    runtime.run()
+    output_host = output.to_numpy()
+    runtime.stop()
+    runtime.reset()
+    assert np.allclose(output_host, expected_output)
+
+
+# Test function to check if changes in torch tensors are reflected in ARK views
+@pytest.mark.parametrize("dtype, tensor_dims", [(torch.float16, (64, 64))])
+def test_torch_to_ark_aliasing(dtype, tensor_dims):
+    ark.init()
+    # Initialize a PyTorch tensor
+    input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
+    other_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
+
+    input_ark_view = ark.Tensor.from_torch(input_tensor)
+    other_ark_view = ark.Tensor.from_torch(other_tensor)
+
+    output = ark.add(input_ark_view, other_ark_view)
+    # Perform in place operations
+    input_tensor += other_tensor
+    other_tensor += input_tensor
+    expected_output = (input_tensor + other_tensor).cpu().numpy()
+
+    runtime = ark.Runtime()
+    runtime.launch()
+    runtime.run()
+    output_host = output.to_numpy()
+    runtime.stop()
+    runtime.reset()
+    assert np.allclose(output_host, expected_output)

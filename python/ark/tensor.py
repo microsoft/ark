@@ -167,18 +167,20 @@ class Tensor:
         return self
 
     @staticmethod
-    def from_torch(tensor: torch.Tensor):
-        return Tensor(
-            Model.get_model().tensor(
-                Dims(list(tensor.shape)),
-                DataType.from_torch(tensor.dtype).ctype(),
-                Dims(),
-                Dims(),
-                Dims(),
-                "",
-            ),
-            lambda: tensor,
-        )
+    def from_torch(tensor: torch.Tensor, runtime_id: int = -1) -> "Tensor":
+        """
+        Returns an ARK tensor that shares the same memory with the torch tensor.
+        """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        elif not tensor.is_contiguous():
+            raise ValueError("Torch tensor must be contiguous.")
+        elif tensor.device.type == "cpu":
+            raise ValueError("Torch tensor must be on a device.")
+        ark_dtype = DataType.from_torch(tensor.dtype)
+        dl_capsule = torch.utils.dlpack.to_dlpack(tensor)
+        ark_tensor = _Tensor(dl_capsule, ark_dtype.ctype())
+        return Tensor(ark_tensor, runtime_id=runtime_id)
 
     def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
         """
