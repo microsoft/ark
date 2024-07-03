@@ -119,6 +119,26 @@ DEVICE void write(int ChanId, size_t remote_offset, size_t local_offset,
                       SmemBytes>::run(remote_data, local_data, uop_idx);
 }
 
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename PacketType, int Flag>
+DEVICE void writePacket(int ChanId, size_t remote_offset, size_t local_offset,
+                        int uop_idx, [[maybe_unused]] int smem_per_warp) {
+    constexpr bool use_LL16 = std::is_same_v<PacketType, mscclpp::LL16Packet>;
+    constexpr nelem_per_packet = sizeof(PacketType::Payload) / sizeof(DataType);
+    using Instruct = std::conditional_t<use_LL16, type::PacketLL16<Flag>,
+                                        type::PacketLL8<Flag>>;
+    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
+    char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
+    PacketType::Payload *local_data =
+        reinterpret_cast<PacketType::Payload *>(local);
+    PacketType *remote_data = reinterpret_cast<PacketType *>(remote);
+    DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
+                      Instruct, false, false, UnitOutDims, NumWarps,
+                      SmemBytes>::run(remote_data, local_data, uop_idx);
+}
+
 template <int NBytes>
 union BytesPack {};
 
@@ -416,20 +436,6 @@ DEVICE void gather_from_peers(size_t ori_offset, size_t target_offset_0,
 }
 
 template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-          unsigned int DstRank, unsigned int Rank, unsigned long long DstOffset,
-          unsigned long long Length, int Flag>
-DEVICE void put_packet(size_t dst_offset, size_t src_offset, int uop_idx, int) {
-    using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
-    constexpr int total_tiles =
-        math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-    constexpr int total_threads = total_tiles * UnitOp::NumThreads;
-    constexpr int chan_idx = DstRank < Rank ? DstRank : DstRank - 1;
-    const int tid = uop_idx * UnitOp::NumThreads + UnitOp::thread_id();
-    ARK_SM_CHANS[chan_idx].putPackets(dst_offset + DstOffset, src_offset,
-                                      Length, tid, total_threads, Flag);
-}
-
-template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
           unsigned int NPeers, unsigned int NElemsPerRank, unsigned int Rank,
           unsigned long long RemoteDstOffset, unsigned long long ScratchOffset,
           int Flag>
@@ -548,6 +554,16 @@ DEVICE void wait(int, int) {
     if (UnitOp::thread_id() == 0) {
         comm::wait<ChanType, MaxSpinCount>(RemoteRank);
     }
+}
+
+template <int RemoteRank, typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename PacketType, int Flag>
+DEVICE void write_packet(size_t dst_offset, size_t src_offset, int uop_idx,
+                         int) {
+    comm::writePacket<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+                      SmemBytes, PacketType, Flag>(RemoteRank, dst_offset,
+                                                   src_offset, uop_idx, 0);
 }
 
 }  // namespace ark

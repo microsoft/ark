@@ -4,6 +4,7 @@
 #ifndef ARK_KERNELS_TYPE_INTRINSICS_H_
 #define ARK_KERNELS_TYPE_INTRINSICS_H_
 
+#include <mscclpp/packet_device.hpp>
 #include <type_traits>
 
 #include "bf16.h"
@@ -352,6 +353,28 @@ struct Max {
 
     static DEVICE bf16x2 compute(const bf16x2 &a, const bf16x2 &b) {
         return __hmax2(a, b);
+    }
+};
+
+template <uint32_t Flag>
+struct PacketLL16 {
+    static DEVICE mscclpp::LL16Packet compute(const uint2 &a) {
+        mscclpp::LL16Packet packet;
+        packet.data1 = a.x;
+        packet.flag1 = Flag;
+        packet.data2 = a.y;
+        packet.flag2 = Flag;
+        return packet;
+    }
+};
+
+template <uint32_t Flag>
+struct PacketLL8 {
+    static DEVICE mscclpp::LL8Packet compute(const uint32_t &a) {
+        mscclpp::LL8Packet packet;
+        packet.data = a;
+        packet.flag = Flag;
+        return packet;
     }
 };
 
