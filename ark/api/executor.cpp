@@ -145,11 +145,13 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl(int rank, int world_size, int gpu_id, const std::string &name,
-         const std::string &plan);
+    Impl(int rank, int world_size, int gpu_id, const std::string &name);
     ~Impl() = default;
 
+    void init(const std::string &plan);
+
     int gpu_id() const { return gpu_id_; }
+    std::string plan() const { return plan_json_.dump_pretty(); }
 
     void compile();
     void launch(int64_t max_spin_count);
@@ -175,11 +177,13 @@ class Executor::Impl {
     const int rank_;
     const int world_size_;
     int gpu_id_;
+    std::string name_;
 
     bool is_launched_ = false;
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
+    PlanJson plan_json_;
     std::map<size_t, size_t> buffer_id_to_offset_;
     size_t total_bytes_;
     std::shared_ptr<CodeGenerator> codegen_;
@@ -201,8 +205,8 @@ class Executor::Impl {
 };
 
 Executor::Impl::Impl(int rank, int world_size, int gpu_id,
-                     const std::string &name, const std::string &plan)
-    : rank_(rank), world_size_(world_size), gpu_id_(gpu_id) {
+                     const std::string &name)
+    : rank_(rank), world_size_(world_size), gpu_id_(gpu_id), name_(name) {
     if (rank < 0 || rank >= world_size) {
         ERR(InvalidUsageError, "Invalid rank ", rank, " with world size ",
             world_size);
@@ -213,17 +217,18 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
     if (world_size_ > 1) {
         init_communicator();
     }
+}
 
-    Json plan_json;
+void Executor::Impl::init(const std::string &plan) {
     auto &plan_path = get_env().enforce_plan_path;
     if (!plan_path.empty()) {
         LOG(INFO, "Enforce executor plan path: ", plan_path);
-        plan_json = Json::parse(read_file(plan_path));
+        plan_json_ = Json::parse(read_file(plan_path));
     } else {
-        plan_json = Json::parse(plan);
+        plan_json_ = Json::parse(plan);
     }
 
-    buffer_id_to_offset_ = init_buffers(plan_json);
+    buffer_id_to_offset_ = init_buffers(plan_json_);
 
     std::string buffer_id_to_offset_str;
     for (const auto &kv : buffer_id_to_offset_) {
@@ -235,9 +240,9 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
 
     if (!buffer_manager.is_empty()) {
         codegen_ = std::make_shared<CodeGenerator>(
-            plan_json, buffer_id_to_offset_, name, &buffer_manager);
+            plan_json_, buffer_id_to_offset_, name, &buffer_manager);
     } else {
-        codegen_ = std::make_shared<CodeGenerator>(plan_json,
+        codegen_ = std::make_shared<CodeGenerator>(plan_json_,
                                                    buffer_id_to_offset_, name);
     }
 
@@ -258,13 +263,13 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
         static_cast<size_t>(gpu_manager->info().smem_block_total);
 
     if (world_size_ > 1) {
-        auto remote_ranks = init_remote_ranks(plan_json);
+        auto remote_ranks = init_remote_ranks(plan_json_);
         init_channels(remote_ranks);
     }
 
     kernel_ = std::shared_ptr<GpuKernel>(new GpuKernel(
         gpu_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
-        std::max(smem_block_total, size_t(4)), name,
+        std::max(smem_block_total, size_t(4)), name_,
         {std::pair<void *, size_t>{buffer_->ref(), sizeof(buffer_->ref())},
          std::pair<void *, size_t>{flag, sizeof(flag)}}));
 }
@@ -846,12 +851,17 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
 
 Executor::Executor(int rank, int world_size, int gpu_id,
                    const std::string &name, const std::string &plan)
-    : impl_(std::make_unique<Executor::Impl>(rank, world_size, gpu_id, name,
-                                             plan)) {}
+    : impl_(std::make_unique<Executor::Impl>(rank, world_size, gpu_id, name)) {
+    if (!plan.empty()) {
+        impl_->init(plan);
+    }
+}
 
 Executor::~Executor() = default;
 
 int Executor::gpu_id() const { return impl_->gpu_id(); }
+
+std::string Executor::plan() const { return impl_->plan(); }
 
 void Executor::compile() { impl_->compile(); }
 
@@ -889,14 +899,17 @@ void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
 }
 
 DefaultExecutor::DefaultExecutor(const Model &model, int gpu_id,
-                                 const std::string &name)
+                                 const std::vector<DefaultPlanner::ConfigRule>& config_rules,
+                                 const std::string& name)
     : Executor(
           model.rank(), model.world_size(),
           (gpu_id < 0) ? (model.rank() % get_env().num_ranks_per_host) : gpu_id,
-          name,
-          DefaultPlanner(model, (gpu_id < 0) ? (model.rank() %
-                                                get_env().num_ranks_per_host)
-                                             : gpu_id)
-              .plan()) {}
+          name, "") {
+    DefaultPlanner planner(model, impl_->gpu_id());
+    for (const auto &rule : config_rules) {
+        planner.install_config_rule(rule);
+    }
+    impl_->init(planner.plan());
+}
 
 }  // namespace ark

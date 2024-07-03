@@ -272,7 +272,16 @@ static void verify_format_plan(const Json &json) {
     }
 }
 
-PlanJson::PlanJson(const Json &json) : Json(json) { verify_format_plan(*this); }
+PlanJson::PlanJson(const Json &json)
+    : Json((json != nullptr) ? json
+                             : Json{{"Rank", 0},
+                                    {"WorldSize", 1},
+                                    {"NumProcessors", 1},
+                                    {"NumWarpsPerProcessor", 1},
+                                    {"TaskInfos", Json::array()},
+                                    {"ProcessorGroups", Json::array()}}) {
+    verify_format_plan(*this);
+}
 
 static std::stringstream &dump_pretty_plan(const Json &json,
                                            std::stringstream &ss, int indent,

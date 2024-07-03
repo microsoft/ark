@@ -100,3 +100,4 @@ from .error import (
     GpuError,
     RuntimeError,
 )
+from .profiler import Profiler
