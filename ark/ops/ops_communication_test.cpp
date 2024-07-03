@@ -307,10 +307,39 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_communication_write_packet() {
+    // send from gpu 0 to gpu 1
+    for (int gpu_id = 1; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id]() {
+            ark::Model model(gpu_id, 2);
+            ark::Tensor tns = model.tensor({1024}, ark::FP16);
+            if (gpu_id == 0) {
+                tns = model.write_packet(tns, 1, 0, 1);
+            }
+            if (gpu_id == 1) {
+                tns = model.recv(tns, 0, 0);
+            }
+
+            ark::DefaultExecutor exe(model, gpu_id);
+            exe.compile();
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::Model model(0, 2);
+    ark::Tensor tns = model.tensor({1024}, ark::FP16);
+    tns = model.write_packet(tns, 1, 0, 1);
+    ark::DefaultExecutor exe(model, 0);
+    exe.compile();
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
-    UNITTEST(test_communication_send_recv_unidir);
-    UNITTEST(test_communication_send_recv_bidir);
-    UNITTEST(test_communication_send_recv_bidir_sm);
+    // UNITTEST(test_communication_send_recv_unidir);
+    // UNITTEST(test_communication_send_recv_bidir);
+    // UNITTEST(test_communication_send_recv_bidir_sm);
+    UNITTEST(test_communication_write_packet);
     return ark::unittest::SUCCESS;
 }

@@ -70,7 +70,8 @@ struct Broadcast1Intrinsic {
                   "OutputType size must be power of 2");
     static_assert(sizeof(InputType) <= 8,
                   "InputType size must be no larger than 8");
-    static_assert(sizeof(OutputType) <= 8,
+    static_assert(sizeof(OutputType) <= 8 ||
+                      std::is_same_v<OutputType, mscclpp::LL16Packet>,
                   "OutputType size must be no larger than 8");
 
     static DEVICE void load(InputType *stage, const InputType *in) {

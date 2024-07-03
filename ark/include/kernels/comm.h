@@ -4,6 +4,7 @@
 #ifndef ARK_KERNELS_COMM_H_
 #define ARK_KERNELS_COMM_H_
 
+#include <mscclpp/packet_device.hpp>
 #include <mscclpp/proxy_channel_device.hpp>
 #include <mscclpp/sm_channel_device.hpp>
 
@@ -125,16 +126,15 @@ template <typename InDims, typename InShape, typename OutDims,
 DEVICE void writePacket(int ChanId, size_t remote_offset, size_t local_offset,
                         int uop_idx, [[maybe_unused]] int smem_per_warp) {
     constexpr bool use_LL16 = std::is_same_v<PacketType, mscclpp::LL16Packet>;
-    constexpr nelem_per_packet = sizeof(PacketType::Payload) / sizeof(DataType);
     using Instruct = std::conditional_t<use_LL16, type::PacketLL16<Flag>,
                                         type::PacketLL8<Flag>>;
+    using Payload = typename PacketType::Payload;
     const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
     char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
     char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
-    PacketType::Payload *local_data =
-        reinterpret_cast<PacketType::Payload *>(local);
+    Payload *local_data = reinterpret_cast<Payload *>(local);
     PacketType *remote_data = reinterpret_cast<PacketType *>(remote);
-    DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
+    DefaultBroadcast1<InDims, InShape, Payload, OutDims, OutShape, PacketType,
                       Instruct, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(remote_data, local_data, uop_idx);
 }

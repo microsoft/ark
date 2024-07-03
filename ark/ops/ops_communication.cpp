@@ -197,10 +197,6 @@ std::string ModelOpWritePacket::impl_name(const Json &config) const {
     auto &input = read_tensors_[0];
     auto &output = write_tensors_[0];
     int remote_rank = output->buffer()->rank();
-    std::string channel_type = config["ChannelType"];
-    if (channel_type != "Sm") {
-        ERR(ModelError, "invalid channel type: ", channel_type);
-    }
     Dims unit_out_dims;
     int num_warps = config.at("NumWarps");
     auto &tile_shape = config.at("Tile");
@@ -226,13 +222,18 @@ std::string ModelOpWritePacket::impl_name(const Json &config) const {
          std::to_string(flag_)});
 }
 
+std::vector<ModelOpArg> ModelOpWritePacket::impl_args([
+    [maybe_unused]] const Json &config) const {
+    return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[0])};
+}
+
 Json ModelOpWritePacket::default_config([
     [maybe_unused]] const ArchRef arch) const {
     Json config;
     if (arch->belongs_to(ARCH_ROCM)) {
         config["PacketType"] = "mscclpp::LL8Packet";
     } else {
-        config["ChannelType"] = "mscclpp::LL16Packet";
+        config["PacketType"] = "mscclpp::LL16Packet";
     }
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
