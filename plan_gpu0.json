@@ -314,7 +314,7 @@
     {
       "Id": 10,
       "NumWarps": 1,
-      "SramBytes": 256,
+      "SramBytes": 0,
       "Ops": [
         {
           "Type": "ReduceMax",
@@ -336,7 +336,7 @@
           "Config": {
             "NumWarps": 1,
             "ImplType": "WarpWise",
-            "SramBytes": 256,
+            "SramBytes": 0,
             "NumTasks": 65536
           }
         }
@@ -402,7 +402,7 @@
     {
       "Id": 13,
       "NumWarps": 1,
-      "SramBytes": 256,
+      "SramBytes": 0,
       "Ops": [
         {
           "Type": "ReduceSum",
@@ -424,7 +424,7 @@
           "Config": {
             "NumWarps": 1,
             "ImplType": "WarpWise",
-            "SramBytes": 256,
+            "SramBytes": 0,
             "NumTasks": 65536
           }
         }
@@ -613,7 +613,7 @@
     {
       "Id": 20,
       "NumWarps": 1,
-      "SramBytes": 256,
+      "SramBytes": 0,
       "Ops": [
         {
           "Type": "ReduceMean",
@@ -635,7 +635,7 @@
           "Config": {
             "NumWarps": 1,
             "ImplType": "WarpWise",
-            "SramBytes": 256,
+            "SramBytes": 0,
             "NumTasks": 2048
           }
         }
@@ -1064,7 +1064,7 @@
     {
       "Id": 35,
       "NumWarps": 1,
-      "SramBytes": 256,
+      "SramBytes": 0,
       "Ops": [
         {
           "Type": "ReduceMax",
@@ -1086,7 +1086,7 @@
           "Config": {
             "NumWarps": 1,
             "ImplType": "WarpWise",
-            "SramBytes": 256,
+            "SramBytes": 0,
             "NumTasks": 65536
           }
         }
@@ -1152,7 +1152,7 @@
     {
       "Id": 38,
       "NumWarps": 1,
-      "SramBytes": 256,
+      "SramBytes": 0,
       "Ops": [
         {
           "Type": "ReduceSum",
@@ -1174,7 +1174,7 @@
           "Config": {
             "NumWarps": 1,
             "ImplType": "WarpWise",
-            "SramBytes": 256,
+            "SramBytes": 0,
             "NumTasks": 65536
           }
         }
@@ -1392,7 +1392,7 @@
     {
       "Id": 46,
       "NumWarps": 1,
-      "SramBytes": 256,
+      "SramBytes": 0,
       "Ops": [
         {
           "Type": "ReduceMean",
@@ -1414,7 +1414,7 @@
           "Config": {
             "NumWarps": 1,
             "ImplType": "WarpWise",
-            "SramBytes": 256,
+            "SramBytes": 0,
             "NumTasks": 2048
           }
         }
@@ -1883,7 +1883,7 @@
         {
           "ProcessorRange": [0,304],
           "WarpRange": [0,4],
-          "SramRange": [0,256],
+          "SramRange": [0,0],
           "TaskGroups": [
             {"TaskId":10,"TaskRange":[0,65536],"Granularity":1}
           ]
@@ -1922,7 +1922,7 @@
         {
           "ProcessorRange": [0,304],
           "WarpRange": [0,4],
-          "SramRange": [0,256],
+          "SramRange": [0,0],
           "TaskGroups": [
             {"TaskId":13,"TaskRange":[0,65536],"Granularity":1}
           ]
@@ -2013,7 +2013,7 @@
         {
           "ProcessorRange": [0,304],
           "WarpRange": [0,4],
-          "SramRange": [0,256],
+          "SramRange": [0,0],
           "TaskGroups": [
             {"TaskId":20,"TaskRange":[0,2048],"Granularity":1}
           ]
@@ -2208,7 +2208,7 @@
         {
           "ProcessorRange": [0,304],
           "WarpRange": [0,4],
-          "SramRange": [0,256],
+          "SramRange": [0,0],
           "TaskGroups": [
             {"TaskId":35,"TaskRange":[0,65536],"Granularity":1}
           ]
@@ -2247,7 +2247,7 @@
         {
           "ProcessorRange": [0,304],
           "WarpRange": [0,4],
-          "SramRange": [0,256],
+          "SramRange": [0,0],
           "TaskGroups": [
             {"TaskId":38,"TaskRange":[0,65536],"Granularity":1}
           ]
@@ -2351,7 +2351,7 @@
         {
           "ProcessorRange": [0,304],
           "WarpRange": [0,4],
-          "SramRange": [0,256],
+          "SramRange": [0,0],
           "TaskGroups": [
             {"TaskId":46,"TaskRange":[0,2048],"Granularity":1}
           ]
