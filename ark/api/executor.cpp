@@ -228,6 +228,16 @@ void Executor::Impl::init(const std::string &plan) {
         plan_json_ = Json::parse(plan);
     }
 
+    auto gpu_manager = GpuManager::get_instance(gpu_id_);
+
+    if (!gpu_manager->info().arch->belongs_to(
+            Arch::from_name(plan_json_.at("Architecture")))) {
+        LOG(WARN, "Architecture name of the plan `",
+            plan_json_.at("Architecture").get<std::string>(),
+            "` is not compatible with the GPU architecture `",
+            gpu_manager->info().arch->name(), "`.");
+    }
+
     buffer_id_to_offset_ = init_buffers(plan_json_);
 
     std::string buffer_id_to_offset_str;
@@ -236,17 +246,9 @@ void Executor::Impl::init(const std::string &plan) {
             std::to_string(kv.first) + ": " + std::to_string(kv.second) + ", ";
     }
 
-    ModelBufferManager &buffer_manager = ModelBufferManager::get_instance();
+    codegen_ = std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_,
+                                               name_);
 
-    if (!buffer_manager.is_empty()) {
-        codegen_ = std::make_shared<CodeGenerator>(
-            plan_json_, buffer_id_to_offset_, name, &buffer_manager);
-    } else {
-        codegen_ = std::make_shared<CodeGenerator>(plan_json_,
-                                                   buffer_id_to_offset_, name);
-    }
-
-    auto gpu_manager = GpuManager::get_instance(gpu_id_);
     timer_begin_ = gpu_manager->create_event();
     timer_end_ = gpu_manager->create_event();
     buffer_ = gpu_manager->malloc(total_bytes_, 65536);

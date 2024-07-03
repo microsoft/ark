@@ -37,7 +37,7 @@ def set_world_size(world_size):
 from .init import init
 from .tensor import Dims, Tensor, Parameter
 from .module import Module, RuntimeModule
-from .runtime import Runtime, DefaultPlanner
+from .runtime import Runtime
 from .serialize import save, load
 from .data_type import (
     DataType,
@@ -100,4 +100,5 @@ from .error import (
     GpuError,
     RuntimeError,
 )
+from .planner import DefaultPlanner, Plan
 from .profiler import Profiler

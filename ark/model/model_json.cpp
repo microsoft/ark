@@ -250,9 +250,13 @@ static void verify_format_processor_group(const Json &json) {
 }
 
 static void verify_format_plan(const Json &json) {
-    const std::vector<std::string> required_fields = {
-        "Rank",      "WorldSize",      "NumProcessors", "NumWarpsPerProcessor",
-        "TaskInfos", "ProcessorGroups"};
+    const std::vector<std::string> required_fields = {"Rank",
+                                                      "WorldSize",
+                                                      "Architecture",
+                                                      "NumProcessors",
+                                                      "NumWarpsPerProcessor",
+                                                      "TaskInfos",
+                                                      "ProcessorGroups"};
     for (const auto &field : required_fields) {
         if (!json.contains(field)) {
             ERR(NotFoundError, "PlanJson: " + field + " not found");
@@ -276,6 +280,7 @@ PlanJson::PlanJson(const Json &json)
     : Json((json != nullptr) ? json
                              : Json{{"Rank", 0},
                                     {"WorldSize", 1},
+                                    {"Architecture", "ANY"},
                                     {"NumProcessors", 1},
                                     {"NumWarpsPerProcessor", 1},
                                     {"TaskInfos", Json::array()},
@@ -290,6 +295,9 @@ static std::stringstream &dump_pretty_plan(const Json &json,
     dump_pretty_item(json.at("Rank"), "Rank", ss, indent + indent_step)
         << ",\n";
     dump_pretty_item(json.at("WorldSize"), "WorldSize", ss,
+                     indent + indent_step)
+        << ",\n";
+    dump_pretty_item(json.at("Architecture"), "Architecture", ss,
                      indent + indent_step)
         << ",\n";
     dump_pretty_item(json.at("NumProcessors"), "NumProcessors", ss,

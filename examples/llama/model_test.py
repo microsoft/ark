@@ -59,7 +59,7 @@ def run_ark(
     output = module(*module_inputs)
 
     with ark.Runtime() as rt:
-        rt.launch(plan_path="/mnt/changhohwang/ark/plan_gpu0.json")
+        rt.launch(ark.Plan.from_file("/mnt/changhohwang/ark/plan_gpu0.json"))
 
         # Load model parameters
         if state_dict:

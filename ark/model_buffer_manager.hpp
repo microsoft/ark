@@ -46,9 +46,8 @@ class ModelBufferManager {
     bool is_empty() const { return buffers_.empty(); }
 
    private:
-    std::unordered_map<size_t, std::tuple<void*, size_t>>
-        buffers_;  // Maps buffer IDs to pointers and sizes.
-    size_t next_compact_id_ = 0;
+    // Maps buffer IDs to pointers and sizes.
+    std::unordered_map<size_t, std::tuple<void*, size_t>> buffers_;
     ModelBufferManager() {}
     ModelBufferManager(const ModelBufferManager&) = delete;
     ModelBufferManager& operator=(const ModelBufferManager&) = delete;

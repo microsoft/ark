@@ -2,18 +2,9 @@
 # Licensed under the MIT license.
 
 import ark
-import json
 
-empty_plan = json.dumps(
-    {
-        "Rank": 0,
-        "WorldSize": 1,
-        "NumProcessors": 1,
-        "NumWarpsPerProcessor": 1,
-        "TaskInfos": [],
-        "ProcessorGroups": [],
-    }
-)
+
+empty_plan = ark.Plan(None)
 
 
 def test_runtime_relaunch():
@@ -35,7 +26,7 @@ def test_multiple_runtime_launch():
     for i in range(num_runtimes):
         rt = ark.Runtime.get_runtime(i)
         assert rt.launched() == False
-        rt.launch(gpu_id=i, plan=empty_plan)
+        rt.launch(plan=empty_plan, device_id=i)
         assert rt.launched() == True
     for i in range(num_runtimes):
         rt = ark.Runtime.get_runtime(i)
@@ -46,9 +37,9 @@ def test_multiple_runtime_launch():
 def test_stop_runtime():
     ark.init()
     rt1 = ark.Runtime.get_runtime(1)
-    rt1.launch(plan=empty_plan, gpu_id=1)
+    rt1.launch(plan=empty_plan, device_id=1)
     rt2 = ark.Runtime.get_runtime(2)
-    rt2.launch(plan=empty_plan, gpu_id=2)
+    rt2.launch(plan=empty_plan, device_id=2)
     rt1.stop()
     rt1.reset()
     assert rt1.state == ark.Runtime.State.Init
@@ -59,9 +50,9 @@ def test_stop_runtime():
 def test_reset_runtime():
     ark.init()
     rt1 = ark.Runtime.get_runtime(0)
-    rt1.launch(plan=empty_plan, gpu_id=1)
+    rt1.launch(plan=empty_plan, device_id=1)
     rt2 = ark.Runtime.get_runtime(1)
-    rt2.launch(plan=empty_plan, gpu_id=2)
+    rt2.launch(plan=empty_plan, device_id=2)
     rt1.reset()
     assert rt1.launched() == False
     assert rt2.launched() == True
@@ -77,7 +68,7 @@ def test_multiple_runtimes_complex():
     default_runtime = ark.Runtime.get_runtime()
     runtime_list.append(default_runtime)
     for i, rt in enumerate(runtime_list):
-        rt.launch(plan=empty_plan, gpu_id=i)
+        rt.launch(plan=empty_plan, device_id=i)
         assert rt.launched() == True
     runtime_list[0].stop()
     assert runtime_list[0].state == ark.Runtime.State.LaunchedNotRunning
@@ -87,7 +78,7 @@ def test_multiple_runtimes_complex():
     assert runtime_list[1].state == ark.Runtime.State.Init
     assert runtime_list[0].state == ark.Runtime.State.LaunchedNotRunning
     assert runtime_list[2].state == ark.Runtime.State.LaunchedNotRunning
-    runtime_list[1].launch(plan=empty_plan, gpu_id=1)
+    runtime_list[1].launch(plan=empty_plan, device_id=1)
     for rt in runtime_list:
         assert rt.launched() == True
     ark.Runtime.delete_all_runtimes()

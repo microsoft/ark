@@ -119,6 +119,7 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
     Json plan;
     plan["Rank"] = model_.rank();
     plan["WorldSize"] = model_.world_size();
+    plan["Architecture"] = gpu_info.arch->name();
     plan["NumProcessors"] = max_num_processors;
     plan["NumWarpsPerProcessor"] = max_num_warps;
     plan["TaskInfos"] = task_infos;

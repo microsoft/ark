@@ -44,7 +44,7 @@ class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
          const std::map<size_t, size_t> &buffer_id_to_offset,
-         const std::string &name, ModelBufferManager *buffer_manager);
+         const std::string &name);
     ~Impl() = default;
 
    private:
@@ -65,8 +65,6 @@ class CodeGenerator::Impl {
 
     std::string sync_process_range(const Range<size_t> &ranges, int state_id);
 
-    ModelBufferManager *buffer_manager_;
-
    protected:
     friend class CodeGenerator;
 
@@ -81,11 +79,8 @@ class CodeGenerator::Impl {
 
 CodeGenerator::Impl::Impl(const PlanJson &plan,
                           const std::map<size_t, size_t> &buffer_id_to_offset,
-                          const std::string &name,
-                          ModelBufferManager *buffer_manager)
-    : buffer_id_to_offset_(buffer_id_to_offset),
-      name_(name),
-      buffer_manager_(buffer_manager) {
+                          const std::string &name)
+    : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
     num_procs_ = plan.at("NumProcessors");
@@ -446,9 +441,8 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 
 CodeGenerator::CodeGenerator(
     const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
-    const std::string &name, ModelBufferManager *buffer_manager)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name,
-                                   buffer_manager)) {}
+    const std::string &name)
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

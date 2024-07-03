@@ -17,8 +17,7 @@ class CodeGenerator {
    public:
     CodeGenerator(const PlanJson &plan,
                   const std::map<size_t, size_t> &buffer_id_to_offset,
-                  const std::string &name = "ark_kernel",
-                  ModelBufferManager *buffer_manager = nullptr);
+                  const std::string &name = "ark_kernel");
 
     ~CodeGenerator() = default;
 

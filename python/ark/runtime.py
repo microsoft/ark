@@ -3,10 +3,11 @@
 
 import logging
 from enum import Enum
-from typing import Callable, Dict, List
+from typing import Dict, List
 
-from ._ark_core import _Executor, _DefaultPlanner
+from ._ark_core import _Executor
 from .model import Model
+from .planner import DefaultPlanner, Plan
 
 
 class _RuntimeState:
@@ -46,33 +47,9 @@ class _RuntimeState:
             print(f"{runtime_id:<12} | {runtime.state:<20}")
 
 
-class DefaultPlanner(_DefaultPlanner):
-    def __init__(self, gpu_id: int = 0):
-        compressed = Model.get_model().compress()
-        super().__init__(compressed, gpu_id)
-
-    def install_config_rule(self, rule: Callable[[str, str], str]):
-        """
-        Install a configuration rule.
-
-        Args:
-            rule: A function that takes an operator description and a target
-            architecture name and returns a configuration description.
-        """
-        super().install_config_rule(rule)
-
-    def plan(self, pretty: bool = True) -> str:
-        """
-        Generate an execution plan.
-
-        Args:
-            pretty: Whether to generate a pretty plan.
-        """
-        return super().plan(pretty)
-
-
 class Executor(_Executor):
-    pass
+    def __init__(self, plan: Plan, device_id: int, name: str):
+        super().__init__(plan.rank, plan.world_size, device_id, name, str(plan))
 
 
 class Runtime:
@@ -155,11 +132,8 @@ class Runtime:
 
     def launch(
         self,
-        rank: int = 0,
-        world_size: int = 1,
-        gpu_id: int = 0,
-        plan: str = "",
-        plan_path: str = "",
+        plan: Plan = None,
+        device_id: int = 0,
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -172,11 +146,7 @@ class Runtime:
             )
             return
         if not plan:
-            if not plan_path:
-                plan = DefaultPlanner(gpu_id).plan()
-            else:
-                with open(plan_path, "r") as f:
-                    plan = f.read()
+            plan = DefaultPlanner(device_id).plan()
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
@@ -187,11 +157,9 @@ class Runtime:
                     )
                     self.executor.destroy()
             self.executor = Executor(
-                rank,
-                world_size,
-                gpu_id,
-                "ArkRuntime",
                 plan,
+                device_id,
+                "ArkRuntime",
             )
             self.executor.compile()
         self.executor.launch()
