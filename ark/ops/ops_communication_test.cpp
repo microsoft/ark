@@ -314,7 +314,7 @@ ark::unittest::State test_communication_write_packet() {
             ark::Model model(gpu_id, 2);
             ark::Tensor tns = model.tensor({1024}, ark::FP16);
             if (gpu_id == 0) {
-                tns = model.write_packet(tns, 1, 0, 1);
+                tns = model.send_packet(tns, 1, 0, 1);
             }
             if (gpu_id == 1) {
                 tns = model.recv(tns, 0, 0);
@@ -327,7 +327,7 @@ ark::unittest::State test_communication_write_packet() {
     }
     ark::Model model(0, 2);
     ark::Tensor tns = model.tensor({1024}, ark::FP16);
-    tns = model.write_packet(tns, 1, 0, 1);
+    tns = model.send_packet(tns, 1, 0, 1);
     ark::DefaultExecutor exe(model, 0);
     exe.compile();
 

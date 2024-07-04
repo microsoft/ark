@@ -45,11 +45,11 @@ class ModelOpRecv : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
-class ModelOpWritePacket : public ModelOp {
+class ModelOpSendPacket : public ModelOp {
    public:
-    ModelOpWritePacket() = default;
-    ModelOpWritePacket(ModelTensorRef input, int remote_rank, int tag, int flag,
-                       ModelTensorRef output);
+    ModelOpSendPacket() = default;
+    ModelOpSendPacket(ModelTensorRef input, int remote_rank, int tag, int flag,
+                      ModelTensorRef output);
 
     std::string impl_name(const Json &config) const override;
 
