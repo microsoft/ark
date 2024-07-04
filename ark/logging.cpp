@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <iomanip>
+#include <memory>
 #include <sstream>
 
 #include "cpu_timer.h"
@@ -33,14 +34,13 @@ void Logging::set_level(LogLevel lv) { level_ = lv; };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<Logging> _ARK_LOGGING_GLOBAL = nullptr;
-
 // Get the global Logging.
 Logging &get_logging() {
-    if (_ARK_LOGGING_GLOBAL.get() == nullptr) {
-        _ARK_LOGGING_GLOBAL = std::make_unique<Logging>(get_env().log_level);
+    static std::unique_ptr<Logging> ark_logging = nullptr;
+    if (ark_logging.get() == nullptr) {
+        ark_logging = std::make_unique<Logging>(get_env().log_level);
     }
-    return *_ARK_LOGGING_GLOBAL;
+    return *ark_logging;
 }
 
 void _log_header(std::ostream &os, const LogLevel ll, const std::string &file,
