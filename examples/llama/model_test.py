@@ -473,7 +473,7 @@ def test_transformer_block(
         module_name_prefix="layers.0",
         rank=rank,
         world_size=world_size,
-        test_thru=True,
+        test_thru=False,
     )
 
 
