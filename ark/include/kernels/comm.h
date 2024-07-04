@@ -123,13 +123,11 @@ DEVICE void write(int ChanId, size_t remote_offset, size_t local_offset,
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename PacketType, int Flag>
-DEVICE void writePacket(int ChanId, size_t remote_offset, size_t local_offset,
+DEVICE void writePacket(int chan_id, size_t remote_offset, size_t local_offset,
                         int uop_idx, [[maybe_unused]] int smem_per_warp) {
-    constexpr bool use_LL16 = std::is_same_v<PacketType, mscclpp::LL16Packet>;
-    using Instruct = std::conditional_t<use_LL16, type::PacketLL16<Flag>,
-                                        type::PacketLL8<Flag>>;
+    using Instruct = type::DataToPacket<Flag, PacketType>;
     using Payload = typename PacketType::Payload;
-    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[chan_id];
     char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
     char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
     Payload *local_data = reinterpret_cast<Payload *>(local);
@@ -137,6 +135,23 @@ DEVICE void writePacket(int ChanId, size_t remote_offset, size_t local_offset,
     DefaultBroadcast1<InDims, InShape, Payload, OutDims, OutShape, PacketType,
                       Instruct, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(remote_data, local_data, uop_idx);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename PacketType, int Flag>
+DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
+                       [[maybe_unused]] int smem_per_warp) {
+    using Instruct = type::PacketToData<Flag, PacketType>;
+    using Payload = typename PacketType::Payload;
+    char *base_addr = reinterpret_cast<char *>(ARK_SM_CHANS[0].src_);
+    char *scratch = base_addr + local_offset;
+    char *output = base_addr + output_offset;
+    PacketType *scratch_data = reinterpret_cast<PacketType *>(scratch);
+    Payload *output_data = reinterpret_cast<Payload *>(output);
+    DefaultBroadcast1<InDims, InShape, PacketType, OutDims, OutShape, Payload,
+                      Instruct, false, false, UnitOutDims, NumWarps,
+                      SmemBytes>::run(output_data, scratch_data, uop_idx);
 }
 
 template <int NBytes>
@@ -564,6 +579,16 @@ DEVICE void write_packet(size_t dst_offset, size_t src_offset, int uop_idx,
     comm::writePacket<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                       SmemBytes, PacketType, Flag>(RemoteRank, dst_offset,
                                                    src_offset, uop_idx, 0);
+}
+
+template <typename InDims, typename InShape, typename OutDims,
+          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
+          typename PacketType, int Flag>
+DEVICE void read_packet(size_t dst_offset, size_t src_offset, int uop_idx,
+                        int) {
+    comm::readPacket<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+                     SmemBytes, PacketType, Flag>(dst_offset, src_offset,
+                                                  uop_idx, 0);
 }
 
 }  // namespace ark

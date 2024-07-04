@@ -61,6 +61,22 @@ class ModelOpSendPacket : public ModelOp {
     uint32_t flag_;
 };
 
+class ModelOpRecvPacket : public ModelOp {
+   public:
+    ModelOpRecvPacket() = default;
+    ModelOpRecvPacket(ModelTensorRef output, int remote_rank, int tag, int flag,
+                      ModelTensorRef scratch);
+
+    std::string impl_name(const Json &config) const override;
+
+    std::vector<ModelOpArg> impl_args(const Json &config) const override;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+
+   private:
+    uint32_t flag_;
+};
+
 }  // namespace ark
 
 #endif  // ARK_OPS_COMMUNICATION_HPP_
