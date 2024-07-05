@@ -16,8 +16,8 @@ ark::unittest::State test_communication_send_recv_unidir() {
             ark::Model model(gpu_id, 2);
             ark::Tensor tns = model.tensor({1024}, ark::FP16);
             if (gpu_id == 0) {
-                tns = model.send(tns, 1, 0);
-                model.send_done(tns);
+                ark::Tensor out_tns = model.send(tns, 1, 0);
+                model.send_done(out_tns);
             }
             if (gpu_id == 1) {
                 tns = model.recv(tns, 0, 0);
@@ -309,27 +309,42 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
 
 ark::unittest::State test_communication_write_packet() {
     // send from gpu 0 to gpu 1
-    for (int gpu_id = 1; gpu_id < 2; ++gpu_id) {
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id]() {
             ark::Model model(gpu_id, 2);
-            ark::Tensor tns = model.tensor({1024}, ark::FP16);
+            ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
             if (gpu_id == 0) {
-                tns = model.send_packet(tns, 1, 0, 1);
+                model.send_packet(tns_data, 1, 0, 1);
             }
             if (gpu_id == 1) {
-                tns = model.recv_packet(tns, 0, 0, 1);
+                tns_data = model.recv_packet(tns_data, 0, 0, 1);
             }
 
             ark::DefaultExecutor exe(model, gpu_id);
             exe.compile();
+
+            if (gpu_id == 0) {
+                std::vector<ark::half_t> data(1024);
+                std::iota(data.begin(), data.end(), 1.0f);
+                exe.tensor_write(tns_data, data);
+            }
+
+            exe.barrier();
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+            exe.barrier();
+
+            if (gpu_id == 1) {
+                std::vector<ark::half_t> data(1024);
+                exe.tensor_read(tns_data, data);
+                for (int i = 0; i < 1024; ++i) {
+                    UNITTEST_EQ(data[i], ark::half_t(i + 1));
+                }
+            }
             return ark::unittest::SUCCESS;
         });
     }
-    ark::Model model(0, 2);
-    ark::Tensor tns = model.tensor({1024}, ark::FP16);
-    tns = model.send_packet(tns, 1, 0, 1);
-    ark::DefaultExecutor exe(model, 0);
-    exe.compile();
 
     ark::unittest::wait_all_processes();
     return ark::unittest::SUCCESS;
@@ -337,9 +352,9 @@ ark::unittest::State test_communication_write_packet() {
 
 int main() {
     ark::init();
-    // UNITTEST(test_communication_send_recv_unidir);
-    // UNITTEST(test_communication_send_recv_bidir);
-    // UNITTEST(test_communication_send_recv_bidir_sm);
+    UNITTEST(test_communication_send_recv_unidir);
+    UNITTEST(test_communication_send_recv_bidir);
+    UNITTEST(test_communication_send_recv_bidir_sm);
     UNITTEST(test_communication_write_packet);
     return ark::unittest::SUCCESS;
 }

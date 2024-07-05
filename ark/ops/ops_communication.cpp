@@ -6,11 +6,11 @@
 #include "ops_common.hpp"
 
 namespace {
-static const std::map<std::string, size_t> packet_type_map = {
+static const std::map<std::string, size_t> packet_payload_size_map = {
     {"mscclpp::LL8Packet", 4},
     {"mscclpp::LL16Packet", 8},
 };
-} // namespace
+}  // namespace
 
 namespace ark {
 
@@ -19,7 +19,6 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
     : ModelOp("Send") {
     check_null(input);
     if (output) {
-        // TODO: verify output shape and strides
         if (output->buffer()->rank() != remote_rank) {
             ERR(ModelError, "invalid buffer rank: ", output->buffer()->rank(),
                 ", expected: ", remote_rank);
@@ -207,8 +206,8 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
     auto &tile_shape = config.at("Tile");
     std::string packet_type = config.at("PacketType");
     unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
-    size_t scale_factor =
-        packet_type_map.at(packet_type) / input->data_type()->bytes();
+    const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
+    const size_t scale_factor = packet_payload_size / input->data_type()->bytes();
     if (scale_factor == 0) {
         ERR(ModelError,
             "unsupported data type: ", input->data_type()->type_str());
@@ -220,7 +219,7 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
     Dims out_dims[] = {output->strides().dims4(), output->shape().dims4(),
                        unit_out_dims};
     for (auto &dim : out_dims) {
-        dim[3] = dim[3] / packet_type_map.at(packet_type) / 2;
+        dim[3] = dim[3] / packet_payload_size / 2;
     }
     return function_name_string(
         "write_packet", {std::to_string(remote_rank), vec_string(in_dims[0]),
@@ -302,20 +301,21 @@ std::string ModelOpRecvPacket::impl_name(const Json &config) const {
     auto &tile_shape = config.at("Tile");
     std::string packet_type = config.at("PacketType");
     unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
-    size_t scale_factor =
-        packet_type_map.at(packet_type) / input->data_type()->bytes();
+    const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
+    const size_t scale_factor =
+        packet_payload_size / output->data_type()->bytes();
     if (scale_factor == 0) {
         ERR(ModelError,
             "unsupported data type: ", input->data_type()->type_str());
     }
     Dims in_dims[] = {input->strides().dims4(), input->shape().dims4()};
     for (auto &dim : in_dims) {
-        dim[3] /= scale_factor / 2;
+        dim[3] = dim[3] / packet_payload_size / 2;
     }
     Dims out_dims[] = {output->strides().dims4(), output->shape().dims4(),
                        unit_out_dims};
     for (auto &dim : out_dims) {
-        dim[3] = dim[3] / packet_type_map.at(packet_type);
+        dim[3] = dim[3] / scale_factor;
     }
     return function_name_string(
         "read_packet", {vec_string(in_dims[0]), vec_string(in_dims[1]),
@@ -341,7 +341,7 @@ Json ModelOpRecvPacket::default_config([
     config["SramBytes"] = 0;
     const auto &shape = result_tensors_[0]->shape().dims4();
     size_t tile_x = 1;
-    size_t tile_y = 512;
+    size_t tile_y = 128;
     config["Tile"] = {tile_x, tile_y};
     size_t num_tasks = shape[0] * shape[1];
     num_tasks *= (shape[2] + tile_x - 1) / tile_x;
