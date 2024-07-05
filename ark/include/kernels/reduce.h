@@ -291,7 +291,7 @@ struct EwiseReduceCompType<InDims, InShape, OutDims, ReduceType, _DataType,
 
         ReduceType::template identity<NelemPerThread>(reduced);
 #pragma unroll
-        for (int i = 0; i < InShape::W; ++i) {
+        for (int i = 0; i < InShape::W; i += NelemPerThread) {
             ReduceType::template reduce<NelemPerThread>(reduced, reduced,
                                                         &in[idx_in + i]);
         }
