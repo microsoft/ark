@@ -355,43 +355,6 @@ struct Max {
     }
 };
 
-template <uint32_t Flag, typename PacketType>
-struct DataToPacket {
-    static DEVICE PacketType compute(const uint2 &a) {
-        PacketType packet;
-        packet.data1 = a.x;
-        packet.flag1 = Flag;
-        packet.data2 = a.y;
-        packet.flag2 = Flag;
-        return packet;
-    }
-
-    static DEVICE PacketType compute(const uint32_t &a) {
-        PacketType packet;
-        packet.data = a;
-        packet.flag = Flag;
-        return packet;
-    }
-};
-
-template <uint32_t Flag, typename PacketType>
-struct PacketToData {
-    using PlayLoad = typename PacketType::PlayLoad;
-    template <typename T = PacketType>
-    static DEVICE
-        typename std::enable_if_t<std::is_same_v<PlayLoad, uint2>, uint2>
-        compute(const T &packet) {
-        return make_uint2(packet.data1, packet.data2);
-    }
-
-    template <typename T = PacketType>
-    static DEVICE
-        typename std::enable_if_t<std::is_same_v<PlayLoad, uint32_t>, uint32_t>
-        compute(const T &packet) {
-        return packet.data;
-    }
-};
-
 }  // namespace type
 }  // namespace ark
 

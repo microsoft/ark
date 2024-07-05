@@ -317,7 +317,7 @@ ark::unittest::State test_communication_write_packet() {
                 tns = model.send_packet(tns, 1, 0, 1);
             }
             if (gpu_id == 1) {
-                tns = model.recv(tns, 0, 0);
+                tns = model.recv_packet(tns, 0, 0, 1);
             }
 
             ark::DefaultExecutor exe(model, gpu_id);

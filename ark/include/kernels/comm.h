@@ -21,6 +21,35 @@ extern __constant__ mscclpp::SmChannelDeviceHandle ARK_SM_CHANS[];
 namespace ark {
 namespace comm {
 
+template <typename InDataType, typename OutDataType, typename PacketType,
+          bool WritePacket, bool ReadPacket, uint32_t Flag>
+struct PacketIntrinsic {
+    using InputType = InDataType;
+    using OutputType = OutDataType;
+    using Payload = typename PacketType::Payload;
+
+    // Each thread deal with one packet at a time
+    static constexpr int NelemPerThread = 1;
+    static_assert(
+        !WritePacket || std::is_same<InputType, Payload>::value,
+        "InputType must be the same as Payload when WritePacket is true");
+    static_assert(
+        !ReadPacket || std::is_same<OutputType, Payload>::value,
+        "OutputType must be the same as Payload when ReadPacket is true");
+
+    static DEVICE void compute(OutputType *out, const InputType *in) {
+        if constexpr (WritePacket) {
+            InputType stage;
+            ark::load<sizeof(InputType), false>(&stage, in);
+            out->write(stage, Flag);
+        }
+        if constexpr (ReadPacket) {
+            OutDataType result = in->read(Flag);
+            ark::store<sizeof(OutputType), false>(out, &result);
+        }
+    }
+};
+
 enum class ChannelType {
     Proxy,
     SecondaryProxy,
@@ -125,33 +154,33 @@ template <typename InDims, typename InShape, typename OutDims,
           typename PacketType, int Flag>
 DEVICE void writePacket(int chan_id, size_t remote_offset, size_t local_offset,
                         int uop_idx, [[maybe_unused]] int smem_per_warp) {
-    using Instruct = type::DataToPacket<Flag, PacketType>;
     using Payload = typename PacketType::Payload;
     const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[chan_id];
     char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
     char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
     Payload *local_data = reinterpret_cast<Payload *>(local);
     PacketType *remote_data = reinterpret_cast<PacketType *>(remote);
-    DefaultBroadcast1<InDims, InShape, Payload, OutDims, OutShape, PacketType,
-                      Instruct, false, false, UnitOutDims, NumWarps,
-                      SmemBytes>::run(remote_data, local_data, uop_idx);
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+               SmemBytes,
+               PacketIntrinsic<Payload, PacketType, PacketType, true, false,
+                               Flag>>::run(remote_data, local_data, uop_idx);
 }
 
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
-          typename PacketType, int Flag>
+          typename PacketType, uint32_t Flag>
 DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
                        [[maybe_unused]] int smem_per_warp) {
-    using Instruct = type::PacketToData<Flag, PacketType>;
     using Payload = typename PacketType::Payload;
     char *base_addr = reinterpret_cast<char *>(ARK_SM_CHANS[0].src_);
-    char *scratch = base_addr + local_offset;
+    char *scratch = base_addr + scratch_offset;
     char *output = base_addr + output_offset;
     PacketType *scratch_data = reinterpret_cast<PacketType *>(scratch);
     Payload *output_data = reinterpret_cast<Payload *>(output);
-    DefaultBroadcast1<InDims, InShape, PacketType, OutDims, OutShape, Payload,
-                      Instruct, false, false, UnitOutDims, NumWarps,
-                      SmemBytes>::run(output_data, scratch_data, uop_idx);
+    Broadcast1<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+               SmemBytes,
+               PacketIntrinsic<PacketType, Payload, PacketType, false, true,
+                               Flag>>::run(output_data, scratch_data, uop_idx);
 }
 
 template <int NBytes>

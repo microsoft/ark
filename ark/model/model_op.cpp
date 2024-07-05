@@ -80,6 +80,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Tensor);
         MODEL_OP_TYPE_REGISTER(Transpose);
         MODEL_OP_TYPE_REGISTER(SendPacket);
+        MODEL_OP_TYPE_REGISTER(RecvPacket);
     }
     auto it = instances.find(type_name);
     if (it == instances.end()) {
