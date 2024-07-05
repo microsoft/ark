@@ -164,7 +164,8 @@ Json ModelOpRecv::default_config([[maybe_unused]] const ArchRef arch) const {
 }
 
 ModelOpSendPacket::ModelOpSendPacket(ModelTensorRef input, int remote_rank,
-                                     int tag, int flag, ModelTensorRef output)
+                                     int tag, uint32_t flag,
+                                     ModelTensorRef output)
     : ModelOp("SendPacket") {
     check_null(input);
     if (output) {
@@ -190,7 +191,7 @@ ModelOpSendPacket::ModelOpSendPacket(ModelTensorRef input, int remote_rank,
     read_tensors_ = {input};
     write_tensors_ = {output};
     result_tensors_ = {result};
-    flag_ = flag;
+    args_ = {{"Flag", ModelOpArg(flag)}};
     verify();
 }
 
@@ -199,6 +200,7 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
         config, {"NumTasks", "NumWarps", "Tile", "SramBytes", "PacketType"});
     auto &input = read_tensors_[0];
     auto &output = write_tensors_[0];
+    uint32_t flag = args_.at("Flag").value<uint32_t>();
     int remote_rank = output->buffer()->rank();
     Dims unit_out_dims;
     int num_warps = config.at("NumWarps");
@@ -225,7 +227,7 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
                          vec_string(in_dims[1]), vec_string(out_dims[0]),
                          vec_string(out_dims[1]), vec_string(out_dims[2]),
                          std::to_string(num_warps), std::to_string(0),
-                         packet_type, std::to_string(flag_)});
+                         packet_type, std::to_string(flag)});
 }
 
 std::vector<ModelOpArg> ModelOpSendPacket::impl_args([
@@ -255,7 +257,8 @@ Json ModelOpSendPacket::default_config([
 }
 
 ModelOpRecvPacket::ModelOpRecvPacket(ModelTensorRef output, int remote_rank,
-                                     int tag, int flag, ModelTensorRef scratch)
+                                     int tag, uint32_t flag,
+                                     ModelTensorRef scratch)
     : ModelOp("RecvPacket") {
     check_null(output);
     int local_rank = output->buffer()->rank();
@@ -284,7 +287,7 @@ ModelOpRecvPacket::ModelOpRecvPacket(ModelTensorRef output, int remote_rank,
     read_tensors_ = {input, scratch};
     write_tensors_ = {output};
     result_tensors_ = {result};
-    flag_ = flag;
+    args_ = {{"Flag", ModelOpArg(flag)}};
     verify();
 }
 
@@ -293,6 +296,7 @@ std::string ModelOpRecvPacket::impl_name(const Json &config) const {
         config, {"NumTasks", "NumWarps", "Tile", "SramBytes", "PacketType"});
     auto &input = read_tensors_[1];
     auto &output = write_tensors_[0];
+    uint32_t flag = args_.at("Flag").value<uint32_t>();
     Dims unit_out_dims;
     int num_warps = config.at("NumWarps");
     auto &tile_shape = config.at("Tile");
@@ -317,7 +321,7 @@ std::string ModelOpRecvPacket::impl_name(const Json &config) const {
         "read_packet", {vec_string(in_dims[0]), vec_string(in_dims[1]),
                         vec_string(out_dims[0]), vec_string(out_dims[1]),
                         vec_string(out_dims[2]), std::to_string(num_warps),
-                        std::to_string(0), packet_type, std::to_string(flag_)});
+                        std::to_string(0), packet_type, std::to_string(flag)});
 }
 
 std::vector<ModelOpArg> ModelOpRecvPacket::impl_args([
