@@ -188,6 +188,10 @@ class Model : public ModelGraph {
     Tensor recv_packet(Tensor output, int remote_rank, int tag, int flag,
                        Tensor scratch = NullTensor,
                        const std::string &name = "");
+    std::vector<Tensor> recv_reduce_send_packet(
+        Tensor input, const std::vector<int> &remote_ranks, int tag, int flag,
+        std::vector<Tensor> outputs = {}, std::vector<Tensor> scratch = {},
+        const std::string &name = "");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.

@@ -71,6 +71,22 @@ class ModelOpRecvPacket : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
+class ModelOpRecvReduceSendPacket : public ModelOp {
+   public:
+    ModelOpRecvReduceSendPacket() = default;
+    ModelOpRecvReduceSendPacket(ModelTensorRef input,
+                                const std::vector<int> &remote_rank, int tag,
+                                int flag,
+                                std::vector<ModelTensorRef> &output_refs,
+                                std::vector<ModelTensorRef> &scratch_refs);
+
+    std::string impl_name(const Json &config) const override;
+
+    std::vector<ModelOpArg> impl_args(const Json &config) const override;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
 }  // namespace ark
 
 #endif  // ARK_OPS_COMMUNICATION_HPP_

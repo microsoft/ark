@@ -175,15 +175,11 @@ ModelOpSendPacket::ModelOpSendPacket(ModelTensorRef input, int remote_rank,
         }
     } else {
         // For packet output, expand the last dimension to 2x
-        Dims output_shape = input->shape();
-        int n_dims = output_shape.ndims();
-        output_shape[n_dims - 1] =
-            output_shape[n_dims - 1] * 2 * input->data_type()->bytes();
+        Dims output_shape(input->shape_bytes() * 2);
         output = std::make_shared<ModelTensor>(
             UINT8.ref(), std::make_shared<ModelBuffer>(remote_rank),
             output_shape);
     }
-    input->buffer()->tag_send(remote_rank, tag);
     output->buffer()->tag_recv(-1, tag);
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
 
@@ -207,7 +203,8 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
     std::string packet_type = config.at("PacketType");
     unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
     const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
-    const size_t scale_factor = packet_payload_size / input->data_type()->bytes();
+    const size_t scale_factor =
+        packet_payload_size / input->data_type()->bytes();
     if (scale_factor == 0) {
         ERR(ModelError,
             "unsupported data type: ", input->data_type()->type_str());
@@ -269,10 +266,7 @@ ModelOpRecvPacket::ModelOpRecvPacket(ModelTensorRef output, int remote_rank,
         }
     } else {
         // For packet output, expand the last dimension to 2x
-        Dims scratch_shape = output->shape();
-        int n_dims = scratch_shape.ndims();
-        scratch_shape[n_dims - 1] =
-            scratch_shape[n_dims - 1] * 2 * output->data_type()->bytes();
+        Dims scratch_shape(output->shape_bytes() * 2);
         scratch = std::make_shared<ModelTensor>(
             UINT8.ref(), std::make_shared<ModelBuffer>(local_rank),
             scratch_shape);
@@ -281,7 +275,6 @@ ModelOpRecvPacket::ModelOpRecvPacket(ModelTensorRef output, int remote_rank,
         output->data_type(), std::make_shared<ModelBuffer>(remote_rank),
         output->shape());
     scratch->buffer()->tag_recv(remote_rank, tag);
-    input->buffer()->tag_send(-1, tag);
 
     read_tensors_ = {input, scratch};
     write_tensors_ = {output};
@@ -350,6 +343,52 @@ Json ModelOpRecvPacket::default_config([
     return config;
 }
 
+ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
+    ModelTensorRef input, const std::vector<int> &remote_ranks, int tag,
+    int flag, std::vector<ModelTensorRef> &output_refs,
+    std::vector<ModelTensorRef> &scratch_refs)
+    : ModelOp("RecvReduceSendPacket") {
+    check_null(input);
+    int n_remote_ranks = remote_ranks.size();
+    int local_rank = input->buffer()->rank();
+    for (auto &s : scratch_refs) {
+        if (s->buffer()->rank() != local_rank) {
+            ERR(ModelError, "invalid buffer rank: ", s->buffer()->rank(),
+                ", expected: ", local_rank);
+        }
+    }
+    std::vector<ModelTensorRef> results;
+    std::transform(output_refs.begin(), output_refs.end(),
+                   std::back_inserter(results), [](const ModelTensorRef &ref) {
+                       return std::make_shared<ModelTensor>(*ref);
+                   });
+    for (int i = 0; i < n_remote_ranks; ++i) {
+        scratch_refs[i]->buffer()->tag_recv(remote_ranks[i], tag);
+    }
+
+    read_tensors_ = {input};
+    read_tensors_.insert(read_tensors_.end(), scratch_refs.begin(),
+                         scratch_refs.end());
+    write_tensors_ = output_refs;
+    result_tensors_ = std::move(results);
+    args_ = {{"Flag", ModelOpArg(flag)}};
+    verify();
+}
+
+std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
+    return "";
+}
+
+std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args([
+    [maybe_unused]] const Json &config) const {
+    return {};
+}
+
+Json ModelOpRecvReduceSendPacket::default_config([
+    [maybe_unused]] const ArchRef arch) const {
+    return {};
+}
+
 Tensor Model::send(Tensor input, int remote_rank, int tag, Tensor output,
                    const std::string &name) {
     tags_.insert(tag);
@@ -387,6 +426,52 @@ Tensor Model::recv_packet(Tensor output, int remote_rank, int tag, int flag,
         ->create_op<ModelOpRecvPacket>(name, output.ref(), remote_rank, tag,
                                        flag, scratch.ref())
         ->result_tensors()[0];
+}
+
+std::vector<Tensor> Model::recv_reduce_send_packet(
+    Tensor input, const std::vector<int> &remote_ranks, int tag, int flag,
+    std::vector<Tensor> outputs, std::vector<Tensor> scratch,
+    const std::string &name) {
+    tags_.insert(tag);
+    std::vector<Tensor> result_tensors;
+    std::vector<ModelTensorRef> scratch_refs;
+    std::vector<ModelTensorRef> outputs_refs;
+    int local_rank = input.ref()->buffer()->rank();
+    int n_remote_ranks = remote_ranks.size();
+    if (scratch.empty()) {
+        size_t shape_bytes = input.ref()->shape_bytes();
+        Dims scratch_shape(shape_bytes * n_remote_ranks * 2);
+        Tensor scratch_tensor = std::make_shared<ModelTensor>(
+            UINT8.ref(), std::make_shared<ModelBuffer>(local_rank),
+            scratch_shape);
+        scratch = this->sharding(scratch_tensor, 0, n_remote_ranks,
+                                 name + "/scratch");
+    }
+    if (outputs.empty()) {
+        std::transform(remote_ranks.begin(), remote_ranks.end(),
+                       std::back_inserter(outputs), [&](int remote_rank) {
+                           return std::make_shared<ModelTensor>(
+                               input.ref()->data_type(),
+                               std::make_shared<ModelBuffer>(remote_rank),
+                               input.ref()->shape());
+                       });
+    }
+    std::transform(scratch.begin(), scratch.end(),
+                   std::back_inserter(scratch_refs),
+                   [](const Tensor &t) { return t.ref(); });
+    std::transform(outputs.begin(), outputs.end(),
+                   std::back_inserter(outputs_refs),
+                   [](const Tensor &t) { return t.ref(); });
+    std::vector<ModelTensorRef> results =
+        impl_
+            ->create_op<ModelOpRecvReduceSendPacket>(name, input.ref(),
+                                                     remote_ranks, tag, flag,
+                                                     outputs_refs, scratch_refs)
+            ->result_tensors();
+    std::transform(results.begin(), results.end(),
+                   std::back_inserter(result_tensors),
+                   [](const ModelTensorRef &ref) { return Tensor(ref); });
+    return result_tensors;
 }
 
 }  // namespace ark
