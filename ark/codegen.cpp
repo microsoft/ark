@@ -298,10 +298,14 @@ std::string CodeGenerator::Impl::resource_group(
     size_t proc_b = *rg_proc_range.begin();
     size_t proc_e = *rg_proc_range.end();
     size_t proc_s = rg_proc_range.step();
+    std::map<size_t, Json> task_infos_map;
+    for (auto &task_info : task_infos) {
+        task_infos_map[task_info.at("Id").get<size_t>()] = task_info;
+    }
     std::stringstream ss;
     for (auto &tg : rg_json["TaskGroups"]) {
         size_t task_id = tg["TaskId"];
-        auto &task_info = task_infos[task_id];
+        auto &task_info = task_infos_map.at(task_id);
         Range<size_t> task_range(tg["TaskRange"][0], tg["TaskRange"][1]);
         size_t task_gran = tg["Granularity"];
         size_t num_warps_per_task = task_info["NumWarps"];

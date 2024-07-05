@@ -59,7 +59,8 @@ def run_ark(
     output = module(*module_inputs)
 
     with ark.Runtime() as rt:
-        rt.launch(ark.Plan.from_file("/mnt/changhohwang/ark/plan_gpu0.json"))
+        plan = ark.Plan.from_file("plan_llama2_7b_b1_s2048.json")
+        rt.launch(plan)
 
         # Load model parameters
         if state_dict:
@@ -438,22 +439,22 @@ def test_transformer_block(
         low=-1, high=1, size=(batch_size, seq_len, args.dim)
     ).astype(dtype)
 
-    module = model_ark.Attention(
-        args, ark.DataType.from_numpy(dtype), rank, world_size
-    )
+    # module = model_ark.Attention(
+    #     args, ark.DataType.from_numpy(dtype), rank, world_size
+    # )
     # module_inputs = [
     #     ark.tensor(list(i.shape), ark.DataType.from_numpy(i.dtype))
     #     if isinstance(i, np.ndarray)
     #     else i
     #     for i in inputs
     # ]
-    feature_tensor = ark.tensor(
-        list(feature.shape), ark.DataType.from_numpy(feature.dtype)
-    )
-    freqs_cis_ark_tensor = ark.tensor(
-        list(freqs_cis_ark.shape), ark.DataType.from_numpy(freqs_cis_ark.dtype)
-    )
-    output = module(feature_tensor, 0, freqs_cis_ark_tensor, None)
+    # feature_tensor = ark.tensor(
+    #     list(feature.shape), ark.DataType.from_numpy(feature.dtype)
+    # )
+    # freqs_cis_ark_tensor = ark.tensor(
+    #     list(freqs_cis_ark.shape), ark.DataType.from_numpy(freqs_cis_ark.dtype)
+    # )
+    # output = module(feature_tensor, 0, freqs_cis_ark_tensor, None)
 
     # print(ark.Model.get_model().serialize())
 
