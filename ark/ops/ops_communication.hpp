@@ -74,10 +74,10 @@ class ModelOpRecvPacket : public ModelOp {
 class ModelOpRecvReduceSendPacket : public ModelOp {
    public:
     ModelOpRecvReduceSendPacket() = default;
-    ModelOpRecvReduceSendPacket(ModelTensorRef input,
-                                const std::vector<int> &remote_rank, int tag,
-                                int flag,
-                                std::vector<ModelTensorRef> &output_refs,
+    ModelOpRecvReduceSendPacket(ModelTensorRef input, ModelTensorRef output,
+                                const std::vector<int> &remote_rank,
+                                int recv_tag, int output_tag, uint32_t flag,
+                                std::vector<ModelTensorRef> &peer_output_refs,
                                 std::vector<ModelTensorRef> &scratch_refs);
 
     std::string impl_name(const Json &config) const override;

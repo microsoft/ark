@@ -344,12 +344,13 @@ Json ModelOpRecvPacket::default_config([
 }
 
 ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
-    ModelTensorRef input, const std::vector<int> &remote_ranks, int tag,
-    int flag, std::vector<ModelTensorRef> &output_refs,
+    ModelTensorRef input, ModelTensorRef output,
+    const std::vector<int> &remote_ranks, int recv_tag, int output_tag,
+    uint32_t flag, std::vector<ModelTensorRef> &peer_output_refs,
     std::vector<ModelTensorRef> &scratch_refs)
     : ModelOp("RecvReduceSendPacket") {
     check_null(input);
-    int n_remote_ranks = remote_ranks.size();
+    uint32_t n_remote_ranks = remote_ranks.size();
     int local_rank = input->buffer()->rank();
     for (auto &s : scratch_refs) {
         if (s->buffer()->rank() != local_rank) {
@@ -357,36 +358,95 @@ ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
                 ", expected: ", local_rank);
         }
     }
-    std::vector<ModelTensorRef> results;
-    std::transform(output_refs.begin(), output_refs.end(),
-                   std::back_inserter(results), [](const ModelTensorRef &ref) {
-                       return std::make_shared<ModelTensor>(*ref);
-                   });
-    for (int i = 0; i < n_remote_ranks; ++i) {
-        scratch_refs[i]->buffer()->tag_recv(remote_ranks[i], tag);
+    if (!output) {
+        // in-place operation
+        output = input;
+    }
+    for (uint32_t i = 0; i < n_remote_ranks; ++i) {
+        scratch_refs[i]->buffer()->tag_recv(remote_ranks[i], recv_tag);
+        peer_output_refs[i]->buffer()->tag_recv(-1, output_tag);
     }
 
     read_tensors_ = {input};
     read_tensors_.insert(read_tensors_.end(), scratch_refs.begin(),
                          scratch_refs.end());
-    write_tensors_ = output_refs;
-    result_tensors_ = std::move(results);
-    args_ = {{"Flag", ModelOpArg(flag)}};
+    write_tensors_ = {output};
+    write_tensors_.insert(write_tensors_.end(), peer_output_refs.begin(),
+                          peer_output_refs.end());
+    result_tensors_ = {output};
+    args_ = {
+        {"Flag", ModelOpArg(flag)},
+        {"NPeers", ModelOpArg(n_remote_ranks)},
+        {"NElemsPerRank", ModelOpArg(input->shape_bytes())},
+    };
     verify();
 }
 
 std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
-    return "";
+    check_fields_config(
+        config, {"NumTasks", "NumWarps", "Tile", "SramBytes", "PacketType"});
+    auto &input = read_tensors_[0];
+    auto &output = write_tensors_[0];
+    uint32_t flag = args_.at("Flag").value<uint32_t>();
+    uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
+    Dims unit_out_dims;
+    int num_warps = config.at("NumWarps");
+    auto &tile_shape = config.at("Tile");
+    std::string packet_type = config.at("PacketType");
+    unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
+    const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
+    const size_t scale_factor =
+        packet_payload_size / input->data_type()->bytes();
+    if (scale_factor == 0) {
+        ERR(ModelError,
+            "unsupported data type: ", input->data_type()->type_str());
+    }
+    Dims in_dims[] = {input->strides().dims4(), input->shape().dims4()};
+    for (auto &dim : in_dims) {
+        dim[3] /= scale_factor;
+    }
+    Dims out_dims[] = {output->strides().dims4(), output->shape().dims4(),
+                       unit_out_dims};
+    for (auto &dim : out_dims) {
+        dim[3] = dim[3] / packet_payload_size / 2;
+    }
+    return function_name_string(
+        "recv_reduce_send_packet",
+        {vec_string(in_dims[0]), vec_string(in_dims[1]),
+         vec_string(out_dims[0]), vec_string(out_dims[1]),
+         vec_string(out_dims[2]), std::to_string(num_warps), std::to_string(0),
+         std::to_string(n_peers), input->data_type()->type_str(), packet_type,
+         std::to_string(flag)});
 }
 
 std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args([
     [maybe_unused]] const Json &config) const {
-    return {};
+    std::vector<ModelOpArg> args = {ModelOffset(write_tensors_[0]),
+                                    ModelOffset(read_tensors_[0]),
+                                    ModelOffset(read_tensors_[1])};
+    args.insert(args.end(), write_tensors_.begin(), write_tensors_.end());
+    return args;
 }
 
 Json ModelOpRecvReduceSendPacket::default_config([
     [maybe_unused]] const ArchRef arch) const {
-    return {};
+    Json config;
+    if (arch->belongs_to(ARCH_ROCM)) {
+        config["PacketType"] = "mscclpp::LL8Packet";
+    } else {
+        config["PacketType"] = "mscclpp::LL16Packet";
+    }
+    config["NumWarps"] = 1;
+    config["SramBytes"] = 0;
+    const auto &shape = result_tensors_[0]->shape().dims4();
+    size_t tile_x = 1;
+    size_t tile_y = 128;
+    config["Tile"] = {tile_x, tile_y};
+    size_t num_tasks = shape[0] * shape[1];
+    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
+    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
+    config["NumTasks"] = num_tasks;
+    return config;
 }
 
 Tensor Model::send(Tensor input, int remote_rank, int tag, Tensor output,
@@ -428,11 +488,12 @@ Tensor Model::recv_packet(Tensor output, int remote_rank, int tag, int flag,
         ->result_tensors()[0];
 }
 
-std::vector<Tensor> Model::recv_reduce_send_packet(
-    Tensor input, const std::vector<int> &remote_ranks, int tag, int flag,
-    std::vector<Tensor> outputs, std::vector<Tensor> scratch,
-    const std::string &name) {
-    tags_.insert(tag);
+Tensor Model::recv_reduce_send_packet(
+    Tensor input, const std::vector<int> &remote_ranks, int recv_tag,
+    int output_tag, unsigned int flag, Tensor output, std::vector<Tensor> peer_outputs,
+    std::vector<Tensor> scratch, const std::string &name) {
+    tags_.insert(recv_tag);
+    tags_.insert(output_tag);
     std::vector<Tensor> result_tensors;
     std::vector<ModelTensorRef> scratch_refs;
     std::vector<ModelTensorRef> outputs_refs;
@@ -447,31 +508,28 @@ std::vector<Tensor> Model::recv_reduce_send_packet(
         scratch = this->sharding(scratch_tensor, 0, n_remote_ranks,
                                  name + "/scratch");
     }
-    if (outputs.empty()) {
+    if (peer_outputs.empty()) {
+        size_t shape_bytes = input.ref()->shape_bytes();
+        Dims output_shape(shape_bytes * 2);  // For packet
         std::transform(remote_ranks.begin(), remote_ranks.end(),
-                       std::back_inserter(outputs), [&](int remote_rank) {
+                       std::back_inserter(peer_outputs), [&](int remote_rank) {
                            return std::make_shared<ModelTensor>(
-                               input.ref()->data_type(),
+                               UINT8.ref(),
                                std::make_shared<ModelBuffer>(remote_rank),
-                               input.ref()->shape());
+                               output_shape);
                        });
     }
     std::transform(scratch.begin(), scratch.end(),
                    std::back_inserter(scratch_refs),
                    [](const Tensor &t) { return t.ref(); });
-    std::transform(outputs.begin(), outputs.end(),
+    std::transform(peer_outputs.begin(), peer_outputs.end(),
                    std::back_inserter(outputs_refs),
                    [](const Tensor &t) { return t.ref(); });
-    std::vector<ModelTensorRef> results =
-        impl_
-            ->create_op<ModelOpRecvReduceSendPacket>(name, input.ref(),
-                                                     remote_ranks, tag, flag,
-                                                     outputs_refs, scratch_refs)
-            ->result_tensors();
-    std::transform(results.begin(), results.end(),
-                   std::back_inserter(result_tensors),
-                   [](const ModelTensorRef &ref) { return Tensor(ref); });
-    return result_tensors;
+    return impl_
+        ->create_op<ModelOpRecvReduceSendPacket>(
+            name, input.ref(), output.ref(), remote_ranks, recv_tag, output_tag,
+            flag, outputs_refs, scratch_refs)
+        ->result_tensors()[0];
 }
 
 }  // namespace ark

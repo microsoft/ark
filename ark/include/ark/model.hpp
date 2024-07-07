@@ -188,9 +188,10 @@ class Model : public ModelGraph {
     Tensor recv_packet(Tensor output, int remote_rank, int tag, int flag,
                        Tensor scratch = NullTensor,
                        const std::string &name = "");
-    std::vector<Tensor> recv_reduce_send_packet(
-        Tensor input, const std::vector<int> &remote_ranks, int tag, int flag,
-        std::vector<Tensor> outputs = {}, std::vector<Tensor> scratch = {},
+    Tensor recv_reduce_send_packet(
+        Tensor input, const std::vector<int> &remote_ranks, int recv_tag,
+        int output_tag, unsigned int flag, Tensor output = NullTensor,
+        std::vector<Tensor> peer_outputs = {}, std::vector<Tensor> scratch = {},
         const std::string &name = "");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
@@ -233,15 +234,6 @@ class Model : public ModelGraph {
     Tensor local_all_reduce_packet(Tensor input, int gpu_id, int gpu_num,
                                    const std::string &name = "");
 
-    Tensor reduce_and_write_packet(Tensor input, Tensor scratch, Tensor output,
-                                   const std::vector<Tensor> &remote_peer_bufs,
-                                   int id, int rank, int npeers,
-                                   size_t elems_per_rank, size_t scratch_offset,
-                                   size_t remote_dst_offset, int flag,
-                                   const std::string &name = "");
-    Tensor get_packet(Tensor input, Tensor output, size_t src_offset,
-                      size_t dst_offset, size_t npackets, int flag,
-                      const std::string &name = "");
 };
 
 }  // namespace ark

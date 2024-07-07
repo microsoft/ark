@@ -93,7 +93,7 @@ struct PacketReduce {
 
 template <typename InDims, typename InShape, typename OutDims,
           typename PacketType, typename ReduceType, typename _DataType,
-          int RANK, int NPeers, uint32_t NElemsPerRank, uint32_t Flag>
+          int Rank, int NPeers, uint32_t NElemsPerRank, uint32_t Flag>
 struct PacketReduceCompType {
     using DataType = _DataType;
     using Payload = typename PacketType::Payload;
@@ -110,7 +110,7 @@ struct PacketReduceCompType {
         ark::load<sizeof(Payload), false>(reduced, in + idx);
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
-            int remote_rank = i < RANK ? i : i + 1;
+            int remote_rank = i < Rank ? i : i + 1;
             PacketType *pkg = scratch + remote_rank * NElemsPerRank + idx;
             Payload payload = pkg->read(Flag);
             ReduceType::template reduce<NelemPerThread>(
@@ -119,7 +119,7 @@ struct PacketReduceCompType {
         ark::store<sizeof(Payload), false>(out + idx, reduced);
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
-            int remote_rank = i < RANK ? i : i + 1;
+            int remote_rank = i < Rank ? i : i + 1;
             Payload *payload = reinterpret_cast<Payload *> reduced;
             PacketType pkg(payload, Flag);
             ARK_SM_CHANS[remote_rank]->write(
@@ -660,7 +660,7 @@ DEVICE void read_reduce_and_write_packet(
     comm::PacketReduce<
         OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,
         comm::PacketReduceCompType<InDims, InShape, OutDims, PacketType,
-                                   ReduceTypeSum, DataType, NPeers,
+                                   ReduceTypeSum, DataType, Rank, NPeers,
                                    NElemsPerRank, Flag>>::run(dst, src, scratch,
                                                               peer_offsets,
                                                               uop_idx);
