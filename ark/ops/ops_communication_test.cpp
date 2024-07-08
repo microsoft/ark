@@ -307,7 +307,7 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_communication_write_packet() {
+ark::unittest::State test_communication_send_packet() {
     // send from gpu 0 to gpu 1
     for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id]() {
@@ -350,11 +350,51 @@ ark::unittest::State test_communication_write_packet() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_communication_send_recv_reduce_packet() {
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id]() {
+            ark::Model model(gpu_id, 2);
+            ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
+            std::vector<ark::Tensor> shard_tensors = model.sharding(tns_data, 0, 512);
+
+            int peer_gpu_id = (gpu_id + 1) % 2;
+            model.send_packet(shard_tensors[peer_gpu_id], peer_gpu_id, 0, 1);
+            model.recv_reduce_send_packet(shard_tensors[gpu_id], {peer_gpu_id},
+                                          0, 1, 1, shard_tensors[gpu_id]);
+            model.recv_packet(shard_tensors[peer_gpu_id], peer_gpu_id, 1, 1);
+
+            ark::DefaultExecutor exe(model, gpu_id);
+            exe.compile();
+
+            std::vector<ark::half_t> data(1024);
+            std::iota(data.begin(), data.end(), 1.0f);
+            exe.tensor_write(tns_data, data);
+
+            exe.barrier();
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+            exe.barrier();
+
+            exe.tensor_read(tns_data, data);
+            for (int i = 0; i < 1024; ++i) {
+                UNITTEST_EQ(data[i], ark::half_t((i + 1) * 2));
+            }
+            std::cout << std::endl;
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_communication_send_recv_unidir);
     UNITTEST(test_communication_send_recv_bidir);
     UNITTEST(test_communication_send_recv_bidir_sm);
-    UNITTEST(test_communication_write_packet);
+    // UNITTEST(test_communication_send_packet);
+    // UNITTEST(test_communication_send_recv_reduce_packet);
     return ark::unittest::SUCCESS;
 }

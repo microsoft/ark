@@ -198,11 +198,10 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
     auto &output = write_tensors_[0];
     uint32_t flag = args_.at("Flag").value<uint32_t>();
     int remote_rank = output->buffer()->rank();
-    Dims unit_out_dims;
     int num_warps = config.at("NumWarps");
     auto &tile_shape = config.at("Tile");
     std::string packet_type = config.at("PacketType");
-    unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
+    Dims unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
     const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
     const size_t scale_factor =
         packet_payload_size / input->data_type()->bytes();
@@ -288,13 +287,14 @@ std::string ModelOpRecvPacket::impl_name(const Json &config) const {
     check_fields_config(
         config, {"NumTasks", "NumWarps", "Tile", "SramBytes", "PacketType"});
     auto &input = read_tensors_[1];
+    auto &peer_tensor = read_tensors_[0];
     auto &output = write_tensors_[0];
     uint32_t flag = args_.at("Flag").value<uint32_t>();
-    Dims unit_out_dims;
     int num_warps = config.at("NumWarps");
     auto &tile_shape = config.at("Tile");
     std::string packet_type = config.at("PacketType");
-    unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
+    int remote_rank = peer_tensor->buffer()->rank();
+    Dims unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
     const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
     const size_t scale_factor =
         packet_payload_size / output->data_type()->bytes();
@@ -312,10 +312,11 @@ std::string ModelOpRecvPacket::impl_name(const Json &config) const {
         dim[3] = dim[3] / scale_factor;
     }
     return function_name_string(
-        "read_packet", {vec_string(in_dims[0]), vec_string(in_dims[1]),
-                        vec_string(out_dims[0]), vec_string(out_dims[1]),
-                        vec_string(out_dims[2]), std::to_string(num_warps),
-                        std::to_string(0), packet_type, std::to_string(flag)});
+        "read_packet", {std::to_string(remote_rank), vec_string(in_dims[0]),
+                        vec_string(in_dims[1]), vec_string(out_dims[0]),
+                        vec_string(out_dims[1]), vec_string(out_dims[2]),
+                        std::to_string(num_warps), std::to_string(0),
+                        packet_type, std::to_string(flag)});
 }
 
 std::vector<ModelOpArg> ModelOpRecvPacket::impl_args([
@@ -379,7 +380,8 @@ ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
     args_ = {
         {"Flag", ModelOpArg(flag)},
         {"NPeers", ModelOpArg(n_remote_ranks)},
-        {"NElemsPerRank", ModelOpArg(input->shape_bytes())},
+        {"NElemsPerRank",
+         ModelOpArg(input->shape_bytes() / input->data_type()->bytes())},
         {"Rank", ModelOpArg(rank)},
     };
     verify();
@@ -398,22 +400,9 @@ std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
     auto &tile_shape = config.at("Tile");
     std::string packet_type = config.at("PacketType");
     Dims unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
-    const size_t packet_payload_size = packet_payload_size_map.at(packet_type);
-    const size_t scale_factor =
-        packet_payload_size / input->data_type()->bytes();
-    if (scale_factor == 0) {
-        ERR(ModelError,
-            "unsupported data type: ", input->data_type()->type_str());
-    }
     Dims in_dims[] = {input->strides().dims4(), input->shape().dims4()};
-    for (auto &dim : in_dims) {
-        dim[3] /= scale_factor;
-    }
     Dims out_dims[] = {output->strides().dims4(), output->shape().dims4(),
                        unit_out_dims};
-    for (auto &dim : out_dims) {
-        dim[3] = dim[3] / packet_payload_size / 2;
-    }
     return function_name_string(
         "read_reduce_and_write_packet",
         {vec_string(in_dims[0]), vec_string(in_dims[1]),
@@ -426,14 +415,13 @@ std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
 
 std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args([
     [maybe_unused]] const Json &config) const {
-    std::vector<ModelOpArg> args = {ModelOffset(write_tensors_[0]),
-                                    ModelOffset(read_tensors_[0]),
-                                    ModelOffset(read_tensors_[1])};
+    std::vector<ModelOpArg> args = {write_tensors_[0], read_tensors_[0],
+                                    read_tensors_[1]};
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
         args.push_back(ModelOffset(write_tensors_[i]));
     }
     for (int i = write_tensors_.size() - 1; i < MAX_NUM_PEERS; ++i) {
-        args.push_back(0);
+        args.push_back(0L);
     }
     return args;
 }

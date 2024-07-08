@@ -103,28 +103,37 @@ struct PacketReduceCompType {
     static DEVICE void compute(DataType *out, DataType *in, PacketType *scratch,
                                void *args, int idx_n, int idx_c, int idx_h,
                                int idx_w) {
-        int idx = idx_n * OutDims::CHW + idx_c * OutDims::HW +
-                  idx_h * OutDims::W + idx_w;
+        int idx = idx_n * InShape::CHW + idx_c * InShape::HW +
+                  idx_h * InShape::W + idx_w;
+        int idx_out = idx_n * OutDims::CHW + idx_c * OutDims::HW +
+                      idx_h * OutDims::W + idx_w;
+        int idx_in = idx_n * InDims::CHW + idx_c * InDims::HW +
+                     idx_h * InDims::W + idx_w;
         uint32_t *output_offset = reinterpret_cast<uint32_t *>(args);
 
         DataType reduced[NelemPerThread];
-        ark::load<sizeof(Payload), false>(reduced, in + idx);
+        ark::load<sizeof(Payload), false>(reduced, in + idx_in);
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
-            int remote_rank = i < Rank ? i : i + 1;
-            PacketType *pkg = scratch + remote_rank * NElemsPerRank + idx;
+            int peer_id = i <= Rank ? i : i - 1;
+            PacketType *pkg =
+                scratch + (idx + peer_id * NElemsPerRank) / NelemPerThread;
             Payload payload = pkg->read(Flag);
             ReduceType::template reduce<NelemPerThread>(
                 reduced, reduced, reinterpret_cast<DataType *>(&payload));
         }
-        ark::store<sizeof(Payload), false>(out + idx, reduced);
+        ark::store<sizeof(Payload), false>(out + idx_out, reduced);
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
             int remote_rank = i < Rank ? i : i + 1;
+            int peer_id = i <= Rank ? i : i - 1;
             Payload *payload = reinterpret_cast<Payload *>(reduced);
-            PacketType pkg(*payload, Flag);
-            ARK_SM_CHANS[remote_rank].write(
-                output_offset[i] + remote_rank * NElemsPerRank + idx, pkg);
+            char *output =
+                reinterpret_cast<char *>(ARK_SM_CHANS[remote_rank].dst_) +
+                output_offset[i];
+            PacketType *pkg = reinterpret_cast<PacketType *>(output) +
+                              (idx + peer_id * NElemsPerRank) / NelemPerThread;
+            pkg->write(*payload, Flag);
         }
     }
 };
@@ -248,10 +257,10 @@ DEVICE void writePacket(int chan_id, size_t remote_offset, size_t local_offset,
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename PacketType, uint32_t Flag>
-DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
-                       [[maybe_unused]] int smem_per_warp) {
+DEVICE void readPacket(int chan_id, size_t output_offset, size_t scratch_offset,
+                       int uop_idx, [[maybe_unused]] int smem_per_warp) {
     using Payload = typename PacketType::Payload;
-    char *base_addr = reinterpret_cast<char *>(ARK_SM_CHANS[0].src_);
+    char *base_addr = reinterpret_cast<char *>(ARK_SM_CHANS[chan_id].src_);
     char *scratch = base_addr + scratch_offset;
     char *output = base_addr + output_offset;
     PacketType *scratch_data = reinterpret_cast<PacketType *>(scratch);
@@ -631,14 +640,15 @@ DEVICE void write_packet(size_t dst_offset, size_t src_offset, int uop_idx,
                                                    src_offset, uop_idx, 0);
 }
 
-template <typename InDims, typename InShape, typename OutDims,
+template <int RemoteRank, typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename PacketType, int Flag>
 DEVICE void read_packet(size_t dst_offset, size_t src_offset, int uop_idx,
                         int) {
-    comm::readPacket<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-                     SmemBytes, PacketType, Flag>(dst_offset, src_offset,
-                                                  uop_idx, 0);
+    comm::readPacket<InDims, InShape, OutDims, OutShape, UnitOutDims,
+    NumWarps,
+                     SmemBytes, PacketType, Flag>(RemoteRank, dst_offset,
+                                                  src_offset, uop_idx, 0);
 }
 
 // TODO: add reduce type in future
@@ -647,19 +657,14 @@ template <typename InDims, typename InShape, typename OutDims,
           unsigned int NPeers, unsigned int Rank, unsigned int NElemsPerRank,
           typename PacketType, typename DataType, int Flag>
 DEVICE void read_reduce_and_write_packet(
-    size_t dst_offset, size_t src_offset, size_t scratch_offset,
-    size_t peer_offset_0, size_t peer_offset_1, size_t peer_offset_2,
-    size_t peer_offset_3, size_t peer_offset_4, size_t peer_offset_5,
-    size_t peer_offset_6, int uop_idx, int) {
+    DataType *dst, DataType *src, void *scratch_base, size_t peer_offset_0,
+    size_t peer_offset_1, size_t peer_offset_2, size_t peer_offset_3,
+    size_t peer_offset_4, size_t peer_offset_5, size_t peer_offset_6,
+    int uop_idx, int) {
     size_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
                              peer_offset_3, peer_offset_4, peer_offset_5,
                              peer_offset_6};
-    DataType *dst = reinterpret_cast<DataType *>(ARK_SM_CHANS[0].src_) +
-                    dst_offset / sizeof(DataType);
-    DataType *src = reinterpret_cast<DataType *>(ARK_SM_CHANS[0].src_) +
-                    src_offset / sizeof(DataType);
-    PacketType *scratch = reinterpret_cast<PacketType *>(ARK_SM_CHANS[0].src_) +
-                          scratch_offset / sizeof(PacketType);
+    PacketType *scratch = reinterpret_cast<PacketType *>(scratch_base);
     comm::PacketReduce<
         OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,
         comm::PacketReduceCompType<InDims, InShape, OutDims, PacketType,
