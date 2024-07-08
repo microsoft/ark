@@ -75,7 +75,7 @@ class ModelOpRecvReduceSendPacket : public ModelOp {
    public:
     ModelOpRecvReduceSendPacket() = default;
     ModelOpRecvReduceSendPacket(ModelTensorRef input, ModelTensorRef output,
-                                const std::vector<int> &remote_rank,
+                                int rank, const std::vector<int> &remote_rank,
                                 int recv_tag, int output_tag, uint32_t flag,
                                 std::vector<ModelTensorRef> &peer_output_refs,
                                 std::vector<ModelTensorRef> &scratch_refs);

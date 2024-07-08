@@ -86,7 +86,8 @@ struct PacketReduce {
             int idx_h = tid_h + uh * UnitOutDims::H;
             int idx_w = tid_w + uw * UnitOutDims::W;
 
-            CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w, args);
+            CompType::compute(out, in, scratch, args, idx_n, idx_c, idx_h,
+                              idx_w);
         }
     }
 };
@@ -103,10 +104,10 @@ struct PacketReduceCompType {
                                void *args, int idx_n, int idx_c, int idx_h,
                                int idx_w) {
         int idx = idx_n * OutDims::CHW + idx_c * OutDims::HW +
-                      idx_h * OutDims::W + idx_w;
-        utin32_t *output_offset = reinterpret_cast<uint32_t *>(args);
+                  idx_h * OutDims::W + idx_w;
+        uint32_t *output_offset = reinterpret_cast<uint32_t *>(args);
 
-        DataType[NelemPerThread] reduced;
+        DataType reduced[NelemPerThread];
         ark::load<sizeof(Payload), false>(reduced, in + idx);
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
@@ -120,9 +121,9 @@ struct PacketReduceCompType {
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
             int remote_rank = i < Rank ? i : i + 1;
-            Payload *payload = reinterpret_cast<Payload *> reduced;
-            PacketType pkg(payload, Flag);
-            ARK_SM_CHANS[remote_rank]->write(
+            Payload *payload = reinterpret_cast<Payload *>(reduced);
+            PacketType pkg(*payload, Flag);
+            ARK_SM_CHANS[remote_rank].write(
                 output_offset[i] + remote_rank * NElemsPerRank + idx, pkg);
         }
     }
@@ -383,11 +384,13 @@ DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
 // template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
 //           unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
 //           unsigned long long Length>
-// DEVICE void parallel_read_and_reduce(size_t src_offset_0, size_t src_offset_1,
-//                                      size_t src_offset_2, size_t src_offset_3,
-//                                      size_t src_offset_4, size_t src_offset_5,
-//                                      size_t src_offset_6, ark::fp16 *src,
-//                                      int uop_idx, int) {
+// DEVICE void parallel_read_and_reduce(size_t src_offset_0, size_t
+// src_offset_1,
+//                                      size_t src_offset_2, size_t
+//                                      src_offset_3, size_t src_offset_4,
+//                                      size_t src_offset_5, size_t
+//                                      src_offset_6, ark::fp16 *src, int
+//                                      uop_idx, int) {
 //     // treat channel dst as src since we read from it, and reduce to local
 //     // memory
 //     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
@@ -427,14 +430,16 @@ DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
 //                             size_t src_offset_6, ark::fp16 *src, int uop_idx,
 //                             int) {
 //     // TODO: support length not multiple of 16
-//     static_assert(Length % sizeof(int4) == 0, "Length must be multiple of 16");
+//     static_assert(Length % sizeof(int4) == 0, "Length must be multiple of
+//     16");
 // #if defined(ARK_TARGET_CUDA_ARCH)
 //     return ring_read_and_reduce<Dims, Shape, UnitOutDims, NumWarps, NPeers,
 //                                 Rank, Offset, Length>(
 //         src_offset_0, src_offset_1, src_offset_2, src_offset_3, src_offset_4,
 //         src_offset_5, src_offset_6, src, uop_idx, 0);
 // #else   // !defined(ARK_TARGET_CUDA_ARCH)
-//     return parallel_read_and_reduce<Dims, Shape, UnitOutDims, NumWarps, NPeers,
+//     return parallel_read_and_reduce<Dims, Shape, UnitOutDims, NumWarps,
+//     NPeers,
 //                                     Rank, Offset, Length>(
 //         src_offset_0, src_offset_1, src_offset_2, src_offset_3, src_offset_4,
 //         src_offset_5, src_offset_6, src, uop_idx, 0);
@@ -461,9 +466,10 @@ DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
 //     if (offset_in_width + output_width > shape_width) {
 //         bytes_per_width = shape_width - offset_in_width;
 //     }
-//     size_t peer_offsets[] = {target_offset_0, target_offset_1, target_offset_2,
-//                              target_offset_3, target_offset_4, target_offset_5,
-//                              target_offset_6};
+//     size_t peer_offsets[] = {target_offset_0, target_offset_1,
+//     target_offset_2,
+//                              target_offset_3, target_offset_4,
+//                              target_offset_5, target_offset_6};
 // #pragma unroll
 //     for (int i = 0; i < NPeers; ++i) {
 //         int chan_idx = (Rank + i) % NPeers;
@@ -499,9 +505,10 @@ DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
 //     if (offset_in_width + output_width > shape_width) {
 //         bytes_per_width = shape_width - offset_in_width;
 //     }
-//     size_t peer_offsets[] = {target_offset_0, target_offset_1, target_offset_2,
-//                              target_offset_3, target_offset_4, target_offset_5,
-//                              target_offset_6};
+//     size_t peer_offsets[] = {target_offset_0, target_offset_1,
+//     target_offset_2,
+//                              target_offset_3, target_offset_4,
+//                              target_offset_5, target_offset_6};
 //     const size_t unit_size = bytes_per_width >= (16 * UnitOp::NumThreads)
 //                                  ? 16 * UnitOp::NumThreads
 //                                  : bytes_per_width;
@@ -516,8 +523,8 @@ DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
 //                 size_t offset = shape_width * remote_rank + i * stride +
 //                                 offset_in_width + base;
 //                 ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-//                                            ori_offset + offset, unit_size, tid,
-//                                            UnitOp::NumThreads);
+//                                            ori_offset + offset, unit_size,
+//                                            tid, UnitOp::NumThreads);
 //             }
 //         }
 //         if (base < bytes_per_width) {
@@ -556,7 +563,6 @@ DEVICE void readPacket(size_t output_offset, size_t scratch_offset, int uop_idx,
 //         nullptr, uop_idx, 0);
 // #endif  // !defined(ARK_TARGET_CUDA_ARCH)
 // }
-
 
 }  // namespace comm
 
@@ -645,9 +651,6 @@ DEVICE void read_reduce_and_write_packet(
     size_t peer_offset_0, size_t peer_offset_1, size_t peer_offset_2,
     size_t peer_offset_3, size_t peer_offset_4, size_t peer_offset_5,
     size_t peer_offset_6, int uop_idx, int) {
-    using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
-    using Payload = typename PacketType::Payload;
-    constexpr int NelemPerThread = sizeof(Payload) / sizeof(DataType);
     size_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
                              peer_offset_3, peer_offset_4, peer_offset_5,
                              peer_offset_6};
