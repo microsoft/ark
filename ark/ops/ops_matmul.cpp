@@ -223,7 +223,7 @@ static const Json get_default_config(const ArchRef arch,
                 {"TileShapeMNK", {tm, tn, 32}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == BF16.ref()) {
         return {{"NumWarps", 4},
-                {"SramBytes", 24672},
+                {"SramBytes", 24624},
                 {"TileShapeMNK", {tm, tn, 32}}};
     }
     ERR(InternalError, "Unexpected error");
