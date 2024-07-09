@@ -7,6 +7,7 @@ buildImageTable=(
     ["cuda11.8"]="nvidia/cuda:11.8.0-devel-ubuntu20.04"
     ["cuda12.1"]="nvidia/cuda:12.1.1-devel-ubuntu20.04"
     ["cuda12.2"]="nvidia/cuda:12.2.2-devel-ubuntu20.04"
+    ["cuda12.4"]="nvidia/cuda:12.4.1-devel-ubuntu20.04"
     ["rocm5.7"]="rocm/dev-ubuntu-20.04:5.7"
     ["rocm6.0"]="rocm/dev-ubuntu-20.04:6.0"
     ["rocm6.1"]="rocm/dev-ubuntu-20.04:6.1"
@@ -17,6 +18,7 @@ baseImageTable=(
     ["cuda11.8"]="nvidia/cuda:11.8.0-devel-ubuntu20.04"
     ["cuda12.1"]="nvidia/cuda:12.1.1-devel-ubuntu20.04"
     ["cuda12.2"]="nvidia/cuda:12.2.2-devel-ubuntu20.04"
+    ["cuda12.4"]="nvidia/cuda:12.4.1-devel-ubuntu20.04"
     ["rocm5.7"]="rocm/dev-ubuntu-20.04:5.7-complete"
     ["rocm6.0"]="rocm/dev-ubuntu-20.04:6.0-complete"
     ["rocm6.1"]="rocm/dev-ubuntu-20.04:6.1-complete"
@@ -27,6 +29,7 @@ extraLdPathTable=(
     ["cuda11.8"]="/usr/local/cuda-11.8/lib64"
     ["cuda12.1"]="/usr/local/cuda-12.1/compat:/usr/local/cuda-12.1/lib64"
     ["cuda12.2"]="/usr/local/cuda-12.2/compat:/usr/local/cuda-12.2/lib64"
+    ["cuda12.4"]="/usr/local/cuda-12.4/compat:/usr/local/cuda-12.4/lib64"
     ["rocm5.7"]="/opt/rocm/lib"
     ["rocm6.0"]="/opt/rocm/lib"
     ["rocm6.1"]="/opt/rocm/lib"
@@ -36,7 +39,7 @@ GHCR="ghcr.io/microsoft/ark/ark"
 TARGET=${1}
 
 print_usage() {
-    echo "Usage: $0 [cuda11.8|cuda12.1|cuda12.2|rocm5.7|rocm6.0|rocm6.1]"
+    echo "Usage: $0 [cuda11.8|cuda12.1|cuda12.2|cuda12.4|rocm5.7|rocm6.0|rocm6.1]"
 }
 
 if [[ ! -v "baseImageTable[${TARGET}]" ]]; then
