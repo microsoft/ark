@@ -355,8 +355,15 @@ struct WwiseReduce {
                            int smem_per_warp) {
         using ShapeChecker =
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
+        constexpr int InConsecBytes = sizeof(DataType) * InShape::W;
         constexpr int NelemPerThread =
-            DefaultNelemPerThread<OutDims, DataType, UnitOutDims>::value;
+            (InConsecBytes % 16 == 0)
+                ? 16 / sizeof(DataType)
+                : (InConsecBytes % 8 == 0)
+                    ? 8 / sizeof(DataType)
+                    : (InConsecBytes % 4 == 0)
+                        ? 4 / sizeof(DataType)
+                        : (InConsecBytes % 2 == 0) ? 2 / sizeof(DataType) : 1;
 
         constexpr int NonReduceDimLength =
             UnitOutDims::N * UnitOutDims::C * UnitOutDims::H;
@@ -397,22 +404,38 @@ struct WwiseReduce {
                                                         &in[idx_in]);
         }
 
-        DataType finalSum;
-        ReduceType::template identity<1>(&finalSum);
+        static_assert(math::is_pow2<NelemPerThread>::value,
+                      "NelemPerThread must be power of 2");
+        if constexpr (NelemPerThread > 8) {
 #pragma unroll
-        for (int i = 0; i < NelemPerThread; ++i) {
-            ReduceType::template reduce<1>(&finalSum, &finalSum, &reduced[i]);
+            for (int i = 8; i < NelemPerThread; i += 8) {
+                ReduceType::template reduce<8>(&reduced[0], &reduced[0], &reduced[i]);
+            }
+            ReduceType::template reduce<4>(&reduced[0], &reduced[0], &reduced[4]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+        } else if constexpr (NelemPerThread == 8) {
+            ReduceType::template reduce<4>(&reduced[0], &reduced[0], &reduced[4]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+        } else if constexpr (NelemPerThread == 4) {
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+        } else if constexpr (NelemPerThread == 2) {
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
         }
 
-        UnitOp::sync_threads();
+        if constexpr (InShape::W % ThreadsPerRow != 0) {
+            UnitOp::sync_threads();
+        }
 
         // final reduction on shared memory using warp shuffle.
-        finalSum = warpsReduce<ReduceType, UnitOp, ThreadsPerRow>(
-            finalSum, tid, smem_per_warp);
+        reduced[0] = warpsReduce<ReduceType, UnitOp, UnitOp::NumThreads>(
+            reduced[0], tid, smem_per_warp);
 
         // write the result to output.
         if (tid % ThreadsPerRow == 0) {
-            ReduceType::template postReduce<1>(&out[idx_out], &finalSum,
+            ReduceType::template postReduce<1>(&out[idx_out], &reduced[0],
                                                InShape::W);
         }
 
