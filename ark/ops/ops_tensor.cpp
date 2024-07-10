@@ -25,10 +25,12 @@ ModelOpTensor::ModelOpTensor(ModelBufferRef buffer, const Dims &shape,
 
 Tensor Model::tensor(const Dims &shape, const DataType &data_type,
                      const Dims &strides, const Dims &offsets,
-                     const Dims &padded_shape, const std::string &name) {
+                     const Dims &padded_shape, const int rank,
+                     const std::string &name) {
     return impl_
-        ->create_op<ModelOpTensor>(name, nullptr, shape, data_type.ref(),
-                                   strides, offsets, padded_shape)
+        ->create_op<ModelOpTensor>(name, std::make_shared<ModelBuffer>(rank),
+                                   shape, data_type.ref(), strides, offsets,
+                                   padded_shape)
         ->result_tensors()[0];
 }
 

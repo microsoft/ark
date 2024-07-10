@@ -78,7 +78,7 @@ class ModelOpRecvReduceSendPacket : public ModelOp {
                                 int rank, const std::vector<int> &remote_rank,
                                 int recv_tag, int output_tag, uint32_t flag,
                                 std::vector<ModelTensorRef> &peer_output_refs,
-                                std::vector<ModelTensorRef> &scratch_refs);
+                                ModelTensorRef scratch);
 
     std::string impl_name(const Json &config) const override;
 

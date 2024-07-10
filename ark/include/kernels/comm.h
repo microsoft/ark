@@ -115,9 +115,8 @@ struct PacketReduceCompType {
         ark::load<sizeof(Payload), false>(reduced, in + idx_in);
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
-            int peer_id = i <= Rank ? i : i - 1;
             PacketType *pkg =
-                scratch + (idx + peer_id * NElemsPerRank) / NelemPerThread;
+                scratch + (idx + i * NElemsPerRank) / NelemPerThread;
             Payload payload = pkg->read(Flag);
             ReduceType::template reduce<NelemPerThread>(
                 reduced, reduced, reinterpret_cast<DataType *>(&payload));
@@ -126,13 +125,12 @@ struct PacketReduceCompType {
 #pragma unroll
         for (int i = 0; i < NPeers; ++i) {
             int remote_rank = i < Rank ? i : i + 1;
-            int peer_id = i <= Rank ? i : i - 1;
             Payload *payload = reinterpret_cast<Payload *>(reduced);
             char *output =
                 reinterpret_cast<char *>(ARK_SM_CHANS[remote_rank].dst_) +
                 output_offset[i];
-            PacketType *pkg = reinterpret_cast<PacketType *>(output) +
-                              (idx + peer_id * NElemsPerRank) / NelemPerThread;
+            PacketType *pkg =
+                reinterpret_cast<PacketType *>(output) + idx / NelemPerThread;
             pkg->write(*payload, Flag);
         }
     }
@@ -645,8 +643,7 @@ template <int RemoteRank, typename InDims, typename InShape, typename OutDims,
           typename PacketType, int Flag>
 DEVICE void read_packet(size_t dst_offset, size_t src_offset, int uop_idx,
                         int) {
-    comm::readPacket<InDims, InShape, OutDims, OutShape, UnitOutDims,
-    NumWarps,
+    comm::readPacket<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
                      SmemBytes, PacketType, Flag>(RemoteRank, dst_offset,
                                                   src_offset, uop_idx, 0);
 }
@@ -657,13 +654,13 @@ template <typename InDims, typename InShape, typename OutDims,
           unsigned int NPeers, unsigned int Rank, unsigned int NElemsPerRank,
           typename PacketType, typename DataType, int Flag>
 DEVICE void read_reduce_and_write_packet(
-    DataType *dst, DataType *src, void *scratch_base, size_t peer_offset_0,
-    size_t peer_offset_1, size_t peer_offset_2, size_t peer_offset_3,
-    size_t peer_offset_4, size_t peer_offset_5, size_t peer_offset_6,
+    DataType *dst, DataType *src, void *scratch_base, uint32_t peer_offset_0,
+    uint32_t peer_offset_1, uint32_t peer_offset_2, uint32_t peer_offset_3,
+    uint32_t peer_offset_4, uint32_t peer_offset_5, uint32_t peer_offset_6,
     int uop_idx, int) {
-    size_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
-                             peer_offset_3, peer_offset_4, peer_offset_5,
-                             peer_offset_6};
+    uint32_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
+                               peer_offset_3, peer_offset_4, peer_offset_5,
+                               peer_offset_6};
     PacketType *scratch = reinterpret_cast<PacketType *>(scratch_base);
     comm::PacketReduce<
         OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,

@@ -33,6 +33,52 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
     return cumulate;
 }
 
+Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
+                                Tensor output, const std::string &) {
+    int tag_send_reduce = 0;
+    int tag_output = this->unique_tag();
+    if (output.is_null()) {
+        output = this->tensor(input.shape(), input.data_type(), input.strides(),
+                              input.offsets(), input.padded_shape());
+    }
+    std::vector<int> remote_ranks;
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            remote_ranks.push_back(i);
+        }
+    }
+    // need to make sure input is contiguous, and we flatten the input tensor
+    Tensor reshaped_input = this->reshape(input, {input.shape().nelems()});
+    Tensor reshaped_output = this->reshape(output, {output.shape().nelems()});
+    int nelems_per_rank = reshaped_input.shape().nelems() / rank_num;
+    size_t nbytes_per_rank =
+        nelems_per_rank * reshaped_input.data_type().bytes();
+    std::vector<Tensor> shared_inputs =
+        this->sharding(reshaped_input, 0, nelems_per_rank);
+    std::vector<Tensor> shared_outputs =
+        this->sharding(reshaped_output, 0, nelems_per_rank);
+    int npeer = rank_num - 1;
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            int off_index = i < rank ? rank - 1 : rank;
+            Tensor scratch_tensor = this->tensor(
+                nbytes_per_rank * 2, UINT8, Dims(nbytes_per_rank * 2 * npeer),
+                Dims(nbytes_per_rank * off_index * 2),
+                Dims(nbytes_per_rank * 2), i);
+            this->send_packet(shared_inputs[rank], i, tag_send_reduce, flag,
+                              scratch_tensor);
+        }
+    }
+    this->recv_reduce_send_packet(shared_inputs[rank], remote_ranks, tag_send_reduce,
+                                  tag_output, flag, shared_outputs[rank]);
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            this->recv_packet(shared_outputs[i], i, tag_output, flag);
+        }
+    }
+    return output;
+}
+
 // Tensor *Model::local_all_reduce(Tensor *input, int gpu_id, int gpu_num,
 //                                 const std::string &) {
 //     assert(input != nullptr);

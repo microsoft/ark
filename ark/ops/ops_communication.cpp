@@ -349,30 +349,34 @@ ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
     ModelTensorRef input, ModelTensorRef output, int rank,
     const std::vector<int> &remote_ranks, int recv_tag, int output_tag,
     uint32_t flag, std::vector<ModelTensorRef> &peer_output_refs,
-    std::vector<ModelTensorRef> &scratch_refs)
+    ModelTensorRef scratch)
     : ModelOp("RecvReduceSendPacket") {
     check_null(input);
     uint32_t n_remote_ranks = remote_ranks.size();
     // Need to check the scratch buffers are contiguous
-    for (auto &s : scratch_refs) {
-        if (s->buffer()->rank() != rank && s->buffer()->rank() != -1) {
-            ERR(ModelError, "invalid buffer rank: ", s->buffer()->rank(),
+    if (scratch) {
+        if (scratch->buffer()->rank() != rank &&
+            scratch->buffer()->rank() != -1) {
+            ERR(ModelError, "invalid buffer rank: ", scratch->buffer()->rank(),
                 ", expected: ", rank);
         }
+    } else {
+        Dims scratch_shape(input->shape_bytes() * 2 * n_remote_ranks);
+        scratch = std::make_shared<ModelTensor>(
+            UINT8.ref(), std::make_shared<ModelBuffer>(rank), scratch_shape);
     }
     if (!output) {
         output = std::make_shared<ModelTensor>(
             input->data_type(), std::make_shared<ModelBuffer>(rank),
-            input->shape());
+            input->shape(), input->strides(), input->offsets(),
+            input->padded_shape());
     }
     for (uint32_t i = 0; i < n_remote_ranks; ++i) {
-        scratch_refs[i]->buffer()->tag_recv(remote_ranks[i], recv_tag);
+        scratch->buffer()->tag_recv(remote_ranks[i], recv_tag);
         peer_output_refs[i]->buffer()->tag_recv(-1, output_tag);
     }
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
-    read_tensors_ = {input};
-    read_tensors_.insert(read_tensors_.end(), scratch_refs.begin(),
-                         scratch_refs.end());
+    read_tensors_ = {input, scratch};
     write_tensors_ = {output};
     write_tensors_.insert(write_tensors_.end(), peer_output_refs.begin(),
                           peer_output_refs.end());
@@ -491,7 +495,7 @@ Tensor Model::recv_reduce_send_packet(Tensor input,
                                       int recv_tag, int output_tag,
                                       unsigned int flag, Tensor output,
                                       std::vector<Tensor> peer_outputs,
-                                      std::vector<Tensor> scratch,
+                                      Tensor scratch,
                                       const std::string &name) {
     tags_.insert(recv_tag);
     tags_.insert(output_tag);
@@ -499,16 +503,6 @@ Tensor Model::recv_reduce_send_packet(Tensor input,
     std::vector<ModelTensorRef> scratch_refs;
     std::vector<ModelTensorRef> outputs_refs;
     int local_rank = this->rank();
-    int n_remote_ranks = remote_ranks.size();
-    if (scratch.empty()) {
-        size_t shape_bytes = input.ref()->shape_bytes();
-        Dims scratch_shape(shape_bytes * n_remote_ranks * 2);
-        Tensor scratch_tensor = std::make_shared<ModelTensor>(
-            UINT8.ref(), std::make_shared<ModelBuffer>(local_rank),
-            scratch_shape);
-        scratch = this->sharding(scratch_tensor, 0, shape_bytes * 2,
-                                 name + "/scratch");
-    }
     if (peer_outputs.empty()) {
         size_t shape_bytes = input.ref()->shape_bytes();
         Dims output_shape(shape_bytes * 2);  // For packet
@@ -520,16 +514,13 @@ Tensor Model::recv_reduce_send_packet(Tensor input,
                                output_shape);
                        });
     }
-    std::transform(scratch.begin(), scratch.end(),
-                   std::back_inserter(scratch_refs),
-                   [](const Tensor &t) { return t.ref(); });
     std::transform(peer_outputs.begin(), peer_outputs.end(),
                    std::back_inserter(outputs_refs),
                    [](const Tensor &t) { return t.ref(); });
     return impl_
         ->create_op<ModelOpRecvReduceSendPacket>(
             name, input.ref(), output.ref(), local_rank, remote_ranks, recv_tag,
-            output_tag, flag, outputs_refs, scratch_refs)
+            output_tag, flag, outputs_refs, scratch.ref())
         ->result_tensors()[0];
 }
 

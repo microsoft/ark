@@ -58,7 +58,8 @@ class Model : public ModelGraph {
     ///
     Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
-                  const Dims &padded_shape = {}, const std::string &name = "");
+                  const Dims &padded_shape = {}, const int rank = -1,
+                  const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
                  const Dims &offsets = {}, const Dims &padded_shape = {},
@@ -191,13 +192,16 @@ class Model : public ModelGraph {
     Tensor recv_reduce_send_packet(
         Tensor input, const std::vector<int> &remote_ranks, int recv_tag,
         int output_tag, unsigned int flag, Tensor output = NullTensor,
-        std::vector<Tensor> peer_outputs = {}, std::vector<Tensor> scratch = {},
+        std::vector<Tensor> peer_outputs = {}, Tensor scratch = NullTensor,
         const std::string &name = "");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
+    Tensor all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
+                             Tensor output = NullTensor,
+                             const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each
@@ -231,8 +235,6 @@ class Model : public ModelGraph {
 
     Tensor local_all_reduce(Tensor input, int gpu_id, int gpu_num,
                             const std::string &name = "");
-    Tensor local_all_reduce_packet(Tensor input, int gpu_id, int gpu_num,
-                                   const std::string &name = "");
 
 };
 
