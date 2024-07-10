@@ -106,6 +106,7 @@ class Runtime:
         gpu_id: int = 0,
         plan: str = "",
         plan_path: str = "",
+        stream: int = 0,
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -130,9 +131,8 @@ class Runtime:
                     _RuntimeState.executor.destroy()
 
             _RuntimeState.executor = Executor(
-                rank,
-                world_size,
                 gpu_id,
+                stream,
                 "ArkRuntime",
                 plan,
             )

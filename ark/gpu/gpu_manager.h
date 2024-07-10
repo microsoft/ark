@@ -30,11 +30,9 @@ class GpuManager {
     std::shared_ptr<GpuEvent> create_event(bool disable_timing = false) const;
     std::shared_ptr<GpuStream> create_stream() const;
 
-    int get_gpu_id() const;
     void launch(gpuFunction function, const std::array<int, 3> &grid_dim,
                 const std::array<int, 3> &block_dim, int smem_bytes,
-                std::shared_ptr<GpuStream> stream, void **params,
-                void **extra) const;
+                gpuStream stream, void **params, void **extra) const;
 
     struct Info;
     const Info &info() const;

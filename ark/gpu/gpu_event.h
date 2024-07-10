@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include "gpu/gpu.h"
+
 namespace ark {
 
 class GpuStream;
@@ -17,7 +19,7 @@ class GpuEvent {
     GpuEvent(const GpuEvent &) = delete;
     GpuEvent &operator=(const GpuEvent &) = delete;
 
-    void record(std::shared_ptr<GpuStream> stream);
+    void record(gpuStream stream);
     float elapsed_msec(const GpuEvent &other) const;
 
    protected:
