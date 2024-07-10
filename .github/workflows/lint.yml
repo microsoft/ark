@@ -13,11 +13,8 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v4
 
-    - name: Install ClangFormat
-      run: sudo apt-get install -y clang-format
-
-    - name: Run clang-format
-      run: clang-format -style=file -Werror --dry-run `find ark python examples -type f -name *.h -o -name *.hpp -o -name *.c -o -name *.cc -o -name *.cpp -o -name *.cu`
+    - name: Run git-clang-format
+      run: git-clang-format --style=file --diff
 
     - name: Set up Python
       uses: actions/setup-python@v4
