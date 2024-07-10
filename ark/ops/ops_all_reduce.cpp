@@ -35,7 +35,7 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num,
 
 Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
                                 Tensor output, const std::string &) {
-    int tag_send_reduce = 0;
+    int tag_send_reduce = this->unique_tag();
     int tag_output = this->unique_tag();
     if (output.is_null()) {
         output = this->tensor(input.shape(), input.data_type(), input.strides(),
@@ -53,9 +53,9 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
     int nelems_per_rank = reshaped_input.shape().nelems() / rank_num;
     size_t nbytes_per_rank =
         nelems_per_rank * reshaped_input.data_type().bytes();
-    std::vector<Tensor> shared_inputs =
+    std::vector<Tensor> sharded_inputs =
         this->sharding(reshaped_input, 0, nelems_per_rank);
-    std::vector<Tensor> shared_outputs =
+    std::vector<Tensor> sharded_outputs =
         this->sharding(reshaped_output, 0, nelems_per_rank);
     int npeer = rank_num - 1;
     for (int i = 0; i < rank_num; i++) {
@@ -65,15 +65,15 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
                 nbytes_per_rank * 2, UINT8, Dims(nbytes_per_rank * 2 * npeer),
                 Dims(nbytes_per_rank * off_index * 2),
                 Dims(nbytes_per_rank * 2), i);
-            this->send_packet(shared_inputs[rank], i, tag_send_reduce, flag,
+            this->send_packet(sharded_inputs[rank], i, tag_send_reduce, flag,
                               scratch_tensor);
         }
     }
-    this->recv_reduce_send_packet(shared_inputs[rank], remote_ranks, tag_send_reduce,
-                                  tag_output, flag, shared_outputs[rank]);
+    this->recv_reduce_send_packet(sharded_inputs[rank], remote_ranks, tag_send_reduce,
+                                  tag_output, flag, sharded_outputs[rank]);
     for (int i = 0; i < rank_num; i++) {
         if (i != rank) {
-            this->recv_packet(shared_outputs[i], i, tag_output, flag);
+            this->recv_packet(sharded_outputs[i], i, tag_output, flag);
         }
     }
     return output;
