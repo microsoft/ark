@@ -189,45 +189,55 @@ std::vector<ModelOpArg> ModelOpMatmul::impl_args([
 }
 
 static const Json get_default_config(const ArchRef arch,
-                                     const ModelDataType &data_type) {
+                                     const ModelDataType &data_type,
+                                     const Dims &mnk) {
+    if (data_type != FP32.ref() && data_type != FP16.ref() &&
+        data_type != BF16.ref()) {
+        ERR(InvalidUsageError,
+            "Unsupported data type: ", data_type->type_name());
+    }
+    if (!arch->belongs_to(ARCH_CUDA) && !arch->belongs_to(ARCH_ROCM)) {
+        ERR(InvalidUsageError, "Unsupported architecture: ", arch->name());
+    }
+    DimType tm = (mnk[0] > mnk[1]) ? 256 : 128;
+    DimType tn = (mnk[0] > mnk[1]) ? 128 : 256;
     if (arch->belongs_to(ARCH_CUDA_80) && data_type == FP32.ref()) {
         return {{"NumWarps", 8},
                 {"SramBytes", 147456},
-                {"TileShapeMNK", {128, 256, 32}}};
+                {"TileShapeMNK", {tm, tn, 32}}};
     } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == FP16.ref()) {
         return {{"NumWarps", 8},
                 {"SramBytes", 147456},
-                {"TileShapeMNK", {128, 256, 64}}};
+                {"TileShapeMNK", {tm, tn, 64}}};
     } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == BF16.ref()) {
         return {{"NumWarps", 8},
                 {"SramBytes", 147456},
-                {"TileShapeMNK", {128, 256, 64}}};
+                {"TileShapeMNK", {tm, tn, 64}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP32.ref()) {
         return {{"NumWarps", 4},
                 {"SramBytes", 24672},
-                {"TileShapeMNK", {128, 256, 16}}};
+                {"TileShapeMNK", {tm, tn, 16}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP16.ref()) {
         return {{"NumWarps", 4},
                 {"SramBytes", 24672},
-                {"TileShapeMNK", {128, 256, 32}}};
+                {"TileShapeMNK", {tm, tn, 32}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == BF16.ref()) {
         return {{"NumWarps", 4},
-                {"SramBytes", 24672},
-                {"TileShapeMNK", {128, 256, 32}}};
+                {"SramBytes", 24624},
+                {"TileShapeMNK", {tm, tn, 32}}};
     }
-    ERR(InvalidUsageError, "Unsupported arch and data type: ", arch->name(),
-        " and ", data_type->type_name());
+    ERR(InternalError, "Unexpected error");
     return {};
 }
 
 Json ModelOpMatmul::default_config(const ArchRef arch) const {
     auto result = result_tensors_[0];
-    Json config = get_default_config(arch, result->data_type());
     check_fields_args(args_, {"TransposeInput", "TransposeOther"});
     Dims mnk = calc_problem_size(read_tensors_[0]->padded_shape(),
                                  read_tensors_[1]->padded_shape(),
                                  args_.at("TransposeInput").value<bool>(),
                                  args_.at("TransposeOther").value<bool>());
+    Json config = get_default_config(arch, result->data_type(), mnk);
     size_t tile_x = config.at("TileShapeMNK")[0];
     size_t tile_y = config.at("TileShapeMNK")[1];
     if (mnk[0] % tile_x != 0 || mnk[1] % tile_y != 0) {

@@ -106,25 +106,21 @@ DEVICE void sync_warps() {
     static_assert(Arch::ThreadsPerWarp == 64, "");
     if constexpr (NumWarps == 1) {
         __builtin_amdgcn_wave_barrier();
-    } else if constexpr (NumWarps == 16) {
+    } else if constexpr (NumWarps == ARK_WARPS_PER_BLOCK) {
         __syncthreads();
     } else {
         static_assert(ARK_SMEM_RESERVED_BYTES >= sizeof(sync::WarpGroupState),
                       "");
-        int lane_id = threadIdx.x & 63;
-        if (lane_id == 0) {
+        if ((threadIdx.x & 63) == 0) {
             constexpr int MaxOldCnt = NumWarps - 1;
-            int warp_id = threadIdx.x >> 6;
-            int group_id = warp_id / NumWarps;
+            int group_id = (threadIdx.x >> 6) / NumWarps;
             sync::WarpGroupState *state =
                 reinterpret_cast<sync::WarpGroupState *>(_ARK_SMEM);
             unsigned int tmp = state->is_inc_flag[group_id] ^ 1;
             if (atomicInc(&state->cnt[group_id], MaxOldCnt) == MaxOldCnt) {
                 state->flag[group_id] = tmp;
             } else {
-                while (atomicAdd(&state->flag[group_id], 0) != tmp)
-                    __builtin_amdgcn_s_sleep(1);
-                __asm__ __volatile__("s_wakeup");
+                while (atomicAdd(&state->flag[group_id], 0) != tmp);
             }
             state->is_inc_flag[group_id] = tmp;
         }
