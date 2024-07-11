@@ -263,31 +263,28 @@ ark::unittest::State test_scalar_mul_fp16_offset() {
     {
         ark::Model m;
         ark::Tensor buf = m.tensor({1024}, ark::FP16);
-        ark::Tensor tns = m.refer(buf, {2}, {1024}, {3});
-        ark::Tensor out = m.mul(tns, 2, tns);
-
-        ark::DefaultExecutor exe(m);
-        exe.compile();
+        ark::Tensor tns = m.refer(buf, {2}, {1024}, {6});
+        ark::Tensor doubled = m.mul(tns, 2, tns);
+        ark::Tensor out = m.identity(buf, {doubled});
 
         std::vector<ark::half_t> data(1024, ark::half_t(2));
-        exe.tensor_write(buf, data);
-
-        exe.launch();
-        exe.run(1);
-        exe.stop();
-
-        data.clear();
-        data.resize(1024);
-
-        exe.tensor_read(buf, data);
-
-        for (size_t i = 0; i < data.size(); ++i) {
-            if (i == 3 || i == 4) {
-                UNITTEST_EQ(data[i], 4);
-            } else {
-                UNITTEST_EQ(data[i], 2);
-            }
-        }
+        auto result = ark::op_test(
+            "scalar_mul_fp16_offset", m, {buf}, {out},
+            [](std::vector<void *> &outputs, const std::vector<ark::Dims> &,
+               const std::vector<void *> &, const std::vector<ark::Dims> &,
+               int) {
+                ark::half_t *out = static_cast<ark::half_t *>(outputs[0]);
+                for (size_t i = 0; i < 1024; ++i) {
+                    if (i == 6 || i == 7) {
+                        out[i] = 4;
+                    } else {
+                        out[i] = 2;
+                    }
+                }
+            },
+            {data.data()});
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
     }
     return ark::unittest::SUCCESS;
 }
