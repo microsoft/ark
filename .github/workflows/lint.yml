@@ -13,8 +13,11 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v4
 
+    - name: Install ClangFormat
+      run: sudo apt-get install -y clang-format
+
     - name: Run git-clang-format
-      run: git-clang-format --style=file --diff
+      run: git clang-format --style=file --diff
 
     - name: Set up Python
       uses: actions/setup-python@v4
