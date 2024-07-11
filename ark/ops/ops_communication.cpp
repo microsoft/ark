@@ -384,8 +384,6 @@ ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
     args_ = {
         {"Flag", ModelOpArg(flag)},
         {"NPeers", ModelOpArg(n_remote_ranks)},
-        {"NElemsPerRank",
-         ModelOpArg(input->shape_bytes() / input->data_type()->bytes())},
         {"Rank", ModelOpArg(rank)},
     };
     verify();
@@ -398,7 +396,6 @@ std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
     auto &output = write_tensors_[0];
     uint32_t flag = args_.at("Flag").value<uint32_t>();
     uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
-    uint32_t n_elems_per_rank = args_.at("NElemsPerRank").value<size_t>();
     int rank = args_.at("Rank").value<int>();
     int num_warps = config.at("NumWarps");
     auto &tile_shape = config.at("Tile");
@@ -408,12 +405,11 @@ std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
     Dims out_dims[] = {output->strides().dims4(), output->shape().dims4(),
                        unit_out_dims};
     return function_name_string(
-        "read_reduce_and_write_packet",
+        "read_reduce_and_write",
         {vec_string(in_dims[0]), vec_string(in_dims[1]),
          vec_string(out_dims[0]), vec_string(out_dims[1]),
          vec_string(out_dims[2]), std::to_string(num_warps), std::to_string(0),
-         std::to_string(n_peers), std::to_string(rank),
-         std::to_string(n_elems_per_rank), packet_type,
+         std::to_string(n_peers), std::to_string(rank), packet_type,
          input->data_type()->type_str(), std::to_string(flag)});
 }
 
@@ -449,6 +445,141 @@ Json ModelOpRecvReduceSendPacket::default_config([
     num_tasks *= (shape[3] + tile_y - 1) / tile_y;
     config["NumTasks"] = num_tasks;
     return config;
+}
+
+ModelOpRecvReduceSend::ModelOpRecvReduceSend(ModelTensorRef input,
+                                             ModelTensorRef output, int rank,
+                                             const std::vector<int> &remote_ranks,
+                                             int recv_tag, int output_tag,
+                                             std::vector<ModelTensorRef> &peer_output_refs,
+                                             ModelTensorRef scratch)
+    : ModelOp("RecvReduceSend") {
+    check_null(input);
+    uint32_t n_remote_ranks = remote_ranks.size();
+    // Need to check the scratch buffers are contiguous
+    if (scratch) {
+        if (scratch->buffer()->rank() != rank &&
+            scratch->buffer()->rank() != -1) {
+            ERR(ModelError, "invalid buffer rank: ", scratch->buffer()->rank(),
+                ", expected: ", rank);
+        }
+    } else {
+        Dims scratch_shape(input->shape_bytes() * n_remote_ranks);
+        scratch = std::make_shared<ModelTensor>(
+            input->data_type(), std::make_shared<ModelBuffer>(rank),
+            scratch_shape);
+    }
+    if (!output) {
+        output = std::make_shared<ModelTensor>(
+            input->data_type(), std::make_shared<ModelBuffer>(rank),
+            input->shape(), input->strides(), input->offsets(),
+            input->padded_shape());
+    }
+    for (uint32_t i = 0; i < n_remote_ranks; ++i) {
+        scratch->buffer()->tag_recv(remote_ranks[i], recv_tag);
+        peer_output_refs[i]->buffer()->tag_recv(-1, output_tag);
+    }
+    ModelTensorRef result = std::make_shared<ModelTensor>(*output);
+    read_tensors_ = {input, scratch};
+    write_tensors_ = {output};
+    write_tensors_.insert(write_tensors_.end(), peer_output_refs.begin(),
+                          peer_output_refs.end());
+    result_tensors_ = {result};
+    args_ = {
+        {"NPeers", ModelOpArg(n_remote_ranks)},
+        {"Rank", ModelOpArg(rank)},
+    };
+    verify();
+}
+
+std::string ModelOpRecvReduceSend::impl_name(const Json &config) const {
+    check_fields_config(config, {"NumTasks", "NumWarps", "Tile", "SramBytes"});
+    auto &input = read_tensors_[0];
+    auto &output = write_tensors_[0];
+    uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
+    int rank = args_.at("Rank").value<int>();
+    int num_warps = config.at("NumWarps");
+    auto &tile_shape = config.at("Tile");
+    Dims unit_out_dims = {1, 1, tile_shape[0], tile_shape[1]};
+    Dims in_dims[] = {input->strides().dims4(), input->shape().dims4()};
+    Dims out_dims[] = {output->strides().dims4(), output->shape().dims4(),
+                       unit_out_dims};
+    return function_name_string(
+        "read_reduce_and_write",
+        {vec_string(in_dims[0]), vec_string(in_dims[1]),
+         vec_string(out_dims[0]), vec_string(out_dims[1]),
+         vec_string(out_dims[2]), std::to_string(num_warps), std::to_string(0),
+         std::to_string(n_peers), std::to_string(rank),
+         input->data_type()->type_str(), input->data_type()->type_str()});
+}
+
+std::vector<ModelOpArg> ModelOpRecvReduceSend::impl_args([
+    [maybe_unused]] const Json &config) const {
+    std::vector<ModelOpArg> args = {write_tensors_[0], read_tensors_[0],
+                                    read_tensors_[1]};
+    for (size_t i = 1; i < write_tensors_.size(); ++i) {
+        args.push_back(ModelOffset(write_tensors_[i]));
+    }
+    for (int i = write_tensors_.size() - 1; i < MAX_NUM_PEERS; ++i) {
+        args.push_back(0L);
+    }
+    return args;
+}
+
+Json ModelOpRecvReduceSend::default_config([
+    [maybe_unused]] const ArchRef arch) const {
+    Json config;
+    config["NumWarps"] = 1;
+    config["SramBytes"] = 0;
+    const auto &shape = result_tensors_[0]->shape().dims4();
+    size_t tile_x = 1;
+    size_t tile_y = 128;
+    config["Tile"] = {tile_x, tile_y};
+    size_t num_tasks = shape[0] * shape[1];
+    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
+    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
+    config["NumTasks"] = num_tasks;
+    return config;
+}
+
+ModelOpDeviceSync::ModelOpDeviceSync(ModelTensorRef input, int rank,
+                                     int rank_num, ModelTensorRef output)
+    : ModelOp("DeviceSync") {
+    check_null(input);
+    check_null(output);
+    ModelTensorRef result = std::make_shared<ModelTensor>(*output);
+    read_tensors_ = {input};
+    write_tensors_ = {output};
+    result_tensors_ = {result};
+    args_ = {{"Rank", rank}, {"PeerNum", rank_num - 1}};
+    verify();
+}
+
+std::string ModelOpDeviceSync::impl_name(const Json &config) const {
+    check_fields_config(config,
+                        {"ChannelType", "NumTasks", "NumWarps", "SramBytes"});
+    std::string channel_type = config["ChannelType"];
+    if (channel_type != "Proxy" && channel_type != "SecondaryProxy" &&
+        channel_type != "Sm") {
+        ERR(ModelError, "invalid channel type: ", channel_type);
+    }
+    int rank = args_.at("Rank").value<int>();
+    int peer_num = args_.at("PeerNum").value<int>();
+    return function_name_string(
+        "device_sync", {"comm::ChannelType::" + channel_type,
+                        std::to_string(rank), std::to_string(peer_num)});
+}
+
+std::vector<ModelOpArg> ModelOpDeviceSync::impl_args([
+    [maybe_unused]] const Json &config) const {
+    return {};
+}
+
+Json ModelOpDeviceSync::default_config([[maybe_unused]] const ArchRef arch) const {
+    return {{"ChannelType", "Proxy"},
+            {"NumTasks", 1},
+            {"NumWarps", 1},
+            {"SramBytes", 0}};
 }
 
 Tensor Model::send(Tensor input, int remote_rank, int tag, Tensor output,
@@ -495,8 +626,7 @@ Tensor Model::recv_reduce_send_packet(Tensor input,
                                       int recv_tag, int output_tag,
                                       unsigned int flag, Tensor output,
                                       std::vector<Tensor> peer_outputs,
-                                      Tensor scratch,
-                                      const std::string &name) {
+                                      Tensor scratch, const std::string &name) {
     tags_.insert(recv_tag);
     tags_.insert(output_tag);
     std::vector<Tensor> result_tensors;
@@ -521,6 +651,46 @@ Tensor Model::recv_reduce_send_packet(Tensor input,
         ->create_op<ModelOpRecvReduceSendPacket>(
             name, input.ref(), output.ref(), local_rank, remote_ranks, recv_tag,
             output_tag, flag, outputs_refs, scratch.ref())
+        ->result_tensors()[0];
+}
+
+Tensor Model::recv_reduce_send(Tensor input,
+                               const std::vector<int> &remote_ranks,
+                               int recv_tag, int output_tag, Tensor output,
+                               std::vector<Tensor> peer_outputs, Tensor scratch,
+                               const std::string &name) {
+    tags_.insert(recv_tag);
+    tags_.insert(output_tag);
+    std::vector<Tensor> result_tensors;
+    std::vector<ModelTensorRef> scratch_refs;
+    std::vector<ModelTensorRef> outputs_refs;
+    int local_rank = this->rank();
+    if (peer_outputs.empty()) {
+        std::transform(remote_ranks.begin(), remote_ranks.end(),
+                       std::back_inserter(peer_outputs), [&](int remote_rank) {
+                           return std::make_shared<ModelTensor>(
+                               input.ref()->data_type(),
+                               std::make_shared<ModelBuffer>(remote_rank),
+                               input.shape(), input.strides(), input.offsets(),
+                               input.padded_shape());
+                       });
+    }
+    std::transform(peer_outputs.begin(), peer_outputs.end(),
+                   std::back_inserter(outputs_refs),
+                   [](const Tensor &t) { return t.ref(); });
+    return impl_
+        ->create_op<ModelOpRecvReduceSend>(
+            name, input.ref(), output.ref(), local_rank, remote_ranks, recv_tag,
+            output_tag, outputs_refs, scratch.ref())
+        ->result_tensors()[0];
+}
+
+Tensor Model::device_sync(Tensor input, int rank, int rank_num,
+                          const std::string &name) {
+    Tensor output = this->identity(input);
+    return impl_
+        ->create_op<ModelOpDeviceSync>(name, input.ref(), rank, rank_num,
+                                       output.ref())
         ->result_tensors()[0];
 }
 

@@ -136,6 +136,47 @@ struct PacketReduceCompType {
     }
 };
 
+template <typename InDims, typename InShape, typename OutDims,
+          typename ReduceType, typename _DataType, int _NelemPerThread,
+          int Rank, int NPeers, uint32_t NElemsPerRank>
+struct ReduceCompType {
+    using DataType = _DataType;
+    static const int NelemPerThread = _NelemPerThread;
+
+    static DEVICE void compute(DataType *out, DataType *in, DataType *scratch,
+                               void *args, int idx_n, int idx_c, int idx_h,
+                               int idx_w) {
+        int idx = idx_n * InShape::CHW + idx_c * InShape::HW +
+                  idx_h * InShape::W + idx_w;
+        int idx_out = idx_n * OutDims::CHW + idx_c * OutDims::HW +
+                      idx_h * OutDims::W + idx_w;
+        int idx_in = idx_n * InDims::CHW + idx_c * InDims::HW +
+                     idx_h * InDims::W + idx_w;
+        uint32_t *output_offset = reinterpret_cast<uint32_t *>(args);
+
+        DataType reduced[NelemPerThread];
+        ark::load<sizeof(DataType) * NelemPerThread, false>(reduced,
+                                                            in + idx_in);
+#pragma unroll
+        for (int i = 0; i < NPeers; ++i) {
+            DataType *data = scratch + (idx + i * NElemsPerRank);
+            ReduceType::template reduce<NelemPerThread>(reduced, reduced, data);
+        }
+        ark::store<sizeof(DataType) * NelemPerThread, false>(out + idx_out,
+                                                             reduced);
+#pragma unroll
+        for (int i = 0; i < NPeers; ++i) {
+            int remote_rank = i < Rank ? i : i + 1;
+            char *output =
+                reinterpret_cast<char *>(ARK_SM_CHANS[remote_rank].dst_) +
+                output_offset[i];
+            DataType *remote_out = reinterpret_cast<DataType *>(output) + idx;
+            ark::store<sizeof(DataType) * NelemPerThread, false>(remote_out,
+                                                                 reduced);
+        }
+    }
+};
+
 enum class ChannelType {
     Proxy,
     SecondaryProxy,
@@ -268,309 +309,6 @@ DEVICE void readPacket(int chan_id, size_t output_offset, size_t scratch_offset,
                PacketIntrinsic<PacketType, Payload, PacketType, false, true,
                                Flag>>::run(output_data, scratch_data, uop_idx);
 }
-
-// template <int NBytes>
-// union BytesPack {};
-
-// template <>
-// union BytesPack<16> {
-//     uint16_t u16[8];
-//     uint32_t u32[4];
-//     uint64_t u64[2];
-//     ulonglong2 u128;
-// };
-
-// template <>
-// union BytesPack<8> {
-//     uint16_t u16[4];
-//     uint32_t u32[2];
-//     uint64_t u64;
-// };
-
-// DEVICE void store(ulonglong2 *p, const BytesPack<16> &v) {
-// #if defined(ARK_TARGET_CUDA_ARCH)
-//     asm volatile("st.volatile.global.v2.b64 [%0], {%1,%2};"
-//                  :
-//                  : "l"(p), "l"(v.u64[0]), "l"(v.u64[1])
-//                  : "memory");
-// #else   // !defined(ARK_TARGET_CUDA_ARCH)
-//     atomicStoreRelaxed(reinterpret_cast<uint64_t *>(&(p->x)), v.u64[0]);
-//     atomicStoreRelaxed(reinterpret_cast<uint64_t *>(&(p->y)), v.u64[1]);
-// #endif  // !defined(ARK_TARGET_CUDA_ARCH)
-// }
-
-// DEVICE void store(uint64_t *p, const BytesPack<8> &v) {
-//     atomicStoreRelaxed(p, v.u64);
-// }
-
-// DEVICE void add_half8(BytesPack<16> &dst, BytesPack<16> &src) {
-//     __half2 *pd = reinterpret_cast<__half2 *>(dst.u32);
-//     __half2 *ps = reinterpret_cast<__half2 *>(src.u32);
-// #pragma unroll
-//     for (int i = 0; i < 4; ++i) {
-//         union {
-//             __half2 h2;
-//             uint32_t u32;
-//         } d, s;
-//         d.h2 = pd[i];
-//         s.h2 = ps[i];
-//         pd[i] = __hadd2(d.h2, s.h2);
-//     }
-// }
-
-// DEVICE void add_half4(BytesPack<8> &dst, BytesPack<8> &src) {
-//     __half *pd = reinterpret_cast<__half *>(dst.u16);
-//     __half *ps = reinterpret_cast<__half *>(src.u16);
-// #pragma unroll
-//     for (int i = 0; i < 2; ++i) {
-//         __half2 d, s;
-//         d.x = pd[i * 2];
-//         d.y = pd[i * 2 + 1];
-//         s.x = ps[i * 2];
-//         s.y = ps[i * 2 + 1];
-//         d = __hadd2(d, s);
-//         pd[i * 2] = d.x;
-//         pd[i * 2 + 1] = d.y;
-//     }
-// }
-
-// template <unsigned int NRanks>
-// DEVICE void device_sync(int, int) {
-//     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
-//     if (UnitOp::thread_id() != 0) {
-//         return;
-//     }
-//     for (int i = 0; i < NRanks - 1; ++i) {
-//         ARK_SM_CHANS[i].signal();
-//     }
-//     for (int i = 0; i < NRanks - 1; ++i) {
-//         ARK_SM_CHANS[i].wait(-1);
-//     }
-// }
-
-// // Do reduce scatter in a single node
-// template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-//           unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
-//           unsigned long long Length>
-// DEVICE void ring_read_and_reduce(size_t src_offset_0, size_t src_offset_1,
-//                                  size_t src_offset_2, size_t src_offset_3,
-//                                  size_t src_offset_4, size_t src_offset_5,
-//                                  size_t src_offset_6, ark::fp16 *src,
-//                                  int uop_idx, int) {
-//     // treat channel dst as src since we read from it, and reduce to local
-//     // memory
-//     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
-//     constexpr int total_tiles =
-//         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-//     constexpr int total_threads = total_tiles * UnitOp::NumThreads;
-//     constexpr size_t nInt4 = Length / sizeof(int4);
-//     const int tid = uop_idx * UnitOp::NumThreads + UnitOp::thread_id();
-//     BytesPack<16> *dst =
-//         reinterpret_cast<BytesPack<16> *>((uint8_t *)src + Offset);
-//     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
-//                              src_offset_3, src_offset_4, src_offset_5,
-//                              src_offset_6};
-//     for (int i = 0; i < NPeers; ++i) {
-//         int chan_idx = (Rank + i) % NPeers;
-//         const size_t index_offset4 =
-//             (peer_offsets[chan_idx] + Offset) / sizeof(int4);
-//         union {
-//             BytesPack<16> data;
-//             int4 val;
-//         } ret;
-//         for (int idx = tid; idx < nInt4; idx += total_threads) {
-//             BytesPack<16> tmp = dst[idx];
-//             ret.val = ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
-//             add_half8(tmp, ret.data);
-//             store((ulonglong2 *)&dst[idx], tmp);
-//         }
-//     }
-// }
-
-// // Do reduce scatter in a single node with AMD
-// template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-//           unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
-//           unsigned long long Length>
-// DEVICE void parallel_read_and_reduce(size_t src_offset_0, size_t
-// src_offset_1,
-//                                      size_t src_offset_2, size_t
-//                                      src_offset_3, size_t src_offset_4,
-//                                      size_t src_offset_5, size_t
-//                                      src_offset_6, ark::fp16 *src, int
-//                                      uop_idx, int) {
-//     // treat channel dst as src since we read from it, and reduce to local
-//     // memory
-//     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
-//     constexpr int total_tiles =
-//         math::div_up<Shape::NCHW, UnitOutDims::NCHW>::value;
-//     constexpr int total_threads = total_tiles * UnitOp::NumThreads;
-//     constexpr size_t nInt4 = Length / sizeof(int4);
-//     const int tid = uop_idx * UnitOp::NumThreads + UnitOp::thread_id();
-//     BytesPack<16> *dst =
-//         reinterpret_cast<BytesPack<16> *>((uint8_t *)src + Offset);
-//     size_t peer_offsets[] = {src_offset_0, src_offset_1, src_offset_2,
-//                              src_offset_3, src_offset_4, src_offset_5,
-//                              src_offset_6};
-//     for (int idx = tid; idx < nInt4; idx += total_threads) {
-//         BytesPack<16> tmp = dst[idx];
-//         for (int i = 0; i < NPeers; ++i) {
-//             int chan_idx = (Rank + i) % NPeers;
-//             const size_t index_offset4 =
-//                 (peer_offsets[chan_idx] + Offset) / sizeof(int4);
-//             union {
-//                 BytesPack<16> data;
-//                 int4 val;
-//             } ret;
-//             ret.val = ARK_SM_CHANS[chan_idx].read<int4>(index_offset4 + idx);
-//             add_half8(tmp, ret.data);
-//         }
-//         store((ulonglong2 *)&dst[idx], tmp);
-//     }
-// }
-
-// template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-//           unsigned int NPeers, unsigned int Rank, unsigned long long Offset,
-//           unsigned long long Length>
-// DEVICE void read_and_reduce(size_t src_offset_0, size_t src_offset_1,
-//                             size_t src_offset_2, size_t src_offset_3,
-//                             size_t src_offset_4, size_t src_offset_5,
-//                             size_t src_offset_6, ark::fp16 *src, int uop_idx,
-//                             int) {
-//     // TODO: support length not multiple of 16
-//     static_assert(Length % sizeof(int4) == 0, "Length must be multiple of
-//     16");
-// #if defined(ARK_TARGET_CUDA_ARCH)
-//     return ring_read_and_reduce<Dims, Shape, UnitOutDims, NumWarps, NPeers,
-//                                 Rank, Offset, Length>(
-//         src_offset_0, src_offset_1, src_offset_2, src_offset_3, src_offset_4,
-//         src_offset_5, src_offset_6, src, uop_idx, 0);
-// #else   // !defined(ARK_TARGET_CUDA_ARCH)
-//     return parallel_read_and_reduce<Dims, Shape, UnitOutDims, NumWarps,
-//     NPeers,
-//                                     Rank, Offset, Length>(
-//         src_offset_0, src_offset_1, src_offset_2, src_offset_3, src_offset_4,
-//         src_offset_5, src_offset_6, src, uop_idx, 0);
-// #endif  // !defined(ARK_TARGET_CUDA_ARCH)
-// }
-
-// template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-//           unsigned int NPeers, unsigned int Rank, unsigned long long Stride>
-// DEVICE void ring_gather_from_peers(
-//     size_t ori_offset, size_t target_offset_0, size_t target_offset_1,
-//     size_t target_offset_2, size_t target_offset_3, size_t target_offset_4,
-//     size_t target_offset_5, size_t target_offset_6, ark::fp16 *, int uop_idx,
-//     int) {
-//     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
-//     constexpr size_t shape_width = Shape::W * sizeof(ark::fp16);
-//     constexpr size_t output_width = UnitOutDims::W * sizeof(ark::fp16);
-//     constexpr size_t stride = Dims::W * sizeof(ark::fp16);
-//     const int tid = UnitOp::thread_id();
-//     const int tile_hid = UnitOp::uop_idx_h(uop_idx);
-//     const int tile_wid = UnitOp::uop_idx_w(uop_idx);
-//     const size_t offset_in_width =
-//         tile_wid * UnitOutDims::W * sizeof(ark::fp16);
-//     size_t bytes_per_width = UnitOutDims::W * sizeof(ark::fp16);
-//     if (offset_in_width + output_width > shape_width) {
-//         bytes_per_width = shape_width - offset_in_width;
-//     }
-//     size_t peer_offsets[] = {target_offset_0, target_offset_1,
-//     target_offset_2,
-//                              target_offset_3, target_offset_4,
-//                              target_offset_5, target_offset_6};
-// #pragma unroll
-//     for (int i = 0; i < NPeers; ++i) {
-//         int chan_idx = (Rank + i) % NPeers;
-//         int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
-//         for (int j = tile_hid * UnitOutDims::H;
-//              j < tile_hid * UnitOutDims::H + UnitOutDims::H; ++j) {
-//             size_t offset =
-//                 shape_width * remote_rank + j * stride + offset_in_width;
-//             ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-//                                        ori_offset + offset, bytes_per_width,
-//                                        tid, UnitOp::NumThreads);
-//         }
-//     }
-// }
-
-// template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-//           unsigned int NPeers, unsigned int Rank, unsigned long long Stride>
-// DEVICE void parallel_gather_from_peers(
-//     size_t ori_offset, size_t target_offset_0, size_t target_offset_1,
-//     size_t target_offset_2, size_t target_offset_3, size_t target_offset_4,
-//     size_t target_offset_5, size_t target_offset_6, ark::fp16 *, int uop_idx,
-//     int) {
-//     using UnitOp = UnitOp<Dims, Shape, UnitOutDims, NumWarps, 0>;
-//     constexpr size_t shape_width = Shape::W * sizeof(ark::fp16);
-//     constexpr size_t output_width = UnitOutDims::W * sizeof(ark::fp16);
-//     constexpr size_t stride = Dims::W * sizeof(ark::fp16);
-//     const int tid = UnitOp::thread_id();
-//     const int tile_hid = UnitOp::uop_idx_h(uop_idx);
-//     const int tile_wid = UnitOp::uop_idx_w(uop_idx);
-//     const size_t offset_in_width =
-//         tile_wid * UnitOutDims::W * sizeof(ark::fp16);
-//     size_t bytes_per_width = UnitOutDims::W * sizeof(ark::fp16);
-//     if (offset_in_width + output_width > shape_width) {
-//         bytes_per_width = shape_width - offset_in_width;
-//     }
-//     size_t peer_offsets[] = {target_offset_0, target_offset_1,
-//     target_offset_2,
-//                              target_offset_3, target_offset_4,
-//                              target_offset_5, target_offset_6};
-//     const size_t unit_size = bytes_per_width >= (16 * UnitOp::NumThreads)
-//                                  ? 16 * UnitOp::NumThreads
-//                                  : bytes_per_width;
-//     for (int i = tile_hid * UnitOutDims::H;
-//          i < tile_hid * UnitOutDims::H + UnitOutDims::H; ++i) {
-//         int base = 0;
-//         for (; base < bytes_per_width; base += unit_size) {
-// #pragma unroll
-//             for (int j = 0; j < NPeers; ++j) {
-//                 int chan_idx = (Rank + j) % NPeers;
-//                 int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
-//                 size_t offset = shape_width * remote_rank + i * stride +
-//                                 offset_in_width + base;
-//                 ARK_SM_CHANS[chan_idx].get(peer_offsets[chan_idx] + offset,
-//                                            ori_offset + offset, unit_size,
-//                                            tid, UnitOp::NumThreads);
-//             }
-//         }
-//         if (base < bytes_per_width) {
-// #pragma unroll
-//             for (int j = 0; j < NPeers; ++j) {
-//                 int chan_idx = (Rank + j) % NPeers;
-//                 int remote_rank = chan_idx < Rank ? chan_idx : chan_idx + 1;
-//                 size_t offset = shape_width * remote_rank + i * stride +
-//                                 offset_in_width + base;
-//                 ARK_SM_CHANS[chan_idx].get(
-//                     peer_offsets[chan_idx] + offset, ori_offset + offset,
-//                     bytes_per_width - base, tid, UnitOp::NumThreads);
-//             }
-//         }
-//     }
-// }
-
-// template <typename Dims, typename Shape, typename UnitOutDims, int NumWarps,
-//           unsigned int NPeers, unsigned int Rank, unsigned long long Stride>
-// DEVICE void gather_from_peers(size_t ori_offset, size_t target_offset_0,
-//                               size_t target_offset_1, size_t target_offset_2,
-//                               size_t target_offset_3, size_t target_offset_4,
-//                               size_t target_offset_5, size_t target_offset_6,
-//                               ark::fp16 *, int uop_idx, int) {
-// #if defined(ARK_TARGET_CUDA_ARCH)
-//     return ring_gather_from_peers<Dims, Shape, UnitOutDims, NumWarps, NPeers,
-//                                   Rank, Stride>(
-//         ori_offset, target_offset_0, target_offset_1, target_offset_2,
-//         target_offset_3, target_offset_4, target_offset_5, target_offset_6,
-//         nullptr, uop_idx, 0);
-// #else   // !defined(ARK_TARGET_CUDA_ARCH)
-//     return parallel_gather_from_peers<Dims, Shape, UnitOutDims, NumWarps,
-//                                       NPeers, Rank, Stride>(
-//         ori_offset, target_offset_0, target_offset_1, target_offset_2,
-//         target_offset_3, target_offset_4, target_offset_5, target_offset_6,
-//         nullptr, uop_idx, 0);
-// #endif  // !defined(ARK_TARGET_CUDA_ARCH)
-// }
-
 }  // namespace comm
 
 template <comm::ChannelType ChanType, bool Signal, int RemoteRank,
@@ -651,24 +389,49 @@ DEVICE void read_packet(size_t dst_offset, size_t src_offset, int uop_idx,
 // TODO: add reduce type in future
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
-          unsigned int NPeers, unsigned int Rank, unsigned int NElemsPerRank,
-          typename PacketType, typename DataType, int Flag>
-DEVICE void read_reduce_and_write_packet(
+          unsigned int NPeers, unsigned int Rank, typename PacketType,
+          typename DataType, int Flag = 1>
+DEVICE void read_reduce_and_write(
     DataType *dst, DataType *src, void *scratch_base, uint32_t peer_offset_0,
     uint32_t peer_offset_1, uint32_t peer_offset_2, uint32_t peer_offset_3,
     uint32_t peer_offset_4, uint32_t peer_offset_5, uint32_t peer_offset_6,
     int uop_idx, int) {
+    constexpr unsigned int nelems_per_rank = InShape::NCHW;
     uint32_t peer_offsets[] = {peer_offset_0, peer_offset_1, peer_offset_2,
                                peer_offset_3, peer_offset_4, peer_offset_5,
                                peer_offset_6};
-    PacketType *scratch = reinterpret_cast<PacketType *>(scratch_base);
-    comm::PacketReduce<
-        OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,
-        comm::PacketReduceCompType<InDims, InShape, OutDims, PacketType,
-                                   ReduceTypeSum, DataType, Rank, NPeers,
-                                   NElemsPerRank, Flag>>::run(dst, src, scratch,
-                                                              peer_offsets,
-                                                              uop_idx);
+    if constexpr (std::is_same_v<PacketType, DataType>) {
+        DataType *scratch = reinterpret_cast<DataType *>(scratch_base);
+        constexpr int NelemPerThread =
+            DefaultNelemPerThread<OutDims, DataType, UnitOutDims>::value;
+        comm::PacketReduce<
+            OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,
+            comm::ReduceCompType<InDims, InShape, OutDims, ReduceTypeSum,
+                                 DataType, NelemPerThread, Rank, NPeers,
+                                 nelems_per_rank>>::run(dst, src, scratch,
+                                                        peer_offsets, uop_idx);
+    }
+    else {
+        PacketType *scratch = reinterpret_cast<PacketType *>(scratch_base);
+        comm::PacketReduce<
+            OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,
+            comm::PacketReduceCompType<
+                InDims, InShape, OutDims, PacketType, ReduceTypeSum, DataType,
+                Rank, NPeers, nelems_per_rank, Flag>>::run(dst, src, scratch,
+                                                           peer_offsets,
+                                                           uop_idx);
+    }
+}
+
+template <comm::ChannelType ChanType, unsigned int NPeers, unsigned int Rank>
+DEVICE void device_sync(int, int) {
+    using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
+    int tid = UnitOp::thread_id();
+    if (tid < NPeers) {
+        int remote_rank = tid < Rank ? tid : tid + 1;
+        comm::signal<ChanType>(remote_rank);
+        comm::wait<ChanType>(remote_rank);
+    }
 }
 
 }  // namespace ark

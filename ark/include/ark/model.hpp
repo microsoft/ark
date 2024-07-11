@@ -194,6 +194,12 @@ class Model : public ModelGraph {
         int output_tag, unsigned int flag, Tensor output = NullTensor,
         std::vector<Tensor> peer_outputs = {}, Tensor scratch = NullTensor,
         const std::string &name = "");
+    Tensor recv_reduce_send(Tensor input, const std::vector<int> &remote_ranks,
+                            int recv_tag, int output_tag,
+                            Tensor output = NullTensor,
+                            std::vector<Tensor> peer_outputs = {},
+                            Tensor scratch = NullTensor,
+                            const std::string &name = "");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
@@ -202,6 +208,9 @@ class Model : public ModelGraph {
     Tensor all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
                              Tensor output = NullTensor,
                              const std::string &name = "");
+    Tensor all_reduce_sm(Tensor input, int rank, int rank_num,
+                         Tensor ouput = NullTensor,
+                         const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each
@@ -217,7 +226,8 @@ class Model : public ModelGraph {
                 Tensor output = NullTensor, const std::string &name = "");
 
     // sync across multi devices
-    Tensor device_sync(Tensor input, int npeers, const std::string &name = "");
+    Tensor device_sync(Tensor input, int rank, int rank_num,
+                       const std::string &name = "");
 
     // local reduce scatter
     Tensor local_reduce_scatter(Tensor input, int gpu_id, int ngpus_per_node,
