@@ -68,7 +68,7 @@ void GpuKernel::compile() {
                                  dynamic_smem_size_bytes));
 }
 
-void GpuKernel::launch(std::shared_ptr<GpuStream> stream) {
+void GpuKernel::launch(gpuStream stream) {
     if (!this->is_compiled()) {
         ERR(InvalidUsageError, "Kernel is not compiled yet.");
     }

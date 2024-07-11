@@ -31,14 +31,13 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     return os;
 }
 
-OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
-                      const std::vector<Tensor> &inputs,
-                      const std::vector<Tensor> &outputs,
-                      OpsTestBaseline baseline,
-                      const std::vector<void *> &inputs_data,
-                      const std::vector<DefaultPlanner::ConfigRule>& config_rules,
-                      bool print_on_error) {
-    DefaultExecutor exe(model, -1, config_rules);
+OpsTestResult op_test(
+    const std::string &test_name_prefix, const Model &model,
+    const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+    OpsTestBaseline baseline, const std::vector<void *> &inputs_data,
+    const std::vector<DefaultPlanner::ConfigRule> &config_rules,
+    bool print_on_error) {
+    DefaultExecutor exe(model, -1, nullptr, config_rules);
     exe.compile();
 
     std::vector<std::shared_ptr<std::vector<char>>> inputs_data_storages;
@@ -134,7 +133,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
     for (auto t : gt) {
         gt_ptrs.push_back(t->data());
     }
-    baseline(gt_ptrs, output_shapes, inputs_data_refs, input_shapes, model.rank());
+    baseline(gt_ptrs, output_shapes, inputs_data_refs, input_shapes,
+             model.rank());
 
     std::stringstream test_name;
     test_name << test_name_prefix;

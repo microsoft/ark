@@ -3,7 +3,6 @@
 
 #include "gpu/gpu_event.h"
 
-#include "gpu/gpu.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_manager.h"
 
@@ -15,7 +14,7 @@ class GpuEvent::Impl {
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
 
-    void record(std::shared_ptr<GpuStream> stream);
+    void record(gpuStream stream);
     float elapsed_msec(const GpuEvent& other) const;
 
    private:
@@ -32,8 +31,8 @@ GpuEvent::Impl::Impl(bool disable_timing) {
 
 GpuEvent::Impl::~Impl() { GLOG(gpuEventDestroy(event_)); }
 
-void GpuEvent::Impl::record(std::shared_ptr<GpuStream> stream) {
-    GLOG(gpuEventRecord(event_, stream->get()));
+void GpuEvent::Impl::record(gpuStream stream) {
+    GLOG(gpuEventRecord(event_, stream));
 }
 
 float GpuEvent::Impl::elapsed_msec(const GpuEvent& other) const {
@@ -45,9 +44,7 @@ float GpuEvent::Impl::elapsed_msec(const GpuEvent& other) const {
 GpuEvent::GpuEvent(bool disable_timing)
     : pimpl_(std::make_shared<Impl>(disable_timing)) {}
 
-void GpuEvent::record(std::shared_ptr<GpuStream> stream) {
-    pimpl_->record(stream);
-}
+void GpuEvent::record(gpuStream stream) { pimpl_->record(stream); }
 
 float GpuEvent::elapsed_msec(const GpuEvent& other) const {
     return pimpl_->elapsed_msec(other);

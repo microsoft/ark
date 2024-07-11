@@ -167,13 +167,12 @@ using OpsTestBaseline = std::function<void(
 
 class Model;
 
-OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
-                      const std::vector<Tensor> &inputs,
-                      const std::vector<Tensor> &outputs,
-                      OpsTestBaseline baseline,
-                      const std::vector<void *> &inputs_data = {},
-                      const std::vector<DefaultPlanner::ConfigRule>& config_rules = {},
-                      bool print_on_error = false);
+OpsTestResult op_test(
+    const std::string &test_name_prefix, const Model &model,
+    const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+    OpsTestBaseline baseline, const std::vector<void *> &inputs_data = {},
+    const std::vector<DefaultPlanner::ConfigRule> &config_rules = {},
+    bool print_on_error = false);
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size);
 

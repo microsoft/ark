@@ -13,17 +13,23 @@
 
 namespace ark {
 
+using Stream = void *;
+
 /// Convenience class for executing a model.
 class Executor {
    public:
     /// Constructor.
-    Executor(int rank, int world_size, int gpu_id, const std::string &name,
+    Executor(int device_id, Stream stream, const std::string &name,
              const std::string &plan);
 
+    /// Destructor.
     ~Executor();
 
-    /// Return the GPU ID.
-    int gpu_id() const;
+    /// Return the device ID.
+    int device_id() const;
+
+    /// Return the stream of the executor.
+    Stream stream() const;
 
     /// Return the plan string.
     std::string plan() const;
@@ -46,31 +52,37 @@ class Executor {
     /// again.
     float stop(int64_t max_spin_count = -1);
 
+    /// Barrier for all rank executors.
     void barrier();
 
+    /// Destroy the executor.
     void destroy();
 
+    /// Return whether the executor is destroyed.
     bool destroyed() const;
 
+    /// Return the raw virtual address of the tensor.
     uintptr_t tensor_address(const Tensor tensor) const;
 
     template <typename T>
-    void tensor_read(const Tensor tensor, std::vector<T> &data) const {
+    void tensor_read(const Tensor tensor, std::vector<T> &data,
+                     Stream stream = nullptr) const {
         tensor_read(tensor, reinterpret_cast<void *>(data.data()),
-                    data.size() * sizeof(T));
+                    data.size() * sizeof(T), stream);
     }
 
     template <typename T>
-    void tensor_write(const Tensor tensor, const std::vector<T> &data) const {
+    void tensor_write(const Tensor tensor, const std::vector<T> &data,
+                      Stream stream = nullptr) const {
         tensor_write(tensor, reinterpret_cast<const void *>(data.data()),
-                     data.size() * sizeof(T));
+                     data.size() * sizeof(T), stream);
     }
 
     void tensor_read(const Tensor tensor, void *data, size_t bytes,
-                     bool is_d2d = false) const;
+                     Stream stream = nullptr, bool is_d2d = false) const;
 
     void tensor_write(const Tensor tensor, const void *data, size_t bytes,
-                      bool is_d2d = false) const;
+                      Stream stream = nullptr, bool is_d2d = false) const;
 
    protected:
     class Impl;
@@ -81,9 +93,10 @@ class Model;
 
 class DefaultExecutor : public Executor {
    public:
-    DefaultExecutor(const Model &model, int gpu_id = -1,
-                    const std::vector<DefaultPlanner::ConfigRule>& config_rules = {},
-                    const std::string &name = "DefaultExecutor");
+    DefaultExecutor(
+        const Model &model, int device_id = -1, Stream stream = nullptr,
+        const std::vector<DefaultPlanner::ConfigRule> &config_rules = {},
+        const std::string &name = "DefaultExecutor");
 };
 
 }  // namespace ark

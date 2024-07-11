@@ -20,11 +20,10 @@ class GpuManager::Impl {
 
     int gpu_id_;
     GpuManager::Info info_;
-    std::shared_ptr<GpuStream> main_stream_;
 
     void launch(gpuFunction kernel, const std::array<int, 3> &grid_dim,
                 const std::array<int, 3> &block_dim, int smem_bytes,
-                std::shared_ptr<GpuStream> stream, void **params, void **extra);
+                gpuStream stream, void **params, void **extra);
 };
 
 GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
@@ -76,11 +75,11 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
 void GpuManager::Impl::launch(gpuFunction kernel,
                               const std::array<int, 3> &grid_dim,
                               const std::array<int, 3> &block_dim,
-                              int smem_bytes, std::shared_ptr<GpuStream> stream,
-                              void **params, void **extra) {
+                              int smem_bytes, gpuStream stream, void **params,
+                              void **extra) {
     GLOG_DRV(gpuModuleLaunchKernel(
         kernel, grid_dim[0], grid_dim[1], grid_dim[2], block_dim[0],
-        block_dim[1], block_dim[2], smem_bytes, stream->get(), params, extra));
+        block_dim[1], block_dim[2], smem_bytes, stream, params, extra));
 }
 
 std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
@@ -102,9 +101,7 @@ std::shared_ptr<GpuManager> GpuManager::get_instance(int gpu_id) {
     }
 }
 
-GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {
-    this->pimpl_->main_stream_ = std::shared_ptr<GpuStream>(new GpuStream());
-}
+GpuManager::GpuManager(int gpu_id) : pimpl_(std::make_shared<Impl>(gpu_id)) {}
 
 std::shared_ptr<GpuMemory> GpuManager::malloc(size_t bytes, size_t align,
                                               bool expose) {
@@ -126,8 +123,6 @@ std::shared_ptr<GpuStream> GpuManager::create_stream() const {
     return std::shared_ptr<GpuStream>(new GpuStream());
 }
 
-int GpuManager::get_gpu_id() const { return pimpl_->gpu_id_; }
-
 const GpuManager::Info &GpuManager::info() const { return pimpl_->info_; }
 
 void GpuManager::set_current() const { GLOG(gpuSetDevice(pimpl_->gpu_id_)); }
@@ -135,8 +130,7 @@ void GpuManager::set_current() const { GLOG(gpuSetDevice(pimpl_->gpu_id_)); }
 void GpuManager::launch(gpuFunction function,
                         const std::array<int, 3> &grid_dim,
                         const std::array<int, 3> &block_dim, int smem_bytes,
-                        std::shared_ptr<GpuStream> stream, void **params,
-                        void **extra) const {
+                        gpuStream stream, void **params, void **extra) const {
     this->set_current();
     pimpl_->launch(function, grid_dim, block_dim, smem_bytes, stream, params,
                    extra);

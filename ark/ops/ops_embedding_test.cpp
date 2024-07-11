@@ -78,9 +78,9 @@ ark::unittest::State test_embedding() {
     } else if (std::is_same<T, ark::bfloat16_t>::value) {
         type_str = "bf16";
     }
-    auto result = ark::op_test("embedding_" + type_str, m, {ti, tw}, {to},
-                               baseline_embedding<T>,
-                               {ti_data.data(), tw_data.data()});
+    auto result =
+        ark::op_test("embedding_" + type_str, m, {ti, tw}, {to},
+                     baseline_embedding<T>, {ti_data.data(), tw_data.data()});
     UNITTEST_LOG(result);
     UNITTEST_EQ(result.max_diff[0], 0.0f);
     return ark::unittest::SUCCESS;

@@ -70,7 +70,9 @@ class Tensor:
         """
         return DataType.from_ctype(self._tensor.data_type())
 
-    def to_numpy(self, ndarray: np.ndarray = None) -> np.ndarray:
+    def to_numpy(
+        self, ndarray: np.ndarray = None, stream: int = 0
+    ) -> np.ndarray:
         """
         Copy a tensor from device to host. If `ndarray` is None,
         a new numpy array will be created. If the tensor is not allocated,
@@ -97,7 +99,7 @@ class Tensor:
             raise ValueError("ndarray dtype does not match the tensor")
         elif ndarray.nbytes != self.nelems() * self.dtype().element_size():
             raise ValueError("ndarray size does not match the tensor")
-        rt.executor.tensor_read(self._tensor, ndarray)
+        rt.executor.tensor_read(self._tensor, ndarray, stream)
         return ndarray
 
     def to_torch(
@@ -148,7 +150,7 @@ class Tensor:
         torch_view = torch.utils.dlpack.from_dlpack(dl_tensor)
         return torch_view
 
-    def from_numpy(self, ndarray: np.ndarray) -> "Tensor":
+    def from_numpy(self, ndarray: np.ndarray, stream: int = 0) -> "Tensor":
         """
         Copies the tensor from a host numpy array to the device.
         """
@@ -163,7 +165,7 @@ class Tensor:
             ndarray = np.ascontiguousarray(ndarray)
         if ndarray.nbytes != self.nelems() * self.dtype().element_size():
             raise ValueError("ndarray size does not match the tensor")
-        rt.executor.tensor_write(self._tensor, ndarray)
+        rt.executor.tensor_write(self._tensor, ndarray, stream)
         return self
 
     @staticmethod

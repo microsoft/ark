@@ -107,7 +107,6 @@ DEVICE void sync_warps() {
     if constexpr (NumWarps == 1) {
         __builtin_amdgcn_wave_barrier();
     } else if constexpr (NumWarps == ARK_WARPS_PER_BLOCK) {
-        // asm volatile("s_waitcnt lgkmcnt(0) \n s_barrier " ::);
         __syncthreads();
     } else {
         static_assert(ARK_SMEM_RESERVED_BYTES >= sizeof(sync::WarpGroupState),

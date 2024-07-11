@@ -48,8 +48,8 @@ class _RuntimeState:
 
 
 class Executor(_Executor):
-    def __init__(self, plan: Plan, device_id: int, name: str):
-        super().__init__(plan.rank, plan.world_size, device_id, name, str(plan))
+    def __init__(self, device_id: int, stream: int, name: str, plan: Plan):
+        super().__init__(device_id, stream, name, str(plan))
 
 
 class Runtime:
@@ -134,6 +134,7 @@ class Runtime:
         self,
         plan: Plan = None,
         device_id: int = 0,
+        stream: int = 0,
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -145,7 +146,7 @@ class Runtime:
                 f"Runtime {self.runtime_id} is already launched, skip launching"
             )
             return
-        if not plan:
+        if plan is None:
             plan = DefaultPlanner(device_id).plan()
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
@@ -157,9 +158,10 @@ class Runtime:
                     )
                     self.executor.destroy()
             self.executor = Executor(
-                plan,
                 device_id,
+                stream,
                 "ArkRuntime",
+                plan,
             )
             self.executor.compile()
         self.executor.launch()

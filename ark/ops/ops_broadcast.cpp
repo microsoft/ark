@@ -27,8 +27,7 @@ ModelOpBroadcast1::ModelOpBroadcast1(const std::string &type_name,
 std::string ModelOpBroadcast1::impl_name(const Json &config) const {
     check_fields_config(config, {"NumWarps", "Tile"});
     int num_warps = config.at("NumWarps");
-    const auto& tile_shape = config.at("Tile").get<std::vector<DimType>>();
-    Dims unit_out_dims(tile_shape);
+    Dims unit_out_dims(config.at("Tile").get<std::vector<DimType>>());
 
     return function_name_string(
         pascal_to_snake(type()->type_name()),

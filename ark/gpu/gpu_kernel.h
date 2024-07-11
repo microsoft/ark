@@ -27,7 +27,7 @@ class GpuKernel {
               const std::string& kernel_name,
               std::initializer_list<std::pair<void*, size_t>> args = {});
     void compile();
-    void launch(std::shared_ptr<GpuStream> stream);
+    void launch(gpuStream stream);
 
     gpuDeviceptr get_global(const std::string& name,
                             bool ignore_not_found = false) const;
