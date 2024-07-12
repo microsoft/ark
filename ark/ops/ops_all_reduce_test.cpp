@@ -103,6 +103,56 @@ void test_all_reduce_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
+ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
+                              int rank_num, int flag, ark::Tensor output) {
+    int tag_send_reduce = m.unique_tag();
+    int tag_output = m.unique_tag();
+    if (output.is_null()) {
+        output = m.tensor(input.shape(), input.data_type(), input.strides(),
+                          input.offsets(), input.padded_shape());
+    }
+    std::vector<int> remote_ranks;
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            remote_ranks.push_back(i);
+        }
+    }
+    // need to make sure input is contiguous, and we flatten the input tensor
+    ark::Tensor reshaped_input = m.reshape(input, {input.shape().nelems()});
+    ark::Tensor reshaped_output = m.reshape(output, {output.shape().nelems()});
+    int nelems_per_rank = reshaped_input.shape().nelems() / rank_num;
+    size_t nbytes_per_rank =
+        nelems_per_rank * reshaped_input.data_type().bytes();
+    std::vector<ark::Tensor> sharded_inputs =
+        m.sharding(reshaped_input, 0, nelems_per_rank);
+    std::vector<ark::Tensor> sharded_outputs =
+        m.sharding(reshaped_output, 0, nelems_per_rank);
+    int npeer = rank_num - 1;
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            int off_index = i < rank ? rank - 1 : rank;
+            ark::Tensor scratch_tensor =
+                m.tensor(nbytes_per_rank * 2, ark::UINT8,
+                         ark::Dims(nbytes_per_rank * 2 * npeer),
+                         ark::Dims(nbytes_per_rank * off_index * 2),
+                         ark::Dims(nbytes_per_rank * 2), i);
+            m.send_packet(sharded_inputs[rank], i, tag_send_reduce, flag,
+                          scratch_tensor);
+        }
+    }
+    std::vector<ark::Tensor> deps;
+    deps.push_back(m.recv_reduce_send_packet(sharded_inputs[rank], remote_ranks,
+                                             tag_send_reduce, tag_output, flag,
+                                             sharded_outputs[rank]));
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            deps.push_back(
+                m.recv_packet(sharded_outputs[i], i, tag_output, flag));
+        }
+    }
+    return m.identity(output, deps);
+}
+
 template <int NumGpus>
 void test_all_reduce_packet_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
@@ -111,7 +161,7 @@ void test_all_reduce_packet_internal(ark::DimType nelem) {
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
             ark::Tensor data = m.mul(ones, float(gpu_id + 1));
-            ark::Tensor output = m.all_reduce_packet(data, gpu_id, NumGpus, 1, data);
+            ark::Tensor output = all_reduce_packet(m, data, gpu_id, NumGpus, 1, data);
 
             std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
                                               ark::half_t(1.0f));
@@ -120,61 +170,62 @@ void test_all_reduce_packet_internal(ark::DimType nelem) {
                              baseline_all_reduce<ark::half_t, NumGpus>,
                              {ones_vec.data()}, false, gpu_id, NumGpus);
             UNITTEST_LOG(result);
-            // UNITTEST_EQ(result.max_diff[0], 0.0f);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
         });
     }
     ark::unittest::wait_all_processes();
 }
 
-// void test_local_all_reduce_8gpus_internel(size_t nelem, int iter) {
-//     constexpr int num_gpus = 8;
-//     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-//         ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
-//             // Each GPU's data is equal to its GPU ID + 1.
-//             ark::Model m(gpu_id, num_gpus);
-//             ark::Tensor data = m.tensor({nelem}, ark::FP16);
-//             std::vector<ark::half_t> data_buf(nelem);
-//             for (size_t i = 0; i < nelem; ++i) {
-//                 data_buf[i] = ark::half_t(gpu_id + 1);
-//             }
-//             ark::Tensor *output = m.local_all_reduce(data, gpu_id, num_gpus);
-//             auto result =
-//                 ark::op_test("all_reduce", m, {data}, {output},
-//                              baseline_all_reduce<ark::half_t, 8>,
-//                              {data_buf.data()}, true, gpu_id, num_gpus, 16);
-//             UNITTEST_LOG(result);
-//             UNITTEST_EQ(result.max_diff[0], 0.0f);
-//             return ark::unittest::SUCCESS;
-//         });
-//     }
-//     ark::unittest::wait_all_processes();
-// }
-
-// void test_local_all_reduce_packet_8gpus_internel(size_t nelem, int iter) {
-//     constexpr int num_gpus = 8;
-//     for (int gpu_id = 0; gpu_id < num_gpus; ++gpu_id) {
-//         ark::unittest::spawn_process([gpu_id, nelem, num_gpus, iter]() {
-//             // Each GPU's data is equal to its GPU ID + 1.
-//             ark::Model m{gpu_id};
-//             ark::Tensor *data = m.tensor(ark::Dims(nelem), ark::FP16);
-//             std::vector<ark::half_t> data_buf(nelem);
-//             for (size_t i = 0; i < nelem; ++i) {
-//                 data_buf[i] = ark::half_t(gpu_id + 1);
-//             }
-//             ark::Tensor *output =
-//                 m.local_all_reduce_packet(data, gpu_id, num_gpus);
-//             auto result =
-//                 ark::op_test("all_reduce_packet", m, {data}, {output},
-//                              baseline_all_reduce<ark::half_t, 8>,
-//                              {data_buf.data()}, false, gpu_id, num_gpus, 16);
-//             UNITTEST_LOG(result);
-//             UNITTEST_EQ(result.max_diff[0], 0.0f);
-//             return ark::unittest::SUCCESS;
-//         });
-//     }
-//     ark::unittest::wait_all_processes();
-// }
+ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
+                          int rank_num, ark::Tensor output) {
+    int send_tag = m.unique_tag();
+    int recv_tag = m.unique_tag();
+    if (output.is_null()) {
+        output = m.tensor(input.shape(), input.data_type(), input.strides(),
+                          input.offsets(), input.padded_shape());
+    }
+    std::vector<int> remote_ranks;
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            remote_ranks.push_back(i);
+        }
+    }
+    ark::Tensor reshaped_input = m.reshape(input, {input.shape().nelems()});
+    ark::Tensor reshaped_output = m.reshape(output, {output.shape().nelems()});
+    int nelems_per_rank = reshaped_input.shape().nelems() / rank_num;
+    int npeer = rank_num - 1;
+    ark::Tensor scratch_tensor =
+        m.tensor(nelems_per_rank * npeer, reshaped_input.data_type());
+    std::vector<ark::Tensor> sharded_inputs =
+        m.sharding(reshaped_input, 0, nelems_per_rank);
+    std::vector<ark::Tensor> sharded_scratch =
+        m.sharding(scratch_tensor, 0, nelems_per_rank);
+    std::vector<ark::Tensor> shared_outputs =
+        m.sharding(reshaped_output, 0, nelems_per_rank);
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            int remote_off = i < rank ? rank - 1 : rank;
+            ark::Tensor scratch =
+                m.tensor(nelems_per_rank, reshaped_input.data_type(),
+                         {nelems_per_rank * npeer},
+                         ark::Dims(nelems_per_rank * remote_off),
+                         ark::Dims(nelems_per_rank), i);
+            m.send(sharded_inputs[i], i, send_tag, scratch);
+        }
+    }
+    m.device_sync(reshaped_input, rank, rank_num);
+    m.recv_reduce_send(sharded_inputs[rank], remote_ranks, send_tag, recv_tag,
+                       sharded_inputs[rank]);
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            int peer_id = i < rank ? i : i - 1;
+            m.recv(sharded_inputs[peer_id], i, recv_tag);
+        }
+    }
+    ark::Tensor res = m.device_sync(input, rank, rank_num);
+    return res;
+}
 
 ark::unittest::State test_all_reduce_4gpus() {
     test_all_reduce_internal<4>(64);

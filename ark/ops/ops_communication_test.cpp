@@ -380,7 +380,80 @@ ark::unittest::State test_communication_send_recv_reduce_packet() {
             for (int i = 0; i < 1024; ++i) {
                 UNITTEST_EQ(data[i], ark::half_t((i + 1) * 2));
             }
-            std::cout << std::endl;
+            return ark::unittest::SUCCESS;
+        });
+    }
+
+    ark::unittest::wait_all_processes();
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_communication_send_recv_reduce() {
+    auto config_rule = [](const std::string op_str, const std::string) {
+        auto op = nlohmann::json::parse(op_str);
+        nlohmann::json config;
+        if (op.at("Type") == "Send") {
+            config["ChannelType"] = "Sm";
+            config["Signal"] = false;
+            config["Tile"] = {1, 256};
+            config["NumTasks"] = 4;
+            config["NumWarps"] = 4;
+            config["SramBytes"] = 0;
+        }
+        else if (op.at("Type") == "DeviceSync") {
+            config["ChannelType"] = "Sm";
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 1;
+            config["SramBytes"] = 0;
+        } else if (op.at("Type") == "Recv") {
+            config["ChannelType"] = "Sm";
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 1;
+            config["SramBytes"] = 0;
+            config["Wait"] = false;
+        }
+        return config.dump();
+    };
+    for (int gpu_id = 0; gpu_id < 2; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, config_rule]() {
+            ark::Model model(gpu_id, 2);
+            ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
+            std::vector<ark::Tensor> shard_tensors =
+                model.sharding(tns_data, 0, 512);
+
+            int peer_gpu_id = (gpu_id + 1) % 2;
+            ark::Tensor remote_scratch =
+                model.tensor({512}, ark::FP16, {}, {}, {}, peer_gpu_id);
+            ark::Tensor out = model.send(shard_tensors[peer_gpu_id],
+                                         peer_gpu_id, 0, remote_scratch);
+            out = model.device_sync(out, gpu_id, 2);
+            ark::Tensor reduced = model.identity(shard_tensors[gpu_id], {out});
+            reduced =
+                model.recv_reduce_send(reduced, {peer_gpu_id}, 0, 1, reduced);
+            model.recv(shard_tensors[peer_gpu_id], peer_gpu_id, 1);
+            model.device_sync(reduced, gpu_id, 2);
+
+            ark::DefaultPlanner planner(model, gpu_id);
+            planner.install_config_rule(config_rule);
+            ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
+            exe.compile();
+
+            std::vector<ark::half_t> data(1024);
+            std::iota(data.begin(), data.end(), 1.0f);
+            exe.tensor_write(tns_data, data);
+
+            exe.barrier();
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+            exe.barrier();
+
+            exe.tensor_read(tns_data, data);
+            if (gpu_id == 1) {
+                for (int i = 0; i < 1024; ++i) {
+                    UNITTEST_EQ(data[i], ark::half_t((i + 1) * 2));
+                }
+            }
             return ark::unittest::SUCCESS;
         });
     }
@@ -396,5 +469,6 @@ int main() {
     UNITTEST(test_communication_send_recv_bidir_sm);
     // UNITTEST(test_communication_send_packet);
     // UNITTEST(test_communication_send_recv_reduce_packet);
+    // UNITTEST(test_communication_send_recv_reduce);
     return ark::unittest::SUCCESS;
 }

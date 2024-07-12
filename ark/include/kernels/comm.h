@@ -358,8 +358,12 @@ DEVICE void flush(int, int) {
     }
 }
 
-template <comm::ChannelType ChanType, int RemoteRank, int64_t MaxSpinCount = -1>
+template <comm::ChannelType ChanType, int RemoteRank, int64_t MaxSpinCount = -1,
+          bool Wait = true>
 DEVICE void wait(int, int) {
+    if constexpr (!Wait) {
+        return;
+    }
     using UnitOp = UnitOp<ark::Vec<>, ark::Vec<>, ark::Vec<>, 1, 0>;
     if (UnitOp::thread_id() == 0) {
         comm::wait<ChanType, MaxSpinCount>(RemoteRank);
