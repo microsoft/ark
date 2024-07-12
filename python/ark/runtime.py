@@ -142,7 +142,7 @@ class Runtime:
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
         if self.launched():
-            logging.warn(
+            logging.warning(
                 f"Runtime {self.runtime_id} is already launched, skip launching"
             )
             return
@@ -153,7 +153,7 @@ class Runtime:
         if self.state == Runtime.State.Init:
             if self.executor is not None:
                 if not self.executor.destroyed():
-                    logging.warn(
+                    logging.warning(
                         f"Runtime {self.runtime_id}, has already been launched. Destroying the old executor"
                     )
                     self.executor.destroy()
@@ -184,7 +184,7 @@ class Runtime:
         Wait for the kernel to finish.
         """
         if self.state != Runtime.State.Running:
-            logging.warn(
+            logging.warning(
                 f"ARK runtime {self.runtime_id} is not running, skip waiting"
             )
             return
@@ -197,7 +197,7 @@ class Runtime:
         Once this is called, we need to call `launch()` again to run the model again.
         """
         if not self.launched():
-            logging.warn(
+            logging.warning(
                 f"ARK runtime {self.runtime_id} is never launched, skip stopping"
             )
             return

@@ -233,7 +233,6 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     if (world_size_ > 1) {
         init_communicator();
     }
-}
 
     auto gpu_manager = GpuManager::get_instance(device_id_);
 
@@ -384,7 +383,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             continue;
         }
         if (buf_info->buffer->is_external()) {
-            if (buf_info->buffer->device_id() != gpu_id_) {
+            if (buf_info->buffer->device_id() != device_id_) {
                 ERR(InvalidUsageError,
                     "PyTorch tensor and model execution are on different GPUs");
             }

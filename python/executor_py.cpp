@@ -93,7 +93,7 @@ static DLManagedTensor *to_dlpack(ark::Executor &exe,
         tensor.offsets().is_no_dim() ? 0 : tensor.offsets().vector()[0];
     dl_tensor.byte_offset = offset_in_elements * tensor.data_type().bytes();
     dl_tensor.device.device_type = get_device_type();
-    dl_tensor.device.device_id = static_cast<int32_t>(exe.gpu_id());
+    dl_tensor.device.device_id = static_cast<int32_t>(exe.device_id());
     dl_tensor.ndim = static_cast<int32_t>(tensor.shape().ndims());
     dl_tensor.dtype = get_dl_dtype(tensor.data_type());
 
