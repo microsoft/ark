@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_H_
-#define ARK_GPU_H_
+#ifndef ARK_GPU_HPP_
+#define ARK_GPU_HPP_
 
 #include <functional>
 
@@ -125,6 +125,7 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuPointerAttributeSyncMemops,
 // runtime API
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, cudaGetErrorString,
                           hipGetErrorString);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetLastError, cudaGetLastError, hipGetLastError);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cudaDeviceGetAttribute,
                           hipDeviceGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cudaDeviceSynchronize,
@@ -183,4 +184,4 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerSetAttribute, cuPointerSetAttribute,
 
 }  // namespace ark
 
-#endif  // ARK_GPU_H_
+#endif  // ARK_GPU_HPP_

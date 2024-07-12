@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu_manager.hpp"
 
 #include <unordered_map>
 
-#include "gpu/gpu_logging.h"
+#include "gpu/gpu_logging.hpp"
 #include "utils/utils_string.hpp"
 
 namespace ark {

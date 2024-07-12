@@ -10,7 +10,7 @@
 #include "ark/planner.hpp"
 #include "ark/random.hpp"
 #include "env.h"
-#include "gpu/gpu_logging.h"
+#include "gpu/gpu_logging.hpp"
 #include "logging.h"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"

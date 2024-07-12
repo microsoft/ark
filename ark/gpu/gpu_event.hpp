@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_EVENT_H_
-#define ARK_GPU_EVENT_H_
+#ifndef ARK_GPU_EVENT_HPP_
+#define ARK_GPU_EVENT_HPP_
 
 #include <memory>
 
-#include "gpu/gpu.h"
+#include "gpu/gpu.hpp"
 
 namespace ark {
 
@@ -33,4 +33,4 @@ class GpuEvent {
 };
 }  // namespace ark
 
-#endif  // ARK_GPU_EVENT_H_
+#endif  // ARK_GPU_EVENT_HPP_

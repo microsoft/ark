@@ -135,6 +135,7 @@ class Runtime:
         plan: Plan = None,
         device_id: int = 0,
         stream: int = 0,
+        loop_mode: bool = True,
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -162,6 +163,7 @@ class Runtime:
                 stream,
                 "ArkRuntime",
                 plan,
+                loop_mode,
             )
             self.executor.compile()
         self.executor.launch()

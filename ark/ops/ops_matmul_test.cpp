@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#include "gpu/gpu.h"
+#include "gpu/gpu.hpp"
 #include "logging.h"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"

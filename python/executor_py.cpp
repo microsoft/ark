@@ -151,9 +151,11 @@ py::capsule to_dlpack_capsule(ark::Executor &self, const ark::Tensor &tensor) {
 void register_executor(py::module &m) {
     py::class_<ark::Executor>(m, "_Executor")
         .def(py::init([](int device_id, uintptr_t stream,
-                         const std::string &name, const std::string &plan) {
-            return new ark::Executor(
-                device_id, reinterpret_cast<ark::Stream>(stream), name, plan);
+                         const std::string &name, const std::string &plan,
+                         bool loop_mode) {
+            return new ark::Executor(device_id,
+                                     reinterpret_cast<ark::Stream>(stream),
+                                     name, plan, loop_mode);
         }))
         .def("device_id", &ark::Executor::device_id)
         .def("stream",

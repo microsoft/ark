@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_stream.h"
+#include "gpu/gpu_stream.hpp"
 
-#include "gpu/gpu_logging.h"
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu_logging.hpp"
+#include "gpu/gpu_manager.hpp"
 
 namespace ark {
 class GpuStream::Impl {

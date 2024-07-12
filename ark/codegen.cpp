@@ -176,7 +176,7 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
         {"@NUM_WARPS_PER_BLOCK@", std::to_string(num_warps_per_proc_)},
         {"@DEFINITIONS@", definitions_ss.str()},
         {"@BODY@", body_ss.str()},
-        {"@NAME@", name_},
+        {"@NAME@", (name_.empty() ? "" : "_" + name_)},
     };
     code_ = replace(template_code, replacements);
 }
