@@ -14,11 +14,11 @@
 #include "codegen.hpp"
 #include "env.h"
 #include "file_io.h"
-#include "gpu/gpu.h"
-#include "gpu/gpu_event.h"
-#include "gpu/gpu_kernel.h"
-#include "gpu/gpu_logging.h"
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu.hpp"
+#include "gpu/gpu_event.hpp"
+#include "gpu/gpu_kernel.hpp"
+#include "gpu/gpu_logging.hpp"
+#include "gpu/gpu_manager.hpp"
 #include "logging.h"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
@@ -140,7 +140,7 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl(int device_id, Stream stream, const std::string &name);
+    Impl(int device_id, Stream stream, const std::string &name, bool loop_mode);
     ~Impl() = default;
 
     void init(const PlanJson& plan);
@@ -174,6 +174,8 @@ class Executor::Impl {
    protected:
     int device_id_;
     std::string name_;
+    bool loop_mode_;
+
     gpuStream stream_raw_;
 
     int rank_;
@@ -203,8 +205,9 @@ class Executor::Impl {
         rank_to_sm_channels_;
 };
 
-Executor::Impl::Impl(int device_id, Stream stream, const std::string &name)
-    : device_id_(device_id), name_(name) {
+Executor::Impl::Impl(int device_id, Stream stream, const std::string &name,
+                     bool loop_mode)
+    : device_id_(device_id), name_(name), loop_mode_(loop_mode) {
     if (device_id < 0) {
         ERR(InvalidUsageError, "Invalid device ID ", device_id);
     }
@@ -251,7 +254,6 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     int threads_per_block = static_cast<int>(
         codegen_->num_warps_per_proc() * gpu_manager->info().threads_per_warp);
     int num_sm = static_cast<int>(codegen_->num_procs());
-    int *flag = flag_->ref<int>();
     size_t smem_block_total =
         static_cast<size_t>(gpu_manager->info().smem_block_total);
 
@@ -260,11 +262,19 @@ void Executor::Impl::init(const PlanJson &plan_json) {
         init_channels(remote_ranks);
     }
 
+    std::string kernel_name;
+    if (loop_mode_) {
+        kernel_name = "ark_loop_kernel";
+    } else {
+        kernel_name = "ark_kernel";
+    }
+    if (!name_.empty()) {
+        kernel_name += "_" + name_;
+    }
+
     kernel_ = std::shared_ptr<GpuKernel>(new GpuKernel(
         device_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
-        std::max(smem_block_total, size_t(4)), name_,
-        {std::pair<void *, size_t>{buffer_->ref(), sizeof(buffer_->ref())},
-         std::pair<void *, size_t>{flag, sizeof(flag)}}));
+        std::max(smem_block_total, size_t(4)), kernel_name));
 }
 
 void Executor::Impl::init_communicator() {
@@ -669,51 +679,76 @@ void Executor::Impl::launch(int64_t max_spin_count) {
         proxy_service_->startProxy();
     }
 
-    // Initialize loop flags.
-    atomicStoreRelaxed(flag_->ref<int>(), 0);
-    kernel_->launch(stream_raw_);
-    timer_end_->record(stream_raw_);
+    if (loop_mode_) {
+        // Initialize loop flags.
+        atomicStoreRelaxed(flag_->ref<int>(), 0);
+        void *buf_ptr = buffer_->ref();
+        void *flag_ptr = flag_->ref();
+        std::vector<void *> args = {&buf_ptr, &flag_ptr};
+        kernel_->launch(stream_raw_, args);
+    }
     is_recording_ = true;
     is_launched_ = true;
 }
 
 void Executor::Impl::run(int iter) {
-    if (iter > 0) {
+    if (iter <= 0) return;
+    if (loop_mode_) {
         while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
         }
         atomicStoreRelaxed(flag_->ref<int>(), iter);
+    } else {
+        void *buf_ptr = buffer_->ref();
+        int i = 0;
+        std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
+        for (; i < iter; i++) {
+            kernel_->launch(stream_raw_, args);
+        }
     }
 }
 
 void Executor::Impl::wait(int64_t max_spin_count) {
     int64_t cnt = max_spin_count;
-    while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
-        if (cnt-- > 0) {
-            continue;
-        }
-        // Check if the kernel encountered an error.
-        gpuError res = gpuStreamQuery(stream_raw_);
-        if (res == gpuSuccess) {
-            if (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
-                LOG(WARN, "Stream is finished but the loop flag is still set.");
-                break;
-            } else {
-                LOG(WARN,
-                    "wait() is delayed by a stream query. Regarding "
-                    "timing measurements may be inaccurate.");
-                break;
+    if (loop_mode_) {
+        while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
+            if (cnt-- > 0) {
+                continue;
             }
-        } else if (res == gpuErrorNotReady) {
-            cnt = max_spin_count;
-        } else {
-            GLOG(res);
+            // Check if the kernel encountered an error.
+            gpuError res = gpuStreamQuery(stream_raw_);
+            if (res == gpuSuccess) {
+                if (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
+                    LOG(WARN,
+                        "Stream is finished but the loop flag is still set.");
+                    break;
+                } else {
+                    LOG(WARN,
+                        "wait() is delayed by a stream query. Regarding "
+                        "timing measurements may be inaccurate.");
+                    break;
+                }
+            } else if (res == gpuErrorNotReady) {
+                cnt = max_spin_count;
+            } else {
+                GLOG(res);
+            }
         }
+    } else {
+        if (max_spin_count >= 0) {
+            LOG(WARN, "max_spin_count is ignored in non-loop mode.");
+        }
+        GLOG(gpuStreamSynchronize(stream_raw_));
     }
 }
 
 float Executor::Impl::stop(int64_t max_spin_count) {
     this->wait(max_spin_count);
-    atomicStoreRelaxed(flag_->ref<int>(), -1);
+    if (is_recording_) {
+        timer_end_->record(stream_raw_);
+    }
+    if (loop_mode_) {
+        atomicStoreRelaxed(flag_->ref<int>(), -1);
+    }
     GLOG(gpuStreamSynchronize(stream_raw_));
     if (is_recording_) {
         elapsed_msec_ = timer_end_->elapsed_msec(*timer_begin_);
@@ -847,8 +882,9 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
 }
 
 Executor::Executor(int device_id, Stream stream, const std::string &name,
-                   const std::string &plan)
-    : impl_(std::make_unique<Executor::Impl>(device_id, stream, name)) {
+                   const std::string &plan, bool loop_mode)
+    : impl_(std::make_unique<Executor::Impl>(device_id, stream, name,
+                                             loop_mode)) {
     auto &plan_path = get_env().enforce_plan_path;
     if (!plan_path.empty()) {
         LOG(INFO, "Enforce executor plan path: ", plan_path);
@@ -901,10 +937,10 @@ void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
 DefaultExecutor::DefaultExecutor(
     const Model &model, int device_id, Stream stream,
     const std::vector<DefaultPlanner::ConfigRule> &config_rules,
-    const std::string &name)
+    const std::string &name, bool loop_mode)
     : Executor((device_id < 0) ? (model.rank() % get_env().num_ranks_per_host)
                                : device_id,
-               stream, name, "") {
+               stream, name, "", loop_mode) {
     DefaultPlanner planner(model, impl_->device_id());
     for (const auto &rule : config_rules) {
         planner.install_config_rule(rule);

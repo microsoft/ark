@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_COMPILE_H_
-#define ARK_GPU_COMPILE_H_
+#ifndef ARK_GPU_COMPILE_HPP_
+#define ARK_GPU_COMPILE_HPP_
 
 #include <string>
 #include <vector>
@@ -16,4 +16,4 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
 
 }  // namespace ark
 
-#endif  // ARK_GPU_COMPILE_H_
+#endif  // ARK_GPU_COMPILE_HPP_

@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_event.h"
+#include "gpu/gpu_event.hpp"
 
-#include "gpu/gpu_logging.h"
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu_logging.hpp"
+#include "gpu/gpu_manager.hpp"
 
 namespace ark {
 class GpuEvent::Impl {

@@ -101,12 +101,11 @@ class Runtime:
 
     def launch(
         self,
-        rank: int = 0,
-        world_size: int = 1,
         gpu_id: int = 0,
         plan: str = "",
         plan_path: str = "",
         stream: int = 0,
+        loop_mode: bool = True,
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -135,6 +134,7 @@ class Runtime:
                 stream,
                 "ArkRuntime",
                 plan,
+                loop_mode,
             )
             self.executor = _RuntimeState.executor
             self.executor.compile()

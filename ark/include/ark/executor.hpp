@@ -20,7 +20,7 @@ class Executor {
    public:
     /// Constructor.
     Executor(int device_id, Stream stream, const std::string &name,
-             const std::string &plan);
+             const std::string &plan, bool loop_mode = true);
 
     /// Destructor.
     ~Executor();
@@ -96,7 +96,7 @@ class DefaultExecutor : public Executor {
     DefaultExecutor(
         const Model &model, int device_id = -1, Stream stream = nullptr,
         const std::vector<DefaultPlanner::ConfigRule> &config_rules = {},
-        const std::string &name = "DefaultExecutor");
+        const std::string &name = "DefaultExecutor", bool loop_mode = true);
 };
 
 }  // namespace ark
