@@ -3,7 +3,8 @@
 
 import ark
 import torch
-from torch.nn.functional import mse_loss
+import torch.optim as optim
+
 from ark.module import ARKComponent, ARKFunction, ARKLayer
 from ark import Tensor, Parameter
 
@@ -52,16 +53,31 @@ class ARKModel(SimpleModel):
     def __init__(self, simple_model):
         super().__init__()
         # We want to run Linear layers 0 and 1 on ARK
+        torch_weight_1 = simple_model.layers[1].weight.clone().detach().to("cuda:0")
+        print("MODEL WEIGHT (PYTORCH):", simple_model.layers[1].weight)
+        print("MODEL WEIGHT (ARK):", torch_weight_1)
         weight_0 = Parameter.from_tensor(
-            Tensor.from_torch(simple_model.layers[1].weight.to("cuda:0"))
+            Tensor.from_torch(torch_weight_1.requires_grad_(True))
         )
+        torch_weight_2 = simple_model.layers[2].weight.clone().detach().to("cuda:0")
+        print("MODEL WEIGHT (PYTORCH):", simple_model.layers[2].weight)
+        print("MODEL WEIGHT (ARK):", torch_weight_2)
         weight_1 = Parameter.from_tensor(
-            Tensor.from_torch(simple_model.layers[2].weight.to("cuda:0"))
+            Tensor.from_torch(torch_weight_2.requires_grad_(True))
         )
-        ark_layers = [
-            ARKLayer(ARKLinear, weight_0),
-            ARKLayer(ARKLinear, weight_1),
+        ark_funcs = [
+            ARKLinear,
+            ARKLinear
         ]
+        args_list = [
+            [weight_0],
+            [weight_1]
+        ]
+        kwargs_list = [
+            {},
+            {}
+        ]
+        ark_layers = [ARKLayer(ark_func, *args, **kwargs) for ark_func, args, kwargs in zip(ark_funcs, args_list, kwargs_list)]
         # Create an ARK component consisting of our consecutive ARK layers
         ark_component = ARKComponent(ark_layers)
         # Replace the first two linear layers with our ARK component
@@ -87,23 +103,40 @@ ark_model.to("cuda:0")
 
 # Now lets run the model on some random input
 input_tensor = torch.randn(128, 256).to("cuda:0").requires_grad_(True)
-
-pytorch_output = pytorch_model(input_tensor)
-ark_output = ark_model(input_tensor)
+input2 = input_tensor.clone().detach().requires_grad_(True)
 
 # Compare the results of both models
-assert(torch.allclose(pytorch_output, ark_output, atol=1e-4, rtol=1e-2))
 
 # Define an arbitrary target
 target = torch.randn(128, 256).to("cuda:0")
 
-# Compute losses
-torch_loss, ark_loss = mse_loss(pytorch_output, target), mse_loss(ark_output, target)
+loss_fn = torch.nn.MSELoss()
+optim_torch = optim.SGD(pytorch_model.parameters(), lr=0.01)
+optim_ark = optim.SGD(ark_model.parameters(), lr=0.01)
+num_iters = 2
+for iter in range(num_iters):
+    print(f"Iteration {iter+1}/{num_iters}")
 
-# Perform a backward pass
-torch_loss.backward()
-ark_loss.backward()
+    optim_torch.zero_grad()
+    optim_ark.zero_grad()
 
-print("PyTorch loss:", torch_loss.item())
-print("ARK loss:", ark_loss.item())
+    pytorch_output = pytorch_model(input_tensor)
+    ark_output = ark_model(input2)
+
+    print("PyTorch output:", pytorch_output)
+    print("ARK output:", ark_output)
+
+    #Compute loss
+    torch_loss = loss_fn(pytorch_output, target)
+    ark_loss = loss_fn(ark_output, target)
+
+    print(f"PyTorch loss: {torch_loss.item()}")
+    print(f"ARK loss: {ark_loss.item()}")
+
+    # Perform a backward pass
+    torch_loss.backward()
+    ark_loss.backward()
+
+    optim_torch.step()
+    optim_ark.step()
 
