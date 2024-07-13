@@ -14,7 +14,7 @@ if(GIT_CLANG_FORMAT)
         COMMAND ${GIT_CLANG_FORMAT} --style=file --diff || true
     )
     add_custom_target(cpplint-autofix
-        COMMAND ${GIT_CLANG_FORMAT} --style=file || true
+        COMMAND ${GIT_CLANG_FORMAT} --style=file --force --extensions cc,cpp,h,hpp,cu,in,hip || true
     )
 else()
     message(STATUS "git-clang-format not found.")
