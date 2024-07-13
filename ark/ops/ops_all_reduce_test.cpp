@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "model/model_buffer.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"
@@ -121,33 +122,52 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
     ark::Tensor reshaped_input = m.reshape(input, {input.shape().nelems()});
     ark::Tensor reshaped_output = m.reshape(output, {output.shape().nelems()});
     int nelems_per_rank = reshaped_input.shape().nelems() / rank_num;
-    size_t nbytes_per_rank =
+    uint32_t nbytes_per_rank =
         nelems_per_rank * reshaped_input.data_type().bytes();
     std::vector<ark::Tensor> sharded_inputs =
         m.sharding(reshaped_input, 0, nelems_per_rank);
     std::vector<ark::Tensor> sharded_outputs =
         m.sharding(reshaped_output, 0, nelems_per_rank);
     int npeer = rank_num - 1;
+    size_t scratch_off = flag % 2 == 0 ? 0 : nbytes_per_rank * npeer * 2;
+    ark::Dims scratch_strides = {nbytes_per_rank * 2 * npeer * 2};
     for (int i = 0; i < rank_num; i++) {
         if (i != rank) {
             int off_index = i < rank ? rank - 1 : rank;
-            ark::Tensor scratch_tensor =
-                m.tensor(nbytes_per_rank * 2, ark::UINT8,
-                         ark::Dims(nbytes_per_rank * 2 * npeer),
-                         ark::Dims(nbytes_per_rank * off_index * 2),
-                         ark::Dims(nbytes_per_rank * 2), i);
+            ark::Tensor scratch_tensor = m.tensor(
+                std::make_shared<ark::ModelBuffer>(i), nbytes_per_rank * 2,
+                ark::UINT8, scratch_strides,
+                ark::Dims(scratch_off + nbytes_per_rank * off_index * 2),
+                ark::Dims(nbytes_per_rank * 2));
             m.send_packet(sharded_inputs[rank], i, tag_send_reduce, flag,
                           scratch_tensor);
         }
     }
     std::vector<ark::Tensor> deps;
-    deps.push_back(m.recv_reduce_send_packet(sharded_inputs[rank], remote_ranks,
-                                             tag_send_reduce, tag_output, flag,
-                                             sharded_outputs[rank]));
+    ark::Tensor scratch =
+        m.tensor(nbytes_per_rank * 2 * npeer, ark::UINT8, scratch_strides,
+                 scratch_off, nbytes_per_rank * 2 * npeer);
+    std::vector<ark::Tensor> outputs;
+    size_t out_off = flag % 2 == 0 ? 0 : nbytes_per_rank * 2;
+    ark::Dims out_shape = {nbytes_per_rank * 2};
+    ark::Dims out_strides = {nbytes_per_rank * 2 * 2}; // packet + double buffer
     for (int i = 0; i < rank_num; i++) {
         if (i != rank) {
-            deps.push_back(
-                m.recv_packet(sharded_outputs[i], i, tag_output, flag));
+            outputs.push_back(m.tensor(std::make_shared<ark::ModelBuffer>(i),
+                                       out_shape, ark::UINT8, out_strides,
+                                       out_off, out_shape));
+        }
+    }
+    deps.push_back(m.recv_reduce_send_packet(
+        sharded_inputs[rank], remote_ranks, tag_send_reduce, tag_output, flag,
+        sharded_outputs[rank], outputs, scratch));
+    for (int i = 0; i < rank_num; i++) {
+        if (i != rank) {
+            ark::Tensor scratch_tensor =
+                m.tensor(out_shape, ark::UINT8, out_strides, ark::Dims(out_off),
+                         out_shape);
+            deps.push_back(m.recv_packet(sharded_outputs[i], i, tag_output,
+                                         flag, scratch_tensor));
         }
     }
     return m.identity(output, deps);
@@ -207,10 +227,10 @@ ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
         if (i != rank) {
             int remote_off = i < rank ? rank - 1 : rank;
             ark::Tensor scratch =
-                m.tensor(nelems_per_rank, reshaped_input.data_type(),
-                         {nelems_per_rank * npeer},
+                m.tensor(std::make_shared<ark::ModelBuffer>(i), nelems_per_rank,
+                         reshaped_input.data_type(), {nelems_per_rank * npeer},
                          ark::Dims(nelems_per_rank * remote_off),
-                         ark::Dims(nelems_per_rank), i);
+                         ark::Dims(nelems_per_rank));
             m.send(sharded_inputs[i], i, send_tag, scratch);
         }
     }
@@ -252,10 +272,10 @@ ark::unittest::State test_all_reduce_packet_8gpus() {
 }
 
 int main() {
-    UNITTEST(test_all_reduce_model);
-    UNITTEST(test_all_reduce_4gpus);
-    UNITTEST(test_all_reduce_8gpus);
-    // UNITTEST(test_all_reduce_packet_4gpus);
-    // UNITTEST(test_all_reduce_packet_8gpus);
+    // UNITTEST(test_all_reduce_model);
+    // UNITTEST(test_all_reduce_4gpus);
+    // UNITTEST(test_all_reduce_8gpus);
+    UNITTEST(test_all_reduce_packet_4gpus);
+    UNITTEST(test_all_reduce_packet_8gpus);
     return 0;
 }

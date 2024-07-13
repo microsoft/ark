@@ -7,6 +7,7 @@
 #include "ark/executor.hpp"
 #include "ark/planner.hpp"
 #include "half.h"
+#include "model/model_buffer.hpp"
 #include "ops_test_common.hpp"
 
 ark::unittest::State test_communication_send_recv_unidir() {
@@ -423,7 +424,8 @@ ark::unittest::State test_communication_send_recv_reduce() {
 
             int peer_gpu_id = (gpu_id + 1) % 2;
             ark::Tensor remote_scratch =
-                model.tensor({512}, ark::FP16, {}, {}, {}, peer_gpu_id);
+                model.tensor(std::make_shared<ark::ModelBuffer>(peer_gpu_id),
+                             {512}, ark::FP16, {}, {}, {});
             ark::Tensor out = model.send(shard_tensors[peer_gpu_id],
                                          peer_gpu_id, 0, remote_scratch);
             out = model.device_sync(out, gpu_id, 2);

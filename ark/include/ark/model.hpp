@@ -58,7 +58,10 @@ class Model : public ModelGraph {
     ///
     Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
-                  const Dims &padded_shape = {}, const int rank = -1,
+                  const Dims &padded_shape = {}, const std::string &name = "");
+    Tensor tensor(std::shared_ptr<ModelBuffer> buffer, const Dims &shape,
+                  const DataType &data_type, const Dims &strides = {},
+                  const Dims &offsets = {}, const Dims &padded_shape = {},
                   const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
