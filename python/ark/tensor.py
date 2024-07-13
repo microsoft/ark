@@ -241,3 +241,10 @@ class Parameter(Tensor):
         """
         super().__init__(_tensor)
         self.runtime_id = runtime_id
+
+    @staticmethod
+    def from_tensor(tensor: Tensor) -> "Parameter":
+        """
+        Creates a Parameter from a Tensor.
+        """
+        return Parameter(tensor._tensor, tensor.runtime_id)
