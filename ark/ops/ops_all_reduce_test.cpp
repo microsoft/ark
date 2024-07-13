@@ -273,8 +273,8 @@ ark::unittest::State test_all_reduce_packet_8gpus() {
 
 int main() {
     // UNITTEST(test_all_reduce_model);
-    // UNITTEST(test_all_reduce_4gpus);
-    // UNITTEST(test_all_reduce_8gpus);
+    UNITTEST(test_all_reduce_4gpus);
+    UNITTEST(test_all_reduce_8gpus);
     UNITTEST(test_all_reduce_packet_4gpus);
     UNITTEST(test_all_reduce_packet_8gpus);
     return 0;

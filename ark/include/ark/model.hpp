@@ -208,12 +208,6 @@ class Model : public ModelGraph {
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
-    Tensor all_reduce_packet(Tensor input, int rank, int rank_num, int flag,
-                             Tensor output = NullTensor,
-                             const std::string &name = "");
-    Tensor all_reduce_sm(Tensor input, int rank, int rank_num,
-                         Tensor ouput = NullTensor,
-                         const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each

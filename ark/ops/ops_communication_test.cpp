@@ -211,6 +211,7 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
             config["NumTasks"] = 1;
             config["NumWarps"] = 1;
             config["SramBytes"] = 0;
+            config["Wait"] = true;
         }
         return config.dump();
     };
@@ -469,8 +470,8 @@ int main() {
     UNITTEST(test_communication_send_recv_unidir);
     UNITTEST(test_communication_send_recv_bidir);
     UNITTEST(test_communication_send_recv_bidir_sm);
-    // UNITTEST(test_communication_send_packet);
-    // UNITTEST(test_communication_send_recv_reduce_packet);
-    // UNITTEST(test_communication_send_recv_reduce);
+    UNITTEST(test_communication_send_packet);
+    UNITTEST(test_communication_send_recv_reduce_packet);
+    UNITTEST(test_communication_send_recv_reduce);
     return ark::unittest::SUCCESS;
 }
