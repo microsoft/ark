@@ -8,9 +8,12 @@ from .tensor import Tensor, Parameter
 from .runtime import Runtime, DefaultPlanner
 from .ops import tensor
 from .data_type import DataType
+import ark
 
 try:
     import torch
+    from torch.autograd import Function
+    from torch.nn import Module as TorchModule
 
     _no_torch = False
 except ImportError:
@@ -191,3 +194,65 @@ class RuntimeModule(Module):
 
             rt.run()
             return _recursive_ark_to_torch(self.forward_output)
+    
+
+class ARKFunction(Function):
+    """
+    Base class for ARK functions.
+    """
+    @staticmethod
+    def forward(ctx, *inputs):
+        ark_inputs = [Tensor.from_torch(t) if isinstance(t, torch.Tensor) else t for t in inputs]
+        ctx.save_for_backward(*ark_inputs)
+        return ARKFunction.build_forward(ctx, *ark_inputs)
+
+    @staticmethod
+    def build_forward(ctx, ark_input, ark_weight):
+        # replace this with user impl...
+        return ark.matmul(ark_input, ark_weight, transpose_other=True)
+    
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+       ark_grad_outputs = [Tensor.from_torch(t) if isinstance(t, torch.Tensor) else t for t in grad_outputs]
+       ark_saved_tensors = ctx.saved_tensors
+       ark_grads = ARKFunction.build_backward(ctx, *ark_grad_outputs, *ark_saved_tensors)
+       torch_grads = [t.get_torch_view().clone() if isinstance(t, Tensor) else t for t in ark_grads]
+       return tuple(torch_grads)
+
+    @staticmethod
+    def build_backward(ctx, *grad_outputs): ...
+
+class ARKLayer(TorchModule):
+    def __init__(self, ark_func, *args, **kwargs):
+        super().__init__()
+        self.ark_func = ark_func
+        self.args = args
+        self.kwargs = kwargs
+    
+    def forward(self, input):
+        return self.ark_func.apply(input, *self.args, **self.kwargs)
+
+class ARKComponent(TorchModule):
+    def __init__(self, ark_layers):
+        super().__init__()
+        self.ark_layers = ark_layers
+    
+    def forward(self, input):
+        # Convert input to ARK tensor
+        ark_input = Tensor.from_torch(input)
+        ark_output = ark_input
+
+        # Accumulate ARK operations
+        for layer in self.ark_layers:
+            print("layer: ", layer)
+            print('calling layer')
+            ark_output = layer(ark_output)
+            print('res: ', ark_output)
+        
+        with Runtime.get_runtime() as rt:
+            rt.launch(plan=DefaultPlanner().plan())
+            rt.run()
+
+            result = ark_output.get_torch_view().clone()
+        
+        return result
