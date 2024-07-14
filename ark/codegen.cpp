@@ -213,7 +213,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
     for (auto &op_json : task_json["Ops"]) {
         ss << this->def_op(op_json, task_json["Id"], op_idx++);
     }
-    ss << "__noinline__ __device__ void t" << task_json["Id"]
+    ss << "__device__ void t" << task_json["Id"]
        << "(char* _buf, int _idx, int _spw) {\n";
     op_idx = 0;
     for (auto &op_json : task_json["Ops"]) {
