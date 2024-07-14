@@ -46,6 +46,7 @@ class SimpleModel(torch.nn.Module):
             torch.nn.Linear(256, 256, bias=False),  # Layer 2
             torch.nn.Linear(256, 256, bias=False),  # Layer 3
             torch.nn.Linear(256, 256, bias=False),  # Layer 4
+            torch.nn.ReLU(),    #Activation
         )
 
     def forward(self, x):
@@ -101,7 +102,7 @@ target = torch.randn(128, 256).to("cuda:0")
 loss_fn = torch.nn.MSELoss()
 optim_torch = optim.SGD(pytorch_model.parameters(), lr=0.01)
 optim_ark = optim.SGD(ark_model.parameters(), lr=0.01)
-num_iters = 1
+num_iters = 3
 for iter in range(num_iters):
     print(f"Iteration {iter+1}/{num_iters}")
 
