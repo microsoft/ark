@@ -121,16 +121,22 @@ class Tensor:
                 self.shape(), dtype=torch_type, device=torch.device(dev_name)
             )
         elif list(tensor.shape) != self.shape():
-            raise ValueError(f"torch tensor shape {list(tensor.shape)} "
-                             f"does not match the tensor {self.shape()}")
+            raise ValueError(
+                f"torch tensor shape {list(tensor.shape)} "
+                f"does not match the tensor {self.shape()}"
+            )
         elif tensor.dtype != torch_type:
-            raise ValueError(f"torch tensor dtype {tensor.dtype} "
-                             f"does not match the tensor {torch_type}")
+            raise ValueError(
+                f"torch tensor dtype {tensor.dtype} "
+                f"does not match the tensor {torch_type}"
+            )
         elif not tensor.is_contiguous():
             raise ValueError("torch tensor is not contiguous in memory")
         elif tensor.numel() != self.nelems():
-            raise ValueError(f"torch tensor size {tensor.numel()} "
-                             f"does not match the tensor {self.nelems()}")
+            raise ValueError(
+                f"torch tensor size {tensor.numel()} "
+                f"does not match the tensor {self.nelems()}"
+            )
         tensor_bytes = self.nelems() * self.dtype().element_size()
         rt.executor.tensor_read(
             self._tensor, tensor.data_ptr(), tensor_bytes, stream, True
