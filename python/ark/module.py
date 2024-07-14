@@ -194,14 +194,15 @@ class RuntimeModule(Module):
 
             rt.run()
             return _recursive_ark_to_torch(self.forward_output)
-    
+
 
 class ARKFunction(Function):
     """
     Base class for ARK functions.
     """
+
     @staticmethod
-    def forward(ctx, *inputs, **kwargs): ...
+    def forward(*inputs, **kwargs): ...
 
     @staticmethod
     def setup_context(ctx, inputs, output, **kwargs): ...
@@ -216,42 +217,26 @@ class ARKLayer(TorchModule):
         self.ark_func = ark_func
         self.args = args
         self.kwargs = kwargs
-    
+
     def forward(self, input):
-        print("----------Calling apply-------")
-        print("INPUT: ", input)
-        print("ARGS: ", self.args)
-        print("KWARGS: ", self.kwargs)
         return self.ark_func.apply(input, *self.args, **self.kwargs)
 
-
-def print_layers(layers):
-    for layer in layers:
-        print("LAYER ARGS: ", layer.args)
-        print("LAYER KWARGS: ", layer.kwargs)
-        print("LAYER FUNC: ", layer.ark_func)
-
-   
 
 class ARKComponent(TorchModule):
     def __init__(self, ark_layers):
         super().__init__()
         self.ark_layers = ark_layers
-    
+
     def forward(self, input):
         ark_input = Tensor.from_torch(input)
         ark_output = ark_input
         # Accumulate ARK operations
-        print("========LAYERS========")
-        print_layers(self.ark_layers)
         for layer in self.ark_layers:
-            print("ARK INPUT: ", ark_output.shape())
-            print_layers(self.ark_layers)
             ark_output = layer(ark_output)
         rt = ark.Runtime.get_runtime()
         rt.launch(plan=DefaultPlanner().plan())
         rt.run()
         res = ark_output.get_torch_view().clone()
         rt.stop()
-        rt.reset()    
+        rt.reset()
         return res
