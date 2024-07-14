@@ -13,7 +13,16 @@ from ark import Tensor, Parameter
 # Define a custom ARK function for a linear layer
 class ARKLinear(ARKFunction):
     @staticmethod
-    def build_backward(ctx, ark_grad_output, ark_input, ark_weight):
+    def forward(ark_input, ark_weight):
+        return ark.matmul(ark_input, ark_weight, transpose_other=True)
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        input, weight = inputs
+        ctx.save_for_backward(input, weight)
+
+    @staticmethod
+    def backward(ctx, ark_grad_output, ark_input, ark_weight):
         grad_input = grad_weight = None
         if ctx.needs_input_grad[0]:
             grad_input = ark.matmul(
@@ -25,6 +34,7 @@ class ARKLinear(ARKFunction):
             )
         return grad_input, grad_weight
 
+ark_linear = ARKLinear()
 
 # Define a PyTorch model
 class SimpleModel(torch.nn.Module):
@@ -36,69 +46,42 @@ class SimpleModel(torch.nn.Module):
             torch.nn.Linear(256, 256, bias=False),  # Layer 2
             torch.nn.Linear(256, 256, bias=False),  # Layer 3
             torch.nn.Linear(256, 256, bias=False),  # Layer 4
-            torch.nn.ReLU(),  # Activation function
+            
         )
 
     def forward(self, x):
         return self.layers(x)
 
+def replace_layers_with_ark(model, layer_indicies):
+    weight = model.layers[0].weight.clone().detach().to("cuda:0")
+    ark_weight = Parameter.from_tensor(Tensor.from_torch(weight.requires_grad_(True)))
+
+    weight_1 = model.layers[1].weight.clone().detach().to("cuda:0")
+    ark_weight_1 = Parameter.from_tensor(Tensor.from_torch(weight_1.requires_grad_(True)))
+
+    model.layers[0] = ARKComponent([
+        ARKLayer(ark_linear, ark_weight),
+        ARKLayer(ark_linear, ark_weight_1)
+    ])
+    del model.layers[1]
+    
+    return model
+
+
 
 # Move the PyTorch model to GPU
 pytorch_model = SimpleModel()
-pytorch_model.to("cuda:0")
-
-
-# Let's define the same model but, incorporate ARK
-class ARKModel(SimpleModel):
-    def __init__(self, simple_model):
-        super().__init__()
-        # We want to run Linear layers 0 and 1 on ARK
-        torch_weight_1 = simple_model.layers[1].weight.clone().detach().to("cuda:0")
-        print("MODEL WEIGHT (PYTORCH):", simple_model.layers[1].weight)
-        print("MODEL WEIGHT (ARK):", torch_weight_1)
-        weight_0 = Parameter.from_tensor(
-            Tensor.from_torch(torch_weight_1.requires_grad_(True))
-        )
-        torch_weight_2 = simple_model.layers[2].weight.clone().detach().to("cuda:0")
-        print("MODEL WEIGHT (PYTORCH):", simple_model.layers[2].weight)
-        print("MODEL WEIGHT (ARK):", torch_weight_2)
-        weight_1 = Parameter.from_tensor(
-            Tensor.from_torch(torch_weight_2.requires_grad_(True))
-        )
-        ark_funcs = [
-            ARKLinear,
-            ARKLinear
-        ]
-        args_list = [
-            [weight_0],
-            [weight_1]
-        ]
-        kwargs_list = [
-            {},
-            {}
-        ]
-        ark_layers = [ARKLayer(ark_func, *args, **kwargs) for ark_func, args, kwargs in zip(ark_funcs, args_list, kwargs_list)]
-        # Create an ARK component consisting of our consecutive ARK layers
-        ark_component = ARKComponent(ark_layers)
-        # Replace the first two linear layers with our ARK component
-        new_layers = [
-            simple_model.layers[0],
-            ark_component,
-            simple_model.layers[3],
-            simple_model.layers[4],
-            simple_model.layers[5],
-        ]
-        self.layers = torch.nn.Sequential(*new_layers)
-
-
-# Instantiate the hybrid PyTorch/ARK model
-ark_model = ARKModel(pytorch_model)
+ark_model = SimpleModel()
+ark_model.load_state_dict(pytorch_model.state_dict())
+ark_model = replace_layers_with_ark(ark_model, [0])
 
 # Let's print the layers of our PyTorch model and the hybrid model
 print("PyTorch model:\n", pytorch_model)
 print("\nARK model:\n", ark_model)
 
+
 # Move the hybrid to GPU
+pytorch_model.to("cuda:0")
 ark_model.to("cuda:0")
 
 # Now lets run the model on some random input
@@ -108,12 +91,12 @@ input2 = input_tensor.clone().detach().requires_grad_(True)
 # Compare the results of both models
 
 # Define an arbitrary target
-target = torch.randn(128, 256).to("cuda:0")
+target = torch.randn(128, 256).to("cuda:0") 
 
 loss_fn = torch.nn.MSELoss()
 optim_torch = optim.SGD(pytorch_model.parameters(), lr=0.01)
 optim_ark = optim.SGD(ark_model.parameters(), lr=0.01)
-num_iters = 2
+num_iters = 1
 for iter in range(num_iters):
     print(f"Iteration {iter+1}/{num_iters}")
 

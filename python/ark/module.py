@@ -200,47 +200,15 @@ class ARKFunction(Function):
     """
     Base class for ARK functions.
     """
+    @staticmethod
+    def forward(ctx, *inputs, **kwargs): ...
 
     @staticmethod
-    def setup_context(ctx, inputs, output):
-        print("SAVING CTX")
-        ctx.save_for_backward(*inputs)
+    def setup_context(ctx, inputs, output, **kwargs): ...
 
     @staticmethod
-    def build_forward(ark_input, ark_weight):
-        # replace this with user impl.
-        print("--build forward called--")
-        return ark.matmul(ark_input, ark_weight, transpose_other=True)
+    def backward(ctx, *grad_outputs): ...
 
-    @staticmethod
-    def forward(*inputs, **kwargs):
-        print("base forward called")
-        ark_inputs = [Tensor.from_torch(t) if isinstance(t, torch.Tensor) else t for t in inputs]
-        return ARKFunction.build_forward(*ark_inputs, **kwargs)
-    
-    @staticmethod
-    def backward(ctx, *grad_outputs):
-       print("base backward called")
-       ark_grad_outputs = [Tensor.from_torch(t) if isinstance(t, torch.Tensor) else t for t in grad_outputs]
-       ark_saved_tensors = ctx.saved_tensors
-       ark_grads = ARKFunction.build_backward(ctx, *ark_grad_outputs, *ark_saved_tensors)
-       torch_grads = [t.get_torch_view().clone() if isinstance(t, Tensor) else t for t in ark_grads]
-       return tuple(torch_grads)
-
-    @staticmethod
-    def build_backward(ctx, ark_grad_output, ark_input, ark_weight):
-        grad_input = grad_weight = None
-        if ctx.needs_input_grad[0]:
-            print("c1")
-            grad_input = ark.matmul(
-                ark_grad_output, ark_weight, transpose_other=False
-            )
-        if ctx.needs_input_grad[1]:
-            print("c2")
-            grad_weight = ark.matmul(
-                ark_input, ark_grad_output, transpose_input=True
-            )
-        return grad_input, grad_weight
 
 class ARKLayer(TorchModule):
     def __init__(self, ark_func, *args, **kwargs):
