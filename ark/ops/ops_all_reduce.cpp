@@ -12,11 +12,7 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         tags[i] = this->unique_tag();
     }
     if (output.is_null()) {
-        output = this->tensor(input.shape(), input.data_type(), input.strides(),
-                              input.offsets(), input.padded_shape());
-    }
-    if (output != input) {
-        output = this->copy(input, output);
+        output = this->copy(input);
     }
     Tensor prev_recv = NullTensor;
     Tensor cumulate = output;
@@ -25,9 +21,9 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         int gpu_src = (gpu_id + gpu_num - i) % gpu_num;
         Tensor send_data;
         if (prev_recv.is_null()) {
-            send_data = output;
+            send_data = input;
         } else {
-            send_data = this->identity(output, {prev_recv});
+            send_data = this->identity(input, {prev_recv});
         }
         send_data = this->send(send_data, gpu_dst, tags[gpu_id]);
         Tensor send_done_tensor = this->send_done(send_data);
