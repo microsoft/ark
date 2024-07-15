@@ -82,7 +82,7 @@ from .ops import (
     # all_gather,
     # local_all_gather,
     # local_reduce_scatter,
-    # all_reduce,
+    all_reduce,
     # local_all_reduce,
     # local_all_reduce_packet,
     embedding,

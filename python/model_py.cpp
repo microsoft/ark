@@ -111,5 +111,8 @@ void register_model(py::module &m) {
              py::arg("shape"), py::arg("data_type"), py::arg("strides"),
              py::arg("offsets"), py::arg("padded_shape"), py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
-             py::arg("permutation"), py::arg("output"), py::arg("name"));
+             py::arg("permutation"), py::arg("output"), py::arg("name"))
+        .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
+             py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output"),
+             py::arg("name"));
 }

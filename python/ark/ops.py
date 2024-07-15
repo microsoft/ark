@@ -577,6 +577,30 @@ def zeros(
     )
 
 
+def all_reduce(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    output: Tensor = NullTensor,
+    name: str = "all_reduce",
+) -> Tensor:
+    """
+    Performs an all-reduce operator across all GPUs, aggregating the
+    input tensors. Takes the `input` tensor, the current GPU's
+    `rank`, and the total number of GPUs `world_size`.
+    Usage:
+    ark.init(rank, world_size)
+    input_tensor = ark.tensor([tensor_len], ark.fp16)
+    allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
+    """
+    if output is not NullTensor:
+        output = output._tensor
+    _tensor = Model.get_model().all_reduce(
+        input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
 # def im2col(
 #     input: Tensor,
 #     kernel_height: int,
@@ -781,30 +805,6 @@ def zeros(
 #         rank,
 #         ranks_per_node,
 #         name,
-#     )
-#     return Tensor(_tensor)
-
-
-# def all_reduce(
-#     input: Tensor,
-#     rank: int,
-#     world_size: int,
-#     output: Tensor = NullTensor,
-#     name: str = "all_reduce",
-# ) -> Tensor:
-#     """
-#     Performs an all-reduce operator across all GPUs, aggregating the
-#     input tensors. Takes the `input` tensor, the current GPU's
-#     `rank`, and the total number of GPUs `world_size`.
-#     Usage:
-#     ark.init(rank, world_size)
-#     input_tensor = ark.tensor([tensor_len], ark.fp16)
-#     allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
-#     """
-#     if output is not NullTensor:
-#         output = output._tensor
-#     _tensor = Model.get_model().all_reduce(
-#         input._tensor, rank, world_size, output, name
 #     )
 #     return Tensor(_tensor)
 

@@ -139,7 +139,7 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
                 ark::UINT8, scratch_strides,
                 ark::Dims(scratch_off + nbytes_per_rank * off_index * 2),
                 ark::Dims(nbytes_per_rank * 2));
-            m.send_packet(sharded_inputs[rank], i, tag_send_reduce, flag,
+            m.send_packet(sharded_inputs[i], i, tag_send_reduce, flag,
                           scratch_tensor);
         }
     }
