@@ -2,10 +2,11 @@
 # Licensed under the MIT license.
 
 import argparse
-from pathlib import Path
 import ark
 import numpy as np
 import multiprocessing
+import os
+from pathlib import Path
 import time
 
 world_size = 8
@@ -48,7 +49,7 @@ def allreduce_test_function(rank, np_inputs, plan_path, ground_truth):
         )
 
 
-def allreduce_test(plan_path: str):
+def allreduce_test(plan_path: str, plan_prefix: str):
     num_processes = world_size  # number of processes
     processes = []
     np_inputs = []
@@ -63,7 +64,7 @@ def allreduce_test(plan_path: str):
             args=(
                 i,
                 np_inputs[i],
-                plan_path + "/plan_gpu" + str(i) + ".json",
+                os.path.join(plan_path, plan_prefix + str(i) + ".json"),
                 ground_truth,
             ),
         )
@@ -79,6 +80,7 @@ if __name__ == "__main__":
     ark.init()
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan_dir", type=str, default="examples/tutorial")
+    parser.add_argument("--plan_prefix", type=str, default="plan_gpu")
 
     args = parser.parse_args()
-    allreduce_test(args.plan_dir)
+    allreduce_test(args.plan_dir, args.plan_prefix)

@@ -10,6 +10,7 @@
 
 #include "ark/model.hpp"
 #include "ark/model_ref.hpp"
+#include "ark/planner.hpp"
 #include "ark/random.hpp"
 #include "bfloat16.h"
 #include "half.h"
@@ -171,7 +172,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data = {},
                       bool print_on_error = false, int rank = 0,
-                      int world_size = 1);
+                      int world_size = 1,
+                      DefaultPlanner::ConfigRule config_rule = nullptr);
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size);
 

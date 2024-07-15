@@ -45,7 +45,7 @@ struct PacketIntrinsic {
             out->write(stage, Flag);
         }
         if constexpr (ReadPacket) {
-            OutDataType result = in->read(Flag);
+            OutDataType result = in->read(Flag, -1);
             ark::store<sizeof(OutputType), false>(out, &result);
         }
     }
@@ -117,7 +117,7 @@ struct PacketReduceCompType {
         for (int i = 0; i < NPeers; ++i) {
             PacketType *pkg =
                 scratch + (idx + i * NElemsPerRank) / NelemPerThread;
-            Payload payload = pkg->read(Flag);
+            Payload payload = pkg->read(Flag, -1);
             ReduceType::template reduce<NelemPerThread>(
                 reduced, reduced, reinterpret_cast<DataType *>(&payload));
         }
