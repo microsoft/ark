@@ -247,6 +247,57 @@ ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
     return res;
 }
 
+
+template <int NumGpus>
+void test_all_reduce_sm_internal(ark::DimType nelem) {
+    auto config_rule = [nelem](const std::string op_str, const std::string) {
+        const int tile_y = 256;
+        const int num_tasks = nelem / tile_y;
+        auto op = nlohmann::json::parse(op_str);
+        nlohmann::json config;
+        if (op.at("Type") == "Send") {
+            config["ChannelType"] = "Sm";
+            config["Signal"] = false;
+            config["Tile"] = {1, tile_y};
+            config["NumTasks"] = num_tasks;
+            config["NumWarps"] = 4;
+            config["SramBytes"] = 0;
+        } else if (op.at("Type") == "DeviceSync") {
+            config["ChannelType"] = "Sm";
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 1;
+            config["SramBytes"] = 0;
+        } else if (op.at("Type") == "Recv") {
+            config["ChannelType"] = "Sm";
+            config["NumTasks"] = 1;
+            config["NumWarps"] = 1;
+            config["SramBytes"] = 0;
+            config["Wait"] = false;
+        }
+        return config.dump();
+    };
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem, config_rule]() {
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor ones = m.tensor({nelem}, ark::FP16);
+            ark::Tensor data = m.mul(ones, float(gpu_id + 1));
+            ark::Tensor output = all_reduce_sm(m, data, gpu_id, NumGpus, data);
+
+            std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
+                                              ark::half_t(1.0f));
+            auto result = ark::op_test(
+                "all_reduce_sm", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()},
+                false, gpu_id, NumGpus, config_rule);
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
 ark::unittest::State test_all_reduce_4gpus() {
     test_all_reduce_internal<4>(64);
     test_all_reduce_internal<4>(8192);
@@ -271,11 +322,25 @@ ark::unittest::State test_all_reduce_packet_8gpus() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_all_reduce_sm_4gpus() {
+    test_all_reduce_sm_internal<4>(2048 * 1024);
+    test_all_reduce_sm_internal<4>(8192 * 1024);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_sm_8gpus() {
+    test_all_reduce_sm_internal<8>(2048 * 1024);
+    test_all_reduce_sm_internal<8>(8192 * 1024);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     // UNITTEST(test_all_reduce_model);
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
     UNITTEST(test_all_reduce_packet_4gpus);
     UNITTEST(test_all_reduce_packet_8gpus);
+    UNITTEST(test_all_reduce_sm_4gpus);
+    UNITTEST(test_all_reduce_sm_8gpus);
     return 0;
 }
