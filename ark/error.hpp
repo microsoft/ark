@@ -20,6 +20,7 @@ class BaseError : public std::runtime_error {
         _name(const std::string &msg) : BaseError(msg) {} \
     };
 
+REGISTER_ERROR_TYPE(InternalError)
 REGISTER_ERROR_TYPE(InvalidUsageError)
 REGISTER_ERROR_TYPE(NotFoundError)
 REGISTER_ERROR_TYPE(ModelError)
