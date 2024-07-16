@@ -47,6 +47,7 @@ std::string ModelOpSend::impl_name(const Json &config) const {
     auto &output = write_tensors_[0];
     int remote_rank = output->buffer()->rank();
     bool signal = config["Signal"];
+    int num_warps = config["NumWarps"];
     std::string channel_type = config["ChannelType"];
     if (channel_type != "Proxy" && channel_type != "SecondaryProxy" &&
         channel_type != "Sm") {
@@ -66,7 +67,7 @@ std::string ModelOpSend::impl_name(const Json &config) const {
          vec_string(input->shape().dims4()),
          vec_string(output->strides().dims4()),
          vec_string(output->shape().dims4()), vec_string(unit_out_dims),
-         std::to_string(1), std::to_string(0),
+         std::to_string(num_warps), std::to_string(0),
          output->data_type()->type_str()});
 }
 

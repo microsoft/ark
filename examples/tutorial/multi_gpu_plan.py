@@ -11,7 +11,7 @@ import time
 
 world_size = 8
 
-tensor_len = 8192
+tensor_len = 8192 * 1024
 tensor_size = tensor_len * ark.fp16.element_size()
 
 
@@ -39,6 +39,7 @@ def allreduce_test_function(rank, np_inputs, plan_path, ground_truth):
             host_output, ground_truth, rtol=1e-2, atol=1e-2
         )
 
+        rt.barrier()
         # Measure throughput
         iter = 10000
         ts = time.time()

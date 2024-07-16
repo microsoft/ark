@@ -257,7 +257,7 @@ DEVICE void read(int ChanId, size_t remote_offset, size_t local_offset,
     DataType *local_data = reinterpret_cast<DataType *>(local);
     DataType *remote_data = reinterpret_cast<DataType *>(remote);
     DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
-                      type::Identity, true, false, UnitOutDims, NumWarps,
+                      type::Identity, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(local_data, remote_data, uop_idx);
 }
 
@@ -272,7 +272,7 @@ DEVICE void write(int ChanId, size_t remote_offset, size_t local_offset,
     DataType *local_data = reinterpret_cast<DataType *>(local);
     DataType *remote_data = reinterpret_cast<DataType *>(remote);
     DefaultBroadcast1<InDims, InShape, DataType, OutDims, OutShape, DataType,
-                      type::Identity, false, true, UnitOutDims, NumWarps,
+                      type::Identity, false, false, UnitOutDims, NumWarps,
                       SmemBytes>::run(remote_data, local_data, uop_idx);
 }
 

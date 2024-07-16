@@ -251,8 +251,9 @@ ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
 template <int NumGpus>
 void test_all_reduce_sm_internal(ark::DimType nelem) {
     auto config_rule = [nelem](const std::string op_str, const std::string) {
-        const int tile_y = 256;
-        const int num_tasks = nelem / tile_y;
+        const int tile_y = 64 /*nthreads per wrap*/ * 8 /*nelems per thread*/ *
+                           8 /*num wraps*/;
+        const int num_tasks = nelem / tile_y / NumGpus;
         auto op = nlohmann::json::parse(op_str);
         nlohmann::json config;
         if (op.at("Type") == "Send") {
@@ -260,7 +261,7 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
             config["Signal"] = false;
             config["Tile"] = {1, tile_y};
             config["NumTasks"] = num_tasks;
-            config["NumWarps"] = 4;
+            config["NumWarps"] = 8;
             config["SramBytes"] = 0;
         } else if (op.at("Type") == "DeviceSync") {
             config["ChannelType"] = "Sm";
@@ -273,6 +274,11 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
             config["NumWarps"] = 1;
             config["SramBytes"] = 0;
             config["Wait"] = false;
+        } else if (op.at("Type") == "RecvReduceSend") {
+            config["NumTasks"] = num_tasks;
+            config["NumWarps"] = 8;
+            config["SramBytes"] = 0;
+            config["Tile"] = {1, tile_y};
         }
         return config.dump();
     };

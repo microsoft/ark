@@ -11,7 +11,7 @@ include(FetchContent)
 FetchContent_Declare(
     mscclpp
     GIT_REPOSITORY https://github.com/microsoft/mscclpp
-    GIT_TAG 6893e28ba35023d48efeae91ba64ac34559604aa
+    GIT_TAG v0.5.2
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
