@@ -37,11 +37,15 @@ class Module:
         """
         When setting an attribute, if the attribute is a Module, add it to
         the sub_modules. If the attribute is a Tensor and this Tensor is a
-        parameter, add it to the parameters.
+        parameter, add it to the parameters. If the attribute is a
+        torch.nn.Parameter, convert it to an ARK Parameter before adding.
         """
         if isinstance(__value, Module):
             self.register_module(__name, __value)
         elif isinstance(__value, Parameter):
+            self.register_parameter(__name, __value)
+        elif not _no_torch and isinstance(__value, torch.nn.Parameter):
+            __value = Parameter(__value)
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
@@ -196,86 +200,52 @@ class RuntimeModule(Module):
             return _recursive_ark_to_torch(self.forward_output)
 
 
-class ARKFunction:
-    def forward(self, input, *args): ...
-
-    def backward(self, grad_output, saved_context): ...
-
-    def save_context(self, ctx_dict, idx, *arg): ...
-
-
-class SharedARKFunction(Function):
+class ModuleFn(Function):
     """
     Base class for ARK functions.
     """
 
     @staticmethod
-    def forward(ctx, input, functions, args):
-        ctx.func = functions  # to store the ARK specific layers
-        ctx.args = args  # to store the parameters of the ARK specific layers
-        ctx.grad_weights = [None] * len(
-            args
-        )  # inits array holding potential gradient updates for the parameters of the ARK specific layers
-        ctx.ctx_dict = (
-            {}
-        )  # maps layers to their respective context dictionaries
-        output = Tensor.from_torch(input)
-        for i, (func, ag) in enumerate(zip(functions, args)):
-            ark_args = []
-            for j in ag:
-                print(
-                    "PROCESSING ARK PARAM: ",
-                    hex(j.data_ptr()),
-                    "for LAYER: ",
-                    i,
-                )
-                ark_param_view = Tensor.from_torch(j)
-                print("ARK PARAM VIEW: ", ark_param_view)
-                ark_args.append(ark_param_view)
-            output = func.forward(output, *ark_args)
-            func.save_context(ctx.ctx_dict, i, output, *ag)
+    def forward(ctx, input, ark_module):
+        """
+        Forward pass of the ARK module. Returns a PyTorch tensor that is the result
+        of the ARK module operation.
+        """
+        ark.init()
+        ctx.ark_module = ark_module
+        input_ark = Tensor.from_torch(input)
+        output = ark_module.forward(input_ark)
         with ark.Runtime.get_runtime() as rt:
             rt.launch(plan=ark.DefaultPlanner().plan())
             rt.run()
-            res = output.get_torch_view().clone()
-        print("CONTEXT DICT: ", ctx.ctx_dict)
-        return res
+            output = output.get_torch_view().clone()
+        return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        grad_input = Tensor.from_torch(grad_outputs[0])
-        grad_weights = [None] * len(ctx.func)
-        for i, func in enumerate(reversed(ctx.func)):
-            idx = len(ctx.func) - i - 1
-            mapped_dict = {
-                k: Tensor.from_torch(v) if isinstance(v, torch.Tensor) else v
-                for k, v in ctx.ctx_dict[idx].items()
-            }
-            grad_input, grad_weight = func.backward(grad_input, mapped_dict)
-            grad_weights[idx] = grad_weight
+        """
+        Converts the gradient outputs to ARK format, computes the gradients for the input 
+        and parameters using the ARK module backwards pass, and updates the gradients of the corresponding 
+        PyTorch parameters.
+        """
+        ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
+        grad_input, *grad_weights = ctx.ark_module.backward(*ark_grad_outputs)
+        params_dict = ctx.ark_module.params_dict()
         with ark.Runtime.get_runtime() as rt:
             rt.launch(plan=ark.DefaultPlanner().plan())
             rt.run()
-            res = grad_input.get_torch_view().clone()
-            for i in range(len(grad_weights)):
-                if grad_weights[i] is not None:
-                    ctx.grad_weights[i] = grad_weights[i].get_torch_view()
-            print(
-                "GRAD WEIGHTS FOR ARK SPECIFIC LAYERS: ",
-                hex(ctx.grad_weights[0].data_ptr()),
-                hex(ctx.grad_weights[1].data_ptr()),
-            )
-        # Reverse to maintain order from forward pass
-        ctx.grad_weights.reverse()
-        # Return the accumulated grad_input
-        return (res, None, None)
+            output = grad_input.get_torch_view().clone()
+            for _, param in params_dict.items():
+                if param.staged_tensor is not None:
+                    pytorch_grad = param.staged_tensor.get_torch_view().clone()
+                    param.torch_param.grad = pytorch_grad
+        return (output, None)
 
 
-class ARKWrapper(TorchModule):
-    def __init__(self, functions, args):
+class ARKComponent(TorchModule):
+    def __init__(self, ark_module):
         super().__init__()
-        self.functions = functions
-        self.args = args
+        self.ark_module = ark_module
 
     def forward(self, input):
-        return SharedARKFunction.apply(input, self.functions, self.args)
+        return ModuleFn.apply(input, self.ark_module)

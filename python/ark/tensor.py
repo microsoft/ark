@@ -121,16 +121,22 @@ class Tensor:
                 self.shape(), dtype=torch_type, device=torch.device(dev_name)
             )
         elif list(tensor.shape) != self.shape():
-            raise ValueError(f"torch tensor shape {list(tensor.shape)} "
-                             f"does not match the tensor {self.shape()}")
+            raise ValueError(
+                f"torch tensor shape {list(tensor.shape)} "
+                f"does not match the tensor {self.shape()}"
+            )
         elif tensor.dtype != torch_type:
-            raise ValueError(f"torch tensor dtype {tensor.dtype} "
-                             f"does not match the tensor {torch_type}")
+            raise ValueError(
+                f"torch tensor dtype {tensor.dtype} "
+                f"does not match the tensor {torch_type}"
+            )
         elif not tensor.is_contiguous():
             raise ValueError("torch tensor is not contiguous in memory")
         elif tensor.numel() != self.nelems():
-            raise ValueError(f"torch tensor size {tensor.numel()} "
-                             f"does not match the tensor {self.nelems()}")
+            raise ValueError(
+                f"torch tensor size {tensor.numel()} "
+                f"does not match the tensor {self.nelems()}"
+            )
         tensor_bytes = self.nelems() * self.dtype().element_size()
         rt.executor.tensor_read(
             self._tensor, tensor.data_ptr(), tensor_bytes, stream, True
@@ -235,16 +241,38 @@ class Parameter(Tensor):
     A tensor as a parameter.
     """
 
-    def __init__(self, _tensor: _Tensor, runtime_id: int = -1):
+    def __init__(
+        self, tensor: Union[_Tensor, torch.nn.Parameter], runtime_id: int = -1
+    ):
         """
         Initializes a new instance of the Parameter class.
         """
-        super().__init__(_tensor)
+        if _no_torch and isinstance(tensor, torch.nn.Parameter):
+            raise ValueError("torch is not available")
+        if isinstance(tensor, torch.nn.Parameter):
+            ark_tensor = Tensor.from_torch(tensor)
+            tensor_to_use = ark_tensor._tensor
+            self.torch_param = tensor
+            self.staged_tensor = None
+        elif isinstance(tensor, _Tensor):
+            tensor_to_use = tensor
+            self.torch_param = None
+        else:
+            raise TypeError(
+                "tensor must be an ARK tensor or a torch.nn.Parameter"
+            )
+
+        super().__init__(tensor_to_use, runtime_id=runtime_id)
         self.runtime_id = runtime_id
 
-    @staticmethod
-    def from_tensor(tensor: Tensor) -> "Parameter":
+    def update_gradient(self, ark_tensor: Tensor):
         """
-        Creates a Parameter from a Tensor.
+        Stages an ARK tensor to be used later for updating the gradient of its associated PyTorch parameter.
         """
-        return Parameter(tensor._tensor, tensor.runtime_id)
+        if _no_torch:
+            raise ImportError("torch is not available")
+        if self.torch_param is None:
+            raise ValueError("Parameter is not a torch.nn.Parameter")
+        if not self.torch_param.requires_grad:
+            raise ValueError("Parameter does not require gradient")
+        self.staged_tensor = ark_tensor
