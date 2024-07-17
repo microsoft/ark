@@ -48,8 +48,15 @@ class _RuntimeState:
 
 
 class Executor(_Executor):
-    def __init__(self, device_id: int, stream: int, name: str, plan: Plan):
-        super().__init__(device_id, stream, name, str(plan))
+    def __init__(
+        self,
+        device_id: int,
+        stream: int,
+        name: str,
+        plan: Plan,
+        loop_mode: bool = True,
+    ):
+        super().__init__(device_id, stream, name, str(plan), loop_mode)
 
 
 class Runtime:
