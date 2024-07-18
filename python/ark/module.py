@@ -32,6 +32,8 @@ class Module:
         self.sub_modules: dict[str, "Module"] = dict()
         # The parameters of the module.
         self.parameters: dict[str, Parameter] = dict()
+        # Intermediate computations stored for backwards pass
+        self.saved_tensors: dict[str, Any] = dict()
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
@@ -44,6 +46,8 @@ class Module:
             self.register_module(__name, __value)
         elif isinstance(__value, Parameter):
             self.register_parameter(__name, __value)
+        elif isinstance(__value, Tensor):
+            self.saved_tensors[__name] = __value
         elif not _no_torch and isinstance(__value, torch.nn.Parameter):
             __value = Parameter(__value)
             self.register_parameter(__name, __value)
@@ -208,26 +212,39 @@ class ModuleFn(Function):
     @staticmethod
     def forward(ctx, input, ark_module):
         """
-        Forward pass of the ARK module. Returns a PyTorch tensor that is the result
-        of the ARK module operation.
+        Returns a PyTorch tensor that is the result
+        of the forward pass of the ARK module.
         """
         ark.init()
         ctx.ark_module = ark_module
+        ark_module.saved_tensors["input"] = input
         input_ark = Tensor.from_torch(input)
         output = ark_module.forward(input_ark)
+
         with ark.Runtime.get_runtime() as rt:
             rt.launch(plan=ark.DefaultPlanner().plan())
             rt.run()
             output = output.get_torch_view().clone()
+            for name, tensor in ctx.ark_module.saved_tensors.items():
+                ark_module.saved_tensors[name] = (
+                    tensor
+                    if name == "input"
+                    else tensor.get_torch_view().clone()
+                )
         return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):
         """
-        Converts the gradient outputs to ARK format, computes the gradients for the input 
-        and parameters using the ARK module backwards pass, and updates the gradients of the corresponding 
+        Converts the gradient outputs to ARK format, computes the gradients for the input
+        and parameters using the ARK module backwards pass, and updates the gradients of the corresponding
         PyTorch parameters.
         """
+        ark.init()
+        for name, tensor in ctx.ark_module.saved_tensors.items():
+            if tensor is None or not isinstance(tensor, torch.Tensor):
+                raise ValueError(f"Saved tensor {name} is invalid.")
+            ctx.ark_module.saved_tensors[name] = Tensor.from_torch(tensor)
         ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
         grad_input, *grad_weights = ctx.ark_module.backward(*ark_grad_outputs)
         params_dict = ctx.ark_module.params_dict()
@@ -239,6 +256,7 @@ class ModuleFn(Function):
                 if param.staged_tensor is not None:
                     pytorch_grad = param.staged_tensor.get_torch_view().clone()
                     param.torch_param.grad = pytorch_grad
+        ctx.ark_module.saved_tensors = {}
         return (output, None)
 
 

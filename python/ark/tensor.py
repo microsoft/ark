@@ -251,18 +251,18 @@ class Parameter(Tensor):
             raise ValueError("torch is not available")
         if isinstance(tensor, torch.nn.Parameter):
             ark_tensor = Tensor.from_torch(tensor)
-            tensor_to_use = ark_tensor._tensor
+            core_tensor = ark_tensor._tensor
             self.torch_param = tensor
             self.staged_tensor = None
         elif isinstance(tensor, _Tensor):
-            tensor_to_use = tensor
+            core_tensor = tensor
             self.torch_param = None
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"
             )
 
-        super().__init__(tensor_to_use, runtime_id=runtime_id)
+        super().__init__(core_tensor, runtime_id=runtime_id)
         self.runtime_id = runtime_id
 
     def update_gradient(self, ark_tensor: Tensor):
@@ -275,4 +275,6 @@ class Parameter(Tensor):
             raise ValueError("Parameter is not a torch.nn.Parameter")
         if not self.torch_param.requires_grad:
             raise ValueError("Parameter does not require gradient")
+        if ark_tensor is None or not isinstance(ark_tensor, Tensor):
+            raise ValueError("Cannot update ARK gradient with a non-ARK tensor")
         self.staged_tensor = ark_tensor
