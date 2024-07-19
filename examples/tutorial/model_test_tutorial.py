@@ -7,7 +7,7 @@ import torch.optim as optim
 from ark.module import ARKComponent
 
 
-# Let's first define a Linear layer in ARK
+# Let's first define a linear layer using ARK.
 class ARKLinear(ark.Module):
     def __init__(self, weight):
         super().__init__()
@@ -24,12 +24,12 @@ class ARKLinear(ark.Module):
             grad_output, self.saved_input, transpose_input=True
         )
         grad_input = ark.matmul(grad_output, self.weight, transpose_other=False)
-        # Update the gradient of the weight
+        # Update the gradient of the weight.
         self.weight.update_gradient(grad_weight)
         return grad_input, grad_weight
 
 
-# Let's use our previous module to define a double linear layer
+# Let's use our previous module to define a double linear layer.
 class MyARKModule(ark.Module):
     def __init__(self, weight1, weight2):
         super().__init__()
@@ -45,7 +45,7 @@ class MyARKModule(ark.Module):
         return x
 
     def backward(self, grad_output):
-        # access intermediate tensors from the forward pass
+        # Access intermediate tensors from the forward pass.
         self.linear2.saved_input = self.saved_tensors["linear2_input"]
         grad_x, grad_weight2 = self.linear2.backward(grad_output)
         # 'input' is the default key for the initial forward pass input.
@@ -54,7 +54,7 @@ class MyARKModule(ark.Module):
         return grad_x, grad_weight1, grad_weight2
 
 
-# Define a PyTorch model
+# Define a PyTorch model.
 class SimpleModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -92,7 +92,7 @@ def compare_grad(ark_model, torch_model, atol=1e-4, rtol=1e-2):
                 print(f"Torch gradient: {torch_param.grad}")
 
 
-# For our ARK model we will replace the first two layers with ARK layers
+# For our ARK model we will replace the first two layers with ARK layers.
 def replace_layers_with_ark(model):
     weight_0 = torch.nn.Parameter(
         model.layers[0].weight.to("cuda:0").requires_grad_(True)
@@ -112,25 +112,25 @@ def replace_layers_with_ark(model):
     return model
 
 
-# Instantiate our models
+# Instantiate our models.
 pytorch_model = SimpleModel()
 ark_model = SimpleModel()
 
 
-# Ensure both models have the same weights
+# Ensure both models have the same weights.
 ark_model.load_state_dict(pytorch_model.state_dict())
 ark_model = replace_layers_with_ark(ark_model)
 
-# Move both models to GPU
+# Move both models to GPU.
 pytorch_model.to("cuda:0")
 ark_model.to("cuda:0")
 
-# Now let's run the models on some random input
+# Now let's run the models on some random input.
 input_torch = torch.randn(128, 256).to("cuda:0").requires_grad_(True)
 input_ark = input_torch.clone().detach().requires_grad_(True)
 
 
-# Define an arbitrary target
+# Define an arbitrary target.
 target = torch.randn(128, 256).to("cuda:0")
 
 loss_fn = torch.nn.MSELoss()
@@ -149,20 +149,20 @@ for iter in range(num_iters):
 
     assert torch.allclose(pytorch_output, ark_output, atol=1e-4, rtol=1e-2)
 
-    # Compute losses
+    # Compute losses.
     torch_loss = loss_fn(pytorch_output, target)
     ark_loss = loss_fn(ark_output, target)
 
-    # Compare the results of both models
+    # See how ARK's loss compares to PyTorch's loss.
     print(f"\nPyTorch loss: {torch_loss.item()}")
     print(f"\nARK loss: {ark_loss.item()}\n")
 
-    # Perform a backward pass
+    # Perform a backward pass.
     torch_loss.backward()
     ark_loss.backward()
 
     optim_torch.step()
     optim_ark.step()
 
-    # Ensure gradients of both models are updated accordingly
+    # Ensure gradients of both models are updated accordingly.
     compare_grad(ark_model, pytorch_model)

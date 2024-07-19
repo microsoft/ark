@@ -242,14 +242,12 @@ class Parameter(Tensor):
     """
 
     def __init__(
-        self, tensor: Union[_Tensor, torch.nn.Parameter], runtime_id: int = -1
+        self, tensor: Union[_Tensor, "torch.nn.Parameter"], runtime_id: int = -1
     ):
         """
         Initializes a new instance of the Parameter class.
         """
-        if _no_torch and isinstance(tensor, torch.nn.Parameter):
-            raise ValueError("torch is not available")
-        if isinstance(tensor, torch.nn.Parameter):
+        if not _no_torch and isinstance(tensor, torch.nn.Parameter):
             ark_tensor = Tensor.from_torch(tensor)
             core_tensor = ark_tensor._tensor
             self.torch_param = tensor
@@ -267,14 +265,16 @@ class Parameter(Tensor):
 
     def update_gradient(self, ark_tensor: Tensor):
         """
-        Stages an ARK tensor to be used later for updating the gradient of its associated PyTorch parameter.
+        Stages an ARK tensor to be used for updating the gradient of its associated PyTorch parameter.
         """
         if _no_torch:
             raise ImportError("torch is not available")
         if self.torch_param is None:
-            raise ValueError("Parameter is not a torch.nn.Parameter")
+            raise ValueError(
+                "there is no PyTorch parameter associated with this ARK parameter"
+            )
         if not self.torch_param.requires_grad:
-            raise ValueError("Parameter does not require gradient")
+            raise ValueError("parameter does not require gradient updates")
         if ark_tensor is None or not isinstance(ark_tensor, Tensor):
-            raise ValueError("Cannot update ARK gradient with a non-ARK tensor")
+            raise ValueError("cannot use non-ARK tensor to update ARK gradient")
         self.staged_tensor = ark_tensor

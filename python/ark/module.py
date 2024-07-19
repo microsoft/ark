@@ -32,7 +32,7 @@ class Module:
         self.sub_modules: dict[str, "Module"] = dict()
         # The parameters of the module.
         self.parameters: dict[str, Parameter] = dict()
-        # Intermediate computations stored for backwards pass
+        # Intermediate computations stored for the backwards pass.
         self.saved_tensors: dict[str, Any] = dict()
 
     def __setattr__(self, __name: str, __value: Any) -> None:
@@ -206,9 +206,10 @@ class RuntimeModule(Module):
 
 class ModuleFn(Function):
     """
-    Base class for ARK functions.
+    Facilitates the integration of ARK modules with PyTorch's
+    autograd system by defining custom forward and backward passes that
+    utilize the user's defined ARK module.
     """
-
     @staticmethod
     def forward(ctx, input, ark_module):
         """
@@ -220,7 +221,6 @@ class ModuleFn(Function):
         ark_module.saved_tensors["input"] = input
         input_ark = Tensor.from_torch(input)
         output = ark_module.forward(input_ark)
-
         with ark.Runtime.get_runtime() as rt:
             rt.launch(plan=ark.DefaultPlanner().plan())
             rt.run()
@@ -256,11 +256,17 @@ class ModuleFn(Function):
                 if param.staged_tensor is not None:
                     pytorch_grad = param.staged_tensor.get_torch_view().clone()
                     param.torch_param.grad = pytorch_grad
-        ctx.ark_module.saved_tensors = {}
+        ctx.ark_module.saved_tensors.clear()
         return (output, None)
 
 
 class ARKComponent(TorchModule):
+    """
+    A PyTorch module wrapper for integrating ARK modules into PyTorch models.
+    The ARK module must define `forward` for computation and `backward`
+    for gradient calculation.
+    """
+
     def __init__(self, ark_module):
         super().__init__()
         self.ark_module = ark_module
