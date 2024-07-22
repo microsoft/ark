@@ -108,19 +108,187 @@ struct alignas(1) float8_base {
     float8_base() : storage(0) {}
 
     /// Is finite implementation
-    static bool isfinite(float flt);
+    static bool isfinite(float flt) {
+        uint32_t s;
+        std::memcpy(&s, &flt, sizeof(s));
+        return (s & 0x7f800000) < 0x7f800000;
+    }
 
     /// Is NaN implementation
-    static bool isnan(float flt);
+    static bool isnan(float flt) {
+        uint32_t s;
+        std::memcpy(&s, &flt, sizeof(s));
+        return (s & 0x7fffffff) > 0x7f800000;
+    }
 
     /// Is infinite implementation
-    static bool isinf(float flt);
+    static bool isinf(float flt) {
+        uint32_t s;
+        std::memcpy(&s, &flt, sizeof(s));
+        // Sign = 0 for +inf, 1 for -inf
+        // Exponent = all ones
+        // Mantissa = all zeros
+        return (s == 0x7f800000) || (s == 0xff800000);
+    }
 
     /// FP32 -> FP8 conversion - rounds to nearest even
-    static uint8_t convert_float_to_fp8(float const& flt);
+    static uint8_t convert_float_to_fp8(float const& flt) {
+        // software implementation rounds toward nearest even
+        uint32_t s;
+
+        std::memcpy(&s, &flt, sizeof(s));
+
+        // Extract the bits in the FP32 type
+        uint8_t sign = uint8_t((s >> 24 & 0x80));
+        int32_t exp =
+            int32_t((s >> FP32_NUM_MANTISSA_BITS) & 0xff) - FP32_EXPONENT_BIAS;
+        int mantissa = s & 0x7fffff;
+        uint8_t u = 0;
+
+        uint8_t const kF8_NaN = 0x7f;
+
+        // NaN => NaN
+        if (isnan(flt)) {
+            return kF8_NaN;
+        }
+
+        // Inf => MAX_FLT (satfinite)
+        if (isinf(flt)) {
+            return sign | FP8_MAX_FLT;
+        }
+
+        // Special handling
+        if (exp == -128) {
+            // int8 range is from -128 to 127
+            // So 255(inf) - 127(bias) = 128 - will show up as -128
+
+            // satfinite
+            return (sign | FP8_MAX_FLT);
+        }
+
+        int sticky_bit = 0;
+
+        bool skip_sign = false;
+        bool may_be_nan = false;
+
+        if ((exp >= FP8_MIN_EXPONENT) && (exp <= FP8_MAX_EXPONENT)) {
+            // normal fp32 to normal fp8
+            exp = exp + FP8_EXPONENT_BIAS;
+            u = uint8_t((uint32_t(exp) & FP8_EXPONENT_MASK)
+                        << FP8_NUM_MANTISSA_BITS);
+            u = uint8_t(u | (mantissa >>
+                             (FP32_NUM_MANTISSA_BITS - FP8_NUM_MANTISSA_BITS)));
+        } else if (exp < FP8_MIN_EXPONENT) {
+            // normal single-precision to subnormal float8-precision
+            // representation
+            int rshift = (FP8_MIN_EXPONENT - exp);
+            if (rshift < FP32_NUM_BITS) {
+                mantissa |= (1 << FP32_NUM_MANTISSA_BITS);
+
+                sticky_bit = ((mantissa & ((1 << rshift) - 1)) != 0);
+
+                mantissa = (mantissa >> rshift);
+                u = (uint8_t(mantissa >>
+                             (FP32_NUM_MANTISSA_BITS - FP8_NUM_MANTISSA_BITS)) &
+                     FP8_MANTISSA_MASK);
+            } else {
+                mantissa = 0;
+                u = 0;
+            }
+            // Exponent > FP8_MAX_EXPONENT - this is a special case done to
+            // match HW 0x4380_0000 to 0x43e0_0000 - maps from 256 to 448, and
+            // does not saturate / inf.
+        } else {
+            if (exp == (FP8_MAX_EXPONENT + 1)) {
+                uint8_t mantissa_tmp =
+                    uint8_t(mantissa >>
+                            (FP32_NUM_MANTISSA_BITS - FP8_NUM_MANTISSA_BITS));
+                if (mantissa_tmp < FP8_MANTISSA_MASK) {
+                    exp = exp + FP8_EXPONENT_BIAS;
+                    u = uint8_t(uint32_t(exp) << FP8_NUM_MANTISSA_BITS) |
+                        mantissa_tmp;
+                    may_be_nan = (mantissa_tmp == (FP8_MANTISSA_MASK - 1));
+                } else {
+                    // satfinite
+                    return (sign | FP8_MAX_FLT);
+                }
+            } else {
+                // satfinite
+                return (sign | FP8_MAX_FLT);
+            }
+        }
+
+        // round to nearest even
+        int NUM_BITS_SHIFT =
+            FP32_NUM_MANTISSA_BITS - (FP8_NUM_MANTISSA_BITS + 1);
+        int round_bit = ((mantissa >> NUM_BITS_SHIFT) & 1);
+        sticky_bit |= ((mantissa & ((1 << NUM_BITS_SHIFT) - 1)) != 0);
+
+        if ((round_bit && sticky_bit) || (round_bit && (u & 1))) {
+            u = uint8_t(u + 1);
+            if (may_be_nan) {
+                skip_sign = true;
+            }
+        }
+
+        if (u > FP8_MAX_FLT) {
+            // satfinite
+            u = (sign | FP8_MAX_FLT);
+        }
+
+        if (!skip_sign) {
+            u |= sign;
+        }
+
+        return u;
+    }
 
     /// Converts a fp8 value stored as a uint8_t to a float
-    static float convert_fp8_to_float(uint8_t const& x);
+    static float convert_fp8_to_float(uint8_t const& x) {
+        uint32_t constexpr kF32_NaN = 0x7fffffff;
+
+        uint8_t const& f8 = x;
+        uint32_t sign = (f8 >> (FP8_NUM_BITS - 1)) & 1;
+        uint32_t exp = (f8 >> FP8_NUM_MANTISSA_BITS) & FP8_EXPONENT_MASK;
+        uint32_t mantissa = f8 & FP8_MANTISSA_MASK;
+        unsigned f = (sign << (FP32_NUM_BITS - 1));
+
+        if (IS_E4M3 && exp == 15 && mantissa == 0x7) {
+            f = kF32_NaN;
+        } else if (exp > 0 && (IS_E4M3 || exp < (FP8_MAX_EXPONENT +
+                                                 FP8_EXPONENT_BIAS + 1))) {
+            // normal
+            exp += (FP32_EXPONENT_BIAS - FP8_EXPONENT_BIAS);
+            f = f | (exp << FP32_NUM_MANTISSA_BITS) |
+                (mantissa << (FP32_NUM_MANTISSA_BITS - FP8_NUM_MANTISSA_BITS));
+        } else if (exp == 0) {
+            if (mantissa) {
+                // subnormal
+                exp += (FP32_EXPONENT_BIAS - FP8_EXPONENT_BIAS) + 1;
+                while ((mantissa & (1 << FP8_NUM_MANTISSA_BITS)) == 0) {
+                    mantissa <<= 1;
+                    exp--;
+                }
+                mantissa &= FP8_MANTISSA_MASK;
+                f = f | (exp << FP32_NUM_MANTISSA_BITS) |
+                    (mantissa
+                     << (FP32_NUM_MANTISSA_BITS - FP8_NUM_MANTISSA_BITS));
+            } else {
+                // sign-preserving zero
+            }
+        } else {
+            if (mantissa == 0) {
+                // Sign-preserving infinity
+                f = (f | 0x7f800000);
+            } else {
+                // Canonical NaN
+                f = kF32_NaN;
+            }
+        }
+        float flt;
+        std::memcpy(&flt, &f, sizeof(flt));
+        return flt;
+    }
 };
 
 // Forward declaration of float_e5m2_t to define float_e4m3_t <=> float_e5m2_t
@@ -136,94 +304,93 @@ struct alignas(1) float_e4m3_t : float8_base<FloatEncoding::E4M3> {
     using Base = float8_base<FloatEncoding::E4M3>;
     using Base::Base;
 
-    static float_e4m3_t bitcast(uint8_t x);
+    static float_e4m3_t bitcast(uint8_t x) {
+        float_e4m3_t f;
+        f.storage = x;
+        return f;
+    }
 
     /// FP32 -> FP8 conversion - rounds to nearest even
-
-    static float_e4m3_t from_float(float const& flt);
+    static float_e4m3_t from_float(float const& flt) {
+        return bitcast(Base::convert_float_to_fp8(flt));
+    }
 
     /// FP16 -> E5M2 conversion - rounds to nearest even
-
-    //static float_e4m3_t from_half(half const& flt);
+    // static float_e4m3_t from_half(half const& flt);
 
     // E4M3 -> half
-
-    //static half to_half(float_e4m3_t const& x);
+    // static half to_half(float_e4m3_t const& x);
 
     // E4M3 -> Float
-
-    static float to_float(float_e4m3_t const& x);
+    static float to_float(float_e4m3_t const& x) {
+        return Base::convert_fp8_to_float(x.storage);
+    }
 
     //
     // Methods
     //
 
-    /// Constructor inheritance
-
     /// Default constructor
     float_e4m3_t() = default;
 
     /// Floating point conversion
+    explicit float_e4m3_t(float x) { storage = from_float(x).storage; }
 
-    explicit float_e4m3_t(float x);
+    // explicit float_e4m3_t(half x);
 
-    //explicit float_e4m3_t(half x);
     /// Floating point conversion
-
-    explicit float_e4m3_t(double x);
+    explicit float_e4m3_t(double x) : float_e4m3_t(float(x)) {}
 
     /// Integer conversion
+    explicit float_e4m3_t(int x) : float_e4m3_t(float(x)) {}
 
-    explicit float_e4m3_t(int x);
-
-    explicit float_e4m3_t(unsigned x);
+    explicit float_e4m3_t(unsigned x) : float_e4m3_t(float(x)) {}
 
     /// E5M2 conversion. Defined after float_e5m2_t is defined.
-
     explicit float_e4m3_t(float_e5m2_t x);
 
-    operator float() const;
+    operator float() const { return to_float(*this); }
 
     /// Converts to half
-
-    //operator half() const;
+    // operator half() const;
 
     /// Converts to float
+    explicit operator double() const { return double(to_float(*this)); }
 
-    explicit operator double() const;
     /// Converts to int
-
-    explicit operator int() const;
+    explicit operator int() const { return int(to_float(*this)); }
 
     /// Casts to bool
 
-    explicit operator bool() const;
+    explicit operator bool() const { return (to_float(*this) != 0.0f); }
 
     /// Accesses raw internal state
+    uint8_t& raw() { return storage; }
 
-    uint8_t& raw();
     /// Accesses raw internal state
-
-    uint8_t raw() const;
+    uint8_t raw() const { return storage; }
 
     /// Returns the sign bit
 
-    bool signbit() const;
+    bool signbit() const {
+        return ((storage & (1 << (Base::FP8_NUM_BITS - 1))) != 0);
+    }
 
     /// Returns the biased exponent
+    int exponent_biased() const {
+        return int((storage >> FP8_NUM_MANTISSA_BITS) &
+                   Base::FP8_EXPONENT_MASK);
+    }
 
-    int exponent_biased() const;
     /// Returns the unbiased exponent
-
-    int exponent() const;
+    int exponent() const { return exponent_biased() - 15; }
 
     /// Returns the mantissa
 
-    int mantissa() const;
+    int mantissa() const { return int(storage & Base::FP8_MANTISSA_MASK); }
 };
 
 using fp8_e4m3 = float_e4m3_t;
-
 
 ///////////////////////////////////////////////////////////////
 ///
@@ -234,19 +401,27 @@ struct alignas(1) float_e5m2_t : float8_base<FloatEncoding::E5M2> {
     using Base = float8_base<FloatEncoding::E5M2>;
     using Base::Base;
 
-    static float_e5m2_t bitcast(uint8_t x);
+    static float_e5m2_t bitcast(uint8_t x) {
+        float_e5m2_t f;
+        f.storage = x;
+        return f;
+    }
 
     /// FP32 -> FP8 conversion - rounds to nearest even
-    static float_e5m2_t from_float(float const& flt);
+    static float_e5m2_t from_float(float const& flt) {
+        return bitcast(Base::convert_float_to_fp8(flt));
+    }
 
     /// FP16 -> E5M2 conversion - rounds to nearest even
-    //static float_e5m2_t from_half(half const& flt);
+    // static float_e5m2_t from_half(half const& flt);
 
     // E5M2 -> half
-    //static half to_half(float_e5m2_t const& x);
+    // static half to_half(float_e5m2_t const& x);
 
     // E5M2 -> Float
-    static float to_float(float_e5m2_t const& x);
+    static float to_float(float_e5m2_t const& x) {
+        return Base::convert_fp8_to_float(x.storage);
+    }
 
     //
     // Methods
@@ -256,53 +431,58 @@ struct alignas(1) float_e5m2_t : float8_base<FloatEncoding::E5M2> {
     float_e5m2_t() = default;
 
     /// Floating point conversion
-    explicit float_e5m2_t(float x);
+    explicit float_e5m2_t(float x) { storage = from_float(x).storage; }
 
-    explicit float_e5m2_t(half x);
+    // explicit float_e5m2_t(half x);
 
     /// Floating point conversion
-    explicit float_e5m2_t(double x);
+    explicit float_e5m2_t(double x) : float_e5m2_t(float(x)) {}
 
     /// Integer conversion
-    explicit float_e5m2_t(int x);
+    explicit float_e5m2_t(int x) : float_e5m2_t(float(x)) {}
 
-    explicit float_e5m2_t(unsigned x);
+    explicit float_e5m2_t(unsigned x) : float_e5m2_t(float(x)) {}
 
     /// E4M3 conversion
     explicit float_e5m2_t(float_e4m3_t x);
 
     /// Converts to float
-    operator float() const;
+    operator float() const { return to_float(*this); }
 
     /// Converts to half
-    //operator half() const;
+    // operator half() const;
 
     /// Converts to float
-    explicit operator double() const;
+    explicit operator double() const { return double(to_float(*this)); }
 
     /// Converts to int
-    explicit operator int() const;
+    explicit operator int() const { return int(to_float(*this)); }
 
     /// Casts to bool
-    explicit operator bool() const;
+    explicit operator bool() const { return bool(int(to_float(*this))); }
 
     /// Accesses raw internal state
-    uint8_t& raw();
+    uint8_t& raw() { return storage; }
 
     /// Accesses raw internal state
-    uint8_t raw() const;
+    uint8_t raw() const { return storage; }
 
     /// Returns the sign bit
-    bool signbit() const;
+    bool signbit() const {
+        return ((storage & (1 << (Base::FP8_NUM_BITS - 1))) != 0);
+    }
 
     /// Returns the biased exponent
-    int exponent_biased() const;
+    int exponent_biased() const {
+        return int((storage >> FP8_NUM_MANTISSA_BITS) &
+                   Base::FP8_EXPONENT_MASK);
+    }
 
     /// Returns the unbiased exponent
-    int exponent() const;
+    int exponent() const { return exponent_biased() - 15; }
 
     /// Returns the mantissa
-    int mantissa() const;
+    int mantissa() const { return int(storage & Base::FP8_MANTISSA_MASK); }
 };
 
 using fp8_e5m2 = float_e5m2_t;
@@ -456,17 +636,13 @@ float_e5m2_t operator--(float_e5m2_t& a, int);
 // User-defined literals
 //
 
+ark::float_e4m3_t operator"" _fe4m3(long double x);
 
-ark::float_e4m3_t operator "" _fe4m3(long double x);
+ark::float_e4m3_t operator"" _fe4m3(unsigned long long int x);
 
+ark::float_e5m2_t operator"" _fe5m2(long double x);
 
-ark::float_e4m3_t operator "" _fe4m3(unsigned long long int x);
-
-
-ark::float_e5m2_t operator "" _fe5m2(long double x);
-
-
-ark::float_e5m2_t operator "" _fe5m2(unsigned long long int x);
+ark::float_e5m2_t operator"" _fe5m2(unsigned long long int x);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
