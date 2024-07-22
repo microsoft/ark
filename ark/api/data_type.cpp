@@ -45,8 +45,8 @@ const DataType &DataType::from_name(const std::string &type_name) {
         DATA_TYPE_REGISTER(FP32);
         DATA_TYPE_REGISTER(FP16);
         DATA_TYPE_REGISTER(BF16);
-        //DATA_TYPE_REGISTER(FP8_E4M3);
-        //DATA_TYPE_REGISTER(FP8_E5M2);
+        DATA_TYPE_REGISTER(FP8_E4M3);
+        DATA_TYPE_REGISTER(FP8_E5M2);
         DATA_TYPE_REGISTER(INT32);
         DATA_TYPE_REGISTER(UINT32);
         DATA_TYPE_REGISTER(INT8);
