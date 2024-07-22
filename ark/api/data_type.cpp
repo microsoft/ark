@@ -6,6 +6,7 @@
 #include <map>
 
 #include "bfloat16.h"
+#include "float8.h"
 #include "half.h"
 #include "logging.h"
 #include "model/model_data_type.hpp"
@@ -29,6 +30,8 @@ extern const DataType NONE(std::make_shared<ModelDataT>("NONE", "void", 0));
 DATA_TYPE_INSTANCE(FP32, float);
 DATA_TYPE_INSTANCE(FP16, fp16);
 DATA_TYPE_INSTANCE(BF16, bf16);
+DATA_TYPE_INSTANCE(FP8_E4M3, fp8_e4m3);
+DATA_TYPE_INSTANCE(FP8_E5M2, fp8_e5m2);
 DATA_TYPE_INSTANCE(INT32, int32_t);
 DATA_TYPE_INSTANCE(UINT32, uint32_t);
 DATA_TYPE_INSTANCE(INT8, int8_t);
@@ -42,6 +45,8 @@ const DataType &DataType::from_name(const std::string &type_name) {
         DATA_TYPE_REGISTER(FP32);
         DATA_TYPE_REGISTER(FP16);
         DATA_TYPE_REGISTER(BF16);
+        //DATA_TYPE_REGISTER(FP8_E4M3);
+        //DATA_TYPE_REGISTER(FP8_E5M2);
         DATA_TYPE_REGISTER(INT32);
         DATA_TYPE_REGISTER(UINT32);
         DATA_TYPE_REGISTER(INT8);
