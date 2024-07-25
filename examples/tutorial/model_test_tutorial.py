@@ -1,14 +1,17 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import ark
+from ark.ops import matmul
+from ark import Module
 import torch
 import torch.optim as optim
 from ark.module import ARKComponent
 
+# Set random seed for reproducibility.
+torch.manual_seed(42)
 
 # Let's first define a linear layer using ARK.
-class ARKLinear(ark.Module):
+class ARKLinear(Module):
     def __init__(self, weight):
         super().__init__()
         self.weight = weight
@@ -16,21 +19,21 @@ class ARKLinear(ark.Module):
 
     def forward(self, input):
         self.saved_input = input
-        output = ark.matmul(input, self.weight, transpose_other=True)
+        output = matmul(input, self.weight, transpose_other=True)
         return output
 
     def backward(self, grad_output):
-        grad_weight = ark.matmul(
+        grad_weight = matmul(
             grad_output, self.saved_input, transpose_input=True
         )
-        grad_input = ark.matmul(grad_output, self.weight, transpose_other=False)
+        grad_input = matmul(grad_output, self.weight, transpose_other=False)
         # Update the gradient of the weight.
         self.weight.update_gradient(grad_weight)
         return grad_input, grad_weight
 
 
 # Let's use our previous module to define a double linear layer.
-class MyARKModule(ark.Module):
+class MyARKModule(Module):
     def __init__(self, weight1, weight2):
         super().__init__()
         self.linear1 = ARKLinear(weight1)
@@ -156,6 +159,7 @@ for iter in range(num_iters):
     # See how ARK's loss compares to PyTorch's loss.
     print(f"\nPyTorch loss: {torch_loss.item()}")
     print(f"\nARK loss: {ark_loss.item()}\n")
+    assert torch.allclose(torch_loss, ark_loss, atol=1e-4, rtol=1e-2)
 
     # Perform a backward pass.
     torch_loss.backward()
