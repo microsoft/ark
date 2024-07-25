@@ -219,15 +219,20 @@ class ModuleFn(Function):
         ark.init()
         ctx.ark_module = ark_module
         input_ark = Tensor.from_torch(input)
-        ark_module.saved_tensors["input"] = input_ark
+        ark_module.saved_tensors["input"] = input
         output = ark_module.forward(input_ark)
         rt = Runtime.get_runtime()
         forward_executor = 1
         rt.launch(plan=DefaultPlanner().plan(), executor_id=forward_executor)
         rt.run(executor_id=forward_executor)
         output = output.get_torch_view(executor_id=forward_executor)
+        for name, tensor in ctx.ark_module.saved_tensors.items():
+                ark_module.saved_tensors[name] = (
+                    tensor
+                    if name == "input"
+                    else tensor.get_torch_view(forward_executor)
+                )
         rt.reset_executor(executor_id=forward_executor, persist=True)
-        print(rt.executor_states)
         return output
         
 
@@ -239,6 +244,10 @@ class ModuleFn(Function):
         PyTorch parameters.
         """
         ark.init(keep_runtime=True)
+        for name, tensor in ctx.ark_module.saved_tensors.items():
+            if tensor is None or not isinstance(tensor, torch.Tensor):
+                raise ValueError(f"Saved tensor {name} is invalid.")
+            ctx.ark_module.saved_tensors[name] = Tensor.from_torch(tensor)
         ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
         grad_input, *grad_weights = ctx.ark_module.backward(*ark_grad_outputs)
         params_dict = ctx.ark_module.params_dict()
@@ -249,7 +258,7 @@ class ModuleFn(Function):
         output = grad_input.get_torch_view(executor_id=backward_executor)
         for _, param in params_dict.items():
             if param.staged_tensor is not None:
-                pytorch_grad = param.staged_tensor.get_torch_view(executor_id=1)
+                pytorch_grad = param.staged_tensor.get_torch_view(executor_id=backward_executor)
                 param.torch_param.grad = pytorch_grad
         rt.reset_executor(executor_id=backward_executor, persist=True)
         ctx.ark_module.saved_tensors.clear()
