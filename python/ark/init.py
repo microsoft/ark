@@ -6,9 +6,9 @@ from .model import Model
 from .runtime import _RuntimeState
 
 
-def init():
+def init(keep_runtime: bool = False):
     """Initializes ARK."""
     Model.reset()
-    if _RuntimeState.runtime:
+    if not keep_runtime and _RuntimeState.runtime:
         _RuntimeState.delete_all()
-    _ark_core.init()
+        _ark_core.init()
