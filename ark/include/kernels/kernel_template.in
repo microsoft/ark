@@ -6,8 +6,8 @@ using namespace ark;
 template <size_t ProcBegin, size_t ProcEnd, size_t ProcStep, size_t ProcCurrent,
           size_t TaskBegin, size_t TaskEnd, size_t TaskStep, size_t TaskGranularity,
           size_t NumSlots, size_t SlotNumWarps, size_t SlotSramBytes,
-          void (*task)(char*, int, int)>
-__forceinline__ __device__ void task_seq(char *_buf) {
+          void (*task)(int, int)>
+__forceinline__ __device__ void task_seq() {
   if (math::geq<ProcBegin>(blockIdx.x) && math::le<ProcEnd>(blockIdx.x) &&
       ((blockIdx.x - ProcBegin) % ProcStep == 0)) {
     constexpr size_t SlotNumThreads = SlotNumWarps * Arch::ThreadsPerWarp;
@@ -23,7 +23,7 @@ __forceinline__ __device__ void task_seq(char *_buf) {
       size_t task_id = task_id_base + TaskStep *
         (t % TaskGranularity + t / TaskGranularity * TaskGranularity * NumProcs);
       if (task_id >= TaskEnd) break;
-      task(_buf, task_id, SramBytesPerWarp);
+      task(task_id, SramBytesPerWarp);
     }
   }
 }
@@ -33,12 +33,12 @@ __device__ sync::State ARK_LOOP_SYNC_STATE;
 
 @DEFINITIONS@
 
-__device__ void ark_body(char *_buf, int _iter) {
+__device__ void ark_body(int _iter) {
 @BODY@
 }
 
 extern "C" __global__ __launch_bounds__(ARK_WARPS_PER_BLOCK * Arch::ThreadsPerWarp, 1)
-void ark_loop_kernel@NAME@(char *_buf, int *_iter) {
+void ark_loop_kernel@NAME@(int *_iter) {
   int *shared_mem = (int *)_ARK_SMEM;
   for (int i = threadIdx.x; i < ARK_SMEM_RESERVED_BYTES / sizeof(int); i += blockDim.x) {
     shared_mem[i] = 0;
@@ -52,10 +52,10 @@ void ark_loop_kernel@NAME@(char *_buf, int *_iter) {
     sync_gpu<@NUM_BLOCKS@>(ARK_LOOP_SYNC_STATE);
     if (ARK_ITER < 0) return;
 
-    ark_body(_buf, 0);
+    ark_body(0);
     for (int _i = 1; _i < ARK_ITER; ++_i) {
       sync_gpu<@NUM_BLOCKS@>(ARK_LOOP_SYNC_STATE);
-      ark_body(_buf, _i);
+      ark_body(_i);
     }
     if (threadIdx.x == 0) {
       __threadfence_system();
@@ -69,10 +69,10 @@ void ark_loop_kernel@NAME@(char *_buf, int *_iter) {
 }
 
 extern "C" __global__ __launch_bounds__(ARK_WARPS_PER_BLOCK * Arch::ThreadsPerWarp, 1)
-void ark_kernel@NAME@(char *_buf, int _iter) {
+void ark_kernel@NAME@(int _iter) {
   int *shared_mem = (int *)_ARK_SMEM;
   for (int i = threadIdx.x; i < ARK_SMEM_RESERVED_BYTES / sizeof(int); i += blockDim.x) {
     shared_mem[i] = 0;
   }
-  ark_body(_buf, _iter);
+  ark_body(_iter);
 }

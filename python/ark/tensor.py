@@ -71,7 +71,7 @@ class Tensor:
         return DataType.from_ctype(self._tensor.data_type())
 
     def to_numpy(
-        self, ndarray: np.ndarray = None, stream: int = 0, executor_id: int = -1
+        self, ndarray: np.ndarray = None, stream: int = 0
     ) -> np.ndarray:
         """
         Copy a tensor from device to host. If `ndarray` is None,
@@ -84,7 +84,7 @@ class Tensor:
                 f"Tensor data type {self.dtype().__name__} is not supported by numpy."
             )
         rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched(executor_id):
+        if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.to_numpy()` is "
                 "usable only after you call `Runtime.launch()`."
@@ -99,17 +99,17 @@ class Tensor:
             raise ValueError("ndarray dtype does not match the tensor")
         elif ndarray.nbytes != self.nelems() * self.dtype().element_size():
             raise ValueError("ndarray size does not match the tensor")
-        rt.executor_map[executor_id].tensor_read(self._tensor, ndarray, stream)
+        rt.executor.tensor_read(self._tensor, ndarray, stream)
         return ndarray
 
     def to_torch(
-        self, tensor: torch.Tensor = None, stream: int = 0, executor_id: int = -1
+        self, tensor: torch.Tensor = None, stream: int = 0
     ) -> torch.Tensor:
         """ """
         if _no_torch:
             raise ImportError("torch is not available")
         rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched(executor_id):
+        if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.to_torch()` is "
                 "usable only after you call `Runtime.launch()`."
@@ -138,33 +138,33 @@ class Tensor:
                 f"does not match the tensor {self.nelems()}"
             )
         tensor_bytes = self.nelems() * self.dtype().element_size()
-        rt.executor_map[executor_id].tensor_read(
+        rt.executor.tensor_read(
             self._tensor, tensor.data_ptr(), tensor_bytes, stream, True
         )
         return tensor
 
-    def get_torch_view(self, executor_id: int = -1) -> torch.Tensor:
+    def get_torch_view(self) -> torch.Tensor:
         """
         Returns a torch tensor that shares the same memory with the device tensor.
         """
         if _no_torch:
             raise ImportError("torch is not available")
         rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched(executor_id):
+        if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.get_torch_view()` is "
                 "usable only after you call `Runtime.launch()`."
             )
-        dl_tensor = rt.executor_map[executor_id].get_dl_tensor(self._tensor)
+        dl_tensor = rt.executor.get_dl_tensor(self._tensor)
         torch_view = torch.utils.dlpack.from_dlpack(dl_tensor)
         return torch_view
 
-    def from_numpy(self, ndarray: np.ndarray, stream: int = 0, executor_id: int = -1) -> "Tensor":
+    def from_numpy(self, ndarray: np.ndarray, stream: int = 0) -> "Tensor":
         """
         Copies the tensor from a host numpy array to the device.
         """
         rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched(executor_id):
+        if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.from_numpy()` is "
                 "usable only after you call `Runtime.launch()`."
@@ -174,7 +174,7 @@ class Tensor:
             ndarray = np.ascontiguousarray(ndarray)
         if ndarray.nbytes != self.nelems() * self.dtype().element_size():
             raise ValueError("ndarray size does not match the tensor")
-        rt.executor_map[executor_id].tensor_write(self._tensor, ndarray, stream)
+        rt.executor.tensor_write(self._tensor, ndarray, stream)
         return self
 
     @staticmethod
@@ -193,13 +193,13 @@ class Tensor:
         ark_tensor = _Tensor(dl_capsule, ark_dtype.ctype())
         return Tensor(ark_tensor, runtime_id=runtime_id)
 
-    def copy(self, data: Union[np.ndarray, torch.Tensor], executor_id: int = -1) -> "Tensor":
+    def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
         """
         Copies data into this tensor. The data type may differ,
         but the size must match.
         """
         rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched(executor_id):
+        if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.from_numpy()` is "
                 "usable only after you call `Runtime.launch()`."
@@ -210,7 +210,7 @@ class Tensor:
                 data = data.contiguous()
             if data.numel() * data.element_size() != tensor_bytes:
                 raise ValueError("data size does not match the tensor")
-            rt.executor_map[executor_id].tensor_write(
+            rt.executor.tensor_write(
                 self._tensor,
                 data.data_ptr(),
                 tensor_bytes,
@@ -221,7 +221,7 @@ class Tensor:
                 data = np.ascontiguousarray(data)
             if data.nbytes != tensor_bytes:
                 raise ValueError("data size does not match the tensor")
-            rt.executor_map[executor_id].tensor_write(self._tensor, data)
+            rt.executor.tensor_write(self._tensor, data)
         else:
             raise ValueError("data must be a numpy array or a torch tensor")
         return self

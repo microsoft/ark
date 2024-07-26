@@ -216,26 +216,19 @@ class ModuleFn(Function):
         Returns a PyTorch tensor that is the result
         of the forward pass of the ARK module.
         """
-        ark.init()
+        ark.init(keep_runtime=True)
         ctx.ark_module = ark_module
         input_ark = Tensor.from_torch(input)
-        ark_module.saved_tensors["input"] = input
+        ark_module.saved_tensors["input"] = input_ark
         output = ark_module.forward(input_ark)
         rt = Runtime.get_runtime()
-        forward_executor = 1
-        rt.launch(plan=DefaultPlanner().plan(), executor_id=forward_executor)
-        rt.run(executor_id=forward_executor)
-        output = output.get_torch_view(executor_id=forward_executor)
-        for name, tensor in ctx.ark_module.saved_tensors.items():
-                ark_module.saved_tensors[name] = (
-                    tensor
-                    if name == "input"
-                    else tensor.get_torch_view(forward_executor)
-                )
-        rt.reset_executor(executor_id=forward_executor, persist=True)
+        forward_plan = DefaultPlanner().plan()
+        rt.launch(plan=forward_plan)
+        rt.run()
+        output = output.get_torch_view()
+        rt.reset(persist=True)
         return output
         
-
     @staticmethod
     def backward(ctx, *grad_outputs):
         """
@@ -244,26 +237,22 @@ class ModuleFn(Function):
         PyTorch parameters.
         """
         ark.init(keep_runtime=True)
-        for name, tensor in ctx.ark_module.saved_tensors.items():
-            if tensor is None or not isinstance(tensor, torch.Tensor):
-                raise ValueError(f"Saved tensor {name} is invalid.")
-            ctx.ark_module.saved_tensors[name] = Tensor.from_torch(tensor)
         ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
         grad_input, *grad_weights = ctx.ark_module.backward(*ark_grad_outputs)
         params_dict = ctx.ark_module.params_dict()
         rt = Runtime.get_runtime()
-        backward_executor = 2
-        rt.launch(plan=DefaultPlanner().plan(), executor_id=backward_executor)
-        rt.run(executor_id=backward_executor)
-        output = grad_input.get_torch_view(executor_id=backward_executor)
+        backward_plan = DefaultPlanner().plan()
+        rt.launch(plan=backward_plan)
+        rt.run()
+        output = grad_input.get_torch_view()
         for _, param in params_dict.items():
             if param.staged_tensor is not None:
-                pytorch_grad = param.staged_tensor.get_torch_view(executor_id=backward_executor)
+                pytorch_grad = param.staged_tensor.get_torch_view()
                 param.torch_param.grad = pytorch_grad
-        rt.reset_executor(executor_id=backward_executor, persist=True)
+        rt.reset(persist=True)
         ctx.ark_module.saved_tensors.clear()
         return (output, None)
-
+        
 
 class ARKComponent(TorchModule):
     """

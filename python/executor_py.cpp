@@ -189,5 +189,6 @@ void register_executor(py::module &m) {
                                size_t, uintptr_t, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
              py::arg("stream"), py::arg("is_d2d"))
-        .def("get_dl_tensor", &to_dlpack_capsule);
+        .def("get_dl_tensor", &to_dlpack_capsule)
+        .def("add_plan", &ark::Executor::add_plan, py::arg("plan"));
 }
