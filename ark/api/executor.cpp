@@ -269,10 +269,8 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     codegen_ =
         std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_addr_, name_);
     
-    if (!flag_) {
-        flag_ = gpu_manager->malloc_host(
-            sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
-    }
+    flag_ = gpu_manager->malloc_host(
+        sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
 
     int threads_per_block = static_cast<int>(
         codegen_->num_warps_per_proc() * gpu_manager->info().threads_per_warp);
