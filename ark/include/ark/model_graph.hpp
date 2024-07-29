@@ -38,6 +38,7 @@ class ModelGraph {
 
    protected:
     friend class Model;
+    friend class PlanManager;
     friend class ContextManager;
 
     class Impl;

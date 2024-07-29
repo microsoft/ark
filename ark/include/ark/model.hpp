@@ -17,14 +17,19 @@ namespace ark {
 
 class Model : public ModelGraph {
    private:
+    size_t id_;
     std::set<int> tags_;
 
    public:
-    Model(int rank = 0, int world_size = 1) : ModelGraph(rank, world_size) {}
-    Model(const Model &other) : ModelGraph(other) {}
+    Model(int rank = 0, int world_size = 1);
+
+    Model(const Model &other);
+
     ~Model() {}
 
     Model &operator=(const Model &other) = default;
+
+    size_t id() const;
 
     Model compress(bool merge_nodes = false) const;
 

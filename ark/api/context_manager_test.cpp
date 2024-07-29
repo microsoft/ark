@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "ark/model.hpp"
 #include "ark/context_manager.hpp"
 
 #include "model/model_node.hpp"

@@ -58,19 +58,35 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
     size_t num_sm = gpu_info.num_sm;
     Json task_infos = Json::array();
     Json processor_groups = Json::array();
-    size_t max_num_warps = 1;
-    size_t max_num_processors = 1;
-    size_t next_node_id = 0;
+    size_t max_processor_id = 1;
+    size_t max_warp_id = 1;
+    size_t next_task_id = 0;
+    bool prev_append_task = false;
+    bool first_op = true;
+
+    auto get_context = [&](const ModelNodeRef &node,
+                           const std::string &key) -> Json {
+        if (node->context.find(key) != node->context.end()) {
+            return Json::parse(node->context.at(key));
+        }
+        return Json();
+    };
+
     for (const auto &node : model_.nodes()) {
+        std::string context = "";
+        for (const auto &[key, value] : node->context) {
+            context += key + "=" + value + ",";
+        }
+        context += "prev_append_task=" + std::to_string(prev_append_task);
+        LOG(INFO, context);
+
         for (const auto &op : node->ops) {
             if (op->is_virtual()) continue;
 
-            Json task_info;
-            task_info["Id"] = next_node_id++;
-
+            auto ctx_config = get_context(node, "Config");
             Json config;
-            if (!op->config().empty()) {
-                config = op->config();
+            if (!ctx_config.empty()) {
+                config = ctx_config;
             } else if (!config_rules_.empty()) {
                 const std::string op_str = op->serialize().dump();
                 for (auto &rule : config_rules_) {
@@ -90,31 +106,70 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
             size_t num_warps = config["NumWarps"];
             size_t num_tasks = config["NumTasks"];
             size_t sram_bytes = config["SramBytes"];
-            task_info["NumWarps"] = num_warps;
-            task_info["SramBytes"] = sram_bytes;
 
-            max_num_warps = std::max(max_num_warps, num_warps);
+            auto ctx_append_task = get_context(node, "AppendTask");
+            if (!ctx_append_task.empty() && ctx_append_task.get<bool>() &&
+                prev_append_task) {
+                auto &task_info = task_infos.back();
+                task_info["NumWarps"] =
+                    std::max(task_info["NumWarps"].get<size_t>(), num_warps);
+                task_info["SramBytes"] =
+                    std::max(task_info["SramBytes"].get<size_t>(), sram_bytes);
+                task_info["Ops"].push_back(op->serialize());
+                task_info["Ops"].back()["Config"] = config;
+            } else {
+                Json task_info;
+                task_info["Id"] = first_op ? next_task_id : ++next_task_id;
+                task_info["NumWarps"] = num_warps;
+                task_info["SramBytes"] = sram_bytes;
+                task_info["Ops"] = Json::array();
+                task_info["Ops"].push_back(op->serialize());
+                task_info["Ops"][0]["Config"] = config;
+                task_infos.push_back(task_info);
 
-            task_info["Ops"] = Json::array();
-            task_info["Ops"].push_back(op->serialize());
-            task_info["Ops"][0]["Config"] = config;
-            task_infos.push_back(task_info);
+                auto ctx_processor_range = get_context(node, "ProcessorRange");
+                auto ctx_warp_range = get_context(node, "WarpRange");
+                auto ctx_sram_range = get_context(node, "SramRange");
 
-            Json resource_group;
-            size_t num_processors = std::min(num_sm, num_tasks);
-            max_num_processors = std::max(max_num_processors, num_processors);
-            resource_group["ProcessorRange"] = {0, num_processors};
-            resource_group["WarpRange"] = {0, num_warps};
-            resource_group["SramRange"] = {0, sram_bytes};
-            resource_group["TaskGroups"] = {{{"TaskId", task_info["Id"]},
-                                             {"TaskRange", {0, num_tasks}},
-                                             {"Granularity", 1}}};
+                Json processor_group;
+                if (!ctx_processor_range.empty()) {
+                    processor_group["ProcessorRange"] = ctx_processor_range;
+                    max_processor_id = std::max(
+                        max_processor_id, ctx_processor_range[1].get<size_t>());
+                } else {
+                    size_t num_processors = std::min(num_sm, num_tasks);
+                    processor_group["ProcessorRange"] = {0, num_processors};
+                    max_processor_id =
+                        std::max(max_processor_id, num_processors);
+                }
 
-            Json processor_group;
-            processor_group["ProcessorRange"] = {0, num_processors};
-            processor_group["ResourceGroups"] = Json::array();
-            processor_group["ResourceGroups"].push_back(resource_group);
-            processor_groups.push_back(processor_group);
+                Json resource_group;
+                resource_group["ProcessorRange"] =
+                    processor_group["ProcessorRange"];
+                if (!ctx_warp_range.empty()) {
+                    resource_group["WarpRange"] = ctx_warp_range;
+                    max_warp_id =
+                        std::max(max_warp_id, ctx_warp_range[1].get<size_t>());
+                } else {
+                    resource_group["WarpRange"] = {0, num_warps};
+                    max_warp_id = std::max(max_warp_id, num_warps);
+                }
+                if (!ctx_sram_range.empty()) {
+                    resource_group["SramRange"] = ctx_sram_range;
+                } else {
+                    resource_group["SramRange"] = {0, sram_bytes};
+                }
+                resource_group["TaskGroups"] = {{{"TaskId", task_info["Id"]},
+                                                 {"TaskRange", {0, num_tasks}},
+                                                 {"Granularity", 1}}};
+
+                processor_group["ResourceGroups"] = Json::array();
+                processor_group["ResourceGroups"].push_back(resource_group);
+                processor_groups.push_back(processor_group);
+            }
+            prev_append_task =
+                !ctx_append_task.empty() && ctx_append_task.get<bool>();
+            first_op = false;
         }
     }
 
@@ -122,8 +177,8 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
     plan["Rank"] = model_.rank();
     plan["WorldSize"] = model_.world_size();
     plan["Architecture"] = gpu_info.arch->name();
-    plan["NumProcessors"] = max_num_processors;
-    plan["NumWarpsPerProcessor"] = max_num_warps;
+    plan["NumProcessors"] = max_processor_id;
+    plan["NumWarpsPerProcessor"] = max_warp_id;
     plan["TaskInfos"] = task_infos;
     plan["ProcessorGroups"] = processor_groups;
 

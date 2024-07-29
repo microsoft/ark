@@ -37,7 +37,15 @@ void ModelGraphContextStack::pop(const std::string &key) {
     it->second.pop_back();
 }
 
-std::map<std::string, std::string> ModelGraphContextStack::current_context() const {
+std::string ModelGraphContextStack::get_context(const std::string &key) const {
+    if (this->storage_.find(key) == this->storage_.end() ||
+        this->storage_.at(key).empty()) {
+        return "";
+    }
+    return *this->storage_.at(key).back();
+}
+
+std::map<std::string, std::string> ModelGraphContextStack::get_context_all() const {
     std::map<std::string, std::string> cur;
     for (const auto &pair : this->storage_) {
         if (!pair.second.empty()) {
@@ -167,6 +175,10 @@ bool ModelGraph::Impl::verify() const {
     return true;
 }
 
+std::string ModelGraph::Impl::get_context(const std::string &key) const {
+    return context_stack_->get_context(key);
+}
+
 ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     for (auto &tns : op->input_tensors()) {
         if (tensor_to_producer_op_.find(tns) == tensor_to_producer_op_.end()) {
@@ -205,7 +217,7 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
         producer->consumers.push_back(node);
     }
 
-    node->context = context_stack_->current_context();
+    node->context = context_stack_->get_context_all();
 
     nodes_.push_back(node);
     return node;

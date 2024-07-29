@@ -34,7 +34,9 @@ class ModelGraphContextStack {
 
     void pop(const std::string &key);
 
-    std::map<std::string, std::string> current_context() const;
+    std::string get_context(const std::string &key) const;
+
+    std::map<std::string, std::string> get_context_all() const;
 };
 
 class ModelGraph::Impl {
@@ -79,6 +81,8 @@ class ModelGraph::Impl {
     bool compressed() const { return compressed_; }
 
     bool verify() const;
+
+    std::string get_context(const std::string &key) const;
 
     std::string serialize(bool pretty = true) const;
 
