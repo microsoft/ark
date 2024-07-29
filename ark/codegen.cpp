@@ -42,7 +42,7 @@ class SyncStateInfo {
 class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
-         const std::map<size_t, size_t> &buffer_id_to_offset,
+         const std::map<size_t, void*> &buffer_id_to_addr,
          const std::string &name);
     ~Impl() = default;
 
@@ -67,7 +67,7 @@ class CodeGenerator::Impl {
    protected:
     friend class CodeGenerator;
 
-    std::map<size_t, size_t> buffer_id_to_offset_;
+    std::map<size_t, void*> buffer_id_to_addr;
     std::string name_;
     int rank_;
     int world_size_;
@@ -77,9 +77,9 @@ class CodeGenerator::Impl {
 };
 
 CodeGenerator::Impl::Impl(const PlanJson &plan,
-                          const std::map<size_t, size_t> &buffer_id_to_offset,
+                          const std::map<size_t, void*> &buffer_id_to_addr,
                           const std::string &name)
-    : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
+    : buffer_id_to_addr(buffer_id_to_addr), name_(name) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
     num_procs_ = plan.at("NumProcessors");
@@ -214,7 +214,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
         ss << this->def_op(op_json, task_json["Id"], op_idx++);
     }
     ss << "__device__ void t" << task_json["Id"]
-       << "(char* _buf, int _idx, int _spw) {\n";
+       << "(int _idx, int _spw) {\n";
     op_idx = 0;
     for (auto &op_json : task_json["Ops"]) {
         auto op = ModelOp::deserialize(op_json);
@@ -224,17 +224,17 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             auto &arg = impl_args[i];
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(tns->buffer()->id());
-                size_t offset = buffer_offset + ModelOffset(tns).value();
-                ss << "(" << tns->data_type()->type_str() << "*)&_buf["
-                   << offset << "]";
+                void* buffer_addr = buffer_id_to_addr.at(tns->buffer()->id());
+                size_t offset = ModelOffset(tns).value();
+                ss << "(" << tns->data_type()->type_str() << "*)((char*)"
+                    << buffer_addr << " + " << offset << ")";
+                
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(moff.buffer_id());
-                size_t offset = buffer_offset + moff.value();
-                ss << offset;
+                void* buffer_addr = buffer_id_to_addr.at(moff.buffer_id());
+                size_t offset = moff.value();
+                ss << "(uint64_t)((char*)" << buffer_addr << " + " << offset
+                   << ")";
             } else {
                 ss << arg.serialize().begin().value();
             }
@@ -265,7 +265,7 @@ std::string CodeGenerator::Impl::task_seq(
     ss << "task_seq<" << proc_b << ", " << proc_e << ", " << proc_s << ", "
        << proc_cur << ", " << task_b << ", " << task_e << ", " << task_s << ", "
        << task_gran << ", " << num_slots << ", " << slot_num_warps << ", "
-       << slot_sram_bytes << ", t" << task_id << ">(_buf);\n";
+       << slot_sram_bytes << ", t" << task_id << ">();\n";
     return ss.str();
 }
 
@@ -288,10 +288,14 @@ std::string CodeGenerator::Impl::resource_group(
     size_t proc_b = *rg_proc_range.begin();
     size_t proc_e = *rg_proc_range.end();
     size_t proc_s = rg_proc_range.step();
+    std::map<size_t, Json> task_infos_map;
+    for (auto &task_info : task_infos) {
+        task_infos_map[task_info.at("Id").get<size_t>()] = task_info;
+    }
     std::stringstream ss;
     for (auto &tg : rg_json["TaskGroups"]) {
         size_t task_id = tg["TaskId"];
-        auto &task_info = task_infos[task_id];
+        auto &task_info = task_infos_map.at(task_id);
         Range<size_t> task_range(tg["TaskRange"][0], tg["TaskRange"][1]);
         size_t task_gran = tg["Granularity"];
         size_t num_warps_per_task = task_info["NumWarps"];
@@ -305,7 +309,8 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(SchedulerError, "not enough resources for task group");
+            ERR(SchedulerError, "not enough resources for task group: ",
+                tg.dump());
         }
 
         size_t task_b = *task_range.begin();
@@ -429,9 +434,9 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 }
 
 CodeGenerator::CodeGenerator(
-    const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    const PlanJson &plan, const std::map<size_t, void*> &buffer_id_to_addr,
     const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_addr, name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

@@ -6,10 +6,10 @@ from .model import Model
 from .runtime import _RuntimeState
 
 
-def init():
+def init(keep_runtime: bool = False):
     """Initializes ARK."""
     Model.reset()
-    if _RuntimeState.executor is not None:
+    if not keep_runtime and _RuntimeState.executor is not None:
         if not _RuntimeState.executor.destroyed():
             _RuntimeState.executor.destroy()
     _ark_core.init()

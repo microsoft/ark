@@ -113,7 +113,13 @@ class Runtime:
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
         if self.launched():
-            logging.warn("Runtime is already launched, skip launching")
+            # If the Runtime state is already launched and we are adding another plan
+            # to the executor, we compile the new kernel and launch the executor again.
+            if not plan:
+                plan = DefaultPlanner(gpu_id).plan()
+            self.executor.add_plan(str(plan))
+            self.executor.compile()
+            self.executor.launch()
             return
         if not plan:
             if not plan_path:
@@ -175,12 +181,15 @@ class Runtime:
         self.state = Runtime.State.LaunchedNotRunning
         return elapsed
 
-    def reset(self):
+    def reset(self, persist=False):
         """
-        Reset the runtime.
+        Reset the runtime. If persist is True, keep the executor alive to run
+        additional plans. If persist is False, destroy the executor.
         """
         if self.launched():
             self.stop()
+        if persist:
+            return
         if self.executor is not None:
             if not self.executor.destroyed():
                 self.executor.destroy()

@@ -80,5 +80,6 @@ void register_executor(py::module &m) {
              py::overload_cast<ark::Executor *, const ark::Tensor &, size_t,
                                size_t, uintptr_t, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
-             py::arg("stream"), py::arg("is_d2d"));
+             py::arg("stream"), py::arg("is_d2d"))
+        .def("add_plan", &ark::Executor::add_plan, py::arg("plan"));
 }
