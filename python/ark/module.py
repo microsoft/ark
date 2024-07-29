@@ -12,9 +12,6 @@ import ark
 
 try:
     import torch
-    from torch.autograd import Function
-    from torch.nn import Module as TorchModule
-
     _no_torch = False
 except ImportError:
     from . import torch_mock as torch
@@ -22,18 +19,19 @@ except ImportError:
     _no_torch = True
 
 
-class Module:
+class Module(torch.nn.Module):
     """
     Base class for all neural network modules.
     """
 
     def __init__(self):
+        super().__init__()
         # The submodules of the module.
         self.sub_modules: dict[str, "Module"] = dict()
         # The parameters of the module.
         self.parameters: dict[str, Parameter] = dict()
-        # Intermediate computations stored for the backwards pass.
-        self.saved_tensors: dict[str, Any] = dict()
+        # ARK parameters that are not yet initialized.
+        self.deffered_parmas: dict[str, Parameter] = dict()
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
@@ -46,8 +44,6 @@ class Module:
             self.register_module(__name, __value)
         elif isinstance(__value, Parameter):
             self.register_parameter(__name, __value)
-        elif isinstance(__value, Tensor):
-            self.saved_tensors[__name] = __value
         elif not _no_torch and isinstance(__value, torch.nn.Parameter):
             __value = Parameter(__value)
             self.register_parameter(__name, __value)
@@ -67,6 +63,8 @@ class Module:
         if not isinstance(param, Parameter):
             raise TypeError("param must be a Parameter")
         self.parameters[name] = param
+        if param.torch_param is None:
+            self.deffered_parmas[name] = param
 
     def params_dict(self, prefix="") -> Dict[str, Parameter]:
         params_dict = {}
@@ -121,7 +119,8 @@ class Module:
             }
         raise ValueError(f"Unsupported mode: {mode}")
 
-    def forward(self, *args: Any, **kwargs: Any) -> Any: ...
+    def forward(self, *args: Any, **kwargs: Any):
+        return _ARKFunction.apply(self, *args, **kwargs)
 
     def backward(self, *args: Any, **kwargs: Any) -> Any: ...
 
@@ -203,15 +202,14 @@ class RuntimeModule(Module):
             rt.run()
             return _recursive_ark_to_torch(self.forward_output)
 
-
-class ModuleFn(Function):
+class _ARKFunction(torch.autograd.Function):
     """
     Facilitates the integration of ARK modules with PyTorch's
     autograd system by defining custom forward and backward passes that
     utilize the user's defined ARK module.
     """
     @staticmethod
-    def forward(ctx, input, ark_module):
+    def forward(ctx, ark_module, input):
         """
         Returns a PyTorch tensor that is the result
         of the forward pass of the ARK module.
@@ -219,7 +217,6 @@ class ModuleFn(Function):
         ark.init(keep_runtime=True)
         ctx.ark_module = ark_module
         input_ark = Tensor.from_torch(input)
-        ark_module.saved_tensors["input"] = input_ark
         output = ark_module.forward(input_ark)
         rt = Runtime.get_runtime()
         forward_plan = DefaultPlanner().plan()
@@ -250,20 +247,15 @@ class ModuleFn(Function):
                 pytorch_grad = param.staged_tensor.get_torch_view()
                 param.torch_param.grad = pytorch_grad
         rt.reset(persist=True)
-        ctx.ark_module.saved_tensors.clear()
         return (output, None)
-        
 
-class ARKComponent(TorchModule):
+class RuntimeModule(torch.nn.Module):
     """
-    A PyTorch module wrapper for integrating ARK modules into PyTorch models.
-    The ARK module must define `forward` for computation and `backward`
-    for gradient calculation.
+    Wraps an ARK module to be used as a PyTorch autograd function.
     """
-
     def __init__(self, ark_module):
         super().__init__()
         self.ark_module = ark_module
 
     def forward(self, input):
-        return ModuleFn.apply(input, self.ark_module)
+        return _ARKFunction.apply(input, self.ark_module)

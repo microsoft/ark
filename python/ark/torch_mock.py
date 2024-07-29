@@ -27,3 +27,23 @@ class ubyte: ...
 
 
 class Tensor: ...
+
+
+
+class nn:
+
+
+    class Module: ...
+    
+
+    class Parameter: ... 
+
+
+class autograd:
+
+
+    class Function: 
+
+
+        def apply(self, *args, **kwargs): ...
+

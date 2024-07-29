@@ -236,13 +236,13 @@ class Tensor:
         return self
 
 
-class Parameter(Tensor):
+class Parameter(Tensor, torch.nn.Parameter):
     """
     A tensor as a parameter.
     """
 
     def __init__(
-        self, tensor: Union[_Tensor, "torch.nn.Parameter"], runtime_id: int = -1
+        self, tensor: Union[_Tensor, "torch.nn.Parameter"], runtime_id: int = -1, requires_grad: bool = True
     ):
         """
         Initializes a new instance of the Parameter class.
@@ -252,20 +252,25 @@ class Parameter(Tensor):
             core_tensor = ark_tensor._tensor
             self.torch_param = tensor
             self.staged_tensor = None
+            self.requires_grad = tensor.requires_grad
         elif isinstance(tensor, _Tensor):
             core_tensor = tensor
             self.torch_param = None
+            self.staged_tensor = None
+            self.requires_grad = True
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"
             )
-
-        super().__init__(core_tensor, runtime_id=runtime_id)
         self.runtime_id = runtime_id
+        self.requires_grad = requires_grad
+        Tensor.__init__(self, core_tensor, runtime_id=runtime_id)
+        torch.nn.Parameter.__init__(self, core_tensor, requires_grad=requires_grad)
+        
 
     def update_gradient(self, ark_tensor: Tensor):
         """
-        Stages an ARK tensor to be used for updating the gradient of its associated PyTorch parameter.
+        Stages an ARK tensor to be used for updating the gradient of its associated parameter.
         """
         if _no_torch:
             raise ImportError("torch is not available")

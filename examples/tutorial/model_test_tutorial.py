@@ -1,58 +1,48 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from ark.ops import matmul
-from ark import Module
+import ark
 import torch
 import torch.optim as optim
-from ark.module import ARKComponent
+
 
 # Set random seed for reproducibility.
 torch.manual_seed(42)
 
 # Let's first define a linear layer using ARK.
-class ARKLinear(Module):
+class ARKLinear(ark.Module):
     def __init__(self, weight):
         super().__init__()
         self.weight = weight
-        self.saved_input = None
 
     def forward(self, input):
         self.saved_input = input
-        output = matmul(input, self.weight, transpose_other=True)
+        output = ark.matmul(input, self.weight, transpose_other=True)
         return output
 
     def backward(self, grad_output):
-        grad_weight = matmul(
+        grad_weight = ark.matmul(
             grad_output, self.saved_input, transpose_input=True
         )
-        grad_input = matmul(grad_output, self.weight, transpose_other=False)
-        # Update the gradient of the weight.
+        grad_input = ark.matmul(grad_output, self.weight, transpose_other=False)
         self.weight.update_gradient(grad_weight)
         return grad_input, grad_weight
 
 
 # Let's use our previous module to define a double linear layer.
-class MyARKModule(Module):
-    def __init__(self, weight1, weight2):
+class MyARKModule(ark.Module):
+    def __init__(self, weight0, weight1):
         super().__init__()
-        self.linear1 = ARKLinear(weight1)
-        self.linear2 = ARKLinear(weight2)
+        self.linear1 = ARKLinear(weight0)
+        self.linear2 = ARKLinear(weight1)
 
     def forward(self, x):
         x = self.linear1.forward(x)
-        # 'saved_tensors' is a dictionary used to store intermediate
-        #  tensors for use in the backward pass.
-        self.saved_tensors["linear2_input"] = x
         x = self.linear2.forward(x)
         return x
 
     def backward(self, grad_output):
-        # Access intermediate tensors from the forward pass.
-        self.linear2.saved_input = self.saved_tensors["linear2_input"]
         grad_x, grad_weight2 = self.linear2.backward(grad_output)
-        # 'input' is the default key for the initial forward pass input.
-        self.linear1.saved_input = self.saved_tensors["input"]
         grad_x, grad_weight1 = self.linear1.backward(grad_x)
         return grad_x, grad_weight1, grad_weight2
 
@@ -104,16 +94,16 @@ def replace_layers_with_ark(model):
         model.layers[1].weight.to("cuda:0").requires_grad_(True)
     )
     ark_module = MyARKModule(weight_0, weight_1)
-    ark_wrapper = ARKComponent(ark_module)
-    model.layers[0] = ark_wrapper
+    model.layers[0] = ark_module
     del model.layers[1]
 
     # Since we replaced the PyTorch layer with an ARK layer, we need to register the PyTorch parameters
     # our ARK module utilizes with the original PyTorch model so ARK can leverage PyTorch's optimizers.
-    model.register_parameter("weight_0", weight_0)
-    model.register_parameter("weight_1", weight_1)
-    return model
+    #model.register_parameter("weight_0", weight_0)
+    #model.register_parameter("weight_1", weight_1)
 
+    return model
+k
 
 # Instantiate our models.
 pytorch_model = SimpleModel()
@@ -123,6 +113,20 @@ ark_model = SimpleModel()
 # Ensure both models have the same weights.
 ark_model.load_state_dict(pytorch_model.state_dict())
 ark_model = replace_layers_with_ark(ark_model)
+
+# Access the parameters of the models
+pytorch_params = list(pytorch_model.parameters())
+ark_params = list(ark_model.parameters())
+
+# Print the parameters to verify
+print("PyTorch Model Parameters:")
+for param in pytorch_params:
+    print(param)
+
+print("\nARK Model Parameters:")
+for param in ark_params:
+    print(param)
+
 
 # Move both models to GPU.
 pytorch_model.to("cuda:0")
