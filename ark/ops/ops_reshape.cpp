@@ -199,8 +199,8 @@ Tensor Model::reshape(Tensor input, const Dims &shape, bool allowzero,
     reshape_helper(input.ref_, Dims{inferred_shape}, allowzero, new_shape,
                    new_strides, new_offs);
     return impl_
-        ->create_op<ModelOpReshape>(name, input.ref_, new_shape, new_strides,
-                                    new_offs)
+        ->create_op<ModelOpReshape>("", name, input.ref_, new_shape,
+                                    new_strides, new_offs)
         ->result_tensors()[0];
 }
 

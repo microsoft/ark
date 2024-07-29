@@ -30,7 +30,7 @@ Json ModelOpNoop::default_config([[maybe_unused]] const ArchRef arch) const {
 }
 
 void Model::noop(Tensor input, const std::string &name) {
-    impl_->create_op<ModelOpNoop>(name, input.ref_);
+    impl_->create_op<ModelOpNoop>("", name, input.ref_);
 }
 
 }  // namespace ark

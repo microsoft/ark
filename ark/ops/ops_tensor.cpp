@@ -27,7 +27,7 @@ Tensor Model::tensor(const Dims &shape, const DataType &data_type,
                      const Dims &strides, const Dims &offsets,
                      const Dims &padded_shape, const std::string &name) {
     return impl_
-        ->create_op<ModelOpTensor>(name, nullptr, shape, data_type.ref(),
+        ->create_op<ModelOpTensor>("", name, nullptr, shape, data_type.ref(),
                                    strides, offsets, padded_shape)
         ->result_tensors()[0];
 }

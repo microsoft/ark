@@ -70,9 +70,9 @@ Json ModelOpEmbedding::default_config([
 }
 
 Tensor Model::embedding(Tensor input, Tensor weight, Tensor output,
-                        const std::string &name) {
+                        const std::string &config, const std::string &name) {
     return impl_
-        ->create_op<ModelOpEmbedding>(name, input.ref_, weight.ref_,
+        ->create_op<ModelOpEmbedding>(config, name, input.ref_, weight.ref_,
                                       output.ref_)
         ->result_tensors()[0];
 }

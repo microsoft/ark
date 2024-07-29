@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import sys
 import os
 
 if os.environ.get("ARK_ROOT", None) is None:
@@ -102,3 +101,4 @@ from .error import (
 )
 from .planner import DefaultPlanner, Plan
 from .profiler import Profiler
+from .context_manager import ContextManager

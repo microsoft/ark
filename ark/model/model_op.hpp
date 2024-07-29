@@ -50,8 +50,8 @@ class ModelOp {
         return "";
     }
 
-    virtual std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const Json &config) const {
+    virtual std::vector<ModelOpArg> impl_args(
+        [[maybe_unused]] const Json &config) const {
         return {};
     }
 
@@ -60,9 +60,13 @@ class ModelOp {
         return {{"NumTasks", 0}, {"NumWarps", 0}, {"SramBytes", 0}};
     }
 
+    void set_config(const std::string &config);
+
     void set_name(const std::string &name) { name_ = name; }
 
     ModelOpType type() const { return type_; }
+
+    const Json &config() const { return config_; }
 
     const std::string &name() const { return name_; }
 
@@ -100,6 +104,7 @@ class ModelOp {
         const std::vector<std::string> &template_args = {});
 
     ModelOpType type_;
+    Json config_;
     std::string name_;
     bool is_virtual_;
     std::vector<ModelTensorRef> read_tensors_;

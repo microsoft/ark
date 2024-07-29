@@ -69,7 +69,9 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
             task_info["Id"] = next_node_id++;
 
             Json config;
-            if (!config_rules_.empty()) {
+            if (!op->config().empty()) {
+                config = op->config();
+            } else if (!config_rules_.empty()) {
                 const std::string op_str = op->serialize().dump();
                 for (auto &rule : config_rules_) {
                     auto config_str = rule(op_str, gpu_info.arch->name());

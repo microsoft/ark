@@ -4,6 +4,7 @@
 #ifndef ARK_MODEL_GRAPH_IMPL_HPP_
 #define ARK_MODEL_GRAPH_IMPL_HPP_
 
+#include <list>
 #include <map>
 #include <set>
 #include <tuple>
@@ -18,17 +19,39 @@
 
 namespace ark {
 
+class ModelGraphContextStack {
+   private:
+    std::map<std::string, std::list<std::shared_ptr<std::string>>> storage_;
+
+   public:
+    ModelGraphContextStack() = default;
+
+    ModelGraphContextStack(const ModelGraphContextStack &other);
+
+    ~ModelGraphContextStack() = default;
+
+    void push(const std::string &key, const std::string &value);
+
+    void pop(const std::string &key);
+
+    std::map<std::string, std::string> current_context() const;
+};
+
 class ModelGraph::Impl {
    public:
     Impl(int rank, int world_size)
-        : rank_(rank), world_size_(world_size), compressed_(false){};
+        : rank_(rank),
+          world_size_(world_size),
+          compressed_(false),
+          context_stack_(std::make_shared<ModelGraphContextStack>()) {};
 
     Impl(const Impl &other);
 
     Impl &operator=(const Impl &other);
 
     template <typename T, typename... Args>
-    ModelOpRef create_op(const std::string &name, Args &&... args) {
+    ModelOpRef create_op(const std::string &config, const std::string &name,
+                         Args &&...args) {
         ModelOpRef op = std::make_shared<T>(std::forward<Args>(args)...);
         std::string name_copy;
         if (name.empty()) {
@@ -41,6 +64,7 @@ class ModelGraph::Impl {
         if (count > 0) {
             name_copy += "_" + std::to_string(count);
         }
+        op->set_config(config);
         op->set_name(name_copy);
         add_op(op);
         return op;
@@ -50,7 +74,7 @@ class ModelGraph::Impl {
 
     int world_size() const { return world_size_; }
 
-    void compress_nodes();
+    void compress_nodes(bool merge_nodes = false);
 
     bool compressed() const { return compressed_; }
 
@@ -100,6 +124,12 @@ class ModelGraph::Impl {
 
     /// True if `compress_nodes` has been called.
     bool compressed_;
+
+   protected:
+    friend class ContextManager;
+
+    /// Graph context stack.
+    std::shared_ptr<ModelGraphContextStack> context_stack_;
 };
 
 }  // namespace ark

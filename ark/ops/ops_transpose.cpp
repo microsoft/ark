@@ -124,9 +124,10 @@ Json ModelOpTranspose::default_config([
 }
 
 Tensor Model::transpose(Tensor input, const std::vector<int64_t> &permutation,
-                        Tensor output, const std::string &name) {
+                        Tensor output, const std::string &config,
+                        const std::string &name) {
     return impl_
-        ->create_op<ModelOpTranspose>(name, input.ref_, permutation,
+        ->create_op<ModelOpTranspose>(config, name, input.ref_, permutation,
                                       output.ref_)
         ->result_tensors()[0];
 }

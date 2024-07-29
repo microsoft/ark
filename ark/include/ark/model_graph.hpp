@@ -25,7 +25,7 @@ class ModelGraph {
 
     int world_size() const;
 
-    void compress_nodes();
+    void compress_nodes(bool merge_nodes = false);
 
     bool compressed() const;
 
@@ -38,6 +38,7 @@ class ModelGraph {
 
    protected:
     friend class Model;
+    friend class ContextManager;
 
     class Impl;
     std::unique_ptr<Impl> impl_;

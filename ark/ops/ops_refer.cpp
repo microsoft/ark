@@ -20,7 +20,7 @@ Tensor Model::refer(Tensor input, const Dims &shape, const Dims &strides,
                     const Dims &offsets, const Dims &padded_shape,
                     const std::string &name) {
     return impl_
-        ->create_op<ModelOpRefer>(name, input.ref_, shape, strides, offsets,
+        ->create_op<ModelOpRefer>("", name, input.ref_, shape, strides, offsets,
                                   padded_shape)
         ->result_tensors()[0];
 }

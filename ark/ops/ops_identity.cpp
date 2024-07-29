@@ -31,7 +31,7 @@ Tensor Model::identity(Tensor input, const std::vector<Tensor> &deps,
     for (auto &dep : deps) {
         deps_ref.emplace_back(dep.ref_);
     }
-    return impl_->create_op<ModelOpIdentity>(name, input.ref_, deps_ref)
+    return impl_->create_op<ModelOpIdentity>("", name, input.ref_, deps_ref)
         ->result_tensors()[0];
 }
 

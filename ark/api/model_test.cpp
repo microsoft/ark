@@ -36,7 +36,7 @@ ark::unittest::State test_model_basics() {
     //   (AddOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
     UNITTEST_TRUE(compressed.compressed());
     UNITTEST_EQ(compressed.nodes().size(), 1);
@@ -70,7 +70,7 @@ ark::unittest::State test_model_basics() {
     //   (AddOp,AddOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
     UNITTEST_EQ(compressed.nodes().size(), 1);
 
@@ -104,7 +104,7 @@ ark::unittest::State test_model_basics() {
     //   (AddOp,AddOp,ReluOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
     UNITTEST_EQ(compressed.nodes().size(), 1);
 
@@ -143,7 +143,7 @@ ark::unittest::State test_model_basics() {
     //   (AddOp,AddOp,ReluOp,AddOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
 
     auto nodes = compressed.nodes();
@@ -190,7 +190,7 @@ ark::unittest::State test_model_basics() {
     //                      (AddOp,) --+--> (AddOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
 
     nodes = compressed.nodes();
@@ -250,7 +250,7 @@ ark::unittest::State test_model_basics() {
     //                                      (AddOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
 
     nodes = compressed.nodes();
@@ -312,7 +312,7 @@ ark::unittest::State test_model_basics() {
     //                                      (AddOp,)
     //
 
-    compressed = model.compress();
+    compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
 
     nodes = compressed.nodes();
@@ -353,7 +353,7 @@ ark::unittest::State test_model_dependent_inputs() {
     ark::Tensor x4 = m.mul(x2, x3);
     ark::Tensor y = m.add(x0, x4);
 
-    auto compressed = m.compress();
+    auto compressed = m.compress(true);
     auto nodes = compressed.nodes();
     UNITTEST_EQ(nodes.size(), 4);
     auto nodes_iter = nodes.begin();
@@ -399,7 +399,7 @@ ark::unittest::State test_model_noop() {
 
     UNITTEST_TRUE(model.verify());
 
-    auto compressed = model.compress();
+    auto compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
     UNITTEST_EQ(compressed.nodes().size(), 0);
     return ark::unittest::SUCCESS;
@@ -425,7 +425,7 @@ ark::unittest::State test_model_identity() {
     ark::Tensor t4 = model.relu(t3);
     UNITTEST_TRUE(model.verify());
 
-    auto compressed = model.compress();
+    auto compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
     auto nodes = compressed.nodes();
     UNITTEST_EQ(nodes.size(), 3);
@@ -478,7 +478,7 @@ ark::unittest::State test_model_sharding() {
     ark::Tensor t5 = model.relu(t4);
     UNITTEST_TRUE(model.verify());
 
-    auto compressed = model.compress();
+    auto compressed = model.compress(true);
     UNITTEST_TRUE(compressed.verify());
     auto nodes = compressed.nodes();
     UNITTEST_EQ(nodes.size(), 4);
@@ -526,7 +526,7 @@ ark::unittest::State test_model_cumulate() {
 
     UNITTEST_TRUE(model.verify());
 
-    auto compressed = model.compress();
+    auto compressed = model.compress(true);
     auto nodes = compressed.nodes();
     UNITTEST_EQ(nodes.size(), 5);
 

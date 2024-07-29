@@ -7,6 +7,7 @@
 
 namespace py = pybind11;
 
+extern void register_context_manager(py::module &m);
 extern void register_data_type(py::module &m);
 extern void register_dims(py::module &m);
 extern void register_error(py::module &m);
@@ -22,6 +23,7 @@ extern void register_version(py::module &m);
 PYBIND11_MODULE(_ark_core, m) {
     m.doc() = "Bind ARK C++ APIs to Python";
 
+    register_context_manager(m);
     register_data_type(m);
     register_dims(m);
     register_error(m);

@@ -128,25 +128,25 @@ Json ModelOpReduce::default_config([[maybe_unused]] const ArchRef arch) const {
 }
 
 Tensor Model::reduce_max(Tensor input, int axis, bool keepdims, Tensor output,
-                         const std::string &name) {
+                         const std::string &config, const std::string &name) {
     return impl_
-        ->create_op<ModelOpReduceMax>(name, input.ref_, axis, keepdims,
+        ->create_op<ModelOpReduceMax>(config, name, input.ref_, axis, keepdims,
                                       output.ref_)
         ->result_tensors()[0];
 }
 
 Tensor Model::reduce_mean(Tensor input, int axis, bool keepdims, Tensor output,
-                          const std::string &name) {
+                          const std::string &config, const std::string &name) {
     return impl_
-        ->create_op<ModelOpReduceMean>(name, input.ref_, axis, keepdims,
+        ->create_op<ModelOpReduceMean>(config, name, input.ref_, axis, keepdims,
                                        output.ref_)
         ->result_tensors()[0];
 }
 
 Tensor Model::reduce_sum(Tensor input, int axis, bool keepdims, Tensor output,
-                         const std::string &name) {
+                         const std::string &config, const std::string &name) {
     return impl_
-        ->create_op<ModelOpReduceSum>(name, input.ref_, axis, keepdims,
+        ->create_op<ModelOpReduceSum>(config, name, input.ref_, axis, keepdims,
                                       output.ref_)
         ->result_tensors()[0];
 }

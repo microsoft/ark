@@ -9,9 +9,9 @@
 
 namespace ark {
 
-Model Model::compress() const {
+Model Model::compress(bool merge_nodes) const {
     Model model(*this);
-    model.compress_nodes();
+    model.compress_nodes(merge_nodes);
     return model;
 }
 
