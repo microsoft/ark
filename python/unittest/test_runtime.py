@@ -38,7 +38,7 @@ def test_add_plans():
     other_tensor = ark.tensor([M, N], ark.fp16)
     output_tensor = ark.add(input_tensor, other_tensor)
     runtime = ark.Runtime()
-    runtime.launch(loop_mode=False)
+    runtime.launch()
     input_tensor_host = np.random.rand(M, N).astype(np.float16)
     input_tensor.from_numpy(input_tensor_host)
     other_tensor_host = np.random.rand(M, N).astype(np.float16)
@@ -49,11 +49,11 @@ def test_add_plans():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
     runtime.reset(persist=True)
-    # Add subsequent plan
+    ark.init(keep_runtime=True)
     prev_output = output_tensor
     new_tensor = ark.tensor([M, N], ark.fp16)
     final_output = ark.add(prev_output, new_tensor)
-    runtime.launch(loop_mode=False)
+    runtime.launch()
     new_tensor_host = np.random.rand(M, N).astype(np.float16)
     new_tensor.from_numpy(new_tensor_host)
     runtime.run()
@@ -62,3 +62,5 @@ def test_add_plans():
         final_output_host, output_tensor_host + new_tensor_host
     )
     runtime.reset()
+
+test_add_plans()
