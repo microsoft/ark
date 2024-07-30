@@ -17,7 +17,9 @@ class PlanManagerState {
 
 static std::map<size_t, PlanManagerState> gPlanManagerStates;
 
-PlanManager::PlanManager(Model& model, const std::string& plan_context) : model_id_(model.id()), stop_sync_(false) {
+PlanManager::PlanManager(Model& model, const std::string& plan_context)
+    : model_id_(model.id()), stop_sync_(false) {
+    static int task_group_id = 0;
     auto ctx = Json::parse(plan_context);
     if (!ctx.is_object()) {
         ERR(ModelError, "plan context must be a JSON object");
@@ -36,9 +38,7 @@ PlanManager::PlanManager(Model& model, const std::string& plan_context) : model_
             if (state.sync && !value.get<bool>()) {
                 stop_sync_ = true;
                 state.sync = false;
-                context_map["AppendTask"] = "true";
-            } else if (!state.sync) {
-                context_map["AppendTask"] = "true";
+                context_map["TaskGroupId"] = std::to_string(task_group_id++);
             }
         } else if (key == "processor_range") {
             if (!value.is_array()) {

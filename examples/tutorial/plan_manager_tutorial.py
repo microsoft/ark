@@ -26,7 +26,6 @@ class Softmax(ark.Module):
 
     def forward(self, input):
         with ark.PlanManager(
-            processor_range=[0, 304],
             warp_range=[0, 8],
             sram_range=[0, 0],
             sync=False,
@@ -34,7 +33,7 @@ class Softmax(ark.Module):
                 "NumWarps": 1,
                 "SramBytes": 0,
                 "NumTasks": 65536,
-            }
+            },
         ):
             with ark.PlanManager(config={"ImplType": "WarpWise"}):
                 max = ark.reduce_max(input, axis=-1)

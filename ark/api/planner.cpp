@@ -61,7 +61,7 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
     size_t max_processor_id = 1;
     size_t max_warp_id = 1;
     size_t next_task_id = 0;
-    bool prev_append_task = false;
+    int prev_task_group_id = -1;
     bool first_op = true;
 
     auto get_context = [&](const ModelNodeRef &node,
@@ -73,13 +73,6 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
     };
 
     for (const auto &node : model_.nodes()) {
-        std::string context = "";
-        for (const auto &[key, value] : node->context) {
-            context += key + "=" + value + ",";
-        }
-        context += "prev_append_task=" + std::to_string(prev_append_task);
-        LOG(INFO, context);
-
         for (const auto &op : node->ops) {
             if (op->is_virtual()) continue;
 
@@ -106,10 +99,12 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
             size_t num_warps = config["NumWarps"];
             size_t num_tasks = config["NumTasks"];
             size_t sram_bytes = config["SramBytes"];
+            size_t granularity = config.value("Granularity", 1);
 
-            auto ctx_append_task = get_context(node, "AppendTask");
-            if (!ctx_append_task.empty() && ctx_append_task.get<bool>() &&
-                prev_append_task) {
+            auto ctx_task_group_id = get_context(node, "TaskGroupId");
+            int task_group_id =
+                ctx_task_group_id.empty() ? -1 : ctx_task_group_id.get<int>();
+            if (task_group_id != -1 && task_group_id == prev_task_group_id) {
                 auto &task_info = task_infos.back();
                 task_info["NumWarps"] =
                     std::max(task_info["NumWarps"].get<size_t>(), num_warps);
@@ -161,14 +156,13 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
                 }
                 resource_group["TaskGroups"] = {{{"TaskId", task_info["Id"]},
                                                  {"TaskRange", {0, num_tasks}},
-                                                 {"Granularity", 1}}};
+                                                 {"Granularity", granularity}}};
 
                 processor_group["ResourceGroups"] = Json::array();
                 processor_group["ResourceGroups"].push_back(resource_group);
                 processor_groups.push_back(processor_group);
             }
-            prev_append_task =
-                !ctx_append_task.empty() && ctx_append_task.get<bool>();
+            prev_task_group_id = task_group_id;
             first_op = false;
         }
     }

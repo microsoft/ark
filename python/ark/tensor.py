@@ -193,7 +193,9 @@ class Tensor:
         ark_tensor = _Tensor(dl_capsule, ark_dtype.ctype())
         return Tensor(ark_tensor, runtime_id=runtime_id)
 
-    def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
+    def copy(
+        self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
+    ) -> "Tensor":
         """
         Copies data into this tensor. The data type may differ,
         but the size must match.
@@ -214,6 +216,7 @@ class Tensor:
                 self._tensor,
                 data.data_ptr(),
                 tensor_bytes,
+                stream,
                 data.device.type == "cuda",
             )
         elif isinstance(data, np.ndarray):
@@ -221,7 +224,7 @@ class Tensor:
                 data = np.ascontiguousarray(data)
             if data.nbytes != tensor_bytes:
                 raise ValueError("data size does not match the tensor")
-            rt.executor.tensor_write(self._tensor, data)
+            rt.executor.tensor_write(self._tensor, data, stream)
         else:
             raise ValueError("data must be a numpy array or a torch tensor")
         return self
