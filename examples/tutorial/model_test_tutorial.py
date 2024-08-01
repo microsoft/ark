@@ -114,19 +114,6 @@ ark_model = SimpleModel()
 ark_model.load_state_dict(pytorch_model.state_dict())
 ark_model = replace_layers_with_ark(ark_model)
 
-# Access the parameters of the models
-pytorch_params = list(pytorch_model.parameters())
-ark_params = list(ark_model.parameters())
-
-# Print the parameters to verify
-print("PyTorch Model Parameters:")
-for param in pytorch_params:
-    print(param)
-
-print("\nARK Model Parameters:")
-for param in ark_params:
-    print(param)
-
 
 # Move both models to GPU.
 pytorch_model.to("cuda:0")

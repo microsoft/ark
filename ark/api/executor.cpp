@@ -6,6 +6,7 @@
 #include <dlpack/dlpack.h>
 
 #include <cmath>
+#include <iostream>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
@@ -200,7 +201,7 @@ class Executor::Impl {
     std::shared_ptr<CodeGenerator> codegen_;
     std::shared_ptr<GpuEvent> timer_begin_;
     std::shared_ptr<GpuEvent> timer_end_;
-    std::vector<std::shared_ptr<GpuMemory>> buffer_;
+    std::vector<std::shared_ptr<GpuMemory>> buffers_;
     std::shared_ptr<GpuHostMemory> flag_;
     std::shared_ptr<GpuStream> stream_;
     std::shared_ptr<GpuKernel> kernel_;
@@ -237,7 +238,7 @@ void Executor::Impl::init(const PlanJson &plan_json) {
         ERR(InvalidUsageError, "Invalid rank ", rank_, " with world size ",
             world_size_);
     }
-    if (world_size_ > 1) {
+    if (world_size_ > 1 && !comm_) {
         init_communicator();
     }
 
@@ -261,9 +262,9 @@ void Executor::Impl::init(const PlanJson &plan_json) {
 
     timer_begin_ = gpu_manager->create_event();
     timer_end_ = gpu_manager->create_event();
-    buffer_.push_back(gpu_manager->malloc(total_bytes_, 65536));
+    buffers_.push_back(gpu_manager->malloc(total_bytes_, 65536));
 
-    buffer_id_to_addr_ = init_buffer_addrs(buffer_.back()->ref(),
+    buffer_id_to_addr_ = init_buffer_addrs(buffers_.back()->ref(),
                                            buffer_id_to_offset_);
 
     codegen_ =
@@ -576,7 +577,9 @@ std::set<int> Executor::Impl::init_remote_ranks(const Json &plan_json) const {
 }
 
 void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
-    proxy_service_ = std::make_shared<mscclpp::ProxyService>();
+    if (!proxy_service_) {
+        proxy_service_ = std::make_shared<mscclpp::ProxyService>();
+    }
 
     int num_ranks_per_node = get_env().num_ranks_per_host;
     auto rank_to_node = [&](int rank) { return rank / num_ranks_per_node; };
@@ -593,12 +596,8 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     if (!get_env().disable_ib) {
         all_transports |= IBs[device_id_];
     }
-    // Register all buffers
-    std::vector<mscclpp::RegisteredMemory> regmem;
-    for (const auto &buf : buffer_) {
-        regmem.push_back(
-            comm_->registerMemory(buf->ref(), buf->bytes(), all_transports));
-    }
+    mscclpp::RegisteredMemory regmem = comm_->registerMemory(
+        buffers_.back()->ref(), buffers_.back()->bytes(), all_transports);
 
     std::map<int, std::vector<mscclpp::NonblockingFuture<
                       std::shared_ptr<mscclpp::Connection>>>>
@@ -623,12 +622,9 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
                                             ? mscclpp::Transport::Ethernet
                                             : IBs[device_id_]);
         }
-        // Send registered memory info for each buffer
-        for (const auto &r : regmem) {
-            comm_->sendMemoryOnSetup(r, remote_rank, 0);
-            rank_to_remote_regmem_future[remote_rank] =
-                comm_->recvMemoryOnSetup(remote_rank, 0);
-        }
+        comm_->sendMemoryOnSetup(regmem, remote_rank, 0);
+        rank_to_remote_regmem_future[remote_rank] =
+            comm_->recvMemoryOnSetup(remote_rank, 0);
     }
     comm_->setup();
 
@@ -641,15 +637,13 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     }
     for (auto &kv : rank_to_connections) {
         for (auto &conn : kv.second) {
-            for (const auto &rm : regmem) {
-                rank_to_proxy_channels_[kv.first].push_back(
-                    std::make_shared<mscclpp::SimpleProxyChannel>(
-                        proxy_service_->proxyChannel(
-                            proxy_service_->buildAndAddSemaphore(*comm_, conn)),
-                        proxy_service_->addMemory(
-                            rank_to_remote_regmem_future[kv.first].get()),
-                        proxy_service_->addMemory(rm)));
-            }
+            rank_to_proxy_channels_[kv.first].push_back(
+                std::make_shared<mscclpp::SimpleProxyChannel>(
+                    proxy_service_->proxyChannel(
+                        proxy_service_->buildAndAddSemaphore(*comm_, conn)),
+                    proxy_service_->addMemory(
+                        rank_to_remote_regmem_future[kv.first].get()),
+                    proxy_service_->addMemory(regmem)));
         }
     }
     comm_->setup();
@@ -669,14 +663,17 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
 
     for (auto &kv : sm_semaphores) {
         for (auto &sem : kv.second) {
-            for (const auto &rm : regmem) {
-                rank_to_sm_channels_[kv.first].push_back(
-                    std::make_shared<mscclpp::SmChannel>(
-                        sem, rank_to_remote_regmem_future[kv.first].get(),
-                        rm.data(), nullptr));
-            }
+            rank_to_sm_channels_[kv.first].push_back(
+                std::make_shared<mscclpp::SmChannel>(
+                    sem, rank_to_remote_regmem_future[kv.first].get(),
+                    regmem.data(), nullptr));
         }
     }
+}
+
+void Executor::Impl::add_plan(const std::string &plan) {
+    total_bytes_ = 0;
+    init(Json::parse(plan));
 }
 
 void Executor::Impl::compile() { kernel_->compile(); }
@@ -956,12 +953,6 @@ void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
     GLOG(gpuStreamSynchronize(copy_stream_raw));
 }
 
-void Executor::Impl::add_plan(const std::string &plan) {
-    // reset offset used in init_buffers
-    total_bytes_ = 0;
-    init(Json::parse(plan));
-}
-
 Executor::Executor(int device_id, Stream stream, const std::string &name,
                    const std::string &plan, bool loop_mode)
     : impl_(std::make_unique<Executor::Impl>(device_id, stream, name,
@@ -982,6 +973,8 @@ int Executor::device_id() const { return impl_->device_id(); }
 Stream Executor::stream() const { return impl_->stream(); }
 
 std::string Executor::plan() const { return impl_->plan(); }
+
+void Executor::add_plan(const std::string &plan) { impl_->add_plan(plan); }
 
 void Executor::compile() { impl_->compile(); }
 
@@ -1017,8 +1010,6 @@ void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
                             Stream stream, bool is_d2d) const {
     impl_->tensor_write(tensor, data, bytes, stream, is_d2d);
 }
-
-void Executor::add_plan(const std::string &plan) { impl_->add_plan(plan); }
 
 DefaultExecutor::DefaultExecutor(
     const Model &model, int device_id, Stream stream,

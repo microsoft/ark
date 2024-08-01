@@ -19,7 +19,7 @@ except ImportError:
     _no_torch = True
 
 
-class Module(torch.nn.Module):
+class Module:
     """
     Base class for all neural network modules.
     """
@@ -30,8 +30,6 @@ class Module(torch.nn.Module):
         self.sub_modules: dict[str, "Module"] = dict()
         # The parameters of the module.
         self.parameters: dict[str, Parameter] = dict()
-        # ARK parameters that are not yet initialized.
-        self.deffered_parmas: dict[str, Parameter] = dict()
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
@@ -63,8 +61,6 @@ class Module(torch.nn.Module):
         if not isinstance(param, Parameter):
             raise TypeError("param must be a Parameter")
         self.parameters[name] = param
-        if param.torch_param is None:
-            self.deffered_parmas[name] = param
 
     def params_dict(self, prefix="") -> Dict[str, Parameter]:
         params_dict = {}
@@ -119,8 +115,7 @@ class Module(torch.nn.Module):
             }
         raise ValueError(f"Unsupported mode: {mode}")
 
-    def forward(self, *args: Any, **kwargs: Any):
-        return _ARKFunction.apply(self, *args, **kwargs)
+    def forward(self, *args: Any, **kwargs: Any) -> Any: ...
 
     def backward(self, *args: Any, **kwargs: Any) -> Any: ...
 
@@ -129,6 +124,7 @@ class Module(torch.nn.Module):
             param.initialize()
         for module in self.sub_modules.values():
             module.initialize()
+    
 
 
 def _recursive_ark_to_torch(object):
@@ -141,67 +137,6 @@ def _recursive_ark_to_torch(object):
     return object
 
 
-class RuntimeModule(Module):
-    def __init__(self):
-        if _no_torch:
-            raise ImportError("torch is not available")
-        super().__init__()
-        self.built_forward = False
-        self.built_backward = False
-        self.forward_input_tensor_args: List[Tensor] = []
-        self.forward_input_tensor_kwargs: Dict[str, Tensor] = {}
-        self.forward_input_args = []
-        self.forward_input_kwargs = {}
-        self.forward_output = None
-        self.backward_tensor_args = []
-        self.backward_tensor_kwargs = {}
-
-    def build_forward(self, *args: Any, **kwargs: Any) -> Any: ...
-
-    def build_backward(self, *args: Any, **kwargs: Any) -> Any: ...
-
-    def forward(self, *args: Any, **kwargs: Any) -> Any:
-        if not self.built_forward:
-            for arg in args:
-                if isinstance(arg, torch.Tensor):
-                    self.forward_input_tensor_args.append(
-                        tensor(
-                            list(arg.shape),
-                            DataType.from_torch(arg.dtype),
-                        )
-                    )
-                    self.forward_input_args.append(
-                        self.forward_input_tensor_args[-1]
-                    )
-                else:
-                    self.forward_input_args.append(arg)
-            for key, value in kwargs.items():
-                if isinstance(value, torch.Tensor):
-                    self.forward_input_tensor_kwargs[key] = tensor(
-                        list(value.shape),
-                        DataType.from_torch(value.dtype),
-                    )
-                    self.forward_input_kwargs[key] = (
-                        self.forward_input_tensor_kwargs[key]
-                    )
-                else:
-                    self.forward_input_kwargs[key] = value
-            self.forward_output = self.build_forward(
-                *self.forward_input_args,
-                **self.forward_input_kwargs,
-            )
-            self.built_forward = True
-
-        with Runtime.get_runtime() as rt:
-            rt.launch(plan=DefaultPlanner().plan())
-            for tns, arg in zip(self.forward_input_tensor_args, args):
-                tns.copy(arg)
-            for key, value in self.forward_input_tensor_kwargs.items():
-                value.copy(kwargs[key])
-
-            rt.run()
-            return _recursive_ark_to_torch(self.forward_output)
-
 class _ARKFunction(torch.autograd.Function):
     """
     Facilitates the integration of ARK modules with PyTorch's
@@ -209,15 +144,31 @@ class _ARKFunction(torch.autograd.Function):
     utilize the user's defined ARK module.
     """
     @staticmethod
-    def forward(ctx, ark_module, input):
+    def forward(ctx, ark_module, *args, **kwargs):
         """
         Returns a PyTorch tensor that is the result
         of the forward pass of the ARK module.
         """
         ark.init(keep_runtime=True)
         ctx.ark_module = ark_module
-        input_ark = Tensor.from_torch(input)
-        output = ark_module.forward(input_ark)
+        input_args, input_kwargs = [], {}
+        input_requires_grad = 0
+        for arg in args:
+            if isinstance(arg, torch.Tensor):
+                input_args.append(Tensor.from_torch(arg))
+                if arg.requires_grad:
+                    input_requires_grad += 1
+            else:
+                input_args.append(arg)
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                input_kwargs[k] = Tensor.from_torch(v)
+                if v.requires_grad:
+                    input_requires_grad += 1
+            else:
+                input_kwargs[k] = v
+        ctx.num_inp_grad = input_requires_grad
+        output = ark_module.forward(*input_args, **input_kwargs)
         rt = Runtime.get_runtime()
         forward_plan = DefaultPlanner().plan()
         rt.launch(plan=forward_plan)
@@ -235,19 +186,20 @@ class _ARKFunction(torch.autograd.Function):
         """
         ark.init(keep_runtime=True)
         ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
-        grad_input, *grad_weights = ctx.ark_module.backward(*ark_grad_outputs)
+        grads = ctx.ark_module.backward(*ark_grad_outputs)
+        grad_inputs, grad_weights = grads[:ctx.num_inp_grad], grads[ctx.num_inp_grad:]
         params_dict = ctx.ark_module.params_dict()
         rt = Runtime.get_runtime()
         backward_plan = DefaultPlanner().plan()
         rt.launch(plan=backward_plan)
         rt.run()
-        output = grad_input.get_torch_view()
+        grad_inputs = [grad.get_torch_view() for grad in grad_inputs]
         for _, param in params_dict.items():
             if param.staged_tensor is not None:
                 pytorch_grad = param.staged_tensor.get_torch_view()
                 param.torch_param.grad = pytorch_grad
         rt.reset(persist=True)
-        return (output, None)
+        return (None, *grad_inputs)
 
 class RuntimeModule(torch.nn.Module):
     """
@@ -256,6 +208,6 @@ class RuntimeModule(torch.nn.Module):
     def __init__(self, ark_module):
         super().__init__()
         self.ark_module = ark_module
-
-    def forward(self, input):
-        return _ARKFunction.apply(input, self.ark_module)
+        
+    def forward(self, *args, **kwargs):
+        return _ARKFunction.apply(self.ark_module, *args, **kwargs)

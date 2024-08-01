@@ -34,17 +34,20 @@ class Tensor:
         _tensor: _Tensor,
         initializer: Initializer = None,
         runtime_id: int = -1,
+        requires_grad: bool = False,
     ):
         """
         Initializes a new instance of the Tensor class.
         Args:
             _tensor (_ark_core._Tensor): The underlying _Tensor object.
-            intializer (Initializer): The initializer for the Tensor.
+            initializer (Initializer): The initializer for the Tensor.
             runtime_id (int): The ID of the Runtime to use. Defaults to -1, which is the default Runtime.
+            requires_grad (bool): Whether the tensor requires gradient. Defaults to True.
         """
         self._tensor = _tensor
         self.initializer: Initializer = initializer
         self.runtime_id = runtime_id
+        self.requires_grad = requires_grad
 
     def shape(self) -> List[int]:
         """
@@ -118,7 +121,7 @@ class Tensor:
         if tensor is None:
             dev_name = f"cuda:{rt.executor.device_id()}"
             tensor = torch.zeros(
-                self.shape(), dtype=torch_type, device=torch.device(dev_name)
+                self.shape(), dtype=torch_type, device=torch.device(dev_name), requires_grad=self.requires_grad
             )
         elif list(tensor.shape) != self.shape():
             raise ValueError(
@@ -157,6 +160,7 @@ class Tensor:
             )
         dl_tensor = rt.executor.get_dl_tensor(self._tensor)
         torch_view = torch.utils.dlpack.from_dlpack(dl_tensor)
+        torch_view.requires_grad = self.requires_grad
         return torch_view
 
     def from_numpy(self, ndarray: np.ndarray, stream: int = 0) -> "Tensor":
@@ -191,7 +195,7 @@ class Tensor:
         ark_dtype = DataType.from_torch(tensor.dtype)
         dl_capsule = torch.utils.dlpack.to_dlpack(tensor)
         ark_tensor = _Tensor(dl_capsule, ark_dtype.ctype())
-        return Tensor(ark_tensor, runtime_id=runtime_id)
+        return Tensor(ark_tensor, runtime_id=runtime_id, requires_grad=tensor.requires_grad)
 
     def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
         """
@@ -201,7 +205,7 @@ class Tensor:
         rt = Runtime.get_runtime(self.runtime_id)
         if not rt.launched():
             raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.from_numpy()` is "
+                "Tensor is not allocated yet. `Tensor.copy()` is "
                 "usable only after you call `Runtime.launch()`."
             )
         tensor_bytes = self.nelems() * self.dtype().element_size()
@@ -216,6 +220,9 @@ class Tensor:
                 tensor_bytes,
                 data.device.type == "cuda",
             )
+            data.requires_grad = self.requires_grad
+            if isinstance(self, Parameter):
+                self.torch_param = data
         elif isinstance(data, np.ndarray):
             if not data.flags["C_CONTIGUOUS"]:
                 data = np.ascontiguousarray(data)
@@ -242,7 +249,7 @@ class Parameter(Tensor, torch.nn.Parameter):
     """
 
     def __init__(
-        self, tensor: Union[_Tensor, "torch.nn.Parameter"], runtime_id: int = -1, requires_grad: bool = True
+        self, tensor: Union[_Tensor, "torch.nn.Parameter"], runtime_id: int = -1
     ):
         """
         Initializes a new instance of the Parameter class.
@@ -252,20 +259,17 @@ class Parameter(Tensor, torch.nn.Parameter):
             core_tensor = ark_tensor._tensor
             self.torch_param = tensor
             self.staged_tensor = None
-            self.requires_grad = tensor.requires_grad
+            Tensor.__init__(self, core_tensor, runtime_id=runtime_id,requires_grad=tensor.requires_grad)
         elif isinstance(tensor, _Tensor):
             core_tensor = tensor
             self.torch_param = None
             self.staged_tensor = None
-            self.requires_grad = True
+            Tensor.__init__(self, core_tensor, runtime_id=runtime_id, requires_grad=False)
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"
             )
-        self.runtime_id = runtime_id
-        self.requires_grad = requires_grad
-        Tensor.__init__(self, core_tensor, runtime_id=runtime_id)
-        torch.nn.Parameter.__init__(self, core_tensor, requires_grad=requires_grad)
+        
         
 
     def update_gradient(self, ark_tensor: Tensor):
