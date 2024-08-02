@@ -7,14 +7,14 @@
 #include "model/model_op.hpp"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_model_op_sharding() {
-    // OpNode graph (parentheses indicate a OpNode):
+ark::unittest::State test_ops_sharding_model() {
+    // OpNode graph:
     //
-    //   (Relu,) --+
-    //             |
-    //   (Relu,) --+
-    //             |
-    //   (Relu,) --+--> (Relu,)
+    //   ReluOp --+
+    //            |
+    //   ReluOp --+
+    //            |
+    //   ReluOp --+--> ReluOp
     //
 
     ark::Model model;
@@ -37,34 +37,30 @@ ark::unittest::State test_model_op_sharding() {
     UNITTEST_TRUE(model.verify());
 
     auto compressed = model.compress();
+    UNITTEST_TRUE(compressed.verify());
     auto nodes = compressed.nodes();
     UNITTEST_EQ(nodes.size(), 4);
 
-    auto nodes_iter = nodes.begin();
-    auto node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r0.ref());
-    UNITTEST_EQ(node->producers.size(), 0);
-    UNITTEST_EQ(node->consumers.size(), 1);
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], r0.ref());
+    UNITTEST_EQ(nodes[0]->producers.size(), 0);
+    UNITTEST_EQ(nodes[0]->consumers.size(), 1);
 
-    node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r1.ref());
-    UNITTEST_EQ(node->producers.size(), 0);
-    UNITTEST_EQ(node->consumers.size(), 1);
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], r1.ref());
+    UNITTEST_EQ(nodes[1]->producers.size(), 0);
+    UNITTEST_EQ(nodes[1]->consumers.size(), 1);
 
-    node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r2.ref());
-    UNITTEST_EQ(node->producers.size(), 0);
-    UNITTEST_EQ(node->consumers.size(), 1);
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], r2.ref());
+    UNITTEST_EQ(nodes[2]->producers.size(), 0);
+    UNITTEST_EQ(nodes[2]->consumers.size(), 1);
 
-    node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t5.ref());
-    UNITTEST_EQ(node->producers.size(), 3);
-    UNITTEST_EQ(node->consumers.size(), 0);
+    UNITTEST_EQ(nodes[3]->op->result_tensors()[0], t5.ref());
+    UNITTEST_EQ(nodes[3]->producers.size(), 3);
+    UNITTEST_EQ(nodes[3]->consumers.size(), 0);
 
     return ark::unittest::SUCCESS;
 }
 
 int main() {
-    UNITTEST(test_model_op_sharding);
+    UNITTEST(test_ops_sharding_model);
     return 0;
 }

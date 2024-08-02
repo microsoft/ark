@@ -78,13 +78,11 @@ static void verfiy_format_op(const Json &json, bool need_config) {
 
 static void verify_format_node(const Json &json) {
     const std::vector<std::string> required_fields = {"Id", "ProducerNodeIds",
-                                                      "ConsumerNodeIds", "Ops"};
+                                                      "ConsumerNodeIds", "Op"};
     const std::vector<std::string> array_fields = {"ProducerNodeIds",
-                                                   "ConsumerNodeIds", "Ops"};
+                                                   "ConsumerNodeIds"};
     verify_format_json("NodeJson", json, required_fields, array_fields);
-    for (const auto &op : json.at("Ops")) {
-        verfiy_format_op(op, false);
-    }
+    verfiy_format_op(json.at("Op"), false);
 }
 
 static void verify_format_model(const Json &json) {
@@ -210,7 +208,7 @@ static std::stringstream &dump_pretty_object(const Json &json,
 
 std::string ModelJson::dump_pretty(int indent, int indent_step) const {
     std::stringstream ss;
-    dump_pretty_object(*this, "", 5, ss, indent, indent_step) << "\n";
+    dump_pretty_object(*this, "", 4, ss, indent, indent_step) << "\n";
     return ss.str();
 }
 
