@@ -65,8 +65,6 @@ class ModelGraph::Impl {
 
     void remove_node(ModelNodeRef node);
 
-    bool depends_on(ModelNodeRef node1, ModelNodeRef node2) const;
-
     void recursive_remove_virtual_nodes();
 
     void recursive_remove_virtual_nodes(

@@ -201,32 +201,6 @@ void ModelGraph::Impl::remove_node(ModelNodeRef node) {
     nodes_.erase(it);
 }
 
-bool ModelGraph::Impl::depends_on(ModelNodeRef node1,
-                                  ModelNodeRef node2) const {
-    if (node1 == node2) {
-        return false;
-    }
-    std::set<ModelNodeRef> seen_nodes;
-    std::vector<ModelNodeRef> boundary_nodes;
-    boundary_nodes.emplace_back(node1);
-    while (boundary_nodes.size() > 0) {
-        std::vector<ModelNodeRef> new_boundary_nodes;
-        for (auto &boundary_node : boundary_nodes) {
-            if (boundary_node == node2) {
-                return true;
-            }
-            for (auto &producer : boundary_node->producers) {
-                if (seen_nodes.find(producer) != seen_nodes.end()) {
-                    continue;
-                }
-                new_boundary_nodes.emplace_back(producer);
-            }
-        }
-        boundary_nodes = new_boundary_nodes;
-    }
-    return false;
-}
-
 void ModelGraph::Impl::recursive_remove_virtual_nodes() {
     std::vector<ModelNodeRef> leaf_nodes;
     for (auto &node : nodes_) {
