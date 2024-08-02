@@ -73,11 +73,6 @@ class ModelGraph::Impl {
         UniqueList<ModelNodeRef> &seen_nodes,
         const std::vector<ModelNodeRef> &boundary_nodes);
 
-    void recursive_merge_nodes();
-
-    void recursive_merge_nodes(UniqueList<ModelNodeRef> &seen_nodes,
-                               const std::vector<ModelNodeRef> &boundary_nodes);
-
     Json to_json(const ModelNodeRef &node) const;
 
     /// The list of @ref ModelNode in the graph.

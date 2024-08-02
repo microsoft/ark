@@ -78,13 +78,11 @@ static void verfiy_format_op(const Json &json, bool need_config) {
 
 static void verify_format_node(const Json &json) {
     const std::vector<std::string> required_fields = {"Id", "ProducerNodeIds",
-                                                      "ConsumerNodeIds", "Ops"};
+                                                      "ConsumerNodeIds", "Op"};
     const std::vector<std::string> array_fields = {"ProducerNodeIds",
-                                                   "ConsumerNodeIds", "Ops"};
+                                                   "ConsumerNodeIds"};
     verify_format_json("NodeJson", json, required_fields, array_fields);
-    for (const auto &op : json.at("Ops")) {
-        verfiy_format_op(op, false);
-    }
+    verfiy_format_op(json.at("Op"), false);
 }
 
 static void verify_format_model(const Json &json) {

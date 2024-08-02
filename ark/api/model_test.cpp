@@ -21,7 +21,7 @@ ark::unittest::State test_model_basics() {
     //                     |
     //   TensorOp --> t1 --+
     //                     |
-    //   TensorOp --> tx --+  (tx is the output reference, hidden from the code)
+    //   TensorOp --> tx --+  (tx is a write_tensor, hidden from the code)
     //
 
     ark::Tensor t0 = model.tensor({1}, ark::FP32);
@@ -31,25 +31,25 @@ ark::unittest::State test_model_basics() {
     UNITTEST_TRUE(model.verify());
     UNITTEST_FALSE(model.compressed());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,)
+    //   AddOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
     UNITTEST_TRUE(compressed.compressed());
-    UNITTEST_EQ(compressed.nodes().size(), 1);
 
-    auto node = compressed.nodes().front();
-    UNITTEST_EQ(node->ops.size(), 1);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[0], t0.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[1], t1.ref());
-    UNITTEST_EQ(node->consumers.size(), 0);
-    UNITTEST_EQ(node->producers.size(), 0);
+    auto nodes = compressed.nodes();
+    UNITTEST_EQ(nodes.size(), 1);
 
-    // Test a chain of Ops that share an input tensor.
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[0]->op->read_tensors()[0], t0.ref());
+    UNITTEST_EQ(nodes[0]->op->read_tensors()[1], t1.ref());
+    UNITTEST_EQ(nodes[0]->consumers.size(), 0);
+    UNITTEST_EQ(nodes[0]->producers.size(), 0);
+
+    // Test a chain of Ops that share a read_tensor.
     // Model graph:
     //
     // TensorOp --> t0 --+--> AddOp --> t2 ------+--> AddOp --> t3
@@ -58,70 +58,78 @@ ark::unittest::State test_model_basics() {
     //                   |                       |
     // TensorOp --> tx --+     TensorOp --> ty --+
     //
-    // (tx and ty are output references, hidden from the code)
+    // (tx and ty are write_tensors, hidden from the code)
     //
 
     ark::Tensor t3 = model.add(t2, t1);
 
     UNITTEST_TRUE(model.verify());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,AddOp,)
+    //   AddOp --> AddOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
-    UNITTEST_EQ(compressed.nodes().size(), 1);
 
-    node = compressed.nodes().front();
+    nodes = compressed.nodes();
+    UNITTEST_EQ(nodes.size(), 2);
 
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[0], t0.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[1], t1.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->ops[1]->read_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[1]->read_tensors()[1], t1.ref());
-    UNITTEST_EQ(node->consumers.size(), 0);
-    UNITTEST_EQ(node->producers.size(), 0);
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[0]->op->read_tensors()[0], t0.ref());
+    UNITTEST_EQ(nodes[0]->op->read_tensors()[1], t1.ref());
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], t3.ref());
+    UNITTEST_EQ(nodes[1]->op->read_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[1]->op->read_tensors()[1], t1.ref());
 
-    // Test a chain of Ops without shared input tensors.
+    UNITTEST_EQ(nodes[0]->consumers.size(), 1);
+    UNITTEST_EQ(nodes[0]->producers.size(), 0);
+    UNITTEST_EQ(nodes[1]->consumers.size(), 0);
+    UNITTEST_EQ(nodes[1]->producers.size(), 1);
+
+    // Test a chain of Ops without shared read_tensors.
     // Model graph (omit leftmost part):
     //
     // ... ----+--> AddOp --> t3 ----+-> ReluOp --> t4
     // ...     |                     |
     // ... ----+   TensorOp --> tz --+
     // ...     |
-    // ...   --+   (tz is the output reference, hidden from the code)
+    // ...   --+   (tz is a write_tensor, hidden from the code)
     //
 
     ark::Tensor t4 = model.relu(t3);
 
     UNITTEST_TRUE(model.verify());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,AddOp,ReluOp,)
+    //   AddOp --> AddOp --> ReluOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
-    UNITTEST_EQ(compressed.nodes().size(), 1);
 
-    node = compressed.nodes().front();
+    nodes = compressed.nodes();
+    UNITTEST_EQ(nodes.size(), 3);
 
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[0], t0.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[1], t1.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->ops[1]->read_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[1]->read_tensors()[1], t1.ref());
-    UNITTEST_EQ(node->ops[2]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->ops[2]->read_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->consumers.size(), 0);
-    UNITTEST_EQ(node->producers.size(), 0);
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[0]->op->read_tensors()[0], t0.ref());
+    UNITTEST_EQ(nodes[0]->op->read_tensors()[1], t1.ref());
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], t3.ref());
+    UNITTEST_EQ(nodes[1]->op->read_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[1]->op->read_tensors()[1], t1.ref());
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], t4.ref());
+    UNITTEST_EQ(nodes[2]->op->read_tensors()[0], t3.ref());
 
-    // Test a chain of Ops that use the output from the same previous Op.
+    UNITTEST_EQ(nodes[0]->consumers.size(), 1);
+    UNITTEST_EQ(nodes[0]->producers.size(), 0);
+    UNITTEST_EQ(nodes[1]->consumers.size(), 1);
+    UNITTEST_EQ(nodes[1]->producers.size(), 1);
+    UNITTEST_EQ(nodes[2]->consumers.size(), 0);
+    UNITTEST_EQ(nodes[2]->producers.size(), 1);
+
+    // Test a chain of Ops that use the result_tensor from the same previous Op.
     // Model graph (omit leftmost part):
     //
     // ...   +---- (this is t2) -------------------------+--> AddOp --> t5
@@ -132,32 +140,29 @@ ark::unittest::State test_model_basics() {
     // ...     |                       TensorOp --> tw --+
     // ...   --+
     //
-    // (tz and tw are output references, hidden from the code)
+    // (tz and tw are write_tensors, hidden from the code)
     //
 
     ark::Tensor t5 = model.add(t2, t4);
     UNITTEST_TRUE(model.verify());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,AddOp,ReluOp,AddOp,)
+    //   AddOp --> AddOp --> ReluOp --> AddOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
 
-    auto nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 1);
+    nodes = compressed.nodes();
+    UNITTEST_EQ(nodes.size(), 4);
 
-    auto nodes_iter = nodes.begin();
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->ops[2]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->ops[3]->result_tensors()[0], t5.ref());
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], t3.ref());
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], t4.ref());
+    UNITTEST_EQ(nodes[3]->op->result_tensors()[0], t5.ref());
 
-    // Test an Op that uses outputs from multiple previous Ops.
+    // Test an Op that uses result_tensors from multiple previous Ops.
     // Model graph (omit leftmost part):
     //
     // ... ----- (this is t2) --+--> AddOp --> t5
@@ -174,7 +179,7 @@ ark::unittest::State test_model_basics() {
     //                     |
     //   TensorOp --> tu --+
     //
-    // (tw and tu are output references, hidden from the code)
+    // (tw and tu are write_tensors, hidden from the code)
     //
 
     ark::Tensor t6 = model.tensor({1}, ark::FP32);
@@ -183,34 +188,27 @@ ark::unittest::State test_model_basics() {
     ark::Tensor t9 = model.add(t5, t8);
     UNITTEST_TRUE(model.verify());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,AddOp,ReluOp,AddOp,) --+
-    //                                 |
-    //                      (AddOp,) --+--> (AddOp,)
+    //   AddOp --> AddOp --> ReluOp --> AddOp --+
+    //                                          |
+    //                                  AddOp --+--> AddOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
 
     nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 3);
+    UNITTEST_EQ(nodes.size(), 6);
 
-    nodes_iter = nodes.begin();
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->ops[2]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->ops[3]->result_tensors()[0], t5.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_3;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t8.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_4;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t9.ref());
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], t3.ref());
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], t4.ref());
+    UNITTEST_EQ(nodes[3]->op->result_tensors()[0], t5.ref());
+    UNITTEST_EQ(nodes[4]->op->result_tensors()[0], t8.ref());
+    UNITTEST_EQ(nodes[5]->op->result_tensors()[0], t9.ref());
 
-    // Test an Op that uses a single input tensor for multiple inputs.
+    // Test an Op that uses a single tensor for multiple inputs.
     // Model graph (omit leftmost part):
     //
     // ... ----- (this is t2) --+--> AddOp --> t5
@@ -234,46 +232,37 @@ ark::unittest::State test_model_basics() {
     //                              |
     //   TensorOp --> tv -----------+
     //
-    // (tw, tu, and tv are output references, hidden from the code)
+    // (tw, tu, and tv are write_tensors, hidden from the code)
     //
 
     ark::Tensor t10 = model.tensor({1}, ark::FP32);
     ark::Tensor t11 = model.add(t10, t10);
     UNITTEST_TRUE(model.verify());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,AddOp,ReluOp,AddOp,) --+
-    //                                 |
-    //                      (AddOp,) --+--> (AddOp,)
+    //   AddOp --> AddOp --> ReluOp --> AddOp --+
+    //                                          |
+    //                                  AddOp --+--> AddOp
     //
-    //                                      (AddOp,)
+    //                                               AddOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
 
     nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 4);
+    UNITTEST_EQ(nodes.size(), 7);
 
-    nodes_iter = nodes.begin();
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->ops[2]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->ops[3]->result_tensors()[0], t5.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_3;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t8.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_4;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t9.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_5;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t11.ref());
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], t3.ref());
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], t4.ref());
+    UNITTEST_EQ(nodes[3]->op->result_tensors()[0], t5.ref());
+    UNITTEST_EQ(nodes[4]->op->result_tensors()[0], t8.ref());
+    UNITTEST_EQ(nodes[5]->op->result_tensors()[0], t9.ref());
+    UNITTEST_EQ(nodes[6]->op->result_tensors()[0], t11.ref());
 
-    // Test using previous Ops' outputs from multiple different Ops.
+    // Test using previous Ops' result_tensors from multiple different Ops.
     // Model graph (omit leftmost part):
     //
     // ... ----- (this is t2) --+--> AddOp --> t5
@@ -297,46 +286,35 @@ ark::unittest::State test_model_basics() {
     //                              |
     //   TensorOp --> tv -----------+
     //
-    // (tw, tu, and tv are output references, hidden from the code)
+    // (tw, tu, and tv are write_tensors, hidden from the code)
     //
 
     ark::Tensor t12 = model.add(t5, t8);
     UNITTEST_TRUE(model.verify());
 
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //   (AddOp,AddOp,ReluOp,AddOp,) --+--> (AddOp,)
-    //                                 |
-    //                      (AddOp,) --+--> (AddOp,)
+    //   AddOp --> AddOp --> ReluOp --> AddOp --+--> AddOp
+    //                                          |
+    //                                  AddOp --+--> AddOp
     //
-    //                                      (AddOp,)
+    //                                               AddOp
     //
 
     compressed = model.compress();
     UNITTEST_TRUE(compressed.verify());
 
     nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 5);
+    UNITTEST_EQ(nodes.size(), 8);
 
-    nodes_iter = nodes.begin();
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add;add_1;relu;add_2;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t2.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], t3.ref());
-    UNITTEST_EQ(node->ops[2]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->ops[3]->result_tensors()[0], t5.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_3;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t8.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_4;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t9.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_5;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t11.ref());
-    node = *(nodes_iter++);
-    // UNITTEST_EQ(node->get_name(), "add_6;");
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t12.ref());
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], t2.ref());
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], t3.ref());
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], t4.ref());
+    UNITTEST_EQ(nodes[3]->op->result_tensors()[0], t5.ref());
+    UNITTEST_EQ(nodes[4]->op->result_tensors()[0], t8.ref());
+    UNITTEST_EQ(nodes[5]->op->result_tensors()[0], t9.ref());
+    UNITTEST_EQ(nodes[6]->op->result_tensors()[0], t11.ref());
+    UNITTEST_EQ(nodes[7]->op->result_tensors()[0], t12.ref());
 
     return ark::unittest::SUCCESS;
 }
@@ -353,40 +331,42 @@ ark::unittest::State test_model_dependent_inputs() {
     ark::Tensor x4 = m.mul(x2, x3);
     ark::Tensor y = m.add(x0, x4);
 
+    // OpNode graph:
+    //
+    //                   x0                  x1         x2         x4
+    //   MulOp -> MulOp -+-> MulOp -> MulOp -+-> MulOp -+-> MulOp -+-> AddOp
+    //                   |                   |          |          |
+    //                   |                   +-> MulOp -+ x3       |
+    //                   +-----------------------------------------+
+    //
+
     auto compressed = m.compress();
     auto nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 4);
-    auto nodes_iter = nodes.begin();
-    auto node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops.size(), 4);
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], x0.ref());
-    UNITTEST_EQ(node->ops[3]->result_tensors()[0], x1.ref());
-    UNITTEST_EQ(node->consumers.size(), 3);
-    UNITTEST_EQ(node->producers.size(), 0);
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops.size(), 1);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], x2.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[0], ones.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[1], x1.ref());
-    UNITTEST_EQ(node->consumers.size(), 1);
-    UNITTEST_EQ(node->producers.size(), 1);
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops.size(), 1);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], x3.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[0], ones.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[1], x1.ref());
-    UNITTEST_EQ(node->consumers.size(), 1);
-    UNITTEST_EQ(node->producers.size(), 1);
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops.size(), 2);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], x4.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[0], x2.ref());
-    UNITTEST_EQ(node->ops[0]->read_tensors()[1], x3.ref());
-    UNITTEST_EQ(node->ops[1]->result_tensors()[0], y.ref());
-    UNITTEST_EQ(node->ops[1]->read_tensors()[0], x0.ref());
-    UNITTEST_EQ(node->ops[1]->read_tensors()[1], x4.ref());
-    UNITTEST_EQ(node->consumers.size(), 0);
-    UNITTEST_EQ(node->producers.size(), 3);
+    UNITTEST_EQ(nodes.size(), 8);
+
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], x0.ref());
+    UNITTEST_EQ(nodes[1]->consumers.size(), 2);
+    UNITTEST_EQ(nodes[1]->producers.size(), 1);
+
+    UNITTEST_EQ(nodes[3]->op->result_tensors()[0], x1.ref());
+    UNITTEST_EQ(nodes[3]->consumers.size(), 2);
+    UNITTEST_EQ(nodes[3]->producers.size(), 1);
+
+    UNITTEST_EQ(nodes[4]->op->result_tensors()[0], x2.ref());
+    UNITTEST_EQ(nodes[4]->consumers.size(), 1);
+    UNITTEST_EQ(nodes[4]->producers.size(), 1);
+
+    UNITTEST_EQ(nodes[5]->op->result_tensors()[0], x3.ref());
+    UNITTEST_EQ(nodes[5]->consumers.size(), 1);
+    UNITTEST_EQ(nodes[5]->producers.size(), 1);
+
+    UNITTEST_EQ(nodes[6]->op->result_tensors()[0], x4.ref());
+    UNITTEST_EQ(nodes[6]->consumers.size(), 1);
+    UNITTEST_EQ(nodes[6]->producers.size(), 2);
+
+    UNITTEST_EQ(nodes[7]->op->result_tensors()[0], y.ref());
+    UNITTEST_EQ(nodes[7]->consumers.size(), 0);
+    UNITTEST_EQ(nodes[7]->producers.size(), 2);
 
     return ark::unittest::SUCCESS;
 }
@@ -405,114 +385,12 @@ ark::unittest::State test_model_noop() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_model_identity() {
-    // OpNode graph (parentheses indicate a OpNode):
-    //
-    //   (Relu,) --+
-    //             |
-    //   (Relu,) --+--> (Relu,)
-    //
-
-    ark::Model model;
-    ark::Tensor t0 = model.tensor({1}, ark::FP32);
-    ark::Tensor t1 = model.tensor({1}, ark::FP32);
-    ark::Tensor t2 = model.tensor({1}, ark::FP32);
-
-    ark::Tensor r0 = model.relu(t0);
-    ark::Tensor r1 = model.relu(t1);
-    ark::Tensor t3 = model.identity(t2, {r0, r1});
-
-    ark::Tensor t4 = model.relu(t3);
-    UNITTEST_TRUE(model.verify());
-
-    auto compressed = model.compress();
-    UNITTEST_TRUE(compressed.verify());
-    auto nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 3);
-    auto nodes_iter = nodes.begin();
-
-    auto node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r0.ref());
-    UNITTEST_EQ(node->producers.size(), 0UL);
-    UNITTEST_EQ(node->consumers.size(), 1UL);
-
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r1.ref());
-    UNITTEST_EQ(node->producers.size(), 0UL);
-    UNITTEST_EQ(node->consumers.size(), 1UL);
-
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->producers.size(), 2UL);
-    UNITTEST_EQ(node->consumers.size(), 0UL);
-
-    return ark::unittest::SUCCESS;
-}
-
-ark::unittest::State test_model_sharding() {
-    // OpNode graph (parentheses indicate a OpNode):
-    //
-    //   (Relu,) --+
-    //             |
-    //   (Relu,) --+
-    //             |
-    //   (Relu,) --+--> (Relu,)
-    //
-
-    ark::Model model;
-    ark::Tensor t0 = model.tensor({3}, ark::FP32);
-
-    std::vector<ark::Tensor> vec = model.sharding(t0, 0, 1);
-    UNITTEST_EQ(vec.size(), 3UL);
-
-    ark::Tensor t1 = vec[0];
-    ark::Tensor t2 = vec[1];
-    ark::Tensor t3 = vec[2];
-
-    ark::Tensor r0 = model.relu(t1);
-    ark::Tensor r1 = model.relu(t2);
-    ark::Tensor r2 = model.relu(t3);
-
-    ark::Tensor t4 = model.identity(t0, {r0, r1, r2});
-
-    ark::Tensor t5 = model.relu(t4);
-    UNITTEST_TRUE(model.verify());
-
-    auto compressed = model.compress();
-    UNITTEST_TRUE(compressed.verify());
-    auto nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 4);
-    auto nodes_iter = nodes.begin();
-
-    auto node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r0.ref());
-    UNITTEST_EQ(node->producers.size(), 0UL);
-    UNITTEST_EQ(node->consumers.size(), 1UL);
-
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r1.ref());
-    UNITTEST_EQ(node->producers.size(), 0UL);
-    UNITTEST_EQ(node->consumers.size(), 1UL);
-
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r2.ref());
-    UNITTEST_EQ(node->producers.size(), 0UL);
-    UNITTEST_EQ(node->consumers.size(), 1UL);
-
-    node = (nodes_iter++)->get();
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t5.ref());
-    UNITTEST_EQ(node->producers.size(), 3UL);
-    UNITTEST_EQ(node->consumers.size(), 0UL);
-
-    return ark::unittest::SUCCESS;
-}
-
 ark::unittest::State test_model_cumulate() {
-    // OpNode graph (parentheses indicate a OpNode):
+    // OpNode graph:
     //
-    //       (Relu,) --+   (Relu,) --+
-    //                 |             |
-    //   (Relu,Add,) --+--> (Add,) --+--> (Add,)
+    //           Relu --+   Relu --+
+    //                  |          |
+    //   Relu --> Add --+--> Add --+--> Add
     //
 
     ark::Model model;
@@ -528,10 +406,10 @@ ark::unittest::State test_model_cumulate() {
 
     auto compressed = model.compress();
     auto nodes = compressed.nodes();
-    UNITTEST_EQ(nodes.size(), 5);
+    UNITTEST_EQ(nodes.size(), 6);
 
     auto last_node = nodes.back().get();
-    UNITTEST_EQ(last_node->ops[0]->result_tensors()[0], cumulate.ref());
+    UNITTEST_EQ(last_node->op->result_tensors()[0], cumulate.ref());
     UNITTEST_EQ(last_node->producers.size(), 2);
     UNITTEST_EQ(last_node->consumers.size(), 0);
 
@@ -542,8 +420,6 @@ int main() {
     UNITTEST(test_model_basics);
     UNITTEST(test_model_dependent_inputs);
     UNITTEST(test_model_noop);
-    UNITTEST(test_model_identity);
-    UNITTEST(test_model_sharding);
     UNITTEST(test_model_cumulate);
     return 0;
 }

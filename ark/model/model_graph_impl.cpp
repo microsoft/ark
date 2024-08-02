@@ -24,7 +24,7 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     nodes_.clear();
     for (const auto &node : other.nodes_) {
         ModelNodeRef new_node = std::make_shared<ModelNode>();
-        new_node->ops = node->ops;
+        new_node->op = node->op;
         node_map.emplace(node, new_node);
         nodes_.push_back(new_node);
     }
@@ -67,44 +67,41 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
 void ModelGraph::Impl::compress_nodes() {
     if (!compressed_) {
         this->recursive_remove_virtual_nodes();
-        this->recursive_merge_nodes();
         compressed_ = true;
     }
 }
 
 bool ModelGraph::Impl::verify() const {
     for (auto &node : nodes_) {
-        if (node->ops.size() == 0) {
-            LOG(DEBUG, "node has no ops");
+        if (node->op == nullptr) {
+            LOG(DEBUG, "node has no op");
             return false;
         }
-        for (auto &op : node->ops) {
-            if (op_to_node_.find(op) == op_to_node_.end()) {
-                LOG(DEBUG, "op has not been added to the graph");
+        if (op_to_node_.find(node->op) == op_to_node_.end()) {
+            LOG(DEBUG, "op has not been added to the graph");
+            return false;
+        }
+        if (op_to_node_.at(node->op) != node) {
+            LOG(DEBUG, "op is not in the correct node");
+            return false;
+        }
+        node->op->verify();
+        for (auto &tns : node->op->result_tensors()) {
+            if (tensor_to_producer_op_.find(tns) ==
+                tensor_to_producer_op_.end()) {
+                LOG(DEBUG, "result tensor has not been produced by any op");
                 return false;
             }
-            if (op_to_node_.at(op) != node) {
-                LOG(DEBUG, "op is not in the correct node");
+            if (tensor_to_producer_op_.at(tns) != node->op) {
+                LOG(DEBUG, "result tensor has been produced by another op");
                 return false;
             }
-            op->verify();
-            for (auto &tns : op->result_tensors()) {
-                if (tensor_to_producer_op_.find(tns) ==
-                    tensor_to_producer_op_.end()) {
-                    LOG(DEBUG, "result tensor has not been produced by any op");
-                    return false;
-                }
-                if (tensor_to_producer_op_.at(tns) != op) {
-                    LOG(DEBUG, "result tensor has been produced by another op");
-                    return false;
-                }
-            }
-            for (auto &tns : op->input_tensors()) {
-                if (tensor_to_producer_op_.find(tns) ==
-                    tensor_to_producer_op_.end()) {
-                    LOG(DEBUG, "input tensor has not been produced by any op");
-                    return false;
-                }
+        }
+        for (auto &tns : node->op->input_tensors()) {
+            if (tensor_to_producer_op_.find(tns) ==
+                tensor_to_producer_op_.end()) {
+                LOG(DEBUG, "input tensor has not been produced by any op");
+                return false;
             }
         }
         for (auto &producer : node->producers) {
@@ -153,7 +150,7 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     }
 
     ModelNodeRef node = std::make_shared<ModelNode>();
-    node->ops.push_back(op);
+    node->op = op;
     op_to_node_[op] = node;
 
     for (auto &tns : op->input_tensors()) {
@@ -194,14 +191,12 @@ void ModelGraph::Impl::remove_node(ModelNodeRef node) {
             producer->consumers.push_back(consumer);
         }
     }
-    for (auto &op : node->ops) {
-        auto it = op_to_node_.find(op);
-        if (it == op_to_node_.end()) {
-            ERR(ModelError, "unexpected error");
-        }
-        if (it->second == node) {
-            op_to_node_.erase(it);
-        }
+    auto it2 = op_to_node_.find(node->op);
+    if (it2 == op_to_node_.end()) {
+        ERR(ModelError, "unexpected error");
+    }
+    if (it2->second == node) {
+        op_to_node_.erase(it2);
     }
     nodes_.erase(it);
 }
@@ -252,10 +247,8 @@ void ModelGraph::Impl::recursive_remove_virtual_nodes(
     MODEL_GRAPH_DEBUG("remove virtual nodes");
     std::vector<ModelNodeRef> new_boundary_nodes;
     for (auto &boundary_node : boundary_nodes) {
-        if (boundary_node->ops.size() == 0) {
+        if (boundary_node->op == nullptr) {
             ERR(ModelError, "unexpected error: empty node");
-        } else if (boundary_node->ops.size() > 1) {
-            ERR(ModelError, "unexpected error: multiple ops in node");
         }
         MODEL_GRAPH_DEBUG("  boundary node");
         MODEL_GRAPH_DEBUG("    node: ", to_json(boundary_node).dump());
@@ -284,7 +277,7 @@ void ModelGraph::Impl::recursive_remove_virtual_nodes(
                               to_json(producer).dump());
             new_boundary_nodes.emplace_back(producer);
         }
-        if (boundary_node->ops[0]->is_virtual()) {
+        if (boundary_node->op->is_virtual()) {
             MODEL_GRAPH_DEBUG("    remove node: ",
                               to_json(boundary_node).dump());
             // Remove this node from the graph.
@@ -295,152 +288,6 @@ void ModelGraph::Impl::recursive_remove_virtual_nodes(
         }
     }
     this->recursive_remove_virtual_nodes(seen_nodes, new_boundary_nodes);
-}
-
-void ModelGraph::Impl::recursive_merge_nodes() {
-    std::vector<ModelNodeRef> leaf_nodes;
-    for (auto &node : nodes_) {
-        if (node->consumers.empty()) {
-            leaf_nodes.emplace_back(node);
-        }
-    }
-    UniqueList<ModelNodeRef> seen_nodes;
-    this->recursive_merge_nodes(seen_nodes, leaf_nodes);
-}
-
-void ModelGraph::Impl::recursive_merge_nodes(
-    UniqueList<ModelNodeRef> &seen_nodes,
-    const std::vector<ModelNodeRef> &boundary_nodes) {
-    if (boundary_nodes.size() == 0) {
-        return;
-    }
-    MODEL_GRAPH_DEBUG("merge ops");
-    std::vector<ModelNodeRef> new_boundary_nodes;
-    for (auto &boundary_node : boundary_nodes) {
-        MODEL_GRAPH_DEBUG("  boundary node");
-        MODEL_GRAPH_DEBUG("    node: ", to_json(boundary_node).dump());
-        if (boundary_node->producers.size() == 0) {
-            // This node is a root.
-            seen_nodes.push_back(boundary_node);
-            MODEL_GRAPH_DEBUG("    root");
-            continue;
-        }
-        // Add all producers of this node to the next boundary.
-        for (auto &producer : boundary_node->producers) {
-            // Exception: if any consumer of the producer (rather than the
-            // current boundary_node) is unseen, we should not add the producer
-            // to the next boundary.
-            bool should_add = true;
-            for (auto &consumer : producer->consumers) {
-                if (consumer == boundary_node) {
-                    continue;
-                }
-                if (!seen_nodes.contains(consumer)) {
-                    should_add = false;
-                    break;
-                }
-            }
-            if (!should_add) {
-                continue;
-            }
-            if (seen_nodes.contains(producer)) {
-                ERR(ModelError,
-                    "unexpected error: circular dependency detected");
-            }
-            new_boundary_nodes.emplace_back(producer);
-        }
-        ModelNodeRef merge_candidate;
-        if (boundary_node->producers.size() > 1) {
-            // This node has multiple producers. We can merge only if one
-            // producer depends on all other producers.
-            for (auto &producer : boundary_node->producers) {
-                bool depends_on_all = true;
-                for (auto &other_producer : boundary_node->producers) {
-                    if (other_producer == producer) {
-                        continue;
-                    }
-                    if (!this->depends_on(producer, other_producer)) {
-                        depends_on_all = false;
-                        break;
-                    }
-                }
-                if (depends_on_all) {
-                    merge_candidate = producer;
-                    break;
-                }
-            }
-            if (!merge_candidate) {
-                // At least one producer does not depend on others.
-                // Cannot merge.
-                seen_nodes.push_back(boundary_node);
-                MODEL_GRAPH_DEBUG("    multiple producers");
-                continue;
-            }
-        } else {
-            // This node has only one producer.
-            merge_candidate = *(boundary_node->producers.begin());
-        }
-        if (merge_candidate->consumers.size() == 0) {
-            ERR(ModelError, "unexpected error: graph is incomplete");
-        }
-        if (merge_candidate->consumers.size() > 1) {
-            // The candidate has multiple consumers. We can merge only if all
-            // other consumers depend on the current boundary_node.
-            bool depends_on_one = true;
-            for (auto &consumer : merge_candidate->consumers) {
-                if (consumer == boundary_node) {
-                    continue;
-                }
-                if (!this->depends_on(consumer, boundary_node)) {
-                    depends_on_one = false;
-                    break;
-                }
-            }
-            if (!depends_on_one) {
-                // At least one consumer does not depend on the boundary_node.
-                // Cannot merge.
-                seen_nodes.push_back(boundary_node);
-                MODEL_GRAPH_DEBUG("    multiple consumers");
-                continue;
-            }
-        }
-        // We can merge the two nodes.
-        // Merge `boundary_node` into `merge_candidate`.
-        MODEL_GRAPH_DEBUG("  merge: ", to_json(merge_candidate).dump(), " -> ",
-                          to_json(boundary_node).dump());
-        auto &ops = boundary_node->ops;
-        merge_candidate->ops.insert(merge_candidate->ops.end(), ops.begin(),
-                                    ops.end());
-        for (auto &op : ops) {
-            op_to_node_[op] = merge_candidate;
-        }
-        for (auto &consumer : boundary_node->consumers) {
-            consumer->producers.erase(boundary_node);
-            consumer->producers.push_back(merge_candidate);
-            merge_candidate->consumers.push_back(consumer);
-        }
-        for (auto &producer : boundary_node->producers) {
-            if (producer == merge_candidate) {
-                continue;
-            }
-            producer->consumers.erase(boundary_node);
-            producer->consumers.push_back(merge_candidate);
-            merge_candidate->producers.push_back(producer);
-        }
-        merge_candidate->consumers.erase(boundary_node);
-
-        // Remove `boundary_node` from `nodes_`.
-        auto it = nodes_.find(boundary_node);
-        if (it == nodes_.end()) {
-            ERR(ModelError, "unexpected error");
-        }
-        nodes_.erase(it);
-
-        // Since producer is already in the next boundary and boundary_node is
-        // merged into producer, we don't need to add anything to
-        // seen_nodes here.
-    }
-    this->recursive_merge_nodes(seen_nodes, new_boundary_nodes);
 }
 
 Json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
@@ -454,10 +301,7 @@ Json ModelGraph::Impl::to_json(const ModelNodeRef &node) const {
     for (auto consumer : node->consumers) {
         j["ConsumerNodeIds"].emplace_back(nodes_.index(consumer));
     }
-    j["Ops"] = Json::array();
-    for (auto op : node->ops) {
-        j["Ops"].emplace_back(op->serialize());
-    }
+    j["Op"] = node->op->serialize();
     return j;
 }
 
