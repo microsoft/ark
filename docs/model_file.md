@@ -11,18 +11,17 @@ See an example model file: [Example 1](../examples/tutorial/model.json).
             - Id (Int)
             - ProducerNodeIds (Array of Int)
             - ConsumerNodeIds (Array of Int)
-            - Ops (Array of Op)
-                - Op (Object)
-                    - Type (String)
-                    - Name (String)
-                    - IsVirtual (Boolean)
-                    - ReadTensors (Array of Tensor)
-                        - Tensor (Object, details below)
-                    - WriteTensors (Array of Tensor)
-                        - Tensor (Object, details below)
-                    - ResultTensors (Array of Tensor)
-                        - Tensor (Object, details below)
-                    - Args (Object, structure depends on Op Type)
+            - Op (Object)
+                - Type (String)
+                - Name (String)
+                - IsVirtual (Boolean)
+                - ReadTensors (Array of Tensor)
+                    - Tensor (Object, details below)
+                - WriteTensors (Array of Tensor)
+                    - Tensor (Object, details below)
+                - ResultTensors (Array of Tensor)
+                    - Tensor (Object, details below)
+                - Args (Object, structure depends on Op Type)
 
 A `Tensor` object has the following structure:
 
@@ -49,11 +48,9 @@ An `Args` object has a flexible structure depending on the type of `Op`, which w
 
 ## Node
 
-A `Node` object describes a node in the computation graph.
+A `Node` object describes a node in the computation graph. A node consists of an operator (`Op`) that describes computation (or communication) task of the node.
 
-A node consists of an array of one or more operators (`Op`s). The operators in a node are supposed to be executed in the order that appears in the array, but they may not have hard dependencies in between, i.e., a later operator's computation may depend only on a part of a previous operator's result. For example, if an element-wise operator is followed by another element-wise operator with the same shape of data, each element of the later operator depends only on a single element from the earlier operator. This poses possibility of operator fusion when we design an execution plan of this model.
-
-Each node may produce or consume tensors. Produced tensors are those that appear in an operator's `ResultTensors` array, while consumed tensors are those that appear in an operator's `ReadTensors` or `WriteTensors` array. Each node has a unique ID, and declares `ProducerNodeIds` and `ConsumerNodeIds` to describe dependencies between nodes. `ProducerNodeIds` lists IDs of all nodes that produce tensors consumed by this node. Similarly, `ConsumerNodeIds` lists IDs of all nodes that consume tensors produced by this node.
+Each node may produce or consume tensors. Produced tensors are those that appear in the operator's `ResultTensors` array, while consumed tensors are those that appear in the operator's `ReadTensors` or `WriteTensors` array. Each node has a unique ID, and declares `ProducerNodeIds` and `ConsumerNodeIds` to describe dependencies between nodes. `ProducerNodeIds` lists IDs of all nodes that produce tensors consumed by this node. Similarly, `ConsumerNodeIds` lists IDs of all nodes that consume tensors produced by this node.
 
 ## Op
 
