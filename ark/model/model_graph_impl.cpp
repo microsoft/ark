@@ -3,7 +3,7 @@
 
 #include "model_graph_impl.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model_node.hpp"
 #include "model_tensor.hpp"
 

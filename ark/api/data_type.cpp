@@ -7,7 +7,7 @@
 
 #include "bfloat16.h"
 #include "half.h"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_data_type.hpp"
 
 namespace ark {

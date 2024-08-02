@@ -8,7 +8,7 @@
 #include "ark/data_type.hpp"
 #include "env.h"
 #include "file_io.h"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"

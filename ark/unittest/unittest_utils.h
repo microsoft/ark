@@ -15,7 +15,7 @@
 #include "ark/init.hpp"
 #include "ark/random.hpp"
 #include "cpu_timer.h"
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 namespace unittest {

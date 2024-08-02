@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include "gpu/gpu.h"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"

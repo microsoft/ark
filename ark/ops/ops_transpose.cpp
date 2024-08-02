@@ -5,7 +5,7 @@
 
 #include <sstream>
 
-#include "logging.h"
+#include "logging.hpp"
 #include "ops_common.hpp"
 
 namespace ark {

@@ -9,7 +9,7 @@
 
 #include "env.h"
 #include "file_io.h"
-#include "logging.h"
+#include "logging.hpp"
 
 #define SHM_DIR "/dev/shm/"
 

@@ -5,7 +5,7 @@
 
 #include <sstream>
 
-#include "logging.h"
+#include "logging.hpp"
 
 static std::stringstream &idnt(std::stringstream &ss, int indent) {
     for (int i = 0; i < indent; ++i) ss << " ";

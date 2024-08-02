@@ -13,7 +13,7 @@
 
 #include "arch.hpp"
 #include "ark/model_ref.hpp"
-#include "logging.h"
+#include "logging.hpp"
 #include "model_json.hpp"
 #include "model_op_arg.hpp"
 

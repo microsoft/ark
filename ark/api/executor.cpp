@@ -19,7 +19,7 @@
 #include "gpu/gpu_kernel.h"
 #include "gpu/gpu_logging.h"
 #include "gpu/gpu_manager.h"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"

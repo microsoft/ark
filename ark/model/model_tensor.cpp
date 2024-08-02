@@ -4,7 +4,7 @@
 #include "model_tensor.hpp"
 
 #include "ark/data_type.hpp"
-#include "logging.h"
+#include "logging.hpp"
 #include "model_buffer.hpp"
 #include "model_data_type.hpp"
 

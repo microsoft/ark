@@ -4,7 +4,7 @@
 #include <cassert>
 #include <mscclpp/packet_device.hpp>
 
-#include "logging.h"
+#include "logging.hpp"
 #include "math_utils.h"
 #include "model.h"
 #include "ops_common.h"

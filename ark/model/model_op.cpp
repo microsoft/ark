@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <set>
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model_tensor.hpp"
 #include "ops/ops_arithmetic.hpp"
 #include "ops/ops_cast.hpp"

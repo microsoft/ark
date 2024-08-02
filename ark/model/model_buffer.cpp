@@ -3,7 +3,7 @@
 
 #include "model_buffer.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 

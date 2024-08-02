@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cassert>
 
-#include "logging.h"
+#include "logging.hpp"
 #include "ops_common.hpp"
 
 namespace ark {

@@ -3,7 +3,7 @@
 
 #include "model_op_arg.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model_tensor.hpp"
 
 namespace ark {

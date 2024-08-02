@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "unittest/unittest_utils.h"

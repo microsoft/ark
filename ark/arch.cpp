@@ -5,7 +5,7 @@
 
 #include <map>
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 
