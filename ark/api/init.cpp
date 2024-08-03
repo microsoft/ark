@@ -11,8 +11,6 @@
 #include "file_io.h"
 #include "logging.hpp"
 
-#define SHM_DIR "/dev/shm/"
-
 namespace ark {
 
 void init() {
