@@ -585,13 +585,19 @@ def all_reduce(
     name: str = "all_reduce",
 ) -> Tensor:
     """
-    Performs an all-reduce operator across all GPUs, aggregating the
-    input tensors. Takes the `input` tensor, the current GPU's
-    `rank`, and the total number of GPUs `world_size`.
-    Usage:
-    ark.init(rank, world_size)
-    input_tensor = ark.tensor([tensor_len], ark.fp16)
-    allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
+    Perform an all-reduce operation on the input tensor.
+
+    Args:
+        input (Tensor): The input tensor to be reduced.
+        rank (int): The rank of the current process.
+        world_size (int): The total number of processes.
+        output (Tensor, optional): The output tensor. If provided, the result
+            will be stored in this tensor. Defaults to NullTensor.
+        name (str, optional): The name of the operation. Defaults to
+            "all_reduce".
+
+    Returns:
+        Tensor: The reduced tensor.
     """
     if output is not NullTensor:
         output = output._tensor

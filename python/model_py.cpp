@@ -113,6 +113,6 @@ void register_model(py::module &m) {
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
-             py::arg("gpu_id"), py::arg("gpu_num"), py::arg("output"),
+             py::arg("rank"), py::arg("world_size"), py::arg("output"),
              py::arg("name"));
 }
