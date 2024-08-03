@@ -3,7 +3,7 @@
 
 #include "model_op_arg.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model_tensor.hpp"
 
 namespace ark {
@@ -32,7 +32,7 @@ Json ModelOpArg::serialize() const {
     } else if (type_name == "FLOAT") {
         j[type_name] = this->value<float>();
     } else {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "Tried to serialize an unknown type of argument: ", type_name);
     }
     return j;
@@ -62,10 +62,10 @@ ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
             return ModelOpArg(value.get<float>());
         }
     } catch (const std::exception &e) {
-        ERR(InvalidUsageError, "Failed to deserialize `", serialized.dump(),
+        ERR(ModelError, "Failed to deserialize `", serialized.dump(),
             "`: ", e.what());
     }
-    ERR(InvalidUsageError, "Tried to deserialize an unknown type of argument: ",
+    ERR(ModelError, "Tried to deserialize an unknown type of argument: ",
         serialized.dump());
     return ModelOpArg();
 }

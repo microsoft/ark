@@ -41,8 +41,7 @@ GpuMemory::Impl::Impl(const GpuManager& manager, size_t bytes, size_t align,
     if (align_ == 0) {
         align_ = 1;
     } else if (align_ & (align_ - 1)) {
-        ERR(InvalidUsageError, "align must be a power of 2. Given %zu.",
-            align_);
+        ERR(InternalError, "align must be a power of 2. Given %zu.", align_);
     }
     manager_.set_current();
     bytes_raw_ = bytes_ + align_ - 1;

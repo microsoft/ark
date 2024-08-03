@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "file_io.h"
-#include "logging.h"
+#include "logging.hpp"
 
 // Grep SIGALRM and exit.
 static void sigalrm_timeout_handler(int) {

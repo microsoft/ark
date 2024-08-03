@@ -6,12 +6,12 @@
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"
 
-ark::unittest::State test_identity_model() {
-    // OpNode graph (parentheses indicate a OpNode):
+ark::unittest::State test_ops_identity_model() {
+    // OpNode graph:
     //
-    //   (Relu,) --+
-    //             |
-    //   (Relu,) --+--> (Relu,)
+    //   ReluOp --+
+    //            |
+    //   ReluOp --+--> ReluOp
     //
 
     ark::Model model;
@@ -27,29 +27,26 @@ ark::unittest::State test_identity_model() {
     UNITTEST_TRUE(model.verify());
 
     auto compressed = model.compress();
+    UNITTEST_TRUE(compressed.verify());
     auto nodes = compressed.nodes();
     UNITTEST_EQ(nodes.size(), 3);
 
-    auto nodes_iter = nodes.begin();
-    auto node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r0.ref());
-    UNITTEST_EQ(node->producers.size(), 0);
-    UNITTEST_EQ(node->consumers.size(), 1);
+    UNITTEST_EQ(nodes[0]->op->result_tensors()[0], r0.ref());
+    UNITTEST_EQ(nodes[0]->producers.size(), 0);
+    UNITTEST_EQ(nodes[0]->consumers.size(), 1);
 
-    node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], r1.ref());
-    UNITTEST_EQ(node->producers.size(), 0);
-    UNITTEST_EQ(node->consumers.size(), 1);
+    UNITTEST_EQ(nodes[1]->op->result_tensors()[0], r1.ref());
+    UNITTEST_EQ(nodes[1]->producers.size(), 0);
+    UNITTEST_EQ(nodes[1]->consumers.size(), 1);
 
-    node = *(nodes_iter++);
-    UNITTEST_EQ(node->ops[0]->result_tensors()[0], t4.ref());
-    UNITTEST_EQ(node->producers.size(), 2);
-    UNITTEST_EQ(node->consumers.size(), 0);
+    UNITTEST_EQ(nodes[2]->op->result_tensors()[0], t4.ref());
+    UNITTEST_EQ(nodes[2]->producers.size(), 2);
+    UNITTEST_EQ(nodes[2]->consumers.size(), 0);
 
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_identity() {
+ark::unittest::State test_ops_identity() {
     ark::Model model;
     // float buf[2][3][4][5];
     ark::Tensor tns0 = model.tensor({2, 3, 4, 5}, ark::FP32);
@@ -81,7 +78,7 @@ ark::unittest::State test_identity() {
 }
 
 int main() {
-    UNITTEST(test_identity_model);
-    UNITTEST(test_identity);
+    UNITTEST(test_ops_identity_model);
+    UNITTEST(test_ops_identity);
     return 0;
 }

@@ -78,7 +78,7 @@ static const std::string gpu_compile_command(
     const std::string &output_file_path) {
 #if defined(ARK_CUDA)
     if (!arch->belongs_to(ARCH_CUDA)) {
-        ERR(InvalidUsageError, "Invalid architecture: ", arch->name());
+        ERR(UnsupportedError, "Invalid architecture: ", arch->name());
     }
     const std::string &cc = arch->category()[1];
 
@@ -107,7 +107,7 @@ static const std::string gpu_compile_command(
 #elif defined(ARK_ROCM)
     // Remove prepending "rocm_" from arch to get the compute capability
     if (!arch->belongs_to(ARCH_ROCM)) {
-        ERR(InvalidUsageError, "Invalid architecture: ", arch->name());
+        ERR(UnsupportedError, "Invalid architecture: ", arch->name());
     }
     const std::string &cc = to_lower(arch->category()[1]);
 
@@ -195,7 +195,7 @@ const std::string gpu_compile(const std::vector<std::string> &codes,
             }
             std::string exec_print_str = exec_print.str();
             if (exec_print_str.size() > 0) {
-                ERR(ExecutorError, "\n", compile_cmd, "\n", exec_print_str,
+                ERR(InternalError, "\n", compile_cmd, "\n", exec_print_str,
                     "\n");
             }
             LOG(INFO, "Compile succeed: ", code_file_path, " (",
