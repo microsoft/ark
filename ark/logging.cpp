@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "logging.h"
+#include "logging.hpp"
 
 #include <unistd.h>
 

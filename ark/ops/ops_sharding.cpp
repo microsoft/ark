@@ -10,10 +10,10 @@ std::vector<Tensor> Model::sharding(Tensor input, DimType axis,
                                     DimType dim_per_shard,
                                     const std::string &name) {
     if (axis >= DIMS_LEN) {
-        ERR(InvalidUsageError, "invlaid axis value: ", axis);
+        ERR(ModelError, "invlaid axis value: ", axis);
     }
     if ((input.shape()[axis] % dim_per_shard) != 0) {
-        ERR(InvalidUsageError, "dimension length of axis ", axis, " (",
+        ERR(ModelError, "dimension length of axis ", axis, " (",
             input.shape()[axis],
             ") is not divided by the dimension per shard (", dim_per_shard,
             ").");

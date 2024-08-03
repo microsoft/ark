@@ -5,7 +5,7 @@
 #define ARK_GPU_LOGGING_H_
 
 #include "gpu/gpu.h"
-#include "logging.h"
+#include "logging.hpp"
 
 #define GLOG(cmd)                                           \
     do {                                                    \

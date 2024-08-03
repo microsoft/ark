@@ -5,7 +5,7 @@
 
 #include <limits>
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 

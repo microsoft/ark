@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include "gpu/gpu.h"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"
@@ -564,11 +564,11 @@ ark::unittest::State test_matmul_invalid() {
     ark::Model m;
     ark::Tensor a = m.tensor(ark::Dims(128, 64), ark::FP16);
     ark::Tensor b = m.tensor(ark::Dims(128, 256), ark::FP16);
-    UNITTEST_THROW(m.matmul(a, b), ark::InvalidUsageError);
+    UNITTEST_THROW(m.matmul(a, b), ark::ModelError);
 
     ark::Tensor c = m.tensor(ark::Dims(3, 3, 128, 128), ark::FP16);
     ark::Tensor d = m.tensor(ark::Dims(2, 3, 128, 128), ark::FP16);
-    UNITTEST_THROW(m.matmul(c, d), ark::InvalidUsageError);
+    UNITTEST_THROW(m.matmul(c, d), ark::ModelError);
     return ark::unittest::SUCCESS;
 }
 

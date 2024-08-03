@@ -3,7 +3,7 @@
 
 #include "utils/utils_math.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 namespace math {

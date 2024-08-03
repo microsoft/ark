@@ -381,49 +381,42 @@ ark::unittest::State test_reduce_sum_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(1, 2, 4, 1024), ark::FP32);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(7, 2, 4, 1), ark::FP32);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(1, 2, 4, 512), ark::BF16);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(7, 1, 4, 1), ark::BF16);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(3, 2, 4, 1024), ark::BF16);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/0, true, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(7, 2, 4, 3), ark::BF16);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1), ark::BF16);
-        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, t),
-                       ark::InvalidUsageError);
+        UNITTEST_THROW(m.reduce_sum(t, /*axis=*/3, true, t), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -454,6 +447,13 @@ ark::unittest::State test_reduce_mean_axis3() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_reduce_invalid() {
+    ark::Model m;
+    ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP32);
+    UNITTEST_THROW(m.reduce_max(t, /*axis=*/-10), ark::ModelError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_reduce_sum_axis0);
@@ -467,5 +467,6 @@ int main() {
     UNITTEST(test_reduce_sum_invalid);
     UNITTEST(test_reduce_max_axis3);
     UNITTEST(test_reduce_mean_axis3);
+    UNITTEST(test_reduce_invalid);
     return ark::unittest::SUCCESS;
 }

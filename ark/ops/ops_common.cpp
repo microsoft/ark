@@ -8,43 +8,39 @@
 #include <ostream>
 #include <string>
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 
 void check_null(ModelTensorRef tensor) {
     if (!tensor) {
-        ERR(InvalidUsageError, "tensor is null");
+        ERR(ModelError, "tensor is null");
     }
 }
 
 void check_match_data_type(ModelTensorRef t, ModelDataType dt) {
     if (t->data_type() != dt) {
-        ERR(InvalidUsageError,
-            "data types mismatch: ", t->data_type()->type_name(),
+        ERR(ModelError, "data types mismatch: ", t->data_type()->type_name(),
             " != ", dt->type_name());
     }
 }
 
 void check_match_data_type(ModelTensorRef a, ModelTensorRef b) {
     if (a->data_type() != b->data_type()) {
-        ERR(InvalidUsageError,
-            "data types mismatch: ", a->data_type()->type_name(),
+        ERR(ModelError, "data types mismatch: ", a->data_type()->type_name(),
             " != ", b->data_type()->type_name());
     }
 }
 
 void check_match_shape(ModelTensorRef tensor, const Dims &shape) {
     if (tensor->shape() != shape) {
-        ERR(InvalidUsageError, "shape mismatch: ", tensor->shape(),
-            " != ", shape);
+        ERR(ModelError, "shape mismatch: ", tensor->shape(), " != ", shape);
     }
 }
 
 void check_match_padded_shape(ModelTensorRef tensor, const Dims &padded_shape) {
     if (tensor->padded_shape() != padded_shape) {
-        ERR(InvalidUsageError,
-            "padded shape mismatch: ", tensor->padded_shape(),
+        ERR(ModelError, "padded shape mismatch: ", tensor->padded_shape(),
             " != ", padded_shape);
     }
 }
@@ -62,8 +58,8 @@ Dims broadcast_shape(const Dims &dims1, const Dims &dims2) {
         } else if (d2 == 1) {
             output_dims_reversed.push_back(d1);
         } else {
-            ERR(InvalidUsageError,
-                "input and other cannot be broadcasted: ", dims1, ", ", dims2);
+            ERR(ModelError, "input and other cannot be broadcasted: ", dims1,
+                ", ", dims2);
         }
     }
     std::reverse(output_dims_reversed.begin(), output_dims_reversed.end());
@@ -74,7 +70,7 @@ void check_fields_config(const Json &config,
                          const std::vector<std::string> &fields) {
     for (const auto &field : fields) {
         if (config.find(field) == config.end()) {
-            ERR(InvalidUsageError, "missing field: ", field);
+            ERR(ModelError, "missing field: ", field);
         }
     }
 }
@@ -83,7 +79,7 @@ void check_fields_args(const std::map<std::string, ModelOpArg> &args,
                        const std::vector<std::string> &fields) {
     for (const auto &field : fields) {
         if (args.find(field) == args.end()) {
-            ERR(InvalidUsageError, "missing field: ", field);
+            ERR(ModelError, "missing field: ", field);
         }
     }
 }

@@ -15,12 +15,7 @@ static Dims calc_problem_size(const Dims &input_shape, const Dims &other_shape,
     int input_ndims = input_shape.ndims();
     int other_ndims = other_shape.ndims();
 
-    if (input_ndims < 1) {
-        ERR(InvalidUsageError, "`input` has an empty shape: ", input_shape);
-    }
-    if (other_ndims < 1) {
-        ERR(InvalidUsageError, "`other` has an empty shape: ", other_shape);
-    }
+    if (input_ndims < 1 || other_ndims < 1) ERR(InternalError, "unexpected");
 
     DimType m;
     DimType n;
@@ -41,8 +36,7 @@ static Dims calc_problem_size(const Dims &input_shape, const Dims &other_shape,
         std::swap(n, k2);
     }
     if (k != k2) {
-        ERR(InvalidUsageError, "padded inner dimensions mismatch: ", k, " and ",
-            k2);
+        ERR(ModelError, "padded inner dimensions mismatch: ", k, " and ", k2);
     }
     return {m, n, k};
 }
@@ -52,7 +46,8 @@ static Dims calc_output_shape(const Dims &input_shape, const Dims &other_shape,
     // For m, n
     Dims mnk =
         calc_problem_size(input_shape, other_shape, trans_input, trans_other);
-    if (std::max(input_shape.ndims(), other_shape.ndims()) < 3) {
+    int max_ndims = std::max(input_shape.ndims(), other_shape.ndims());
+    if (max_ndims < 3) {
         return {mnk[0], mnk[1]};
     }
     // Considering 4-dimensional matrix multiplication between [N,C,H,W] format
@@ -66,14 +61,10 @@ static Dims calc_output_shape(const Dims &input_shape, const Dims &other_shape,
     // Broadcasted output
     Dims output_dim_nc = broadcast_shape(input_dim_nc, other_dim_nc);
     Dims output_shape;
-    if (std::max(input_shape.ndims(), other_shape.ndims()) == 4) {
+    if (max_ndims == 4) {
         output_shape = {output_dim_nc[0], output_dim_nc[1], mnk[0], mnk[1]};
-    } else if (std::max(input_shape.ndims(), other_shape.ndims()) == 3) {
+    } else {  // max_ndims == 3
         output_shape = {output_dim_nc[1], mnk[0], mnk[1]};
-    } else {
-        ERR(InvalidUsageError,
-            "output shape cannot be broadcasted: ", input_shape, " and ",
-            other_shape);
     }
     return output_shape;
 }
@@ -143,13 +134,12 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
     int smem_bytes = config["SramBytes"];
     Dims tile_shape_mnk = config["TileShapeMNK"].get<std::vector<DimType>>();
     if (tile_shape_mnk.ndims() != 3) {
-        ERR(InvalidUsageError, "TileShapeMNK should have 3 elements");
+        ERR(PlanError, "TileShapeMNK should have 3 elements");
     }
     for (int i = 0; i < 3; ++i) {
         if (padded_problem_size[i] % tile_shape_mnk[i] != 0) {
-            ERR(InvalidUsageError, "output padded shape MNK ",
-                padded_problem_size, " should be divisible by tile shape MNK ",
-                tile_shape_mnk);
+            ERR(PlanError, "output padded shape MNK ", padded_problem_size,
+                " should be divisible by tile shape MNK ", tile_shape_mnk);
         }
     }
 
@@ -193,11 +183,10 @@ static const Json get_default_config(const ArchRef arch,
                                      const Dims &mnk) {
     if (data_type != FP32.ref() && data_type != FP16.ref() &&
         data_type != BF16.ref()) {
-        ERR(InvalidUsageError,
-            "Unsupported data type: ", data_type->type_name());
+        ERR(PlanError, "Unsupported data type: ", data_type->type_name());
     }
     if (!arch->belongs_to(ARCH_CUDA) && !arch->belongs_to(ARCH_ROCM)) {
-        ERR(InvalidUsageError, "Unsupported architecture: ", arch->name());
+        ERR(PlanError, "Unsupported architecture: ", arch->name());
     }
     DimType tm = (mnk[0] > mnk[1]) ? 256 : 128;
     DimType tn = (mnk[0] > mnk[1]) ? 128 : 256;
@@ -241,7 +230,7 @@ Json ModelOpMatmul::default_config(const ArchRef arch) const {
     size_t tile_x = config.at("TileShapeMNK")[0];
     size_t tile_y = config.at("TileShapeMNK")[1];
     if (mnk[0] % tile_x != 0 || mnk[1] % tile_y != 0) {
-        ERR(InvalidUsageError, "output padded shape MNK ", mnk,
+        ERR(PlanError, "output padded shape MNK ", mnk,
             " should be divisible by tile shape MNK ",
             config.at("TileShapeMNK"));
     }

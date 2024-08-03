@@ -7,7 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace fs = std::filesystem;
 
