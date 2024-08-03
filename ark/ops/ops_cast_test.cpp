@@ -262,7 +262,7 @@ ark::unittest::State test_cast_invalid() {
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(1), ark::BYTE);
-        UNITTEST_THROW(m.cast(t, ark::FP32), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t, ark::FP32), ark::ModelError);
     }
     {
         ark::Model m;
@@ -273,30 +273,30 @@ ark::unittest::State test_cast_invalid() {
         ark::Tensor t2 = m.tensor(ark::Dims(4, 1, 1, 1), ark::BYTE);
         m.cast(t2, ark::FP32);  // ok
         ark::Tensor t3 = m.tensor(ark::Dims(7, 1), ark::BYTE);
-        UNITTEST_THROW(m.cast(t3, ark::FP32), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t3, ark::FP32), ark::ModelError);
         ark::Tensor t4 = m.tensor(ark::Dims(7, 1, 1), ark::BYTE);
-        UNITTEST_THROW(m.cast(t4, ark::FP32), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t4, ark::FP32), ark::ModelError);
         ark::Tensor t5 = m.tensor(ark::Dims(7, 1, 1, 1), ark::BYTE);
-        UNITTEST_THROW(m.cast(t5, ark::FP32), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t5, ark::FP32), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8, 1}, ark::BYTE);
         m.cast(t0, ark::FP32);  // ok
         ark::Tensor t1 = m.tensor({8, 1}, ark::BYTE, {13, 1}, {0, 0}, {9, 1});
-        UNITTEST_THROW(m.cast(t1, ark::FP32), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t1, ark::FP32), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8, 1}, ark::FP16);
         ark::Tensor out = m.tensor({8, 1}, ark::INT32);
-        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8, 1}, ark::FP16);
         ark::Tensor out = m.tensor({4, 1}, ark::FP32);
-        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.cast(t0, ark::FP32, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

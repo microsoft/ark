@@ -31,20 +31,20 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     for (const auto &node : other.nodes_) {
         auto it = node_map.find(node);
         if (it == node_map.end()) {
-            ERR(ModelError, "unexpected error");
+            ERR(InternalError, "unexpected error");
         }
         ModelNodeRef new_node = it->second;
         for (auto &producer : node->producers) {
             auto it2 = node_map.find(producer);
             if (it2 == node_map.end()) {
-                ERR(ModelError, "unexpected error");
+                ERR(InternalError, "unexpected error");
             }
             new_node->producers.push_back(it2->second);
         }
         for (auto &consumer : node->consumers) {
             auto it2 = node_map.find(consumer);
             if (it2 == node_map.end()) {
-                ERR(ModelError, "unexpected error");
+                ERR(InternalError, "unexpected error");
             }
             new_node->consumers.push_back(it2->second);
         }
@@ -53,7 +53,7 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     for (const auto &p : other.op_to_node_) {
         auto it = node_map.find(p.second);
         if (it == node_map.end()) {
-            ERR(ModelError, "unexpected error");
+            ERR(InternalError, "unexpected error");
         }
         op_to_node_[p.first] = it->second;
     }
@@ -142,7 +142,7 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     }
     for (auto &tns : op->result_tensors()) {
         if (tensor_to_producer_op_.find(tns) != tensor_to_producer_op_.end()) {
-            ERR(ModelError, "Tensor has already been produced by an op. ",
+            ERR(InternalError, "Tensor has already been produced by an op. ",
                 tns->serialize().dump(), "; ",
                 tensor_to_producer_op_.at(tns)->serialize().dump());
         }
@@ -156,12 +156,12 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     for (auto &tns : op->input_tensors()) {
         auto it = tensor_to_producer_op_.find(tns);
         if (it == tensor_to_producer_op_.end()) {
-            ERR(ModelError, "Tensor has not been produced by any op. ",
+            ERR(InternalError, "Tensor has not been produced by any op. ",
                 tns->serialize().dump(), " ", tns.get());
         }
         auto it2 = op_to_node_.find(it->second);
         if (it2 == op_to_node_.end()) {
-            ERR(ModelError, "Op has not been added to the graph");
+            ERR(InternalError, "Op has not been added to the graph");
         }
         auto producer = it2->second;
         node->producers.push_back(producer);
@@ -175,7 +175,8 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
 void ModelGraph::Impl::remove_node(ModelNodeRef node) {
     auto it = nodes_.find(node);
     if (it == nodes_.end()) {
-        ERR(ModelError, "attempted to remove a node that is not in the graph");
+        ERR(InternalError,
+            "attempted to remove a node that is not in the graph");
     }
     // Remove node from consumers and producers.
     for (auto &consumer : node->consumers) {
@@ -193,7 +194,7 @@ void ModelGraph::Impl::remove_node(ModelNodeRef node) {
     }
     auto it2 = op_to_node_.find(node->op);
     if (it2 == op_to_node_.end()) {
-        ERR(ModelError, "unexpected error");
+        ERR(InternalError, "unexpected error");
     }
     if (it2->second == node) {
         op_to_node_.erase(it2);
@@ -222,7 +223,7 @@ void ModelGraph::Impl::recursive_remove_virtual_nodes(
     std::vector<ModelNodeRef> new_boundary_nodes;
     for (auto &boundary_node : boundary_nodes) {
         if (boundary_node->op == nullptr) {
-            ERR(ModelError, "unexpected error: empty node");
+            ERR(InternalError, "unexpected error: empty node");
         }
         MODEL_GRAPH_DEBUG("  boundary node");
         MODEL_GRAPH_DEBUG("    node: ", to_json(boundary_node).dump());
@@ -244,7 +245,7 @@ void ModelGraph::Impl::recursive_remove_virtual_nodes(
                 continue;
             }
             if (seen_nodes.contains(producer)) {
-                ERR(ModelError,
+                ERR(InternalError,
                     "circular dependency detected: ", to_json(producer).dump());
             }
             MODEL_GRAPH_DEBUG("      added to next boundary: ",

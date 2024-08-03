@@ -82,7 +82,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
     }
     auto it = instances.find(type_name);
     if (it == instances.end()) {
-        ERR(InvalidUsageError, "Unknown model op type: ", type_name);
+        ERR(ModelError, "Unknown model op type: ", type_name);
     }
     return it->second;
 }
@@ -104,7 +104,7 @@ void ModelOp::verify() const {
 
     for (auto &input : inputs) {
         if (input->buffer() == nullptr) {
-            ERR(InvalidUsageError, "input tensor buffer is null");
+            ERR(InternalError, "input tensor buffer is null");
         }
     }
 
@@ -113,7 +113,7 @@ void ModelOp::verify() const {
 
     for (auto &output : outputs) {
         if (output->buffer() == nullptr) {
-            ERR(InvalidUsageError, "output tensor buffer is null");
+            ERR(InternalError, "output tensor buffer is null");
         }
     }
 
@@ -122,13 +122,13 @@ void ModelOp::verify() const {
                           outputs.end(),
                           std::inserter(intersect, intersect.begin()));
     if (!intersect.empty()) {
-        ERR(InvalidUsageError, "cyclic dependency detected");
+        ERR(InternalError, "cyclic dependency detected");
     }
 }
 
 std::string ModelOp::vec_string(const Dims &dims) {
     if (dims.is_invalid()) {
-        ERR(InvalidUsageError, "invalid dims given");
+        ERR(InternalError, "invalid dims given");
     }
     int ndims = dims.ndims();
     std::stringstream ss;
@@ -184,23 +184,20 @@ Json ModelOp::serialize() const {
 
 std::shared_ptr<ModelOp> ModelOp::deserialize(const Json &serialized) {
     if (!serialized.contains("Type")) {
-        ERR(InvalidUsageError, "ModelOp deserialization failed: missing Type");
+        ERR(ModelError, "ModelOp deserialization failed: missing Type");
     } else if (!serialized.contains("Name")) {
-        ERR(InvalidUsageError, "ModelOp deserialization failed: missing Name");
+        ERR(ModelError, "ModelOp deserialization failed: missing Name");
     } else if (!serialized.contains("IsVirtual")) {
-        ERR(InvalidUsageError,
-            "ModelOp deserialization failed: missing IsVirtual");
+        ERR(ModelError, "ModelOp deserialization failed: missing IsVirtual");
     } else if (!serialized.contains("ReadTensors")) {
-        ERR(InvalidUsageError,
-            "ModelOp deserialization failed: missing ReadTensors");
+        ERR(ModelError, "ModelOp deserialization failed: missing ReadTensors");
     } else if (!serialized.contains("WriteTensors")) {
-        ERR(InvalidUsageError,
-            "ModelOp deserialization failed: missing WriteTensors");
+        ERR(ModelError, "ModelOp deserialization failed: missing WriteTensors");
     } else if (!serialized.contains("ResultTensors")) {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "ModelOp deserialization failed: missing ResultTensors");
     } else if (!serialized.contains("Args")) {
-        ERR(InvalidUsageError, "ModelOp deserialization failed: missing Args");
+        ERR(ModelError, "ModelOp deserialization failed: missing Args");
     }
     auto ret = model_op_factory()->construct(serialized["Type"]);
     ret->type_ = ModelOpT::from_name(serialized["Type"]);

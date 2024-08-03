@@ -166,7 +166,7 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     const std::string &template_path =
         ark_root + "/include/kernels/kernel_template.in";
     if (!is_file(template_path)) {
-        ERR(SchedulerError, "kernel template file not found: ", template_path);
+        ERR(InternalError, "kernel template file not found: ", template_path);
     }
     std::string template_code = read_file(template_path);
     std::map<std::string, std::string> replacements = {
@@ -276,7 +276,7 @@ std::string CodeGenerator::Impl::resource_group(
                                 rg_json["ProcessorRange"][1]);
     if (*rg_proc_range.begin() < *proc_range.begin() ||
         *rg_proc_range.end() > *proc_range.end()) {
-        ERR(SchedulerError, "invalid processor range of resource group");
+        ERR(PlanError, "invalid processor range of resource group");
     }
     Range<size_t> rg_warp_range(rg_json["WarpRange"][0],
                                 rg_json["WarpRange"][1]);
@@ -305,7 +305,7 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(SchedulerError, "not enough resources for task group");
+            ERR(PlanError, "not enough resources for task group");
         }
 
         size_t task_b = *task_range.begin();

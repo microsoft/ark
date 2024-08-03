@@ -165,16 +165,15 @@ ark::unittest::State test_tensor_layout() {
 
 ark::unittest::State test_tensor_invalid() {
     ark::Model model;
-    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3, 4}),
-                   ark::InvalidUsageError);
+    UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3, 4}), ark::ModelError);
     UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 0, 0}),
-                   ark::InvalidUsageError);
+                   ark::ModelError);
     UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 0}, {1, 1, 2}),
-                   ark::InvalidUsageError);
+                   ark::ModelError);
     UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 0}, {1, 1}),
-                   ark::InvalidUsageError);
+                   ark::ModelError);
     UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 3}, {1, 2}),
-                   ark::InvalidUsageError);
+                   ark::ModelError);
     return ark::unittest::SUCCESS;
 }
 

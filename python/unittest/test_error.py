@@ -8,5 +8,5 @@ def test_error():
     ark.init()
     try:
         ark.tensor([0])
-    except Exception as e:
-        assert isinstance(e, ark.InvalidUsageError)
+    except ark.BaseError as e:
+        assert isinstance(e, ark.ModelError)

@@ -92,13 +92,12 @@ from .ops import (
     zeros,
 )
 from .error import (
+    BaseError,
     InternalError,
     InvalidUsageError,
-    NotFoundError,
     ModelError,
-    SchedulerError,
-    ExecutorError,
+    PlanError,
+    UnsupportedError,
     SystemError,
     GpuError,
-    RuntimeError,
 )

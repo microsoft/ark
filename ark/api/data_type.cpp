@@ -50,7 +50,7 @@ const DataType &DataType::from_name(const std::string &type_name) {
     }
     auto it = instances.find(type_name);
     if (it == instances.end()) {
-        ERR(InvalidUsageError, "Unknown data type: ", type_name);
+        ERR(UnsupportedError, "Unknown data type: ", type_name);
     }
     return *(it->second);
 }

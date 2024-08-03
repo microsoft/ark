@@ -26,7 +26,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                              Dims &new_offsets, Dims &new_padded_shape) {
     if (input->data_type() == BYTE.ref()) {
         if (input->shape_bytes() < data_type->bytes()) {
-            ERR(InvalidUsageError, "input tensor is too small to be casted to ",
+            ERR(ModelError, "input tensor is too small to be casted to ",
                 data_type);
         }
         // The last greater-than-1 dimension of the input tensor should be
@@ -38,7 +38,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
             }
         }
         if ((input->shape()[last_dim] % data_type->bytes()) != 0) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "the last greater-than-1 dimension of the "
                 "input tensor shape ",
                 input->shape()[last_dim],
@@ -47,7 +47,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                 data_type->bytes(), ")");
         }
         if ((input->strides()[last_dim] % data_type->bytes()) != 0) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "the last greater-than-1 dimension of the "
                 "input tensor strides ",
                 input->strides()[last_dim],
@@ -56,7 +56,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                 data_type->bytes(), ")");
         }
         if ((input->offsets()[last_dim] % data_type->bytes()) != 0) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "the last greater-than-1 dimension of the "
                 "input tensor offsets ",
                 input->offsets()[last_dim],
@@ -65,7 +65,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                 data_type->bytes(), ")");
         }
         if ((input->padded_shape()[last_dim] % data_type->bytes()) != 0) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "the last greater-than-1 dimension of the "
                 "input tensor padded_shape ",
                 input->padded_shape()[last_dim],
@@ -91,7 +91,7 @@ static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
         new_offsets[-1] *= input->data_type()->bytes();
         new_padded_shape[-1] *= input->data_type()->bytes();
     } else {
-        ERR(ModelError, "unexpected error");
+        ERR(InternalError, "unexpected error");
     }
 }
 

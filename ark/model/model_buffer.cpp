@@ -51,17 +51,13 @@ Json ModelBuffer::serialize() const {
 
 std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const Json &serialized) {
     if (!serialized.contains("Id")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing Id");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing Id");
     } else if (!serialized.contains("Rank")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing Rank");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing Rank");
     } else if (!serialized.contains("SendTags")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing SendTags");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing SendTags");
     } else if (!serialized.contains("RecvTags")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing RecvTags");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing RecvTags");
     }
     return std::make_shared<ModelBuffer>(serialized["Id"], serialized["Rank"],
                                          serialized["SendTags"],

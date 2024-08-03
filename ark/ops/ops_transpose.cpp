@@ -40,16 +40,9 @@ ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
     : ModelOp("Transpose") {
     check_null(input);
     Dims perm(permutation);
-    if (output) {
-        check_match_data_type(input, output);
-    } else {
-        output = std::make_shared<ModelTensor>(
-            input->data_type(), std::make_shared<ModelBuffer>(),
-            permuted_shape(input->shape(), perm));
-    }
     int ndims = input->shape().ndims();
     if (ndims != perm.ndims()) {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "The number of dimensions of permutation should be the same as "
             "the number of dimensions of input. Given input shape: ",
             input->shape(), ", permutation: ", perm);
@@ -57,18 +50,25 @@ ModelOpTranspose::ModelOpTranspose(ModelTensorRef input,
     std::vector<int> count(ndims, 0);
     for (int i = 0; i < ndims; ++i) {
         if (perm[i] >= ndims) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "Each value in permutation should be less than the number of "
                 "input dimensions. Given permutation: ",
                 perm);
         }
         if (count[perm[i]] > 0) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "Each value in permutation should be unique. Given "
                 "permutation: ",
                 perm);
         }
         count[perm[i]]++;
+    }
+    if (output) {
+        check_match_data_type(input, output);
+    } else {
+        output = std::make_shared<ModelTensor>(
+            input->data_type(), std::make_shared<ModelBuffer>(),
+            permuted_shape(input->shape(), perm));
     }
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
     read_tensors_ = {input};

@@ -15,7 +15,7 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
                          const Dims &offsets, const Dims &padded_shape)
     : data_type_(data_type), buffer_(buffer) {
     if (shape.nelems() == 0) {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "Tensor shape should consist of positive numbers. Given: ", shape);
     } else if (shape.is_no_dim()) {
         // Assume a single-element constant
@@ -28,7 +28,7 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
         padded_shape_ = shape_;
     } else {
         if (ndims != padded_shape.ndims()) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "Tensor shape and padded shape should have the same number of "
                 "dimensions. Given: shape ",
                 shape_, " padded_shape ", padded_shape);
@@ -37,16 +37,15 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
     }
     for (int i = 0; i < ndims; ++i) {
         if (shape_[i] > padded_shape_[i]) {
-            ERR(InvalidUsageError,
-                "Tensor shape exceeds the padded shape. shape ", shape_,
-                " padded_shape ", padded_shape_);
+            ERR(ModelError, "Tensor shape exceeds the padded shape. shape ",
+                shape_, " padded_shape ", padded_shape_);
         }
     }
     if (strides.is_no_dim()) {
         strides_ = padded_shape_;
     } else {
         if (ndims != strides.ndims()) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "Tensor shapes and strides should have the same number of "
                 "dimensions. Given: shape ",
                 shape_, " strides ", strides);
@@ -61,7 +60,7 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
         offsets_ = Dims{dims_vec};
     } else {
         if (ndims != offsets.ndims()) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "Tensor shape and offs should have the same number of "
                 "dimensions. Given: shape ",
                 shape_, " offs ", offsets);
@@ -70,7 +69,7 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
     }
     for (int i = 0; i < ndims; ++i) {
         if (offsets_[i] + padded_shape_[i] > strides_[i]) {
-            ERR(InvalidUsageError, "Tensor exceeds the memory boundary. offs ",
+            ERR(ModelError, "Tensor exceeds the memory boundary. offs ",
                 offsets_, " padded_shape ", padded_shape_, " strides ",
                 strides_);
         }
@@ -106,26 +105,20 @@ Json ModelTensor::serialize() const {
 
 std::shared_ptr<ModelTensor> ModelTensor::deserialize(const Json &serialized) {
     if (!serialized.contains("DataType")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing DataType");
+        ERR(ModelError, "ModelTensor deserialization failed: missing DataType");
     } else if (!serialized.contains("Buffer")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing Buffer");
+        ERR(ModelError, "ModelTensor deserialization failed: missing Buffer");
     } else if (!serialized.contains("Shape")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing Shape");
+        ERR(ModelError, "ModelTensor deserialization failed: missing Shape");
     } else if (!serialized.contains("Strides")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing Strides");
+        ERR(ModelError, "ModelTensor deserialization failed: missing Strides");
     } else if (!serialized.contains("Offsets")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing Offsets");
+        ERR(ModelError, "ModelTensor deserialization failed: missing Offsets");
     } else if (!serialized.contains("PaddedShape")) {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "ModelTensor deserialization failed: missing PaddedShape");
     } else if (!serialized.contains("Id")) {
-        ERR(InvalidUsageError,
-            "ModelTensor deserialization failed: missing Id");
+        ERR(ModelError, "ModelTensor deserialization failed: missing Id");
     }
     auto ret = std::make_shared<ModelTensor>(
         DataType::from_name(serialized["DataType"]).ref(),

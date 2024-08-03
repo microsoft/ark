@@ -48,8 +48,7 @@ void DefaultPlanner::Impl::install_config_rule(
 static void check_config_field(const ModelOpRef op, const Json &config,
                                const std::string &field) {
     if (!config.contains(field)) {
-        ERR(NotFoundError, "Config field not found: ", field, " in ",
-            op->name());
+        ERR(PlanError, "Config field not found: ", field, " in ", op->name());
     }
 }
 

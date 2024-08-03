@@ -89,13 +89,13 @@ ark::unittest::State test_copy_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(4, 1, 1024), ark::FP32);
         ark::Tensor out = m.tensor(ark::Dims(4, 3, 1024), ark::FP16);
-        UNITTEST_THROW(m.copy(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.copy(t, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(4, 1, 1024), ark::FP32);
         ark::Tensor out = m.tensor(ark::Dims(1, 3, 1024), ark::FP16);
-        UNITTEST_THROW(m.copy(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.copy(t, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
