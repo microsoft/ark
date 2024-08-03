@@ -15,12 +15,7 @@ static Dims calc_problem_size(const Dims &input_shape, const Dims &other_shape,
     int input_ndims = input_shape.ndims();
     int other_ndims = other_shape.ndims();
 
-    if (input_ndims < 1) {
-        ERR(ModelError, "`input` has an empty shape: ", input_shape);
-    }
-    if (other_ndims < 1) {
-        ERR(ModelError, "`other` has an empty shape: ", other_shape);
-    }
+    if (input_ndims < 1 || other_ndims < 1) ERR(InternalError, "unexpected");
 
     DimType m;
     DimType n;
@@ -51,7 +46,8 @@ static Dims calc_output_shape(const Dims &input_shape, const Dims &other_shape,
     // For m, n
     Dims mnk =
         calc_problem_size(input_shape, other_shape, trans_input, trans_other);
-    if (std::max(input_shape.ndims(), other_shape.ndims()) < 3) {
+    int max_ndims = std::max(input_shape.ndims(), other_shape.ndims());
+    if (max_ndims < 3) {
         return {mnk[0], mnk[1]};
     }
     // Considering 4-dimensional matrix multiplication between [N,C,H,W] format
@@ -65,13 +61,10 @@ static Dims calc_output_shape(const Dims &input_shape, const Dims &other_shape,
     // Broadcasted output
     Dims output_dim_nc = broadcast_shape(input_dim_nc, other_dim_nc);
     Dims output_shape;
-    if (std::max(input_shape.ndims(), other_shape.ndims()) == 4) {
+    if (max_ndims == 4) {
         output_shape = {output_dim_nc[0], output_dim_nc[1], mnk[0], mnk[1]};
-    } else if (std::max(input_shape.ndims(), other_shape.ndims()) == 3) {
+    } else {  // max_ndims == 3
         output_shape = {output_dim_nc[1], mnk[0], mnk[1]};
-    } else {
-        ERR(ModelError, "output shape cannot be broadcasted: ", input_shape,
-            " and ", other_shape);
     }
     return output_shape;
 }

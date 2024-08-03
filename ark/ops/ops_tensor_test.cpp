@@ -174,6 +174,7 @@ ark::unittest::State test_tensor_invalid() {
                    ark::ModelError);
     UNITTEST_THROW(model.tensor({1, 2}, ark::FP32, {1, 3}, {0, 3}, {1, 2}),
                    ark::ModelError);
+    UNITTEST_THROW(model.tensor({0}, ark::FP32), ark::ModelError);
     return ark::unittest::SUCCESS;
 }
 

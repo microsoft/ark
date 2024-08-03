@@ -447,6 +447,13 @@ ark::unittest::State test_reduce_mean_axis3() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_reduce_invalid() {
+    ark::Model m;
+    ark::Tensor t = m.tensor(ark::Dims(7, 2, 4, 1024), ark::FP32);
+    UNITTEST_THROW(m.reduce_max(t, /*axis=*/-10), ark::ModelError);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_reduce_sum_axis0);
@@ -460,5 +467,6 @@ int main() {
     UNITTEST(test_reduce_sum_invalid);
     UNITTEST(test_reduce_max_axis3);
     UNITTEST(test_reduce_mean_axis3);
+    UNITTEST(test_reduce_invalid);
     return ark::unittest::SUCCESS;
 }

@@ -14,12 +14,13 @@ ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
                          const Dims &shape, const Dims &strides,
                          const Dims &offsets, const Dims &padded_shape)
     : data_type_(data_type), buffer_(buffer) {
-    if (shape.nelems() == 0) {
-        ERR(ModelError,
-            "Tensor shape should consist of positive numbers. Given: ", shape);
-    } else if (shape.is_no_dim()) {
+    if (shape.is_no_dim()) {
         // Assume a single-element constant
         shape_ = {1};
+    } else if (shape.has_negative() || shape.nelems() == 0) {
+        ERR(ModelError,
+            "Tensor shape should consist of only positive numbers. Given: ",
+            shape);
     } else {
         shape_ = shape;
     }
