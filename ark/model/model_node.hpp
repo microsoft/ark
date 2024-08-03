@@ -25,6 +25,9 @@ class ModelNode {
 
     /// The list of @ref ModelNode that this @ref ModelNode depends on.
     UniqueList<ModelNodeRef> producers;
+
+    /// Graph context of this node.
+    std::map<std::string, std::string> context;
 };
 
 }  // namespace ark

@@ -1,0 +1,24 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+#ifndef ARK_MODEL_CONTEXT_MANAGER_HPP_
+#define ARK_MODEL_CONTEXT_MANAGER_HPP_
+
+#include "ark/model.hpp"
+#include <map>
+
+namespace ark {
+
+class ModelContextManager {
+   public:
+    ModelContextManager(Model& model,
+                        const std::map<std::string, std::string>& context_map);
+
+   private:
+    class Impl;
+    std::shared_ptr<Impl> impl_;
+};
+
+}  // namespace ark
+
+#endif  // ARK_MODEL_CONTEXT_MANAGER_HPP_

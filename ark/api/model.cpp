@@ -9,6 +9,15 @@
 
 namespace ark {
 
+Model::Model(int rank, int world_size) : ModelGraph(rank, world_size) {
+    static size_t next_id = 0;
+    id_ = next_id++;
+}
+
+Model::Model(const Model &other) : ModelGraph(other), id_(other.id()) {}
+
+size_t Model::id() const { return id_; }
+
 Model Model::compress() const {
     Model model(*this);
     model.compress_nodes();

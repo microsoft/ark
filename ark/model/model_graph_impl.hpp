@@ -4,6 +4,7 @@
 #ifndef ARK_MODEL_GRAPH_IMPL_HPP_
 #define ARK_MODEL_GRAPH_IMPL_HPP_
 
+#include <list>
 #include <map>
 #include <set>
 #include <tuple>
@@ -18,10 +19,33 @@
 
 namespace ark {
 
+class ModelGraphContextStack {
+   private:
+    std::map<std::string, std::list<std::shared_ptr<std::string>>> storage_;
+
+   public:
+    ModelGraphContextStack() = default;
+
+    ModelGraphContextStack(const ModelGraphContextStack &other);
+
+    ~ModelGraphContextStack() = default;
+
+    void push(const std::string &key, const std::string &value);
+
+    void pop(const std::string &key);
+
+    std::string get_context(const std::string &key) const;
+
+    std::map<std::string, std::string> get_context_all() const;
+};
+
 class ModelGraph::Impl {
    public:
     Impl(int rank, int world_size)
-        : rank_(rank), world_size_(world_size), compressed_(false){};
+        : rank_(rank),
+          world_size_(world_size),
+          compressed_(false),
+          context_stack_(std::make_shared<ModelGraphContextStack>()){};
 
     Impl(const Impl &other);
 
@@ -55,6 +79,8 @@ class ModelGraph::Impl {
     bool compressed() const { return compressed_; }
 
     bool verify() const;
+
+    std::string get_context(const std::string &key) const;
 
     std::string serialize(bool pretty = true) const;
 
@@ -93,6 +119,12 @@ class ModelGraph::Impl {
 
     /// True if `compress_nodes` has been called.
     bool compressed_;
+
+   protected:
+    friend class ModelContextManager;
+
+    /// Graph context stack.
+    std::shared_ptr<ModelGraphContextStack> context_stack_;
 };
 
 }  // namespace ark

@@ -17,6 +17,47 @@
 
 namespace ark {
 
+ModelGraphContextStack::ModelGraphContextStack(
+    const ModelGraphContextStack &other) {
+    for (const auto &pair : other.storage_) {
+        for (const auto &value : pair.second) {
+            this->storage_[pair.first].push_back(value);
+        }
+    }
+}
+
+void ModelGraphContextStack::push(const std::string &key,
+                                  const std::string &value) {
+    this->storage_[key].push_back(std::make_shared<std::string>(value));
+}
+
+void ModelGraphContextStack::pop(const std::string &key) {
+    auto it = this->storage_.find(key);
+    if (it == this->storage_.end() || it->second.empty()) {
+        ERR(InternalError, "context stack is empty");
+    }
+    it->second.pop_back();
+}
+
+std::string ModelGraphContextStack::get_context(const std::string &key) const {
+    if (this->storage_.find(key) == this->storage_.end() ||
+        this->storage_.at(key).empty()) {
+        return "";
+    }
+    return *this->storage_.at(key).back();
+}
+
+std::map<std::string, std::string> ModelGraphContextStack::get_context_all()
+    const {
+    std::map<std::string, std::string> cur;
+    for (const auto &pair : this->storage_) {
+        if (!pair.second.empty()) {
+            cur[pair.first] = *pair.second.back();
+        }
+    }
+    return cur;
+}
+
 ModelGraph::Impl::Impl(const ModelGraph::Impl &other) { *this = other; }
 
 ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
@@ -25,6 +66,7 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     for (const auto &node : other.nodes_) {
         ModelNodeRef new_node = std::make_shared<ModelNode>();
         new_node->op = node->op;
+        new_node->context = node->context;
         node_map.emplace(node, new_node);
         nodes_.push_back(new_node);
     }
@@ -61,6 +103,8 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     rank_ = other.rank_;
     world_size_ = other.world_size_;
     compressed_ = other.compressed_;
+    context_stack_ =
+        std::make_shared<ModelGraphContextStack>(*(other.context_stack_));
     return *this;
 }
 
@@ -130,6 +174,10 @@ bool ModelGraph::Impl::verify() const {
     return true;
 }
 
+std::string ModelGraph::Impl::get_context(const std::string &key) const {
+    return context_stack_->get_context(key);
+}
+
 ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     for (auto &tns : op->input_tensors()) {
         if (tensor_to_producer_op_.find(tns) == tensor_to_producer_op_.end()) {
@@ -167,6 +215,8 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
         node->producers.push_back(producer);
         producer->consumers.push_back(node);
     }
+
+    node->context = context_stack_->get_context_all();
 
     nodes_.push_back(node);
     return node;
