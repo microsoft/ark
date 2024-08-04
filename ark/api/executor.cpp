@@ -190,6 +190,9 @@ class Executor::Impl {
     float elapsed_msec_ = -1;
 
     PlanJson plan_json_;
+    std::vector<void *> external_buffers_;
+    std::vector<std::string> external_args_;
+    std::map<size_t, std::string> buffer_id_to_name_;
     std::map<size_t, size_t> buffer_id_to_offset_;
     std::map<size_t, void *> buffer_id_to_addr_;
     size_t total_bytes_;
@@ -254,8 +257,9 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     buffer_id_to_addr_ =
         init_buffer_addrs(buffers_.back()->ref(), buffer_id_to_offset_);
 
-    codegen_ =
-        std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_addr_, name_);
+    codegen_ = std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_,
+                                               external_args_,
+                                               buffer_id_to_name_, name_);
 
     flag_ = gpu_manager->malloc_host(
         sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
@@ -407,6 +411,12 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         // plan, we utilize the buffer offset from the previous plan
         if (buffer_id_to_offset_.find(buf_info->buffer->id()) !=
             buffer_id_to_offset_.end()) {
+            external_buffers_.push_back(
+                buffer_id_to_addr_[buf_info->buffer->id()]);
+            std::string name =
+                "extern_buf_" + std::to_string(buf_info->buffer->id());
+            external_args_.push_back(name);
+            buffer_id_to_name_[buf_info->buffer->id()] = name;
             continue;
         }
         buffer_id_to_offset[buf_info->buffer->id()] = offset;
@@ -643,6 +653,9 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
 }
 
 void Executor::Impl::add_plan(const std::string &plan) {
+    external_buffers_.clear();
+    external_args_.clear();
+    buffer_id_to_name_.clear();
     total_bytes_ = 0;
     init(Json::parse(plan));
 }
@@ -719,7 +732,12 @@ void Executor::Impl::launch(int64_t max_spin_count) {
         // Initialize loop flags.
         atomicStoreRelaxed(flag_->ref<int>(), 0);
         void *flag_ptr = flag_->ref();
-        std::vector<void *> args = {&flag_ptr};
+        void *buf_ptr = buffers_.back()->ref();
+        std::vector<void *> args = {&buf_ptr, &flag_ptr};
+
+        // Collect additional arguments for external buffers
+        args.insert(args.end(), external_buffers_.begin(),
+                    external_buffers_.end());
         kernel_->launch(stream_raw_, args);
     }
     is_recording_ = true;
@@ -733,8 +751,11 @@ void Executor::Impl::run(int iter) {
         }
         atomicStoreRelaxed(flag_->ref<int>(), iter);
     } else {
+        void *buf_ptr = buffers_.back()->ref();
         int i = 0;
-        std::vector<void *> args = {reinterpret_cast<void *>(&i)};
+        std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
+        args.insert(args.end(), external_buffers_.begin(),
+                    external_buffers_.end());
         for (; i < iter; i++) {
             kernel_->launch(stream_raw_, args);
         }
