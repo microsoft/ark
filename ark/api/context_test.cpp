@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "model_context_manager.hpp"
+#include "ark/context.hpp"
 
-#include "model_node.hpp"
+#include "model/model_node.hpp"
 #include "unittest/unittest_utils.h"
 
-ark::unittest::State test_model_context_manager() {
+ark::unittest::State test_context() {
     ark::Model model;
     ark::Tensor t0 = model.tensor({1}, ark::FP32);
     ark::Tensor t1 = model.tensor({1}, ark::FP32);
@@ -19,18 +19,18 @@ ark::unittest::State test_model_context_manager() {
     ark::Tensor t5;
     {
         // node 1
-        ark::ModelContextManager cm(model);
-        cm.add("key0", ark::Json("val1"));
+        ark::Context ctx(model);
+        ctx.add("key0", ark::Json("val1").dump());
         t3 = model.relu(t2);
 
         // node 2
-        cm.add("key1", ark::Json("val2"));
+        ctx.add("key1", ark::Json("val2").dump());
         t4 = model.sqrt(t3);
     }
     {
         // node 3
-        ark::ModelContextManager cm(model);
-        cm.add("key0", ark::Json("val3"));
+        ark::Context ctx(model);
+        ctx.add("key0", ark::Json("val3").dump());
         t5 = model.exp(t2);
     }
 
@@ -55,6 +55,6 @@ ark::unittest::State test_model_context_manager() {
 }
 
 int main() {
-    UNITTEST(test_model_context_manager);
+    UNITTEST(test_context);
     return 0;
 }

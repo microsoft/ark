@@ -34,9 +34,11 @@ class ModelGraphContextStack {
 
     void pop(const std::string &key);
 
-    Json get_context(const std::string &key) const;
+    bool has(const std::string &key) const;
 
-    std::map<std::string, Json> get_context_all() const;
+    Json get(const std::string &key) const;
+
+    std::map<std::string, Json> get_all() const;
 };
 
 class ModelGraph::Impl {
@@ -79,8 +81,6 @@ class ModelGraph::Impl {
     bool compressed() const { return compressed_; }
 
     bool verify() const;
-
-    Json get_context(const std::string &key) const;
 
     std::string serialize(bool pretty = true) const;
 

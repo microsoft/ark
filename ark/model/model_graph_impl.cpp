@@ -36,17 +36,23 @@ void ModelGraphContextStack::pop(const std::string &key) {
         ERR(InternalError, "context stack is empty");
     }
     it->second.pop_back();
-}
-
-Json ModelGraphContextStack::get_context(const std::string &key) const {
-    if (this->storage_.find(key) == this->storage_.end() ||
-        this->storage_.at(key).empty()) {
-        return Json();
+    if (it->second.empty()) {
+        this->storage_.erase(it);
     }
-    return *this->storage_.at(key).back();
 }
 
-std::map<std::string, Json> ModelGraphContextStack::get_context_all() const {
+bool ModelGraphContextStack::has(const std::string &key) const {
+    return this->storage_.find(key) != this->storage_.end();
+}
+
+Json ModelGraphContextStack::get(const std::string &key) const {
+    if (this->has(key)) {
+        return *this->storage_.at(key).back();
+    }
+    return Json();
+}
+
+std::map<std::string, Json> ModelGraphContextStack::get_all() const {
     std::map<std::string, Json> cur;
     for (const auto &pair : this->storage_) {
         if (!pair.second.empty()) {
@@ -172,10 +178,6 @@ bool ModelGraph::Impl::verify() const {
     return true;
 }
 
-Json ModelGraph::Impl::get_context(const std::string &key) const {
-    return context_stack_->get_context(key);
-}
-
 ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
     for (auto &tns : op->input_tensors()) {
         if (tensor_to_producer_op_.find(tns) == tensor_to_producer_op_.end()) {
@@ -214,7 +216,7 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
         producer->consumers.push_back(node);
     }
 
-    node->context = context_stack_->get_context_all();
+    node->context = context_stack_->get_all();
 
     nodes_.push_back(node);
     return node;
