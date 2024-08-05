@@ -4,6 +4,7 @@
 #include "ark/planner.hpp"
 
 #include "ark/model.hpp"
+#include "context_impl.hpp"
 #include "env.h"
 #include "file_io.h"
 #include "gpu/gpu_manager.h"
@@ -12,6 +13,10 @@
 #include "model/model_op.hpp"
 
 namespace ark {
+
+void PlannerContext::set_sync(bool sync) {
+    this->impl_->set("Sync", sync, ContextType::Immutable);
+}
 
 class DefaultPlanner::Impl {
    public:

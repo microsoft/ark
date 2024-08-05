@@ -4,13 +4,19 @@
 #ifndef ARK_PLANNER_HPP
 #define ARK_PLANNER_HPP
 
+#include <ark/context.hpp>
 #include <functional>
 #include <memory>
 #include <string>
 
 namespace ark {
 
-class Model;
+class PlannerContext : public Context {
+   public:
+    PlannerContext(Model &model) : Context(model) {}
+
+    void set_sync(bool sync);
+};
 
 class DefaultPlanner {
    public:

@@ -8,12 +8,10 @@
 
 namespace ark {
 
-class ModelContextManager;
-
 enum class ContextType {
-    ContextTypeOverwrite,
-    ContextTypeExtend,
-    ContextTypeImmutable,
+    Overwrite,
+    Extend,
+    Immutable,
 };
 
 class Context {
@@ -26,7 +24,7 @@ class Context {
     Context(Model& model);
 
     /// Get the ID of this context.
-    size_t id() const { return id_; }
+    size_t id() const;
 
     ///
     /// Add an item to the context.
@@ -37,12 +35,12 @@ class Context {
     /// of either the same or different context object for the same model,
     /// the behavior is determined by the context type @p `type` as follows.
     ///
-    /// - `ContextTypeOverwrite` (default): The existing value will be
+    /// - `ContextType::Overwrite` (default): The existing value will be
     /// replaced with the new one while the context object is alive.
     /// When the context object is destroyed, the previous value will be
     /// restored.
     ///
-    /// - `ContextTypeExtend`: The new value will extend the existing
+    /// - `ContextType::Extend`: The new value will extend the existing
     /// value while the context object is alive. This type is feasible only
     /// when the value represents a JSON object, which is convertible to a
     /// map. If the new JSON object has a key that already exists in the
@@ -50,7 +48,7 @@ class Context {
     /// overwritten by the new value. When the context object is destroyed,
     /// the previous value will be restored.
     ///
-    /// - `ContextTypeImmutable`: The new value will be adopted only when the
+    /// - `ContextType::Immutable`: The new value will be adopted only when the
     /// key does not exist in the existing context or when the value of the key
     /// is empty. If the key already exists, the new value will be ignored.
     /// When the context object is destroyed, if the key did not exist in the
@@ -60,23 +58,25 @@ class Context {
     /// @param key The key of the context item.
     /// @param value The value of the context item. The value is assumed to
     /// be a JSON string. An empty JSON string is also allowed.
-    /// @param type The context type. Default is `ContextTypeOverwrite`.
+    /// @param type The context type. Default is `ContextType::Overwrite`.
     ///
     /// @throw `InvalidUsageError` In the following cases:
     ///
     /// - The value cannot be parsed as JSON.
     ///
     /// - The value is not a JSON object when the context type is
-    /// `ContextTypeExtend`.
+    /// `ContextType::Extend`.
     ///
     /// - The context type is unknown.
     ///
     void set(const std::string& key, const std::string& value,
-             ContextType type = ContextType::ContextTypeOverwrite);
+             ContextType type = ContextType::Overwrite);
 
-   private:
-    std::shared_ptr<ModelContextManager> context_manager_;
-    size_t id_;
+   protected:
+    friend class PlannerContext;
+
+    class Impl;
+    std::shared_ptr<Impl> impl_;
 };
 
 }  // namespace ark
