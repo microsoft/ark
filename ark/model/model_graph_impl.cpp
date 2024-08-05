@@ -26,9 +26,8 @@ ModelGraphContextStack::ModelGraphContextStack(
     }
 }
 
-void ModelGraphContextStack::push(const std::string &key,
-                                  const std::string &value) {
-    this->storage_[key].push_back(std::make_shared<std::string>(value));
+void ModelGraphContextStack::push(const std::string &key, const Json &value) {
+    this->storage_[key].push_back(std::make_shared<Json>(value));
 }
 
 void ModelGraphContextStack::pop(const std::string &key) {
@@ -39,17 +38,16 @@ void ModelGraphContextStack::pop(const std::string &key) {
     it->second.pop_back();
 }
 
-std::string ModelGraphContextStack::get_context(const std::string &key) const {
+Json ModelGraphContextStack::get_context(const std::string &key) const {
     if (this->storage_.find(key) == this->storage_.end() ||
         this->storage_.at(key).empty()) {
-        return "";
+        return Json();
     }
     return *this->storage_.at(key).back();
 }
 
-std::map<std::string, std::string> ModelGraphContextStack::get_context_all()
-    const {
-    std::map<std::string, std::string> cur;
+std::map<std::string, Json> ModelGraphContextStack::get_context_all() const {
+    std::map<std::string, Json> cur;
     for (const auto &pair : this->storage_) {
         if (!pair.second.empty()) {
             cur[pair.first] = *pair.second.back();
@@ -174,7 +172,7 @@ bool ModelGraph::Impl::verify() const {
     return true;
 }
 
-std::string ModelGraph::Impl::get_context(const std::string &key) const {
+Json ModelGraph::Impl::get_context(const std::string &key) const {
     return context_stack_->get_context(key);
 }
 

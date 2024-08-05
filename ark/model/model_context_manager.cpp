@@ -10,7 +10,7 @@ namespace ark {
 class ModelContextManager::Impl {
    public:
     Impl(std::shared_ptr<ModelGraphContextStack> context_stack,
-         const std::map<std::string, std::string>& context_map);
+         const std::map<std::string, Json>& context_map);
 
     ~Impl();
 
@@ -21,7 +21,7 @@ class ModelContextManager::Impl {
 
 ModelContextManager::Impl::Impl(
     std::shared_ptr<ModelGraphContextStack> context_stack,
-    const std::map<std::string, std::string>& context_map)
+    const std::map<std::string, Json>& context_map)
     : context_stack_(context_stack) {
     for (const auto& [key, value] : context_map) {
         context_stack_->push(key, value);
@@ -36,7 +36,7 @@ ModelContextManager::Impl::~Impl() {
 }
 
 ModelContextManager::ModelContextManager(
-    Model& model, const std::map<std::string, std::string>& context_map)
+    Model& model, const std::map<std::string, Json>& context_map)
     : impl_(std::make_shared<Impl>(model.impl_->context_stack_, context_map)) {}
 
 }  // namespace ark

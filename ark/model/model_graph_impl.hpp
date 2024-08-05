@@ -21,7 +21,7 @@ namespace ark {
 
 class ModelGraphContextStack {
    private:
-    std::map<std::string, std::list<std::shared_ptr<std::string>>> storage_;
+    std::map<std::string, std::list<std::shared_ptr<Json>>> storage_;
 
    public:
     ModelGraphContextStack() = default;
@@ -30,13 +30,13 @@ class ModelGraphContextStack {
 
     ~ModelGraphContextStack() = default;
 
-    void push(const std::string &key, const std::string &value);
+    void push(const std::string &key, const Json &value);
 
     void pop(const std::string &key);
 
-    std::string get_context(const std::string &key) const;
+    Json get_context(const std::string &key) const;
 
-    std::map<std::string, std::string> get_context_all() const;
+    std::map<std::string, Json> get_context_all() const;
 };
 
 class ModelGraph::Impl {
@@ -80,7 +80,7 @@ class ModelGraph::Impl {
 
     bool verify() const;
 
-    std::string get_context(const std::string &key) const;
+    Json get_context(const std::string &key) const;
 
     std::string serialize(bool pretty = true) const;
 
