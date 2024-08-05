@@ -15,22 +15,23 @@ Context::Context(Model& model)
     id_ = next_id++;
 }
 
-void Context::add(const std::string& key, const std::string& value,
+void Context::set(const std::string& key, const std::string& value,
                   ContextType type) {
     Json value_json;
     try {
         value_json = Json::parse(value);
     } catch (const ::nlohmann::json::parse_error& e) {
-        ERR(PlanError, "Failed to parse context value as JSON: `", value, "`");
+        ERR(InvalidUsageError, "Failed to parse context value as JSON: `",
+            value, "`");
     }
     if (type == ContextType::ContextTypeOverwrite) {
-        context_manager_->add(key, value_json);
+        context_manager_->set(key, value_json);
     } else if (type == ContextType::ContextTypeExtend) {
         auto ctx = context_manager_->get(key);
         if (ctx.empty()) {
-            context_manager_->add(key, value_json);
+            context_manager_->set(key, value_json);
         } else if (!ctx.is_object() || !value_json.is_object()) {
-            ERR(PlanError,
+            ERR(InvalidUsageError,
                 "Context value must be a JSON object when type is "
                 "ContextTypeExtend. Key: ",
                 key, ", old value: ", ctx.dump(), ", new value: ", value);
@@ -38,14 +39,14 @@ void Context::add(const std::string& key, const std::string& value,
             for (const auto& [k, v] : value_json.items()) {
                 ctx[k] = v;
             }
-            context_manager_->add(key, ctx);
+            context_manager_->set(key, ctx);
         }
     } else if (type == ContextType::ContextTypeImmutable) {
         if (!context_manager_->has(key)) {
-            context_manager_->add(key, value);
+            context_manager_->set(key, value);
         }
     } else {
-        ERR(PlanError, "Unknown context type");
+        ERR(InvalidUsageError, "Unknown context type");
     }
 }
 

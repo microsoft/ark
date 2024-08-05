@@ -20,17 +20,17 @@ ark::unittest::State test_model_context_manager() {
     {
         // node 1
         ark::ModelContextManager cm(model);
-        cm.add("key0", ark::Json("val1"));
+        cm.set("key0", ark::Json("val1"));
         t3 = model.relu(t2);
 
         // node 2
-        cm.add("key1", ark::Json("val2"));
+        cm.set("key1", ark::Json("val2"));
         t4 = model.sqrt(t3);
     }
     {
         // node 3
         ark::ModelContextManager cm(model);
-        cm.add("key0", ark::Json("val3"));
+        cm.set("key0", ark::Json("val3"));
         t5 = model.exp(t2);
     }
 

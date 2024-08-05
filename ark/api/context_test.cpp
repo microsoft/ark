@@ -20,17 +20,17 @@ ark::unittest::State test_context() {
     {
         // node 1
         ark::Context ctx(model);
-        ctx.add("key0", ark::Json("val1").dump());
+        ctx.set("key0", ark::Json("val1").dump());
         t3 = model.relu(t2);
 
         // node 2
-        ctx.add("key1", ark::Json("val2").dump());
+        ctx.set("key1", ark::Json("val2").dump());
         t4 = model.sqrt(t3);
     }
     {
         // node 3
         ark::Context ctx(model);
-        ctx.add("key0", ark::Json("val3").dump());
+        ctx.set("key0", ark::Json("val3").dump());
         t5 = model.exp(t2);
     }
 

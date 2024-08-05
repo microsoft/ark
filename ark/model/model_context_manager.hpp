@@ -18,7 +18,7 @@ class ModelContextManager {
 
     ~ModelContextManager();
 
-    void add(const std::string& key, const Json& value);
+    void set(const std::string& key, const Json& value);
 
     bool has(const std::string& key) const;
 

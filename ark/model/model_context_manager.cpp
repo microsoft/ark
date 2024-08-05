@@ -14,7 +14,7 @@ ModelContextManager::~ModelContextManager() {
     }
 }
 
-void ModelContextManager::add(const std::string& key, const Json& value) {
+void ModelContextManager::set(const std::string& key, const Json& value) {
     context_stack_->push(key, value);
     keys_.push_back(key);
 }

@@ -59,10 +59,19 @@ class Context {
     ///
     /// @param key The key of the context item.
     /// @param value The value of the context item. The value is assumed to
-    /// be a JSON string.
+    /// be a JSON string. An empty JSON string is also allowed.
     /// @param type The context type. Default is `ContextTypeOverwrite`.
     ///
-    void add(const std::string& key, const std::string& value,
+    /// @throw `InvalidUsageError` In the following cases:
+    ///
+    /// - The value cannot be parsed as JSON.
+    ///
+    /// - The value is not a JSON object when the context type is
+    /// `ContextTypeExtend`.
+    ///
+    /// - The context type is unknown.
+    ///
+    void set(const std::string& key, const std::string& value,
              ContextType type = ContextType::ContextTypeOverwrite);
 
    private:
