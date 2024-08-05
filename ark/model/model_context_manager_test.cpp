@@ -16,14 +16,16 @@ ark::unittest::State test_model_context_manager() {
     ark::Tensor t4;
     ark::Tensor t5;
     {
-        ark::ModelContextManager cm0_1(model, {{"key0", "val1"}});
+        ark::ModelContextManager cm(model);
+        cm.add("key0", "val1");
         t3 = model.relu(t2);
 
-        ark::ModelContextManager cm1_1(model, {{"key1", "val2"}});
+        cm.add("key1", "val2");
         t4 = model.sqrt(t3);
     }
     {
-        ark::ModelContextManager cm0_2(model, {{"key0", "val3"}});
+        ark::ModelContextManager cm(model);
+        cm.add("key0", "val3");
         t5 = model.exp(t2);
     }
 

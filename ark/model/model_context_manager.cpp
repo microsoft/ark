@@ -9,8 +9,10 @@ namespace ark {
 
 class ModelContextManager::Impl {
    public:
-    Impl(std::shared_ptr<ModelGraphContextStack> context_stack,
-         const std::map<std::string, Json>& context_map);
+    Impl(std::shared_ptr<ModelGraphContextStack> context_stack)
+        : context_stack_(context_stack) {}
+
+    void add(const std::string& key, const Json& value);
 
     ~Impl();
 
@@ -19,14 +21,9 @@ class ModelContextManager::Impl {
     std::vector<std::string> keys_;
 };
 
-ModelContextManager::Impl::Impl(
-    std::shared_ptr<ModelGraphContextStack> context_stack,
-    const std::map<std::string, Json>& context_map)
-    : context_stack_(context_stack) {
-    for (const auto& [key, value] : context_map) {
-        context_stack_->push(key, value);
-        keys_.push_back(key);
-    }
+void ModelContextManager::Impl::add(const std::string& key, const Json& value) {
+    context_stack_->push(key, value);
+    keys_.push_back(key);
 }
 
 ModelContextManager::Impl::~Impl() {
@@ -35,8 +32,13 @@ ModelContextManager::Impl::~Impl() {
     }
 }
 
-ModelContextManager::ModelContextManager(
-    Model& model, const std::map<std::string, Json>& context_map)
-    : impl_(std::make_shared<Impl>(model.impl_->context_stack_, context_map)) {}
+ModelContextManager::ModelContextManager(Model& model)
+    : impl_(std::make_shared<Impl>(model.impl_->context_stack_)) {}
+
+ModelContextManager& ModelContextManager::add(const std::string& key,
+                                              const Json& value) {
+    impl_->add(key, value);
+    return *this;
+}
 
 }  // namespace ark

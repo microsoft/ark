@@ -13,8 +13,9 @@ namespace ark {
 
 class ModelContextManager {
    public:
-    ModelContextManager(Model& model,
-                        const std::map<std::string, Json>& context_map);
+    ModelContextManager(Model& model);
+
+    ModelContextManager& add(const std::string& key, const Json& value);
 
    private:
     class Impl;
