@@ -24,7 +24,13 @@ class Context {
     Context(Model& model);
 
     /// Get the ID of this context.
-    size_t id() const;
+    int id() const;
+
+    /// Get context value by key.
+    /// @param key The key of the context item.
+    /// @return The value of the context item. If the key does not exist,
+    ///         an empty string is returned.
+    std::string get(const std::string& key) const;
 
     ///
     /// Add an item to the context.

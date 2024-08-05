@@ -11,8 +11,12 @@ namespace ark {
 
 Context::Impl::Impl(Model& model)
     : context_manager_(std::make_shared<ModelContextManager>(model)) {
-    static size_t next_id = 0;
+    static int next_id = 0;
     id_ = next_id++;
+}
+
+Json Context::Impl::get(const std::string& key) const {
+    return context_manager_->get(key);
 }
 
 void Context::Impl::set(const std::string& key, const Json& value_json,
@@ -42,6 +46,10 @@ void Context::Impl::set(const std::string& key, const Json& value_json,
     } else {
         ERR(InvalidUsageError, "Unknown context type");
     }
+}
+
+bool Context::Impl::has(const std::string& key) const {
+    return context_manager_->has(key);
 }
 
 }  // namespace ark

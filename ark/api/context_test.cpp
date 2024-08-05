@@ -23,15 +23,23 @@ ark::unittest::State test_context() {
         ctx.set("key0", ark::Json("val1").dump());
         t3 = model.relu(t2);
 
+        UNITTEST_EQ(ctx.get("key0"), ark::Json("val1").dump());
+
         // node 2
         ctx.set("key1", ark::Json("val2").dump());
         t4 = model.sqrt(t3);
+
+        UNITTEST_EQ(ctx.get("key0"), ark::Json("val1").dump());
+        UNITTEST_EQ(ctx.get("key1"), ark::Json("val2").dump());
     }
     {
         // node 3
         ark::Context ctx(model);
         ctx.set("key0", ark::Json("val3").dump());
         t5 = model.exp(t2);
+
+        UNITTEST_EQ(ctx.get("key0"), ark::Json("val3").dump());
+        UNITTEST_EQ(ctx.get("key1"), "");
     }
 
     UNITTEST_TRUE(model.verify());

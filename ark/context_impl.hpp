@@ -15,13 +15,17 @@ class Context::Impl {
    public:
     Impl(Model& model);
 
+    Json get(const std::string& key) const;
+
     void set(const std::string& key, const Json& value_json, ContextType type);
+
+    bool has(const std::string& key) const;
 
    protected:
     friend class Context;
 
     std::shared_ptr<ModelContextManager> context_manager_;
-    size_t id_;
+    int id_;
 };
 
 }  // namespace ark

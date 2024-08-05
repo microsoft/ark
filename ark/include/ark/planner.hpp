@@ -11,11 +11,25 @@
 
 namespace ark {
 
+template <typename T>
+class Range;
+
 class PlannerContext : public Context {
    public:
-    PlannerContext(Model &model) : Context(model) {}
+    PlannerContext(Model& model);
 
-    void set_sync(bool sync);
+    void processor_range(int start, int end, int step = 1);
+
+    void warp_range(int start, int end, int step = 1);
+
+    void sram_range(int start, int end, int step = 1);
+
+    void sync(bool sync);
+
+    void config(const std::string& config);
+
+   private:
+    void check_range(const std::string& key, const Range<int>& range);
 };
 
 class DefaultPlanner {

@@ -8,7 +8,14 @@ namespace ark {
 
 Context::Context(Model& model) : impl_(std::make_shared<Impl>(model)) {}
 
-size_t Context::id() const { return this->impl_->id_; }
+int Context::id() const { return this->impl_->id_; }
+
+std::string Context::get(const std::string& key) const {
+    if (!this->impl_->has(key)) {
+        return "";
+    }
+    return this->impl_->get(key).dump();
+}
 
 void Context::set(const std::string& key, const std::string& value,
                   ContextType type) {
