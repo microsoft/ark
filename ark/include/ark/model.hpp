@@ -17,14 +17,20 @@ namespace ark {
 
 class Model : public ModelGraph {
    private:
+    size_t id_;
     std::set<int> tags_;
 
    public:
-    Model(int rank = 0, int world_size = 1) : ModelGraph(rank, world_size) {}
-    Model(const Model &other) : ModelGraph(other) {}
+    Model(int rank = 0, int world_size = 1);
+
+    Model(const Model &other);
+
     ~Model() {}
 
     Model &operator=(const Model &other) = default;
+
+    /// Get the unique identifier of the model.
+    size_t id() const;
 
     Model compress() const;
 
@@ -33,6 +39,14 @@ class Model : public ModelGraph {
     Tensor constant(float val, const Dims &shape, DataType data_type,
                     const std::string &name = "");
 
+    /// No operation.
+    ///
+    /// This operator can be used to prevent unused tensors from being optimized
+    /// out by the compiler.
+    ///
+    /// @param input Input tensor.
+    /// @param name Name of the operator.
+    ///
     void noop(Tensor input, const std::string &name = "");
 
     /// Returns a tensor object.

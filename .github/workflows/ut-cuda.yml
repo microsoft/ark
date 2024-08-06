@@ -88,4 +88,4 @@ jobs:
       - name: Run Tutorials
         run: |
           python3 ./examples/tutorial/quickstart_tutorial.py
-          python3 ./examples/tutorial/plan_tutorial.py
+          python3 ./examples/tutorial/planner_tutorial.py
