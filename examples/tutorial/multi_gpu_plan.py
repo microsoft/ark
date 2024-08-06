@@ -29,9 +29,7 @@ def allreduce_test_function(rank, np_inputs, plan_path, ground_truth):
     output = ark.all_reduce(input, rank, world_size, input)
     with ark.Runtime.get_runtime() as rt:
         plan = ark.Plan.from_file(plan_path)
-        rt.launch(
-            plan=plan, device_id=rank
-        )
+        rt.launch(plan=plan, device_id=rank)
         input.from_numpy(np_inputs)
         rt.run()
         # Copy data back to host and calculate errors
