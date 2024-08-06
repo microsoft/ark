@@ -101,13 +101,13 @@ ark::unittest::State test_embedding_invalid() {
         ark::Model m;
         ark::Tensor ti = m.tensor(ark::Dims(4, 8, 3, 64), ark::INT32);
         ark::Tensor tw = m.tensor(ark::Dims(100, 1024), ark::FP32);
-        UNITTEST_THROW(m.embedding(ti, tw), ark::InvalidUsageError);
+        UNITTEST_THROW(m.embedding(ti, tw), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor ti = m.tensor(ark::Dims(8, 3, 64), ark::INT32);
         ark::Tensor tw = m.tensor(ark::Dims(2, 100, 1024), ark::FP32);
-        UNITTEST_THROW(m.embedding(ti, tw), ark::InvalidUsageError);
+        UNITTEST_THROW(m.embedding(ti, tw), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

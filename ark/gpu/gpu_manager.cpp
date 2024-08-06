@@ -60,11 +60,13 @@ GpuManager::Impl::Impl(int gpu_id) : gpu_id_(gpu_id) {
     // E.g.: "gfx90a:sramecc+:xnack-"
     std::string gcn_arch_name = prop.gcnArchName;
     if (gcn_arch_name.substr(0, 3) != "gfx") {
-        ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
+        ERR(UnsupportedError,
+            "unexpected GCN architecture name: ", gcn_arch_name);
     }
     size_t pos_e = gcn_arch_name.find(":");
     if (pos_e == std::string::npos) {
-        ERR(ExecutorError, "unexpected GCN architecture name: ", gcn_arch_name);
+        ERR(UnsupportedError,
+            "unexpected GCN architecture name: ", gcn_arch_name);
     }
     // E.g.: "ROCM_90A"
     auto arch_name = "ROCM_" + to_upper(gcn_arch_name.substr(3, pos_e - 3));

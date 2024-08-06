@@ -17,9 +17,8 @@ class ModelNode {
    public:
     ModelNode() = default;
 
-    /// The list of @ref Op that this @ref ModelNode contains. Sorted in the
-    /// execution order.
-    std::vector<ModelOpRef> ops;
+    /// @ref Op that this @ref ModelNode represents.
+    ModelOpRef op;
 
     /// The list of @ref ModelNode that depends on this @ref ModelNode.
     UniqueList<ModelNodeRef> consumers;

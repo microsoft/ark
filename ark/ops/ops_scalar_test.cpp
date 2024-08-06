@@ -248,13 +248,13 @@ ark::unittest::State test_scalar_mul_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(4, 2, 1024), ark::FP32);
-        UNITTEST_THROW(m.mul(t, 3, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.mul(t, 3, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor(ark::Dims(4, 2, 1024), ark::BF16);
         ark::Tensor out = m.tensor(ark::Dims(4, 4, 1024), ark::BF16);
-        UNITTEST_THROW(m.mul(t, 3, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.mul(t, 3, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

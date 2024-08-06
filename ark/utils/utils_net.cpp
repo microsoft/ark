@@ -11,7 +11,7 @@
 
 #include "env.h"
 #include "file_io.h"
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 

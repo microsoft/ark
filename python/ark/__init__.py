@@ -91,3 +91,13 @@ from .ops import (
     ones,
     zeros,
 )
+from .error import (
+    BaseError,
+    InternalError,
+    InvalidUsageError,
+    ModelError,
+    PlanError,
+    UnsupportedError,
+    SystemError,
+    GpuError,
+)

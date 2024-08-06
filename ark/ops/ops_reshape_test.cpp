@@ -216,53 +216,53 @@ ark::unittest::State test_reshape_invalid() {
         ark::Model model;
         std::vector<ark::DimType> new_shape = {64, 256};
         UNITTEST_THROW(model.reshape(ark::NullTensor, new_shape),
-                       ark::InvalidUsageError);
+                       ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
         std::vector<ark::DimType> new_shape = {64, -1, -1, 256};
-        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
         std::vector<ark::DimType> new_shape = {128, -3};
-        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
         std::vector<ark::DimType> new_shape = {32, -1, 0};
-        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
         std::vector<ark::DimType> new_shape = {32, -1, 0};
-        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
         std::vector<ark::DimType> new_shape = {3, -1};
-        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
         std::vector<ark::DimType> new_shape = {1024};
-        UNITTEST_THROW(model.reshape(tns, new_shape), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, new_shape), ark::ModelError);
     }
     {
         ark::Model model;
         UNITTEST_THROW(model.reshape(ark::NullTensor, {64, 256}),
-                       ark::InvalidUsageError);
+                       ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32);
-        UNITTEST_THROW(model.reshape(tns, {}), ark::InvalidUsageError);
+        UNITTEST_THROW(model.reshape(tns, {}), ark::ModelError);
     }
     {
         ark::Model model;

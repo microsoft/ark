@@ -3,7 +3,7 @@
 
 #include "ops_reduce.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "ops_common.hpp"
 
 namespace ark {
@@ -17,7 +17,7 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
         axis += reduced_shape.ndims();
     }
     if (axis < 0 || axis >= reduced_shape.ndims()) {
-        ERR(InvalidUsageError, "invalid reduction axis ", axis);
+        ERR(ModelError, "invalid reduction axis ", axis);
     }
     if (keepdims) {
         reduced_shape[axis] = 1;
@@ -27,12 +27,12 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
     if (output) {
         check_match_data_type(input, output);
         if (output->shape() != reduced_shape) {
-            ERR(InvalidUsageError, "invalid output shape ", output->shape(),
+            ERR(ModelError, "invalid output shape ", output->shape(),
                 " with input shape ", input->shape(), ", reduction axis ", axis,
                 ", and keepdims ", keepdims);
         }
         if (output == input) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "output tensor cannot be the same as input tensor for "
                 "reduce_sum op");
         }
@@ -60,8 +60,7 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
     } else if (type()->type_name() == "ReduceMean") {
         red_type = "mean";
     } else {
-        ERR(InvalidUsageError,
-            "unsupported reduce type: ", type()->type_name());
+        ERR(PlanError, "unsupported reduce type: ", type()->type_name());
     }
 
     int num_warps = config.at("NumWarps");
@@ -76,14 +75,14 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
     if (impl_type == "WarpWise") {
         impl_type = "w";
         if (axis != 3) {
-            ERR(InvalidUsageError,
+            ERR(PlanError,
                 "warp-wise reduction is supported only for "
                 "the last axis");
         }
     } else if (impl_type == "ElementWise") {
         impl_type = "e";
     } else {
-        ERR(InvalidUsageError, "unsupported implementation type: ", impl_type);
+        ERR(PlanError, "unsupported implementation type: ", impl_type);
     }
 
     Dims output_strides = write_tensors_[0]->strides();
