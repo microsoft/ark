@@ -34,7 +34,7 @@ class PlannerContext : public Context {
 
 class Planner {
    public:
-    Planner(const Model& model, int gpu_id);
+    Planner(const Model& model, int device_id);
 
     ~Planner();
 

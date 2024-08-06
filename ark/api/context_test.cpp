@@ -62,7 +62,20 @@ ark::unittest::State test_context() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_context_invalid() {
+    ark::Model model;
+    ark::Context ctx(model);
+    ark::Tensor t0 = model.tensor({1}, ark::FP32);
+    ark::Tensor t1 = model.tensor({1}, ark::FP32);
+    ark::Tensor t2 = model.add(t0, t1);
+
+    UNITTEST_THROW(ctx.set("key", "val"), ark::InvalidUsageError);
+
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     UNITTEST(test_context);
+    UNITTEST(test_context_invalid);
     return 0;
 }

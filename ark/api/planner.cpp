@@ -88,7 +88,7 @@ void PlannerContext::config(const std::string &config) {
 
 class Planner::Impl {
    public:
-    Impl(const Model &model, int gpu_id);
+    Impl(const Model &model, int device_id);
 
     void install_config_rule(Planner::ConfigRule rule);
 
@@ -98,12 +98,12 @@ class Planner::Impl {
     friend class Planner;
 
     Model model_;
-    int gpu_id_;
+    int device_id_;
     std::vector<Planner::ConfigRule> config_rules_;
 };
 
-Planner::Impl::Impl(const Model &model, int gpu_id)
-    : model_(model.compress()), gpu_id_(gpu_id) {}
+Planner::Impl::Impl(const Model &model, int device_id)
+    : model_(model.compress()), device_id_(device_id) {}
 
 void Planner::Impl::install_config_rule(Planner::ConfigRule rule) {
     config_rules_.push_back(
@@ -125,7 +125,7 @@ static void check_config_field(const ModelOpRef op, const Json &config,
 }
 
 std::string Planner::Impl::plan(bool pretty) const {
-    const auto gpu_info = GpuManager::get_instance(gpu_id_)->info();
+    const auto gpu_info = GpuManager::get_instance(device_id_)->info();
     size_t num_sm = gpu_info.num_sm;
     Json task_infos = Json::array();
     Json processor_groups = Json::array();
@@ -254,14 +254,15 @@ std::string Planner::Impl::plan(bool pretty) const {
         plan_str = plan.dump();
     }
     const auto &tmp = get_env().path_tmp_dir;
-    write_file(tmp + "/model_gpu" + std::to_string(gpu_id_) + ".json",
+    write_file(tmp + "/model_gpu" + std::to_string(device_id_) + ".json",
                model_.serialize());
-    write_file(tmp + "/plan_gpu" + std::to_string(gpu_id_) + ".json", plan_str);
+    write_file(tmp + "/plan_gpu" + std::to_string(device_id_) + ".json",
+               plan_str);
     return plan_str;
 }
 
-Planner::Planner(const Model &model, int gpu_id)
-    : impl_(std::make_unique<Impl>(model, gpu_id)) {}
+Planner::Planner(const Model &model, int device_id)
+    : impl_(std::make_unique<Impl>(model, device_id)) {}
 
 Planner::~Planner() = default;
 
