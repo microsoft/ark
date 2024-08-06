@@ -39,7 +39,7 @@ def set_world_size(world_size):
 from .init import init
 from .tensor import Dims, Tensor, Parameter
 from .module import Module
-from .runtime import Runtime, Planner
+from .runtime import Runtime
 from .serialize import save, load
 from .data_type import (
     DataType,
@@ -91,13 +91,5 @@ from .ops import (
     ones,
     zeros,
 )
-from .error import (
-    BaseError,
-    InternalError,
-    InvalidUsageError,
-    ModelError,
-    PlanError,
-    UnsupportedError,
-    SystemError,
-    GpuError,
-)
+from .planner import *
+from .error import *
