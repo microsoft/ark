@@ -63,6 +63,7 @@ void register_executor(py::module &m) {
         .def("barrier", &ark::Executor::barrier)
         .def("destroy", &ark::Executor::destroy)
         .def("destroyed", &ark::Executor::destroyed)
+        .def("tensor_address", &ark::Executor::tensor_address)
         .def("tensor_read",
              py::overload_cast<ark::Executor *, const ark::Tensor &, py::buffer,
                                uintptr_t>(&tensor_read),
