@@ -28,8 +28,9 @@ def allreduce_test_function(rank, np_inputs, plan_path, ground_truth):
     input = ark.tensor([tensor_len], ark.fp16)
     output = ark.all_reduce(input, rank, world_size, input)
     with ark.Runtime.get_runtime() as rt:
+        plan = ark.Plan.from_file(plan_path)
         rt.launch(
-            plan_path=plan_path, rank=rank, world_size=world_size, gpu_id=rank
+            plan=plan, device_id=rank
         )
         input.from_numpy(np_inputs)
         rt.run()
