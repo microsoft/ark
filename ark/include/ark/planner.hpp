@@ -32,11 +32,11 @@ class PlannerContext : public Context {
     void check_range(const std::string& key, const Range<int>& range);
 };
 
-class DefaultPlanner {
+class Planner {
    public:
-    DefaultPlanner(const Model &model, int gpu_id);
+    Planner(const Model& model, int gpu_id);
 
-    ~DefaultPlanner();
+    ~Planner();
 
     using ConfigRule = std::function<std::string(const std::string &op,
                                                  const std::string &arch)>;

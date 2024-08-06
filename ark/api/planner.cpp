@@ -86,27 +86,26 @@ void PlannerContext::config(const std::string &config) {
     this->impl_->set("Config", Json::parse(config), ContextType::Extend);
 }
 
-class DefaultPlanner::Impl {
+class Planner::Impl {
    public:
     Impl(const Model &model, int gpu_id);
 
-    void install_config_rule(DefaultPlanner::ConfigRule rule);
+    void install_config_rule(Planner::ConfigRule rule);
 
     std::string plan(bool pretty) const;
 
    protected:
-    friend class DefaultPlanner;
+    friend class Planner;
 
     Model model_;
     int gpu_id_;
-    std::vector<DefaultPlanner::ConfigRule> config_rules_;
+    std::vector<Planner::ConfigRule> config_rules_;
 };
 
-DefaultPlanner::Impl::Impl(const Model &model, int gpu_id)
+Planner::Impl::Impl(const Model &model, int gpu_id)
     : model_(model.compress()), gpu_id_(gpu_id) {}
 
-void DefaultPlanner::Impl::install_config_rule(
-    DefaultPlanner::ConfigRule rule) {
+void Planner::Impl::install_config_rule(Planner::ConfigRule rule) {
     config_rules_.push_back(
         [rule](const std::string &op, const std::string &arch) -> std::string {
             try {
@@ -125,7 +124,7 @@ static void check_config_field(const ModelOpRef op, const Json &config,
     }
 }
 
-std::string DefaultPlanner::Impl::plan(bool pretty) const {
+std::string Planner::Impl::plan(bool pretty) const {
     const auto gpu_info = GpuManager::get_instance(gpu_id_)->info();
     size_t num_sm = gpu_info.num_sm;
     Json task_infos = Json::array();
@@ -260,17 +259,15 @@ std::string DefaultPlanner::Impl::plan(bool pretty) const {
     return plan_str;
 }
 
-DefaultPlanner::DefaultPlanner(const Model &model, int gpu_id)
+Planner::Planner(const Model &model, int gpu_id)
     : impl_(std::make_unique<Impl>(model, gpu_id)) {}
 
-DefaultPlanner::~DefaultPlanner() = default;
+Planner::~Planner() = default;
 
-void DefaultPlanner::install_config_rule(DefaultPlanner::ConfigRule rule) {
+void Planner::install_config_rule(Planner::ConfigRule rule) {
     impl_->install_config_rule(rule);
 }
 
-std::string DefaultPlanner::plan(bool pretty) const {
-    return impl_->plan(pretty);
-}
+std::string Planner::plan(bool pretty) const { return impl_->plan(pretty); }
 
 }  // namespace ark

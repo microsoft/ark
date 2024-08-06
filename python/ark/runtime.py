@@ -5,7 +5,7 @@ import logging
 from enum import Enum
 from typing import Callable
 
-from _ark_core import _Executor, _DefaultPlanner
+from _ark_core import _Executor, _Planner
 from .model import Model
 
 
@@ -18,7 +18,7 @@ class _RuntimeState:
     executor = None
 
 
-class DefaultPlanner(_DefaultPlanner):
+class Planner(_Planner):
     def __init__(self, gpu_id: int = 0):
         compressed = Model.get_model().compress()
         super().__init__(compressed, gpu_id)
@@ -117,7 +117,7 @@ class Runtime:
             return
         if not plan:
             if not plan_path:
-                plan = DefaultPlanner(gpu_id).plan()
+                plan = Planner(gpu_id).plan()
             else:
                 with open(plan_path, "r") as f:
                     plan = f.read()
