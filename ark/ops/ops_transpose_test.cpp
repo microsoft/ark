@@ -129,22 +129,22 @@ ark::unittest::State test_transpose_invalid() {
     {
         ark::Model m;
         ark::Tensor t = m.tensor({5}, ark::FP32);
-        UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::InvalidUsageError);
+        UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({5, 128}, ark::FP32);
-        UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::InvalidUsageError);
+        UNITTEST_THROW(m.transpose(t, {0, 2, 3, 1}), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({5, 128}, ark::FP32);
-        UNITTEST_THROW(m.transpose(t, {0, 2}), ark::InvalidUsageError);
+        UNITTEST_THROW(m.transpose(t, {0, 2}), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({5, 128}, ark::FP32);
-        UNITTEST_THROW(m.transpose(t, {1, 1}), ark::InvalidUsageError);
+        UNITTEST_THROW(m.transpose(t, {1, 1}), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

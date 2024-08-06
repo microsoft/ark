@@ -20,7 +20,7 @@
 #include "gpu/gpu_kernel.hpp"
 #include "gpu/gpu_logging.hpp"
 #include "gpu/gpu_manager.hpp"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
@@ -241,6 +241,13 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     }
 
     auto gpu_manager = GpuManager::get_instance(device_id_);
+    if (!gpu_manager->info().arch->belongs_to(
+            Arch::from_name(plan_json.at("Architecture")))) {
+        LOG(WARN, "Architecture name of the plan `",
+            plan_json.at("Architecture").get<std::string>(),
+            "` is not compatible with the GPU architecture `",
+            gpu_manager->info().arch->name(), "`.");
+    }
 
     buffer_id_to_offset_ = init_buffers(plan_json_);
 
@@ -824,8 +831,8 @@ void Executor::Impl::barrier() {
 
 void *Executor::Impl::tensor_address(const Tensor tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
-    if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
-        ERR(NotFoundError, "Invalid buffer ID: ", buffer_id);
+    if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
+        ERR(InternalError, "Invalid buffer ID: ", buffer_id);
     }
     return buffer_id_to_addr_.at(buffer_id);
 }
@@ -992,12 +999,12 @@ void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
 
 DefaultExecutor::DefaultExecutor(
     const Model &model, int device_id, Stream stream,
-    const std::vector<DefaultPlanner::ConfigRule> &config_rules,
+    const std::vector<Planner::ConfigRule> &config_rules,
     const std::string &name, bool loop_mode)
     : Executor((device_id < 0) ? (model.rank() % get_env().num_ranks_per_host)
                                : device_id,
                stream, name, "", loop_mode) {
-    DefaultPlanner planner(model, impl_->device_id());
+    Planner planner(model, impl_->device_id());
     for (const auto &rule : config_rules) {
         planner.install_config_rule(rule);
     }

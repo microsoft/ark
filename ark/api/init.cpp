@@ -9,9 +9,7 @@
 
 #include "env.h"
 #include "file_io.h"
-#include "logging.h"
-
-#define SHM_DIR "/dev/shm/"
+#include "logging.hpp"
 
 namespace ark {
 

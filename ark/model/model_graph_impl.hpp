@@ -4,6 +4,7 @@
 #ifndef ARK_MODEL_GRAPH_IMPL_HPP_
 #define ARK_MODEL_GRAPH_IMPL_HPP_
 
+#include <list>
 #include <map>
 #include <set>
 #include <tuple>
@@ -18,10 +19,35 @@
 
 namespace ark {
 
+class ModelGraphContextStack {
+   private:
+    std::map<std::string, std::list<std::shared_ptr<Json>>> storage_;
+
+   public:
+    ModelGraphContextStack() = default;
+
+    ModelGraphContextStack(const ModelGraphContextStack &other);
+
+    ~ModelGraphContextStack() = default;
+
+    void push(const std::string &key, const Json &value);
+
+    void pop(const std::string &key);
+
+    bool has(const std::string &key) const;
+
+    Json get(const std::string &key) const;
+
+    std::map<std::string, Json> get_all() const;
+};
+
 class ModelGraph::Impl {
    public:
     Impl(int rank, int world_size)
-        : rank_(rank), world_size_(world_size), compressed_(false){};
+        : rank_(rank),
+          world_size_(world_size),
+          compressed_(false),
+          context_stack_(std::make_shared<ModelGraphContextStack>()){};
 
     Impl(const Impl &other);
 
@@ -65,18 +91,11 @@ class ModelGraph::Impl {
 
     void remove_node(ModelNodeRef node);
 
-    bool depends_on(ModelNodeRef node1, ModelNodeRef node2) const;
-
     void recursive_remove_virtual_nodes();
 
     void recursive_remove_virtual_nodes(
         UniqueList<ModelNodeRef> &seen_nodes,
         const std::vector<ModelNodeRef> &boundary_nodes);
-
-    void recursive_merge_nodes();
-
-    void recursive_merge_nodes(UniqueList<ModelNodeRef> &seen_nodes,
-                               const std::vector<ModelNodeRef> &boundary_nodes);
 
     Json to_json(const ModelNodeRef &node) const;
 
@@ -100,6 +119,12 @@ class ModelGraph::Impl {
 
     /// True if `compress_nodes` has been called.
     bool compressed_;
+
+   protected:
+    friend class ModelContextManager;
+
+    /// Graph context stack.
+    std::shared_ptr<ModelGraphContextStack> context_stack_;
 };
 
 }  // namespace ark

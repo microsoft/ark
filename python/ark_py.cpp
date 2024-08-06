@@ -9,6 +9,7 @@ namespace py = pybind11;
 
 extern void register_data_type(py::module &m);
 extern void register_dims(py::module &m);
+extern void register_error(py::module &m);
 extern void register_executor(py::module &m);
 extern void register_init(py::module &m);
 extern void register_model_graph(py::module &m);
@@ -23,6 +24,7 @@ PYBIND11_MODULE(_ark_core, m) {
 
     register_data_type(m);
     register_dims(m);
+    register_error(m);
     register_executor(m);
     register_init(m);
     register_model_graph(m);
