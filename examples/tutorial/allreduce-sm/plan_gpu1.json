@@ -1,0 +1,625 @@
+{
+  "Rank": 1,
+  "WorldSize": 8,
+  "NumProcessors": 56,
+  "NumWarpsPerProcessor": 8,
+  "Architecture": "ROCM_942",
+  "TaskInfos": [
+    {
+      "Id": 0,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":4,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[0],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":27,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[0],"PaddedShape":[1048576],"Buffer":{"Id":2,"Rank":0,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":28,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[0],"PaddedShape":[1048576],"Buffer":{"Id":2,"Rank":0,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 1,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":6,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[2097152],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":29,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":3,"Rank":2,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":30,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":3,"Rank":2,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 2,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send_2",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":7,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[3145728],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":31,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":4,"Rank":3,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":32,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":4,"Rank":3,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 3,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send_3",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":8,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[4194304],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":33,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":5,"Rank":4,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":34,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":5,"Rank":4,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 4,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send_4",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":9,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[5242880],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":35,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":6,"Rank":5,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":36,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":6,"Rank":5,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 5,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send_5",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":10,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[6291456],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":37,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":7,"Rank":6,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":38,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":7,"Rank":6,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 6,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Send",
+          "Name": "send_6",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":11,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[7340032],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":39,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":8,"Rank":7,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "ResultTensors": [
+            {"Id":40,"DataType":"FP16","Shape":[1048576],"Strides":[7340032],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":8,"Rank":7,"SendTags":[],"RecvTags":[[-1,-2147483648]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 256,
+            "NumWarps": 8,
+            "Signal": false,
+            "SramBytes": 0,
+            "Tile": [1,4096]
+          }
+        }
+      ]
+    },
+    {
+      "Id": 7,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "DeviceSync",
+          "Name": "device_sync",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":1,"DataType":"FP16","Shape":[8388608],"Strides":[8388608],"Offsets":[0],"PaddedShape":[8388608],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":41,"DataType":"FP16","Shape":[8388608],"Strides":[8388608],"Offsets":[0],"PaddedShape":[8388608],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":42,"DataType":"FP16","Shape":[8388608],"Strides":[8388608],"Offsets":[0],"PaddedShape":[8388608],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {
+            "PeerNum": {"INT":7},
+            "Rank": {"INT":1}
+          },
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0
+          }
+        }
+      ]
+    },
+    {
+      "Id": 8,
+      "NumWarps": 8,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "RecvReduceSend",
+          "Name": "recv_reduce_send",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":5,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}},
+            {"Id":50,"DataType":"FP16","Shape":[7340032],"Strides":[7340032],"Offsets":[0],"PaddedShape":[7340032],"Buffer":{"Id":16,"Rank":1,"SendTags":[],"RecvTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]]}}
+          ],
+          "WriteTensors": [
+            {"Id":5,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}},
+            {"Id":43,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":9,"Rank":0,"SendTags":[],"RecvTags":[[-1,-2147483647]]}},
+            {"Id":44,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":10,"Rank":2,"SendTags":[],"RecvTags":[[-1,-2147483647]]}},
+            {"Id":45,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":11,"Rank":3,"SendTags":[],"RecvTags":[[-1,-2147483647]]}},
+            {"Id":46,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":12,"Rank":4,"SendTags":[],"RecvTags":[[-1,-2147483647]]}},
+            {"Id":47,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":13,"Rank":5,"SendTags":[],"RecvTags":[[-1,-2147483647]]}},
+            {"Id":48,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":14,"Rank":6,"SendTags":[],"RecvTags":[[-1,-2147483647]]}},
+            {"Id":49,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":15,"Rank":7,"SendTags":[],"RecvTags":[[-1,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":51,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {
+            "NPeers": {"UINT32":7},
+            "Rank": {"INT":1}
+          },
+          "Config": {
+            "NumWarps": 8,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 256
+          }
+        }
+      ]
+    },
+    {
+      "Id": 9,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":53,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[0],"PaddedShape":[1048576],"Buffer":{"Id":17,"Rank":0,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":4,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[0],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":52,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[0],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 10,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":55,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":18,"Rank":2,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":5,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":54,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[1048576],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 11,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv_2",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":57,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[2097152],"PaddedShape":[1048576],"Buffer":{"Id":19,"Rank":3,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":6,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[2097152],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":56,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[2097152],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 12,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv_3",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":59,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[3145728],"PaddedShape":[1048576],"Buffer":{"Id":20,"Rank":4,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":7,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[3145728],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":58,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[3145728],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 13,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv_4",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":61,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[4194304],"PaddedShape":[1048576],"Buffer":{"Id":21,"Rank":5,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":8,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[4194304],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":60,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[4194304],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 14,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv_5",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":63,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[5242880],"PaddedShape":[1048576],"Buffer":{"Id":22,"Rank":6,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":9,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[5242880],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":62,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[5242880],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 15,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Recv",
+          "Name": "recv_6",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":65,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[6291456],"PaddedShape":[1048576],"Buffer":{"Id":23,"Rank":7,"SendTags":[[-1,-2147483647]],"RecvTags":[]}}
+          ],
+          "WriteTensors": [
+            {"Id":10,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[6291456],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":64,"DataType":"FP16","Shape":[1048576],"Strides":[8388608],"Offsets":[6291456],"PaddedShape":[1048576],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {},
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Wait": false
+          }
+        }
+      ]
+    },
+    {
+      "Id": 16,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "DeviceSync",
+          "Name": "device_sync_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":0,"DataType":"FP16","Shape":[8388608],"Strides":[8388608],"Offsets":[0],"PaddedShape":[8388608],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "WriteTensors": [
+            {"Id":66,"DataType":"FP16","Shape":[8388608],"Strides":[8388608],"Offsets":[0],"PaddedShape":[8388608],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "ResultTensors": [
+            {"Id":67,"DataType":"FP16","Shape":[8388608],"Strides":[8388608],"Offsets":[0],"PaddedShape":[8388608],"Buffer":{"Id":0,"Rank":-1,"SendTags":[[0,-2147483648],[2,-2147483648],[3,-2147483648],[4,-2147483648],[5,-2147483648],[6,-2147483648],[7,-2147483648]],"RecvTags":[[0,-2147483647],[2,-2147483647],[3,-2147483647],[4,-2147483647],[5,-2147483647],[6,-2147483647],[7,-2147483647]]}}
+          ],
+          "Args": {
+            "PeerNum": {"INT":7},
+            "Rank": {"INT":1}
+          },
+          "Config": {
+            "ChannelType": "Sm",
+            "NumTasks": 1,
+            "NumWarps": 1,
+            "SramBytes": 0
+          }
+        }
+      ]
+    }
+  ],
+  "ProcessorGroups": [
+    {
+      "ProcessorRange": [0,56],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,8],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":0,"TaskRange":[0,256],"Granularity":1}
+          ]
+        },
+        {
+          "ProcessorRange": [8,16],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":1,"TaskRange":[0,256],"Granularity":1}
+          ]
+        },
+        {
+          "ProcessorRange": [16,24],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":2,"TaskRange":[0,256],"Granularity":1}
+          ]
+        },
+        {
+          "ProcessorRange": [24,32],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":3,"TaskRange":[0,256],"Granularity":1}
+          ]
+        },
+        {
+          "ProcessorRange": [32,40],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":4,"TaskRange":[0,256],"Granularity":1}
+          ]
+        },
+        {
+          "ProcessorRange": [40,48],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":5,"TaskRange":[0,256],"Granularity":1}
+          ]
+        },
+        {
+          "ProcessorRange": [48,56],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":6,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,56],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,1],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":7,"TaskRange":[0,1],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,56],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,56],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":8,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,56],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,1],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":9,"TaskRange":[0,1],"Granularity":1}
+          ]
+        }
+      ]
+    }
+  ]
+}

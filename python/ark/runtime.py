@@ -121,6 +121,15 @@ class Runtime:
         if not non_blocking:
             self.wait()
 
+    def barrier(self):
+        """
+        Barrier for all ranks.
+        """
+        if self.state != Runtime.State.LaunchedNotRunning:
+            logging.error("ARK runtime is not launched")
+            raise RuntimeError("ARK runtime is not launched")
+        self.executor.barrier()
+
     def wait(self):
         """
         Wait for the kernel to finish.
