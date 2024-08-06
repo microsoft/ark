@@ -44,7 +44,7 @@ jobs:
       - name: Build
         run: |
           mkdir build && cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_PYTHON=ON ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BUILD_PYTHON=ON ..
           make -j ut ark_py
 
       - name: Run C++ UT
