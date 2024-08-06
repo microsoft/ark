@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "ark/model_ref.hpp"
+#include "model_json.hpp"
 #include "unique_list.hpp"
 
 namespace ark {
@@ -17,9 +18,8 @@ class ModelNode {
    public:
     ModelNode() = default;
 
-    /// The list of @ref Op that this @ref ModelNode contains. Sorted in the
-    /// execution order.
-    std::vector<ModelOpRef> ops;
+    /// @ref Op that this @ref ModelNode represents.
+    ModelOpRef op;
 
     /// The list of @ref ModelNode that depends on this @ref ModelNode.
     UniqueList<ModelNodeRef> consumers;
@@ -28,7 +28,7 @@ class ModelNode {
     UniqueList<ModelNodeRef> producers;
 
     /// Graph context of this node.
-    std::map<std::string, std::string> context;
+    std::map<std::string, Json> context;
 };
 
 }  // namespace ark

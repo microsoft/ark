@@ -15,7 +15,8 @@ void register_model(py::module &m) {
         .def(py::init<int, int>(), py::arg("rank"), py::arg("world_size"))
         .def("rank", &ark::Model::rank)
         .def("world_size", &ark::Model::world_size)
-        .def("compress", &ark::Model::compress, py::arg("merge_nodes") = false)
+        .def("id", &ark::Model::id)
+        .def("compress", &ark::Model::compress)
         .def("add",
              py::overload_cast<ark::Tensor, ark::Tensor, ark::Tensor,
                                const std::string &, const std::string &>(
@@ -113,11 +114,18 @@ void register_model(py::module &m) {
                                const std::string &, const std::string &>(
                  &ark::Model::sub),
              py::arg("input"), py::arg("other"), py::arg("output"),
-             py::arg("config"), py::arg("name"))
-        .def("tensor", &ark::Model::tensor, py::arg("shape"),
-             py::arg("data_type"), py::arg("strides"), py::arg("offsets"),
-             py::arg("padded_shape"), py::arg("name"))
+             py::arg("name"))
+        .def("tensor",
+             py::overload_cast<const ark::Dims &, const ark::DataType &,
+                               const ark::Dims &, const ark::Dims &,
+                               const ark::Dims &, int, const std::string &>(
+                 &ark::Model::tensor),
+             py::arg("shape"), py::arg("data_type"), py::arg("strides"),
+             py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
+             py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
-             py::arg("permutation"), py::arg("output"), py::arg("config"),
+             py::arg("permutation"), py::arg("output"), py::arg("name"))
+        .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
+             py::arg("rank"), py::arg("world_size"), py::arg("output"),
              py::arg("name"));
 }

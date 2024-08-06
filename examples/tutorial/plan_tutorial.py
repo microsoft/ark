@@ -331,7 +331,7 @@ def main(plan_path: str):
     # Calculate default result
     ground_truth = None
     with ark.Runtime.get_runtime() as rt:
-        planner = ark.DefaultPlanner()
+        planner = ark.Planner()
 
         # If this rule is installed, default planner will perform the same as
         # `plan_1_larger_tile.json` on A100.

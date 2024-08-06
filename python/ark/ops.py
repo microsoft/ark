@@ -25,6 +25,7 @@ def _tensor(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
+    rank: int = -1,
     name: str = "",
 ) -> Tensor:
     if not _is_list_or_tuple(shape):
@@ -49,6 +50,7 @@ def _tensor(
         Dims(strides),
         Dims(offsets),
         Dims(padded_shape),
+        rank,
         name,
     )
 
@@ -592,6 +594,7 @@ def tensor(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
+    rank: int = -1,
     name: str = "",
     runtime_id: int = -1,
 ) -> Tensor:
@@ -602,8 +605,7 @@ def tensor(
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
     return Tensor(
-        _tensor(shape, dtype, strides, offsets, padded_shape, name),
-        runtime_id=runtime_id,
+        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
     )
 
 
@@ -724,6 +726,69 @@ def zeros(
         Model.get_model().constant(0, Dims(shape), dtype.ctype(), name),
         runtime_id=runtime_id,
     )
+
+
+def all_reduce(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    output: Tensor = NullTensor,
+    name: str = "all_reduce",
+) -> Tensor:
+    """
+    Perform an all-reduce operation on the input tensor.
+
+    Args:
+        input (Tensor): The input tensor to be reduced.
+        rank (int): The rank of the current process.
+        world_size (int): The total number of processes.
+        output (Tensor, optional): The output tensor. If provided, the result
+            will be stored in this tensor. Defaults to NullTensor.
+        name (str, optional): The name of the operation. Defaults to
+            "all_reduce".
+
+    Returns:
+        Tensor: The reduced tensor.
+    """
+    if output is not NullTensor:
+        output = output._tensor
+    _tensor = Model.get_model().all_reduce(
+        input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+__all__ = [
+    "tensor",
+    "parameter",
+    "reshape",
+    "identity",
+    "sharding",
+    "reduce_sum",
+    "reduce_mean",
+    "reduce_max",
+    "layernorm",
+    "softmax",
+    "transpose",
+    "matmul",
+    "exp",
+    "sqrt",
+    "rsqrt",
+    "rope",
+    "relu",
+    "gelu",
+    "sigmoid",
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "all_reduce",
+    "embedding",
+    "cast",
+    "constant",
+    "ones",
+    "zeros",
+]
 
 
 # def im2col(
@@ -930,30 +995,6 @@ def zeros(
 #         rank,
 #         ranks_per_node,
 #         name,
-#     )
-#     return Tensor(_tensor)
-
-
-# def all_reduce(
-#     input: Tensor,
-#     rank: int,
-#     world_size: int,
-#     output: Tensor = NullTensor,
-#     name: str = "all_reduce",
-# ) -> Tensor:
-#     """
-#     Performs an all-reduce operator across all GPUs, aggregating the
-#     input tensors. Takes the `input` tensor, the current GPU's
-#     `rank`, and the total number of GPUs `world_size`.
-#     Usage:
-#     ark.init(rank, world_size)
-#     input_tensor = ark.tensor([tensor_len], ark.fp16)
-#     allreduce_result = ark.all_reduce(input_tensor, rank, world_size)
-#     """
-#     if output is not NullTensor:
-#         output = output._tensor
-#     _tensor = Model.get_model().all_reduce(
-#         input._tensor, rank, world_size, output, name
 #     )
 #     return Tensor(_tensor)
 

@@ -13,7 +13,7 @@
 
 #include "arch.hpp"
 #include "ark/model_ref.hpp"
-#include "logging.h"
+#include "logging.hpp"
 #include "model_json.hpp"
 #include "model_op_arg.hpp"
 
@@ -124,7 +124,7 @@ class ModelOpFactory {
     template <class DerivedModelOp>
     void register_op(const std::string &class_name) {
         if (constructors_.find(class_name) != constructors_.end()) {
-            ERR(InvalidUsageError, "Class already registered: ", class_name);
+            ERR(InternalError, "Class already registered: ", class_name);
         }
         constructors_[class_name] = []() {
             return std::shared_ptr<ModelOp>(new DerivedModelOp());
@@ -134,7 +134,7 @@ class ModelOpFactory {
     std::shared_ptr<ModelOp> construct(const std::string &class_name) const {
         auto it = constructors_.find(class_name);
         if (it == constructors_.end()) {
-            ERR(InvalidUsageError,
+            ERR(InternalError,
                 "Tried to construct an unknown class: ", class_name);
         }
         return it->second();

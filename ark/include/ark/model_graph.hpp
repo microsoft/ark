@@ -38,8 +38,8 @@ class ModelGraph {
 
    protected:
     friend class Model;
-    friend class PlanManager;
-    friend class ContextManager;
+    friend class ModelContextManager;
+    friend class Context;
 
     class Impl;
     std::unique_ptr<Impl> impl_;

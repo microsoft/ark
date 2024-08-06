@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_LOGGING_H_
-#define ARK_LOGGING_H_
+#ifndef ARK_LOGGING_HPP_
+#define ARK_LOGGING_HPP_
 
 #include <iostream>
 #include <sstream>
@@ -94,4 +94,4 @@ inline void _err(const std::string &file, int line, T value, Args... args) {
 
 }  // namespace ark
 
-#endif  // ARK_LOGGING_H_
+#endif  // ARK_LOGGING_HPP_

@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cassert>
 
-#include "logging.h"
+#include "logging.hpp"
 #include "ops_common.hpp"
 
 namespace ark {
@@ -25,7 +25,7 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
         // Convert to a scalar
         new_shape_vec.emplace_back(1);
         if (orig_shape.nelems() != 1) {
-            ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
+            ERR(ModelError, "number of elements mismatch: reshape from ",
                 orig_shape, " to ", inferred_shape);
         }
     } else {
@@ -46,7 +46,7 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
             }
         }
         if (orig_shape.nelems() != total_size) {
-            ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
+            ERR(ModelError, "number of elements mismatch: reshape from ",
                 orig_shape, " to ", inferred_shape);
         }
     }
@@ -161,11 +161,11 @@ Tensor Model::reshape(Tensor input, const Dims &shape, bool allowzero,
     for (auto i = 0; i < shape.ndims(); i++) {
         if (shape[i] == -1) {
             if (neg_idx != -1) {
-                ERR(InvalidUsageError, "multiple -1 in shape: ", shape);
+                ERR(ModelError, "multiple -1 in shape: ", shape);
             }
             neg_idx = static_cast<int>(i);
         } else if (shape[i] < 0) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "shape cannot include negative values except -1. Given: ",
                 shape);
         } else {
@@ -178,19 +178,19 @@ Tensor Model::reshape(Tensor input, const Dims &shape, bool allowzero,
     }
     if (neg_idx != -1) {
         if (zero_exists) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "shape cannot include both 0 and -1 at the same time. Given: ",
                 shape);
         }
         // total_size is always positive at this point.
         // Infer the -1 dimension
         if (input.shape().nelems() % total_size != 0) {
-            ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
+            ERR(ModelError, "number of elements mismatch: reshape from ",
                 input.shape(), " to ", shape);
         }
         inferred_shape[neg_idx] = input.shape().nelems() / total_size;
     } else if (!zero_exists && input.shape().nelems() != total_size) {
-        ERR(InvalidUsageError, "number of elements mismatch: reshape from ",
+        ERR(ModelError, "number of elements mismatch: reshape from ",
             input.shape(), " to ", shape);
     }
     Dims new_shape;

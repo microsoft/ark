@@ -164,13 +164,14 @@ void register_executor(py::module &m) {
              })
         .def("plan", &ark::Executor::plan)
         .def("compile", &ark::Executor::compile)
-        .def("launch", &ark::Executor::launch, py::arg("max_spin_count") = -1)
+        .def("launch", &ark::Executor::launch)
         .def("run", &ark::Executor::run, py::arg("iter"))
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
         .def("barrier", &ark::Executor::barrier)
         .def("destroy", &ark::Executor::destroy)
         .def("destroyed", &ark::Executor::destroyed)
+        .def("tensor_address", &ark::Executor::tensor_address)
         .def("tensor_read",
              py::overload_cast<ark::Executor *, const ark::Tensor &, py::buffer,
                                uintptr_t>(&tensor_read),

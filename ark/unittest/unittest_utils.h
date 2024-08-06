@@ -15,7 +15,7 @@
 #include "ark/init.hpp"
 #include "ark/random.hpp"
 #include "cpu_timer.h"
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 namespace unittest {
@@ -143,56 +143,98 @@ std::string get_kernel_code(const std::string &name);
                        ") >= `" #exp1 "` (value: ", _v1, ")"); \
     } while (0)
 
+// Check if the `exp0` is less than or equal to `exp1`.
+#define UNITTEST_LE(exp0, exp1)                               \
+    do {                                                      \
+        auto _v0 = (exp0);                                    \
+        auto _v1 = (exp1);                                    \
+        if (_v0 <= static_cast<decltype(_v0)>(_v1)) {         \
+            break;                                            \
+        }                                                     \
+        UNITTEST_FEXIT("`" #exp0 "` (value: ", _v0,           \
+                       ") > `" #exp1 "` (value: ", _v1, ")"); \
+    } while (0)
+
+// Check if the `exp0` is greater than `exp1`.
+#define UNITTEST_GT(exp0, exp1)                                \
+    do {                                                       \
+        auto _v0 = (exp0);                                     \
+        auto _v1 = (exp1);                                     \
+        if (_v0 > static_cast<decltype(_v0)>(_v1)) {           \
+            break;                                             \
+        }                                                      \
+        UNITTEST_FEXIT("`" #exp0 "` (value: ", _v0,            \
+                       ") <= `" #exp1 "` (value: ", _v1, ")"); \
+    } while (0)
+
+// Check if the `exp0` is greater than or equal to `exp1`.
+#define UNITTEST_GE(exp0, exp1)                               \
+    do {                                                      \
+        auto _v0 = (exp0);                                    \
+        auto _v1 = (exp1);                                    \
+        if (_v0 >= static_cast<decltype(_v0)>(_v1)) {         \
+            break;                                            \
+        }                                                     \
+        UNITTEST_FEXIT("`" #exp0 "` (value: ", _v0,           \
+                       ") < `" #exp1 "` (value: ", _v1, ")"); \
+    } while (0)
+
 // Check if the given expression throws a given exception.
-#define UNITTEST_THROW(exp, exception)                                         \
-    do {                                                                       \
-        try {                                                                  \
-            (exp);                                                             \
-        } catch (const ark::InvalidUsageError &e) {                            \
-            if (std::is_same<ark::InvalidUsageError, exception>::value) {      \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp                                            \
-                           "` unexpectedly throws an InvalidUsageError");      \
-        } catch (const ark::ModelError &e) {                                   \
-            if (std::is_same<ark::ModelError, exception>::value) {             \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a ModelError");     \
-        } catch (const ark::SchedulerError &e) {                               \
-            if (std::is_same<ark::SchedulerError, exception>::value) {         \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a SchedulerError"); \
-        } catch (const ark::ExecutorError &e) {                                \
-            if (std::is_same<ark::ExecutorError, exception>::value) {          \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws an ExecutorError"); \
-        } catch (const ark::SystemError &e) {                                  \
-            if (std::is_same<ark::SystemError, exception>::value) {            \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a SystemError");    \
-        } catch (const ark::GpuError &e) {                                     \
-            if (std::is_same<ark::GpuError, exception>::value) {               \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a GpuError");       \
-        } catch (const ark::RuntimeError &e) {                                 \
-            if (std::is_same<ark::RuntimeError, exception>::value) {           \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a RuntimeError");   \
-        } catch (const ark::UnitTestError &e) {                                \
-            if (std::is_same<ark::UnitTestError, exception>::value) {          \
-                break;                                                         \
-            }                                                                  \
-            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a UnitTestError");  \
-        } catch (...) {                                                        \
-            UNITTEST_FEXIT("`" #exp "` throws an unknown exception");          \
-        }                                                                      \
-        UNITTEST_FEXIT("`" #exp "` does not throw");                           \
+#define UNITTEST_THROW(exp, exception)                                        \
+    do {                                                                      \
+        try {                                                                 \
+            (exp);                                                            \
+        } catch (const ark::InternalError &e) {                               \
+            if (std::is_same<ark::InternalError, exception>::value) {         \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a InternalError"); \
+        } catch (const ark::InvalidUsageError &e) {                           \
+            if (std::is_same<ark::InvalidUsageError, exception>::value) {     \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp                                           \
+                           "` unexpectedly throws an InvalidUsageError");     \
+        } catch (const ark::ModelError &e) {                                  \
+            if (std::is_same<ark::ModelError, exception>::value) {            \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a ModelError");    \
+        } catch (const ark::PlanError &e) {                                   \
+            if (std::is_same<ark::PlanError, exception>::value) {             \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a PlanError");     \
+        } catch (const ark::UnsupportedError &e) {                            \
+            if (std::is_same<ark::UnsupportedError, exception>::value) {      \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp                                           \
+                           "` unexpectedly throws an UnsupportedError");      \
+        } catch (const ark::SystemError &e) {                                 \
+            if (std::is_same<ark::SystemError, exception>::value) {           \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a SystemError");   \
+        } catch (const ark::GpuError &e) {                                    \
+            if (std::is_same<ark::GpuError, exception>::value) {              \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a GpuError");      \
+        } catch (const ark::UnitTestError &e) {                               \
+            if (std::is_same<ark::UnitTestError, exception>::value) {         \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a UnitTestError"); \
+        } catch (const ark::BaseError &e) {                                   \
+            if (std::is_same<ark::BaseError, exception>::value) {             \
+                break;                                                        \
+            }                                                                 \
+            UNITTEST_FEXIT("`" #exp "` unexpectedly throws a BaseError");     \
+        } catch (...) {                                                       \
+            UNITTEST_FEXIT("`" #exp "` throws an unknown exception");         \
+        }                                                                     \
+        UNITTEST_FEXIT("`" #exp "` does not throw");                          \
     } while (0)
 
 // Log a message.

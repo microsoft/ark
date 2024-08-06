@@ -18,7 +18,7 @@ install.strip = true
 build-dir = "build/{wheel_tag}"
 
 [tool.scikit-build.cmake.define]
-BUILD_PYTHON = "ON"
+ARK_BUILD_PYTHON = "ON"
 
 [tool.black]
 line-length = 80

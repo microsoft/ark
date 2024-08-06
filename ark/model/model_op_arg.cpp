@@ -3,7 +3,7 @@
 
 #include "model_op_arg.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model_tensor.hpp"
 
 namespace ark {
@@ -21,6 +21,8 @@ Json ModelOpArg::serialize() const {
         j[type_name] = this->value<Dims>().vector();
     } else if (type_name == "INT") {
         j[type_name] = this->value<int>();
+    } else if (type_name == "UINT32") {
+        j[type_name] = this->value<uint32_t>();
     } else if (type_name == "INT64") {
         j[type_name] = this->value<int64_t>();
     } else if (type_name == "UINT64") {
@@ -30,7 +32,7 @@ Json ModelOpArg::serialize() const {
     } else if (type_name == "FLOAT") {
         j[type_name] = this->value<float>();
     } else {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "Tried to serialize an unknown type of argument: ", type_name);
     }
     return j;
@@ -48,6 +50,8 @@ ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
             return ModelOpArg(Dims(value.get<std::vector<DimType>>()));
         } else if (type_name == "INT") {
             return ModelOpArg(value.get<int>());
+        } else if (type_name == "UINT32") {
+            return ModelOpArg(value.get<uint32_t>());
         } else if (type_name == "INT64") {
             return ModelOpArg(value.get<int64_t>());
         } else if (type_name == "UINT64") {
@@ -58,10 +62,10 @@ ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
             return ModelOpArg(value.get<float>());
         }
     } catch (const std::exception &e) {
-        ERR(InvalidUsageError, "Failed to deserialize `", serialized.dump(),
+        ERR(ModelError, "Failed to deserialize `", serialized.dump(),
             "`: ", e.what());
     }
-    ERR(InvalidUsageError, "Tried to deserialize an unknown type of argument: ",
+    ERR(ModelError, "Tried to deserialize an unknown type of argument: ",
         serialized.dump());
     return ModelOpArg();
 }

@@ -3,7 +3,7 @@
 
 #include "model_buffer.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model_buffer_manager.hpp"
 
 namespace ark {
@@ -76,33 +76,30 @@ Json ModelBuffer::serialize() const {
 
 std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const Json &serialized) {
     if (!serialized.contains("Id")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing Id");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing Id");
     } else if (!serialized.contains("Rank")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing Rank");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing Rank");
     } else if (!serialized.contains("SendTags")) {
-        ERR(InvalidUsageError,
-            "ModelBuffer deserialization failed: missing SendTags");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing SendTags");
     } else if (!serialized.contains("RecvTags")) {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "ModelBuffer deserialization failed: missing RecvTags");
     } else if (!serialized.contains("IsExternal")) {
-        ERR(InvalidUsageError,
+        ERR(ModelError,
             "ModelBuffer deserialization failed: missing IsExternal");
     }
     if (serialized["IsExternal"]) {
         if (!serialized.contains("ExternalDataSize")) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "ModelBuffer deserialization failed: missing ExternalDataSize");
         } else if (!serialized.contains("DeviceId")) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "ModelBuffer deserialization failed: missing DeviceId");
         }
         void *data_ptr =
             ModelBufferManager::get_instance().get_buffer(serialized["Id"]);
         if (!data_ptr) {
-            ERR(InvalidUsageError,
+            ERR(ModelError,
                 "ModelBuffer deserialization failed: external buffer not found "
                 "in BufferManager");
         }

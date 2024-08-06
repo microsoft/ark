@@ -29,15 +29,24 @@ class Model : public ModelGraph {
 
     Model &operator=(const Model &other) = default;
 
+    /// Get the unique identifier of the model.
     size_t id() const;
 
-    Model compress(bool merge_nodes = false) const;
+    Model compress() const;
 
     int unique_tag();
 
     Tensor constant(float val, const Dims &shape, DataType data_type,
                     const std::string &name = "");
 
+    /// No operation.
+    ///
+    /// This operator can be used to prevent unused tensors from being optimized
+    /// out by the compiler.
+    ///
+    /// @param input Input tensor.
+    /// @param name Name of the operator.
+    ///
     void noop(Tensor input, const std::string &name = "");
 
     /// Returns a tensor object.
@@ -58,12 +67,14 @@ class Model : public ModelGraph {
     /// @p strides should be greater than or equal to the padded shape. If the
     /// @p strides are not provided, they are set to the padded shape. If the
     /// padded shape is not provided, it is set to the @p shape.
+    /// @param rank Rank of the tensor. -1 means the rank of this model.
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
     Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
-                  const Dims &padded_shape = {}, const std::string &name = "");
+                  const Dims &padded_shape = {}, int rank = -1,
+                  const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
                  const Dims &offsets = {}, const Dims &padded_shape = {},
@@ -195,12 +206,24 @@ class Model : public ModelGraph {
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
     Tensor recv(Tensor output, int remote_rank, int tag,
-                const std::string &config = "", const std::string &name = "");
-    //
-    Tensor put_packet(Tensor input, Tensor local_tmp_buf, Tensor recv_buf,
-                      int id, int rank, int dst_rank, size_t dst_offset,
-                      int flag, const std::string &config = "",
-                      const std::string &name = "");
+                const std::string &name = "");
+    Tensor send_packet(Tensor input, int remote_rank, int tag, int flag,
+                       Tensor output = NullTensor,
+                       const std::string &name = "");
+    Tensor recv_packet(Tensor output, int remote_rank, int tag, int flag,
+                       Tensor scratch = NullTensor,
+                       const std::string &name = "");
+    Tensor recv_reduce_send_packet(
+        Tensor input, const std::vector<int> &remote_ranks, int recv_tag,
+        int output_tag, unsigned int flag, Tensor output = NullTensor,
+        std::vector<Tensor> peer_outputs = {}, Tensor scratch = NullTensor,
+        const std::string &name = "");
+    Tensor recv_reduce_send(Tensor input, const std::vector<int> &remote_ranks,
+                            int recv_tag, int output_tag,
+                            Tensor output = NullTensor,
+                            std::vector<Tensor> peer_outputs = {},
+                            Tensor scratch = NullTensor,
+                            const std::string &name = "");
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
@@ -223,7 +246,8 @@ class Model : public ModelGraph {
                 const std::string &name = "");
 
     // sync across multi devices
-    Tensor device_sync(Tensor input, int npeers, const std::string &name = "");
+    Tensor device_sync(Tensor input, int rank, int rank_num,
+                       const std::string &name = "");
 
     // local reduce scatter
     Tensor local_reduce_scatter(Tensor input, int gpu_id, int ngpus_per_node,
@@ -241,18 +265,7 @@ class Model : public ModelGraph {
 
     Tensor local_all_reduce(Tensor input, int gpu_id, int gpu_num,
                             const std::string &name = "");
-    Tensor local_all_reduce_packet(Tensor input, int gpu_id, int gpu_num,
-                                   const std::string &name = "");
 
-    Tensor reduce_and_write_packet(Tensor input, Tensor scratch, Tensor output,
-                                   const std::vector<Tensor> &remote_peer_bufs,
-                                   int id, int rank, int npeers,
-                                   size_t elems_per_rank, size_t scratch_offset,
-                                   size_t remote_dst_offset, int flag,
-                                   const std::string &name = "");
-    Tensor get_packet(Tensor input, Tensor output, size_t src_offset,
-                      size_t dst_offset, size_t npackets, int flag,
-                      const std::string &name = "");
 };
 
 }  // namespace ark

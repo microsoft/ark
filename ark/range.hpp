@@ -4,6 +4,7 @@
 #ifndef ARK_RANGE_HPP_
 #define ARK_RANGE_HPP_
 
+#include <ostream>
 #include <vector>
 
 namespace ark {
@@ -71,7 +72,7 @@ class Range {
 
     T size() const { return (end_ - begin_) / step_; }
 
-    std::vector<T> intersection(const Range<T> &other) {
+    std::vector<T> intersection(const Range<T> &other) const {
         T begin, step;
         T opp_begin, opp_step;
         if (begin_ > other.begin_) {
@@ -98,6 +99,10 @@ class Range {
         return result;
     }
 
+    bool is_subset_of(const Range<T> &other) const {
+        return intersection(other).size() == static_cast<size_t>(size());
+    }
+
    private:
     T begin_;
     T end_;
@@ -118,6 +123,8 @@ template <typename T = int>
 Range<T> range(T begin, T end, T step) {
     return Range<T>(begin, end, step);
 }
+
+std::ostream &operator<<(std::ostream &os, const Range<int> &range);
 
 }  // namespace ark
 

@@ -13,10 +13,10 @@ ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
     check_null(input);
     check_null(weight);
     if (input->shape().ndims() > 3) {
-        ERR(InvalidUsageError, "input shape ndims > 3: ", input->shape());
+        ERR(ModelError, "input shape ndims > 3: ", input->shape());
     }
     if (weight->shape().ndims() != 2) {
-        ERR(InvalidUsageError, "weight shape ndims != 2: ", weight->shape());
+        ERR(ModelError, "weight shape ndims != 2: ", weight->shape());
     }
     if (output) {
         check_match_data_type(weight, output);

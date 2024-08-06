@@ -3,7 +3,7 @@
 
 #include "ark/model_graph.hpp"
 
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_graph_impl.hpp"
 #include "model/model_node.hpp"
 

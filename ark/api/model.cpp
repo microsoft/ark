@@ -5,7 +5,7 @@
 
 #include <limits>
 
-#include "logging.h"
+#include "logging.hpp"
 
 namespace ark {
 
@@ -18,7 +18,7 @@ Model::Model(const Model &other) : ModelGraph(other), id_(other.id()) {}
 
 size_t Model::id() const { return id_; }
 
-Model Model::compress(bool merge_nodes) const {
+Model Model::compress() const {
     Model model(*this);
     model.compress_nodes(merge_nodes);
     return model;

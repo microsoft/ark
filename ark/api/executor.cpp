@@ -23,7 +23,7 @@
 #include "gpu/gpu_kernel.hpp"
 #include "gpu/gpu_logging.hpp"
 #include "gpu/gpu_manager.hpp"
-#include "logging.h"
+#include "logging.hpp"
 #include "model/model_buffer.hpp"
 #include "model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
@@ -146,7 +146,7 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 class Executor::Impl {
    public:
     Impl(int device_id, Stream stream, const std::string &name, bool loop_mode);
-    ~Impl() = default;
+    ~Impl();
 
     void init(const PlanJson& plan);
 
@@ -157,7 +157,7 @@ class Executor::Impl {
     std::string plan() const { return plan_json_.dump_pretty(); }
 
     void compile();
-    void launch(int64_t max_spin_count);
+    void launch();
     void run(int iter);
     void wait(int64_t max_spin_count);
     float stop(int64_t max_spin_count);
@@ -224,6 +224,10 @@ Executor::Impl::Impl(int device_id, Stream stream, const std::string &name,
     }
 }
 
+Executor::Impl::~Impl() {
+    if (is_launched_) stop(-1);
+}
+
 void Executor::Impl::init(const PlanJson &plan_json) {
     plan_json_ = plan_json;
     rank_ = plan_json_["Rank"].get<int>();
@@ -238,6 +242,13 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     }
 
     auto gpu_manager = GpuManager::get_instance(device_id_);
+    if (!gpu_manager->info().arch->belongs_to(
+            Arch::from_name(plan_json.at("Architecture")))) {
+        LOG(WARN, "Architecture name of the plan `",
+            plan_json.at("Architecture").get<std::string>(),
+            "` is not compatible with the GPU architecture `",
+            gpu_manager->info().arch->name(), "`.");
+    }
 
     if (!gpu_manager->info().arch->belongs_to(
             Arch::from_name(plan_json_.at("Architecture")))) {
@@ -641,13 +652,12 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
 
 void Executor::Impl::compile() { kernel_->compile(); }
 
-void Executor::Impl::launch(int64_t max_spin_count) {
+void Executor::Impl::launch() {
     if (!kernel_->is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
     }
     if (is_launched_) {
-        // Wait until previous works finish.
-        this->wait(max_spin_count);
+        LOG(WARN, "Ignore launching twice.");
         return;
     }
     auto get_global_rt = [&](const std::string &symbol) {
@@ -695,12 +705,6 @@ void Executor::Impl::launch(int64_t max_spin_count) {
     }
 
     elapsed_msec_ = -1;
-    if (!kernel_->is_compiled()) {
-        ERR(InvalidUsageError, "Need to compile first before initialization.");
-    } else if (is_launched_) {
-        LOG(WARN, "Ignore launching twice.");
-        return;
-    }
     timer_begin_->record(stream_raw_);
 
     if (world_size_ > 1) {
@@ -798,7 +802,7 @@ void Executor::Impl::barrier() {
 uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
-        ERR(NotFoundError, "Invalid buffer ID: ", buffer_id);
+        ERR(InternalError, "Invalid buffer ID: ", buffer_id);
     }
     size_t offset = buffer_id_to_offset_.at(buffer_id);
     return reinterpret_cast<uintptr_t>(buffer_->ref(offset));
@@ -942,7 +946,7 @@ std::string Executor::plan() const { return impl_->plan(); }
 
 void Executor::compile() { impl_->compile(); }
 
-void Executor::launch(int64_t max_spin_count) { impl_->launch(max_spin_count); }
+void Executor::launch() { impl_->launch(); }
 
 void Executor::run(int iter) { impl_->run(iter); }
 
@@ -977,12 +981,12 @@ void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
 
 DefaultExecutor::DefaultExecutor(
     const Model &model, int device_id, Stream stream,
-    const std::vector<DefaultPlanner::ConfigRule> &config_rules,
+    const std::vector<Planner::ConfigRule> &config_rules,
     const std::string &name, bool loop_mode)
     : Executor((device_id < 0) ? (model.rank() % get_env().num_ranks_per_host)
                                : device_id,
                stream, name, "", loop_mode) {
-    DefaultPlanner planner(model, impl_->device_id());
+    Planner planner(model, impl_->device_id());
     for (const auto &rule : config_rules) {
         planner.install_config_rule(rule);
     }

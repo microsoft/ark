@@ -235,21 +235,21 @@ ark::unittest::State test_add_invalid() {
         ark::Model m;
         ark::Tensor t0 = m.tensor({1024}, ark::FP16);
         ark::Tensor t1 = m.tensor({1024}, ark::FP32);
-        UNITTEST_THROW(m.add(t0, t1), ark::InvalidUsageError);
+        UNITTEST_THROW(m.add(t0, t1), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP16);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         ark::Tensor out = m.tensor({8192}, ark::FP32);
-        UNITTEST_THROW(m.add(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.add(t0, t1, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP16);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         ark::Tensor out = m.tensor({1024}, ark::FP16);
-        UNITTEST_THROW(m.add(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.add(t0, t1, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -272,21 +272,21 @@ ark::unittest::State test_sub_invalid() {
         ark::Model m;
         ark::Tensor t0 = m.tensor({1024}, ark::FP16);
         ark::Tensor t1 = m.tensor({1024}, ark::FP32);
-        UNITTEST_THROW(m.sub(t0, t1), ark::InvalidUsageError);
+        UNITTEST_THROW(m.sub(t0, t1), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP16);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         ark::Tensor out = m.tensor({8192}, ark::FP32);
-        UNITTEST_THROW(m.sub(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.sub(t0, t1, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP16);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         ark::Tensor out = m.tensor({1024}, ark::FP16);
-        UNITTEST_THROW(m.sub(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.sub(t0, t1, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -372,21 +372,21 @@ ark::unittest::State test_mul_invalid() {
         ark::Model m;
         ark::Tensor t0 = m.tensor({1024}, ark::FP16);
         ark::Tensor t1 = m.tensor({1024}, ark::FP32);
-        UNITTEST_THROW(m.mul(t0, t1), ark::InvalidUsageError);
+        UNITTEST_THROW(m.mul(t0, t1), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP16);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         ark::Tensor out = m.tensor({8192}, ark::FP32);
-        UNITTEST_THROW(m.mul(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.mul(t0, t1, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP16);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
         ark::Tensor out = m.tensor({1024}, ark::FP16);
-        UNITTEST_THROW(m.mul(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.mul(t0, t1, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -409,21 +409,21 @@ ark::unittest::State test_div_invalid() {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP32);
         ark::Tensor t1 = m.tensor({8192}, ark::FP16);
-        UNITTEST_THROW(m.div(t0, t1), ark::InvalidUsageError);
+        UNITTEST_THROW(m.div(t0, t1), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP32);
         ark::Tensor t1 = m.tensor({8192}, ark::FP32);
         ark::Tensor out = m.tensor({8192}, ark::FP16);
-        UNITTEST_THROW(m.div(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.div(t0, t1, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t0 = m.tensor({8192}, ark::FP32);
         ark::Tensor t1 = m.tensor({8192}, ark::FP32);
         ark::Tensor out = m.tensor({1024}, ark::FP16);
-        UNITTEST_THROW(m.div(t0, t1, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.div(t0, t1, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

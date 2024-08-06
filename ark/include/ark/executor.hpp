@@ -39,7 +39,7 @@ class Executor {
 
     /// Launch the model (not running yet). This must be called after
     /// `compile()`.
-    void launch(int64_t max_spin_count = -1);
+    void launch();
 
     /// Run the model for `iter` iterations.
     void run(int iter);
@@ -95,7 +95,7 @@ class DefaultExecutor : public Executor {
    public:
     DefaultExecutor(
         const Model &model, int device_id = -1, Stream stream = nullptr,
-        const std::vector<DefaultPlanner::ConfigRule> &config_rules = {},
+        const std::vector<Planner::ConfigRule> &config_rules = {},
         const std::string &name = "DefaultExecutor", bool loop_mode = true);
 };
 

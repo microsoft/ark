@@ -17,9 +17,8 @@ def test_model():
 
     assert m_json.get("Nodes", None) is not None
     assert len(m_json["Nodes"]) == 1
-    assert m_json["Nodes"][0].get("Ops", None) is not None
-    assert len(m_json["Nodes"][0]["Ops"]) == 1
-    assert m_json["Nodes"][0]["Ops"][0].get("Type", None) == "Add"
+    assert m_json["Nodes"][0].get("Op", None) is not None
+    assert m_json["Nodes"][0]["Op"].get("Type", None) == "Add"
 
     ark.Model.reset()
 

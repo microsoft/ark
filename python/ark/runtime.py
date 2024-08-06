@@ -3,11 +3,9 @@
 
 import logging
 from enum import Enum
-from typing import Dict, List
 
-from ._ark_core import _Executor
-from .model import Model
-from .planner import DefaultPlanner, Plan
+from _ark_core import _Executor
+from .planner import Planner, Plan
 
 
 class _RuntimeState:
@@ -154,8 +152,7 @@ class Runtime:
                 f"Runtime {self.runtime_id} is already launched, skip launching"
             )
             return
-        if plan is None:
-            plan = DefaultPlanner(device_id).plan()
+        plan = Planner(device_id).plan() if plan is None else plan
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
@@ -187,6 +184,15 @@ class Runtime:
         self.executor.run(iter)
         if not non_blocking:
             self.wait()
+
+    def barrier(self):
+        """
+        Barrier for all ranks.
+        """
+        if self.state != Runtime.State.LaunchedNotRunning:
+            logging.error("ARK runtime is not launched")
+            raise RuntimeError("ARK runtime is not launched")
+        self.executor.barrier()
 
     def wait(self):
         """

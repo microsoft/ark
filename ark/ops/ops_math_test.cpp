@@ -122,13 +122,13 @@ ark::unittest::State test_gelu_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
-        UNITTEST_THROW(m.gelu(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.gelu(t, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
-        UNITTEST_THROW(m.gelu(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.gelu(t, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -173,13 +173,13 @@ ark::unittest::State test_exp_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
-        UNITTEST_THROW(m.exp(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.exp(t, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
-        UNITTEST_THROW(m.exp(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.exp(t, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -225,13 +225,13 @@ ark::unittest::State test_relu_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
-        UNITTEST_THROW(m.relu(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.relu(t, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
-        UNITTEST_THROW(m.relu(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.relu(t, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -291,13 +291,13 @@ ark::unittest::State test_sigmoid_invalid() {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 2, 1024}, ark::FP32);
-        UNITTEST_THROW(m.sigmoid(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.sigmoid(t, out), ark::ModelError);
     }
     {
         ark::Model m;
         ark::Tensor t = m.tensor({4, 2, 1024}, ark::BF16);
         ark::Tensor out = m.tensor({4, 4, 1024}, ark::BF16);
-        UNITTEST_THROW(m.sigmoid(t, out), ark::InvalidUsageError);
+        UNITTEST_THROW(m.sigmoid(t, out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -331,13 +331,13 @@ ark::unittest::State test_math_sqrt_invalid() {
         ark::Model model;
         ark::Tensor input = model.tensor({1, 3, 16, 8192}, ark::FP32);
         ark::Tensor output = model.tensor({1, 3, 16, 8192}, ark::FP16);
-        UNITTEST_THROW(model.sqrt(input, output), ark::InvalidUsageError);
+        UNITTEST_THROW(model.sqrt(input, output), ark::ModelError);
     }
     {
         ark::Model model;
         ark::Tensor input = model.tensor({1, 3, 16, 8192}, ark::FP32);
         ark::Tensor output = model.tensor({1, 3, 16, 1024}, ark::FP32);
-        UNITTEST_THROW(model.sqrt(input, output), ark::InvalidUsageError);
+        UNITTEST_THROW(model.sqrt(input, output), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
