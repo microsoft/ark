@@ -24,7 +24,18 @@ static std::string replace(
         size_t pos = 0;
         while ((pos = result.find(kv.first, pos)) != std::string::npos) {
             result.replace(pos, kv.first.length(), kv.second);
-            pos += kv.second.length();
+            if ((kv.first == "@GLOBAL_ARGS@" || kv.first == "@FUNCTION_ARGS@" ||
+                 kv.first == "@ARG_TYPES@") &&
+                kv.second.empty()) {
+                size_t comma_pos = pos;
+                if (comma_pos >= 2 && result.substr(comma_pos - 2, 2) == ", ") {
+                    result.erase(comma_pos - 2, 2);
+                    pos -= 2;
+                }
+
+            } else {
+                pos += kv.second.length();
+            }
         }
     }
     return result;
@@ -179,14 +190,26 @@ CodeGenerator::Impl::Impl(
     }
 
     // Generate the global arguments
-    std::stringstream global_args_ss;
+    std::stringstream global_args_ss, function_args_ss, arg_types_ss;
     for (const auto &arg : external_args_) {
         global_args_ss << "void *" << arg << ", ";
+        function_args_ss << arg << ", ";
+        arg_types_ss << "void *, ";
     }
     std::string global_args = global_args_ss.str();
+    std::string function_args = function_args_ss.str();
+    std::string arg_types = arg_types_ss.str();
     if (!global_args.empty()) {
         global_args.pop_back();
         global_args.pop_back();
+    }
+    if (!function_args.empty()) {
+        function_args.pop_back();
+        function_args.pop_back();
+    }
+    if (!arg_types.empty()) {
+        arg_types.pop_back();
+        arg_types.pop_back();
     }
 
     std::string template_code = read_file(template_path);
@@ -196,7 +219,9 @@ CodeGenerator::Impl::Impl(
         {"@DEFINITIONS@", definitions_ss.str()},
         {"@BODY@", body_ss.str()},
         {"@NAME@", (name_.empty() ? "" : "_" + name_)},
-        {"@GLOBAL_ARGS@", global_args_ss},
+        {"@GLOBAL_ARGS@", global_args},
+        {"@FUNCTION_ARGS@", function_args},
+        {"@ARG_TYPES@", arg_types},
     };
     code_ = replace(template_code, replacements);
 }
@@ -247,22 +272,21 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
                 size_t buffer_id = tns->buffer()->id();
-                if (buffer_id_to_name.find(buffer_id) ==
-                    buffer_id_to_name.end()) {
-                    size_t buffer_offset =
-                        buffer_id_to_offset_.at(buffer_id);
+                if (buffer_id_to_name_.find(buffer_id) ==
+                    buffer_id_to_name_.end()) {
+                    size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
                     size_t offset = buffer_offset + ModelOffset(tns).value();
                     ss << "(" << tns->data_type()->type_str() << "*)&_buf["
                        << offset << "]";
                 } else {
                     ss << "(" << tns->data_type()->type_str() << "*)"
-                       << buffer_id_to_name.at(buffer_id);
+                       << buffer_id_to_name_.at(buffer_id);
                 }
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_id = moff.buffer_id();
-                if (buffer_id_to_name.find(buffer_id) ==
-                    buffer_id_to_name.end()) {
+                if (buffer_id_to_name_.find(buffer_id) ==
+                    buffer_id_to_name_.end()) {
                     size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
                     size_t offset = buffer_offset + moff.value();
                     ss << offset;
@@ -303,7 +327,7 @@ std::string CodeGenerator::Impl::task_seq(
     ss << "task_seq<" << proc_b << ", " << proc_e << ", " << proc_s << ", "
        << proc_cur << ", " << task_b << ", " << task_e << ", " << task_s << ", "
        << task_gran << ", " << num_slots << ", " << slot_num_warps << ", "
-       << slot_sram_bytes << ", t" << task_id << ">(_buf, @GLOBAL_ARGS@);\n";
+       << slot_sram_bytes << ", t" << task_id << ">(_buf, @FUNCTION_ARGS@);\n";
     return ss.str();
 }
 

@@ -741,10 +741,9 @@ void Executor::Impl::launch(int64_t max_spin_count) {
         void *flag_ptr = flag_->ref();
         void *buf_ptr = buffers_.back()->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
-
-        // Collect additional arguments for external buffers
-        args.insert(args.end(), external_buffers_.begin(),
-                    external_buffers_.end());
+        for (auto& buffer : external_buffers_) {
+            args.push_back(&buffer);
+        }
         kernel_->launch(stream_raw_, args);
     }
     is_recording_ = true;
@@ -761,8 +760,9 @@ void Executor::Impl::run(int iter) {
         void *buf_ptr = buffers_.back()->ref();
         int i = 0;
         std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
-        args.insert(args.end(), external_buffers_.begin(),
-                    external_buffers_.end());
+        for (auto& buffer : external_buffers_) {
+            args.push_back(&buffer);
+        } 
         for (; i < iter; i++) {
             kernel_->launch(stream_raw_, args);
         }
