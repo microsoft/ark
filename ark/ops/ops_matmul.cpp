@@ -244,10 +244,10 @@ Json ModelOpMatmul::default_config(const ArchRef arch) const {
 
 Tensor Model::matmul(Tensor input, Tensor other, Tensor output,
                      bool trans_input, bool trans_other,
-                     const std::string &config, const std::string &name) {
+                     const std::string &name) {
     return impl_
-        ->create_op<ModelOpMatmul>(config, name, input.ref(), other.ref(),
-                                   output.ref(), trans_input, trans_other)
+        ->create_op<ModelOpMatmul>(name, input.ref(), other.ref(), output.ref(),
+                                   trans_input, trans_other)
         ->result_tensors()[0];
 }
 

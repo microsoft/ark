@@ -25,7 +25,7 @@ class ModelGraph {
 
     int world_size() const;
 
-    void compress_nodes(bool merge_nodes = false);
+    void compress_nodes();
 
     bool compressed() const;
 

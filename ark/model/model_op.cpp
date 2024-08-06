@@ -92,14 +92,6 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
     return it->second;
 }
 
-void ModelOp::set_config(const std::string &config) {
-    if (!config.empty()) {
-        config_ = Json::parse(config);
-    } else {
-        config_.clear();
-    }
-}
-
 std::vector<ModelTensorRef> ModelOp::input_tensors() const {
     // input_tensors = read_tensors || write_tensors
     std::set<ModelTensorRef> input_tensors;
@@ -191,9 +183,6 @@ Json ModelOp::serialize() const {
     j["Args"] = Json::object();
     for (auto &arg : args_) {
         j["Args"][arg.first] = arg.second.serialize();
-    }
-    if (!config_.empty()) {
-        j["Config"] = config_;
     }
     return j;
 }

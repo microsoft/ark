@@ -105,7 +105,7 @@ ModelOpByteCast::ModelOpByteCast(ModelTensorRef input, ModelDataType data_type,
 }
 
 Tensor Model::cast(Tensor input, const DataType &data_type, Tensor output,
-                   const std::string &config, const std::string &name) {
+                   const std::string &name) {
     check_null(input.ref());
     if (output.is_null()) {
         if (input.data_type() == data_type) {
@@ -119,14 +119,14 @@ Tensor Model::cast(Tensor input, const DataType &data_type, Tensor output,
             byte_cast_helper(input.ref(), data_type.ref(), new_shape,
                              new_strides, new_offsets, new_padded_shape);
             return impl_
-                ->create_op<ModelOpByteCast>(
-                    config, name, input.ref(), data_type.ref(), new_shape,
-                    new_strides, new_offsets, new_padded_shape)
+                ->create_op<ModelOpByteCast>(name, input.ref(), data_type.ref(),
+                                             new_shape, new_strides,
+                                             new_offsets, new_padded_shape)
                 ->result_tensors()[0];
         }
     }
     return impl_
-        ->create_op<ModelOpCast>(config, name, input.ref(), data_type.ref(),
+        ->create_op<ModelOpCast>(name, input.ref(), data_type.ref(),
                                  output.ref())
         ->result_tensors()[0];
 }

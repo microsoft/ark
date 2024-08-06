@@ -90,7 +90,7 @@ class RMSNorm(ark.Module):
         self.weight = ark.parameter([1, 1, dim], ark.fp32)
 
     def forward(self, x):
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 8],
             sync=False,
             config={
@@ -100,12 +100,12 @@ class RMSNorm(ark.Module):
                 "Granularity": 7,
             },
         ):
-            with ark.PlanManager(config={"Tile": [1, 4096]}):
+            with ark.PlannerContext(config={"Tile": [1, 4096]}):
                 x = ark.cast(x, ark.fp32)
                 x2 = ark.mul(x, x)
-            with ark.PlanManager(config={"ImplType": "WarpWise"}):
+            with ark.PlannerContext(config={"ImplType": "WarpWise"}):
                 mean = ark.reduce_mean(x2, axis=-1)
-        with ark.PlanManager(
+        with ark.PlannerContext(
             config={
                 "NumWarps": 1,
                 "SramBytes": 0,
@@ -114,7 +114,7 @@ class RMSNorm(ark.Module):
             }
         ):
             rrms = ark.rsqrt(mean)
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 8],
             sync=False,
             config={
@@ -356,7 +356,7 @@ class FeedForward(ark.Module):
 
     def forward(self, x):
         # self.w2(F.silu(self.w1(x)) * self.w3(x))
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 8],
             sram_range=[0, 49344],
             sync=False,
@@ -365,13 +365,13 @@ class FeedForward(ark.Module):
                 "NumTasks": 688,
             },
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 x1 = self.w1(x)
-            with ark.PlanManager(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
                 x1 = Silu()(x1)
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 8],
             sram_range=[0, 49344],
             sync=False,
@@ -380,11 +380,11 @@ class FeedForward(ark.Module):
                 "NumTasks": 688,
             },
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 x2 = self.w3(x)
-            with ark.PlanManager(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
                 x3 = ark.mul(x1, x2)
         x4 = self.w2(x3)
         return x4
@@ -404,7 +404,7 @@ class Softmax(ark.Module):
         super(Softmax, self).__init__()
 
     def forward(self, input):
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 8],
             sram_range=[0, 0],
             sync=False,
@@ -414,14 +414,14 @@ class Softmax(ark.Module):
                 "NumTasks": 65536,
             },
         ):
-            with ark.PlanManager(config={"ImplType": "WarpWise"}):
+            with ark.PlannerContext(config={"ImplType": "WarpWise"}):
                 max = ark.reduce_max(input, axis=-1)
-            with ark.PlanManager(config={"Tile": [1, 2048]}):
+            with ark.PlannerContext(config={"Tile": [1, 2048]}):
                 output = ark.sub(input, max)
                 output = ark.exp(output)
-            with ark.PlanManager(config={"ImplType": "WarpWise"}):
+            with ark.PlannerContext(config={"ImplType": "WarpWise"}):
                 sum = ark.reduce_sum(output, axis=-1)
-            with ark.PlanManager(config={"Tile": [1, 2048]}):
+            with ark.PlannerContext(config={"Tile": [1, 2048]}):
                 output = ark.div(output, sum)
             return output
 
@@ -486,50 +486,50 @@ class Attention(ark.Module):
     ):
         bsz, seqlen, _ = x.shape()
 
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 4],
             sram_range=[0, 24672],
             sync=False,
             config={"NumWarps": 4, "NumTasks": 256},
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 xq = self.wq(x)
             xq = ark.reshape(
                 xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
             )
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 0, "Tile": [256, 1, 128]}
             ):
                 if freqs_cis is not None:
                     xq = ark.rope(xq, freqs_cis)
-            with ark.PlanManager(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
                 xq = ark.transpose(xq, [0, 2, 1, 3])
 
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 4],
             sram_range=[0, 24672],
             sync=False,
             config={"NumWarps": 4, "NumTasks": 256},
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 xk = self.wk(x)
             xk = ark.reshape(
                 xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
             )
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 0, "Tile": [256, 1, 128]}
             ):
                 if freqs_cis is not None:
                     xk = ark.rope(xk, freqs_cis)
             keys = xk
-            with ark.PlanManager(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
                 keys = ark.transpose(keys, [0, 2, 1, 3])
 
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 4],
             sram_range=[0, 24672],
             sync=False,
@@ -540,7 +540,7 @@ class Attention(ark.Module):
                 "TileShapeMNK": [256, 128, 32],
             },
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 xv = self.wv(x)
@@ -548,12 +548,12 @@ class Attention(ark.Module):
                 xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
             )
             values = xv
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 0, "Tile": [256, 1, 128]}
             ):
                 values = ark.transpose(values, [0, 2, 1, 3])
 
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 8],
             sram_range=[0, 49344],
             sync=False,
@@ -563,11 +563,11 @@ class Attention(ark.Module):
                 "Granularity": 2,
             },
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 scores = ark.matmul(xq, keys, transpose_other=True)
-            with ark.PlanManager(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
                 scores = ark.mul(scores, 1.0 / math.sqrt(self.head_dim))
 
         if mask is not None:
@@ -575,7 +575,7 @@ class Attention(ark.Module):
 
         scores = Softmax()(scores)
 
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 4],
             sram_range=[0, 24672],
             sync=False,
@@ -584,11 +584,11 @@ class Attention(ark.Module):
                 "NumTasks": 256,
             },
         ):
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 output = ark.matmul(scores, values)
-            with ark.PlanManager(
+            with ark.PlannerContext(
                 config={"SramBytes": 0, "Tile": [256, 1, 128]}
             ):
                 output = ark.transpose(output, [0, 2, 1, 3])
@@ -634,7 +634,7 @@ class TransformerBlock(ark.Module):
     ):
         attention_norm_x = self.attention_norm(x)
         h = self.attention.forward(attention_norm_x, start_pos, freqs_cis, mask)
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 4],
             config={
                 "NumWarps": 4,
@@ -645,7 +645,7 @@ class TransformerBlock(ark.Module):
         ):
             h = ark.add(x, h)
         ff = self.feed_forward(self.ffn_norm(h))
-        with ark.PlanManager(
+        with ark.PlannerContext(
             warp_range=[0, 4],
             config={
                 "NumWarps": 4,

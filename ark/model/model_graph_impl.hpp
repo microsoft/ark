@@ -54,8 +54,7 @@ class ModelGraph::Impl {
     Impl &operator=(const Impl &other);
 
     template <typename T, typename... Args>
-    ModelOpRef create_op(const std::string &config, const std::string &name,
-                         Args &&...args) {
+    ModelOpRef create_op(const std::string &name, Args &&... args) {
         ModelOpRef op = std::make_shared<T>(std::forward<Args>(args)...);
         std::string name_copy;
         if (name.empty()) {
@@ -68,7 +67,6 @@ class ModelGraph::Impl {
         if (count > 0) {
             name_copy += "_" + std::to_string(count);
         }
-        op->set_config(config);
         op->set_name(name_copy);
         add_op(op);
         return op;
@@ -78,13 +76,11 @@ class ModelGraph::Impl {
 
     int world_size() const { return world_size_; }
 
-    void compress_nodes(bool merge_nodes = false);
+    void compress_nodes();
 
     bool compressed() const { return compressed_; }
 
     bool verify() const;
-
-    std::string get_context(const std::string &key) const;
 
     std::string serialize(bool pretty = true) const;
 

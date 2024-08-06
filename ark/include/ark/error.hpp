@@ -9,6 +9,7 @@
 
 namespace ark {
 
+/// Base class for all ARK errors.
 class BaseError : public std::exception {
    private:
     std::string msg_;
@@ -24,15 +25,21 @@ class BaseError : public std::exception {
         _name(const std::string &msg) : BaseError(msg) {} \
     };
 
+/// Internal error in ARK, likely a bug.
 REGISTER_ERROR_TYPE(InternalError)
+/// Invalid usage of ARK API.
 REGISTER_ERROR_TYPE(InvalidUsageError)
-REGISTER_ERROR_TYPE(NotFoundError)
+/// Invalid ARK model definition or usage.
 REGISTER_ERROR_TYPE(ModelError)
-REGISTER_ERROR_TYPE(SchedulerError)
-REGISTER_ERROR_TYPE(ExecutorError)
+/// Invalid ARK plan definition or usage.
+REGISTER_ERROR_TYPE(PlanError)
+/// Unsupported feature triggered.
+REGISTER_ERROR_TYPE(UnsupportedError)
+/// Error from invalid system state such as a system call failure.
 REGISTER_ERROR_TYPE(SystemError)
+/// Error from a CUDA/HIP API call.
 REGISTER_ERROR_TYPE(GpuError)
-REGISTER_ERROR_TYPE(RuntimeError)
+/// Error from a unit test.
 REGISTER_ERROR_TYPE(UnitTestError)
 
 }  // namespace ark

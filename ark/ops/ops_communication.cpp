@@ -589,25 +589,23 @@ Json ModelOpDeviceSync::default_config([[maybe_unused]] const ArchRef arch) cons
 }
 
 Tensor Model::send(Tensor input, int remote_rank, int tag, Tensor output,
-                   const std::string &config, const std::string &name) {
+                   const std::string &name) {
     tags_.insert(tag);
     return impl_
-        ->create_op<ModelOpSend>(config, name, input.ref(), remote_rank, tag,
+        ->create_op<ModelOpSend>(name, input.ref(), remote_rank, tag,
                                  output.ref())
         ->result_tensors()[0];
 }
 
-Tensor Model::send_done(Tensor input, const std::string &config,
-                        const std::string &name) {
-    return impl_->create_op<ModelOpSendDone>(config, name, input.ref())
+Tensor Model::send_done(Tensor input, const std::string &name) {
+    return impl_->create_op<ModelOpSendDone>(name, input.ref())
         ->result_tensors()[0];
 }
 
 Tensor Model::recv(Tensor output, int remote_rank, int tag,
-                   const std::string &config, const std::string &name) {
+                   const std::string &name) {
     tags_.insert(tag);
-    return impl_
-        ->create_op<ModelOpRecv>(config, name, output.ref(), remote_rank, tag)
+    return impl_->create_op<ModelOpRecv>(name, output.ref(), remote_rank, tag)
         ->result_tensors()[0];
 }
 

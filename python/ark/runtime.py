@@ -3,6 +3,7 @@
 
 import logging
 from enum import Enum
+from typing import Dict, List
 
 from _ark_core import _Executor
 from .planner import Planner, Plan

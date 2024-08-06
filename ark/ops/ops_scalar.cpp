@@ -115,21 +115,20 @@ std::vector<ModelOpArg> ModelOpScalarMul::impl_args([
 Tensor Model::constant(float val, const Dims &shape, DataType data_type,
                        const std::string &name) {
     return impl_
-        ->create_op<ModelOpScalarAssign>("", name, val, shape, data_type.ref(),
+        ->create_op<ModelOpScalarAssign>(name, val, shape, data_type.ref(),
                                          nullptr)
         ->result_tensors()[0];
 }
 
-Tensor Model::copy(float val, Tensor output, const std::string &config,
-                   const std::string &name) {
+Tensor Model::copy(float val, Tensor output, const std::string &name) {
     if (output == NullTensor) {
         return impl_
-            ->create_op<ModelOpScalarAssign>(config, name, val, Dims{1},
-                                             FP32.ref(), output.ref())
+            ->create_op<ModelOpScalarAssign>(name, val, Dims{1}, FP32.ref(),
+                                             output.ref())
             ->result_tensors()[0];
     } else {
         return impl_
-            ->create_op<ModelOpScalarAssign>(config, name, val, output.shape(),
+            ->create_op<ModelOpScalarAssign>(name, val, output.shape(),
                                              output.data_type().ref(),
                                              output.ref())
             ->result_tensors()[0];
@@ -137,34 +136,30 @@ Tensor Model::copy(float val, Tensor output, const std::string &config,
 }
 
 Tensor Model::add(Tensor input, float value, Tensor output,
-                  const std::string &config, const std::string &name) {
+                  const std::string &name) {
     return impl_
-        ->create_op<ModelOpScalarAdd>(config, name, input.ref_, value,
-                                      output.ref_)
+        ->create_op<ModelOpScalarAdd>(name, input.ref_, value, output.ref_)
         ->result_tensors()[0];
 }
 
 Tensor Model::sub(Tensor input, float value, Tensor output,
-                  const std::string &config, const std::string &name) {
+                  const std::string &name) {
     return impl_
-        ->create_op<ModelOpScalarAdd>(config, name, input.ref_, -value,
-                                      output.ref_)
+        ->create_op<ModelOpScalarAdd>(name, input.ref_, -value, output.ref_)
         ->result_tensors()[0];
 }
 
 Tensor Model::mul(Tensor input, float value, Tensor output,
-                  const std::string &config, const std::string &name) {
+                  const std::string &name) {
     return impl_
-        ->create_op<ModelOpScalarMul>(config, name, input.ref_, value,
-                                      output.ref_)
+        ->create_op<ModelOpScalarMul>(name, input.ref_, value, output.ref_)
         ->result_tensors()[0];
 }
 
 Tensor Model::div(Tensor input, float value, Tensor output,
-                  const std::string &config, const std::string &name) {
+                  const std::string &name) {
     return impl_
-        ->create_op<ModelOpScalarMul>(config, name, input.ref_, 1 / value,
-                                      output.ref_)
+        ->create_op<ModelOpScalarMul>(name, input.ref_, 1 / value, output.ref_)
         ->result_tensors()[0];
 }
 

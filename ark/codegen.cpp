@@ -87,7 +87,6 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     num_warps_per_proc_ = plan.at("NumWarpsPerProcessor");
 
     std::stringstream definitions_ss;
-
     for (auto &task_json : plan.at("TaskInfos")) {
         definitions_ss << this->def_task(task_json);
     }

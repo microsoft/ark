@@ -103,29 +103,23 @@ class Model : public ModelGraph {
     // result in `output`.
     // Currently, only reduction along the last dimension is supported.
     Tensor reduce_sum(Tensor input, int axis, bool keepdims = true,
-                      Tensor output = NullTensor,
-                      const std::string &config = "",
-                      const std::string &name = "");
+                      Tensor output = NullTensor, const std::string &name = "");
     Tensor reduce_mean(Tensor input, int axis, bool keepdims = true,
                        Tensor output = NullTensor,
-                       const std::string &config = "",
                        const std::string &name = "");
     Tensor reduce_max(Tensor input, int axis, bool keepdims = true,
-                      Tensor output = NullTensor,
-                      const std::string &config = "",
-                      const std::string &name = "");
+                      Tensor output = NullTensor, const std::string &name = "");
 
     // Transposes the `input` tensor according to the given `permutation`.
     // For example, transpose(input, {0, 1 ,3, 2}) will swap the last two
     // dimensions of the input tensor. Currently, only 4D tensors are supported.
     Tensor transpose(Tensor input, const std::vector<int64_t> &permutation,
-                     Tensor output = NullTensor, const std::string &config = "",
-                     const std::string &name = "");
+                     Tensor output = NullTensor, const std::string &name = "");
     // Performs matrix multiplication between the `input` tensor and another
     // `other` tensor, storing the result in `output`.
     Tensor matmul(Tensor input, Tensor other, Tensor output = NullTensor,
                   bool trans_input = false, bool trans_other = false,
-                  const std::string &config = "", const std::string &name = "");
+                  const std::string &name = "");
     // Implements the 'im2col' method for 2D convolution layers, which takes an
     // `input` tensor and reshapes it to a 2D matrix by extracting image patches
     // from the input tensor based on the provided parameters.
@@ -142,66 +136,63 @@ class Model : public ModelGraph {
                     Tensor output = NullTensor, const std::string &name = "");
     // Calculates the exponential of the `input` tensor, element-wise.
     Tensor exp(Tensor input, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     // Calculates the square root of the `input` tensor, element-wise.
     Tensor sqrt(Tensor input, Tensor output = NullTensor,
-                const std::string &config = "", const std::string &name = "");
+                const std::string &name = "");
     // Calculates the reverse square root of the `input` tensor, element-wise.
     Tensor rsqrt(Tensor input, Tensor output = NullTensor,
-                 const std::string &config = "", const std::string &name = "");
+                 const std::string &name = "");
     // ReLU activation
     Tensor relu(Tensor input, Tensor output = NullTensor,
-                const std::string &config = "", const std::string &name = "");
+                const std::string &name = "");
     // Copy the `input` tensor to `output` tensor
     Tensor copy(Tensor input, Tensor output = NullTensor,
-                const std::string &config = "", const std::string &name = "");
+                const std::string &name = "");
     Tensor copy(float val, Tensor output = NullTensor,
-                const std::string &config = "", const std::string &name = "");
+                const std::string &name = "");
     // Applies the Gaussian Error Linear Unit (GELU) activation function to the
     // `input` tensor, element-wise. GELU is a smooth approximation of the
     // rectifier function and is widely used in deep learning models.
     Tensor gelu(Tensor input, Tensor output = NullTensor,
-                const std::string &config = "", const std::string &name = "");
+                const std::string &name = "");
     // Sigmoid activation
     Tensor sigmoid(Tensor input, Tensor output = NullTensor,
-                   const std::string &config = "",
                    const std::string &name = "");
     // Performs rotary position embedding (RoPE) on the `input` tensor
     Tensor rope(Tensor input, Tensor other, Tensor output = NullTensor,
-                const std::string &config = "", const std::string &name = "");
+                const std::string &name = "");
 
     // Performs an element-wise addition operator between the `input` tensor
     // and the `other` tensor
     Tensor add(Tensor input, Tensor other, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     Tensor add(Tensor input, float value, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     // Performs an element-wise subtraction operator between the `input` tensor
     // and the `other` tensor
     Tensor sub(Tensor input, Tensor other, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     Tensor sub(Tensor input, float value, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     // Performs an element-wise multiplication operator between the `input`
     // tensor and the `other` tensor,
     Tensor mul(Tensor input, Tensor other, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     Tensor mul(Tensor input, float value, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     // Performs an element-wise division operator between the `input`
     // tensor and the `other` tensor,
     Tensor div(Tensor input, Tensor other, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
     Tensor div(Tensor input, float value, Tensor output = NullTensor,
-               const std::string &config = "", const std::string &name = "");
+               const std::string &name = "");
 
     Tensor send(Tensor input, int remote_rank, int tag,
-                Tensor output = NullTensor, const std::string &config = "",
-                const std::string &name = "");
+                Tensor output = NullTensor, const std::string &name = "");
     // Blocks the execution until the corresponding 'send' operator with the
     // specified `id` is completed.
-    Tensor send_done(Tensor input, const std::string &config = "",
-                     const std::string &name = "");
+    Tensor send_done(Tensor input, const std::string &name = "");
     // Receives a tensor from a source rank (@p src_rank), identified by the
     // `id` parameter. Blocks the execution until the corresponding 'recv'
     // operator is completed.
@@ -238,12 +229,10 @@ class Model : public ModelGraph {
                                    const std::string &name = "");
     /// Embedding layer.
     Tensor embedding(Tensor input, Tensor weight, Tensor output = NullTensor,
-                     const std::string &config = "",
                      const std::string &name = "");
     /// Tensor type casting.
     Tensor cast(Tensor input, const DataType &data_type,
-                Tensor output = NullTensor, const std::string &config = "",
-                const std::string &name = "");
+                Tensor output = NullTensor, const std::string &name = "");
 
     // sync across multi devices
     Tensor device_sync(Tensor input, int rank, int rank_num,

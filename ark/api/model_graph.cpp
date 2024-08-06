@@ -33,9 +33,7 @@ int ModelGraph::rank() const { return impl_->rank(); }
 
 int ModelGraph::world_size() const { return impl_->world_size(); }
 
-void ModelGraph::compress_nodes(bool merge_nodes) {
-    impl_->compress_nodes(merge_nodes);
-}
+void ModelGraph::compress_nodes() { impl_->compress_nodes(); }
 
 bool ModelGraph::compressed() const { return impl_->compressed(); }
 

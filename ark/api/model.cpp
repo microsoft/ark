@@ -20,7 +20,7 @@ size_t Model::id() const { return id_; }
 
 Model Model::compress() const {
     Model model(*this);
-    model.compress_nodes(merge_nodes);
+    model.compress_nodes();
     return model;
 }
 

@@ -112,7 +112,7 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     return *this;
 }
 
-void ModelGraph::Impl::compress_nodes(bool merge_nodes) {
+void ModelGraph::Impl::compress_nodes() {
     if (!compressed_) {
         this->recursive_remove_virtual_nodes();
         compressed_ = true;
@@ -176,10 +176,6 @@ bool ModelGraph::Impl::verify() const {
         return false;
     }
     return true;
-}
-
-std::string ModelGraph::Impl::get_context(const std::string &key) const {
-    return context_stack_->get_context(key);
 }
 
 ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {

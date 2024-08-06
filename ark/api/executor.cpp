@@ -250,14 +250,6 @@ void Executor::Impl::init(const PlanJson &plan_json) {
             gpu_manager->info().arch->name(), "`.");
     }
 
-    if (!gpu_manager->info().arch->belongs_to(
-            Arch::from_name(plan_json_.at("Architecture")))) {
-        LOG(WARN, "Architecture name of the plan `",
-            plan_json_.at("Architecture").get<std::string>(),
-            "` is not compatible with the GPU architecture `",
-            gpu_manager->info().arch->name(), "`.");
-    }
-
     buffer_id_to_offset_ = init_buffers(plan_json_);
 
     std::string buffer_id_to_offset_str;
