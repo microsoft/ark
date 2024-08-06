@@ -233,8 +233,6 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     }
 
     auto gpu_manager = GpuManager::get_instance(device_id_);
-
-    auto gpu_manager = GpuManager::get_instance(gpu_id_);
     if (!gpu_manager->info().arch->belongs_to(
             Arch::from_name(plan_json.at("Architecture")))) {
         LOG(WARN, "Architecture name of the plan `",
@@ -779,7 +777,7 @@ void Executor::Impl::barrier() {
 uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
-        ERR(NotFoundError, "Invalid buffer ID: ", buffer_id);
+        ERR(InternalError, "Invalid buffer ID: ", buffer_id);
     }
     size_t offset = buffer_id_to_offset_.at(buffer_id);
     return reinterpret_cast<uintptr_t>(buffer_->ref(offset));
