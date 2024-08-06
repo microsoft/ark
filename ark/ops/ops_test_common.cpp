@@ -35,7 +35,7 @@ OpsTestResult op_test(
     const std::string &test_name_prefix, const Model &model,
     const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
     OpsTestBaseline baseline, const std::vector<void *> &inputs_data,
-    const std::vector<DefaultPlanner::ConfigRule> &config_rules,
+    const std::vector<Planner::ConfigRule> &config_rules,
     bool print_on_error) {
     DefaultExecutor exe(model, -1, nullptr, config_rules);
     exe.compile();
