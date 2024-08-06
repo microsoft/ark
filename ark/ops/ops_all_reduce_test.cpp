@@ -125,10 +125,9 @@ void test_all_reduce_packet_internal(ark::DimType nelem) {
 
             std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
                                               ark::half_t(1.0f));
-            auto result =
-                ark::op_test("all_reduce_packet", m, {ones}, {output},
-                             baseline_all_reduce<ark::half_t, NumGpus>,
-                             {ones_vec.data()}, false, gpu_id, NumGpus);
+            auto result = ark::op_test(
+                "all_reduce_packet", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;
@@ -232,10 +231,10 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
 
             std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
                                               ark::half_t(1.0f));
-            auto result = ark::op_test(
-                "all_reduce_sm", m, {ones}, {output},
-                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()},
-                false, gpu_id, NumGpus, config_rule);
+            auto result =
+                ark::op_test("all_reduce_sm", m, {ones}, {output},
+                             baseline_all_reduce<ark::half_t, NumGpus>,
+                             {ones_vec.data()}, {config_rule});
             UNITTEST_LOG(result);
             UNITTEST_EQ(result.max_diff[0], 0.0f);
             return ark::unittest::SUCCESS;

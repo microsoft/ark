@@ -433,7 +433,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
 
             ark::Planner planner(model, gpu_id);
             planner.install_config_rule(config_rule);
-            ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
+            ark::Executor exe(gpu_id, nullptr, "Executor", planner.plan());
             exe.compile();
 
             std::vector<ark::half_t> data(1024);
