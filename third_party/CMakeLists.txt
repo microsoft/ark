@@ -14,7 +14,12 @@ FetchContent_Declare(
     GIT_TAG v0.5.2
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mscclpp
 )
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
+set(BUILD_APPS_NCCL OFF CACHE BOOL "" FORCE)
+set(USE_CUDA ${ARK_USE_CUDA} CACHE BOOL "" FORCE)
+set(USE_ROCM ${ARK_USE_ROCM} CACHE BOOL "" FORCE)
+set(BYPASS_GPU_CHECK ON CACHE BOOL "" FORCE)
 set(INSTALL_PREFIX "ark")
 FetchContent_GetProperties(mscclpp)
 if (NOT mscclpp_POPULATED)
@@ -35,7 +40,7 @@ if (NOT json_POPULATED)
 endif()
 set(JSON_INCLUDE_DIRS ${json_SOURCE_DIR}/include PARENT_SCOPE)
 
-if(USE_CUDA)
+if(ARK_USE_CUDA)
     # Configure CUTLASS
     FetchContent_Declare(
         cutlass
@@ -58,7 +63,7 @@ if(USE_CUDA)
 endif()
 
 
-if(USE_ROCM)
+if(ARK_USE_ROCM)
     # Configure CK
     FetchContent_Declare(
         ck
