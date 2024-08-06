@@ -241,6 +241,7 @@ std::string Planner::Impl::plan(bool pretty) const {
     Json plan;
     plan["Rank"] = model_.rank();
     plan["WorldSize"] = model_.world_size();
+    plan["Architecture"] = gpu_info.arch->name();
     plan["NumProcessors"] = max_processor_id;
     plan["NumWarpsPerProcessor"] = max_warp_id;
     plan["TaskInfos"] = task_infos;

@@ -5,7 +5,7 @@ import logging
 from enum import Enum
 
 from _ark_core import _Executor
-from .planner import Planner
+from .planner import Planner, Plan
 
 
 class _RuntimeState:
@@ -75,11 +75,8 @@ class Runtime:
 
     def launch(
         self,
-        rank: int = 0,
-        world_size: int = 1,
-        gpu_id: int = 0,
-        plan: str = "",
-        plan_path: str = "",
+        plan: Plan = None,
+        device_id: int = 0,
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -89,12 +86,7 @@ class Runtime:
         if self.launched():
             logging.warn("Runtime is already launched, skip launching")
             return
-        if not plan:
-            if not plan_path:
-                plan = Planner(gpu_id).plan()
-            else:
-                with open(plan_path, "r") as f:
-                    plan = f.read()
+        plan = Planner(device_id).plan() if plan is None else plan
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
@@ -104,11 +96,11 @@ class Runtime:
                     _RuntimeState.executor.destroy()
 
             _RuntimeState.executor = Executor(
-                rank,
-                world_size,
-                gpu_id,
+                plan.rank,
+                plan.world_size,
+                device_id,
                 "ArkRuntime",
-                plan,
+                str(plan),
             )
             self.executor = _RuntimeState.executor
             self.executor.compile()
