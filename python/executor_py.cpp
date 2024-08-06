@@ -56,7 +56,7 @@ void register_executor(py::module &m) {
              })
         .def("plan", &ark::Executor::plan)
         .def("compile", &ark::Executor::compile)
-        .def("launch", &ark::Executor::launch, py::arg("max_spin_count") = -1)
+        .def("launch", &ark::Executor::launch)
         .def("run", &ark::Executor::run, py::arg("iter"))
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)

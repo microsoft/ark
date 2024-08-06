@@ -39,7 +39,7 @@ class Executor {
 
     /// Launch the model (not running yet). This must be called after
     /// `compile()`.
-    void launch(int64_t max_spin_count = -1);
+    void launch();
 
     /// Run the model for `iter` iterations.
     void run(int iter);
