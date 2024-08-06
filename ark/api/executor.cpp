@@ -142,7 +142,7 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 class Executor::Impl {
    public:
     Impl(int device_id, Stream stream, const std::string &name, bool loop_mode);
-    ~Impl() = default;
+    ~Impl();
 
     void init(const PlanJson &plan);
 
@@ -154,7 +154,7 @@ class Executor::Impl {
 
     void add_plan(const std::string &plan);
     void compile();
-    void launch(int64_t max_spin_count);
+    void launch();
     void run(int iter);
     void wait(int64_t max_spin_count);
     float stop(int64_t max_spin_count);
@@ -225,6 +225,10 @@ Executor::Impl::Impl(int device_id, Stream stream, const std::string &name,
         stream_ = GpuManager::get_instance(device_id_)->create_stream();
         stream_raw_ = stream_->get();
     }
+}
+
+Executor::Impl::~Impl() {
+    if (is_launched_) stop(-1);
 }
 
 void Executor::Impl::init(const PlanJson &plan_json) {
@@ -669,13 +673,12 @@ void Executor::Impl::add_plan(const std::string &plan) {
 
 void Executor::Impl::compile() { kernel_->compile(); }
 
-void Executor::Impl::launch(int64_t max_spin_count) {
+void Executor::Impl::launch() {
     if (!kernel_->is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
     }
     if (is_launched_) {
-        // Wait until previous works finish.
-        this->wait(max_spin_count);
+        LOG(WARN, "Ignore launching twice.");
         return;
     }
     auto get_global_rt = [&](const std::string &symbol) {
@@ -723,12 +726,6 @@ void Executor::Impl::launch(int64_t max_spin_count) {
     }
 
     elapsed_msec_ = -1;
-    if (!kernel_->is_compiled()) {
-        ERR(InvalidUsageError, "Need to compile first before initialization.");
-    } else if (is_launched_) {
-        LOG(WARN, "Ignore launching twice.");
-        return;
-    }
     timer_begin_->record(stream_raw_);
 
     if (world_size_ > 1) {
@@ -967,7 +964,7 @@ void Executor::add_plan(const std::string &plan) { impl_->add_plan(plan); }
 
 void Executor::compile() { impl_->compile(); }
 
-void Executor::launch(int64_t max_spin_count) { impl_->launch(max_spin_count); }
+void Executor::launch() { impl_->launch(); }
 
 void Executor::run(int iter) { impl_->run(iter); }
 

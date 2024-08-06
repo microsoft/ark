@@ -21,6 +21,8 @@ Json ModelOpArg::serialize() const {
         j[type_name] = this->value<Dims>().vector();
     } else if (type_name == "INT") {
         j[type_name] = this->value<int>();
+    } else if (type_name == "UINT32") {
+        j[type_name] = this->value<uint32_t>();
     } else if (type_name == "INT64") {
         j[type_name] = this->value<int64_t>();
     } else if (type_name == "UINT64") {
@@ -48,6 +50,8 @@ ModelOpArg ModelOpArg::deserialize(const Json &serialized) {
             return ModelOpArg(Dims(value.get<std::vector<DimType>>()));
         } else if (type_name == "INT") {
             return ModelOpArg(value.get<int>());
+        } else if (type_name == "UINT32") {
+            return ModelOpArg(value.get<uint32_t>());
         } else if (type_name == "INT64") {
             return ModelOpArg(value.get<int64_t>());
         } else if (type_name == "UINT64") {
