@@ -18,6 +18,7 @@ def _tensor(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
+    rank: int = -1,
     name: str = "",
 ) -> Tensor:
     if not _is_list_or_tuple(shape):
@@ -42,6 +43,7 @@ def _tensor(
         Dims(strides),
         Dims(offsets),
         Dims(padded_shape),
+        rank,
         name,
     )
 
@@ -462,6 +464,7 @@ def tensor(
     strides: Iterable[int] = [],
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
+    rank: int = -1,
     name: str = "",
 ) -> Tensor:
     """
@@ -470,7 +473,9 @@ def tensor(
     tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
-    return Tensor(_tensor(shape, dtype, strides, offsets, padded_shape, name))
+    return Tensor(
+        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
+    )
 
 
 def transpose(
@@ -605,6 +610,39 @@ def all_reduce(
         input._tensor, rank, world_size, output, name
     )
     return Tensor(_tensor)
+
+
+__all__ = [
+    "tensor",
+    "parameter",
+    "reshape",
+    "identity",
+    "sharding",
+    "reduce_sum",
+    "reduce_mean",
+    "reduce_max",
+    "layernorm",
+    "softmax",
+    "transpose",
+    "matmul",
+    "exp",
+    "sqrt",
+    "rsqrt",
+    "rope",
+    "relu",
+    "gelu",
+    "sigmoid",
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "all_reduce",
+    "embedding",
+    "cast",
+    "constant",
+    "ones",
+    "zeros",
+]
 
 
 # def im2col(

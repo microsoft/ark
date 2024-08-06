@@ -67,15 +67,13 @@ class Model : public ModelGraph {
     /// @p strides should be greater than or equal to the padded shape. If the
     /// @p strides are not provided, they are set to the padded shape. If the
     /// padded shape is not provided, it is set to the @p shape.
+    /// @param rank Rank of the tensor. -1 means the rank of this model.
     /// @param name Name of the tensor.
     /// @return Pointer to a tensor object.
     ///
     Tensor tensor(const Dims &shape, const DataType &data_type,
                   const Dims &strides = {}, const Dims &offsets = {},
-                  const Dims &padded_shape = {}, const std::string &name = "");
-    Tensor tensor(std::shared_ptr<ModelBuffer> buffer, const Dims &shape,
-                  const DataType &data_type, const Dims &strides = {},
-                  const Dims &offsets = {}, const Dims &padded_shape = {},
+                  const Dims &padded_shape = {}, int rank = -1,
                   const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},

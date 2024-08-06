@@ -107,10 +107,11 @@ void register_model(py::module &m) {
         .def("tensor",
              py::overload_cast<const ark::Dims &, const ark::DataType &,
                                const ark::Dims &, const ark::Dims &,
-                               const ark::Dims &, const std::string &>(
+                               const ark::Dims &, int, const std::string &>(
                  &ark::Model::tensor),
              py::arg("shape"), py::arg("data_type"), py::arg("strides"),
-             py::arg("offsets"), py::arg("padded_shape"), py::arg("name"))
+             py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
+             py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),

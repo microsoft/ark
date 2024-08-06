@@ -78,10 +78,9 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
         if (i != rank) {
             int off_index = i < rank ? rank - 1 : rank;
             ark::Tensor scratch_tensor = m.tensor(
-                std::make_shared<ark::ModelBuffer>(i), nbytes_per_rank * 2,
-                ark::UINT8, scratch_strides,
+                nbytes_per_rank * 2, ark::UINT8, scratch_strides,
                 ark::Dims(scratch_off + nbytes_per_rank * off_index * 2),
-                ark::Dims(nbytes_per_rank * 2));
+                ark::Dims(nbytes_per_rank * 2), i);
             m.send_packet(sharded_inputs[i], i, tag_send_reduce, flag,
                           scratch_tensor);
         }
@@ -96,9 +95,8 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
     ark::Dims out_strides = {nbytes_per_rank * 2 * 2}; // packet + double buffer
     for (int i = 0; i < rank_num; i++) {
         if (i != rank) {
-            outputs.push_back(m.tensor(std::make_shared<ark::ModelBuffer>(i),
-                                       out_shape, ark::UINT8, out_strides,
-                                       out_off, out_shape));
+            outputs.push_back(m.tensor(out_shape, ark::UINT8, out_strides,
+                                       out_off, out_shape, i));
         }
     }
     deps.push_back(m.recv_reduce_send_packet(
@@ -170,10 +168,10 @@ ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
         if (i != rank) {
             int remote_off = i < rank ? rank - 1 : rank;
             ark::Tensor scratch =
-                m.tensor(std::make_shared<ark::ModelBuffer>(i), nelems_per_rank,
-                         reshaped_input.data_type(), {nelems_per_rank * npeer},
+                m.tensor(nelems_per_rank, reshaped_input.data_type(),
+                         {nelems_per_rank * npeer},
                          ark::Dims(nelems_per_rank * remote_off),
-                         ark::Dims(nelems_per_rank));
+                         ark::Dims(nelems_per_rank), i);
             m.send(sharded_inputs[i], i, send_tag, scratch);
         }
     }

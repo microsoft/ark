@@ -425,8 +425,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
 
             int peer_gpu_id = (gpu_id + 1) % 2;
             ark::Tensor remote_scratch =
-                model.tensor(std::make_shared<ark::ModelBuffer>(peer_gpu_id),
-                             {512}, ark::FP16, {}, {}, {});
+                model.tensor({512}, ark::FP16, {}, {}, {}, peer_gpu_id);
             ark::Tensor out = model.send(shard_tensors[peer_gpu_id],
                                          peer_gpu_id, 0, remote_scratch);
             out = model.device_sync(out, gpu_id, 2);
@@ -436,7 +435,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
             model.recv(shard_tensors[peer_gpu_id], peer_gpu_id, 1);
             model.device_sync(reduced, gpu_id, 2);
 
-            ark::DefaultPlanner planner(model, gpu_id);
+            ark::Planner planner(model, gpu_id);
             planner.install_config_rule(config_rule);
             ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
             exe.compile();

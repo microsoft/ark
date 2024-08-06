@@ -173,7 +173,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       const std::vector<void *> &inputs_data = {},
                       bool print_on_error = false, int rank = 0,
                       int world_size = 1,
-                      DefaultPlanner::ConfigRule config_rule = nullptr);
+                      Planner::ConfigRule config_rule = nullptr);
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size);
 

@@ -37,8 +37,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       OpsTestBaseline baseline,
                       const std::vector<void *> &inputs_data,
                       bool print_on_error, int rank, int world_size,
-                      DefaultPlanner::ConfigRule config_rule) {
-    DefaultPlanner planner(model, rank);
+                      Planner::ConfigRule config_rule) {
+    Planner planner(model, rank);
     planner.install_config_rule(config_rule);
     Executor exe(rank, world_size, rank, "Executor", planner.plan());
     exe.compile();
