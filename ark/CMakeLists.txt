@@ -6,7 +6,7 @@ file(GLOB_RECURSE UT_SOURCES CONFIGURE_DEPENDS *_test.cpp)
 file(GLOB_RECURSE UT_COMMON_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unittest/*.cpp)
 list(REMOVE_ITEM SOURCES ${UT_SOURCES} ${UT_COMMON_SOURCES})
 
-if(USE_ROCM)
+if(ARK_USE_ROCM)
     file(GLOB_RECURSE CU_SOURCES CONFIGURE_DEPENDS *.cu)
     set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
@@ -23,7 +23,7 @@ target_include_directories(ark_obj SYSTEM PRIVATE
     ${NUMA_INCLUDE_DIRS}
 )
 
-if(USE_CUDA)
+if(ARK_USE_CUDA)
     list(APPEND COMMON_LIBS CUDA::cuda_driver)
     target_include_directories(ark_obj SYSTEM PRIVATE
         ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
@@ -32,7 +32,7 @@ if(USE_CUDA)
     target_compile_definitions(ark_obj PUBLIC ARK_CUDA)
 endif()
 
-if(USE_ROCM)
+if(ARK_USE_ROCM)
     list(APPEND COMMON_LIBS hip::host)
     target_include_directories(ark_obj SYSTEM PRIVATE
         ${PROJECT_SOURCE_DIR}/third_party/cutlass/include
@@ -45,7 +45,7 @@ target_sources(ark_obj PRIVATE ${SOURCES})
 target_link_libraries(ark_obj PUBLIC mscclpp_static PRIVATE ${COMMON_LIBS})
 
 # ARK unit tests
-if(BUILD_TESTS)
+if(ARK_BUILD_TESTS)
     foreach(ut_source IN ITEMS ${UT_SOURCES})
         get_filename_component(exe_name ${ut_source} NAME_WE)
         add_executable(${exe_name} ${ut_source} ${UT_COMMON_SOURCES})
@@ -58,7 +58,7 @@ if(BUILD_TESTS)
             ${NUMA_INCLUDE_DIRS}
         )
 
-        if(USE_CUDA)
+        if(ARK_USE_CUDA)
             target_link_libraries(${exe_name} PRIVATE ark_obj ${COMMON_LIBS} CUDA::cudart CUDA::cublas)
             target_include_directories(${exe_name} SYSTEM PRIVATE
                 ${CUDAToolkit_INCLUDE_DIRS}
