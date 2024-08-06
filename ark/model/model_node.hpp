@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "ark/model_ref.hpp"
+#include "model_json.hpp"
 #include "unique_list.hpp"
 
 namespace ark {
@@ -25,6 +26,9 @@ class ModelNode {
 
     /// The list of @ref ModelNode that this @ref ModelNode depends on.
     UniqueList<ModelNodeRef> producers;
+
+    /// Graph context of this node.
+    std::map<std::string, Json> context;
 };
 
 }  // namespace ark

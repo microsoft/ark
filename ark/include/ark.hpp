@@ -8,6 +8,7 @@
 #include <ark/version.hpp>
 // clang-format on
 
+#include <ark/context.hpp>
 #include <ark/data_type.hpp>
 #include <ark/dims.hpp>
 #include <ark/error.hpp>
