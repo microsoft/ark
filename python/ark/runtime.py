@@ -98,7 +98,7 @@ class Runtime:
                     _RuntimeState.executor.destroy()
 
             _RuntimeState.executor = Executor(
-                gpu_id,
+                device_id,
                 stream,
                 "ArkRuntime",
                 plan,
