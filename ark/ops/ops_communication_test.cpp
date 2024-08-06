@@ -229,7 +229,7 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
             ark::Tensor tns2 = model.identity(tns2_data, {tns});
             tns2 = model.recv(tns2_data, remote_gpu_id, tag);
 
-            ark::DefaultPlanner planner(model, gpu_id);
+            ark::Planner planner(model, gpu_id);
             planner.install_config_rule(config_rule);
             ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
             exe.compile();
@@ -275,7 +275,7 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
 
             ark::Tensor sum = model.add(tns2, tns_data);
 
-            ark::DefaultPlanner planner(model, gpu_id);
+            ark::Planner planner(model, gpu_id);
             planner.install_config_rule(config_rule);
             ark::Executor exe(gpu_id, 2, gpu_id, "Executor", planner.plan());
             exe.compile();

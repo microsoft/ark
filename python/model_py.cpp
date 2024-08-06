@@ -15,6 +15,7 @@ void register_model(py::module &m) {
         .def(py::init<int, int>(), py::arg("rank"), py::arg("world_size"))
         .def("rank", &ark::Model::rank)
         .def("world_size", &ark::Model::world_size)
+        .def("id", &ark::Model::id)
         .def("compress", &ark::Model::compress)
         .def("add",
              py::overload_cast<ark::Tensor, ark::Tensor, ark::Tensor,

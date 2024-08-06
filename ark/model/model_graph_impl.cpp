@@ -17,6 +17,51 @@
 
 namespace ark {
 
+ModelGraphContextStack::ModelGraphContextStack(
+    const ModelGraphContextStack &other) {
+    for (const auto &pair : other.storage_) {
+        for (const auto &value : pair.second) {
+            this->storage_[pair.first].push_back(value);
+        }
+    }
+}
+
+void ModelGraphContextStack::push(const std::string &key, const Json &value) {
+    this->storage_[key].push_back(std::make_shared<Json>(value));
+}
+
+void ModelGraphContextStack::pop(const std::string &key) {
+    auto it = this->storage_.find(key);
+    if (it == this->storage_.end() || it->second.empty()) {
+        ERR(InternalError, "context stack is empty");
+    }
+    it->second.pop_back();
+    if (it->second.empty()) {
+        this->storage_.erase(it);
+    }
+}
+
+bool ModelGraphContextStack::has(const std::string &key) const {
+    return this->storage_.find(key) != this->storage_.end();
+}
+
+Json ModelGraphContextStack::get(const std::string &key) const {
+    if (this->has(key)) {
+        return *this->storage_.at(key).back();
+    }
+    return Json();
+}
+
+std::map<std::string, Json> ModelGraphContextStack::get_all() const {
+    std::map<std::string, Json> cur;
+    for (const auto &pair : this->storage_) {
+        if (!pair.second.empty()) {
+            cur[pair.first] = *pair.second.back();
+        }
+    }
+    return cur;
+}
+
 ModelGraph::Impl::Impl(const ModelGraph::Impl &other) { *this = other; }
 
 ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
@@ -25,6 +70,7 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     for (const auto &node : other.nodes_) {
         ModelNodeRef new_node = std::make_shared<ModelNode>();
         new_node->op = node->op;
+        new_node->context = node->context;
         node_map.emplace(node, new_node);
         nodes_.push_back(new_node);
     }
@@ -61,6 +107,8 @@ ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {
     rank_ = other.rank_;
     world_size_ = other.world_size_;
     compressed_ = other.compressed_;
+    context_stack_ =
+        std::make_shared<ModelGraphContextStack>(*(other.context_stack_));
     return *this;
 }
 
@@ -167,6 +215,8 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
         node->producers.push_back(producer);
         producer->consumers.push_back(node);
     }
+
+    node->context = context_stack_->get_all();
 
     nodes_.push_back(node);
     return node;

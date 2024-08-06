@@ -199,8 +199,11 @@ std::shared_ptr<ModelOp> ModelOp::deserialize(const Json &serialized) {
     } else if (!serialized.contains("Args")) {
         ERR(ModelError, "ModelOp deserialization failed: missing Args");
     }
+    // Run `ModelOpT::from_name` before `construct()` to ensure all operators
+    // are registered.
+    auto op_type = ModelOpT::from_name(serialized["Type"]);
     auto ret = model_op_factory()->construct(serialized["Type"]);
-    ret->type_ = ModelOpT::from_name(serialized["Type"]);
+    ret->type_ = op_type;
     ret->name_ = serialized["Name"];
     ret->is_virtual_ = serialized["IsVirtual"];
     for (const auto &t : serialized["ReadTensors"]) {
