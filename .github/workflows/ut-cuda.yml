@@ -78,8 +78,8 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
           cd build
-          bash <(curl -s https://codecov.io/bash) -f cpp_coverage.info || echo "Codecov did not collect C++ coverage reports"
-          bash <(curl -s https://codecov.io/bash) -f py_coverage.info || echo "Codecov did not collect Python coverage reports"
+          lcov -a cpp_coverage.info -a py_coverage.info -o coverage.info
+          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
       - name: Install Python
         run: |
