@@ -3,8 +3,20 @@
 
 import logging
 import numpy as np
-from typing import Any, Dict
-from .tensor import Parameter
+from typing import Any, Dict, List, Union
+from .tensor import Tensor, Parameter
+from .runtime import Runtime, DefaultPlanner
+from .ops import tensor
+from .data_type import DataType
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 class Module:
@@ -57,7 +69,9 @@ class Module:
         return params_dict
 
     def load_state_dict(
-        self, state_dict: Dict[str, np.ndarray], prefix: str = ""
+        self,
+        state_dict: Dict[str, Union[np.ndarray, torch.Tensor]],
+        prefix: str = "",
     ):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
@@ -68,21 +82,112 @@ class Module:
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
         for name, param in pd.items():
-            param.from_numpy(state_dict[name])
+            data = state_dict.get(name, None)
+            if data is None:
+                continue
+            param.copy(data)
             all_keys.remove(name)
         if all_keys:
             logging.warning(
                 f"{len(all_keys)} unused parameter(s) in state_dict"
             )
 
-    def state_dict(self, prefix: str = "") -> Dict[str, np.ndarray]:
+    def state_dict(
+        self, prefix: str = "", mode: str = "numpy"
+    ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         """
         Copies the parameters from the device GPU to the host and saves the
         model to a state_dict.
         Must be called after the executor is launched.
         """
-        return {k: v.to_numpy() for k, v in self.params_dict(prefix).items()}
+        if mode == "numpy":
+            return {
+                k: v.to_numpy() for k, v in self.params_dict(prefix).items()
+            }
+        elif mode == "torch":
+            return {
+                k: v.to_torch() for k, v in self.params_dict(prefix).items()
+            }
+        raise ValueError(f"Unsupported mode: {mode}")
 
     def forward(self, *args: Any, **kwargs: Any) -> Any: ...
 
     def backward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def initialize(self):
+        for param in self.parameters.values():
+            param.initialize()
+        for module in self.sub_modules.values():
+            module.initialize()
+
+
+def _recursive_ark_to_torch(object):
+    if isinstance(object, Tensor):
+        return object.to_torch()
+    if isinstance(object, dict):
+        return {k: _recursive_ark_to_torch(v) for k, v in object.items()}
+    if isinstance(object, list):
+        return [_recursive_ark_to_torch(v) for v in object]
+    return object
+
+
+class RuntimeModule(Module):
+    def __init__(self):
+        if _no_torch:
+            raise ImportError("torch is not available")
+        super().__init__()
+        self.built_forward = False
+        self.built_backward = False
+        self.forward_input_tensor_args: List[Tensor] = []
+        self.forward_input_tensor_kwargs: Dict[str, Tensor] = {}
+        self.forward_input_args = []
+        self.forward_input_kwargs = {}
+        self.forward_output = None
+        self.backward_tensor_args = []
+        self.backward_tensor_kwargs = {}
+
+    def build_forward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def build_backward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
+        if not self.built_forward:
+            for arg in args:
+                if isinstance(arg, torch.Tensor):
+                    self.forward_input_tensor_args.append(
+                        tensor(
+                            list(arg.shape),
+                            DataType.from_torch(arg.dtype),
+                        )
+                    )
+                    self.forward_input_args.append(
+                        self.forward_input_tensor_args[-1]
+                    )
+                else:
+                    self.forward_input_args.append(arg)
+            for key, value in kwargs.items():
+                if isinstance(value, torch.Tensor):
+                    self.forward_input_tensor_kwargs[key] = tensor(
+                        list(value.shape),
+                        DataType.from_torch(value.dtype),
+                    )
+                    self.forward_input_kwargs[key] = (
+                        self.forward_input_tensor_kwargs[key]
+                    )
+                else:
+                    self.forward_input_kwargs[key] = value
+            self.forward_output = self.build_forward(
+                *self.forward_input_args,
+                **self.forward_input_kwargs,
+            )
+            self.built_forward = True
+
+        with Runtime.get_runtime() as rt:
+            rt.launch(plan=DefaultPlanner().plan())
+            for tns, arg in zip(self.forward_input_tensor_args, args):
+                tns.copy(arg)
+            for key, value in self.forward_input_tensor_kwargs.items():
+                value.copy(kwargs[key])
+
+            rt.run()
+            return _recursive_ark_to_torch(self.forward_output)

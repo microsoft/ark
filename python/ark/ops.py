@@ -1,7 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import List, Iterable, Union
+import json
+from typing import Any, Dict, List, Iterable, Union
 
 from .tensor import Dims, Tensor, Parameter, NullTensor
 from .data_type import DataType, fp32
@@ -10,6 +11,12 @@ from .model import Model
 
 def _is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
+
+
+def _config_to_str(config: Union[str, Dict[str, Any]]) -> str:
+    if isinstance(config, str):
+        return config
+    return json.dumps(config)
 
 
 def _tensor(
@@ -52,6 +59,7 @@ def add(
     input: Union[Tensor, float],
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "add",
 ) -> Union[Tensor, float]:
     """
@@ -61,6 +69,8 @@ def add(
     tensor_add = ark.add(tensor1, tensor2)
     """
     if isinstance(input, Tensor) and isinstance(other, Tensor):
+        if input.runtime_id != other.runtime_id:
+            raise ValueError("Tensors must be on the same runtime")
         a = input._tensor
         b = other._tensor
     elif isinstance(input, Tensor):
@@ -73,24 +83,33 @@ def add(
         return input + other
     else:
         return Tensor(
-            Model.get_model().copy(input + other, output._tensor, name)
+            Model.get_model().copy(
+                input + other, output._tensor, _config_to_str(config), name
+            )
         )
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().add(a, b, output, name))
+    return Tensor(
+        Model.get_model().add(a, b, output, _config_to_str(config), name),
+        runtime_id=input.runtime_id,
+    )
 
 
 def cast(
     input: Tensor,
     dtype: DataType,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "cast",
 ) -> Tensor:
     """Type casting."""
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().cast(input._tensor, dtype.ctype(), output, name)
+        Model.get_model().cast(
+            input._tensor, dtype.ctype(), output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -99,28 +118,37 @@ def constant(
     shape: Iterable[int],
     dtype: DataType = fp32,
     name: str = "constant",
+    runtime_id: int = -1,
 ) -> Tensor:
     """Constant."""
     return Tensor(
-        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name)
+        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name),
+        runtime_id=runtime_id,
     )
 
 
 def copy(
-    input: Union[Tensor, float], output: Tensor = NullTensor, name: str = "copy"
+    input: Union[Tensor, float],
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "copy",
 ) -> Tensor:
     """Data caopy."""
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
         intput = intput._tensor
-    return Tensor(Model.get_model().copy(intput, output, name))
+    return Tensor(
+        Model.get_model().copy(intput, output, _config_to_str(config), name),
+        runtime_id=input.runtime_id,
+    )
 
 
 def div(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "div",
 ) -> Tensor:
     """
@@ -132,26 +160,42 @@ def div(
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
+        if input.runtime_id != other.runtime_id:
+            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(Model.get_model().div(input._tensor, other, output, name))
+    return Tensor(
+        Model.get_model().div(
+            input._tensor, other, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def embedding(
     input: Tensor,
     weight: Tensor,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "embedding",
 ) -> Tensor:
     """Embedding layer."""
+    if input.runtime_id != weight.runtime_id:
+        raise ValueError("Tensors must be on the same runtime")
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().embedding(input._tensor, weight._tensor, output, name)
+        Model.get_model().embedding(
+            input._tensor, weight._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
 def exp(
-    input: Tensor, output: Tensor = NullTensor, name: str = "exp"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "exp",
 ) -> Tensor:
     """
     Calculates the exponential of the `input` tensor, element-wise.
@@ -160,11 +204,19 @@ def exp(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().exp(input._tensor, output, name))
+    return Tensor(
+        Model.get_model().exp(
+            input._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def gelu(
-    input: Tensor, output: Tensor = NullTensor, name: str = "gelu"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "gelu",
 ) -> Tensor:
     """
     Applies the Gaussian Error Linear Unit (GELU) activation
@@ -176,7 +228,12 @@ def gelu(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().gelu(input._tensor, output, name))
+    return Tensor(
+        Model.get_model().gelu(
+            input._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def identity(
@@ -191,8 +248,13 @@ def identity(
     for dep in deps:
         if not isinstance(dep, Tensor):
             raise TypeError("All dependencies should be a tensor")
+        if input.runtime_id != dep.runtime_id:
+            raise ValueError("All tensors must be on the same runtime")
         dep_tensors.append(dep._tensor)
-    return Tensor(Model.get_model().identity(input._tensor, dep_tensors, name))
+    return Tensor(
+        Model.get_model().identity(input._tensor, dep_tensors, name),
+        runtime_id=input.runtime_id,
+    )
 
 
 def matmul(
@@ -201,6 +263,7 @@ def matmul(
     output: Tensor = NullTensor,
     transpose_input: bool = False,
     transpose_other: bool = False,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "matmul",
 ) -> Tensor:
     """
@@ -212,6 +275,8 @@ def matmul(
     Usage:
     tensor_matmul = ark.matmul(tensor1, tensor2)
     """
+    if input.runtime_id != other.runtime_id:
+        raise ValueError("Tensors must be on the same runtime")
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -221,8 +286,10 @@ def matmul(
             output,
             transpose_input,
             transpose_other,
+            _config_to_str(config),
             name,
-        )
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -230,6 +297,7 @@ def mul(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "mul",
 ) -> Tensor:
     """
@@ -241,8 +309,15 @@ def mul(
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
+        if input.runtime_id != other.runtime_id:
+            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(Model.get_model().mul(input._tensor, other, output, name))
+    return Tensor(
+        Model.get_model().mul(
+            input._tensor, other, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def noop(input: Tensor, name: str = "noop"):
@@ -257,6 +332,7 @@ def reduce_max(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_max",
 ) -> Tensor:
     """
@@ -269,8 +345,9 @@ def reduce_max(
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_max(
-            input._tensor, axis, keepdims, output, name
-        )
+            input._tensor, axis, keepdims, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -279,6 +356,7 @@ def reduce_mean(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_mean",
 ) -> Tensor:
     """
@@ -291,8 +369,9 @@ def reduce_mean(
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_mean(
-            input._tensor, axis, keepdims, output, name
-        )
+            input._tensor, axis, keepdims, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -301,6 +380,7 @@ def reduce_sum(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_sum",
 ) -> Tensor:
     """
@@ -315,13 +395,17 @@ def reduce_sum(
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_sum(
-            input._tensor, axis, keepdims, output, name
-        )
+            input._tensor, axis, keepdims, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
 def relu(
-    input: Tensor, output: Tensor = NullTensor, name: str = "relu"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "relu",
 ) -> Tensor:
     """
     Applies the ReLU activation function to the `input` tensor,
@@ -331,7 +415,12 @@ def relu(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().relu(input._tensor, output, name))
+    return Tensor(
+        Model.get_model().relu(
+            input._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def reshape(
@@ -359,7 +448,8 @@ def reshape(
     if len(shape) > 4:
         raise ValueError("Only support tensors with up to 4 dimensions")
     return Tensor(
-        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name)
+        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -367,6 +457,7 @@ def rope(
     input: Tensor,
     other: Tensor,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "rope",
 ) -> Tensor:
     """
@@ -376,13 +467,21 @@ def rope(
     """
     if output is not NullTensor:
         output = output._tensor
+    if input.runtime_id != other.runtime_id:
+        raise ValueError("Tensors must be on the same runtime")
     return Tensor(
-        Model.get_model().rope(input._tensor, other._tensor, output, name)
+        Model.get_model().rope(
+            input._tensor, other._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
 def rsqrt(
-    input: Tensor, output: Tensor = NullTensor, name: str = "rsqrt"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "rsqrt",
 ) -> Tensor:
     """
     Calculates the square root of the `input` tensor, element-wise.
@@ -391,7 +490,12 @@ def rsqrt(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().rsqrt(input._tensor, output, name))
+    return Tensor(
+        Model.get_model().rsqrt(
+            input._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def sharding(
@@ -409,11 +513,16 @@ def sharding(
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
-    return [Tensor(_tensor) for _tensor in _tensor_list]
+    return [
+        Tensor(_tensor, runtime_id=input.runtime_id) for _tensor in _tensor_list
+    ]
 
 
 def sigmoid(
-    input: Tensor, output: Tensor = NullTensor, name: str = "sigmoid"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "sigmoid",
 ) -> Tensor:
     """
     Applies the Sigmoid activation function to the `input` tensor,
@@ -423,11 +532,19 @@ def sigmoid(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().sigmoid(input._tensor, output, name))
+    return Tensor(
+        Model.get_model().sigmoid(
+            input._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def sqrt(
-    input: Tensor, output: Tensor = NullTensor, name: str = "sqrt"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
+    name: str = "sqrt",
 ) -> Tensor:
     """
     Calculates the square root of the `input` tensor, element-wise.
@@ -436,13 +553,19 @@ def sqrt(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(Model.get_model().sqrt(input._tensor, output, name))
+    return Tensor(
+        Model.get_model().sqrt(
+            input._tensor, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def sub(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "sub",
 ) -> Tensor:
     """
@@ -454,8 +577,15 @@ def sub(
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
+        if input.runtime_id != other.runtime_id:
+            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(Model.get_model().sub(input._tensor, other, output, name))
+    return Tensor(
+        Model.get_model().sub(
+            input._tensor, other, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
+    )
 
 
 def tensor(
@@ -466,6 +596,7 @@ def tensor(
     padded_shape: Iterable[int] = [],
     rank: int = -1,
     name: str = "",
+    runtime_id: int = -1,
 ) -> Tensor:
     """
     Construct a tensor with given shape and data type.
@@ -482,6 +613,7 @@ def transpose(
     input: Tensor,
     perm: Iterable[int],
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "transpose",
 ) -> Tensor:
     """
@@ -501,7 +633,10 @@ def transpose(
     if len(perm) > 4:
         raise ValueError("Only support perm up to 4 dimensions")
     return Tensor(
-        Model.get_model().transpose(input._tensor, perm, output, name)
+        Model.get_model().transpose(
+            input._tensor, perm, output, _config_to_str(config), name
+        ),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -513,18 +648,23 @@ def mean(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
+    config: Union[str, Dict[str, Any]] = "",
     name: str = "mean",
 ) -> Tensor:
     """Alias of reduce_mean."""
-    return reduce_mean(input, axis, keepdims, output, name)
+    return reduce_mean(input, axis, keepdims, output, config, name)
 
 
 def ones(
-    shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    name: str = "ones",
+    runtime_id: int = -1,
 ) -> Tensor:
     """Ones."""
     return Tensor(
-        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name)
+        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name),
+        runtime_id=runtime_id,
     )
 
 
@@ -535,12 +675,14 @@ def parameter(
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
     name: str = "",
+    runtime_id: int = -1,
 ) -> Parameter:
     """
     Construct a parameter with given shape and data type.
     """
     return Parameter(
-        _tensor(shape, dtype, strides, offsets, padded_shape, name)
+        _tensor(shape, dtype, strides, offsets, padded_shape, name),
+        runtime_id=runtime_id,
     )
 
 
@@ -574,11 +716,15 @@ def layernorm(
 
 
 def zeros(
-    shape: Iterable[int], dtype: DataType = fp32, name: str = "zeros"
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    name: str = "zeros",
+    runtime_id: int = -1,
 ) -> Tensor:
     """Zeros."""
     return Tensor(
-        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name)
+        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name),
+        runtime_id=runtime_id,
     )
 
 
