@@ -62,26 +62,26 @@ class Executor {
     bool destroyed() const;
 
     /// Return the raw virtual address of the tensor.
-    uintptr_t tensor_address(const Tensor tensor) const;
+    uintptr_t tensor_address(const Tensor &tensor) const;
 
     template <typename T>
-    void tensor_read(const Tensor tensor, std::vector<T> &data,
+    void tensor_read(const Tensor &tensor, std::vector<T> &data,
                      Stream stream = nullptr) const {
         tensor_read(tensor, reinterpret_cast<void *>(data.data()),
                     data.size() * sizeof(T), stream);
     }
 
     template <typename T>
-    void tensor_write(const Tensor tensor, const std::vector<T> &data,
+    void tensor_write(const Tensor &tensor, const std::vector<T> &data,
                       Stream stream = nullptr) const {
         tensor_write(tensor, reinterpret_cast<const void *>(data.data()),
                      data.size() * sizeof(T), stream);
     }
 
-    void tensor_read(const Tensor tensor, void *data, size_t bytes,
+    void tensor_read(const Tensor &tensor, void *data, size_t bytes,
                      Stream stream = nullptr, bool is_d2d = false) const;
 
-    void tensor_write(const Tensor tensor, const void *data, size_t bytes,
+    void tensor_write(const Tensor &tensor, const void *data, size_t bytes,
                       Stream stream = nullptr, bool is_d2d = false) const;
 
    protected:

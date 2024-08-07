@@ -158,11 +158,11 @@ class Executor::Impl {
     float stop(int64_t max_spin_count);
     void barrier();
 
-    uintptr_t tensor_address(const Tensor tensor) const;
+    uintptr_t tensor_address(const Tensor &tensor) const;
 
-    void tensor_read(const Tensor tensor, void *data, size_t bytes,
+    void tensor_read(const Tensor &tensor, void *data, size_t bytes,
                      Stream stream, bool is_d2d) const;
-    void tensor_write(const Tensor tensor, const void *data, size_t bytes,
+    void tensor_write(const Tensor &tensor, const void *data, size_t bytes,
                       Stream stream, bool is_d2d) const;
 
    private:
@@ -771,7 +771,7 @@ void Executor::Impl::barrier() {
     }
 }
 
-uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
+uintptr_t Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
         ERR(InternalError, "Invalid buffer ID: ", buffer_id);
@@ -780,7 +780,7 @@ uintptr_t Executor::Impl::tensor_address(const Tensor tensor) const {
     return reinterpret_cast<uintptr_t>(buffer_->ref(offset));
 }
 
-void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
+void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                                  Stream stream, bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
     std::shared_ptr<GpuStream> copy_stream;
@@ -830,7 +830,7 @@ void Executor::Impl::tensor_read(const Tensor tensor, void *data, size_t bytes,
     GLOG(gpuStreamSynchronize(copy_stream_raw));
 }
 
-void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
+void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
                                   size_t bytes, Stream stream,
                                   bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
@@ -924,17 +924,17 @@ void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
-uintptr_t Executor::tensor_address(const Tensor tensor) const {
+uintptr_t Executor::tensor_address(const Tensor &tensor) const {
     return impl_->tensor_address(tensor);
 }
 
-void Executor::tensor_read(const Tensor tensor, void *data, size_t bytes,
+void Executor::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                            Stream stream, bool is_d2d) const {
     impl_->tensor_read(tensor, data, bytes, stream, is_d2d);
 }
 
-void Executor::tensor_write(const Tensor tensor, const void *data, size_t bytes,
-                            Stream stream, bool is_d2d) const {
+void Executor::tensor_write(const Tensor &tensor, const void *data,
+                            size_t bytes, Stream stream, bool is_d2d) const {
     impl_->tensor_write(tensor, data, bytes, stream, is_d2d);
 }
 
