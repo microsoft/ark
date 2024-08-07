@@ -12,3 +12,6 @@ _pycache__/
 **/*.pyc
 *.pyo
 **/*.pyo
+
+# PyTest
+.pytest_cache/
