@@ -71,7 +71,7 @@ jobs:
       - name: Run Python UT
         run: |
           cd build
-          ARK_ROOT=$PWD pytest --cov --verbose ../python/unittest/test.py
+          ARK_ROOT=$PWD pytest --cov=../python/ark --cov-report lcov:py_coverage.info --verbose ../python/unittest/test.py
 
       - name: Report Coverage
         env:
@@ -79,7 +79,7 @@ jobs:
         run: |
           cd build
           bash <(curl -s https://codecov.io/bash) -f cpp_coverage.info || echo "Codecov did not collect C++ coverage reports"
-          bash <(curl -s https://codecov.io/bash) -f .coverage || echo "Codecov did not collect Python coverage reports"
+          bash <(curl -s https://codecov.io/bash) -f py_coverage.info || echo "Codecov did not collect Python coverage reports"
 
       - name: Install Python
         run: |
