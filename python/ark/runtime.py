@@ -101,7 +101,7 @@ class Runtime:
                 device_id,
                 stream,
                 "ArkRuntime",
-                plan,
+                str(plan),
                 loop_mode,
             )
             self.executor = _RuntimeState.executor
