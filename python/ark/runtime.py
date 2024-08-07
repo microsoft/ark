@@ -47,15 +47,7 @@ class _RuntimeState:
 
 
 class Executor(_Executor):
-    def __init__(
-        self,
-        device_id: int,
-        stream: int,
-        name: str,
-        plan: Plan,
-        loop_mode: bool = True,
-    ):
-        super().__init__(device_id, stream, name, str(plan), loop_mode)
+    pass
 
 
 class Runtime:
@@ -167,7 +159,7 @@ class Runtime:
                 device_id,
                 stream,
                 "ArkRuntime",
-                plan,
+                str(plan),
                 loop_mode,
             )
             self.executor.compile()
