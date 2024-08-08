@@ -50,7 +50,7 @@ jobs:
       run: |
         mkdir build && cd build
         cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BUILD_PYTHON=ON -DARK_BYPASS_GPU_CHECK=ON -DARK_USE_CUDA=ON -DARK_BUILD_TESTS=OFF ..
-        make -j build ark_py
+        make build ark_py
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
