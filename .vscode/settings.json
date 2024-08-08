@@ -3,8 +3,6 @@
     "cmake.environment": {
         "ARK_ROOT": "${workspaceFolder}/build",
         "ARK_IGNORE_BINARY_CACHE": "1",
-        "ARK_DISABLE_GRAPH_OPT": "0",
-        "ARK_IPC_LISTEN_PORT_BASE": "42000",
         // "ARK_LOG_LEVEL": "DEBUG"
     },
     "cmake.ctestArgs": [

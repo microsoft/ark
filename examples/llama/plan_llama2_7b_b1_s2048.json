@@ -1,0 +1,1206 @@
+{
+  "Rank": 0,
+  "WorldSize": 1,
+  "Architecture": "ROCM_942",
+  "NumProcessors": 304,
+  "NumWarpsPerProcessor": 8,
+  "TaskInfos": [
+    {
+      "Id": 0,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Cast",
+          "Name": "cast",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":9,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":11,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":11,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":12,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":11,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":12,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":11,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":12,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":11,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":13,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":12,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":14,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":12,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        },
+        {
+          "Type": "ReduceMean",
+          "Name": "reduce_mean",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":14,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":12,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":15,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":13,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":16,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":13,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "Axis": {"INT":2},
+            "KeepDim": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 1,
+            "ImplType": "WarpWise",
+            "SramBytes": 0,
+            "NumTasks": 2048
+          }
+        }
+      ]
+    },
+    {
+      "Id": 3,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Rsqrt",
+          "Name": "rsqrt",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":16,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":13,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":17,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":14,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":18,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":14,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [64,1],
+            "NumTasks": 32
+          }
+        }
+      ]
+    },
+    {
+      "Id": 4,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Mul",
+          "Name": "mul_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":12,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":11,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":18,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":14,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":19,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":15,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":20,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":15,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul_2",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":20,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":15,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":7,"DataType":"FP32","Shape":[1,1,4096],"Strides":[1,1,4096],"Offsets":[0,0,0],"PaddedShape":[1,1,4096],"Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":20,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":15,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":21,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":15,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        },
+        {
+          "Type": "Cast",
+          "Name": "cast_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":21,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":15,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":22,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":16,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":23,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":16,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        }
+      ]
+    },
+    {
+      "Id": 7,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":23,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":16,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":0,"DataType":"FP16","Shape":[4096,4096],"Strides":[4096,4096],"Offsets":[0,0],"PaddedShape":[4096,4096],"Buffer":{"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":24,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":17,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":25,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":17,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 256
+          }
+        },
+        {
+          "Type": "Rope",
+          "Name": "rope",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":30,"DataType":"FP16","Shape":[1,2048,32,128],"Strides":[1,2048,32,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,32,128],"Buffer":{"Id":17,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":10,"DataType":"FP16","Shape":[1,2048,1,128],"Strides":[1,2048,1,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,1,128],"Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":33,"DataType":"FP16","Shape":[1,2048,32,128],"Strides":[1,2048,32,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,32,128],"Buffer":{"Id":20,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":34,"DataType":"FP16","Shape":[1,2048,32,128],"Strides":[1,2048,32,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,32,128],"Buffer":{"Id":20,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,1,128],
+            "NumTasks": 256
+          }
+        }
+      ]
+    },
+    {
+      "Id": 10,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":23,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":16,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":1,"DataType":"FP16","Shape":[4096,4096],"Strides":[4096,4096],"Offsets":[0,0],"PaddedShape":[4096,4096],"Buffer":{"Id":1,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":26,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":18,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":27,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":18,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 256
+          }
+        },
+        {
+          "Type": "Rope",
+          "Name": "rope_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":31,"DataType":"FP16","Shape":[1,2048,32,128],"Strides":[1,2048,32,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,32,128],"Buffer":{"Id":18,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":10,"DataType":"FP16","Shape":[1,2048,1,128],"Strides":[1,2048,1,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,1,128],"Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":35,"DataType":"FP16","Shape":[1,2048,32,128],"Strides":[1,2048,32,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,32,128],"Buffer":{"Id":21,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":36,"DataType":"FP16","Shape":[1,2048,32,128],"Strides":[1,2048,32,128],"Offsets":[0,0,0,0],"PaddedShape":[1,2048,32,128],"Buffer":{"Id":21,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 256
+          }
+        }
+      ]
+    },
+    {
+      "Id": 13,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_2",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":23,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":16,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":2,"DataType":"FP16","Shape":[4096,4096],"Strides":[4096,4096],"Offsets":[0,0],"PaddedShape":[4096,4096],"Buffer":{"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":28,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":19,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":29,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":19,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 256
+          }
+        }
+      ]
+    },
+    {
+      "Id": 15,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_3",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":38,"DataType":"FP16","Shape":[1,32,2048,128],"Strides":[1,32,2048,128],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,128],"Buffer":{"Id":22,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":42,"DataType":"FP16","Shape":[1,32,2048,128],"Strides":[1,32,2048,128],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,128],"Buffer":{"Id":24,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":43,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":25,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":44,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":25,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 4096
+          }
+        },
+        {
+          "Type": "ScalarMul",
+          "Name": "mul_3",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":44,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":25,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":45,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":46,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "Factor": {"FLOAT":0.0883883461356163}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 4096
+          }
+        }
+      ]
+    },
+    {
+      "Id": 17,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "ReduceMax",
+          "Name": "reduce_max",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":46,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":47,"DataType":"FP16","Shape":[1,32,2048,1],"Strides":[1,32,2048,1],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,1],"Buffer":{"Id":27,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":48,"DataType":"FP16","Shape":[1,32,2048,1],"Strides":[1,32,2048,1],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,1],"Buffer":{"Id":27,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "Axis": {"INT":3},
+            "KeepDim": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 1,
+            "ImplType": "WarpWise",
+            "SramBytes": 0,
+            "NumTasks": 65536
+          }
+        },
+        {
+          "Type": "Sub",
+          "Name": "sub",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":46,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":48,"DataType":"FP16","Shape":[1,32,2048,1],"Strides":[1,32,2048,1],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,1],"Buffer":{"Id":27,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":46,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":49,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,2048],
+            "NumTasks": 65536
+          }
+        },
+        {
+          "Type": "Exp",
+          "Name": "exp",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":49,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":49,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":50,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,2048],
+            "NumTasks": 65536
+          }
+        },
+        {
+          "Type": "ReduceSum",
+          "Name": "reduce_sum",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":50,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":51,"DataType":"FP16","Shape":[1,32,2048,1],"Strides":[1,32,2048,1],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,1],"Buffer":{"Id":28,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":52,"DataType":"FP16","Shape":[1,32,2048,1],"Strides":[1,32,2048,1],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,1],"Buffer":{"Id":28,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "Axis": {"INT":3},
+            "KeepDim": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 1,
+            "ImplType": "WarpWise",
+            "SramBytes": 0,
+            "NumTasks": 65536
+          }
+        },
+        {
+          "Type": "Div",
+          "Name": "div",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":50,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":52,"DataType":"FP16","Shape":[1,32,2048,1],"Strides":[1,32,2048,1],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,1],"Buffer":{"Id":28,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":50,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":53,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,2048],
+            "NumTasks": 65536
+          }
+        }
+      ]
+    },
+    {
+      "Id": 22,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_4",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":53,"DataType":"FP16","Shape":[1,32,2048,2048],"Strides":[1,32,2048,2048],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,2048],"Buffer":{"Id":26,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":40,"DataType":"FP16","Shape":[1,32,2048,128],"Strides":[1,32,2048,128],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,128],"Buffer":{"Id":23,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":54,"DataType":"FP16","Shape":[1,32,2048,128],"Strides":[1,32,2048,128],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,128],"Buffer":{"Id":29,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":55,"DataType":"FP16","Shape":[1,32,2048,128],"Strides":[1,32,2048,128],"Offsets":[0,0,0,0],"PaddedShape":[1,32,2048,128],"Buffer":{"Id":29,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":false}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 256
+          }
+        }
+      ]
+    },
+    {
+      "Id": 24,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_5",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":58,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":30,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":3,"DataType":"FP16","Shape":[4096,4096],"Strides":[4096,4096],"Offsets":[0,0],"PaddedShape":[4096,4096],"Buffer":{"Id":3,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":59,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":31,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":60,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":31,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 256
+          }
+        },
+        {
+          "Type": "Add",
+          "Name": "add",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":9,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":60,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":31,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":61,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":32,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":62,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":32,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 256
+          }
+        },
+        {
+          "Type": "Cast",
+          "Name": "cast_2",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":62,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":32,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":63,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":33,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":64,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":33,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 256
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul_4",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":64,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":33,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":64,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":33,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":65,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":34,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":66,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":34,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 256
+          }
+        }
+      ]
+    },
+    {
+      "Id": 28,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "ReduceMean",
+          "Name": "reduce_mean_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":66,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":34,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":67,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":35,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":68,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":35,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "Axis": {"INT":2},
+            "KeepDim": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 1,
+            "ImplType": "WarpWise",
+            "SramBytes": 0,
+            "NumTasks": 2048
+          }
+        }
+      ]
+    },
+    {
+      "Id": 29,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Rsqrt",
+          "Name": "rsqrt_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":68,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":35,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":69,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":36,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":70,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":36,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [64,1],
+            "NumTasks": 32
+          }
+        }
+      ]
+    },
+    {
+      "Id": 30,
+      "NumWarps": 1,
+      "SramBytes": 0,
+      "Ops": [
+        {
+          "Type": "Mul",
+          "Name": "mul_5",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":64,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":33,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":70,"DataType":"FP32","Shape":[1,2048,1],"Strides":[1,2048,1],"Offsets":[0,0,0],"PaddedShape":[1,2048,1],"Buffer":{"Id":36,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":71,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":37,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":72,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":37,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul_6",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":72,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":37,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":8,"DataType":"FP32","Shape":[1,1,4096],"Strides":[1,1,4096],"Offsets":[0,0,0],"PaddedShape":[1,1,4096],"Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":72,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":37,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":73,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":37,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        },
+        {
+          "Type": "Cast",
+          "Name": "cast_3",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":73,"DataType":"FP32","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":37,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":74,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":38,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":75,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":38,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "Tile": [1,4096],
+            "NumTasks": 2048
+          }
+        }
+      ]
+    },
+    {
+      "Id": 33,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_6",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":75,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":38,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":4,"DataType":"FP16","Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096],"Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":76,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":39,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":77,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":39,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 688
+          }
+        },
+        {
+          "Type": "Sigmoid",
+          "Name": "sigmoid",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":77,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":39,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":78,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":40,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":79,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":40,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 688
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul_7",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":77,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":39,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":79,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":40,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":80,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":41,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":81,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":41,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 688
+          }
+        }
+      ]
+    },
+    {
+      "Id": 36,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_7",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":75,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":38,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":6,"DataType":"FP16","Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096],"Buffer":{"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":82,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":42,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":83,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":42,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 602
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul_8",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":81,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":41,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":83,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":42,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":84,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":43,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":85,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":43,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 602
+          }
+        }
+      ]
+    },
+    {
+      "Id": 37,
+      "NumWarps": 4,
+      "SramBytes": 16480,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_7",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":102,"DataType":"FP16","Shape":[1,1792,4096],"Strides":[1,2048,4096],"Offsets":[0,256,0],"PaddedShape":[1,1792,4096],"Buffer":{"Id":38,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":6,"DataType":"FP16","Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096],"Buffer":{"Id":6,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":101,"DataType":"FP16","Shape":[1,1792,11008],"Strides":[1,2048,11008],"Offsets":[0,256,0],"PaddedShape":[1,1792,11008],"Buffer":{"Id":42,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":100,"DataType":"FP16","Shape":[1,1792,11008],"Strides":[1,2048,11008],"Offsets":[0,256,0],"PaddedShape":[1,1792,11008],"Buffer":{"Id":42,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 16480,
+            "TileShapeMNK": [128,128,32],
+            "NumTasks": 172
+          }
+        },
+        {
+          "Type": "Mul",
+          "Name": "mul_8",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":81,"DataType":"FP16","Shape":[1,1792,11008],"Strides":[1,2048,11008],"Offsets":[0,256,0],"PaddedShape":[1,1792,11008],"Buffer":{"Id":41,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":83,"DataType":"FP16","Shape":[1,1792,11008],"Strides":[1,2048,11008],"Offsets":[0,256,0],"PaddedShape":[1,1792,11008],"Buffer":{"Id":42,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":84,"DataType":"FP16","Shape":[1,1792,11008],"Strides":[1,2048,11008],"Offsets":[0,256,0],"PaddedShape":[1,1792,11008],"Buffer":{"Id":43,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":85,"DataType":"FP16","Shape":[1,1792,11008],"Strides":[1,2048,11008],"Offsets":[0,256,0],"PaddedShape":[1,1792,11008],"Buffer":{"Id":43,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [128,128],
+            "NumTasks": 172
+          }
+        }
+      ]
+    },
+    {
+      "Id": 38,
+      "NumWarps": 4,
+      "SramBytes": 24672,
+      "Ops": [
+        {
+          "Type": "Matmul",
+          "Name": "matmul_8",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":85,"DataType":"FP16","Shape":[1,2048,11008],"Strides":[1,2048,11008],"Offsets":[0,0,0],"PaddedShape":[1,2048,11008],"Buffer":{"Id":43,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":5,"DataType":"FP16","Shape":[4096,11008],"Strides":[4096,11008],"Offsets":[0,0],"PaddedShape":[4096,11008],"Buffer":{"Id":5,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":86,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":44,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":87,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":44,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {
+            "TransposeInput": {"BOOL":false},
+            "TransposeOther": {"BOOL":true}
+          },
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 24672,
+            "TileShapeMNK": [256,128,32],
+            "NumTasks": 256
+          }
+        },
+        {
+          "Type": "Add",
+          "Name": "add_1",
+          "IsVirtual": false,
+          "ReadTensors": [
+            {"Id":62,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":32,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}},
+            {"Id":87,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":44,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "WriteTensors": [
+            {"Id":88,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":45,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "ResultTensors": [
+            {"Id":89,"DataType":"FP16","Shape":[1,2048,4096],"Strides":[1,2048,4096],"Offsets":[0,0,0],"PaddedShape":[1,2048,4096],"Buffer":{"Id":45,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false}}
+          ],
+          "Args": {},
+          "Config": {
+            "NumWarps": 4,
+            "SramBytes": 0,
+            "Tile": [256,128],
+            "NumTasks": 256
+          }
+        }
+      ]
+    }
+  ],
+  "ProcessorGroups": [
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":0,"TaskRange":[0,2048],"Granularity":7}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,32],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,32],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":3,"TaskRange":[0,32],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":4,"TaskRange":[0,2048],"Granularity":7}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,256],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,256],
+          "WarpRange": [0,4],
+          "SramRange": [0,24672],
+          "TaskGroups": [
+            {"TaskId":7,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,256],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,256],
+          "WarpRange": [0,4],
+          "SramRange": [0,24672],
+          "TaskGroups": [
+            {"TaskId":10,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,256],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,256],
+          "WarpRange": [0,4],
+          "SramRange": [0,24672],
+          "TaskGroups": [
+            {"TaskId":13,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,49344],
+          "TaskGroups": [
+            {"TaskId":15,"TaskRange":[0,4096],"Granularity":2}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":17,"TaskRange":[0,65536],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,256],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,256],
+          "WarpRange": [0,4],
+          "SramRange": [0,24672],
+          "TaskGroups": [
+            {"TaskId":22,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,256],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,256],
+          "WarpRange": [0,4],
+          "SramRange": [0,24672],
+          "TaskGroups": [
+            {"TaskId":24,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":28,"TaskRange":[0,2048],"Granularity":7}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,32],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,32],
+          "WarpRange": [0,1],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":29,"TaskRange":[0,32],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,0],
+          "TaskGroups": [
+            {"TaskId":30,"TaskRange":[0,2048],"Granularity":7}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,49344],
+          "TaskGroups": [
+            {"TaskId":33,"TaskRange":[0,688],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,304],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,304],
+          "WarpRange": [0,8],
+          "SramRange": [0,49344],
+          "TaskGroups": [
+            {"TaskId":36,"TaskRange":[0,602],"Granularity":2},
+            {"TaskId":37,"TaskRange":[0,172],"Granularity":1}
+          ]
+        }
+      ]
+    },
+    {
+      "ProcessorRange": [0,256],
+      "ResourceGroups": [
+        {
+          "ProcessorRange": [0,256],
+          "WarpRange": [0,4],
+          "SramRange": [0,24672],
+          "TaskGroups": [
+            {"TaskId":38,"TaskRange":[0,256],"Granularity":1}
+          ]
+        }
+      ]
+    }
+  ]
+}

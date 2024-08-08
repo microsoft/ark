@@ -10,6 +10,7 @@
 #include "file_io.h"
 #include "logging.hpp"
 #include "model/model_buffer.hpp"
+#include "model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"
@@ -224,11 +225,19 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             auto &arg = impl_args[i];
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(tns->buffer()->id());
-                size_t offset = buffer_offset + ModelOffset(tns).value();
-                ss << "(" << tns->data_type()->type_str() << "*)&_buf["
-                   << offset << "]";
+                if (tns->buffer()->is_external()) {
+                    void *buf_addr =
+                        ModelBufferManager::get_instance().get_buffer(
+                            tns->buffer()->id());
+                    ss << "(" << tns->data_type()->type_str() << "*)"
+                       << buf_addr;
+                } else {
+                    size_t buffer_offset =
+                        buffer_id_to_offset_.at(tns->buffer()->id());
+                    size_t offset = buffer_offset + ModelOffset(tns).value();
+                    ss << "(" << tns->data_type()->type_str() << "*)&_buf["
+                       << offset << "]";
+                }
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_offset =
@@ -288,10 +297,14 @@ std::string CodeGenerator::Impl::resource_group(
     size_t proc_b = *rg_proc_range.begin();
     size_t proc_e = *rg_proc_range.end();
     size_t proc_s = rg_proc_range.step();
+    std::map<size_t, Json> task_infos_map;
+    for (auto &task_info : task_infos) {
+        task_infos_map[task_info.at("Id").get<size_t>()] = task_info;
+    }
     std::stringstream ss;
     for (auto &tg : rg_json["TaskGroups"]) {
         size_t task_id = tg["TaskId"];
-        auto &task_info = task_infos[task_id];
+        auto &task_info = task_infos_map.at(task_id);
         Range<size_t> task_range(tg["TaskRange"][0], tg["TaskRange"][1]);
         size_t task_gran = tg["Granularity"];
         size_t num_warps_per_task = task_info["NumWarps"];
@@ -305,7 +318,8 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(PlanError, "not enough resources for task group");
+            ERR(PlanError, "not enough resources for task group: ",
+                tg.dump());
         }
 
         size_t task_b = *task_range.begin();

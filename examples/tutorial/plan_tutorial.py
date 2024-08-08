@@ -339,7 +339,7 @@ def main(plan_path: str):
 
         plan = planner.plan()
         with open("default_plan.json", "w") as f:
-            f.write(plan)
+            f.write(str(plan))
         rt.launch(plan=plan)
 
         # Initialize
@@ -364,7 +364,7 @@ def main(plan_path: str):
         print(f"File {plan_path} does not exist. Exiting...")
         return
     with ark.Runtime.get_runtime() as rt:
-        rt.launch(plan_path=plan_path)
+        rt.launch(plan=ark.Plan.from_file(plan_path))
 
         # Initialize
         InputModule.initialize()

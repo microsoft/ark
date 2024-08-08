@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "model_buffer_manager.hpp"
 #include "model/model_json.hpp"
 
 namespace ark {
