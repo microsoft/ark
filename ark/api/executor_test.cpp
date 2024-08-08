@@ -71,7 +71,6 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
                                                      ark::Dims offset) {
     // Alloc CPU array
     std::vector<float> host_data(shape.nelems());
-    void *host_ptr = host_data.data();
     for (size_t i = 0; i < host_data.size(); ++i) {
         host_data[i] = static_cast<float>(i);
     }
@@ -92,7 +91,8 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
     UNITTEST_GT(executor.tensor_address(tensor), 0);
 
     // Copy data from CPU array to ARK tensor
-    executor.tensor_write(tensor, host_ptr, shape.nelems() * sizeof(float));
+    executor.tensor_write(tensor, host_data.data(),
+                          shape.nelems() * sizeof(float));
 
     // Copy data from ARK tensor to GPU array
     executor.tensor_read(tensor, dev_ptr, shape.nelems() * sizeof(float),
@@ -127,7 +127,8 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
                           nullptr, true);
 
     // Copy data from ARK tensor to CPU array
-    executor.tensor_read(tensor, host_ptr, shape.nelems() * sizeof(float));
+    executor.tensor_read(tensor, host_data.data(),
+                         shape.nelems() * sizeof(float));
 
     // Check the data
     for (size_t i = 0; i < host_data.size(); ++i) {
@@ -139,17 +140,17 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
     UNITTEST_EQ(
         ark::gpuStreamCreateWithFlags(&stream, ark::gpuStreamNonBlocking),
         ark::gpuSuccess);
-    executor.tensor_read(tensor, host_ptr, shape.nelems() * sizeof(float),
-                         stream);
-    executor.tensor_write(tensor, host_ptr, shape.nelems() * sizeof(float),
-                          stream);
+    executor.tensor_read(tensor, host_data.data(),
+                         shape.nelems() * sizeof(float), stream);
+    executor.tensor_write(tensor, host_data.data(),
+                          shape.nelems() * sizeof(float), stream);
     UNITTEST_EQ(ark::gpuStreamDestroy(stream), ark::gpuSuccess);
 
     // Invalid copy size
-    UNITTEST_THROW(executor.tensor_read(tensor, host_ptr,
+    UNITTEST_THROW(executor.tensor_read(tensor, host_data.data(),
                                         shape.nelems() * sizeof(float) + 1),
                    ark::InvalidUsageError);
-    UNITTEST_THROW(executor.tensor_write(tensor, host_ptr,
+    UNITTEST_THROW(executor.tensor_write(tensor, host_data.data(),
                                          shape.nelems() * sizeof(float) + 1),
                    ark::InvalidUsageError);
 
