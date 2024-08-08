@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_MANAGER_H_
-#define ARK_GPU_MANAGER_H_
+#ifndef ARK_GPU_MANAGER_HPP_
+#define ARK_GPU_MANAGER_HPP_
 
 #include <memory>
 
 #include "arch.hpp"
-#include "gpu/gpu.h"
-#include "gpu/gpu_event.h"
-#include "gpu/gpu_memory.h"
-#include "gpu/gpu_stream.h"
+#include "gpu/gpu.hpp"
+#include "gpu/gpu_event.hpp"
+#include "gpu/gpu_memory.hpp"
+#include "gpu/gpu_stream.hpp"
 
 namespace ark {
 
@@ -30,11 +30,9 @@ class GpuManager {
     std::shared_ptr<GpuEvent> create_event(bool disable_timing = false) const;
     std::shared_ptr<GpuStream> create_stream() const;
 
-    int get_gpu_id() const;
     void launch(gpuFunction function, const std::array<int, 3> &grid_dim,
                 const std::array<int, 3> &block_dim, int smem_bytes,
-                std::shared_ptr<GpuStream> stream, void **params,
-                void **extra) const;
+                gpuStream stream, void **params, void **extra) const;
 
     struct Info;
     const Info &info() const;
@@ -64,4 +62,4 @@ class GpuManager {
 
 }  // namespace ark
 
-#endif  // ARK_GPU_MANAGER_H_
+#endif  // ARK_GPU_MANAGER_HPP_

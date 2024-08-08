@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_EVENT_H_
-#define ARK_GPU_EVENT_H_
+#ifndef ARK_GPU_EVENT_HPP_
+#define ARK_GPU_EVENT_HPP_
 
 #include <memory>
+
+#include "gpu/gpu.hpp"
 
 namespace ark {
 
@@ -17,7 +19,7 @@ class GpuEvent {
     GpuEvent(const GpuEvent &) = delete;
     GpuEvent &operator=(const GpuEvent &) = delete;
 
-    void record(std::shared_ptr<GpuStream> stream);
+    void record(gpuStream stream);
     float elapsed_msec(const GpuEvent &other) const;
 
    protected:
@@ -31,4 +33,4 @@ class GpuEvent {
 };
 }  // namespace ark
 
-#endif  // ARK_GPU_EVENT_H_
+#endif  // ARK_GPU_EVENT_HPP_

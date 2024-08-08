@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_MEMORY_H_
-#define ARK_GPU_MEMORY_H_
+#ifndef ARK_GPU_MEMORY_HPP_
+#define ARK_GPU_MEMORY_HPP_
 
 #include <memory>
 #include <vector>
 
-#include "gpu/gpu.h"
+#include "gpu/gpu.hpp"
 
 namespace ark {
 
@@ -40,7 +40,7 @@ class GpuHostMemory {
     GpuHostMemory(const GpuHostMemory&) = delete;
     GpuHostMemory& operator=(const GpuHostMemory&) = delete;
 
-    template <typename T>
+    template <typename T = void>
     T* ref() const {
         return reinterpret_cast<T*>(ptr_);
     }
@@ -54,4 +54,4 @@ class GpuHostMemory {
 
 }  // namespace ark
 
-#endif  // ARK_GPU_MEMORY_H_
+#endif  // ARK_GPU_MEMORY_HPP_

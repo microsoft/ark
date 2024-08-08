@@ -10,7 +10,7 @@
 #include "ark/planner.hpp"
 #include "ark/random.hpp"
 #include "env.h"
-#include "gpu/gpu_logging.h"
+#include "gpu/gpu_logging.hpp"
 #include "logging.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
@@ -31,16 +31,13 @@ std::ostream &operator<<(std::ostream &os, const OpsTestResult &result) {
     return os;
 }
 
-OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
-                      const std::vector<Tensor> &inputs,
-                      const std::vector<Tensor> &outputs,
-                      OpsTestBaseline baseline,
-                      const std::vector<void *> &inputs_data,
-                      bool print_on_error, int rank, int world_size,
-                      Planner::ConfigRule config_rule) {
-    Planner planner(model, rank);
-    planner.install_config_rule(config_rule);
-    Executor exe(rank, world_size, rank, "Executor", planner.plan());
+OpsTestResult op_test(
+    const std::string &test_name_prefix, const Model &model,
+    const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+    OpsTestBaseline baseline, const std::vector<void *> &inputs_data,
+    const std::vector<Planner::ConfigRule> &config_rules,
+    bool print_on_error) {
+    DefaultExecutor exe(model, -1, nullptr, config_rules);
     exe.compile();
 
     std::vector<std::shared_ptr<std::vector<char>>> inputs_data_storages;
@@ -136,7 +133,8 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
     for (auto t : gt) {
         gt_ptrs.push_back(t->data());
     }
-    baseline(gt_ptrs, output_shapes, inputs_data_refs, input_shapes, rank);
+    baseline(gt_ptrs, output_shapes, inputs_data_refs, input_shapes,
+             model.rank());
 
     std::stringstream test_name;
     test_name << test_name_prefix;
@@ -150,6 +148,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
 
     OpsTestResult result;
     result.test_name = test_name.str();
+    result.plan = exe.plan();
 
     // Compare results with the ground truth.
     for (size_t i = 0; i < outputs.size(); i++) {
@@ -190,7 +189,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
     GLOG(gpuDeviceSynchronize());
 
     // Throughput test.
-    if (world_size > 1) {
+    if (model.world_size() > 1) {
         // For multi-GPU, we need to make sure that all GPUs run the same
         // number of iterations. Rather than doing allgather, we just
         // use a magic number here.

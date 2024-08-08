@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_LOGGING_H_
-#define ARK_GPU_LOGGING_H_
+#ifndef ARK_GPU_LOGGING_HPP_
+#define ARK_GPU_LOGGING_HPP_
 
-#include "gpu/gpu.h"
+#include "gpu/gpu.hpp"
 #include "logging.hpp"
 
 #define GLOG(cmd)                                           \
@@ -29,4 +29,4 @@
         }                                                                      \
     } while (0)
 
-#endif  // ARK_GPU_LOGGING_H_
+#endif  // ARK_GPU_LOGGING_HPP_

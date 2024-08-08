@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_GPU_STREAM_H_
-#define ARK_GPU_STREAM_H_
+#ifndef ARK_GPU_STREAM_HPP_
+#define ARK_GPU_STREAM_HPP_
 
 #include <memory>
 
-#include "gpu/gpu.h"
+#include "gpu/gpu.hpp"
 
 namespace ark {
 
@@ -30,4 +30,4 @@ class GpuStream {
 };
 }  // namespace ark
 
-#endif  // ARK_GPU_STREAM_H_
+#endif  // ARK_GPU_STREAM_HPP_

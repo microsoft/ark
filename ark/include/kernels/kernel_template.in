@@ -33,12 +33,12 @@ __device__ sync::State ARK_LOOP_SYNC_STATE;
 
 @DEFINITIONS@
 
-__device__ void ark_loop_body(char *_buf, int _iter) {
+__device__ void ark_body(char *_buf, int _iter) {
 @BODY@
 }
 
 extern "C" __global__ __launch_bounds__(ARK_WARPS_PER_BLOCK * Arch::ThreadsPerWarp, 1)
-void @NAME@(char *_buf, int *_iter) {
+void ark_loop_kernel@NAME@(char *_buf, int *_iter) {
   int *shared_mem = (int *)_ARK_SMEM;
   for (int i = threadIdx.x; i < ARK_SMEM_RESERVED_BYTES / sizeof(int); i += blockDim.x) {
     shared_mem[i] = 0;
@@ -52,10 +52,10 @@ void @NAME@(char *_buf, int *_iter) {
     sync_gpu<@NUM_BLOCKS@>(ARK_LOOP_SYNC_STATE);
     if (ARK_ITER < 0) return;
 
-    ark_loop_body(_buf, 0);
+    ark_body(_buf, 0);
     for (int _i = 1; _i < ARK_ITER; ++_i) {
       sync_gpu<@NUM_BLOCKS@>(ARK_LOOP_SYNC_STATE);
-      ark_loop_body(_buf, _i);
+      ark_body(_buf, _i);
     }
     if (threadIdx.x == 0) {
       __threadfence_system();
@@ -66,4 +66,13 @@ void @NAME@(char *_buf, int *_iter) {
     }
     sync_gpu<@NUM_BLOCKS@>(ARK_LOOP_SYNC_STATE);
   }
+}
+
+extern "C" __global__ __launch_bounds__(ARK_WARPS_PER_BLOCK * Arch::ThreadsPerWarp, 1)
+void ark_kernel@NAME@(char *_buf, int _iter) {
+  int *shared_mem = (int *)_ARK_SMEM;
+  for (int i = threadIdx.x; i < ARK_SMEM_RESERVED_BYTES / sizeof(int); i += blockDim.x) {
+    shared_mem[i] = 0;
+  }
+  ark_body(_buf, _iter);
 }

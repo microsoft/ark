@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include "gpu/gpu_compile.h"
+#include "gpu/gpu_compile.hpp"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -22,7 +22,7 @@
 #include "cpu_timer.h"
 #include "env.h"
 #include "file_io.h"
-#include "gpu/gpu_logging.h"
+#include "gpu/gpu_logging.hpp"
 #include "utils/utils_string.hpp"
 
 #define ARK_DEBUG_KERNEL 0

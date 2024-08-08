@@ -134,6 +134,7 @@ TensorCompareResult tensor_compare(T *ground_truth, T *res, Dims shape,
 
 struct OpsTestResult {
     std::string test_name;
+    std::string plan;
     int iter;
     float msec_per_iter;
     std::vector<float> mse;
@@ -166,14 +167,12 @@ using OpsTestBaseline = std::function<void(
 
 class Model;
 
-OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
-                      const std::vector<Tensor> &inputs,
-                      const std::vector<Tensor> &outputs,
-                      OpsTestBaseline baseline,
-                      const std::vector<void *> &inputs_data = {},
-                      bool print_on_error = false, int rank = 0,
-                      int world_size = 1,
-                      Planner::ConfigRule config_rule = nullptr);
+OpsTestResult op_test(
+    const std::string &test_name_prefix, const Model &model,
+    const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
+    OpsTestBaseline baseline, const std::vector<void *> &inputs_data = {},
+    const std::vector<Planner::ConfigRule> &config_rules = {},
+    bool print_on_error = false);
 
 OpsTestGpuMem to_gpu(void *host_ptr, size_t size);
 

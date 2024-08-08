@@ -7,7 +7,7 @@
 #include "context_impl.hpp"
 #include "env.h"
 #include "file_io.h"
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu_manager.hpp"
 #include "model/model_json.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"

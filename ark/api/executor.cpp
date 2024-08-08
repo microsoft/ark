@@ -14,11 +14,11 @@
 #include "codegen.hpp"
 #include "env.h"
 #include "file_io.h"
-#include "gpu/gpu.h"
-#include "gpu/gpu_event.h"
-#include "gpu/gpu_kernel.h"
-#include "gpu/gpu_logging.h"
-#include "gpu/gpu_manager.h"
+#include "gpu/gpu.hpp"
+#include "gpu/gpu_event.hpp"
+#include "gpu/gpu_kernel.hpp"
+#include "gpu/gpu_logging.hpp"
+#include "gpu/gpu_manager.hpp"
 #include "logging.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
@@ -140,20 +140,30 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl(int rank, int world_size, int gpu_id, const std::string &name,
-         const std::string &plan);
-    ~Impl() = default;
+    Impl(int device_id, Stream stream, const std::string &name, bool loop_mode);
+    ~Impl();
+
+    void init(const PlanJson& plan);
+
+    int device_id() const { return device_id_; }
+
+    Stream stream() const { return reinterpret_cast<Stream>(stream_raw_); }
+
+    std::string plan() const { return plan_json_.dump_pretty(); }
 
     void compile();
-    void launch(int64_t max_spin_count);
+    void launch();
     void run(int iter);
     void wait(int64_t max_spin_count);
     float stop(int64_t max_spin_count);
     void barrier();
 
-    void tensor_read(const Tensor tensor, void *data, size_t bytes) const;
-    void tensor_write(const Tensor tensor, const void *data,
-                      size_t bytes) const;
+    uintptr_t tensor_address(const Tensor &tensor) const;
+
+    void tensor_read(const Tensor &tensor, void *data, size_t bytes,
+                     Stream stream, bool is_d2d) const;
+    void tensor_write(const Tensor &tensor, const void *data, size_t bytes,
+                      Stream stream, bool is_d2d) const;
 
    private:
     void init_communicator();
@@ -162,14 +172,20 @@ class Executor::Impl {
     void init_channels(const std::set<int> &remote_ranks);
 
    protected:
-    const int rank_;
-    const int world_size_;
-    int gpu_id_;
+    int device_id_;
+    std::string name_;
+    bool loop_mode_;
+
+    gpuStream stream_raw_;
+
+    int rank_;
+    int world_size_;
 
     bool is_launched_ = false;
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
+    PlanJson plan_json_;
     std::map<size_t, size_t> buffer_id_to_offset_;
     size_t total_bytes_;
     std::shared_ptr<CodeGenerator> codegen_;
@@ -177,8 +193,7 @@ class Executor::Impl {
     std::shared_ptr<GpuEvent> timer_end_;
     std::shared_ptr<GpuMemory> buffer_;
     std::shared_ptr<GpuHostMemory> flag_;
-    std::shared_ptr<GpuStream> main_stream_;
-    std::shared_ptr<GpuStream> copy_stream_;
+    std::shared_ptr<GpuStream> stream_;
     std::shared_ptr<GpuKernel> kernel_;
 
     // For communication
@@ -190,30 +205,38 @@ class Executor::Impl {
         rank_to_sm_channels_;
 };
 
-Executor::Impl::Impl(int rank, int world_size, int gpu_id,
-                     const std::string &name, const std::string &plan)
-    : rank_(rank), world_size_(world_size), gpu_id_(gpu_id) {
-    if (rank < 0 || rank >= world_size) {
-        ERR(InvalidUsageError, "Invalid rank ", rank, " with world size ",
-            world_size);
+Executor::Impl::Impl(int device_id, Stream stream, const std::string &name,
+                     bool loop_mode)
+    : device_id_(device_id), name_(name), loop_mode_(loop_mode) {
+    if (device_id < 0) {
+        ERR(InvalidUsageError, "Invalid device ID ", device_id);
     }
-    if (gpu_id < 0) {
-        ERR(InvalidUsageError, "Invalid GPU ID ", gpu_id);
+    if (stream) {
+        stream_raw_ = reinterpret_cast<gpuStream>(stream);
+    } else {
+        stream_ = GpuManager::get_instance(device_id_)->create_stream();
+        stream_raw_ = stream_->get();
+    }
+}
+
+Executor::Impl::~Impl() {
+    if (is_launched_) stop(-1);
+}
+
+void Executor::Impl::init(const PlanJson &plan_json) {
+    plan_json_ = plan_json;
+    rank_ = plan_json_["Rank"].get<int>();
+    world_size_ = plan_json_["WorldSize"].get<int>();
+
+    if (rank_ < 0 || rank_ >= world_size_) {
+        ERR(InvalidUsageError, "Invalid rank ", rank_, " with world size ",
+            world_size_);
     }
     if (world_size_ > 1) {
         init_communicator();
     }
 
-    Json plan_json;
-    auto &plan_path = get_env().enforce_plan_path;
-    if (!plan_path.empty()) {
-        LOG(INFO, "Enforce executor plan path: ", plan_path);
-        plan_json = Json::parse(read_file(plan_path));
-    } else {
-        plan_json = Json::parse(plan);
-    }
-
-    auto gpu_manager = GpuManager::get_instance(gpu_id_);
+    auto gpu_manager = GpuManager::get_instance(device_id_);
     if (!gpu_manager->info().arch->belongs_to(
             Arch::from_name(plan_json.at("Architecture")))) {
         LOG(WARN, "Architecture name of the plan `",
@@ -222,7 +245,7 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
             gpu_manager->info().arch->name(), "`.");
     }
 
-    buffer_id_to_offset_ = init_buffers(plan_json);
+    buffer_id_to_offset_ = init_buffers(plan_json_);
 
     std::string buffer_id_to_offset_str;
     for (const auto &kv : buffer_id_to_offset_) {
@@ -230,34 +253,39 @@ Executor::Impl::Impl(int rank, int world_size, int gpu_id,
             std::to_string(kv.first) + ": " + std::to_string(kv.second) + ", ";
     }
 
-    codegen_ =
-        std::make_shared<CodeGenerator>(plan_json, buffer_id_to_offset_, name);
+    codegen_ = std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_,
+                                               name_);
 
     timer_begin_ = gpu_manager->create_event();
     timer_end_ = gpu_manager->create_event();
     buffer_ = gpu_manager->malloc(total_bytes_, 65536);
     flag_ = gpu_manager->malloc_host(
         sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
-    main_stream_ = gpu_manager->create_stream();
-    copy_stream_ = gpu_manager->create_stream();
 
     int threads_per_block = static_cast<int>(
         codegen_->num_warps_per_proc() * gpu_manager->info().threads_per_warp);
     int num_sm = static_cast<int>(codegen_->num_procs());
-    int *flag = flag_->ref<int>();
     size_t smem_block_total =
         static_cast<size_t>(gpu_manager->info().smem_block_total);
 
     if (world_size_ > 1) {
-        auto remote_ranks = init_remote_ranks(plan_json);
+        auto remote_ranks = init_remote_ranks(plan_json_);
         init_channels(remote_ranks);
     }
 
+    std::string kernel_name;
+    if (loop_mode_) {
+        kernel_name = "ark_loop_kernel";
+    } else {
+        kernel_name = "ark_kernel";
+    }
+    if (!name_.empty()) {
+        kernel_name += "_" + name_;
+    }
+
     kernel_ = std::shared_ptr<GpuKernel>(new GpuKernel(
-        gpu_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
-        std::max(smem_block_total, size_t(4)), name,
-        {std::pair<void *, size_t>{buffer_->ref(), sizeof(buffer_->ref())},
-         std::pair<void *, size_t>{flag, sizeof(flag)}}));
+        device_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
+        std::max(smem_block_total, size_t(4)), kernel_name));
 }
 
 void Executor::Impl::init_communicator() {
@@ -517,7 +545,7 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     mscclpp::TransportFlags all_transports =
         mscclpp::Transport::CudaIpc | mscclpp::Transport::Ethernet;
     if (!get_env().disable_ib) {
-        all_transports |= IBs[gpu_id_];
+        all_transports |= IBs[device_id_];
     }
     mscclpp::RegisteredMemory regmem =
         comm_->registerMemory(buffer_->ref(), buffer_->bytes(), all_transports);
@@ -538,12 +566,12 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
         if (remote_node == this_node) {
             add_connection(remote_rank, mscclpp::Transport::CudaIpc);
             if (!get_env().disable_ib) {
-                add_connection(remote_rank, IBs[gpu_id_]);
+                add_connection(remote_rank, IBs[device_id_]);
             }
         } else {
             add_connection(remote_rank, get_env().disable_ib
                                             ? mscclpp::Transport::Ethernet
-                                            : IBs[gpu_id_]);
+                                            : IBs[device_id_]);
         }
         comm_->sendMemoryOnSetup(regmem, remote_rank, 0);
         rank_to_remote_regmem_future[remote_rank] =
@@ -596,13 +624,12 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
 
 void Executor::Impl::compile() { kernel_->compile(); }
 
-void Executor::Impl::launch(int64_t max_spin_count) {
+void Executor::Impl::launch() {
     if (!kernel_->is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before initialization.");
     }
     if (is_launched_) {
-        // Wait until previous works finish.
-        this->wait(max_spin_count);
+        LOG(WARN, "Ignore launching twice.");
         return;
     }
     auto get_global_rt = [&](const std::string &symbol) {
@@ -631,83 +658,102 @@ void Executor::Impl::launch(int64_t max_spin_count) {
                 sm_handles[i] = it2->second[0]->deviceHandle();
             }
         }
-        GLOG(gpuSetDevice(gpu_id_));
+        GLOG(gpuSetDevice(device_id_));
         GLOG(gpuMemcpyAsync(
             proxy_chan_addr, proxy_handles.data(),
             proxy_handles.size() *
                 sizeof(mscclpp::SimpleProxyChannel::DeviceHandle),
-            gpuMemcpyHostToDevice, copy_stream_->get()));
+            gpuMemcpyHostToDevice, stream_raw_));
         GLOG(gpuMemcpyAsync(
             proxy_secondary_chan_addr, proxy_secondary_handles.data(),
             proxy_secondary_handles.size() *
                 sizeof(mscclpp::SimpleProxyChannel::DeviceHandle),
-            gpuMemcpyHostToDevice, copy_stream_->get()));
+            gpuMemcpyHostToDevice, stream_raw_));
         GLOG(gpuMemcpyAsync(
             sm_chan_addr, sm_handles.data(),
             sm_handles.size() * sizeof(mscclpp::SmChannel::DeviceHandle),
-            gpuMemcpyHostToDevice, copy_stream_->get()));
-        copy_stream_->sync();
+            gpuMemcpyHostToDevice, stream_raw_));
+        GLOG(gpuStreamSynchronize(stream_raw_));
     }
 
     elapsed_msec_ = -1;
-    if (!kernel_->is_compiled()) {
-        ERR(InvalidUsageError, "Need to compile first before initialization.");
-    } else if (is_launched_) {
-        LOG(WARN, "Ignore launching twice.");
-        return;
-    }
-    timer_begin_->record(main_stream_);
+    timer_begin_->record(stream_raw_);
 
     if (world_size_ > 1) {
         proxy_service_->startProxy();
     }
 
-    // Initialize loop flags.
-    atomicStoreRelaxed(flag_->ref<int>(), 0);
-    kernel_->launch(main_stream_);
-    timer_end_->record(main_stream_);
+    if (loop_mode_) {
+        // Initialize loop flags.
+        atomicStoreRelaxed(flag_->ref<int>(), 0);
+        void *buf_ptr = buffer_->ref();
+        void *flag_ptr = flag_->ref();
+        std::vector<void *> args = {&buf_ptr, &flag_ptr};
+        kernel_->launch(stream_raw_, args);
+    }
     is_recording_ = true;
     is_launched_ = true;
 }
 
 void Executor::Impl::run(int iter) {
-    if (iter > 0) {
+    if (iter <= 0) return;
+    if (loop_mode_) {
         while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
         }
         atomicStoreRelaxed(flag_->ref<int>(), iter);
+    } else {
+        void *buf_ptr = buffer_->ref();
+        int i = 0;
+        std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
+        for (; i < iter; i++) {
+            kernel_->launch(stream_raw_, args);
+        }
     }
 }
 
 void Executor::Impl::wait(int64_t max_spin_count) {
     int64_t cnt = max_spin_count;
-    while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
-        if (cnt-- > 0) {
-            continue;
-        }
-        // Check if the kernel encountered an error.
-        gpuError res = main_stream_->query();
-        if (res == gpuSuccess) {
-            if (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
-                LOG(WARN, "Stream is finished but the loop flag is still set.");
-                break;
-            } else {
-                LOG(WARN,
-                    "wait() is delayed by a stream query. Regarding "
-                    "timing measurements may be inaccurate.");
-                break;
+    if (loop_mode_) {
+        while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
+            if (cnt-- > 0) {
+                continue;
             }
-        } else if (res == gpuErrorNotReady) {
-            cnt = max_spin_count;
-        } else {
-            GLOG(res);
+            // Check if the kernel encountered an error.
+            gpuError res = gpuStreamQuery(stream_raw_);
+            if (res == gpuSuccess) {
+                if (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
+                    LOG(WARN,
+                        "Stream is finished but the loop flag is still set.");
+                    break;
+                } else {
+                    LOG(WARN,
+                        "wait() is delayed by a stream query. Regarding "
+                        "timing measurements may be inaccurate.");
+                    break;
+                }
+            } else if (res == gpuErrorNotReady) {
+                cnt = max_spin_count;
+            } else {
+                GLOG(res);
+            }
         }
+    } else {
+        if (max_spin_count >= 0) {
+            LOG(WARN, "max_spin_count is ignored in non-loop mode.");
+        }
+        GLOG(gpuStreamSynchronize(stream_raw_));
     }
 }
 
 float Executor::Impl::stop(int64_t max_spin_count) {
     this->wait(max_spin_count);
-    atomicStoreRelaxed(flag_->ref<int>(), -1);
-    main_stream_->sync();
+    if (is_recording_) {
+        timer_end_->record(stream_raw_);
+    }
+    if (loop_mode_) {
+        atomicStoreRelaxed(flag_->ref<int>(), -1);
+    }
+    GLOG(gpuStreamSynchronize(stream_raw_));
     if (is_recording_) {
         elapsed_msec_ = timer_end_->elapsed_msec(*timer_begin_);
         is_recording_ = false;
@@ -725,74 +771,144 @@ void Executor::Impl::barrier() {
     }
 }
 
-void Executor::Impl::tensor_read(const Tensor tensor, void *data,
-                                 size_t bytes) const {
-    GLOG(gpuSetDevice(gpu_id_));
+uintptr_t Executor::Impl::tensor_address(const Tensor &tensor) const {
+    size_t buffer_id = tensor.ref()->buffer()->id();
+    if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
+        ERR(InternalError, "Invalid buffer ID: ", buffer_id);
+    }
+    size_t offset = buffer_id_to_offset_.at(buffer_id);
+    return reinterpret_cast<uintptr_t>(buffer_->ref(offset));
+}
+
+void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
+                                 Stream stream, bool is_d2d) const {
+    GLOG(gpuSetDevice(device_id_));
+    std::shared_ptr<GpuStream> copy_stream;
+    gpuStream copy_stream_raw;
+    if (stream) {
+        copy_stream_raw = reinterpret_cast<gpuStream>(stream);
+        if ((stream == stream_raw_) && is_launched_) {
+            LOG(WARN,
+                "Reading from a tensor in the same stream of the kernel "
+                "may cause a deadlock.");
+        }
+    } else {
+        copy_stream = GpuManager::get_instance(device_id_)->create_stream();
+        copy_stream_raw = copy_stream->get();
+    }
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
-    if (bytes < tensor_data_bytes) {
-        ERR(InvalidUsageError, "Data buffer (", bytes,
-            ") is smaller than the tensor data (", tensor_data_bytes, ").");
+    if (bytes != tensor_data_bytes) {
+        ERR(InvalidUsageError, "Destination bytes (", bytes,
+            ") mismatches the tensor data bytes (", tensor_data_bytes, ").");
     }
-    size_t tensor_bytes =
-        tensor.strides().nelems() * tensor.data_type().bytes();
-    void *src =
-        buffer_->ref(buffer_id_to_offset_.at(tensor.ref()->buffer()->id()));
+    auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyDeviceToHost;
+    void *src = reinterpret_cast<void *>(tensor_address(tensor));
     if (tensor.strides() == tensor.shape()) {
-        GLOG(gpuMemcpyAsync(data, src, bytes, gpuMemcpyDeviceToHost,
-                            copy_stream_->get()));
-        copy_stream_->sync();
+        GLOG(gpuMemcpyAsync(data, src, bytes, kind, copy_stream_raw));
     } else {
+        size_t tensor_bytes =
+            tensor.strides().nelems() * tensor.data_type().bytes();
         std::vector<int8_t> tensor_host(tensor_bytes);
         GLOG(gpuMemcpyAsync(tensor_host.data(), src, tensor_bytes,
-                            gpuMemcpyDeviceToHost, copy_stream_->get()));
-        copy_stream_->sync();
-        tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
-                       tensor.shape(), tensor.strides(), tensor.offsets(),
+                            gpuMemcpyDeviceToHost, copy_stream_raw));
+        GLOG(gpuStreamSynchronize(copy_stream_raw));
+        if (!is_d2d) {
+            tensor_to_data(tensor_host.data(), static_cast<int8_t *>(data),
+                           tensor.shape(), tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
+            return;
+        }
+        // TODO: convert data layout on the device directly
+        std::vector<int8_t> data_host(bytes);
+        tensor_to_data(tensor_host.data(), data_host.data(), tensor.shape(),
+                       tensor.strides(), tensor.offsets(),
                        tensor.data_type().bytes());
+        GLOG(gpuMemcpyAsync(data, data_host.data(), bytes,
+                            gpuMemcpyHostToDevice, copy_stream_raw));
     }
+    GLOG(gpuStreamSynchronize(copy_stream_raw));
 }
 
-void Executor::Impl::tensor_write(const Tensor tensor, const void *data,
-                                  size_t bytes) const {
-    GLOG(gpuSetDevice(gpu_id_));
+void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
+                                  size_t bytes, Stream stream,
+                                  bool is_d2d) const {
+    GLOG(gpuSetDevice(device_id_));
+    std::shared_ptr<GpuStream> copy_stream;
+    gpuStream copy_stream_raw;
+    if (stream) {
+        copy_stream_raw = reinterpret_cast<gpuStream>(stream);
+        if ((stream == stream_raw_) && is_launched_) {
+            LOG(WARN,
+                "Writing to a tensor in the same stream of the kernel "
+                "may cause a deadlock.");
+        }
+    } else {
+        copy_stream = GpuManager::get_instance(device_id_)->create_stream();
+        copy_stream_raw = copy_stream->get();
+    }
     size_t tensor_data_bytes =
         tensor.shape().nelems() * tensor.data_type().bytes();
-    if (bytes < tensor_data_bytes) {
-        ERR(InvalidUsageError, "Data buffer (", bytes,
-            ") is smaller than the tensor data (", tensor_data_bytes, ").");
+    if (bytes != tensor_data_bytes) {
+        ERR(InvalidUsageError, "Source bytes (", bytes,
+            ") mismatches the tensor data bytes (", tensor_data_bytes, ").");
     }
     size_t tensor_bytes =
         tensor.strides().nelems() * tensor.data_type().bytes();
-    void *dst =
-        buffer_->ref(buffer_id_to_offset_.at(tensor.ref()->buffer()->id()));
+    auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyHostToDevice;
+    void *dst = reinterpret_cast<void *>(tensor_address(tensor));
     if (tensor.strides() == tensor.shape()) {
-        GLOG(gpuMemcpyAsync(dst, data, tensor_bytes, gpuMemcpyHostToDevice,
-                            copy_stream_->get()));
+        GLOG(gpuMemcpyAsync(dst, data, tensor_bytes, kind, copy_stream_raw));
     } else {
         std::vector<int8_t> tensor_host(tensor_bytes);
-        GLOG(gpuMemcpyAsync(tensor_host.data(), dst, tensor_bytes,
-                            gpuMemcpyDeviceToHost, copy_stream_->get()));
-        copy_stream_->sync();
-        data_to_tensor(tensor_host.data(), static_cast<const int8_t *>(data),
-                       tensor.shape(), tensor.strides(), tensor.offsets(),
-                       tensor.data_type().bytes());
+        if (!is_d2d) {
+            GLOG(gpuMemcpyAsync(tensor_host.data(), dst, tensor_bytes,
+                                gpuMemcpyDeviceToHost, copy_stream_raw));
+            GLOG(gpuStreamSynchronize(copy_stream_raw));
+            data_to_tensor(tensor_host.data(),
+                           static_cast<const int8_t *>(data), tensor.shape(),
+                           tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
+        } else {
+            // TODO: convert data layout on the device directly
+            std::vector<int8_t> tmp(bytes);
+            GLOG(gpuMemcpyAsync(tmp.data(), data, bytes, gpuMemcpyDeviceToHost,
+                                copy_stream_raw));
+            GLOG(gpuStreamSynchronize(copy_stream_raw));
+            data_to_tensor(tensor_host.data(), tmp.data(), tensor.shape(),
+                           tensor.strides(), tensor.offsets(),
+                           tensor.data_type().bytes());
+        }
         GLOG(gpuMemcpyAsync(dst, tensor_host.data(), tensor_bytes,
-                            gpuMemcpyHostToDevice, copy_stream_->get()));
+                            gpuMemcpyHostToDevice, copy_stream_raw));
     }
-    copy_stream_->sync();
+    GLOG(gpuStreamSynchronize(copy_stream_raw));
 }
 
-Executor::Executor(int rank, int world_size, int gpu_id,
-                   const std::string &name, const std::string &plan)
-    : impl_(std::make_unique<Executor::Impl>(rank, world_size, gpu_id, name,
-                                             plan)) {}
+Executor::Executor(int device_id, Stream stream, const std::string &name,
+                   const std::string &plan, bool loop_mode)
+    : impl_(std::make_unique<Executor::Impl>(device_id, stream, name,
+                                             loop_mode)) {
+    auto &plan_path = get_env().enforce_plan_path;
+    if (!plan_path.empty()) {
+        LOG(INFO, "Enforce executor plan path: ", plan_path);
+        impl_->init(Json::parse(read_file(plan_path)));
+    } else if (!plan.empty()) {
+        impl_->init(Json::parse(plan));
+    }
+}
 
 Executor::~Executor() = default;
 
+int Executor::device_id() const { return impl_->device_id(); }
+
+Stream Executor::stream() const { return impl_->stream(); }
+
+std::string Executor::plan() const { return impl_->plan(); }
+
 void Executor::compile() { impl_->compile(); }
 
-void Executor::launch(int64_t max_spin_count) { impl_->launch(max_spin_count); }
+void Executor::launch() { impl_->launch(); }
 
 void Executor::run(int iter) { impl_->run(iter); }
 
@@ -808,25 +924,32 @@ void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
-void Executor::tensor_read(const Tensor tensor, void *data,
-                           size_t bytes) const {
-    impl_->tensor_read(tensor, data, bytes);
+uintptr_t Executor::tensor_address(const Tensor &tensor) const {
+    return impl_->tensor_address(tensor);
 }
 
-void Executor::tensor_write(const Tensor tensor, const void *data,
-                            size_t bytes) const {
-    impl_->tensor_write(tensor, data, bytes);
+void Executor::tensor_read(const Tensor &tensor, void *data, size_t bytes,
+                           Stream stream, bool is_d2d) const {
+    impl_->tensor_read(tensor, data, bytes, stream, is_d2d);
 }
 
-DefaultExecutor::DefaultExecutor(const Model &model, int gpu_id,
-                                 const std::string &name)
-    : Executor(
-          model.rank(), model.world_size(),
-          (gpu_id < 0) ? (model.rank() % get_env().num_ranks_per_host) : gpu_id,
-          name,
-          Planner(model, (gpu_id < 0)
-                             ? (model.rank() % get_env().num_ranks_per_host)
-                             : gpu_id)
-              .plan()) {}
+void Executor::tensor_write(const Tensor &tensor, const void *data,
+                            size_t bytes, Stream stream, bool is_d2d) const {
+    impl_->tensor_write(tensor, data, bytes, stream, is_d2d);
+}
+
+DefaultExecutor::DefaultExecutor(
+    const Model &model, int device_id, Stream stream,
+    const std::vector<Planner::ConfigRule> &config_rules,
+    const std::string &name, bool loop_mode)
+    : Executor((device_id < 0) ? (model.rank() % get_env().num_ranks_per_host)
+                               : device_id,
+               stream, name, "", loop_mode) {
+    Planner planner(model, impl_->device_id());
+    for (const auto &rule : config_rules) {
+        planner.install_config_rule(rule);
+    }
+    impl_->init(Json::parse(planner.plan()));
+}
 
 }  // namespace ark

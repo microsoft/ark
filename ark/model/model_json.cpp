@@ -287,6 +287,7 @@ PlanJson::PlanJson(const Json &json)
     : Json((json != nullptr) ? json
                              : Json{{"Rank", 0},
                                     {"WorldSize", 1},
+                                    {"Architecture", "ANY"},
                                     {"NumProcessors", 1},
                                     {"NumWarpsPerProcessor", 1},
                                     {"TaskInfos", Json::array()},
