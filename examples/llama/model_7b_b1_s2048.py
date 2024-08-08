@@ -369,7 +369,9 @@ class FeedForward(ark.Module):
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 x1 = self.w1(x)
-            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(
+                config={"SramBytes": 0, "Tile": [256, 128]}
+            ):
                 x1 = Silu()(x1)
         with ark.PlannerContext(
             warp_range=[0, 8],
@@ -384,7 +386,9 @@ class FeedForward(ark.Module):
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 x2 = self.w3(x)
-            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(
+                config={"SramBytes": 0, "Tile": [256, 128]}
+            ):
                 x3 = ark.mul(x1, x2)
         x4 = self.w2(x3)
         return x4
@@ -504,7 +508,9 @@ class Attention(ark.Module):
             ):
                 if freqs_cis is not None:
                     xq = ark.rope(xq, freqs_cis)
-            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(
+                config={"SramBytes": 0, "Tile": [256, 128]}
+            ):
                 xq = ark.transpose(xq, [0, 2, 1, 3])
 
         with ark.PlannerContext(
@@ -526,7 +532,9 @@ class Attention(ark.Module):
                 if freqs_cis is not None:
                     xk = ark.rope(xk, freqs_cis)
             keys = xk
-            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(
+                config={"SramBytes": 0, "Tile": [256, 128]}
+            ):
                 keys = ark.transpose(keys, [0, 2, 1, 3])
 
         with ark.PlannerContext(
@@ -567,7 +575,9 @@ class Attention(ark.Module):
                 config={"SramBytes": 24672, "TileShapeMNK": [256, 128, 32]}
             ):
                 scores = ark.matmul(xq, keys, transpose_other=True)
-            with ark.PlannerContext(config={"SramBytes": 0, "Tile": [256, 128]}):
+            with ark.PlannerContext(
+                config={"SramBytes": 0, "Tile": [256, 128]}
+            ):
                 scores = ark.mul(scores, 1.0 / math.sqrt(self.head_dim))
 
         if mask is not None:
