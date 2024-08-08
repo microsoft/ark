@@ -85,16 +85,14 @@ class Runtime:
         the CUDA kernels. The GPU context and the connection between GPUs will be
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
+        plan = Planner(device_id).plan() if plan is None else plan
         if self.launched():
             # If the Runtime state is already launched and we are adding another plan
             # to the executor, we compile the new kernel and launch the executor again.
-            if not plan:
-                plan = DefaultPlanner(gpu_id).plan()
             self.executor.add_plan(str(plan))
             self.executor.compile()
             self.executor.launch()
             return
-        plan = Planner(device_id).plan() if plan is None else plan
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
@@ -104,10 +102,10 @@ class Runtime:
                     _RuntimeState.executor.destroy()
 
             _RuntimeState.executor = Executor(
-                gpu_id,
+                device_id,
                 stream,
                 "ArkRuntime",
-                plan,
+                str(plan),
                 loop_mode,
             )
             self.executor = _RuntimeState.executor
