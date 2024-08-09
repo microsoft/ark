@@ -17,6 +17,7 @@ option(ARK_USE_CUDA "Use NVIDIA/CUDA." OFF)
 option(ARK_USE_ROCM "Use AMD/ROCm." OFF)
 option(ARK_BYPASS_GPU_CHECK "Bypass GPU check." OFF)
 option(ARK_BUILD_TESTS "Build unit tests." ON)
+option(BUILD_PYTHON "Build Python module." ON)
 
 if(ARK_BYPASS_GPU_CHECK)
     if(ARK_USE_CUDA)

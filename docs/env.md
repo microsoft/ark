@@ -27,3 +27,7 @@
 - `ARK_DISABLE_IB` (Default: `0`; Options: `0`, `1`)
 
     If set to `1`, disable ibverbs networking (i.e., disable multi-node execution).
+
+- `ARK_IGNORE_BINARY_CACHE` (Default: `1`; Options: `0`, `1`)
+
+    If set to `1`, ignore the binary cache and force ARK to recompile binaries on each run.

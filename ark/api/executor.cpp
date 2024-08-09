@@ -3,13 +3,17 @@
 
 #include "ark/executor.hpp"
 
+#include <dlpack/dlpack.h>
+
 #include <cmath>
 #include <iostream>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
+#include <tuple>
 
+#include "ark/data_type.hpp"
 #include "ark/model.hpp"
 #include "ark/planner.hpp"
 #include "codegen.hpp"
@@ -24,6 +28,7 @@
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
+#include "model_buffer_manager.hpp"
 #include "utils/utils_net.hpp"
 
 #if defined(ARK_CUDA)
@@ -253,6 +258,14 @@ void Executor::Impl::init(const PlanJson &plan_json) {
             gpu_manager->info().arch->name(), "`.");
     }
 
+    if (!gpu_manager->info().arch->belongs_to(
+            Arch::from_name(plan_json_.at("Architecture")))) {
+        LOG(WARN, "Architecture name of the plan `",
+            plan_json_.at("Architecture").get<std::string>(),
+            "` is not compatible with the GPU architecture `",
+            gpu_manager->info().arch->name(), "`.");
+    }
+
     buffer_id_to_offset_ = init_buffers(plan_json_);
 
     std::string buffer_id_to_offset_str;
@@ -418,6 +431,23 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
+        if (buf_info->buffer->is_external()) {
+            if (buf_info->buffer->device_id() != device_id_) {
+                ERR(InvalidUsageError,
+                    "PyTorch tensor and model execution are on different GPUs");
+            }
+            external_buffers_.push_back(buf_info->buffer->external_data());
+            auto it = buffer_id_to_name_.find(buf_info->buffer->id());
+            if (it == buffer_id_to_name_.end()) {
+                std::string name =
+                    "extern_buf_" + std::to_string(buf_info->buffer->id());
+                external_args_.push_back(name);
+                buffer_id_to_name_[buf_info->buffer->id()] = name;
+            } else {
+                external_args_.push_back(it->second);
+            }
+            continue;
+        }
         // if we are adding a plan and come across a buffer from a previous
         // plan, we utilize the buffer offset from the previous plan
         if (buffer_id_to_offset_.find(buf_info->buffer->id()) !=
@@ -519,7 +549,11 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 1);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 2);
         for (int i = 0; i < len; ++i) {
-            buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] = offsets[i];
+            if (!buffer_id_to_info[send_tag_to_buffer_id[tags[i]]]
+                     ->buffer->is_external()) {
+                buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] =
+                    offsets[i];
+            }
         }
     }
     for (auto &kv : remote_rank_to_recv_tag_to_buffer_id) {
@@ -535,7 +569,11 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 4);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 5);
         for (int i = 0; i < len; ++i) {
-            buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] = offsets[i];
+            if (!buffer_id_to_info[recv_tag_to_buffer_id[tags[i]]]
+                     ->buffer->is_external()) {
+                buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] =
+                    offsets[i];
+            }
         }
     }
     return buffer_id_to_offset;
@@ -738,7 +776,7 @@ void Executor::Impl::launch() {
         void *flag_ptr = flag_->ref();
         void *buf_ptr = buffers_.back()->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
-        for (auto& buffer : external_buffers_) {
+        for (auto &buffer : external_buffers_) {
             args.push_back(&buffer);
         }
         kernel_->launch(stream_raw_, args);
@@ -757,9 +795,9 @@ void Executor::Impl::run(int iter) {
         void *buf_ptr = buffers_.back()->ref();
         int i = 0;
         std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
-        for (auto& buffer : external_buffers_) {
+        for (auto &buffer : external_buffers_) {
             args.push_back(&buffer);
-        } 
+        }
         for (; i < iter; i++) {
             kernel_->launch(stream_raw_, args);
         }
@@ -828,7 +866,7 @@ void Executor::Impl::barrier() {
 
 void *Executor::Impl::tensor_address(const Tensor tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
-    if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
+    if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
         ERR(InternalError, "Invalid buffer ID: ", buffer_id);
     }
     return buffer_id_to_addr_.at(buffer_id);
@@ -837,6 +875,11 @@ void *Executor::Impl::tensor_address(const Tensor tensor) const {
 void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                                  Stream stream, bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
+    if (tensor.ref()->buffer()->is_external()) {
+        ERR(InvalidUsageError,
+            "Reading data from a tensor preallocated by PyTorch is not "
+            "supported. Use PyTorch's native methods.");
+    }
     std::shared_ptr<GpuStream> copy_stream;
     gpuStream copy_stream_raw;
     if (stream) {
@@ -888,6 +931,11 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
                                   size_t bytes, Stream stream,
                                   bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
+    if (tensor.ref()->buffer()->is_external()) {
+        ERR(InvalidUsageError,
+            "Writing data to a tensor preallocated by PyTorch is not "
+            "supported. Use PyTorch's native methods.");
+    }
     std::shared_ptr<GpuStream> copy_stream;
     gpuStream copy_stream_raw;
     if (stream) {
@@ -976,7 +1024,10 @@ float Executor::stop(int64_t max_spin_count) {
 
 void Executor::barrier() { impl_->barrier(); }
 
-void Executor::destroy() { impl_.reset(nullptr); }
+void Executor::destroy() {
+    ModelBufferManager::get_instance().clear_buffers();
+    impl_.reset(nullptr);
+}
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 

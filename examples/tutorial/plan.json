@@ -1,6 +1,7 @@
 {
   "Rank": 0,
   "WorldSize": 1,
+  "Architecture": "CUDA_80",
   "NumProcessors": 108,
   "NumWarpsPerProcessor": 8,
   "TaskInfos": [
@@ -14,14 +15,14 @@
           "Name": "matmul",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":0,"DataType":"FP16","Buffer":{"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]},
-            {"Id":1,"DataType":"FP16","Buffer":{"Id":1,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096]}
+            {"Id":0,"DataType":"FP16","Buffer":{"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]},
+            {"Id":1,"DataType":"FP16","Buffer":{"Id":1,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096]}
           ],
           "WriteTensors": [
-            {"Id":4,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":4,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "ResultTensors": [
-            {"Id":5,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":5,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "Args": {
             "TransposeInput": {"BOOL":false},
@@ -46,13 +47,13 @@
           "Name": "sigmoid",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":5,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":5,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "WriteTensors": [
-            {"Id":6,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":6,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "ResultTensors": [
-            {"Id":7,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":7,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "Args": {},
           "Config": {
@@ -74,14 +75,14 @@
           "Name": "mul",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":5,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]},
-            {"Id":7,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":5,"DataType":"FP16","Buffer":{"Id":4,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]},
+            {"Id":7,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "WriteTensors": [
-            {"Id":8,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":8,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "ResultTensors": [
-            {"Id":9,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":9,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "Args": {},
           "Config": {
@@ -103,14 +104,14 @@
           "Name": "matmul_1",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":0,"DataType":"FP16","Buffer":{"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]},
-            {"Id":3,"DataType":"FP16","Buffer":{"Id":3,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096]}
+            {"Id":0,"DataType":"FP16","Buffer":{"Id":0,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]},
+            {"Id":3,"DataType":"FP16","Buffer":{"Id":3,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[11008,4096],"Strides":[11008,4096],"Offsets":[0,0],"PaddedShape":[11008,4096]}
           ],
           "WriteTensors": [
-            {"Id":10,"DataType":"FP16","Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":10,"DataType":"FP16","Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "ResultTensors": [
-            {"Id":11,"DataType":"FP16","Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":11,"DataType":"FP16","Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "Args": {
             "TransposeInput": {"BOOL":false},
@@ -135,14 +136,14 @@
           "Name": "mul_1",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":9,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]},
-            {"Id":11,"DataType":"FP16","Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":9,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]},
+            {"Id":11,"DataType":"FP16","Buffer":{"Id":7,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "WriteTensors": [
-            {"Id":12,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":12,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "ResultTensors": [
-            {"Id":13,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
+            {"Id":13,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,11008],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,11008]}
           ],
           "Args": {},
           "Config": {
@@ -164,14 +165,14 @@
           "Name": "matmul_1",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":16,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,8320],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,8320]},
-            {"Id":17,"DataType":"FP16","Buffer":{"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[4096,8320],"Strides":[4096,11008],"Offsets":[0,0],"PaddedShape":[4096,8320]}
+            {"Id":16,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,8320],"Strides":[1,512,11008],"Offsets":[0,0,0],"PaddedShape":[1,512,8320]},
+            {"Id":17,"DataType":"FP16","Buffer":{"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[4096,8320],"Strides":[4096,11008],"Offsets":[0,0],"PaddedShape":[4096,8320]}
           ],
           "WriteTensors": [
-            {"Id":14,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":14,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "ResultTensors": [
-            {"Id":22,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":22,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "Args": {
             "TransposeInput": {"BOOL":false},
@@ -196,14 +197,14 @@
           "Name": "matmul_1",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":18,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,2688],"Strides":[1,512,11008],"Offsets":[0,0,8320],"PaddedShape":[1,512,2688]},
-            {"Id":19,"DataType":"FP16","Buffer":{"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[4096,2688],"Strides":[4096,11008],"Offsets":[0,8320],"PaddedShape":[4096,2688]}
+            {"Id":18,"DataType":"FP16","Buffer":{"Id":8,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,2688],"Strides":[1,512,11008],"Offsets":[0,0,8320],"PaddedShape":[1,512,2688]},
+            {"Id":19,"DataType":"FP16","Buffer":{"Id":2,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[4096,2688],"Strides":[4096,11008],"Offsets":[0,8320],"PaddedShape":[4096,2688]}
           ],
           "WriteTensors": [
-            {"Id":20,"DataType":"FP16","Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":20,"DataType":"FP16","Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "ResultTensors": [
-            {"Id":21,"DataType":"FP16","Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":21,"DataType":"FP16","Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "Args": {
             "TransposeInput": {"BOOL":false},
@@ -228,14 +229,14 @@
           "Name": "add_1",
           "IsVirtual": false,
           "ReadTensors": [
-            {"Id":22,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]},
-            {"Id":21,"DataType":"FP16","Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":22,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]},
+            {"Id":21,"DataType":"FP16","Buffer":{"Id":10,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "WriteTensors": [
-            {"Id":23,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":23,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "ResultTensors": [
-            {"Id":15,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[]},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
+            {"Id":15,"DataType":"FP16","Buffer":{"Id":9,"Rank":-1,"SendTags":[],"RecvTags":[],"IsExternal":false},"Shape":[1,512,4096],"Strides":[1,512,4096],"Offsets":[0,0,0],"PaddedShape":[1,512,4096]}
           ],
           "Args": {},
           "Config": {

@@ -13,6 +13,7 @@
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"
+#include "model_buffer_manager.hpp"
 #include "range.hpp"
 #include "utils/utils_math.hpp"
 
@@ -106,6 +107,7 @@ CodeGenerator::Impl::Impl(
     num_warps_per_proc_ = plan.at("NumWarpsPerProcessor");
 
     std::stringstream definitions_ss;
+
     for (auto &task_json : plan.at("TaskInfos")) {
         definitions_ss << this->def_task(task_json);
     }

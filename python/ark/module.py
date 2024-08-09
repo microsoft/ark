@@ -3,8 +3,19 @@
 
 import logging
 import numpy as np
-from typing import Any, Dict
-from .tensor import Parameter
+from typing import Any, Dict, Union
+from .tensor import Tensor, Parameter
+from .runtime import Runtime
+from .init import init
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 class Module:
@@ -13,6 +24,7 @@ class Module:
     """
 
     def __init__(self):
+        super().__init__()
         # The submodules of the module.
         self.sub_modules: dict[str, "Module"] = dict()
         # The parameters of the module.
@@ -22,11 +34,15 @@ class Module:
         """
         When setting an attribute, if the attribute is a Module, add it to
         the sub_modules. If the attribute is a Tensor and this Tensor is a
-        parameter, add it to the parameters.
+        parameter, add it to the parameters. If the attribute is a
+        torch.nn.Parameter, convert it to an ARK Parameter before adding.
         """
         if isinstance(__value, Module):
             self.register_module(__name, __value)
         elif isinstance(__value, Parameter):
+            self.register_parameter(__name, __value)
+        elif not _no_torch and isinstance(__value, torch.nn.Parameter):
+            __value = Parameter(__value)
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
@@ -57,7 +73,9 @@ class Module:
         return params_dict
 
     def load_state_dict(
-        self, state_dict: Dict[str, np.ndarray], prefix: str = ""
+        self,
+        state_dict: Dict[str, Union[np.ndarray, torch.Tensor]],
+        prefix: str = "",
     ):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
@@ -68,21 +86,130 @@ class Module:
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
         for name, param in pd.items():
-            param.from_numpy(state_dict[name])
+            data = state_dict.get(name, None)
+            if data is None:
+                continue
+            param.copy(data)
             all_keys.remove(name)
         if all_keys:
             logging.warning(
                 f"{len(all_keys)} unused parameter(s) in state_dict"
             )
 
-    def state_dict(self, prefix: str = "") -> Dict[str, np.ndarray]:
+    def state_dict(
+        self, prefix: str = "", mode: str = "numpy"
+    ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         """
         Copies the parameters from the device GPU to the host and saves the
         model to a state_dict.
         Must be called after the executor is launched.
         """
-        return {k: v.to_numpy() for k, v in self.params_dict(prefix).items()}
+        if mode == "numpy":
+            return {
+                k: v.to_numpy() for k, v in self.params_dict(prefix).items()
+            }
+        elif mode == "torch":
+            return {
+                k: v.to_torch() for k, v in self.params_dict(prefix).items()
+            }
+        raise ValueError(f"Unsupported mode: {mode}")
 
     def forward(self, *args: Any, **kwargs: Any) -> Any: ...
 
     def backward(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def initialize(self):
+        for param in self.parameters.values():
+            param.initialize()
+        for module in self.sub_modules.values():
+            module.initialize()
+
+
+def _recursive_ark_to_torch(object):
+    if isinstance(object, Tensor):
+        return object.to_torch()
+    if isinstance(object, dict):
+        return {k: _recursive_ark_to_torch(v) for k, v in object.items()}
+    if isinstance(object, list):
+        return [_recursive_ark_to_torch(v) for v in object]
+    return object
+
+
+class _ARKFunction(torch.autograd.Function):
+    """
+    Facilitates the integration of ARK modules with PyTorch's
+    autograd system by defining custom forward and backward passes that
+    utilize the user's defined ARK module.
+    """
+
+    @staticmethod
+    def forward(ctx, ark_module, *args, **kwargs):
+        """
+        Returns a PyTorch tensor that is the result
+        of the forward pass of the ARK module.
+        """
+        init(keep_runtime=True)
+        ctx.ark_module = ark_module
+        input_args, input_kwargs = [], {}
+        input_requires_grad = 0
+        for arg in args:
+            if isinstance(arg, torch.Tensor):
+                input_args.append(Tensor.from_torch(arg))
+                if arg.requires_grad:
+                    input_requires_grad += 1
+            else:
+                input_args.append(arg)
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                input_kwargs[k] = Tensor.from_torch(v)
+                if v.requires_grad:
+                    input_requires_grad += 1
+            else:
+                input_kwargs[k] = v
+        ctx.num_inp_grad = input_requires_grad
+        output = ark_module.forward(*input_args, **input_kwargs)
+        rt = Runtime.get_runtime()
+        rt.launch()
+        rt.run()
+        output = output.get_torch_view()
+        rt.reset(persist=True)
+        return output
+
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        """
+        Converts the gradient outputs to ARK format, computes the gradients for the input
+        and parameters using the ARK module backwards pass, and updates the gradients of the corresponding
+        PyTorch parameters.
+        """
+        init(keep_runtime=True)
+        ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
+        grads = ctx.ark_module.backward(*ark_grad_outputs)
+        grad_inputs, grad_weights = (
+            grads[:ctx.num_inp_grad],
+            grads[ctx.num_inp_grad:],
+        )
+        params_dict = ctx.ark_module.params_dict()
+        rt = Runtime.get_runtime()
+        rt.launch()
+        rt.run()
+        grad_inputs = [grad.get_torch_view() for grad in grad_inputs]
+        for _, param in params_dict.items():
+            if param.staged_tensor is not None:
+                pytorch_grad = param.staged_tensor.get_torch_view()
+                param.torch_param.grad = pytorch_grad
+        rt.reset(persist=True)
+        return (None, *grad_inputs)
+
+
+class RuntimeModule(torch.nn.Module):
+    """
+    Wraps an ARK module to be used as a PyTorch autograd function.
+    """
+
+    def __init__(self, ark_module):
+        super().__init__()
+        self.ark_module = ark_module
+
+    def forward(self, *args, **kwargs):
+        return _ARKFunction.apply(self.ark_module, *args, **kwargs)

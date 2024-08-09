@@ -96,10 +96,11 @@ class Model;
 
 class DefaultExecutor : public Executor {
    public:
-    DefaultExecutor(
-        const Model &model, int device_id = -1, Stream stream = nullptr,
-        const std::vector<Planner::ConfigRule> &config_rules = {},
-        const std::string &name = "DefaultExecutor", bool loop_mode = true);
+    DefaultExecutor(const Model &model, int device_id = -1,
+                    Stream stream = nullptr,
+                    const std::vector<Planner::ConfigRule> &config_rules = {},
+                    const std::string &name = "DefaultExecutor",
+                    bool loop_mode = true);
 };
 
 }  // namespace ark

@@ -6,6 +6,7 @@ See an example plan file: [Example 1](../examples/tutorial/default_plan.json)
 
     - Rank (Int)
     - WorldSize (Int)
+    - Architecture (String)
     - NumProcessors (Int)
     - NumWarpsPerProcessor (Int)
     - TaskInfos (Array of TaskInfo)
@@ -41,6 +42,23 @@ See an example plan file: [Example 1](../examples/tutorial/default_plan.json)
                             - Granularity (Int)
 
 `ProcessorRange`, `WarpRange`, `SramRange`, and `TaskRange` are in the "range" format, i.e., `[Begin, End, Step]` that indicates an arithmetic integer sequence with a common difference of `Step`, starting from `Begin` and ends before `End` (does not include `End`). They alternatively can be in the format `[Begin, End]` that assumes `Step` is 1.
+
+## Architecture
+
+A name that refers to the hardware architecture where the plan is supposed to run over. The following names are currently supported.
+
+- `ANY`: compatible with all architectures.
+
+- NVIDIA Family
+    - `CUDA`: compatible with all supported NVIDIA architectures.
+    - `CUDA_70`: compatible with NVIDIA Volta architecture.
+    - `CUDA_80`: compatible with NVIDIA Ampere architecture.
+    - `CUDA_90`: compatible with NVIDIA Hopper architecture.
+
+- AMD Family
+    - `ROCM`: compatible with all supported AMD architectures.
+    - `ROCM_90A`: compatible with AMD CDNA 2 (GFX90A) architecture.
+    - `ROCM_942`: compatible with AMD CDNA 3 (GFX942) architecture.
 
 ## TaskInfo
 

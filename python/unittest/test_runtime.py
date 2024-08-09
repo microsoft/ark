@@ -5,9 +5,11 @@ import ark
 import numpy as np
 
 
+empty_plan = ark.Plan(None)
+
+
 def test_runtime_relaunch():
     ark.init()
-
     with ark.Runtime.get_runtime() as rt:
         assert rt.launched() == False
         rt.launch()
@@ -50,5 +52,3 @@ def test_add_plans():
         final_output_host, output_tensor_host + new_tensor_host
     )
     runtime.reset()
-
-test_add_plans()

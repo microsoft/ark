@@ -3,10 +3,23 @@
 
 #include "ark/tensor.hpp"
 
+#include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 
 namespace ark {
+
+Tensor::Tensor(void* data_ptr, int32_t device_id,
+               const std::vector<int64_t>& shape, const DataType& dtype) {
+    size_t external_data_size = std::accumulate(shape.begin(), shape.end(), 1,
+                                                std::multiplies<int64_t>()) *
+                                dtype.bytes();
+    auto buffer =
+        std::make_shared<ModelBuffer>(data_ptr, external_data_size, device_id);
+    auto tensor = std::make_shared<ModelTensor>(
+        dtype.ref(), buffer, Dims(shape), Dims(shape), Dims(), Dims());
+    ref_ = tensor;
+}
 
 size_t Tensor::id() const {
     if (ref_) {
@@ -43,14 +56,14 @@ Dims Tensor::padded_shape() const {
     return Dims();
 }
 
-const DataType &Tensor::data_type() const {
+const DataType& Tensor::data_type() const {
     if (ref_) {
         return DataType::from_name(ref_->data_type()->type_name());
     }
     return NONE;
 }
 
-std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
+std::ostream& operator<<(std::ostream& os, const Tensor& tensor) {
     if (tensor.is_null()) {
         os << "null";
     } else {
