@@ -4,6 +4,7 @@
 #include "ark/executor.hpp"
 
 #include <cmath>
+#include <iostream>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
@@ -143,7 +144,7 @@ class Executor::Impl {
     Impl(int device_id, Stream stream, const std::string &name, bool loop_mode);
     ~Impl();
 
-    void init(const PlanJson& plan);
+    void init(const PlanJson &plan);
 
     int device_id() const { return device_id_; }
 
@@ -151,6 +152,7 @@ class Executor::Impl {
 
     std::string plan() const { return plan_json_.dump_pretty(); }
 
+    void add_plan(const std::string &plan);
     void compile();
     void launch();
     void run(int iter);
@@ -158,7 +160,7 @@ class Executor::Impl {
     float stop(int64_t max_spin_count);
     void barrier();
 
-    uintptr_t tensor_address(const Tensor &tensor) const;
+    void *tensor_address(const Tensor tensor) const;
 
     void tensor_read(const Tensor &tensor, void *data, size_t bytes,
                      Stream stream, bool is_d2d) const;
@@ -168,6 +170,8 @@ class Executor::Impl {
    private:
     void init_communicator();
     std::map<size_t, size_t> init_buffers(const Json &plan_json);
+    std::map<size_t, void *> init_buffer_addrs(
+        void *buffer_base, const std::map<size_t, size_t> &buffer_id_to_offset);
     std::set<int> init_remote_ranks(const Json &plan_json) const;
     void init_channels(const std::set<int> &remote_ranks);
 
@@ -186,12 +190,16 @@ class Executor::Impl {
     float elapsed_msec_ = -1;
 
     PlanJson plan_json_;
+    std::vector<void *> external_buffers_;
+    std::vector<std::string> external_args_;
+    std::map<size_t, std::string> buffer_id_to_name_;
     std::map<size_t, size_t> buffer_id_to_offset_;
+    std::map<size_t, void *> buffer_id_to_addr_;
     size_t total_bytes_;
     std::shared_ptr<CodeGenerator> codegen_;
     std::shared_ptr<GpuEvent> timer_begin_;
     std::shared_ptr<GpuEvent> timer_end_;
-    std::shared_ptr<GpuMemory> buffer_;
+    std::vector<std::shared_ptr<GpuMemory>> buffers_;
     std::shared_ptr<GpuHostMemory> flag_;
     std::shared_ptr<GpuStream> stream_;
     std::shared_ptr<GpuKernel> kernel_;
@@ -232,7 +240,7 @@ void Executor::Impl::init(const PlanJson &plan_json) {
         ERR(InvalidUsageError, "Invalid rank ", rank_, " with world size ",
             world_size_);
     }
-    if (world_size_ > 1) {
+    if (world_size_ > 1 && !comm_) {
         init_communicator();
     }
 
@@ -253,12 +261,17 @@ void Executor::Impl::init(const PlanJson &plan_json) {
             std::to_string(kv.first) + ": " + std::to_string(kv.second) + ", ";
     }
 
-    codegen_ = std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_,
-                                               name_);
-
     timer_begin_ = gpu_manager->create_event();
     timer_end_ = gpu_manager->create_event();
-    buffer_ = gpu_manager->malloc(total_bytes_, 65536);
+    buffers_.push_back(gpu_manager->malloc(total_bytes_, 65536));
+
+    buffer_id_to_addr_ =
+        init_buffer_addrs(buffers_.back()->ref(), buffer_id_to_offset_);
+
+    codegen_ = std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_,
+                                               external_args_,
+                                               buffer_id_to_name_, name_);
+
     flag_ = gpu_manager->malloc_host(
         sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
 
@@ -295,6 +308,21 @@ void Executor::Impl::init_communicator() {
     ip_port << get_host(0) << ":" << get_env().mscclpp_port;
     bootstrap->initialize(ip_port.str());
     comm_ = std::make_shared<mscclpp::Communicator>(bootstrap);
+}
+
+std::map<size_t, void *> Executor::Impl::init_buffer_addrs(
+    void *buffer_base, const std::map<size_t, size_t> &buffer_id_to_offset) {
+    std::map<size_t, void *> buffer_id_to_addr;
+    // Reuse existing buffer addresses for new plans that use previous tensors
+    // from earlier plans
+    if (!buffer_id_to_addr_.empty()) {
+        buffer_id_to_addr = buffer_id_to_addr_;
+    }
+    for (const auto &kv : buffer_id_to_offset) {
+        buffer_id_to_addr[kv.first] =
+            static_cast<char *>(buffer_base) + kv.second;
+    }
+    return buffer_id_to_addr;
 }
 
 std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
@@ -390,7 +418,20 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
+        // if we are adding a plan and come across a buffer from a previous
+        // plan, we utilize the buffer offset from the previous plan
+        if (buffer_id_to_offset_.find(buf_info->buffer->id()) !=
+            buffer_id_to_offset_.end()) {
+            external_buffers_.push_back(
+                buffer_id_to_addr_[buf_info->buffer->id()]);
+            std::string name =
+                "extern_buf_" + std::to_string(buf_info->buffer->id());
+            external_args_.push_back(name);
+            buffer_id_to_name_[buf_info->buffer->id()] = name;
+            continue;
+        }
         buffer_id_to_offset[buf_info->buffer->id()] = offset;
+        offset += buf_info->bytes;
         for (const auto &tag_info : buf_info->buffer->send_tags()) {
             remote_rank_to_send_tags_and_offsets[tag_info.first]
                 .first.push_back(tag_info.second);
@@ -403,7 +444,6 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             remote_rank_to_recv_tags_and_offsets[tag_info.first]
                 .second.push_back(offset);
         }
-        offset += buf_info->bytes;
     }
     total_bytes_ = offset;
 
@@ -498,7 +538,6 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] = offsets[i];
         }
     }
-
     return buffer_id_to_offset;
 }
 
@@ -530,7 +569,9 @@ std::set<int> Executor::Impl::init_remote_ranks(const Json &plan_json) const {
 }
 
 void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
-    proxy_service_ = std::make_shared<mscclpp::ProxyService>();
+    if (!proxy_service_) {
+        proxy_service_ = std::make_shared<mscclpp::ProxyService>();
+    }
 
     int num_ranks_per_node = get_env().num_ranks_per_host;
     auto rank_to_node = [&](int rank) { return rank / num_ranks_per_node; };
@@ -547,8 +588,8 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     if (!get_env().disable_ib) {
         all_transports |= IBs[device_id_];
     }
-    mscclpp::RegisteredMemory regmem =
-        comm_->registerMemory(buffer_->ref(), buffer_->bytes(), all_transports);
+    mscclpp::RegisteredMemory regmem = comm_->registerMemory(
+        buffers_.back()->ref(), buffers_.back()->bytes(), all_transports);
 
     std::map<int, std::vector<mscclpp::NonblockingFuture<
                       std::shared_ptr<mscclpp::Connection>>>>
@@ -622,6 +663,14 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     }
 }
 
+void Executor::Impl::add_plan(const std::string &plan) {
+    external_buffers_.clear();
+    external_args_.clear();
+    buffer_id_to_name_.clear();
+    total_bytes_ = 0;
+    init(Json::parse(plan));
+}
+
 void Executor::Impl::compile() { kernel_->compile(); }
 
 void Executor::Impl::launch() {
@@ -686,9 +735,12 @@ void Executor::Impl::launch() {
     if (loop_mode_) {
         // Initialize loop flags.
         atomicStoreRelaxed(flag_->ref<int>(), 0);
-        void *buf_ptr = buffer_->ref();
         void *flag_ptr = flag_->ref();
+        void *buf_ptr = buffers_.back()->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
+        for (auto& buffer : external_buffers_) {
+            args.push_back(&buffer);
+        }
         kernel_->launch(stream_raw_, args);
     }
     is_recording_ = true;
@@ -702,9 +754,12 @@ void Executor::Impl::run(int iter) {
         }
         atomicStoreRelaxed(flag_->ref<int>(), iter);
     } else {
-        void *buf_ptr = buffer_->ref();
+        void *buf_ptr = buffers_.back()->ref();
         int i = 0;
         std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
+        for (auto& buffer : external_buffers_) {
+            args.push_back(&buffer);
+        } 
         for (; i < iter; i++) {
             kernel_->launch(stream_raw_, args);
         }
@@ -771,13 +826,12 @@ void Executor::Impl::barrier() {
     }
 }
 
-uintptr_t Executor::Impl::tensor_address(const Tensor &tensor) const {
+void *Executor::Impl::tensor_address(const Tensor tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     if (buffer_id_to_offset_.find(buffer_id) == buffer_id_to_offset_.end()) {
         ERR(InternalError, "Invalid buffer ID: ", buffer_id);
     }
-    size_t offset = buffer_id_to_offset_.at(buffer_id);
-    return reinterpret_cast<uintptr_t>(buffer_->ref(offset));
+    return buffer_id_to_addr_.at(buffer_id);
 }
 
 void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
@@ -803,7 +857,7 @@ void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
             ") mismatches the tensor data bytes (", tensor_data_bytes, ").");
     }
     auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyDeviceToHost;
-    void *src = reinterpret_cast<void *>(tensor_address(tensor));
+    void *src = tensor_address(tensor);
     if (tensor.strides() == tensor.shape()) {
         GLOG(gpuMemcpyAsync(data, src, bytes, kind, copy_stream_raw));
     } else {
@@ -856,7 +910,7 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
     size_t tensor_bytes =
         tensor.strides().nelems() * tensor.data_type().bytes();
     auto kind = (is_d2d) ? gpuMemcpyDeviceToDevice : gpuMemcpyHostToDevice;
-    void *dst = reinterpret_cast<void *>(tensor_address(tensor));
+    void *dst = tensor_address(tensor);
     if (tensor.strides() == tensor.shape()) {
         GLOG(gpuMemcpyAsync(dst, data, tensor_bytes, kind, copy_stream_raw));
     } else {
@@ -906,6 +960,8 @@ Stream Executor::stream() const { return impl_->stream(); }
 
 std::string Executor::plan() const { return impl_->plan(); }
 
+void Executor::add_plan(const std::string &plan) { impl_->add_plan(plan); }
+
 void Executor::compile() { impl_->compile(); }
 
 void Executor::launch() { impl_->launch(); }
@@ -924,7 +980,7 @@ void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
-uintptr_t Executor::tensor_address(const Tensor &tensor) const {
+void *Executor::tensor_address(const Tensor tensor) const {
     return impl_->tensor_address(tensor);
 }
 

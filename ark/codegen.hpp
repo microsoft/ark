@@ -16,6 +16,8 @@ class CodeGenerator {
    public:
     CodeGenerator(const PlanJson &plan,
                   const std::map<size_t, size_t> &buffer_id_to_offset,
+                  const std::vector<std::string> &external_args,
+                  const std::map<size_t, std::string> &buffer_id_to_name,
                   const std::string &name = "ark_kernel");
 
     ~CodeGenerator() = default;
