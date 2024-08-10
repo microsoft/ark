@@ -8,8 +8,10 @@
 
 #include <ark/executor.hpp>
 #include <ark/model.hpp>
-#include <iostream>
-#include <stdexcept>
+
+#include "gpu/gpu_memory.hpp"
+#include "logging.hpp"
+
 namespace py = pybind11;
 
 static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
@@ -42,37 +44,37 @@ static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
                      reinterpret_cast<ark::Stream>(stream), is_d2d);
 }
 
-static DLDataType get_dl_dtype(const ark::DataType &ark_data_type) {
-    DLDataType dl_data_type;
-    dl_data_type.lanes = 1;
-    if (ark_data_type == ark::FP32) {
-        dl_data_type.code = kDLFloat;
-        dl_data_type.bits = 32;
-    } else if (ark_data_type == ark::FP16) {
-        dl_data_type.code = kDLFloat;
-        dl_data_type.bits = 16;
-    } else if (ark_data_type == ark::BF16) {
-        dl_data_type.code = kDLBfloat;
-        dl_data_type.bits = 16;
-    } else if (ark_data_type == ark::INT32) {
-        dl_data_type.code = kDLInt;
-        dl_data_type.bits = 32;
-    } else if (ark_data_type == ark::UINT32) {
-        dl_data_type.code = kDLUInt;
-        dl_data_type.bits = 32;
-    } else if (ark_data_type == ark::INT8) {
-        dl_data_type.code = kDLInt;
-        dl_data_type.bits = 8;
-    } else if (ark_data_type == ark::UINT8) {
-        dl_data_type.code = kDLUInt;
-        dl_data_type.bits = 8;
-    } else if (ark_data_type == ark::BYTE) {
-        dl_data_type.code = kDLUInt;
-        dl_data_type.bits = 8;
+static DLDataType to_dl_dtype(const ark::DataType &ark_dtype) {
+    DLDataType dl_dtype;
+    dl_dtype.lanes = 1;
+    if (ark_dtype == ark::FP32) {
+        dl_dtype.code = kDLFloat;
+        dl_dtype.bits = 32;
+    } else if (ark_dtype == ark::FP16) {
+        dl_dtype.code = kDLFloat;
+        dl_dtype.bits = 16;
+    } else if (ark_dtype == ark::BF16) {
+        dl_dtype.code = kDLBfloat;
+        dl_dtype.bits = 16;
+    } else if (ark_dtype == ark::INT32) {
+        dl_dtype.code = kDLInt;
+        dl_dtype.bits = 32;
+    } else if (ark_dtype == ark::UINT32) {
+        dl_dtype.code = kDLUInt;
+        dl_dtype.bits = 32;
+    } else if (ark_dtype == ark::INT8) {
+        dl_dtype.code = kDLInt;
+        dl_dtype.bits = 8;
+    } else if (ark_dtype == ark::UINT8) {
+        dl_dtype.code = kDLUInt;
+        dl_dtype.bits = 8;
+    } else if (ark_dtype == ark::BYTE) {
+        dl_dtype.code = kDLUInt;
+        dl_dtype.bits = 8;
     } else {
-        throw std::runtime_error("unexpected error");
+        ERR(ark::InternalError, "unexpected");
     }
-    return dl_data_type;
+    return dl_dtype;
 }
 
 static DLDeviceType get_device_type() {
@@ -85,66 +87,84 @@ static DLDeviceType get_device_type() {
 #endif
 }
 
-static DLManagedTensor *to_dlpack(ark::Executor &exe,
-                                  const ark::Tensor &tensor) {
-    DLTensor dl_tensor;
-    dl_tensor.data = reinterpret_cast<void *>(exe.tensor_address(tensor));
-    size_t offset_in_elements =
-        tensor.offsets().is_no_dim() ? 0 : tensor.offsets().vector()[0];
-    dl_tensor.byte_offset = offset_in_elements * tensor.data_type().bytes();
-    dl_tensor.device.device_type = get_device_type();
-    dl_tensor.device.device_id = static_cast<int32_t>(exe.device_id());
-    dl_tensor.ndim = static_cast<int32_t>(tensor.shape().ndims());
-    dl_tensor.dtype = get_dl_dtype(tensor.data_type());
+namespace ark {
 
-    dl_tensor.shape =
-        tensor.shape().is_no_dim() ? nullptr : new int64_t[dl_tensor.ndim];
-    dl_tensor.strides =
-        tensor.strides().is_no_dim() ? nullptr : new int64_t[dl_tensor.ndim];
-    auto shape = tensor.shape();
-    if (dl_tensor.shape) {
-        for (int i = 0; i < dl_tensor.ndim; ++i) {
-            dl_tensor.shape[i] = shape[i];
+class SharedTensor {
+   public:
+    SharedTensor(Executor &exe, const Tensor &tensor);
+    ~SharedTensor() = default;
+
+    DLTensor dl_tensor() const;
+
+   private:
+    std::shared_ptr<GpuMemory> buffer_;
+    void *data_;
+    int device_id_;
+    DataType dtype_;
+    std::shared_ptr<std::vector<int64_t>> shape_;
+    std::shared_ptr<std::vector<int64_t>> strides_;
+    std::shared_ptr<std::vector<int64_t>> offsets_;
+};
+
+SharedTensor::SharedTensor(Executor &exe, const Tensor &tensor) {
+    buffer_ = exe.buffer();
+    data_ = reinterpret_cast<void *>(exe.tensor_address(tensor));
+    device_id_ = exe.device_id();
+    dtype_ = tensor.data_type();
+    shape_ = std::make_shared<std::vector<int64_t>>(tensor.shape().vector());
+    offsets_ =
+        std::make_shared<std::vector<int64_t>>(tensor.offsets().vector());
+
+    strides_ = std::make_shared<std::vector<int64_t>>();
+    if (!shape_->empty()) {
+        int ndims = static_cast<int>(shape_->size());
+        strides_->resize(shape_->size());
+        strides_->back() = 1;
+        auto tmp = tensor.strides().vector();
+        for (int i = ndims - 2; i >= 0; --i) {
+            (*strides_)[i] = (*strides_)[i + 1] * tmp[i + 1];
         }
     }
-    if (dl_tensor.strides) {
-        dl_tensor.strides[dl_tensor.ndim - 1] = 1;
-        for (int i = dl_tensor.ndim - 2; i >= 0; --i) {
-            dl_tensor.strides[i] =
-                dl_tensor.shape[i + 1] * dl_tensor.strides[i + 1];
-        }
-    }
+}
+
+DLTensor SharedTensor::dl_tensor() const {
+    DLTensor dl_tensor;
+    dl_tensor.data = data_;
+    size_t offset_in_elements = offsets_->empty() ? 0 : offsets_->at(0);
+    dl_tensor.byte_offset = offset_in_elements * dtype_.bytes();
+    dl_tensor.device.device_type = get_device_type();
+    dl_tensor.device.device_id = device_id_;
+    dl_tensor.ndim = static_cast<int32_t>(shape_->size());
+    dl_tensor.dtype = to_dl_dtype(dtype_);
+    dl_tensor.shape = shape_->data();
+    dl_tensor.strides = strides_->data();
+    return dl_tensor;
+}
+
+}  // namespace ark
+
+static py::capsule tensor_to_dlpack(ark::Executor &self, const ark::Tensor &tensor) {
+    auto shared_tensor = new ark::SharedTensor(self, tensor);
     DLManagedTensor *dl_managed_tensor = new DLManagedTensor();
-    dl_managed_tensor->dl_tensor = dl_tensor;
-    dl_managed_tensor->manager_ctx = nullptr;
+    dl_managed_tensor->dl_tensor = shared_tensor->dl_tensor();
+    dl_managed_tensor->manager_ctx = shared_tensor;
     dl_managed_tensor->deleter = [](DLManagedTensor *self) {
-        if (self->dl_tensor.shape) {
-            delete[] self->dl_tensor.shape;
-            self->dl_tensor.shape = nullptr;
-        }
-        if (self->dl_tensor.strides) {
-            delete[] self->dl_tensor.strides;
-            self->dl_tensor.strides = nullptr;
+        if (self->manager_ctx) {
+            delete static_cast<ark::SharedTensor *>(self->manager_ctx);
+            self->manager_ctx = nullptr;
         }
     };
-    return dl_managed_tensor;
-}
-
-void free_capsule(PyObject *capsule) {
-    const char *name = PyCapsule_GetName(capsule);
-    auto *dl_managed_tensor =
-        static_cast<DLManagedTensor *>(PyCapsule_GetPointer(capsule, name));
-    if (dl_managed_tensor) {
-        dl_managed_tensor->deleter(dl_managed_tensor);
-        dl_managed_tensor = nullptr;
-    }
-}
-
-py::capsule to_dlpack_capsule(ark::Executor &self, const ark::Tensor &tensor) {
-    DLManagedTensor *dl_managed_tensor = to_dlpack(self, tensor);
     const char *capsule_name = "dltensor";
     PyObject *dl_capsule = PyCapsule_New(static_cast<void *>(dl_managed_tensor),
-                                         capsule_name, free_capsule);
+                                         capsule_name, [](PyObject *capsule) {
+            const char *name = PyCapsule_GetName(capsule);
+            auto *dl_managed_tensor = static_cast<DLManagedTensor *>(
+                PyCapsule_GetPointer(capsule, name));
+            if (dl_managed_tensor) {
+                dl_managed_tensor->deleter(dl_managed_tensor);
+                dl_managed_tensor = nullptr;
+            }
+        });
     return py::reinterpret_steal<py::capsule>(dl_capsule);
 }
 
@@ -191,5 +211,5 @@ void register_executor(py::module &m) {
                                size_t, uintptr_t, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
              py::arg("stream"), py::arg("is_d2d"))
-        .def("get_dl_tensor", &to_dlpack_capsule);
+        .def("tensor_to_dlpack", &tensor_to_dlpack);
 }

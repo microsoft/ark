@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import json
 from typing import Any, Dict, List, Iterable, Union
 
 from .tensor import Dims, Tensor, Parameter, NullTensor
@@ -11,12 +10,6 @@ from .model import Model
 
 def _is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
-
-
-def _config_to_str(config: Union[str, Dict[str, Any]]) -> str:
-    if isinstance(config, str):
-        return config
-    return json.dumps(config)
 
 
 def _tensor(
@@ -59,7 +52,6 @@ def add(
     input: Union[Tensor, float],
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "add",
 ) -> Union[Tensor, float]:
     """
@@ -83,14 +75,12 @@ def add(
         return input + other
     else:
         return Tensor(
-            Model.get_model().copy(
-                input + other, output._tensor, _config_to_str(config), name
-            )
+            Model.get_model().copy(input + other, output._tensor, name)
         )
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().add(a, b, output, _config_to_str(config), name),
+        Model.get_model().add(a, b, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -99,16 +89,13 @@ def cast(
     input: Tensor,
     dtype: DataType,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "cast",
 ) -> Tensor:
     """Type casting."""
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().cast(
-            input._tensor, dtype.ctype(), output, _config_to_str(config), name
-        ),
+        Model.get_model().cast(input._tensor, dtype.ctype(), output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -130,7 +117,6 @@ def constant(
 def copy(
     input: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "copy",
 ) -> Tensor:
     """Data caopy."""
@@ -139,7 +125,7 @@ def copy(
     if isinstance(input, Tensor):
         intput = intput._tensor
     return Tensor(
-        Model.get_model().copy(intput, output, _config_to_str(config), name),
+        Model.get_model().copy(intput, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -148,7 +134,6 @@ def div(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "div",
 ) -> Tensor:
     """
@@ -164,9 +149,7 @@ def div(
             raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
     return Tensor(
-        Model.get_model().div(
-            input._tensor, other, output, _config_to_str(config), name
-        ),
+        Model.get_model().div(input._tensor, other, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -175,7 +158,6 @@ def embedding(
     input: Tensor,
     weight: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "embedding",
 ) -> Tensor:
     """Embedding layer."""
@@ -185,7 +167,7 @@ def embedding(
         output = output._tensor
     return Tensor(
         Model.get_model().embedding(
-            input._tensor, weight._tensor, output, _config_to_str(config), name
+            input._tensor, weight._tensor, output, name
         ),
         runtime_id=input.runtime_id,
     )
@@ -194,7 +176,6 @@ def embedding(
 def exp(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "exp",
 ) -> Tensor:
     """
@@ -205,9 +186,7 @@ def exp(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().exp(
-            input._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().exp(input._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -215,7 +194,6 @@ def exp(
 def gelu(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "gelu",
 ) -> Tensor:
     """
@@ -229,9 +207,7 @@ def gelu(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().gelu(
-            input._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().gelu(input._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -263,7 +239,6 @@ def matmul(
     output: Tensor = NullTensor,
     transpose_input: bool = False,
     transpose_other: bool = False,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "matmul",
 ) -> Tensor:
     """
@@ -286,7 +261,6 @@ def matmul(
             output,
             transpose_input,
             transpose_other,
-            _config_to_str(config),
             name,
         ),
         runtime_id=input.runtime_id,
@@ -297,7 +271,6 @@ def mul(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "mul",
 ) -> Tensor:
     """
@@ -313,9 +286,7 @@ def mul(
             raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
     return Tensor(
-        Model.get_model().mul(
-            input._tensor, other, output, _config_to_str(config), name
-        ),
+        Model.get_model().mul(input._tensor, other, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -332,7 +303,6 @@ def reduce_max(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_max",
 ) -> Tensor:
     """
@@ -345,7 +315,7 @@ def reduce_max(
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_max(
-            input._tensor, axis, keepdims, output, _config_to_str(config), name
+            input._tensor, axis, keepdims, output, name
         ),
         runtime_id=input.runtime_id,
     )
@@ -356,7 +326,6 @@ def reduce_mean(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_mean",
 ) -> Tensor:
     """
@@ -369,7 +338,7 @@ def reduce_mean(
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_mean(
-            input._tensor, axis, keepdims, output, _config_to_str(config), name
+            input._tensor, axis, keepdims, output, name
         ),
         runtime_id=input.runtime_id,
     )
@@ -380,7 +349,6 @@ def reduce_sum(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_sum",
 ) -> Tensor:
     """
@@ -395,7 +363,7 @@ def reduce_sum(
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_sum(
-            input._tensor, axis, keepdims, output, _config_to_str(config), name
+            input._tensor, axis, keepdims, output, name
         ),
         runtime_id=input.runtime_id,
     )
@@ -404,7 +372,6 @@ def reduce_sum(
 def relu(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "relu",
 ) -> Tensor:
     """
@@ -416,9 +383,7 @@ def relu(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().relu(
-            input._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().relu(input._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -457,7 +422,6 @@ def rope(
     input: Tensor,
     other: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "rope",
 ) -> Tensor:
     """
@@ -470,9 +434,7 @@ def rope(
     if input.runtime_id != other.runtime_id:
         raise ValueError("Tensors must be on the same runtime")
     return Tensor(
-        Model.get_model().rope(
-            input._tensor, other._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().rope(input._tensor, other._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -480,7 +442,6 @@ def rope(
 def rsqrt(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "rsqrt",
 ) -> Tensor:
     """
@@ -491,9 +452,7 @@ def rsqrt(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().rsqrt(
-            input._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().rsqrt(input._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -521,7 +480,6 @@ def sharding(
 def sigmoid(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "sigmoid",
 ) -> Tensor:
     """
@@ -533,9 +491,7 @@ def sigmoid(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().sigmoid(
-            input._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().sigmoid(input._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -543,7 +499,6 @@ def sigmoid(
 def sqrt(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "sqrt",
 ) -> Tensor:
     """
@@ -554,9 +509,7 @@ def sqrt(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().sqrt(
-            input._tensor, output, _config_to_str(config), name
-        ),
+        Model.get_model().sqrt(input._tensor, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -565,7 +518,6 @@ def sub(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "sub",
 ) -> Tensor:
     """
@@ -581,9 +533,7 @@ def sub(
             raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
     return Tensor(
-        Model.get_model().sub(
-            input._tensor, other, output, _config_to_str(config), name
-        ),
+        Model.get_model().sub(input._tensor, other, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -613,7 +563,6 @@ def transpose(
     input: Tensor,
     perm: Iterable[int],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "transpose",
 ) -> Tensor:
     """
@@ -633,9 +582,7 @@ def transpose(
     if len(perm) > 4:
         raise ValueError("Only support perm up to 4 dimensions")
     return Tensor(
-        Model.get_model().transpose(
-            input._tensor, perm, output, _config_to_str(config), name
-        ),
+        Model.get_model().transpose(input._tensor, perm, output, name),
         runtime_id=input.runtime_id,
     )
 
@@ -648,7 +595,6 @@ def mean(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "mean",
 ) -> Tensor:
     """Alias of reduce_mean."""
@@ -764,9 +710,10 @@ __all__ = [
     "reshape",
     "identity",
     "sharding",
-    "reduce_sum",
-    "reduce_mean",
+    "noop",
     "reduce_max",
+    "reduce_mean",
+    "reduce_sum",
     "layernorm",
     "softmax",
     "transpose",

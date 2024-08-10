@@ -21,3 +21,16 @@ pybind11_add_module(ark_py ${BIND_SOURCES})
 set_target_properties(ark_py PROPERTIES OUTPUT_NAME _ark_core)
 target_link_libraries(ark_py PRIVATE ark_static)
 target_include_directories(ark_py SYSTEM PRIVATE ${DLPACK_INCLUDE_DIRS})
+target_include_directories(ark_py PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../ark)
+
+if(ARK_USE_CUDA)
+    target_include_directories(ark_py SYSTEM PRIVATE
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+endif()
+
+if(ARK_USE_ROCM)
+    target_include_directories(ark_py SYSTEM PRIVATE
+        /opt/rocm/include
+    )
+endif()

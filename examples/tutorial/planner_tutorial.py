@@ -69,14 +69,13 @@ if __name__ == "__main__":
 
     shape = (32, 2048, 2048)
 
-    # input = torch.randn(*shape).to("cuda:0")
-    input = ark.tensor(shape)
+    input = torch.randn(*shape).to("cuda:0")
 
-    output = Softmax()(input)
+    output = Softmax()(ark.Tensor.from_torch(input))
 
-    # if torch.allclose(eval(output), F.softmax(input, dim=-1), atol=1e-5):
-    #     print("Correct result")
-    # else:
-    #     print("Incorrect result")
+    if torch.allclose(eval(output), F.softmax(input, dim=-1), atol=1e-5):
+        print("Correct result")
+    else:
+        print("Incorrect result")
 
     print(f"Performance: {(perf() * 1e3):.3f} ms/iter")

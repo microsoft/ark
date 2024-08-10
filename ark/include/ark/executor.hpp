@@ -15,6 +15,8 @@ namespace ark {
 
 using Stream = void *;
 
+class GpuMemory;
+
 /// Convenience class for executing a model.
 class Executor {
    public:
@@ -30,6 +32,9 @@ class Executor {
 
     /// Return the stream of the executor.
     Stream stream() const;
+
+    /// Return the buffer of the executor.
+    std::shared_ptr<GpuMemory> buffer() const;
 
     /// Return the plan string.
     std::string plan() const;

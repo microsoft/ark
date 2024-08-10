@@ -8,6 +8,8 @@
 
 #include <ark/tensor.hpp>
 
+#include "logging.hpp"
+
 namespace py = pybind11;
 
 struct DLTensorMetadata {
@@ -40,12 +42,37 @@ static DLTensorMetadata extractDLTensorMetadata(DLManagedTensor* dl_tensor) {
     return metadata;
 }
 
+static ark::DataType from_dl_dtype(const DLDataType &dl_dtype) {
+    if (dl_dtype.lanes != 1) {
+        ERR(ark::UnsupportedError, "unsupported data type");
+    }
+    ark::DataType ark_dtype;
+    if (dl_dtype.code == kDLFloat && dl_dtype.bits == 32) {
+        ark_dtype = ark::FP32;
+    } else if (dl_dtype.code == kDLFloat && dl_dtype.bits == 16) {
+        ark_dtype = ark::FP16;
+    } else if (dl_dtype.code == kDLBfloat && dl_dtype.bits == 16) {
+        ark_dtype = ark::BF16;
+    } else if (dl_dtype.code == kDLInt && dl_dtype.bits == 32) {
+        ark_dtype = ark::INT32;
+    } else if (dl_dtype.code == kDLUInt && dl_dtype.bits == 32) {
+        ark_dtype = ark::UINT32;
+    } else if (dl_dtype.code == kDLInt && dl_dtype.bits == 8) {
+        ark_dtype = ark::INT8;
+    } else if (dl_dtype.code == kDLUInt && dl_dtype.bits == 8) {
+        ark_dtype = ark::UINT8;
+    } else {
+        ERR(ark::UnsupportedError, "unsupported data type");
+    }
+    return ark_dtype;
+}
+
 void register_tensor(py::module& m) {
     py::class_<ark::Tensor>(m, "_Tensor")
-        .def(py::init([](py::capsule capsule, const ark::DataType& dtype) {
+        .def(py::init([](py::capsule capsule) {
             DLManagedTensor* dl_tensor = (DLManagedTensor*)capsule;
             if (!dl_tensor) {
-                throw std::runtime_error(
+                ERR(ark::InvalidUsageError,
                     "Capsule does not contain a DLManagedTensor");
             }
             DLTensorMetadata metadata = extractDLTensorMetadata(dl_tensor);
@@ -53,7 +80,7 @@ void register_tensor(py::module& m) {
             void* data_ptr = metadata.data_ptr;
             auto shape = metadata.shape;
 
-            return new ark::Tensor(data_ptr, device_id, shape, dtype);
+            return ark::Tensor(data_ptr, device_id, shape, from_dl_dtype(metadata.dtype));
         }))
         .def("id", &ark::Tensor::id)
         .def("shape", &ark::Tensor::shape, py::return_value_policy::reference)

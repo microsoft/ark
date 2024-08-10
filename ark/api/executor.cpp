@@ -154,6 +154,8 @@ class Executor::Impl {
 
     Stream stream() const { return reinterpret_cast<Stream>(stream_raw_); }
 
+    std::shared_ptr<GpuMemory> buffer() const { return buffer_; }
+
     std::string plan() const { return plan_json_.dump_pretty(); }
 
     void compile();
@@ -933,6 +935,8 @@ Executor::~Executor() = default;
 int Executor::device_id() const { return impl_->device_id(); }
 
 Stream Executor::stream() const { return impl_->stream(); }
+
+std::shared_ptr<GpuMemory> Executor::buffer() const { return impl_->buffer(); }
 
 std::string Executor::plan() const { return impl_->plan(); }
 

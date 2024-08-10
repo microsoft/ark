@@ -5,7 +5,7 @@ import logging
 import numpy as np
 from typing import Any, Dict, List, Union
 from .tensor import Tensor, Parameter
-from .runtime import Runtime, DefaultPlanner
+from .runtime import Runtime, Planner
 from .ops import tensor
 from .data_type import DataType
 
@@ -183,7 +183,7 @@ class RuntimeModule(Module):
             self.built_forward = True
 
         with Runtime.get_runtime() as rt:
-            rt.launch(plan=DefaultPlanner().plan())
+            rt.launch(plan=Planner().plan())
             for tns, arg in zip(self.forward_input_tensor_args, args):
                 tns.copy(arg)
             for key, value in self.forward_input_tensor_kwargs.items():
