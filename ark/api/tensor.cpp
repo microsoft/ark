@@ -57,14 +57,14 @@ Dims Tensor::padded_shape() const {
     return Dims();
 }
 
-const DataType& Tensor::data_type() const {
+const DataType &Tensor::data_type() const {
     if (ref_) {
         return DataType::from_name(ref_->data_type()->type_name());
     }
     return NONE;
 }
 
-std::ostream& operator<<(std::ostream& os, const Tensor& tensor) {
+std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
     if (tensor.is_null()) {
         os << "null";
     } else {

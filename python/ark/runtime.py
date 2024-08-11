@@ -14,36 +14,7 @@ class _RuntimeState:
     The _RuntimeState class is used to store the state of the model.
     """
 
-    runtime: Dict[int, "Runtime"] = {}
-
-    @staticmethod
-    def reset_all():
-        """
-        Resets all runtimes.
-        """
-        runtime_ids = list(_RuntimeState.runtime.keys())
-        for runtime_id in runtime_ids:
-            _RuntimeState.runtime[runtime_id].reset()
-
-    @staticmethod
-    def delete_all():
-        """
-        Deletes all runtimes.
-        """
-        runtime_ids = list(_RuntimeState.runtime.keys())
-        for runtime_id in runtime_ids:
-            _RuntimeState.runtime[runtime_id].reset(delete=True)
-
-    @staticmethod
-    def print_runtime_states():
-        """
-        Print runtimes and their corresponding states.
-        """
-        print(f"{'Runtime ID':<12} | {'Status':<20}")
-        print(f"{'-'*12} | {'-'*20}")
-        for runtime_id, runtime in _RuntimeState.runtime.items():
-            runtime_id = "-1(Default)" if runtime_id == -1 else runtime_id
-            print(f"{runtime_id:<12} | {runtime.state:<20}")
+    runtime = None
 
 
 class Executor(_Executor):
@@ -64,11 +35,10 @@ class Runtime:
         LaunchedNotRunning = 1
         Running = 2
 
-    def __init__(self, runtime_id: int = -1):
-        self.runtime_id = runtime_id
+    def __init__(self):
         self.executor: Executor = None
         self.state: Runtime.State = Runtime.State.Init
-        _RuntimeState.runtime[runtime_id] = self
+        _RuntimeState.runtime = self
 
     def get_state(self) -> "Runtime.State":
         """
@@ -77,35 +47,15 @@ class Runtime:
         return self.state
 
     @staticmethod
-    def exists(runtime_id: int) -> bool:
+    def get_runtime() -> "Runtime":
         """
-        Check if a runtime exists with the given ID.
+        Get the runtime.
+        If the runtime does not exist, create a new runtime.
         """
-        return runtime_id in _RuntimeState.runtime
-
-    @staticmethod
-    def get_all_ids() -> List[int]:
-        """
-        Get a list of all existing runtime IDs.
-        """
-        return list(_RuntimeState.runtime.keys())
-
-    @staticmethod
-    def get_runtime(runtime_id=-1) -> "Runtime":
-        """
-        Get the runtime by ID. If runtime_id is not provided, use a default ID of -1.
-        If the runtime does not exist, create a new runtime with the given ID.
-        """
-        if runtime_id not in _RuntimeState.runtime:
-            _RuntimeState.runtime[runtime_id] = Runtime(runtime_id)
-        return _RuntimeState.runtime[runtime_id]
-
-    @staticmethod
-    def see_runtime_statuses() -> "Dict[int, Runtime]":
-        """
-        Returns the runtime dictionary containing all of the runtimes.
-        """
+        if _RuntimeState.runtime is None:
+            _RuntimeState.runtime = Runtime()
         return _RuntimeState.runtime
+
 
     def __enter__(self):
         return self
@@ -142,7 +92,7 @@ class Runtime:
         """
         if self.launched():
             logging.warning(
-                f"Runtime {self.runtime_id} is already launched, skip launching"
+                f"Runtime is already launched, skip launching"
             )
             return
         plan = Planner(device_id).plan() if plan is None else plan
@@ -152,7 +102,7 @@ class Runtime:
             if self.executor is not None:
                 if not self.executor.destroyed():
                     logging.warning(
-                        f"Runtime {self.runtime_id}, has already been launched. Destroying the old executor"
+                        f"Runtime has already been launched. Destroying the old executor"
                     )
                     self.executor.destroy()
             self.executor = Executor(
@@ -171,8 +121,8 @@ class Runtime:
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
         if self.state != Runtime.State.LaunchedNotRunning:
-            logging.error(f"ARK runtime {self.runtime_id} is not launched")
-            raise RuntimeError(f"ARK runtime {self.runtime_id} is not launched")
+            logging.error(f"ARK runtime is not launched")
+            raise RuntimeError(f"ARK runtime is not launched")
         self.state = Runtime.State.Running
         self.executor.run(iter)
         if not non_blocking:
@@ -193,7 +143,7 @@ class Runtime:
         """
         if self.state != Runtime.State.Running:
             logging.warning(
-                f"ARK runtime {self.runtime_id} is not running, skip waiting"
+                f"ARK runtime is not running, skip waiting"
             )
             return
         self.executor.wait()
@@ -206,7 +156,7 @@ class Runtime:
         """
         if not self.launched():
             logging.warning(
-                f"ARK runtime {self.runtime_id} is never launched, skip stopping"
+                f"ARK runtime is never launched, skip stopping"
             )
             return
         elapsed = self.executor.stop()
@@ -215,7 +165,7 @@ class Runtime:
 
     def reset(self, delete=False):
         """
-        Reset the runtime. If delete is True, delete the runtime associated with the runtime_id.
+        Reset the runtime. If delete is True, delete the runtime.
         """
         if self.launched():
             self.stop()
@@ -225,25 +175,5 @@ class Runtime:
             self.executor = None
         self.state = Runtime.State.Init
         if delete:
-            del _RuntimeState.runtime[self.runtime_id]
-
-    @staticmethod
-    def reset_all_runtimes():
-        """
-        Reset all runtimes.
-        """
-        _RuntimeState.reset_all()
-
-    @staticmethod
-    def delete_all_runtimes():
-        """
-        Delete all runtimes.
-        """
-        _RuntimeState.delete_all()
-
-    @staticmethod
-    def print_runtime_states():
-        """
-        Print runtimes and their corresponding states.
-        """
-        _RuntimeState.print_runtime_states()
+            del _RuntimeState.runtime
+            _RuntimeState.runtime = None
