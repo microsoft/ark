@@ -9,6 +9,7 @@ import torch.optim as optim
 # Set random seed for reproducibility.
 torch.manual_seed(42)
 
+
 # Let's first define a linear layer using ARK.
 class ARKLinear(ark.Module):
     def __init__(self, weight):

@@ -5,9 +5,6 @@ import ark
 import numpy as np
 
 
-empty_plan = ark.Plan(None)
-
-
 def test_runtime_relaunch():
     ark.init()
     with ark.Runtime.get_runtime() as rt:
@@ -39,7 +36,7 @@ def test_add_plans():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
     runtime.reset(persist=True)
-    ark.init(keep_runtime=True)
+    ark.Model.reset()
     prev_output = output_tensor
     new_tensor = ark.tensor([M, N], ark.fp16)
     final_output = ark.add(prev_output, new_tensor)
@@ -52,6 +49,7 @@ def test_add_plans():
         final_output_host, output_tensor_host + new_tensor_host
     )
     runtime.reset()
+
 
 def test_reuse_plans():
     ark.init()
@@ -71,7 +69,7 @@ def test_reuse_plans():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
     runtime.reset(persist=True)
-    ark.init(keep_runtime=True)
+    ark.Model.reset()
     runtime.launch()
     runtime.run()
     output_tensor_host = output_tensor.to_numpy()
@@ -79,4 +77,3 @@ def test_reuse_plans():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
     runtime.reset()
-

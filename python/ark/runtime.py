@@ -3,7 +3,6 @@
 
 import logging
 from enum import Enum
-from typing import Dict, List
 
 from _ark_core import _Executor
 from .planner import Planner, Plan
@@ -169,9 +168,9 @@ class Runtime:
         self.state = Runtime.State.LaunchedNotRunning
         return elapsed
 
-    def reset(self, delete=False, persist=False):
+    def reset(self, persist=False):
         """
-        Reset the runtime. If delete is True, delete the runtime.
+        Reset the runtime.
         """
         if self.launched():
             self.stop()
@@ -182,6 +181,3 @@ class Runtime:
                 self.executor.destroy()
             self.executor = None
         self.state = Runtime.State.Init
-        if delete:
-            del _RuntimeState.runtime
-            _RuntimeState.runtime = None

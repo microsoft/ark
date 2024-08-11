@@ -5,10 +5,9 @@ import logging
 import numpy as np
 from typing import Any, Dict, Union
 from .tensor import Tensor, Parameter
-from .runtime import Runtime, Planner
+from .runtime import Runtime
 from .init import init
-from .ops import tensor
-from .data_type import DataType
+from .model import Model
 
 try:
     import torch
@@ -78,6 +77,7 @@ class Module:
         self,
         state_dict: Dict[str, Union[np.ndarray, torch.Tensor]],
         prefix: str = "",
+        stream: int = 0,
     ):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
@@ -91,7 +91,7 @@ class Module:
             data = state_dict.get(name, None)
             if data is None:
                 continue
-            param.copy(data)
+            param.copy(data, stream=stream)
             all_keys.remove(name)
         if all_keys:
             logging.warning(
@@ -99,7 +99,10 @@ class Module:
             )
 
     def state_dict(
-        self, prefix: str = "", mode: str = "numpy"
+        self,
+        prefix: str = "",
+        mode: str = "numpy",
+        stream: int = 0,
     ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         """
         Copies the parameters from the device GPU to the host and saves the
@@ -108,11 +111,13 @@ class Module:
         """
         if mode == "numpy":
             return {
-                k: v.to_numpy() for k, v in self.params_dict(prefix).items()
+                k: v.to_numpy(stream=stream)
+                for k, v in self.params_dict(prefix).items()
             }
         elif mode == "torch":
             return {
-                k: v.to_torch() for k, v in self.params_dict(prefix).items()
+                k: v.to_torch(stream=stream)
+                for k, v in self.params_dict(prefix).items()
             }
         raise ValueError(f"Unsupported mode: {mode}")
 
@@ -127,17 +132,7 @@ class Module:
             module.initialize()
 
 
-def _recursive_ark_to_torch(object):
-    if isinstance(object, Tensor):
-        return object.to_torch()
-    if isinstance(object, dict):
-        return {k: _recursive_ark_to_torch(v) for k, v in object.items()}
-    if isinstance(object, list):
-        return [_recursive_ark_to_torch(v) for v in object]
-    return object
-
-
-class _ARKFunction(torch.autograd.Function):
+class _Function(torch.autograd.Function):
     """
     Facilitates the integration of ARK modules with PyTorch's
     autograd system by defining custom forward and backward passes that
@@ -150,7 +145,7 @@ class _ARKFunction(torch.autograd.Function):
         Returns a PyTorch tensor that is the result
         of the forward pass of the ARK module.
         """
-        init(keep_runtime=True)
+        Model.reset()
         ctx.ark_module = ark_module
         input_args, input_kwargs = [], {}
         input_requires_grad = 0
@@ -184,12 +179,12 @@ class _ARKFunction(torch.autograd.Function):
         and parameters using the ARK module backwards pass, and updates the gradients of the corresponding
         PyTorch parameters.
         """
-        init(keep_runtime=True)
+        Model.reset()
         ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
         grads = ctx.ark_module.backward(*ark_grad_outputs)
         grad_inputs, grad_weights = (
-            grads[:ctx.num_inp_grad],
-            grads[ctx.num_inp_grad:],
+            grads[: ctx.num_inp_grad],
+            grads[ctx.num_inp_grad :],
         )
         params_dict = ctx.ark_module.params_dict()
         rt = Runtime.get_runtime()
@@ -214,4 +209,4 @@ class RuntimeModule(torch.nn.Module):
         self.ark_module = ark_module
 
     def forward(self, *args, **kwargs):
-        return _ARKFunction.apply(self.ark_module, *args, **kwargs)
+        return _Function.apply(self.ark_module, *args, **kwargs)

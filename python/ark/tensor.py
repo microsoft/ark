@@ -217,8 +217,10 @@ class Parameter(Tensor, torch.nn.Parameter):
     """
     A tensor as a parameter.
     """
+
     def __init__(
-        self, tensor: Union[_Tensor, "torch.nn.Parameter"],
+        self,
+        tensor: Union[_Tensor, "torch.nn.Parameter"],
     ):
         """
         Initializes a new instance of the Parameter class.
@@ -237,9 +239,7 @@ class Parameter(Tensor, torch.nn.Parameter):
             core_tensor = tensor
             self.torch_param = None
             self.staged_tensor = None
-            Tensor.__init__(
-                self, core_tensor, requires_grad=False
-            )
+            Tensor.__init__(self, core_tensor, requires_grad=False)
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"

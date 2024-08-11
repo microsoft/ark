@@ -88,7 +88,7 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
     ark::DefaultExecutor executor(m, 0);
     executor.compile();
     executor.launch();
-    UNITTEST_GT(executor.tensor_address(tensor), 0);
+    UNITTEST_NE(executor.tensor_address(tensor), nullptr);
 
     // Copy data from CPU array to ARK tensor
     executor.tensor_write(tensor, host_data.data(),
