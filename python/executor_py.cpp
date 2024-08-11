@@ -112,19 +112,10 @@ SharedTensor::SharedTensor(Executor &exe, const Tensor &tensor) {
     device_id_ = exe.device_id();
     dtype_ = tensor.data_type();
     shape_ = std::make_shared<std::vector<int64_t>>(tensor.shape().vector());
+    strides_ =
+        std::make_shared<std::vector<int64_t>>(tensor.torch_strides().vector());
     offsets_ =
         std::make_shared<std::vector<int64_t>>(tensor.offsets().vector());
-
-    strides_ = std::make_shared<std::vector<int64_t>>();
-    if (!shape_->empty()) {
-        int ndims = static_cast<int>(shape_->size());
-        strides_->resize(shape_->size());
-        strides_->back() = 1;
-        auto tmp = tensor.strides().vector();
-        for (int i = ndims - 2; i >= 0; --i) {
-            (*strides_)[i] = (*strides_)[i + 1] * tmp[i + 1];
-        }
-    }
 }
 
 DLTensor SharedTensor::dl_tensor() const {

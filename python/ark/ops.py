@@ -534,9 +534,7 @@ def mean(
 
 
 def ones(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    name: str = "ones"
+    shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
 ) -> Tensor:
     """Ones."""
     return Tensor(
