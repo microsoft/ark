@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import Any, Dict, List, Iterable, Union
+from typing import List, Iterable, Union
 
 from .tensor import Dims, Tensor, Parameter, NullTensor
 from .data_type import DataType, fp32
@@ -61,8 +61,6 @@ def add(
     tensor_add = ark.add(tensor1, tensor2)
     """
     if isinstance(input, Tensor) and isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         a = input._tensor
         b = other._tensor
     elif isinstance(input, Tensor):
@@ -79,10 +77,7 @@ def add(
         )
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().add(a, b, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().add(a, b, output, name))
 
 
 def cast(
@@ -95,8 +90,7 @@ def cast(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().cast(input._tensor, dtype.ctype(), output, name),
-        runtime_id=input.runtime_id,
+        Model.get_model().cast(input._tensor, dtype.ctype(), output, name)
     )
 
 
@@ -105,12 +99,10 @@ def constant(
     shape: Iterable[int],
     dtype: DataType = fp32,
     name: str = "constant",
-    runtime_id: int = -1,
 ) -> Tensor:
     """Constant."""
     return Tensor(
-        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name),
-        runtime_id=runtime_id,
+        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name)
     )
 
 
@@ -124,10 +116,7 @@ def copy(
         output = output._tensor
     if isinstance(input, Tensor):
         intput = intput._tensor
-    return Tensor(
-        Model.get_model().copy(intput, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().copy(intput, output, name))
 
 
 def div(
@@ -145,13 +134,8 @@ def div(
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(
-        Model.get_model().div(input._tensor, other, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().div(input._tensor, other, output, name))
 
 
 def embedding(
@@ -161,15 +145,10 @@ def embedding(
     name: str = "embedding",
 ) -> Tensor:
     """Embedding layer."""
-    if input.runtime_id != weight.runtime_id:
-        raise ValueError("Tensors must be on the same runtime")
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().embedding(
-            input._tensor, weight._tensor, output, name
-        ),
-        runtime_id=input.runtime_id,
+        Model.get_model().embedding(input._tensor, weight._tensor, output, name)
     )
 
 
@@ -185,10 +164,7 @@ def exp(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().exp(input._tensor, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().exp(input._tensor, output, name))
 
 
 def gelu(
@@ -206,10 +182,7 @@ def gelu(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().gelu(input._tensor, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().gelu(input._tensor, output, name))
 
 
 def identity(
@@ -224,13 +197,8 @@ def identity(
     for dep in deps:
         if not isinstance(dep, Tensor):
             raise TypeError("All dependencies should be a tensor")
-        if input.runtime_id != dep.runtime_id:
-            raise ValueError("All tensors must be on the same runtime")
         dep_tensors.append(dep._tensor)
-    return Tensor(
-        Model.get_model().identity(input._tensor, dep_tensors, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().identity(input._tensor, dep_tensors, name))
 
 
 def matmul(
@@ -250,8 +218,6 @@ def matmul(
     Usage:
     tensor_matmul = ark.matmul(tensor1, tensor2)
     """
-    if input.runtime_id != other.runtime_id:
-        raise ValueError("Tensors must be on the same runtime")
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -262,8 +228,7 @@ def matmul(
             transpose_input,
             transpose_other,
             name,
-        ),
-        runtime_id=input.runtime_id,
+        )
     )
 
 
@@ -282,13 +247,8 @@ def mul(
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(
-        Model.get_model().mul(input._tensor, other, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().mul(input._tensor, other, output, name))
 
 
 def noop(input: Tensor, name: str = "noop"):
@@ -316,8 +276,7 @@ def reduce_max(
     return Tensor(
         Model.get_model().reduce_max(
             input._tensor, axis, keepdims, output, name
-        ),
-        runtime_id=input.runtime_id,
+        )
     )
 
 
@@ -339,8 +298,7 @@ def reduce_mean(
     return Tensor(
         Model.get_model().reduce_mean(
             input._tensor, axis, keepdims, output, name
-        ),
-        runtime_id=input.runtime_id,
+        )
     )
 
 
@@ -364,8 +322,7 @@ def reduce_sum(
     return Tensor(
         Model.get_model().reduce_sum(
             input._tensor, axis, keepdims, output, name
-        ),
-        runtime_id=input.runtime_id,
+        )
     )
 
 
@@ -382,10 +339,7 @@ def relu(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().relu(input._tensor, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().relu(input._tensor, output, name))
 
 
 def reshape(
@@ -413,8 +367,7 @@ def reshape(
     if len(shape) > 4:
         raise ValueError("Only support tensors with up to 4 dimensions")
     return Tensor(
-        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name),
-        runtime_id=input.runtime_id,
+        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name)
     )
 
 
@@ -431,11 +384,8 @@ def rope(
     """
     if output is not NullTensor:
         output = output._tensor
-    if input.runtime_id != other.runtime_id:
-        raise ValueError("Tensors must be on the same runtime")
     return Tensor(
-        Model.get_model().rope(input._tensor, other._tensor, output, name),
-        runtime_id=input.runtime_id,
+        Model.get_model().rope(input._tensor, other._tensor, output, name)
     )
 
 
@@ -451,10 +401,7 @@ def rsqrt(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().rsqrt(input._tensor, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().rsqrt(input._tensor, output, name))
 
 
 def sharding(
@@ -472,9 +419,7 @@ def sharding(
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
-    return [
-        Tensor(_tensor, runtime_id=input.runtime_id) for _tensor in _tensor_list
-    ]
+    return [Tensor(_tensor) for _tensor in _tensor_list]
 
 
 def sigmoid(
@@ -490,10 +435,7 @@ def sigmoid(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().sigmoid(input._tensor, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().sigmoid(input._tensor, output, name))
 
 
 def sqrt(
@@ -508,10 +450,7 @@ def sqrt(
     """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().sqrt(input._tensor, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().sqrt(input._tensor, output, name))
 
 
 def sub(
@@ -529,13 +468,8 @@ def sub(
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(
-        Model.get_model().sub(input._tensor, other, output, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().sub(input._tensor, other, output, name))
 
 
 def tensor(
@@ -546,7 +480,6 @@ def tensor(
     padded_shape: Iterable[int] = [],
     rank: int = -1,
     name: str = "",
-    runtime_id: int = -1,
 ) -> Tensor:
     """
     Construct a tensor with given shape and data type.
@@ -582,8 +515,7 @@ def transpose(
     if len(perm) > 4:
         raise ValueError("Only support perm up to 4 dimensions")
     return Tensor(
-        Model.get_model().transpose(input._tensor, perm, output, name),
-        runtime_id=input.runtime_id,
+        Model.get_model().transpose(input._tensor, perm, output, name)
     )
 
 
@@ -598,19 +530,15 @@ def mean(
     name: str = "mean",
 ) -> Tensor:
     """Alias of reduce_mean."""
-    return reduce_mean(input, axis, keepdims, output, config, name)
+    return reduce_mean(input, axis, keepdims, output, name)
 
 
 def ones(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    name: str = "ones",
-    runtime_id: int = -1,
+    shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
 ) -> Tensor:
     """Ones."""
     return Tensor(
-        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name),
-        runtime_id=runtime_id,
+        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name)
     )
 
 
@@ -621,14 +549,12 @@ def parameter(
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
     name: str = "",
-    runtime_id: int = -1,
 ) -> Parameter:
     """
     Construct a parameter with given shape and data type.
     """
     return Parameter(
-        _tensor(shape, dtype, strides, offsets, padded_shape, name),
-        runtime_id=runtime_id,
+        _tensor(shape, dtype, strides, offsets, padded_shape, name)
     )
 
 
@@ -665,12 +591,10 @@ def zeros(
     shape: Iterable[int],
     dtype: DataType = fp32,
     name: str = "zeros",
-    runtime_id: int = -1,
 ) -> Tensor:
     """Zeros."""
     return Tensor(
-        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name),
-        runtime_id=runtime_id,
+        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name)
     )
 
 

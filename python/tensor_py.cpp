@@ -83,15 +83,12 @@ void register_tensor(py::module& m) {
             return ark::Tensor(data_ptr, device_id, shape, from_dl_dtype(metadata.dtype));
         }))
         .def("id", &ark::Tensor::id)
-        .def("shape", &ark::Tensor::shape, py::return_value_policy::reference)
-        .def("strides", &ark::Tensor::strides,
-             py::return_value_policy::reference)
-        .def("offsets", &ark::Tensor::offsets,
-             py::return_value_policy::reference)
-        .def("padded_shape", &ark::Tensor::padded_shape,
-             py::return_value_policy::reference)
-        .def("data_type", &ark::Tensor::data_type,
-             py::return_value_policy::reference);
+        .def("shape", &ark::Tensor::shape)
+        .def("strides", &ark::Tensor::strides)
+        .def("offsets", &ark::Tensor::offsets)
+        .def("padded_shape", &ark::Tensor::padded_shape)
+        .def("data_type", &ark::Tensor::data_type)
+        .def("torch_strides", &ark::Tensor::torch_strides);
 
     m.attr("_NullTensor") = &ark::NullTensor;
 }

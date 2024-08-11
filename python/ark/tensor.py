@@ -33,7 +33,6 @@ class Tensor:
         self,
         _tensor: _Tensor,
         initializer: Initializer = None,
-        runtime_id: int = -1,
         requires_grad: bool = False,
     ):
         """
@@ -41,12 +40,10 @@ class Tensor:
         Args:
             _tensor (_ark_core._Tensor): The underlying _Tensor object.
             initializer (Initializer): The initializer for the Tensor.
-            runtime_id (int): The ID of the Runtime to use. Defaults to -1, which is the default Runtime.
             requires_grad (bool): Whether the tensor requires gradient. Defaults to True.
         """
         self._tensor = _tensor
         self.initializer: Initializer = initializer
-        self.runtime_id = runtime_id
         self.requires_grad = requires_grad
 
     def shape(self) -> List[int]:
@@ -86,7 +83,7 @@ class Tensor:
             raise ValueError(
                 f"Tensor data type {self.dtype().__name__} is not supported by numpy."
             )
-        rt = Runtime.get_runtime(self.runtime_id)
+        rt = Runtime.get_runtime()
         if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.to_numpy()` is "
@@ -109,7 +106,7 @@ class Tensor:
         """
         Copies the tensor from a host numpy array to the device.
         """
-        rt = Runtime.get_runtime(self.runtime_id)
+        rt = Runtime.get_runtime()
         if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.from_numpy()` is "
@@ -127,7 +124,7 @@ class Tensor:
         """
         Returns a DLPack tensor that shares the same memory with the device tensor.
         """
-        rt = Runtime.get_runtime(self.runtime_id)
+        rt = Runtime.get_runtime()
         if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.to_dlpack()` is "
@@ -136,11 +133,11 @@ class Tensor:
         return rt.executor.tensor_to_dlpack(self._tensor)
 
     @staticmethod
-    def from_dlpack(ext_tensor, runtime_id: int = -1) -> "Tensor":
+    def from_dlpack(ext_tensor) -> "Tensor":
         """
         Copies the tensor from a DLPack tensor to the device.
         """
-        return Tensor(_Tensor(ext_tensor), runtime_id=runtime_id)
+        return Tensor(_Tensor(ext_tensor))
 
     def to_torch(self) -> torch.Tensor:
         """
@@ -155,7 +152,7 @@ class Tensor:
         return torch_view
 
     @staticmethod
-    def from_torch(tensor: torch.Tensor, runtime_id: int = -1) -> "Tensor":
+    def from_torch(tensor: torch.Tensor) -> "Tensor":
         """
         Returns an ARK tensor that shares the same memory with the torch tensor.
         """
@@ -165,10 +162,7 @@ class Tensor:
             raise ValueError("Torch tensor must be contiguous.")
         elif tensor.device.type == "cpu":
             raise ValueError("Torch tensor must be on a device.")
-        return Tensor.from_dlpack(
-            torch.utils.dlpack.to_dlpack(tensor),
-            runtime_id=runtime_id,
-        )
+        return Tensor.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
 
     def copy(
         self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
@@ -177,7 +171,7 @@ class Tensor:
         Copies data into this tensor. The data type may differ,
         but the size must match.
         """
-        rt = Runtime.get_runtime(self.runtime_id)
+        rt = Runtime.get_runtime()
         if not rt.launched():
             raise RuntimeError(
                 "Tensor is not allocated yet. `Tensor.copy()` is "
@@ -223,9 +217,8 @@ class Parameter(Tensor, torch.nn.Parameter):
     """
     A tensor as a parameter.
     """
-
     def __init__(
-        self, tensor: Union[_Tensor, "torch.nn.Parameter"], runtime_id: int = -1
+        self, tensor: Union[_Tensor, "torch.nn.Parameter"],
     ):
         """
         Initializes a new instance of the Parameter class.
@@ -238,7 +231,6 @@ class Parameter(Tensor, torch.nn.Parameter):
             Tensor.__init__(
                 self,
                 core_tensor,
-                runtime_id=runtime_id,
                 requires_grad=tensor.requires_grad,
             )
         elif isinstance(tensor, _Tensor):
@@ -246,7 +238,7 @@ class Parameter(Tensor, torch.nn.Parameter):
             self.torch_param = None
             self.staged_tensor = None
             Tensor.__init__(
-                self, core_tensor, runtime_id=runtime_id, requires_grad=False
+                self, core_tensor, requires_grad=False
             )
         else:
             raise TypeError(

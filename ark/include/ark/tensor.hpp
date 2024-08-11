@@ -52,6 +52,8 @@ class Tensor {
     Dims padded_shape() const;
 
     const DataType &data_type() const;
+
+    Dims torch_strides() const;
 };
 
 const Tensor NullTensor;
