@@ -10,10 +10,10 @@
 #include "file_io.h"
 #include "logging.hpp"
 #include "model/model_buffer.hpp"
-#include "model_buffer_manager.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"
+#include "model_buffer_manager.hpp"
 #include "range.hpp"
 #include "utils/utils_math.hpp"
 
@@ -25,7 +25,18 @@ static std::string replace(
         size_t pos = 0;
         while ((pos = result.find(kv.first, pos)) != std::string::npos) {
             result.replace(pos, kv.first.length(), kv.second);
-            pos += kv.second.length();
+            if ((kv.first == "@GLOBAL_ARGS@" || kv.first == "@FUNCTION_ARGS@" ||
+                 kv.first == "@ARG_TYPES@") &&
+                kv.second.empty()) {
+                size_t comma_pos = pos;
+                if (comma_pos >= 2 && result.substr(comma_pos - 2, 2) == ", ") {
+                    result.erase(comma_pos - 2, 2);
+                    pos -= 2;
+                }
+
+            } else {
+                pos += kv.second.length();
+            }
         }
     }
     return result;
@@ -44,6 +55,8 @@ class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
          const std::map<size_t, size_t> &buffer_id_to_offset,
+         const std::vector<std::string> &external_args,
+         const std::map<size_t, std::string> &buffer_id_to_name,
          const std::string &name);
     ~Impl() = default;
 
@@ -69,6 +82,8 @@ class CodeGenerator::Impl {
     friend class CodeGenerator;
 
     std::map<size_t, size_t> buffer_id_to_offset_;
+    std::vector<std::string> external_args_;
+    std::map<size_t, std::string> buffer_id_to_name_;
     std::string name_;
     int rank_;
     int world_size_;
@@ -77,10 +92,15 @@ class CodeGenerator::Impl {
     std::string code_;
 };
 
-CodeGenerator::Impl::Impl(const PlanJson &plan,
-                          const std::map<size_t, size_t> &buffer_id_to_offset,
-                          const std::string &name)
-    : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
+CodeGenerator::Impl::Impl(
+    const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    const std::vector<std::string> &external_args,
+    const std::map<size_t, std::string> &buffer_id_to_name,
+    const std::string &name)
+    : buffer_id_to_offset_(buffer_id_to_offset),
+      external_args_(external_args),
+      buffer_id_to_name_(buffer_id_to_name),
+      name_(name) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
     num_procs_ = plan.at("NumProcessors");
@@ -169,6 +189,30 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     if (!is_file(template_path)) {
         ERR(InternalError, "kernel template file not found: ", template_path);
     }
+
+    // Generate the global arguments
+    std::stringstream global_args_ss, function_args_ss, arg_types_ss;
+    for (const auto &arg : external_args_) {
+        global_args_ss << "void *" << arg << ", ";
+        function_args_ss << arg << ", ";
+        arg_types_ss << "void *, ";
+    }
+    std::string global_args = global_args_ss.str();
+    std::string function_args = function_args_ss.str();
+    std::string arg_types = arg_types_ss.str();
+    if (!global_args.empty()) {
+        global_args.pop_back();
+        global_args.pop_back();
+    }
+    if (!function_args.empty()) {
+        function_args.pop_back();
+        function_args.pop_back();
+    }
+    if (!arg_types.empty()) {
+        arg_types.pop_back();
+        arg_types.pop_back();
+    }
+
     std::string template_code = read_file(template_path);
     std::map<std::string, std::string> replacements = {
         {"@NUM_BLOCKS@", std::to_string(num_procs_)},
@@ -176,6 +220,9 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
         {"@DEFINITIONS@", definitions_ss.str()},
         {"@BODY@", body_ss.str()},
         {"@NAME@", (name_.empty() ? "" : "_" + name_)},
+        {"@GLOBAL_ARGS@", global_args},
+        {"@FUNCTION_ARGS@", function_args},
+        {"@ARG_TYPES@", arg_types},
     };
     code_ = replace(template_code, replacements);
 }
@@ -215,7 +262,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
         ss << this->def_op(op_json, task_json["Id"], op_idx++);
     }
     ss << "__device__ void t" << task_json["Id"]
-       << "(char* _buf, int _idx, int _spw) {\n";
+       << "(char *_buf, int _idx, int _spw, @GLOBAL_ARGS@) {\n";
     op_idx = 0;
     for (auto &op_json : task_json["Ops"]) {
         auto op = ModelOp::deserialize(op_json);
@@ -225,25 +272,32 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             auto &arg = impl_args[i];
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
-                if (tns->buffer()->is_external()) {
-                    void *buf_addr =
-                        ModelBufferManager::get_instance().get_buffer(
-                            tns->buffer()->id());
-                    ss << "(" << tns->data_type()->type_str() << "*)"
-                       << buf_addr;
-                } else {
-                    size_t buffer_offset =
-                        buffer_id_to_offset_.at(tns->buffer()->id());
+                size_t buffer_id = tns->buffer()->id();
+                if (buffer_id_to_name_.find(buffer_id) ==
+                    buffer_id_to_name_.end()) {
+                    size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
                     size_t offset = buffer_offset + ModelOffset(tns).value();
                     ss << "(" << tns->data_type()->type_str() << "*)&_buf["
                        << offset << "]";
+                } else {
+                    ss << "(" << tns->data_type()->type_str() << "*)"
+                       << buffer_id_to_name_.at(buffer_id);
                 }
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(moff.buffer_id());
-                size_t offset = buffer_offset + moff.value();
-                ss << offset;
+                size_t buffer_id = moff.buffer_id();
+                if (buffer_id_to_name_.find(buffer_id) ==
+                    buffer_id_to_name_.end()) {
+                    size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
+                    size_t offset = buffer_offset + moff.value();
+                    ss << offset;
+                } else {
+                    const std::string &buffer_name =
+                        buffer_id_to_name_.at(buffer_id);
+                    size_t offset = moff.value();
+                    ss << "(uint64_t)((char*)" << buffer_name << " + " << offset
+                       << ")";
+                }
             } else {
                 ss << arg.serialize().begin().value();
             }
@@ -274,7 +328,7 @@ std::string CodeGenerator::Impl::task_seq(
     ss << "task_seq<" << proc_b << ", " << proc_e << ", " << proc_s << ", "
        << proc_cur << ", " << task_b << ", " << task_e << ", " << task_s << ", "
        << task_gran << ", " << num_slots << ", " << slot_num_warps << ", "
-       << slot_sram_bytes << ", t" << task_id << ">(_buf);\n";
+       << slot_sram_bytes << ", t" << task_id << ">(_buf, @FUNCTION_ARGS@);\n";
     return ss.str();
 }
 
@@ -444,8 +498,11 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 
 CodeGenerator::CodeGenerator(
     const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
+    const std::vector<std::string> &external_args,
+    const std::map<size_t, std::string> &buffer_id_to_name,
     const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, external_args,
+                                   buffer_id_to_name, name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

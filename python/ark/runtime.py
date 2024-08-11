@@ -77,6 +77,14 @@ class Runtime:
         """
         return self.state == Runtime.State.Running
 
+    def add_plan(self, plan: Plan):
+        """
+        Add a plan to the executor.
+        """
+        if self.executor is None:
+            raise RuntimeError("Executor is not initialized")
+        self.executor.add_plan(str(plan))
+
     def launch(
         self,
         plan: Plan = None,
@@ -89,10 +97,15 @@ class Runtime:
         the CUDA kernels. The GPU context and the connection between GPUs will be
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
-        if self.launched():
-            logging.warning(f"Runtime is already launched, skip launching")
-            return
         plan = Planner(device_id).plan() if plan is None else plan
+        if self.launched():
+            # If the Runtime state is already launched and we are adding another plan
+            # to the executor, we compile the new kernel and launch the executor again.
+            self.executor.add_plan(str(plan))
+            self.executor.compile()
+            self.executor.launch()
+            return
+
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
@@ -156,12 +169,14 @@ class Runtime:
         self.state = Runtime.State.LaunchedNotRunning
         return elapsed
 
-    def reset(self, delete=False):
+    def reset(self, delete=False, persist=False):
         """
         Reset the runtime. If delete is True, delete the runtime.
         """
         if self.launched():
             self.stop()
+        if persist:
+            return
         if self.executor is not None:
             if not self.executor.destroyed():
                 self.executor.destroy()

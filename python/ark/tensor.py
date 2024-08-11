@@ -33,15 +33,18 @@ class Tensor:
         self,
         _tensor: _Tensor,
         initializer: Initializer = None,
+        requires_grad: bool = False,
     ):
         """
         Initializes a new instance of the Tensor class.
         Args:
             _tensor (_ark_core._Tensor): The underlying _Tensor object.
-            intializer (Initializer): The initializer for the Tensor.
+            initializer (Initializer): The initializer for the Tensor.
+            requires_grad (bool): Whether the tensor requires gradient. Defaults to True.
         """
         self._tensor = _tensor
         self.initializer: Initializer = initializer
+        self.requires_grad = requires_grad
 
     def shape(self) -> List[int]:
         """
@@ -171,7 +174,7 @@ class Tensor:
         rt = Runtime.get_runtime()
         if not rt.launched():
             raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.from_numpy()` is "
+                "Tensor is not allocated yet. `Tensor.copy()` is "
                 "usable only after you call `Runtime.launch()`."
             )
         tensor_bytes = self.nelems() * self.dtype().element_size()
@@ -187,6 +190,9 @@ class Tensor:
                 stream,
                 data.device.type == "cuda",
             )
+            data.requires_grad = self.requires_grad
+            if isinstance(self, Parameter):
+                self.torch_param = data
         elif isinstance(data, np.ndarray):
             if not data.flags["C_CONTIGUOUS"]:
                 data = np.ascontiguousarray(data)
@@ -207,13 +213,50 @@ class Tensor:
         return self
 
 
-class Parameter(Tensor):
+class Parameter(Tensor, torch.nn.Parameter):
     """
     A tensor as a parameter.
     """
-
-    def __init__(self, _tensor: _Tensor):
+    def __init__(
+        self, tensor: Union[_Tensor, "torch.nn.Parameter"],
+    ):
         """
         Initializes a new instance of the Parameter class.
         """
-        super().__init__(_tensor)
+        if not _no_torch and isinstance(tensor, torch.nn.Parameter):
+            ark_tensor = Tensor.from_torch(tensor)
+            core_tensor = ark_tensor._tensor
+            self.torch_param = tensor
+            self.staged_tensor = None
+            Tensor.__init__(
+                self,
+                core_tensor,
+                requires_grad=tensor.requires_grad,
+            )
+        elif isinstance(tensor, _Tensor):
+            core_tensor = tensor
+            self.torch_param = None
+            self.staged_tensor = None
+            Tensor.__init__(
+                self, core_tensor, requires_grad=False
+            )
+        else:
+            raise TypeError(
+                "tensor must be an ARK tensor or a torch.nn.Parameter"
+            )
+
+    def update_gradient(self, ark_tensor: Tensor):
+        """
+        Stages an ARK tensor to be used for updating the gradient of its associated parameter.
+        """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        if self.torch_param is None:
+            raise ValueError(
+                "there is no PyTorch parameter associated with this ARK parameter"
+            )
+        if not self.torch_param.requires_grad:
+            raise ValueError("parameter does not require gradient updates")
+        if ark_tensor is None or not isinstance(ark_tensor, Tensor):
+            raise ValueError("cannot use non-ARK tensor to update ARK gradient")
+        self.staged_tensor = ark_tensor

@@ -202,5 +202,6 @@ void register_executor(py::module &m) {
                                size_t, uintptr_t, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
              py::arg("stream"), py::arg("is_d2d"))
-        .def("tensor_to_dlpack", &tensor_to_dlpack);
+        .def("tensor_to_dlpack", &tensor_to_dlpack)
+        .def("add_plan", &ark::Executor::add_plan, py::arg("plan"));
 }

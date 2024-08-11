@@ -39,6 +39,9 @@ class Executor {
     /// Return the plan string.
     std::string plan() const;
 
+    /// Add a plan to the executor.
+    void add_plan(const std::string &plan);
+
     /// Compile the model. This must be called before `launch()`.
     void compile();
 
@@ -67,7 +70,7 @@ class Executor {
     bool destroyed() const;
 
     /// Return the raw virtual address of the tensor.
-    uintptr_t tensor_address(const Tensor &tensor) const;
+    void *tensor_address(const Tensor &tensor) const;
 
     template <typename T>
     void tensor_read(const Tensor &tensor, std::vector<T> &data,

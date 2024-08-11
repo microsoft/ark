@@ -10,15 +10,14 @@
 namespace ark {
 
 Tensor::Tensor(void* data_ptr, int32_t device_id,
-               const std::vector<int64_t>& shape,
-               const DataType& dtype) {
+               const std::vector<int64_t>& shape, const DataType& dtype) {
     size_t external_data_size = std::accumulate(shape.begin(), shape.end(), 1,
                                                 std::multiplies<int64_t>()) *
                                 dtype.bytes();
     auto buffer =
         std::make_shared<ModelBuffer>(data_ptr, external_data_size, device_id);
-    auto tensor = std::make_shared<ModelTensor>(dtype.ref(), buffer, Dims(shape),
-                                                Dims(shape), Dims(), Dims());
+    auto tensor = std::make_shared<ModelTensor>(
+        dtype.ref(), buffer, Dims(shape), Dims(shape), Dims(), Dims());
     ref_ = tensor;
 }
 
