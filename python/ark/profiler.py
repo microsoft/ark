@@ -21,8 +21,15 @@ class Profiler:
     def __init__(self, plan: Plan):
         self.plan = plan
 
-    def run(self, iter: int = 1000, loop_mode: bool = True, profile_processor_groups: bool = False):
-        sys.stderr.write(f"End-to-end: {timeit(self.plan, iter, loop_mode):.6f} seconds/iter\n")
+    def run(
+        self,
+        iter: int = 1000,
+        loop_mode: bool = True,
+        profile_processor_groups: bool = False,
+    ):
+        sys.stderr.write(
+            f"End-to-end: {timeit(self.plan, iter, loop_mode):.6f} seconds/iter\n"
+        )
 
         if not profile_processor_groups:
             return

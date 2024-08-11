@@ -15,6 +15,8 @@ namespace ark {
 
 using Stream = void *;
 
+class GpuMemory;
+
 /// Convenience class for executing a model.
 class Executor {
    public:
@@ -30,6 +32,9 @@ class Executor {
 
     /// Return the stream of the executor.
     Stream stream() const;
+
+    /// Return the buffer of the executor.
+    std::shared_ptr<GpuMemory> buffer() const;
 
     /// Return the plan string.
     std::string plan() const;
@@ -65,7 +70,7 @@ class Executor {
     bool destroyed() const;
 
     /// Return the raw virtual address of the tensor.
-    void *tensor_address(const Tensor tensor) const;
+    void *tensor_address(const Tensor &tensor) const;
 
     template <typename T>
     void tensor_read(const Tensor &tensor, std::vector<T> &data,
@@ -96,11 +101,10 @@ class Model;
 
 class DefaultExecutor : public Executor {
    public:
-    DefaultExecutor(const Model &model, int device_id = -1,
-                    Stream stream = nullptr,
-                    const std::vector<Planner::ConfigRule> &config_rules = {},
-                    const std::string &name = "DefaultExecutor",
-                    bool loop_mode = true);
+    DefaultExecutor(
+        const Model &model, int device_id = -1, Stream stream = nullptr,
+        const std::vector<Planner::ConfigRule> &config_rules = {},
+        const std::string &name = "DefaultExecutor", bool loop_mode = true);
 };
 
 }  // namespace ark

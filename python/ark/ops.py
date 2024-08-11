@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import List, Iterable, Union
+from typing import Any, Dict, List, Iterable, Union
 
 from .tensor import Dims, Tensor, Parameter, NullTensor
 from .data_type import DataType, fp32
@@ -80,7 +80,8 @@ def add(
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().add(a, b, output, name), runtime_id=input.runtime_id
+        Model.get_model().add(a, b, output, name),
+        runtime_id=input.runtime_id,
     )
 
 
@@ -114,7 +115,9 @@ def constant(
 
 
 def copy(
-    input: Union[Tensor, float], output: Tensor = NullTensor, name: str = "copy"
+    input: Union[Tensor, float],
+    output: Tensor = NullTensor,
+    name: str = "copy",
 ) -> Tensor:
     """Data caopy."""
     if output is not NullTensor:
@@ -171,7 +174,9 @@ def embedding(
 
 
 def exp(
-    input: Tensor, output: Tensor = NullTensor, name: str = "exp"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "exp",
 ) -> Tensor:
     """
     Calculates the exponential of the `input` tensor, element-wise.
@@ -187,7 +192,9 @@ def exp(
 
 
 def gelu(
-    input: Tensor, output: Tensor = NullTensor, name: str = "gelu"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "gelu",
 ) -> Tensor:
     """
     Applies the Gaussian Error Linear Unit (GELU) activation
@@ -363,7 +370,9 @@ def reduce_sum(
 
 
 def relu(
-    input: Tensor, output: Tensor = NullTensor, name: str = "relu"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "relu",
 ) -> Tensor:
     """
     Applies the ReLU activation function to the `input` tensor,
@@ -431,7 +440,9 @@ def rope(
 
 
 def rsqrt(
-    input: Tensor, output: Tensor = NullTensor, name: str = "rsqrt"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "rsqrt",
 ) -> Tensor:
     """
     Calculates the square root of the `input` tensor, element-wise.
@@ -467,7 +478,9 @@ def sharding(
 
 
 def sigmoid(
-    input: Tensor, output: Tensor = NullTensor, name: str = "sigmoid"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "sigmoid",
 ) -> Tensor:
     """
     Applies the Sigmoid activation function to the `input` tensor,
@@ -484,7 +497,9 @@ def sigmoid(
 
 
 def sqrt(
-    input: Tensor, output: Tensor = NullTensor, name: str = "sqrt"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "sqrt",
 ) -> Tensor:
     """
     Calculates the square root of the `input` tensor, element-wise.
@@ -540,8 +555,7 @@ def tensor(
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
     return Tensor(
-        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name),
-        runtime_id=runtime_id,
+        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
     )
 
 
@@ -584,7 +598,7 @@ def mean(
     name: str = "mean",
 ) -> Tensor:
     """Alias of reduce_mean."""
-    return reduce_mean(input, axis, keepdims, output, name)
+    return reduce_mean(input, axis, keepdims, output, config, name)
 
 
 def ones(
@@ -696,9 +710,10 @@ __all__ = [
     "reshape",
     "identity",
     "sharding",
-    "reduce_sum",
-    "reduce_mean",
+    "noop",
     "reduce_max",
+    "reduce_mean",
+    "reduce_sum",
     "layernorm",
     "softmax",
     "transpose",

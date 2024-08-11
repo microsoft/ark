@@ -4,6 +4,7 @@
 import logging
 from enum import Enum
 from typing import Dict, List
+
 from _ark_core import _Executor
 from .planner import Planner, Plan
 
@@ -46,15 +47,7 @@ class _RuntimeState:
 
 
 class Executor(_Executor):
-    def __init__(
-        self,
-        device_id: int,
-        stream: int,
-        name: str,
-        plan: Plan,
-        loop_mode: bool = True,
-    ):
-        super().__init__(device_id, stream, name, str(plan), loop_mode)
+    pass
 
 
 class Runtime:
@@ -163,6 +156,7 @@ class Runtime:
             self.executor.compile()
             self.executor.launch()
             return
+
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:

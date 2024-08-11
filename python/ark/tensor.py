@@ -105,67 +105,6 @@ class Tensor:
         rt.executor.tensor_read(self._tensor, ndarray, stream)
         return ndarray
 
-    def to_torch(
-        self, tensor: torch.Tensor = None, stream: int = 0
-    ) -> torch.Tensor:
-        """ """
-        if _no_torch:
-            raise ImportError("torch is not available")
-        rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.to_torch()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
-        torch_type = self.dtype().to_torch()
-        if tensor is None:
-            dev_name = f"cuda:{rt.executor.device_id()}"
-            tensor = torch.zeros(
-                self.shape(),
-                dtype=torch_type,
-                device=torch.device(dev_name),
-                requires_grad=self.requires_grad,
-            )
-        elif list(tensor.shape) != self.shape():
-            raise ValueError(
-                f"torch tensor shape {list(tensor.shape)} "
-                f"does not match the tensor {self.shape()}"
-            )
-        elif tensor.dtype != torch_type:
-            raise ValueError(
-                f"torch tensor dtype {tensor.dtype} "
-                f"does not match the tensor {torch_type}"
-            )
-        elif not tensor.is_contiguous():
-            raise ValueError("torch tensor is not contiguous in memory")
-        elif tensor.numel() != self.nelems():
-            raise ValueError(
-                f"torch tensor size {tensor.numel()} "
-                f"does not match the tensor {self.nelems()}"
-            )
-        tensor_bytes = self.nelems() * self.dtype().element_size()
-        rt.executor.tensor_read(
-            self._tensor, tensor.data_ptr(), tensor_bytes, stream, True
-        )
-        return tensor
-
-    def get_torch_view(self) -> torch.Tensor:
-        """
-        Returns a torch tensor that shares the same memory with the device tensor.
-        """
-        if _no_torch:
-            raise ImportError("torch is not available")
-        rt = Runtime.get_runtime(self.runtime_id)
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.get_torch_view()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
-        dl_tensor = rt.executor.get_dl_tensor(self._tensor)
-        torch_view = torch.utils.dlpack.from_dlpack(dl_tensor)
-        torch_view.requires_grad = self.requires_grad
-        return torch_view
-
     def from_numpy(self, ndarray: np.ndarray, stream: int = 0) -> "Tensor":
         """
         Copies the tensor from a host numpy array to the device.
@@ -184,6 +123,37 @@ class Tensor:
         rt.executor.tensor_write(self._tensor, ndarray, stream)
         return self
 
+    def to_dlpack(self):
+        """
+        Returns a DLPack tensor that shares the same memory with the device tensor.
+        """
+        rt = Runtime.get_runtime(self.runtime_id)
+        if not rt.launched():
+            raise RuntimeError(
+                "Tensor is not allocated yet. `Tensor.to_dlpack()` is "
+                "usable only after you call `Runtime.launch()`."
+            )
+        return rt.executor.tensor_to_dlpack(self._tensor)
+
+    @staticmethod
+    def from_dlpack(ext_tensor, runtime_id: int = -1) -> "Tensor":
+        """
+        Copies the tensor from a DLPack tensor to the device.
+        """
+        return Tensor(_Tensor(ext_tensor), runtime_id=runtime_id)
+
+    def to_torch(self) -> torch.Tensor:
+        """
+        Returns a torch tensor that shares the same memory with the device tensor.
+        """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        dl_capsule = self.to_dlpack()
+        torch_view = torch.utils.dlpack.from_dlpack(dl_capsule)
+        # Keep dl_capsule alive not to free the memory
+        torch_view.__ark_buffer__ = dl_capsule
+        return torch_view
+
     @staticmethod
     def from_torch(tensor: torch.Tensor, runtime_id: int = -1) -> "Tensor":
         """
@@ -195,16 +165,14 @@ class Tensor:
             raise ValueError("Torch tensor must be contiguous.")
         elif tensor.device.type == "cpu":
             raise ValueError("Torch tensor must be on a device.")
-        ark_dtype = DataType.from_torch(tensor.dtype)
-        dl_capsule = torch.utils.dlpack.to_dlpack(tensor)
-        ark_tensor = _Tensor(dl_capsule, ark_dtype.ctype())
-        return Tensor(
-            ark_tensor,
+        return Tensor.from_dlpack(
+            torch.utils.dlpack.to_dlpack(tensor),
             runtime_id=runtime_id,
-            requires_grad=tensor.requires_grad,
         )
 
-    def copy(self, data: Union[np.ndarray, torch.Tensor]) -> "Tensor":
+    def copy(
+        self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
+    ) -> "Tensor":
         """
         Copies data into this tensor. The data type may differ,
         but the size must match.
@@ -225,6 +193,7 @@ class Tensor:
                 self._tensor,
                 data.data_ptr(),
                 tensor_bytes,
+                stream,
                 data.device.type == "cuda",
             )
             data.requires_grad = self.requires_grad
@@ -235,7 +204,7 @@ class Tensor:
                 data = np.ascontiguousarray(data)
             if data.nbytes != tensor_bytes:
                 raise ValueError("data size does not match the tensor")
-            rt.executor.tensor_write(self._tensor, data)
+            rt.executor.tensor_write(self._tensor, data, stream)
         else:
             raise ValueError("data must be a numpy array or a torch tensor")
         return self

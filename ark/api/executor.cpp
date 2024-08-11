@@ -155,6 +155,8 @@ class Executor::Impl {
 
     Stream stream() const { return reinterpret_cast<Stream>(stream_raw_); }
 
+    std::shared_ptr<GpuMemory> buffer() const { return buffer_; }
+
     std::string plan() const { return plan_json_.dump_pretty(); }
 
     void add_plan(const std::string &plan);
@@ -165,7 +167,7 @@ class Executor::Impl {
     float stop(int64_t max_spin_count);
     void barrier();
 
-    void *tensor_address(const Tensor tensor) const;
+    void *tensor_address(const Tensor &tensor) const;
 
     void tensor_read(const Tensor &tensor, void *data, size_t bytes,
                      Stream stream, bool is_d2d) const;
@@ -250,18 +252,11 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     }
 
     auto gpu_manager = GpuManager::get_instance(device_id_);
+
     if (!gpu_manager->info().arch->belongs_to(
             Arch::from_name(plan_json.at("Architecture")))) {
         LOG(WARN, "Architecture name of the plan `",
             plan_json.at("Architecture").get<std::string>(),
-            "` is not compatible with the GPU architecture `",
-            gpu_manager->info().arch->name(), "`.");
-    }
-
-    if (!gpu_manager->info().arch->belongs_to(
-            Arch::from_name(plan_json_.at("Architecture")))) {
-        LOG(WARN, "Architecture name of the plan `",
-            plan_json_.at("Architecture").get<std::string>(),
             "` is not compatible with the GPU architecture `",
             gpu_manager->info().arch->name(), "`.");
     }
@@ -864,7 +859,7 @@ void Executor::Impl::barrier() {
     }
 }
 
-void *Executor::Impl::tensor_address(const Tensor tensor) const {
+void *Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
         ERR(InternalError, "Invalid buffer ID: ", buffer_id);
@@ -1006,6 +1001,8 @@ int Executor::device_id() const { return impl_->device_id(); }
 
 Stream Executor::stream() const { return impl_->stream(); }
 
+std::shared_ptr<GpuMemory> Executor::buffer() const { return impl_->buffer(); }
+
 std::string Executor::plan() const { return impl_->plan(); }
 
 void Executor::add_plan(const std::string &plan) { impl_->add_plan(plan); }
@@ -1031,7 +1028,7 @@ void Executor::destroy() {
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 
-void *Executor::tensor_address(const Tensor tensor) const {
+void *Executor::tensor_address(const Tensor &tensor) const {
     return impl_->tensor_address(tensor);
 }
 

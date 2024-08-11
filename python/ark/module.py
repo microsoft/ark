@@ -5,8 +5,10 @@ import logging
 import numpy as np
 from typing import Any, Dict, Union
 from .tensor import Tensor, Parameter
-from .runtime import Runtime
+from .runtime import Runtime, Planner
 from .init import init
+from .ops import tensor
+from .data_type import DataType
 
 try:
     import torch

@@ -107,7 +107,6 @@ CodeGenerator::Impl::Impl(
     num_warps_per_proc_ = plan.at("NumWarpsPerProcessor");
 
     std::stringstream definitions_ss;
-
     for (auto &task_json : plan.at("TaskInfos")) {
         definitions_ss << this->def_task(task_json);
     }
@@ -373,7 +372,8 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(PlanError, "not enough resources for task group");
+            ERR(PlanError, "not enough resources for task group: ",
+                tg.dump());
         }
 
         size_t task_b = *task_range.begin();

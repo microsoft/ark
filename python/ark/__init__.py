@@ -51,6 +51,7 @@ from .data_type import (
     uint8,
     byte,
 )
+from .profiler import Profiler
 from .ops import *
 from .planner import *
 from .error import *

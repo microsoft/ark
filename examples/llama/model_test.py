@@ -59,8 +59,10 @@ def run_ark(
     output = module(*module_inputs)
 
     with ark.Runtime() as rt:
-        plan = ark.Plan.from_file("plan_llama2_7b_b1_s2048.json")
-        rt.launch(plan)
+        plan = ark.DefaultPlanner().plan()
+        with open("plan.json", "w") as f:
+            f.write(str(plan))
+        rt.launch(plan=plan)
 
         # Load model parameters
         if state_dict:
