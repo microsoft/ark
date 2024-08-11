@@ -6,7 +6,6 @@
 #include <dlpack/dlpack.h>
 
 #include <cmath>
-#include <iostream>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
@@ -155,7 +154,7 @@ class Executor::Impl {
 
     Stream stream() const { return reinterpret_cast<Stream>(stream_raw_); }
 
-    std::shared_ptr<GpuMemory> buffer() const { return buffer_; }
+    std::shared_ptr<GpuMemory> buffer() const { return buffers_.back(); }
 
     std::string plan() const { return plan_json_.dump_pretty(); }
 
@@ -186,6 +185,8 @@ class Executor::Impl {
     int device_id_;
     std::string name_;
     bool loop_mode_;
+
+    bool is_buffer_allocated_;
 
     gpuStream stream_raw_;
 
@@ -271,7 +272,10 @@ void Executor::Impl::init(const PlanJson &plan_json) {
 
     timer_begin_ = gpu_manager->create_event();
     timer_end_ = gpu_manager->create_event();
-    buffers_.push_back(gpu_manager->malloc(total_bytes_, 65536));
+    if (total_bytes_ > 0) {
+        buffers_.push_back(gpu_manager->malloc(total_bytes_, 65536));
+        is_buffer_allocated_ = true;
+    }
 
     buffer_id_to_addr_ =
         init_buffer_addrs(buffers_.back()->ref(), buffer_id_to_offset_);
@@ -296,6 +300,8 @@ void Executor::Impl::init(const PlanJson &plan_json) {
 
     std::string kernel_name;
     if (loop_mode_) {
+        // should we add an identifier to specify which plan the kernel executes
+        // i.e. ark_loop_kernel_2 for the second plan
         kernel_name = "ark_loop_kernel";
     } else {
         kernel_name = "ark_kernel";
@@ -432,15 +438,10 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
                     "PyTorch tensor and model execution are on different GPUs");
             }
             external_buffers_.push_back(buf_info->buffer->external_data());
-            auto it = buffer_id_to_name_.find(buf_info->buffer->id());
-            if (it == buffer_id_to_name_.end()) {
-                std::string name =
-                    "extern_buf_" + std::to_string(buf_info->buffer->id());
-                external_args_.push_back(name);
-                buffer_id_to_name_[buf_info->buffer->id()] = name;
-            } else {
-                external_args_.push_back(it->second);
-            }
+            const auto [it, inserted] = buffer_id_to_name_.try_emplace(
+                buf_info->buffer->id(),
+                "extern_buf_" + std::to_string(buf_info->buffer->id()));
+            external_args_.push_back(it->second);
             continue;
         }
         // if we are adding a plan and come across a buffer from a previous
@@ -449,7 +450,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             buffer_id_to_offset_.end()) {
             external_buffers_.push_back(
                 buffer_id_to_addr_[buf_info->buffer->id()]);
-            std::string name =
+            const std::string name =
                 "extern_buf_" + std::to_string(buf_info->buffer->id());
             external_args_.push_back(name);
             buffer_id_to_name_[buf_info->buffer->id()] = name;
@@ -701,6 +702,7 @@ void Executor::Impl::add_plan(const std::string &plan) {
     external_args_.clear();
     buffer_id_to_name_.clear();
     total_bytes_ = 0;
+    is_buffer_allocated_ = false;
     init(Json::parse(plan));
 }
 
