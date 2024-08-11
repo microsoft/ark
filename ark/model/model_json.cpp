@@ -5,6 +5,7 @@
 
 #include <sstream>
 
+#include "ark/dims.hpp"
 #include "logging.hpp"
 
 static std::stringstream &idnt(std::stringstream &ss, int indent) {
@@ -26,14 +27,46 @@ static void verify_format_json(const std::string &name, const Json &json,
                                const std::vector<std::string> &array_fields) {
     for (const auto &field : required_fields) {
         if (!json.contains(field)) {
-            ERR(ErrorType,
-                name + ": " + field + " not found. Given: " + json.dump());
+            ERR(ErrorType, name, ": ", field,
+                " not found. Given: ", json.dump());
         }
     }
     for (const auto &field : array_fields) {
         if (!json.at(field).is_array()) {
-            ERR(ErrorType, name + ": " + field +
-                               " is not an array. Given: " + json.dump());
+            ERR(ErrorType, name, ": ", field,
+                " is not an array. Given: ", json.dump());
+        }
+    }
+}
+
+template <typename ErrorType, bool ZeroNotAllowed>
+static void verify_format_dims(const std::string &name, const Json &json,
+                               const std::vector<std::string> &dims_fields) {
+    for (const auto &field : dims_fields) {
+        if (!json.at(field).is_array()) {
+            ERR(ErrorType, name, ": ", field,
+                " is not an array. Given: ", json.dump());
+        }
+        std::vector<DimType> dims;
+        try {
+            dims = json.at(field).get<std::vector<DimType>>();
+        } catch (const std::exception &e) {
+            ERR(ErrorType, name, ": ", field,
+                " is not an array of integers. Given: ", json.dump());
+        }
+        for (const auto &dim : dims) {
+            if (dim < 0) {
+                ERR(ErrorType, name, ": ", field,
+                    " contains negative value. Given: ", json.dump());
+            }
+        }
+        if (ZeroNotAllowed) {
+            for (const auto &dim : dims) {
+                if (dim == 0) {
+                    ERR(ErrorType, name, ": ", field,
+                        " contains zero value. Given: ", json.dump());
+                }
+            }
         }
     }
 }
@@ -52,10 +85,15 @@ static void verify_format_tensor(const Json &json) {
     const std::vector<std::string> required_fields = {
         "Id",      "DataType",    "Shape", "Strides",
         "Offsets", "PaddedShape", "Buffer"};
-    const std::vector<std::string> array_fields = {"Shape", "Strides",
-                                                   "Offsets", "PaddedShape"};
-    verify_format_json<ErrorType>("TensorJson", json, required_fields,
-                                  array_fields);
+    const std::vector<std::string> dims_fields = {"Shape", "Strides", "Offsets",
+                                                  "PaddedShape"};
+    verify_format_json<ErrorType>("TensorJson", json, required_fields, {});
+    verify_format_dims<ErrorType, false>("TensorJson", json,
+                                         {
+                                             "Offsets",
+                                         });
+    verify_format_dims<ErrorType, true>("TensorJson", json,
+                                        {"Shape", "Strides", "PaddedShape"});
     verify_format_buffer<ErrorType>(json.at("Buffer"));
 }
 

@@ -154,7 +154,9 @@ class Executor::Impl {
 
     Stream stream() const { return reinterpret_cast<Stream>(stream_raw_); }
 
-    std::shared_ptr<GpuMemory> buffer() const { return buffers_.back(); }
+    std::shared_ptr<GpuMemory> buffer() const {
+        return buffers_.empty() ? nullptr : buffers_.back();
+    }
 
     std::string plan() const { return plan_json_.dump_pretty(); }
 
@@ -177,7 +179,8 @@ class Executor::Impl {
     void init_communicator();
     std::map<size_t, size_t> init_buffers(const Json &plan_json);
     std::map<size_t, void *> init_buffer_addrs(
-        void *buffer_base, const std::map<size_t, size_t> &buffer_id_to_offset);
+        std::shared_ptr<GpuMemory> buffer,
+        const std::map<size_t, size_t> &buffer_id_to_offset);
     std::set<int> init_remote_ranks(const Json &plan_json) const;
     void init_channels(const std::set<int> &remote_ranks);
 
@@ -275,10 +278,9 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     if (total_bytes_ > 0) {
         buffers_.push_back(gpu_manager->malloc(total_bytes_, 65536));
         is_buffer_allocated_ = true;
+        buffer_id_to_addr_ =
+            init_buffer_addrs(buffers_.back(), buffer_id_to_offset_);
     }
-
-    buffer_id_to_addr_ =
-        init_buffer_addrs(buffers_.back()->ref(), buffer_id_to_offset_);
 
     codegen_ = std::make_shared<CodeGenerator>(plan_json_, buffer_id_to_offset_,
                                                external_args_,
@@ -293,7 +295,7 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     size_t smem_block_total =
         static_cast<size_t>(gpu_manager->info().smem_block_total);
 
-    if (world_size_ > 1) {
+    if (world_size_ > 1 && total_bytes_ > 0) {
         auto remote_ranks = init_remote_ranks(plan_json_);
         init_channels(remote_ranks);
     }
@@ -325,7 +327,8 @@ void Executor::Impl::init_communicator() {
 }
 
 std::map<size_t, void *> Executor::Impl::init_buffer_addrs(
-    void *buffer_base, const std::map<size_t, size_t> &buffer_id_to_offset) {
+    std::shared_ptr<GpuMemory> buffer,
+    const std::map<size_t, size_t> &buffer_id_to_offset) {
     std::map<size_t, void *> buffer_id_to_addr;
     // Reuse existing buffer addresses for new plans that use previous tensors
     // from earlier plans
@@ -333,8 +336,7 @@ std::map<size_t, void *> Executor::Impl::init_buffer_addrs(
         buffer_id_to_addr = buffer_id_to_addr_;
     }
     for (const auto &kv : buffer_id_to_offset) {
-        buffer_id_to_addr[kv.first] =
-            static_cast<char *>(buffer_base) + kv.second;
+        buffer_id_to_addr[kv.first] = buffer->ref(kv.second);
     }
     return buffer_id_to_addr;
 }
@@ -772,7 +774,7 @@ void Executor::Impl::launch() {
         // Initialize loop flags.
         atomicStoreRelaxed(flag_->ref<int>(), 0);
         void *flag_ptr = flag_->ref();
-        void *buf_ptr = buffers_.back()->ref();
+        void *buf_ptr = (buffers_.empty()) ? nullptr : buffers_.back()->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
         for (auto &buffer : external_buffers_) {
             args.push_back(&buffer);
@@ -790,7 +792,7 @@ void Executor::Impl::run(int iter) {
         }
         atomicStoreRelaxed(flag_->ref<int>(), iter);
     } else {
-        void *buf_ptr = buffers_.back()->ref();
+        void *buf_ptr = (buffers_.empty()) ? nullptr : buffers_.back()->ref();
         int i = 0;
         std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
         for (auto &buffer : external_buffers_) {
@@ -865,7 +867,10 @@ void Executor::Impl::barrier() {
 void *Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
-        ERR(InternalError, "Invalid buffer ID: ", buffer_id);
+        ERR(InvalidUsageError, "Tensor has an unknown buffer ID ", buffer_id,
+            ". This is likely caused by accessing a tensor that is optimized "
+            "out by the compiler or not used in any plan passed to the "
+            "executor.");
     }
     return buffer_id_to_addr_.at(buffer_id);
 }
