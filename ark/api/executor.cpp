@@ -405,19 +405,19 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             continue;
         } else {
             buffer_id_to_offset[buf_info->buffer->id()] = offset;
+            for (const auto &tag_info : buf_info->buffer->send_tags()) {
+                remote_rank_to_send_tags_and_offsets[tag_info.first]
+                    .first.push_back(tag_info.second);
+                remote_rank_to_send_tags_and_offsets[tag_info.first]
+                    .second.push_back(offset);
+            }
+            for (const auto &tag_info : buf_info->buffer->recv_tags()) {
+                remote_rank_to_recv_tags_and_offsets[tag_info.first]
+                    .first.push_back(tag_info.second);
+                remote_rank_to_recv_tags_and_offsets[tag_info.first]
+                    .second.push_back(offset);
+            }
             offset += buf_info->bytes;
-        }
-        for (const auto &tag_info : buf_info->buffer->send_tags()) {
-            remote_rank_to_send_tags_and_offsets[tag_info.first]
-                .first.push_back(tag_info.second);
-            remote_rank_to_send_tags_and_offsets[tag_info.first]
-                .second.push_back(offset);
-        }
-        for (const auto &tag_info : buf_info->buffer->recv_tags()) {
-            remote_rank_to_recv_tags_and_offsets[tag_info.first]
-                .first.push_back(tag_info.second);
-            remote_rank_to_recv_tags_and_offsets[tag_info.first]
-                .second.push_back(offset);
         }
     }
     total_bytes_ = offset;
