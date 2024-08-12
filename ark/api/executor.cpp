@@ -696,7 +696,12 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
         ERR(InvalidUsageError, "Need to stop before re-compiling.");
         return;
     }
-    init(PlanJson::parse(plan), device_id, name);
+    try {
+        auto plan_json = Json::parse(plan);
+        init(plan_json, device_id, name);
+    } catch (const ::nlohmann::json::parse_error &e) {
+        ERR(InvalidUsageError, "Failed to parse the plan JSON: ", e.what());
+    }
     kernel_->compile();
 }
 

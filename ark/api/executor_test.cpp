@@ -166,8 +166,12 @@ ark::unittest::State test_executor_tensor_read_write_stride_offset() {
 ark::unittest::State test_executor_invalid() {
     ark::Executor exe;
 
+    // Invalid plan.
+    UNITTEST_THROW(exe.compile("not a json", 0), ark::InvalidUsageError);
+
     // Invalid device ID.
-    UNITTEST_THROW(exe.compile("", -1), ark::InvalidUsageError);
+    UNITTEST_THROW(exe.compile(ark::PlanJson().dump(), -1),
+                   ark::InvalidUsageError);
 
     // Invalid rank.
     ark::PlanJson plan;
