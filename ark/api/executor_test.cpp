@@ -168,12 +168,12 @@ ark::unittest::State test_executor_invalid() {
     ark::Executor exe;
 
     // Invalid device ID.
-    UNITTEST_THROW(exe.compile(-1, ""), ark::InvalidUsageError);
+    UNITTEST_THROW(exe.compile("", -1), ark::InvalidUsageError);
 
     // Invalid rank.
     ark::PlanJson plan;
     plan["Rank"] = 1;
-    UNITTEST_THROW(exe.compile(0, plan.dump()), ark::InvalidUsageError);
+    UNITTEST_THROW(exe.compile(plan.dump(), 0), ark::InvalidUsageError);
 
     return ark::unittest::SUCCESS;
 }

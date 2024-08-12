@@ -1011,9 +1011,9 @@ std::string Executor::plan() const { return impl_->plan(); }
 
 const std::string &Executor::name() const { return impl_->name(); }
 
-void Executor::compile(int device_id, const std::string &plan,
+void Executor::compile(const std::string &plan, int device_id,
                        const std::string &name) {
-    impl_->compile(device_id, plan, name);
+    impl_->compile(plan, device_id, name);
 }
 
 void Executor::launch(Stream stream, bool loop_mode) {
@@ -1062,7 +1062,7 @@ DefaultExecutor::DefaultExecutor(
     for (const auto &rule : config_rules) {
         planner.install_config_rule(rule);
     }
-    compile(device_id, planner.plan(), name);
+    compile(planner.plan(), device_id, name);
     impl_->stream_raw_ = reinterpret_cast<gpuStream>(stream);
     impl_->loop_mode_ = loop_mode;
 }

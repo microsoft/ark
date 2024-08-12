@@ -426,7 +426,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
             ark::Planner planner(model, gpu_id);
             planner.install_config_rule(config_rule);
             ark::Executor exe;
-            exe.compile(gpu_id, planner.plan());
+            exe.compile(planner.plan(), gpu_id);
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), 1.0f);
