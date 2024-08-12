@@ -15,24 +15,18 @@ namespace ark {
 
 GpuKernel::GpuKernel(int gpu_id, const std::string& code,
                      const std::array<int, 3>& block_dim,
-                     const std::array<int, 3>& grid_dim, size_t smem_bytes,
-                     const std::string& kernel_name) {
-    this->init(gpu_id, code, block_dim, grid_dim, smem_bytes, kernel_name);
+                     const std::array<int, 3>& grid_dim, size_t smem_bytes) {
+    this->init(gpu_id, code, block_dim, grid_dim, smem_bytes);
 }
 
 void GpuKernel::init(int gpu_id, const std::string& code,
                      const std::array<int, 3>& block_dim,
-                     const std::array<int, 3>& grid_dim, size_t smem_bytes,
-                     const std::string& kernel_name) {
+                     const std::array<int, 3>& grid_dim, size_t smem_bytes) {
     gpu_manager_ = GpuManager::get_instance(gpu_id);
     code_ = code;
     block_dim_ = block_dim;
     grid_dim_ = grid_dim;
     smem_bytes_ = smem_bytes;
-    kernel_name_ = kernel_name;
-    if (kernel_name_.size() == 0) {
-        ERR(InvalidUsageError, "Invalid kernel name: ", kernel_name_);
-    }
 }
 
 void GpuKernel::compile() {
@@ -45,20 +39,29 @@ void GpuKernel::compile() {
     }
     bin_ = gpu_compile({code_}, gpu_manager_->info().arch, max_reg_cnt);
     GLOG_DRV(gpuModuleLoadData(&module_, bin_.c_str()));
-    GLOG_DRV(gpuModuleGetFunction(&function_, module_, kernel_name_.c_str()));
-
-    int static_smem_size_bytes;
-    GLOG_DRV(gpuFuncGetAttribute(&static_smem_size_bytes,
-                                 gpuFuncAttributeSharedSizeBytes, function_));
-    int dynamic_smem_size_bytes = smem_bytes_ - static_smem_size_bytes;
-    GLOG_DRV(gpuFuncSetAttribute(function_,
-                                 gpuFuncAttributeMaxDynamicSharedSizeBytes,
-                                 dynamic_smem_size_bytes));
 }
 
-void GpuKernel::launch(gpuStream stream, std::vector<void*>& args) {
+void GpuKernel::launch(const std::string& kernel_name, gpuStream stream,
+                       std::vector<void*>& args) {
     if (!this->is_compiled()) {
         ERR(InvalidUsageError, "Kernel is not compiled yet.");
+    }
+    if (kernel_name.size() == 0) {
+        ERR(InvalidUsageError, "Invalid kernel name: ", kernel_name);
+    }
+    if (kernel_name_ != kernel_name) {
+        GLOG_DRV(
+            gpuModuleGetFunction(&function_, module_, kernel_name.c_str()));
+
+        int static_smem_size_bytes;
+        GLOG_DRV(gpuFuncGetAttribute(&static_smem_size_bytes,
+                                     gpuFuncAttributeSharedSizeBytes,
+                                     function_));
+        int dynamic_smem_size_bytes = smem_bytes_ - static_smem_size_bytes;
+        GLOG_DRV(gpuFuncSetAttribute(function_,
+                                     gpuFuncAttributeMaxDynamicSharedSizeBytes,
+                                     dynamic_smem_size_bytes));
+        kernel_name_ = kernel_name;
     }
     gpu_manager_->launch(function_, grid_dim_, block_dim_, smem_bytes_, stream,
                          args.data(), nullptr);

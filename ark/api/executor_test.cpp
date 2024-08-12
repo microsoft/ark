@@ -44,7 +44,6 @@ ark::unittest::State test_executor() {
     }
     {
         ark::DefaultExecutor executor(empty, 0, stream, {}, "test", LoopMode);
-        UNITTEST_THROW(executor.launch(), ark::InvalidUsageError);
 
         executor.launch();
         executor.launch();  // Will be ignored with a warning.

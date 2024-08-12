@@ -199,6 +199,8 @@ class Executor::Impl {
     int rank_;
     int world_size_;
 
+    std::string kernel_name_;
+
     bool is_launched_ = false;
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
@@ -300,21 +302,9 @@ void Executor::Impl::init(const PlanJson &plan_json, int device_id,
         init_channels(remote_ranks);
     }
 
-    std::string kernel_name;
-    if (loop_mode_) {
-        // should we add an identifier to specify which plan the kernel executes
-        // i.e. ark_loop_kernel_2 for the second plan
-        kernel_name = "ark_loop_kernel";
-    } else {
-        kernel_name = "ark_kernel";
-    }
-    if (!name_.empty()) {
-        kernel_name += "_" + name_;
-    }
-
-    kernel_ = std::shared_ptr<GpuKernel>(new GpuKernel(
-        device_id_, codegen_->code(), {threads_per_block, 1, 1}, {num_sm, 1, 1},
-        std::max(smem_block_total, size_t(4)), kernel_name));
+    kernel_ = std::shared_ptr<GpuKernel>(
+        new GpuKernel(device_id_, codegen_->code(), {threads_per_block, 1, 1},
+                      {num_sm, 1, 1}, std::max(smem_block_total, size_t(4))));
 }
 
 void Executor::Impl::init_communicator() {
@@ -726,6 +716,17 @@ void Executor::Impl::launch(Stream stream, bool loop_mode) {
     }
     loop_mode_ = loop_mode;
 
+    if (loop_mode_) {
+        // should we add an identifier to specify which plan the kernel executes
+        // i.e. ark_loop_kernel_2 for the second plan
+        kernel_name_ = "ark_loop_kernel";
+    } else {
+        kernel_name_ = "ark_kernel";
+    }
+    if (!name_.empty()) {
+        kernel_name_ += "_" + name_;
+    }
+
     auto get_global_rt = [&](const std::string &symbol) {
         return reinterpret_cast<void *>(kernel_->get_global(symbol));
     };
@@ -786,7 +787,7 @@ void Executor::Impl::launch(Stream stream, bool loop_mode) {
         for (auto &buffer : external_buffers_) {
             args.push_back(&buffer);
         }
-        kernel_->launch(stream_raw_, args);
+        kernel_->launch(kernel_name_, stream_raw_, args);
     }
     is_recording_ = true;
     is_launched_ = true;
@@ -806,7 +807,7 @@ void Executor::Impl::run(int iter) {
             args.push_back(&buffer);
         }
         for (; i < iter; i++) {
-            kernel_->launch(stream_raw_, args);
+            kernel_->launch(kernel_name_, stream_raw_, args);
         }
     }
 }
@@ -822,9 +823,8 @@ void Executor::Impl::wait(int64_t max_spin_count) {
             gpuError res = gpuStreamQuery(stream_raw_);
             if (res == gpuSuccess) {
                 if (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
-                    LOG(WARN,
+                    ERR(InternalError,
                         "Stream is finished but the loop flag is still set.");
-                    break;
                 } else {
                     LOG(WARN,
                         "wait() is delayed by a stream query. Regarding "
