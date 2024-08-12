@@ -25,7 +25,6 @@ ark::unittest::State test_communication_send_recv_unidir() {
             }
 
             ark::DefaultExecutor exe(model, gpu_id);
-            exe.compile();
 
             if (gpu_id == 0) {
                 std::vector<ark::half_t> data(1024);
@@ -68,7 +67,6 @@ ark::unittest::State test_communication_send_recv_unidir() {
             }
 
             ark::DefaultExecutor exe(model, gpu_id);
-            exe.compile();
 
             if (gpu_id == 1) {
                 std::vector<ark::half_t> data(1024);
@@ -117,7 +115,6 @@ ark::unittest::State test_communication_send_recv_bidir() {
             tns2 = model.recv(tns2_data, remote_gpu_id, tag);
 
             ark::DefaultExecutor exe(model, gpu_id);
-            exe.compile();
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), ark::half_t(gpu_id + 1));
@@ -161,7 +158,6 @@ ark::unittest::State test_communication_send_recv_bidir() {
             ark::Tensor sum = model.add(tns2, tns_data);
 
             ark::DefaultExecutor exe(model, gpu_id);
-            exe.compile();
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), ark::half_t(gpu_id + 1));
@@ -232,7 +228,6 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
             tns2 = model.recv(tns2_data, remote_gpu_id, tag);
 
             ark::DefaultExecutor exe(model, gpu_id, nullptr, {config_rule});
-            exe.compile();
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), ark::half_t(gpu_id + 1));
@@ -276,7 +271,6 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
             ark::Tensor sum = model.add(tns2, tns_data);
 
             ark::DefaultExecutor exe(model, gpu_id, nullptr, {config_rule});
-            exe.compile();
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), ark::half_t(gpu_id + 1));
@@ -319,7 +313,6 @@ ark::unittest::State test_communication_send_packet() {
             }
 
             ark::DefaultExecutor exe(model, gpu_id);
-            exe.compile();
 
             if (gpu_id == 0) {
                 std::vector<ark::half_t> data(1024);
@@ -362,7 +355,6 @@ ark::unittest::State test_communication_send_recv_reduce_packet() {
             model.recv_packet(shard_tensors[peer_gpu_id], peer_gpu_id, 1, 1);
 
             ark::DefaultExecutor exe(model, gpu_id);
-            exe.compile();
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), 1.0f);
@@ -433,8 +425,8 @@ ark::unittest::State test_communication_send_recv_reduce() {
 
             ark::Planner planner(model, gpu_id);
             planner.install_config_rule(config_rule);
-            ark::Executor exe(gpu_id, nullptr, "Executor", planner.plan());
-            exe.compile();
+            ark::Executor exe;
+            exe.compile(gpu_id, planner.plan());
 
             std::vector<ark::half_t> data(1024);
             std::iota(data.begin(), data.end(), 1.0f);

@@ -39,7 +39,7 @@ def set_world_size(world_size):
 from .init import init
 from .tensor import Dims, Tensor, Parameter
 from .module import Module, RuntimeModule
-from .runtime import Runtime
+from .runtime import *
 from .serialize import save, load
 from .data_type import (
     DataType,

@@ -16,10 +16,6 @@ class _RuntimeState:
     runtime = None
 
 
-class Executor(_Executor):
-    pass
-
-
 class Runtime:
     """
     Convenience class for running a model.
@@ -35,15 +31,10 @@ class Runtime:
         Running = 2
 
     def __init__(self):
-        self.executor: Executor = None
+        self.executor: _Executor = _Executor()
         self.state: Runtime.State = Runtime.State.Init
+        self.loop_mode = True
         _RuntimeState.runtime = self
-
-    def get_state(self) -> "Runtime.State":
-        """
-        Get the runtime state.
-        """
-        return self.state
 
     @staticmethod
     def get_runtime() -> "Runtime":
@@ -76,14 +67,6 @@ class Runtime:
         """
         return self.state == Runtime.State.Running
 
-    def add_plan(self, plan: Plan):
-        """
-        Add a plan to the executor.
-        """
-        if self.executor is None:
-            raise RuntimeError("Executor is not initialized")
-        self.executor.add_plan(str(plan))
-
     def launch(
         self,
         plan: Plan = None,
@@ -96,33 +79,21 @@ class Runtime:
         the CUDA kernels. The GPU context and the connection between GPUs will be
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
+        if device_id < 0:
+            logging.error(f"Invalid device_id: {device_id}")
+            raise ValueError(f"Invalid device_id: {device_id}")
         plan = Planner(device_id).plan() if plan is None else plan
+        plan_str = str(plan)
         if self.launched():
-            # If the Runtime state is already launched and we are adding another plan
-            # to the executor, we compile the new kernel and launch the executor again.
-            self.executor.add_plan(str(plan))
-            self.executor.compile()
-            self.executor.launch()
-            return
+            # Stop the current running model
+            self.stop()
 
-        # If the RuntimeState is init, we need to create a new executor and
-        # compile the kernels
-        if self.state == Runtime.State.Init:
-            if self.executor is not None:
-                if not self.executor.destroyed():
-                    logging.warning(
-                        f"Runtime has already been launched. Destroying the old executor"
-                    )
-                    self.executor.destroy()
-            self.executor = Executor(
-                device_id,
-                stream,
-                "ArkRuntime",
-                str(plan),
-                loop_mode,
-            )
-            self.executor.compile()
-        self.executor.launch()
+        # Recompile if the previous launch was not compiled with the same info
+        # or if this is the first launch
+        if plan_str != self.executor.plan() or device_id != self.executor.device_id():
+            self.executor.compile(plan_str, device_id)
+
+        self.executor.launch(stream, loop_mode)
         self.state = Runtime.State.LaunchedNotRunning
 
     def run(self, iter=1, non_blocking=False):
@@ -168,16 +139,15 @@ class Runtime:
         self.state = Runtime.State.LaunchedNotRunning
         return elapsed
 
-    def reset(self, persist=False):
+    def reset(self):
         """
         Reset the runtime.
         """
         if self.launched():
             self.stop()
-        if persist:
-            return
-        if self.executor is not None:
-            if not self.executor.destroyed():
-                self.executor.destroy()
-            self.executor = None
+        self.executor.destroy()
+        self.executor = _Executor()
         self.state = Runtime.State.Init
+
+
+__all__ = ["Runtime"]

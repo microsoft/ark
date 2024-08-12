@@ -161,21 +161,20 @@ static py::capsule tensor_to_dlpack(ark::Executor &self, const ark::Tensor &tens
 
 void register_executor(py::module &m) {
     py::class_<ark::Executor>(m, "_Executor")
-        .def(py::init([](int device_id, uintptr_t stream,
-                         const std::string &name, const std::string &plan,
-                         bool loop_mode) {
-            return new ark::Executor(device_id,
-                                     reinterpret_cast<ark::Stream>(stream),
-                                     name, plan, loop_mode);
-        }))
+        .def(py::init<>())
         .def("device_id", &ark::Executor::device_id)
         .def("stream",
              [](ark::Executor *self) {
                  return reinterpret_cast<uintptr_t>(self->stream());
              })
         .def("plan", &ark::Executor::plan)
-        .def("compile", &ark::Executor::compile)
-        .def("launch", &ark::Executor::launch)
+        .def("name", &ark::Executor::name)
+        .def("compile", &ark::Executor::compile, py::arg("device_id"),
+             py::arg("plan"), py::arg("name") = "executor")
+        .def("launch", [](ark::Executor *self, uintptr_t stream, bool loop_mode) {
+                 self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode);
+             },
+             py::arg("stream") = 0, py::arg("loop_mode") = true)
         .def("run", &ark::Executor::run, py::arg("iter"))
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
@@ -207,6 +206,5 @@ void register_executor(py::module &m) {
                                size_t, uintptr_t, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
              py::arg("stream"), py::arg("is_d2d"))
-        .def("tensor_to_dlpack", &tensor_to_dlpack)
-        .def("add_plan", &ark::Executor::add_plan, py::arg("plan"));
+        .def("tensor_to_dlpack", &tensor_to_dlpack);
 }

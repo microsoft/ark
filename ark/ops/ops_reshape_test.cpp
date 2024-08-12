@@ -9,7 +9,6 @@
 void test_reshape_checker(ark::Model &m, ark::Tensor t0, ark::Tensor t1,
                           const std::string &) {
     ark::DefaultExecutor exe(m);
-    exe.compile();
 
     std::vector<float> data_vec(t0.shape().nelems());
     std::iota(data_vec.begin(), data_vec.end(), 1.0f);

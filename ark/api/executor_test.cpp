@@ -20,7 +20,6 @@ ark::unittest::State test_executor() {
         UNITTEST_EQ(executor.device_id(), 0);
         UNITTEST_EQ(executor.stream(), stream);
 
-        executor.compile();
         executor.launch();
         executor.run(1);
         executor.wait();
@@ -31,7 +30,6 @@ ark::unittest::State test_executor() {
     }
     {
         ark::DefaultExecutor executor(empty, 0, stream, {}, "test", LoopMode);
-        executor.compile();
         executor.launch();
         executor.run(1);
         executor.wait();
@@ -48,7 +46,6 @@ ark::unittest::State test_executor() {
         ark::DefaultExecutor executor(empty, 0, stream, {}, "test", LoopMode);
         UNITTEST_THROW(executor.launch(), ark::InvalidUsageError);
 
-        executor.compile();
         executor.launch();
         executor.launch();  // Will be ignored with a warning.
         executor.run(1);
@@ -86,7 +83,6 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
     m.noop(tensor);
 
     ark::DefaultExecutor executor(m, 0);
-    executor.compile();
     executor.launch();
     UNITTEST_NE(executor.tensor_address(tensor), nullptr);
 
@@ -169,15 +165,15 @@ ark::unittest::State test_executor_tensor_read_write_stride_offset() {
 }
 
 ark::unittest::State test_executor_invalid() {
+    ark::Executor exe;
+
     // Invalid device ID.
-    UNITTEST_THROW(ark::Executor(-1, nullptr, "test", ""),
-                   ark::InvalidUsageError);
+    UNITTEST_THROW(exe.compile(-1, ""), ark::InvalidUsageError);
 
     // Invalid rank.
     ark::PlanJson plan;
     plan["Rank"] = 1;
-    UNITTEST_THROW(ark::Executor(0, nullptr, "test", plan.dump(), true),
-                   ark::InvalidUsageError);
+    UNITTEST_THROW(exe.compile(0, plan.dump()), ark::InvalidUsageError);
 
     return ark::unittest::SUCCESS;
 }

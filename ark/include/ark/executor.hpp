@@ -21,8 +21,7 @@ class GpuMemory;
 class Executor {
    public:
     /// Constructor.
-    Executor(int device_id, Stream stream, const std::string &name,
-             const std::string &plan, bool loop_mode = true);
+    Executor();
 
     /// Destructor.
     ~Executor();
@@ -39,23 +38,22 @@ class Executor {
     /// Return the plan string.
     std::string plan() const;
 
-    /// Add a plan to the executor.
-    void add_plan(const std::string &plan);
+    const std::string &name() const;
 
     /// Compile the model. This must be called before `launch()`.
-    void compile();
+    void compile(const std::string &plan, int device_id,
+                 const std::string &name = "executor");
 
-    /// Launch the model (not running yet). This must be called after
-    /// `compile()`.
-    void launch();
+    /// Launch the executor. This must be called after `compile()`.
+    void launch(Stream stream = nullptr, bool loop_mode = true);
 
-    /// Run the model for `iter` iterations.
+    /// Run the executor for `iter` iterations.
     void run(int iter);
 
     /// Wait for the previous run to finish.
     void wait(int64_t max_spin_count = -1);
 
-    /// Stop the model and return the elapsed time in milliseconds.
+    /// Stop the executor and return the elapsed time in milliseconds.
     /// Once this is called, we need to call `launch()` again to run the model
     /// again.
     float stop(int64_t max_spin_count = -1);
@@ -105,6 +103,9 @@ class DefaultExecutor : public Executor {
         const Model &model, int device_id = -1, Stream stream = nullptr,
         const std::vector<Planner::ConfigRule> &config_rules = {},
         const std::string &name = "DefaultExecutor", bool loop_mode = true);
+
+    /// Launch the default executor.
+    void launch();
 };
 
 }  // namespace ark

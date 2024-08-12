@@ -18,7 +18,7 @@ def test_runtime_relaunch():
         assert rt.launched() == True
 
 
-def test_add_plans():
+def test_runtime_init():
     ark.init()
     M, N = 64, 64
     input_tensor = ark.tensor([M, N], ark.fp16)
@@ -35,7 +35,7 @@ def test_add_plans():
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
     )
-    runtime.reset(persist=True)
+    runtime.stop()
     ark.Model.reset()
     prev_output = output_tensor
     new_tensor = ark.tensor([M, N], ark.fp16)
@@ -51,7 +51,7 @@ def test_add_plans():
     runtime.reset()
 
 
-def test_reuse_plans():
+def test_runtime_reuse_plans():
     ark.init()
     M, N = 64, 64
     input_tensor = ark.tensor([M, N], ark.fp16)
@@ -68,7 +68,7 @@ def test_reuse_plans():
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
     )
-    runtime.reset(persist=True)
+    runtime.stop()
     ark.Model.reset()
     runtime.launch()
     runtime.run()

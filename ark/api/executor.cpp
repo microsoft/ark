@@ -145,10 +145,8 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl(int device_id, Stream stream, const std::string &name, bool loop_mode);
+    Impl() : plan_json_(), device_id_(-1) {};
     ~Impl();
-
-    void init(const PlanJson &plan);
 
     int device_id() const { return device_id_; }
 
@@ -160,9 +158,11 @@ class Executor::Impl {
 
     std::string plan() const { return plan_json_.dump_pretty(); }
 
-    void add_plan(const std::string &plan);
-    void compile();
-    void launch();
+    const std::string &name() const { return name_; }
+
+    void compile(const std::string &plan, int device_id,
+                 const std::string &name);
+    void launch(Stream stream, bool loop_mode);
     void run(int iter);
     void wait(int64_t max_spin_count);
     float stop(int64_t max_spin_count);
@@ -175,7 +175,15 @@ class Executor::Impl {
     void tensor_write(const Tensor &tensor, const void *data, size_t bytes,
                       Stream stream, bool is_d2d) const;
 
+   protected:
+    friend class DefaultExecutor;
+
+    gpuStream stream_raw_;
+    bool loop_mode_;
+
    private:
+    void init(const PlanJson &plan_json, int device_id,
+              const std::string &name);
     void init_communicator();
     std::map<size_t, size_t> init_buffers(const Json &plan_json);
     std::map<size_t, void *> init_buffer_addrs(
@@ -184,14 +192,9 @@ class Executor::Impl {
     std::set<int> init_remote_ranks(const Json &plan_json) const;
     void init_channels(const std::set<int> &remote_ranks);
 
-   protected:
+    PlanJson plan_json_;
     int device_id_;
     std::string name_;
-    bool loop_mode_;
-
-    bool is_buffer_allocated_;
-
-    gpuStream stream_raw_;
 
     int rank_;
     int world_size_;
@@ -200,7 +203,6 @@ class Executor::Impl {
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
-    PlanJson plan_json_;
     std::vector<void *> external_buffers_;
     std::vector<std::string> external_args_;
     std::map<size_t, std::string> buffer_id_to_name_;
@@ -224,26 +226,25 @@ class Executor::Impl {
         rank_to_sm_channels_;
 };
 
-Executor::Impl::Impl(int device_id, Stream stream, const std::string &name,
-                     bool loop_mode)
-    : device_id_(device_id), name_(name), loop_mode_(loop_mode) {
-    if (device_id < 0) {
-        ERR(InvalidUsageError, "Invalid device ID ", device_id);
-    }
-    if (stream) {
-        stream_raw_ = reinterpret_cast<gpuStream>(stream);
-    } else {
-        stream_ = GpuManager::get_instance(device_id_)->create_stream();
-        stream_raw_ = stream_->get();
-    }
-}
-
 Executor::Impl::~Impl() {
     if (is_launched_) stop(-1);
 }
 
-void Executor::Impl::init(const PlanJson &plan_json) {
+void Executor::Impl::init(const PlanJson &plan_json, int device_id,
+                          const std::string &name) {
+    if (device_id < 0) {
+        ERR(InvalidUsageError, "Invalid device ID ", device_id);
+    }
+
     plan_json_ = plan_json;
+    device_id_ = device_id;
+    name_ = name;
+
+    external_buffers_.clear();
+    external_args_.clear();
+    buffer_id_to_name_.clear();
+    total_bytes_ = 0;
+
     rank_ = plan_json_["Rank"].get<int>();
     world_size_ = plan_json_["WorldSize"].get<int>();
 
@@ -277,7 +278,6 @@ void Executor::Impl::init(const PlanJson &plan_json) {
     timer_end_ = gpu_manager->create_event();
     if (total_bytes_ > 0) {
         buffers_.push_back(gpu_manager->malloc(total_bytes_, 65536));
-        is_buffer_allocated_ = true;
         buffer_id_to_addr_ =
             init_buffer_addrs(buffers_.back(), buffer_id_to_offset_);
     }
@@ -700,25 +700,32 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     }
 }
 
-void Executor::Impl::add_plan(const std::string &plan) {
-    external_buffers_.clear();
-    external_args_.clear();
-    buffer_id_to_name_.clear();
-    total_bytes_ = 0;
-    is_buffer_allocated_ = false;
-    init(Json::parse(plan));
+void Executor::Impl::compile(const std::string &plan, int device_id,
+                             const std::string &name) {
+    if (is_launched_) {
+        ERR(InvalidUsageError, "Need to stop before re-compiling.");
+        return;
+    }
+    init(PlanJson::parse(plan), device_id, name);
+    kernel_->compile();
 }
 
-void Executor::Impl::compile() { kernel_->compile(); }
-
-void Executor::Impl::launch() {
-    if (!kernel_->is_compiled()) {
-        ERR(InvalidUsageError, "Need to compile first before initialization.");
+void Executor::Impl::launch(Stream stream, bool loop_mode) {
+    if ((kernel_ == nullptr) || !kernel_->is_compiled()) {
+        ERR(InvalidUsageError, "Need to compile first before launch.");
     }
     if (is_launched_) {
         LOG(WARN, "Ignore launching twice.");
         return;
     }
+    if (stream) {
+        stream_raw_ = reinterpret_cast<gpuStream>(stream);
+    } else {
+        stream_ = GpuManager::get_instance(device_id_)->create_stream();
+        stream_raw_ = stream_->get();
+    }
+    loop_mode_ = loop_mode;
+
     auto get_global_rt = [&](const std::string &symbol) {
         return reinterpret_cast<void *>(kernel_->get_global(symbol));
     };
@@ -773,8 +780,8 @@ void Executor::Impl::launch() {
     if (loop_mode_) {
         // Initialize loop flags.
         atomicStoreRelaxed(flag_->ref<int>(), 0);
-        void *flag_ptr = flag_->ref();
         void *buf_ptr = (buffers_.empty()) ? nullptr : buffers_.back()->ref();
+        void *flag_ptr = flag_->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
         for (auto &buffer : external_buffers_) {
             args.push_back(&buffer);
@@ -990,18 +997,7 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
     GLOG(gpuStreamSynchronize(copy_stream_raw));
 }
 
-Executor::Executor(int device_id, Stream stream, const std::string &name,
-                   const std::string &plan, bool loop_mode)
-    : impl_(std::make_unique<Executor::Impl>(device_id, stream, name,
-                                             loop_mode)) {
-    auto &plan_path = get_env().enforce_plan_path;
-    if (!plan_path.empty()) {
-        LOG(INFO, "Enforce executor plan path: ", plan_path);
-        impl_->init(Json::parse(read_file(plan_path)));
-    } else if (!plan.empty()) {
-        impl_->init(Json::parse(plan));
-    }
-}
+Executor::Executor() : impl_(std::make_unique<Executor::Impl>()) {}
 
 Executor::~Executor() = default;
 
@@ -1013,11 +1009,16 @@ std::shared_ptr<GpuMemory> Executor::buffer() const { return impl_->buffer(); }
 
 std::string Executor::plan() const { return impl_->plan(); }
 
-void Executor::add_plan(const std::string &plan) { impl_->add_plan(plan); }
+const std::string &Executor::name() const { return impl_->name(); }
 
-void Executor::compile() { impl_->compile(); }
+void Executor::compile(int device_id, const std::string &plan,
+                       const std::string &name) {
+    impl_->compile(device_id, plan, name);
+}
 
-void Executor::launch() { impl_->launch(); }
+void Executor::launch(Stream stream, bool loop_mode) {
+    impl_->launch(stream, loop_mode);
+}
 
 void Executor::run(int iter) { impl_->run(iter); }
 
@@ -1054,14 +1055,20 @@ DefaultExecutor::DefaultExecutor(
     const Model &model, int device_id, Stream stream,
     const std::vector<Planner::ConfigRule> &config_rules,
     const std::string &name, bool loop_mode)
-    : Executor((device_id < 0) ? (model.rank() % get_env().num_ranks_per_host)
-                               : device_id,
-               stream, name, "", loop_mode) {
-    Planner planner(model, impl_->device_id());
+    : Executor() {
+    device_id = (device_id < 0) ? (model.rank() % get_env().num_ranks_per_host)
+                                : device_id;
+    Planner planner(model, device_id);
     for (const auto &rule : config_rules) {
         planner.install_config_rule(rule);
     }
-    impl_->init(Json::parse(planner.plan()));
+    compile(device_id, planner.plan(), name);
+    impl_->stream_raw_ = reinterpret_cast<gpuStream>(stream);
+    impl_->loop_mode_ = loop_mode;
+}
+
+void DefaultExecutor::launch() {
+    Executor::launch(reinterpret_cast<Stream>(impl_->stream_raw_), impl_->loop_mode_);
 }
 
 }  // namespace ark

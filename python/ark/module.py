@@ -168,8 +168,8 @@ class _Function(torch.autograd.Function):
         rt = Runtime.get_runtime()
         rt.launch()
         rt.run()
-        output = output.get_torch_view()
-        rt.reset(persist=True)
+        rt.stop()
+        output = output.to_torch()
         return output
 
     @staticmethod
@@ -190,12 +190,12 @@ class _Function(torch.autograd.Function):
         rt = Runtime.get_runtime()
         rt.launch()
         rt.run()
-        grad_inputs = [grad.get_torch_view() for grad in grad_inputs]
+        rt.stop()
+        grad_inputs = [grad.to_torch() for grad in grad_inputs]
         for _, param in params_dict.items():
             if param.staged_tensor is not None:
-                pytorch_grad = param.staged_tensor.get_torch_view()
+                pytorch_grad = param.staged_tensor.to_torch()
                 param.torch_param.grad = pytorch_grad
-        rt.reset(persist=True)
         return (None, *grad_inputs)
 
 

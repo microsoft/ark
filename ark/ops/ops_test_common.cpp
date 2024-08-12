@@ -38,7 +38,6 @@ OpsTestResult op_test(
     const std::vector<Planner::ConfigRule> &config_rules,
     bool print_on_error) {
     DefaultExecutor exe(model, -1, nullptr, config_rules);
-    exe.compile();
 
     std::vector<std::shared_ptr<std::vector<char>>> inputs_data_storages;
     std::vector<void *> inputs_data_refs;
