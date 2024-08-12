@@ -22,6 +22,8 @@ void register_data_type(py::module &m) {
     m.attr("FP32") = &ark::FP32;
     m.attr("FP16") = &ark::FP16;
     m.attr("BF16") = &ark::BF16;
+    m.attr("FP8_E4M3") = &ark::FP8_E4M3;
+    m.attr("FP8_E5M2") = &ark::FP8_E5M2;
     m.attr("INT32") = &ark::INT32;
     m.attr("UINT32") = &ark::UINT32;
     m.attr("INT8") = &ark::INT8;
