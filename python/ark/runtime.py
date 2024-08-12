@@ -90,7 +90,10 @@ class Runtime:
 
         # Recompile if the previous launch was not compiled with the same info
         # or if this is the first launch
-        if plan_str != self.executor.plan() or device_id != self.executor.device_id():
+        if (
+            plan_str != self.executor.plan()
+            or device_id != self.executor.device_id()
+        ):
             self.executor.compile(plan_str, device_id)
 
         self.executor.launch(stream, loop_mode)
