@@ -13,6 +13,7 @@ ark::unittest::State test_gpu_kernel() {
     kernel.compile();
     UNITTEST_TRUE(kernel.is_compiled());
     std::vector<void*> args;
+    UNITTEST_THROW(kernel.launch("", nullptr, args), ark::InvalidUsageError);
     for (int i = 0; i < 10; i++) {
         kernel.launch("kernel", nullptr, args);
     }

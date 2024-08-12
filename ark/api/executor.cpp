@@ -3,14 +3,12 @@
 
 #include "ark/executor.hpp"
 
-#include <dlpack/dlpack.h>
-
 #include <cmath>
+#include <list>
 #include <memory>
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
-#include <tuple>
 
 #include "ark/data_type.hpp"
 #include "ark/model.hpp"
@@ -214,7 +212,7 @@ class Executor::Impl {
     std::shared_ptr<CodeGenerator> codegen_;
     std::shared_ptr<GpuEvent> timer_begin_;
     std::shared_ptr<GpuEvent> timer_end_;
-    std::vector<std::shared_ptr<GpuMemory>> buffers_;
+    std::list<std::shared_ptr<GpuMemory>> buffers_;
     std::shared_ptr<GpuHostMemory> flag_;
     std::shared_ptr<GpuStream> stream_;
     std::shared_ptr<GpuKernel> kernel_;

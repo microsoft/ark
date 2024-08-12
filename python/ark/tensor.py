@@ -162,7 +162,10 @@ class Tensor:
             raise ValueError("Torch tensor must be contiguous.")
         elif tensor.device.type == "cpu":
             raise ValueError("Torch tensor must be on a device.")
-        return Tensor.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
+        ark_tensor = Tensor.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
+        # Share ownership of the memory with the torch tensor
+        ark_tensor.__torch_buffer__ = tensor
+        return ark_tensor
 
     def copy(
         self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
