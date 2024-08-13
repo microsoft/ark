@@ -1,13 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <cstring>
-#include <numeric>
-
 #include "ark/executor.hpp"
 #include "gpu/gpu.hpp"
 #include "logging.hpp"
-#include "model/model_node.hpp"
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"
 
@@ -25,18 +21,25 @@ ark::unittest::State test_ops_placeholder_value_contiguous() {
     ark::gpuMemcpy(d_ext_buffer, h_ext_buffer.data(),
                    shape.nelems() * sizeof(float), ark::gpuMemcpyHostToDevice);
 
-    // Associate the initialzied device buffer with a tensor produced from a
+    // Associate the initialized device buffer with a tensor produced from a
     // placeholder operation
-    auto tns =
+    ark::Tensor tns =
         model.placeholder(shape, ark::FP32, {}, {}, {}, -1, "", d_ext_buffer);
 
+    ark::Tensor res = model.add(tns, 1.0);
+
+    ark::DefaultExecutor exe(model);
+
+    exe.launch();
+    exe.run(1);
+    exe.stop();
+
     // Copy tensor data from GPU to CPU
-    std::vector<float> res(shape.nelems(), 0.0f);
-    ark::gpuMemcpy(res.data(), d_ext_buffer, shape.nelems() * sizeof(float),
-                   ark::gpuMemcpyDeviceToHost);
+    std::vector<float> h_res(shape.nelems(), 0.0f);
+    exe.tensor_read(res, h_res);
 
     for (auto i = 0; i < shape.nelems(); ++i) {
-        UNITTEST_EQ(res[i], i + 1);
+        UNITTEST_EQ(h_res[i], i + 2);
     }
 
     cudaFree(d_ext_buffer);
