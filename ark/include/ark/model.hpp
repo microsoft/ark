@@ -76,6 +76,39 @@ class Model : public ModelGraph {
                   const Dims &padded_shape = {}, int rank = -1,
                   const std::string &name = "");
 
+    ///
+    /// Returns a tensor object associated with an external buffer.
+    ///
+    /// @param shape Shape of the tensor, where the data of interest is.
+    /// @param dtype Type of the tensor data.
+    /// @param strides Strides of each dimension of the tensor, which may be
+    /// different from the shape. @p strides can be considered as the actual
+    /// shape of the underlying data buffer.
+    /// @param offsets Offsets of the tensor. The data of interest starts at
+    /// @p offsets and ends at @p offsets + @p padded_shape.
+    /// @param padded_shape Padded shape of the tensor. Padding is used to
+    /// reserve extra space for the tensor when computation requires it.
+    /// Data on the padded region is allowed to be accessed by computation,
+    /// but it is not considered as the data of interest. The padded region is
+    /// initialized to zero only once when the Executor is launched. The padded
+    /// shape should be greater than or equal to the @p shape, and the
+    /// @p strides should be greater than or equal to the padded shape. If the
+    /// @p strides are not provided, they are set to the padded shape. If the
+    /// padded shape is not provided, it is set to the @p shape.
+    /// @param rank Rank of the tensor. -1 means the rank of this model.
+    /// @param name Name of the tensor.
+    /// @param external_data Pointer to an external data buffer. If provided,
+    /// this buffer is registered with the ModelBufferManager and associated
+    /// with the tensor.
+    /// @return Pointer to a tensor object that references the external buffer.
+    ///
+    ///
+    Tensor placeholder(const Dims &shape, const DataType &data_type,
+                       const Dims &strides = {}, const Dims &offsets = {},
+                       const Dims &padded_shape = {}, int rank = -1,
+                       const std::string &name = "",
+                       void *external_data = nullptr);
+
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
                  const Dims &offsets = {}, const Dims &padded_shape = {},
                  const std::string &name = "");
@@ -254,7 +287,6 @@ class Model : public ModelGraph {
 
     Tensor local_all_reduce(Tensor input, int gpu_id, int gpu_num,
                             const std::string &name = "");
-
 };
 
 }  // namespace ark
