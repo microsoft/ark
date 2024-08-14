@@ -44,7 +44,7 @@ jobs:
       - name: Build
         run: |
           mkdir build && cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BUILD_PYTHON=ON ..
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
           make -j ut ark_py
 
       - name: Run C++ UT
@@ -71,7 +71,11 @@ jobs:
       - name: Run Python UT
         run: |
           cd build
-          ARK_ROOT=$PWD pytest --cov=../python/ark --cov-report lcov:py_coverage.info --verbose ../python/unittest/test.py
+          PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
+              --cov=../python/ark \
+              --cov-report lcov:py_coverage.info \
+              --verbose \
+              ../python/unittest/test.py
 
       - name: Report Coverage
         env:

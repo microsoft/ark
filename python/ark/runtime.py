@@ -4,7 +4,7 @@
 import logging
 from enum import Enum
 
-from _ark_core import _Executor
+from ._ark_core import _Executor
 from .planner import Planner, Plan
 
 

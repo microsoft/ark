@@ -5,7 +5,7 @@ import copy
 import json
 from typing import Callable, Dict, List, Any
 
-from _ark_core import _Planner, _PlannerContext
+from ._ark_core import _Planner, _PlannerContext
 from .model import Model
 
 
