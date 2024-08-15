@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 import numpy
-import _ark_core
+from . import _ark_core
 
 try:
     import torch

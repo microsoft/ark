@@ -18,7 +18,10 @@ FetchContent_MakeAvailable(pybind11)
 
 file(GLOB_RECURSE BIND_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 pybind11_add_module(ark_py ${BIND_SOURCES})
-set_target_properties(ark_py PROPERTIES OUTPUT_NAME _ark_core)
+set_target_properties(ark_py PROPERTIES OUTPUT_NAME _ark_core LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ark)
+add_custom_command(TARGET ark_py POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/ark ${CMAKE_CURRENT_BINARY_DIR}/ark
+)
 target_link_libraries(ark_py PRIVATE ark_static)
 target_include_directories(ark_py SYSTEM PRIVATE ${DLPACK_INCLUDE_DIRS})
 target_include_directories(ark_py PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../ark)

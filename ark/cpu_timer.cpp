@@ -16,20 +16,4 @@ double cpu_timer(void) {
     return (tspec.tv_nsec / 1.0e9) + tspec.tv_sec;
 }
 
-// Sleep in second.
-int cpu_timer_sleep(double sec) {
-    struct timespec tspec;
-    tspec.tv_sec = (time_t)sec;
-    tspec.tv_nsec = (long)((sec - tspec.tv_sec) * 1.0e9);
-    return nanosleep(&tspec, 0);
-}
-
-// Sleep in nanosecond.
-int cpu_ntimer_sleep(long nsec) {
-    struct timespec tspec;
-    tspec.tv_sec = 0;
-    tspec.tv_nsec = nsec;
-    return nanosleep(&tspec, 0);
-}
-
 }  // namespace ark

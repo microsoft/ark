@@ -1,11 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import ark
+from unittest_common import ark, pytest_ark
 
 
+@pytest_ark()
 def test_error():
-    ark.init()
     try:
         ark.tensor([0])
     except ark.BaseError as e:

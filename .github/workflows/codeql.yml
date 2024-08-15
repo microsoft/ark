@@ -49,7 +49,7 @@ jobs:
     - name: Build
       run: |
         mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BUILD_PYTHON=ON -DARK_BYPASS_GPU_CHECK=ON -DARK_USE_CUDA=ON -DARK_BUILD_TESTS=OFF ..
+        cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BYPASS_GPU_CHECK=ON -DARK_USE_CUDA=ON -DARK_BUILD_TESTS=OFF ..
         make build ark_py
 
     - name: Perform CodeQL Analysis
@@ -95,7 +95,7 @@ jobs:
     - name: Build
       run: |
         mkdir build && cd build
-        CXX=/opt/rocm/bin/hipcc cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BUILD_PYTHON=ON -DARK_BYPASS_GPU_CHECK=ON -DARK_USE_ROCM=ON -DARK_BUILD_TESTS=OFF ..
+        CXX=/opt/rocm/bin/hipcc cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BYPASS_GPU_CHECK=ON -DARK_USE_ROCM=ON -DARK_BUILD_TESTS=OFF ..
         make -j build ark_py
 
     - name: Perform CodeQL Analysis
