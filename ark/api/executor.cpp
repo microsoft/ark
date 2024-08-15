@@ -15,6 +15,7 @@
 #include "ark/planner.hpp"
 #include "codegen.hpp"
 #include "env.h"
+#include "external_buffer_registry.hpp"
 #include "file_io.h"
 #include "gpu/gpu.hpp"
 #include "gpu/gpu_event.hpp"
@@ -25,8 +26,6 @@
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
-#include "model_buffer_manager.hpp"
-#include "unordered_map"
 #include "utils/utils_net.hpp"
 
 #if defined(ARK_CUDA)
@@ -408,7 +407,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
     std::map<int, std::map<int, size_t>> remote_rank_to_send_tag_to_buffer_id;
     std::map<int, std::map<int, size_t>> remote_rank_to_recv_tag_to_buffer_id;
 
-    auto &buffer_manager = ModelBufferManager::get_instance();
+    auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
 
     // TODO: improve memory planning
     size_t offset = 0;
@@ -428,12 +427,16 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
-        if (buffer_manager.is_external(buf_id)) {
-            if (buf_info->buffer->device_id() != device_id_) {
+        void *ext_data = ext_buf_reg.get(buf_id);
+        if (ext_data) {
+            gpuPointerAttributes attr;
+            GLOG(gpuPointerGetAttributes(&attr, ext_data));
+            if (attr.device != device_id_) {
                 ERR(InvalidUsageError,
-                    "PyTorch tensor and model execution are on different GPUs");
+                    "External data provided is on a different GPU: ",
+                    attr.device, " vs ", device_id_);
             }
-            external_buffers_.push_back(buffer_manager.get_buffer(buf_id));
+            external_buffers_.push_back(ext_data);
             const auto [it, inserted] = buffer_id_to_name_.try_emplace(
                 buf_id, "extern_buf_" + std::to_string(buf_id));
             external_args_.push_back(it->second);
@@ -540,7 +543,8 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         for (int i = 0; i < len; ++i) {
             const size_t buf_id =
                 buffer_id_to_info[send_tag_to_buffer_id[tags[i]]]->buffer->id();
-            if (!buffer_manager.is_external(buf_id)) {
+            void *buf_data = ext_buf_reg.get(buf_id);
+            if (buf_data == nullptr) {
                 buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] =
                     offsets[i];
             }
@@ -561,7 +565,8 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         for (int i = 0; i < len; ++i) {
             const size_t buf_id =
                 buffer_id_to_info[recv_tag_to_buffer_id[tags[i]]]->buffer->id();
-            if (!buffer_manager.is_external(buf_id)) {
+            void *buf_data = ext_buf_reg.get(buf_id);
+            if (buf_data == nullptr) {
                 buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] =
                     offsets[i];
             }
@@ -884,9 +889,10 @@ void Executor::Impl::barrier() {
 
 void *Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
-    auto &buffer_manager = ModelBufferManager::get_instance();
-    if (buffer_manager.is_external(buffer_id)) {
-        return buffer_manager.get_buffer(buffer_id);
+    auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
+    void *ext_data = ext_buf_reg.get(buffer_id);
+    if (ext_data) {
+        return ext_data;
     }
     if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
         ERR(InvalidUsageError, "Tensor has an unknown buffer ID ", buffer_id,
@@ -1041,10 +1047,7 @@ float Executor::stop(int64_t max_spin_count) {
 
 void Executor::barrier() { impl_->barrier(); }
 
-void Executor::destroy() {
-    ModelBufferManager::get_instance().clear_buffers();
-    impl_.reset(nullptr);
-}
+void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 

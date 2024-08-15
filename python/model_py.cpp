@@ -71,6 +71,19 @@ void register_model(py::module &m) {
              py::arg("input"), py::arg("other"), py::arg("output"),
              py::arg("name"))
         .def("noop", &ark::Model::noop, py::arg("input"), py::arg("name"))
+        .def(
+            "placeholder",
+            [](ark::Model &model, const ark::Dims &shape,
+               const ark::DataType &data_type, const ark::Dims &strides,
+               const ark::Dims &offsets, const ark::Dims &padded_shape,
+               int rank, uintptr_t data, const std::string &name) {
+                return model.placeholder(shape, data_type, strides, offsets,
+                                         padded_shape, rank,
+                                         reinterpret_cast<void *>(data), name);
+            },
+            py::arg("shape"), py::arg("data_type"), py::arg("strides"),
+            py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
+            py::arg("data"), py::arg("name"))
         .def("reduce_max", &ark::Model::reduce_max, py::arg("input"),
              py::arg("axis"), py::arg("keepdims"), py::arg("output"),
              py::arg("name"))
@@ -104,14 +117,9 @@ void register_model(py::module &m) {
                                const std::string &>(&ark::Model::sub),
              py::arg("input"), py::arg("other"), py::arg("output"),
              py::arg("name"))
-        .def("tensor",
-             py::overload_cast<const ark::Dims &, const ark::DataType &,
-                               const ark::Dims &, const ark::Dims &,
-                               const ark::Dims &, int, const std::string &>(
-                 &ark::Model::tensor),
-             py::arg("shape"), py::arg("data_type"), py::arg("strides"),
-             py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
-             py::arg("name"))
+        .def("tensor", &ark::Model::tensor, py::arg("shape"),
+             py::arg("data_type"), py::arg("strides"), py::arg("offsets"),
+             py::arg("padded_shape"), py::arg("rank"), py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),

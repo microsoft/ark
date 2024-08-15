@@ -17,18 +17,17 @@ class ModelBuffer {
     // (remote_rank, tag)
     using TagInfo = std::pair<int, int>;
 
-    ModelBuffer(int rank = -1);
+    ModelBuffer(int rank = -1, bool is_external = false);
 
-    ModelBuffer(size_t id, int rank, const std::vector<TagInfo> &send_tags,
+    ModelBuffer(size_t id, int rank, bool is_external,
+                const std::vector<TagInfo> &send_tags,
                 const std::vector<TagInfo> &recv_tags);
-
-    // externally managed buffer
-    ModelBuffer(void *data, size_t size, int32_t device_id);
-    ModelBuffer(size_t id, void *data, size_t size, int32_t device_id);
 
     size_t id() const { return id_; }
 
     int rank() const { return rank_; }
+
+    bool is_external() const { return is_external_; }
 
     const std::set<TagInfo> &send_tags() const { return send_tags_; }
 
@@ -48,22 +47,13 @@ class ModelBuffer {
 
     static std::shared_ptr<ModelBuffer> deserialize(const Json &serialized);
 
-    // external buffer management
-    size_t external_data_size() const { return external_data_size_; }
-    void *external_data() const { return external_data_; }
-    int32_t device_id() const { return device_id_; }
-    bool is_external() const { return is_external_; }
-
    private:
     static size_t curr_id;
     size_t id_;
     int rank_;
+    bool is_external_;
     std::set<TagInfo> send_tags_;
     std::set<TagInfo> recv_tags_;
-    void *external_data_ = nullptr;
-    size_t external_data_size_ = 0;
-    int32_t device_id_;
-    bool is_external_ = false;
 };
 
 }  // namespace ark

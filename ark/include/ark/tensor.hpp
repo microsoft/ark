@@ -31,8 +31,6 @@ class Tensor {
     Tensor(ModelTensorRef ref) : ref_(ref) {}
     Tensor(const Tensor &other) = default;
     Tensor &operator=(const Tensor &other) = default;
-    Tensor(void *data_ptr, int32_t device_id, const std::vector<int64_t> &shape,
-           const DataType &dtype);
 
     bool operator==(const Tensor &other) const { return ref_ == other.ref_; }
     bool operator!=(const Tensor &other) const { return ref_ != other.ref_; }
@@ -54,8 +52,6 @@ class Tensor {
     const DataType &data_type() const;
 
     Dims torch_strides() const;
-
-    friend struct std::hash<Tensor>;
 };
 
 const Tensor NullTensor;

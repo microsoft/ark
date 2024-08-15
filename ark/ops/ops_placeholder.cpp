@@ -3,8 +3,8 @@
 
 #include "ops_placeholder.hpp"
 
+#include "external_buffer_registry.hpp"
 #include "logging.hpp"
-#include "model_buffer_manager.hpp"
 #include "ops_common.hpp"
 
 namespace ark {
@@ -12,22 +12,13 @@ namespace ark {
 ModelOpPlaceholder::ModelOpPlaceholder(ModelBufferRef buffer, const Dims &shape,
                                        ModelDataType data_type,
                                        const Dims &strides, const Dims &offsets,
-                                       const Dims &padded_shape,
-                                       void *external_data)
+                                       const Dims &padded_shape, void *data)
     : ModelOp("Placeholder", true) {
     if (!buffer) {
-        buffer = std::make_shared<ModelBuffer>();
+        buffer = std::make_shared<ModelBuffer>(-1, true);
     }
-    const std::vector<DimType> &shape_vec = shape.vector();
-    DataType dtype = ModelDataType(data_type);
 
-    size_t external_data_size =
-        std::accumulate(shape_vec.begin(), shape_vec.end(), 1,
-                        std::multiplies<int64_t>()) *
-        dtype.bytes();
-
-    ModelBufferManager::get_instance().register_buffer(
-        buffer->id(), external_data, external_data_size);
+    ExternalBufferRegistry::get_instance().set(buffer->id(), data);
 
     ModelTensorRef tensor = std::make_shared<ModelTensor>(
         data_type, buffer, shape, strides, offsets, padded_shape);
@@ -39,8 +30,8 @@ ModelOpPlaceholder::ModelOpPlaceholder(ModelBufferRef buffer, const Dims &shape,
 
 Tensor Model::placeholder(const Dims &shape, const DataType &data_type,
                           const Dims &strides, const Dims &offsets,
-                          const Dims &padded_shape, int rank,
-                          const std::string &name, void *external_data) {
+                          const Dims &padded_shape, int rank, void *data,
+                          const std::string &name) {
     if (rank != -1) {
         if (rank == this->rank()) {
             rank = -1;
@@ -50,8 +41,9 @@ Tensor Model::placeholder(const Dims &shape, const DataType &data_type,
     }
     return impl_
         ->create_op<ModelOpPlaceholder>(
-            name, std::make_shared<ModelBuffer>(rank), shape, data_type.ref(),
-            strides, offsets, padded_shape, external_data)
+            name, std::make_shared<ModelBuffer>(rank, true), shape,
+            data_type.ref(), strides, offsets, padded_shape, data)
         ->result_tensors()[0];
 }
+
 }  // namespace ark

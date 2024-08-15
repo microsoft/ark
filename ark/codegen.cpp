@@ -7,13 +7,13 @@
 
 #include "ark/data_type.hpp"
 #include "env.h"
+#include "external_buffer_registry.hpp"
 #include "file_io.h"
 #include "logging.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_op.hpp"
 #include "model/model_tensor.hpp"
-#include "model_buffer_manager.hpp"
 #include "range.hpp"
 #include "utils/utils_math.hpp"
 
