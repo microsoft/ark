@@ -9,6 +9,7 @@
 #include <mscclpp/core.hpp>
 #include <mscclpp/proxy_channel.hpp>
 #include <mscclpp/sm_channel.hpp>
+#include <utility>
 
 #include "ark/data_type.hpp"
 #include "ark/model.hpp"
@@ -204,6 +205,7 @@ class Executor::Impl {
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
+    std::map < size_t, std::pair<std::string, void *> buffer_id_to_kernel_arg_;
     std::map<size_t, void *> buffer_id_to_kernel_addr_;
     std::map<size_t, std::string> buffer_id_to_name_;
     std::map<size_t, size_t> buffer_id_to_offset_;
@@ -334,10 +336,11 @@ bool Executor::Impl::add_kernel_arg(size_t buf_id, bool is_external) {
         return false;
     }
     auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
+    const std::string name = "extern_buf_" + std::to_string(buf_id);
     if (reused_buffer) {
         // The buffer is being reused from a previous plan.
         buf_addr = buffer_id_to_addr_[buf_id];
-        buffer_id_to_kernel_arg_[buf_id] = buf_addr;
+        buffer_id_to_kernel_arg_[buf_id] = std::make_pair(name, buf_addr);
     } else {
         // The buffer is external (can either be staged/non-staged)
         gpuPointerAttributes attr;
@@ -347,10 +350,10 @@ bool Executor::Impl::add_kernel_arg(size_t buf_id, bool is_external) {
                 "External data provided is on a different GPU: ", attr.device,
                 " vs ", device_id_);
         }
-        buffer_id_to_kernel_arg_[buf_id] = ext_buf_reg.get(buf_id)
+        buffer_id_to_kernel_arg_[buf_id] =
+            std::make_pair(name, ext_buf_reg.get(buf_id));
     }
-    const std::string name = "extern_buf_" + std::to_string(buf_id);
-    buffer_id_to_name_[buf_id] = name;
+
     return true;
 }
 
@@ -358,10 +361,11 @@ void Executor::Impl::add_kernel_addr(
     std::vector<void *> &args,
     const std::unordered_map<const Tensor, void *> &placeholder_data) {
     auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
-    for (const auto &[buf_id, _] : buffer_id_to_name_) {
+    for (const auto &[buf_id, _] : buffer_id_to_kernel_arg_) {
         auto internal_it = buffer_id_to_addr_.find(buf_id);
         if (internal_it != buffer_id_to_addr_.end()) {
-            args.push_back(internal_it->second);
+            const auto &[name, address] = internal_it->second;
+            args.push_back(internal_it->address);
             continue;
         }
         void *ext_buf_addr = ext_buf_reg.get(buf_id);
