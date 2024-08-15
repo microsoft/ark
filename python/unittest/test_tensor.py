@@ -1,8 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from unittest_common import pytest_ark
-import ark
+from unittest_common import ark, pytest_ark
 
 
 @pytest_ark(need_torch=True)
