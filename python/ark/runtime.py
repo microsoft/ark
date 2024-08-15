@@ -6,6 +6,15 @@ from enum import Enum
 
 from ._ark_core import _Executor
 from .planner import Planner, Plan
+from typing import Dict
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 class _RuntimeState:
@@ -73,6 +82,7 @@ class Runtime:
         device_id: int = 0,
         stream: int = 0,
         loop_mode: bool = True,
+        tensor_mappings: Dict = {}
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -87,6 +97,12 @@ class Runtime:
         if self.launched():
             # Stop the current running model
             self.stop()
+        
+        for ark_tensor in tensor_mappings:
+            torch_tensor = tensor_mappings[ark_tensor]
+            if not isinstance(torch_tensor, torch.Tensor):
+                raise ValueError("Must bind PyTorch tensor")
+            tensor_mappings[ark_tensor] = torch_tensor.data_ptr()
 
         # Recompile if the previous launch was not compiled with the same info
         # or if this is the first launch
@@ -94,8 +110,7 @@ class Runtime:
             plan_str != self.executor.plan()
             or device_id != self.executor.device_id()
         ):
-            self.executor.compile(plan_str, device_id)
-
+            self.executor.compile(plan_str, device_id, tensor_mappings)
         self.executor.launch(stream, loop_mode)
         self.state = Runtime.State.LaunchedNotRunning
 

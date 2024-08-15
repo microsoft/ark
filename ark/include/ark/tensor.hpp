@@ -62,9 +62,9 @@ std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 
 namespace std {
 template <>
-struct hash<const ark::Tensor> {
-    size_t operator()(const ark::Tensor &t) const {
-        return hash<size_t>()(t.id());
+struct hash<ark::Tensor> {
+    size_t operator()(const ark::Tensor &t) const noexcept {
+        return t.id();
     }
 };
 }  // namespace std
