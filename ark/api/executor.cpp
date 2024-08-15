@@ -144,10 +144,7 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl()
-        : plan_json_(),
-          device_id_(-1),
-          buffer_manager_(ModelBufferManager::get_instance()) {};
+    Impl() : plan_json_(), device_id_(-1){};
     ~Impl();
 
     int device_id() const { return device_id_; }
@@ -408,6 +405,8 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         remote_rank_to_recv_tags_and_offsets;
     std::map<int, std::map<int, size_t>> remote_rank_to_send_tag_to_buffer_id;
     std::map<int, std::map<int, size_t>> remote_rank_to_recv_tag_to_buffer_id;
+
+    auto &buffer_manager = ModelBufferManager::get_instance();
 
     // TODO: improve memory planning
     size_t offset = 0;
@@ -721,7 +720,9 @@ void Executor::Impl::compile(
     kernel_->compile();
 }
 
-void Executor::Impl::launch(Stream stream, bool loop_mode) {
+void Executor::Impl::launch(
+    Stream stream, bool loop_mode,
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
     if ((kernel_ == nullptr) || !kernel_->is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before launch.");
     }
@@ -814,7 +815,9 @@ void Executor::Impl::launch(Stream stream, bool loop_mode) {
     is_launched_ = true;
 }
 
-void Executor::Impl::run(int iter) {
+void Executor::Impl::run(
+    int iter,
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
     if (iter <= 0) return;
     if (loop_mode_) {
         while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
@@ -894,6 +897,10 @@ void Executor::Impl::barrier() {
 
 void *Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
+    auto &buffer_manager = ModelBufferManager::get_instance();
+    if (buffer_manager.is_external(buffer_id)) {
+        return buffer_manager.get_buffer(buffer_id);
+    }
     if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
         ERR(InvalidUsageError, "Tensor has an unknown buffer ID ", buffer_id,
             ". This is likely caused by accessing a tensor that is optimized "
@@ -906,11 +913,6 @@ void *Executor::Impl::tensor_address(const Tensor &tensor) const {
 void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                                  Stream stream, bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
-    if (buffer_manager_.is_external(tensor.ref()->buffer()->id())) {
-        ERR(InvalidUsageError,
-            "Reading data from a tensor preallocated by PyTorch is not "
-            "supported. Use PyTorch's native methods.");
-    }
     std::shared_ptr<GpuStream> copy_stream;
     gpuStream copy_stream_raw;
     if (stream) {
@@ -962,11 +964,6 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
                                   size_t bytes, Stream stream,
                                   bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
-    if (buffer_manager_.is_external(tensor.ref()->buffer()->id())) {
-        ERR(InvalidUsageError,
-            "Writing data to a tensor preallocated by PyTorch is not "
-            "supported. Use PyTorch's native methods.");
-    }
     std::shared_ptr<GpuStream> copy_stream;
     gpuStream copy_stream_raw;
     if (stream) {
@@ -1038,11 +1035,17 @@ void Executor::compile(
     impl_->compile(plan, device_id, name, external_tensors);
 }
 
-void Executor::launch(Stream stream, bool loop_mode) {
-    impl_->launch(stream, loop_mode);
+void Executor::launch(
+    Stream stream, bool loop_mode,
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    impl_->launch(stream, loop_mode, placeholder_data);
 }
 
-void Executor::run(int iter) { impl_->run(iter); }
+void Executor::run(
+    int iter,
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    impl_->run(iter, placeholder_data);
+}
 
 void Executor::wait(int64_t max_spin_count) { impl_->wait(max_spin_count); }
 
