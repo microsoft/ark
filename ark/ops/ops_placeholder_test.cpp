@@ -13,13 +13,16 @@ ark::unittest::State test_ops_placeholder_value_contiguous() {
 
     // Allocate GPU memory for the external buffer
     float *d_ext_buffer = nullptr;
-    ark::gpuMalloc(&d_ext_buffer, shape.nelems() * sizeof(float));
+    UNITTEST_EQ(ark::gpuMalloc(&d_ext_buffer, shape.nelems() * sizeof(float)),
+                ark::gpuSuccess);
 
     // Initialize GPU Memory
     std::vector<float> h_ext_buffer(shape.nelems());
     std::iota(h_ext_buffer.begin(), h_ext_buffer.end(), 1.0f);
-    ark::gpuMemcpy(d_ext_buffer, h_ext_buffer.data(),
-                   shape.nelems() * sizeof(float), ark::gpuMemcpyHostToDevice);
+    UNITTEST_EQ(ark::gpuMemcpy(d_ext_buffer, h_ext_buffer.data(),
+                               shape.nelems() * sizeof(float),
+                               ark::gpuMemcpyHostToDevice),
+                ark::gpuSuccess);
 
     // Associate the initialized device buffer with a tensor produced from a
     // placeholder operation
@@ -34,6 +37,8 @@ ark::unittest::State test_ops_placeholder_value_contiguous() {
     exe.run(1);
     exe.stop();
 
+    UNITTEST_EQ(exe.tensor_address(tns), d_ext_buffer);
+
     // Copy tensor data from GPU to CPU
     std::vector<float> h_res(shape.nelems(), 0.0f);
     exe.tensor_read(res, h_res);
@@ -42,7 +47,7 @@ ark::unittest::State test_ops_placeholder_value_contiguous() {
         UNITTEST_EQ(h_res[i], i + 2);
     }
 
-    cudaFree(d_ext_buffer);
+    UNITTEST_EQ(ark::gpuFree(d_ext_buffer), ark::gpuSuccess);
 
     return ark::unittest::SUCCESS;
 }

@@ -171,11 +171,20 @@ void register_executor(py::module &m) {
         .def("name", &ark::Executor::name)
         .def("compile", &ark::Executor::compile, py::arg("device_id"),
              py::arg("plan"), py::arg("name") = "executor")
-        .def("launch", [](ark::Executor *self, uintptr_t stream, bool loop_mode) {
-                 self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode);
-             },
-             py::arg("stream") = 0, py::arg("loop_mode") = true)
-        .def("run", &ark::Executor::run, py::arg("iter"))
+        .def(
+            "launch",
+            [](ark::Executor *self, uintptr_t stream, bool loop_mode,
+               const std::unordered_map<const ark::Tensor, const void *>
+                   &placeholder_data) {
+                self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode,
+                             placeholder_data);
+            },
+            py::arg("stream") = 0, py::arg("loop_mode") = true,
+            py::arg("placeholder_data") =
+                std::unordered_map<const ark::Tensor, const void *>())
+        .def("run", &ark::Executor::run, py::arg("iter"),
+             py::arg("placeholder_data") =
+                 std::unordered_map<const ark::Tensor, const void *>())
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
         .def("barrier", &ark::Executor::barrier)

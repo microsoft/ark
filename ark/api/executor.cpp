@@ -144,10 +144,7 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl()
-        : plan_json_(),
-          device_id_(-1),
-          buffer_manager_(ModelBufferManager::get_instance()) {};
+    Impl() : plan_json_(), device_id_(-1){};
     ~Impl();
 
     int device_id() const { return device_id_; }
@@ -164,10 +161,12 @@ class Executor::Impl {
 
     void compile(const std::string &plan, int device_id,
                  const std::string &name);
-    void launch(Stream stream, bool loop_mode,
-                const std::unordered_map<Tensor, void *> &external_tensors);
-    void run(int iter,
-             const std::unordered_map<Tensor, void *> &external_tensors);
+    void launch(
+        Stream stream, bool loop_mode,
+        const std::unordered_map<const Tensor, const void *> &placeholder_data);
+    void run(
+        int iter,
+        const std::unordered_map<const Tensor, const void *> &placeholder_data);
     void wait(int64_t max_spin_count);
     float stop(int64_t max_spin_count);
     void barrier();
@@ -209,7 +208,6 @@ class Executor::Impl {
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
-    ModelBufferManager &buffer_manager_;
     std::vector<void *> external_buffers_;
     std::vector<std::string> external_args_;
     std::map<size_t, std::string> buffer_id_to_name_;
@@ -410,6 +408,8 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
     std::map<int, std::map<int, size_t>> remote_rank_to_send_tag_to_buffer_id;
     std::map<int, std::map<int, size_t>> remote_rank_to_recv_tag_to_buffer_id;
 
+    auto &buffer_manager = ModelBufferManager::get_instance();
+
     // TODO: improve memory planning
     size_t offset = 0;
     for (auto &kv : buffer_id_to_info) {
@@ -428,12 +428,12 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
-        if (buffer_manager_.is_external(buf_id)) {
+        if (buffer_manager.is_external(buf_id)) {
             if (buf_info->buffer->device_id() != device_id_) {
                 ERR(InvalidUsageError,
                     "PyTorch tensor and model execution are on different GPUs");
             }
-            external_buffers_.push_back(buffer_manager_.get_buffer(buf_id));
+            external_buffers_.push_back(buffer_manager.get_buffer(buf_id));
             const auto [it, inserted] = buffer_id_to_name_.try_emplace(
                 buf_id, "extern_buf_" + std::to_string(buf_id));
             external_args_.push_back(it->second);
@@ -540,7 +540,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         for (int i = 0; i < len; ++i) {
             const size_t buf_id =
                 buffer_id_to_info[send_tag_to_buffer_id[tags[i]]]->buffer->id();
-            if (!buffer_manager_.is_external(buf_id)) {
+            if (!buffer_manager.is_external(buf_id)) {
                 buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] =
                     offsets[i];
             }
@@ -561,7 +561,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         for (int i = 0; i < len; ++i) {
             const size_t buf_id =
                 buffer_id_to_info[recv_tag_to_buffer_id[tags[i]]]->buffer->id();
-            if (!buffer_manager_.is_external(buf_id)) {
+            if (!buffer_manager.is_external(buf_id)) {
                 buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] =
                     offsets[i];
             }
@@ -709,7 +709,7 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
 
 void Executor::Impl::launch(
     Stream stream, bool loop_mode,
-    const std::unordered_map<Tensor, void *> &external_tensors) {
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
     if ((kernel_ == nullptr) || !kernel_->is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before launch.");
     }
@@ -803,7 +803,8 @@ void Executor::Impl::launch(
 }
 
 void Executor::Impl::run(
-    int iter, const std::unordered_map<Tensor, void *> &external_tensors) {
+    int iter,
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
     if (iter <= 0) return;
     if (loop_mode_) {
         while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
@@ -883,6 +884,10 @@ void Executor::Impl::barrier() {
 
 void *Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
+    auto &buffer_manager = ModelBufferManager::get_instance();
+    if (buffer_manager.is_external(buffer_id)) {
+        return buffer_manager.get_buffer(buffer_id);
+    }
     if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
         ERR(InvalidUsageError, "Tensor has an unknown buffer ID ", buffer_id,
             ". This is likely caused by accessing a tensor that is optimized "
@@ -895,11 +900,6 @@ void *Executor::Impl::tensor_address(const Tensor &tensor) const {
 void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                                  Stream stream, bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
-    if (buffer_manager_.is_external(tensor.ref()->buffer()->id())) {
-        ERR(InvalidUsageError,
-            "Reading data from a tensor preallocated by PyTorch is not "
-            "supported. Use PyTorch's native methods.");
-    }
     std::shared_ptr<GpuStream> copy_stream;
     gpuStream copy_stream_raw;
     if (stream) {
@@ -951,11 +951,6 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
                                   size_t bytes, Stream stream,
                                   bool is_d2d) const {
     GLOG(gpuSetDevice(device_id_));
-    if (buffer_manager_.is_external(tensor.ref()->buffer()->id())) {
-        ERR(InvalidUsageError,
-            "Writing data to a tensor preallocated by PyTorch is not "
-            "supported. Use PyTorch's native methods.");
-    }
     std::shared_ptr<GpuStream> copy_stream;
     gpuStream copy_stream_raw;
     if (stream) {
@@ -1028,13 +1023,14 @@ void Executor::compile(const std::string &plan, int device_id,
 
 void Executor::launch(
     Stream stream, bool loop_mode,
-    const std::unordered_map<Tensor, void *> &external_tensors) {
-    impl_->launch(stream, loop_mode, external_tensors);
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    impl_->launch(stream, loop_mode, placeholder_data);
 }
 
-void Executor::run(int iter,
-                   const std::unordered_map<Tensor, void *> &external_tensors) {
-    impl_->run(iter, external_tensors);
+void Executor::run(
+    int iter,
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    impl_->run(iter, placeholder_data);
 }
 
 void Executor::wait(int64_t max_spin_count) { impl_->wait(max_spin_count); }
@@ -1082,9 +1078,10 @@ DefaultExecutor::DefaultExecutor(
     impl_->loop_mode_ = loop_mode;
 }
 
-void DefaultExecutor::launch() {
+void DefaultExecutor::launch(
+    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
     Executor::launch(reinterpret_cast<Stream>(impl_->stream_raw_),
-                     impl_->loop_mode_);
+                     impl_->loop_mode_, placeholder_data);
 }
 
 }  // namespace ark
