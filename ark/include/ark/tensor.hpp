@@ -54,6 +54,8 @@ class Tensor {
     const DataType &data_type() const;
 
     Dims torch_strides() const;
+
+    friend struct std::hash<Tensor>;
 };
 
 const Tensor NullTensor;
@@ -61,5 +63,14 @@ const Tensor NullTensor;
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 
 }  // namespace ark
+
+namespace std {
+template <>
+struct hash<ark::Tensor> {
+    size_t operator()(const ark::Tensor &t) const {
+        return hash<size_t>()(t.id());
+    }
+};
+}  // namespace std
 
 #endif  // ARK_TENSOR_HPP

@@ -8,7 +8,8 @@
 #include <unordered_map>
 
 namespace ark {
-// Manages externally allocated buffers not in the ARK memory space.
+// Manages externally allocated buffers (buffers corresponding to Tensors that
+// are the output of a `placeholder` operation) outside of ARK's memory space.
 class ModelBufferManager {
    public:
     static ModelBufferManager& get_instance() {
@@ -16,11 +17,11 @@ class ModelBufferManager {
         return instance;
     }
 
-    void register_buffer(size_t id, void* data, size_t size) {
+    void register_buffer(const size_t id, void* const data, const size_t size) {
         buffers_[id] = std::make_tuple(data, size);
     }
 
-    void* get_buffer(size_t id) {
+    void* get_buffer(const size_t id) const {
         auto it = buffers_.find(id);
         if (it != buffers_.end()) {
             return std::get<0>(it->second);
@@ -28,12 +29,16 @@ class ModelBufferManager {
         return nullptr;
     }
 
-    size_t get_buffer_size(size_t id) {
+    size_t get_buffer_size(const size_t id) const {
         auto it = buffers_.find(id);
         if (it != buffers_.end()) {
             return std::get<1>(it->second);
         }
         return 0;
+    }
+
+    bool is_external(const size_t id) const {
+        return buffers_.find(id) != buffers_.end();
     }
 
     const std::unordered_map<size_t, std::tuple<void*, size_t>>& get_buffers()
