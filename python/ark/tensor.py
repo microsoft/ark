@@ -7,6 +7,7 @@ from typing import Callable, Iterable, List, Union, Type
 from ._ark_core import _Dims, _Tensor, _NullTensor
 from .data_type import DataType, fp32
 from .runtime import Runtime
+from .model import Model
 
 try:
     import torch
