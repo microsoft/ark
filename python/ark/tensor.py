@@ -2,10 +2,10 @@
 # Licensed under the MIT license.
 
 import numpy as np
-from typing import Callable, List, Union, Type
+from typing import Callable, Iterable, List, Union, Type
 
 from ._ark_core import _Dims, _Tensor, _NullTensor
-from .data_type import DataType
+from .data_type import DataType, fp32
 from .runtime import Runtime
 
 try:
@@ -140,6 +140,14 @@ class Tensor:
             )
         return rt.executor.tensor_to_dlpack(self._tensor)
 
+    @staticmethod
+    def from_dlpack(ext_tensor) -> "Tensor":
+        """
+        Copies the tensor from a DLPack tensor to the device.
+        """
+        # return Tensor(_Tensor(ext_tensor))
+        raise NotImplementedError("from_dlpack is not implemented yet")
+
     def to_torch(self) -> torch.Tensor:
         """
         Returns a torch tensor that shares the same memory with the device tensor.
@@ -151,6 +159,29 @@ class Tensor:
         # Keep dl_capsule alive not to free the memory
         torch_view.__ark_buffer__ = dl_capsule
         return torch_view
+
+    @staticmethod
+    def from_torch(tensor: torch.Tensor) -> "Tensor":
+        """
+        Returns an ARK tensor that shares the same memory with the torch tensor.
+        """
+        if _no_torch:
+            raise ImportError("torch is not available")
+        elif not tensor.is_contiguous():
+            raise ValueError("Torch tensor must be contiguous.")
+        elif tensor.device.type == "cpu":
+            raise ValueError("Torch tensor must be on a device.")
+        # TODO: support strides and offsets
+        ark_tensor = Tensor(
+            _cpp_tensor(
+                shape=list(tensor.shape),
+                dtype=DataType.from_torch(tensor.dtype),
+                data=tensor.data_ptr(),
+            )
+        )
+        # Share ownership of the memory with the torch tensor
+        ark_tensor.__torch_buffer__ = tensor
+        return ark_tensor
 
     def copy(
         self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
@@ -251,3 +282,57 @@ class Parameter(Tensor):
         if ark_tensor is None or not isinstance(ark_tensor, Tensor):
             raise ValueError("cannot use non-ARK tensor to update ARK gradient")
         self.staged_tensor = ark_tensor
+
+
+def _is_list_or_tuple(obj):
+    return isinstance(obj, list) or isinstance(obj, tuple)
+
+
+def _cpp_tensor(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
+    rank: int = -1,
+    data: int = None,
+    name: str = "",
+) -> Tensor:
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    if not _is_list_or_tuple(strides):
+        raise ValueError("strides should be a list or tuple of integers")
+    if not _is_list_or_tuple(offsets):
+        raise ValueError("offsets should be a list or tuple of integers")
+    if not _is_list_or_tuple(padded_shape):
+        raise ValueError("padded_shape should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if (
+        len(shape) > 4
+        or len(strides) > 4
+        or len(offsets) > 4
+        or len(padded_shape) > 4
+    ):
+        raise ValueError("Only support tensors with up to 4 dimensions")
+    if data is not None:
+        cpp_tensor = Model.get_model().placeholder(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            data,
+            name,
+        )
+    else:
+        cpp_tensor = Model.get_model().tensor(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            name,
+        )
+    return cpp_tensor

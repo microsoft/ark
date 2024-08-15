@@ -52,8 +52,6 @@ class Tensor {
     const DataType &data_type() const;
 
     Dims torch_strides() const;
-
-    friend struct std::hash<Tensor>;
 };
 
 const Tensor NullTensor;

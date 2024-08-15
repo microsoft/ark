@@ -3,7 +3,7 @@
 
 from typing import List, Iterable, Union, Optional
 
-from .tensor import Dims, Tensor, Parameter, NullTensor
+from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
 from .data_type import DataType, fp32
 from .model import Model
 
@@ -19,91 +19,6 @@ except ImportError:
 
 def _is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
-
-
-def _tensor(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    strides: Iterable[int] = [],
-    offsets: Iterable[int] = [],
-    padded_shape: Iterable[int] = [],
-    rank: int = -1,
-    name: str = "",
-) -> Tensor:
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
-    if not _is_list_or_tuple(strides):
-        raise ValueError("strides should be a list or tuple of integers")
-    if not _is_list_or_tuple(offsets):
-        raise ValueError("offsets should be a list or tuple of integers")
-    if not _is_list_or_tuple(padded_shape):
-        raise ValueError("padded_shape should be a list or tuple of integers")
-    # only support tensors with up to 4 dimensions
-    if (
-        len(shape) > 4
-        or len(strides) > 4
-        or len(offsets) > 4
-        or len(padded_shape) > 4
-    ):
-        raise ValueError("Only support tensors with up to 4 dimensions")
-    return Model.get_model().tensor(
-        Dims(shape),
-        dtype.ctype(),
-        Dims(strides),
-        Dims(offsets),
-        Dims(padded_shape),
-        rank,
-        name,
-    )
-
-
-def placeholder(
-    shape: Optional[Iterable[int]] = None,
-    dtype: Optional[DataType] = None,
-    torch_tensor: Optional[torch.Tensor] = None,
-    strides: Iterable[int] = [],
-    offsets: Iterable[int] = [],
-    padded_shape: Iterable[int] = [],
-    rank: int = -1,
-    name: str = "",
-) -> Tensor:
-    if torch_tensor is not None:
-        if any(
-            (arg is not None and arg != [])
-            for arg in [shape, dtype, strides, offsets, padded_shape]
-        ):
-            raise ValueError(
-                "shape, dtype, strides, offsets, and padded_shape should not "
-                "be provided as they are inferred from the torch tensor."
-            )
-        dl_tensor = torch.utils.dlpack.to_dlpack(torch_tensor)
-        return Tensor(Model.get_model().placeholder(
-            external_tensor=dl_tensor,
-            rank=rank,
-            name=name,
-        ))
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
-    if not _is_list_or_tuple(strides):
-        raise ValueError("strides should be a list or tuple of integers")
-    if not _is_list_or_tuple(offsets):
-        raise ValueError("offsets should be a list or tuple of integers")
-    if not _is_list_or_tuple(padded_shape):
-        raise ValueError("padded_shape should be a list or tuple of integers")
-    # only support tensors with up to 4 dimensions
-    if any(len(arg) > 4 for arg in (shape, strides, offsets, padded_shape)):
-        raise ValueError("Only support tensors with up to 4 dimensions")
-    print(shape)
-    return Tensor(Model.get_model().placeholder(
-        Dims(shape),
-        dtype.ctype(),
-        Dims(strides),
-        Dims(offsets),
-        Dims(padded_shape),
-        rank,
-        name,
-        None,
-    ))
 
 
 def add(
@@ -314,6 +229,24 @@ def noop(input: Tensor, name: str = "noop"):
     No operation. Returns nothing.
     """
     Model.get_model().noop(input._tensor, name)
+
+
+def placeholder(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
+    rank: int = -1,
+    data: int = 0,
+    name: str = "placeholder",
+) -> Tensor:
+    """ """
+    return Tensor(
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, rank, data, name
+        )
+    )
 
 
 def reduce_max(
@@ -546,7 +479,9 @@ def tensor(
     tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
     return Tensor(
-        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, rank, None, name
+        )
     )
 
 
@@ -612,7 +547,7 @@ def parameter(
     Construct a parameter with given shape and data type.
     """
     return Parameter(
-        _tensor(shape, dtype, strides, offsets, padded_shape, name)
+        _cpp_tensor(shape, dtype, strides, offsets, padded_shape, None, name)
     )
 
 

@@ -3,19 +3,22 @@
 
 #include "model_buffer.hpp"
 
+#include "external_buffer_registry.hpp"
 #include "logging.hpp"
-#include "model_buffer_manager.hpp"
 
 namespace ark {
 
 size_t ModelBuffer::curr_id = 0;
 
-ModelBuffer::ModelBuffer(int rank) : rank_(rank) { id_ = curr_id++; }
+ModelBuffer::ModelBuffer(int rank, bool is_external)
+    : rank_(rank), is_external_(is_external) {
+    id_ = curr_id++;
+}
 
-ModelBuffer::ModelBuffer(size_t id, int rank,
+ModelBuffer::ModelBuffer(size_t id, int rank, bool is_external,
                          const std::vector<TagInfo> &send_tags,
                          const std::vector<TagInfo> &recv_tags)
-    : id_(id), rank_(rank) {
+    : id_(id), rank_(rank), is_external_(is_external) {
     for (const auto &info : send_tags) {
         send_tags_.insert(info);
     }
@@ -44,6 +47,7 @@ Json ModelBuffer::serialize() const {
     for (const auto &info : recv_tags_) {
         recv_tags.push_back({info.first, info.second});
     }
+    j["IsExternal"] = is_external_;
     j["SendTags"] = send_tags;
     j["RecvTags"] = recv_tags;
     return j;
@@ -57,11 +61,15 @@ std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const Json &serialized) {
     } else if (!serialized.contains("SendTags")) {
         ERR(ModelError, "ModelBuffer deserialization failed: missing SendTags");
     } else if (!serialized.contains("RecvTags")) {
-        ERR(ModelError, "ModelBuffer deserialization failed: missing RecvTags");
+        ERR(ModelError,
+            "ModelBuffer deserialization failed: missing RecvTags");
+    } else if (!serialized.contains("IsExternal")) {
+        ERR(ModelError,
+            "ModelBuffer deserialization failed: missing IsExternal");
     }
-    return std::make_shared<ModelBuffer>(serialized["Id"], serialized["Rank"],
-                                         serialized["SendTags"],
-                                         serialized["RecvTags"]);
+    return std::make_shared<ModelBuffer>(
+        serialized["Id"], serialized["Rank"], serialized["IsExternal"],
+        serialized["SendTags"], serialized["RecvTags"]);
 }
 
 }  // namespace ark

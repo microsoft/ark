@@ -27,7 +27,7 @@ ark::unittest::State test_ops_placeholder() {
     // Associate the initialized device buffer with a tensor produced from a
     // placeholder operation
     ark::Tensor tns =
-        model.placeholder(shape, ark::FP32, {}, {}, {}, -1, "", d_ext_buffer);
+        model.placeholder(shape, ark::FP32, {}, {}, {}, -1, d_ext_buffer);
 
     ark::Tensor res = model.add(tns, 1.0);
 

@@ -97,17 +97,15 @@ class Model : public ModelGraph {
     /// padded shape is not provided, it is set to the @p shape.
     /// @param rank Rank of the tensor. -1 means the rank of this model.
     /// @param name Name of the tensor.
-    /// @param external_data Pointer to an external data buffer. If provided,
-    /// this buffer is registered with the ModelBufferManager and associated
+    /// @param data Address of data to pass through placeholder. If provided,
+    /// this buffer is registered with the ExternalBufferRegistry and associated
     /// with the tensor.
     /// @return Pointer to a tensor object that references the external buffer.
-    ///
     ///
     Tensor placeholder(const Dims &shape, const DataType &data_type,
                        const Dims &strides = {}, const Dims &offsets = {},
                        const Dims &padded_shape = {}, int rank = -1,
-                       const std::string &name = "",
-                       void *external_data = nullptr);
+                       void *data = nullptr, const std::string &name = "");
 
     Tensor refer(Tensor input, const Dims &shape = {}, const Dims &strides = {},
                  const Dims &offsets = {}, const Dims &padded_shape = {},

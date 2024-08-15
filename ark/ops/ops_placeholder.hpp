@@ -15,7 +15,7 @@ class ModelOpPlaceholder : public ModelOp {
     ModelOpPlaceholder(ModelBufferRef buffer, const Dims &shape,
                        ModelDataType data_type, const Dims &strides,
                        const Dims &offsets, const Dims &padded_shape,
-                       void *external_data = nullptr);
+                       void *data = nullptr);
 };
 
 }  // namespace ark

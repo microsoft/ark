@@ -15,6 +15,7 @@
 #include "ark/planner.hpp"
 #include "codegen.hpp"
 #include "env.h"
+#include "external_buffer_registry.hpp"
 #include "file_io.h"
 #include "gpu/gpu.hpp"
 #include "gpu/gpu_event.hpp"
@@ -25,8 +26,6 @@
 #include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
-#include "model_buffer_manager.hpp"
-#include "unordered_map"
 #include "utils/utils_net.hpp"
 
 #if defined(ARK_CUDA)
@@ -144,7 +143,7 @@ static size_t tensor_stride_bytes(const Json &tensor) {
 
 class Executor::Impl {
    public:
-    Impl() : plan_json_(), device_id_(-1){};
+    Impl() : plan_json_(), device_id_(-1) {};
     ~Impl();
 
     int device_id() const { return device_id_; }
@@ -205,9 +204,7 @@ class Executor::Impl {
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
-    ModelBufferManager &buffer_manager_;
-    std::vector<void *> external_buffers_;
-    std::vector<std::string> external_args_;
+    std::map<size_t, void *> buffer_id_to_kernel_addr_;
     std::map<size_t, std::string> buffer_id_to_name_;
     std::map<size_t, size_t> buffer_id_to_offset_;
     std::map<size_t, void *> buffer_id_to_addr_;
@@ -243,9 +240,7 @@ void Executor::Impl::init(const PlanJson &plan_json, int device_id,
     device_id_ = device_id;
     name_ = name;
 
-    external_buffers_.clear();
-    external_args_.clear();
-    buffer_id_to_name_.clear();
+    buffer_id_to_kernel_addr_.clear() buffer_id_to_name_.clear();
     total_bytes_ = 0;
 
     rank_ = plan_json_["Rank"].get<int>();
@@ -332,6 +327,58 @@ std::map<size_t, void *> Executor::Impl::init_buffer_addrs(
     return buffer_id_to_addr;
 }
 
+bool Executor::Impl::add_kernel_arg(size_t buf_id, bool is_external) {
+    bool reused_buffer =
+        buffer_id_to_addr_.find(buf_id) != buffer_id_to_addr_.end();
+    if (!is_external || !reused_buffer) {
+        return false;
+    }
+    auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
+    if (reused_buffer) {
+        // The buffer is being reused from a previous plan.
+        buf_addr = buffer_id_to_addr_[buf_id];
+        buffer_id_to_kernel_arg_[buf_id] = buf_addr;
+    } else {
+        // The buffer is external (can either be staged/non-staged)
+        gpuPointerAttributes attr;
+        GLOG(gpuPointerGetAttributes(&attr, ext_data));
+        if (attr.device != device_id_) {
+            ERR(InvalidUsageError,
+                "External data provided is on a different GPU: ", attr.device,
+                " vs ", device_id_);
+        }
+        buffer_id_to_kernel_arg_[buf_id] = ext_buf_reg.get(buf_id)
+    }
+    const std::string name = "extern_buf_" + std::to_string(buf_id);
+    buffer_id_to_name_[buf_id] = name;
+    return true;
+}
+
+void Executor::Impl::add_kernel_addr(
+    std::vector<void *> &args,
+    const std::unordered_map<const Tensor, void *> &placeholder_data) {
+    auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
+    for (const auto &[buf_id, _] : buffer_id_to_name_) {
+        auto internal_it = buffer_id_to_addr_.find(buf_id);
+        if (internal_it != buffer_id_to_addr_.end()) {
+            args.push_back(internal_it->second);
+            continue;
+        }
+        void *ext_buf_addr = ext_buf_reg.get(buf_id);
+        if (ext_buf_addr != nullptr) {
+            args.push_back(&ext_buf_addr);
+            continue;
+        }
+        auto placeholder_it = placeholder_data.find(buf_id);
+        if (placeholder_it != placeholder_data.end()) {
+            args.push_back(&placeholder_it->second);
+            continue;
+        }
+        ERR(InvalidUsageError, "Buffer with id ", buf_id,
+            " did not receive initializing data.");
+    }
+}
+
 std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
     class BufferInfo {
        public:
@@ -406,7 +453,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
     std::map<int, std::map<int, size_t>> remote_rank_to_send_tag_to_buffer_id;
     std::map<int, std::map<int, size_t>> remote_rank_to_recv_tag_to_buffer_id;
 
-    auto &buffer_manager = ModelBufferManager::get_instance();
+    auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
 
     // TODO: improve memory planning
     size_t offset = 0;
@@ -426,22 +473,7 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
             }
             continue;
         }
-        if (buffer_manager_.is_external(buf_id) &&
-            !buffer_manager_.is_staged(buf_id)) {
-            external_buffers_.push_back(
-                buffer_manager_.get_buffer_addr(buf_id));
-            const std::string name = "extern_buf_" + std::to_string(buf_id);
-            external_args_.push_back(name);
-            buffer_id_to_name_[buf_id] = name;
-            continue;
-        }
-        // if we are adding a plan and come across a buffer from a previous
-        // plan, we utilize the buffer offset from the previous plan
-        if (buffer_id_to_offset_.find(buf_id) != buffer_id_to_offset_.end()) {
-            external_buffers_.push_back(buffer_id_to_addr_[buf_id]);
-            const std::string name = "extern_buf_" + std::to_string(buf_id);
-            external_args_.push_back(name);
-            buffer_id_to_name_[buf_id] = name;
+        if (add_kernel_arg(buf_id, buf_info->buffer->is_external())) {
             continue;
         } else {
             buffer_id_to_offset[buf_id] = offset;
@@ -536,7 +568,8 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         for (int i = 0; i < len; ++i) {
             const size_t buf_id =
                 buffer_id_to_info[send_tag_to_buffer_id[tags[i]]]->buffer->id();
-            if (!buffer_manager_.is_external(buf_id)) {
+            void *buf_data = ext_buf_reg.get(buf_id);
+            if (buf_data == nullptr) {
                 buffer_id_to_offset[send_tag_to_buffer_id[tags[i]]] =
                     offsets[i];
             }
@@ -557,7 +590,8 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
         for (int i = 0; i < len; ++i) {
             const size_t buf_id =
                 buffer_id_to_info[recv_tag_to_buffer_id[tags[i]]]->buffer->id();
-            if (!buffer_manager_.is_external(buf_id)) {
+            void *buf_data = ext_buf_reg.get(buf_id);
+            if (buf_data == nullptr) {
                 buffer_id_to_offset[recv_tag_to_buffer_id[tags[i]]] =
                     offsets[i];
             }
@@ -722,7 +756,7 @@ void Executor::Impl::compile(
 
 void Executor::Impl::launch(
     Stream stream, bool loop_mode,
-    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    const std::unordered_map<const Tensor, void *> &placeholder_data) {
     if ((kernel_ == nullptr) || !kernel_->is_compiled()) {
         ERR(InvalidUsageError, "Need to compile first before launch.");
     }
@@ -806,9 +840,7 @@ void Executor::Impl::launch(
         void *buf_ptr = (buffers_.empty()) ? nullptr : buffers_.back()->ref();
         void *flag_ptr = flag_->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
-        for (auto &buffer : external_buffers_) {
-            args.push_back(&buffer);
-        }
+        add_kernel_addr(args, placeholder_data);
         kernel_->launch(kernel_name_, stream_raw_, args);
     }
     is_recording_ = true;
@@ -817,7 +849,7 @@ void Executor::Impl::launch(
 
 void Executor::Impl::run(
     int iter,
-    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    const std::unordered_map<const Tensor, void *> &placeholder_data) {
     if (iter <= 0) return;
     if (loop_mode_) {
         while (atomicLoadRelaxed(flag_->ref<int>()) > 0) {
@@ -827,9 +859,7 @@ void Executor::Impl::run(
         void *buf_ptr = (buffers_.empty()) ? nullptr : buffers_.back()->ref();
         int i = 0;
         std::vector<void *> args = {&buf_ptr, reinterpret_cast<void *>(&i)};
-        for (auto &buffer : external_buffers_) {
-            args.push_back(&buffer);
-        }
+        add_kernel_addr(args, placeholder_data);
         for (; i < iter; i++) {
             kernel_->launch(kernel_name_, stream_raw_, args);
         }
@@ -897,9 +927,10 @@ void Executor::Impl::barrier() {
 
 void *Executor::Impl::tensor_address(const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
-    auto &buffer_manager = ModelBufferManager::get_instance();
-    if (buffer_manager.is_external(buffer_id)) {
-        return buffer_manager.get_buffer(buffer_id);
+    auto &ext_buf_reg = ExternalBufferRegistry::get_instance();
+    void *ext_data = ext_buf_reg.get(buffer_id);
+    if (ext_data) {
+        return ext_data;
     }
     if (buffer_id_to_addr_.find(buffer_id) == buffer_id_to_addr_.end()) {
         ERR(InvalidUsageError, "Tensor has an unknown buffer ID ", buffer_id,
@@ -1037,13 +1068,13 @@ void Executor::compile(
 
 void Executor::launch(
     Stream stream, bool loop_mode,
-    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    const std::unordered_map<const Tensor, void *> &placeholder_data) {
     impl_->launch(stream, loop_mode, placeholder_data);
 }
 
 void Executor::run(
     int iter,
-    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+    const std::unordered_map<const Tensor, void *> &placeholder_data) {
     impl_->run(iter, placeholder_data);
 }
 
@@ -1055,10 +1086,7 @@ float Executor::stop(int64_t max_spin_count) {
 
 void Executor::barrier() { impl_->barrier(); }
 
-void Executor::destroy() {
-    ModelBufferManager::get_instance().clear_buffers();
-    impl_.reset(nullptr);
-}
+void Executor::destroy() { impl_.reset(nullptr); }
 
 bool Executor::destroyed() const { return impl_.get() == nullptr; }
 

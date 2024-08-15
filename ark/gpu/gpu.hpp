@@ -53,6 +53,8 @@ ARK_GPU_DEFINE_TYPE_ALIAS(gpuModule, CUmodule, hipModule_t);
 ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunction, CUfunction, hipFunction_t);
 ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunctionAttribute, CUfunction_attribute,
                           hipFunction_attribute);
+ARK_GPU_DEFINE_TYPE_ALIAS(gpuPointerAttributes, cudaPointerAttributes,
+                          hipPointerAttributes);
 
 // runtime API
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, cudaSuccess, hipSuccess);
@@ -126,6 +128,8 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuPointerAttributeSyncMemops,
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, cudaGetErrorString,
                           hipGetErrorString);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetLastError, cudaGetLastError, hipGetLastError);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerGetAttributes, cudaPointerGetAttributes,
+                          hipPointerGetAttributes);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cudaDeviceGetAttribute,
                           hipDeviceGetAttribute);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceSynchronize, cudaDeviceSynchronize,
