@@ -7,7 +7,7 @@
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"
 
-ark::unittest::State test_ops_placeholder_value_contiguous() {
+ark::unittest::State test_ops_placeholder() {
     ark::Model model;
     ark::Dims shape{10, 1};
 
@@ -54,6 +54,7 @@ ark::unittest::State test_ops_placeholder_value_contiguous() {
 
 int main() {
     ark::init();
-    UNITTEST(test_ops_placeholder_value_contiguous);
+    UNITTEST(test_ops_placeholder);
+    // add test for delayed binding
     return ark::unittest::SUCCESS;
 }

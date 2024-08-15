@@ -43,7 +43,8 @@ class Executor {
 
     /// Compile the model. This must be called before `launch()`.
     void compile(const std::string &plan, int device_id,
-                 const std::string &name = "executor");
+                 const std::string &name = "executor",
+                 const std::unordered_map<Tensor, void *> &external_tensors = {});
 
     /// Launch the executor. This must be called after `compile()`.
     void launch(Stream stream = nullptr, bool loop_mode = true,

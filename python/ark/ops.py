@@ -1,11 +1,20 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import List, Iterable, Union
+from typing import List, Iterable, Union, Optional
 
 from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
 from .data_type import DataType, fp32
 from .model import Model
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 def _is_list_or_tuple(obj):
@@ -614,6 +623,7 @@ def all_reduce(
 
 __all__ = [
     "tensor",
+    "placeholder",
     "parameter",
     "reshape",
     "identity",

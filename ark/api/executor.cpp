@@ -159,13 +159,10 @@ class Executor::Impl {
     const std::string &name() const { return name_; }
 
     void compile(const std::string &plan, int device_id,
-                 const std::string &name);
-    void launch(
-        Stream stream, bool loop_mode,
-        const std::unordered_map<const Tensor, const void *> &placeholder_data);
-    void run(
-        int iter,
-        const std::unordered_map<const Tensor, const void *> &placeholder_data);
+                 const std::string &name,
+                 const std::unordered_map<Tensor, void *> &external_tensors);
+    void launch(Stream stream, bool loop_mode);
+    void run(int iter);
     void wait(int64_t max_spin_count);
     float stop(int64_t max_spin_count);
     void barrier();
@@ -207,6 +204,7 @@ class Executor::Impl {
     bool is_recording_ = false;
     float elapsed_msec_ = -1;
 
+    ModelBufferManager &buffer_manager_;
     std::vector<void *> external_buffers_;
     std::vector<std::string> external_args_;
     std::map<size_t, std::string> buffer_id_to_name_;
@@ -327,8 +325,8 @@ std::map<size_t, void *> Executor::Impl::init_buffer_addrs(
     if (!buffer_id_to_addr_.empty()) {
         buffer_id_to_addr = buffer_id_to_addr_;
     }
-    for (const auto &kv : buffer_id_to_offset) {
-        buffer_id_to_addr[kv.first] = buffer->ref(kv.second);
+    for (const auto &[id, offset] : buffer_id_to_offset) {
+        buffer_id_to_addr[id] = buffer->ref(offset);
     }
     return buffer_id_to_addr;
 }
@@ -437,9 +435,9 @@ std::map<size_t, size_t> Executor::Impl::init_buffers(const Json &plan_json) {
                     attr.device, " vs ", device_id_);
             }
             external_buffers_.push_back(ext_data);
-            const auto [it, inserted] = buffer_id_to_name_.try_emplace(
-                buf_id, "extern_buf_" + std::to_string(buf_id));
-            external_args_.push_back(it->second);
+            const std::string name = "extern_buf_" + std::to_string(buf_id);
+            external_args_.push_back(name);
+            buffer_id_to_name_[buf_id] = name;
             continue;
         }
         // if we are adding a plan and come across a buffer from a previous
@@ -697,8 +695,9 @@ void Executor::Impl::init_channels(const std::set<int> &remote_ranks) {
     }
 }
 
-void Executor::Impl::compile(const std::string &plan, int device_id,
-                             const std::string &name) {
+void Executor::Impl::compile(
+    const std::string &plan, int device_id, const std::string &name,
+    const std::unordered_map<Tensor, void *> &external_tensors) {
     if (is_launched_) {
         ERR(InvalidUsageError, "Need to stop before re-compiling.");
         return;
@@ -708,6 +707,22 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
         init(plan_json, device_id, name);
     } catch (const ::nlohmann::json::parse_error &e) {
         ERR(InvalidUsageError, "Failed to parse the plan JSON: ", e.what());
+    }
+    for (auto &[tns, addr] : external_tensors) {
+        const size_t buf_id = tns.ref()->buffer()->id();
+        if (buffer_manager_.is_staged(buf_id)) {
+            buffer_manager_.set_buffer_address(buf_id, addr);
+            external_buffers_.push_back(addr);
+            const std::string name = "extern_buf_" + std::to_string(buf_id);
+            external_args_.push_back(name);
+            buffer_id_to_name_[buf_id] = name;
+        } else {
+            ERR(InvalidUsageError,
+                "Cannot set the buffer address for tensor with buffer:", buf_id,
+                " the address is already bound. "
+                "Address setting is only allowed for delayed binding of "
+                "uninitialized buffers.");
+        }
     }
     kernel_->compile();
 }
@@ -1022,9 +1037,10 @@ std::string Executor::plan() const { return impl_->plan(); }
 
 const std::string &Executor::name() const { return impl_->name(); }
 
-void Executor::compile(const std::string &plan, int device_id,
-                       const std::string &name) {
-    impl_->compile(plan, device_id, name);
+void Executor::compile(
+    const std::string &plan, int device_id, const std::string &name,
+    const std::unordered_map<Tensor, void *> &external_tensors) {
+    impl_->compile(plan, device_id, name, external_tensors);
 }
 
 void Executor::launch(
@@ -1081,10 +1097,9 @@ DefaultExecutor::DefaultExecutor(
     impl_->loop_mode_ = loop_mode;
 }
 
-void DefaultExecutor::launch(
-    const std::unordered_map<const Tensor, const void *> &placeholder_data) {
+void DefaultExecutor::launch() {
     Executor::launch(reinterpret_cast<Stream>(impl_->stream_raw_),
-                     impl_->loop_mode_, placeholder_data);
+                     impl_->loop_mode_);
 }
 
 }  // namespace ark
