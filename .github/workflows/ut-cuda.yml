@@ -72,7 +72,7 @@ jobs:
         run: |
           cd build
           PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
-              --cov=../python/ark \
+              --cov=python/ark \
               --cov-report lcov:py_coverage.info \
               --verbose \
               ../python/unittest/test.py
