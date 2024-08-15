@@ -31,8 +31,6 @@ class Tensor {
     Tensor(ModelTensorRef ref) : ref_(ref) {}
     Tensor(const Tensor &other) = default;
     Tensor &operator=(const Tensor &other) = default;
-    Tensor(void *data_ptr, int32_t device_id, const std::vector<int64_t> &shape,
-           const DataType &dtype);
 
     bool operator==(const Tensor &other) const { return ref_ == other.ref_; }
     bool operator!=(const Tensor &other) const { return ref_ != other.ref_; }
@@ -67,8 +65,8 @@ std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 namespace std {
 template <>
 struct hash<ark::Tensor> {
-    size_t operator()(const ark::Tensor &t) const {
-        return hash<size_t>()(t.id());
+    size_t operator()(const ark::Tensor &t) const noexcept {
+        return t.id();
     }
 };
 }  // namespace std

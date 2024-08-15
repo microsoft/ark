@@ -7,7 +7,7 @@
 #include "model/model_op.hpp"
 #include "ops_test_common.hpp"
 
-ark::unittest::State test_ops_placeholder_value_contiguous() {
+ark::unittest::State test_ops_placeholder() {
     ark::Model model;
     ark::Dims shape{10, 1};
 
@@ -42,7 +42,7 @@ ark::unittest::State test_ops_placeholder_value_contiguous() {
         UNITTEST_EQ(h_res[i], i + 2);
     }
 
-    cudaFree(d_ext_buffer);
+    ark::gpuFree(d_ext_buffer);
 
     return ark::unittest::SUCCESS;
 }

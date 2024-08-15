@@ -1,11 +1,20 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import List, Iterable, Union
+from typing import List, Iterable, Union, Optional
 
 from .tensor import Dims, Tensor, Parameter, NullTensor
 from .data_type import DataType, fp32
 from .model import Model
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 def _is_list_or_tuple(obj):
@@ -46,6 +55,55 @@ def _tensor(
         rank,
         name,
     )
+
+
+def placeholder(
+    shape: Optional[Iterable[int]] = None,
+    dtype: Optional[DataType] = None,
+    torch_tensor: Optional[torch.Tensor] = None,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
+    rank: int = -1,
+    name: str = "",
+) -> Tensor:
+    if torch_tensor is not None:
+        if any(
+            (arg is not None and arg != [])
+            for arg in [shape, dtype, strides, offsets, padded_shape]
+        ):
+            raise ValueError(
+                "shape, dtype, strides, offsets, and padded_shape should not "
+                "be provided as they are inferred from the torch tensor."
+            )
+        dl_tensor = torch.utils.dlpack.to_dlpack(torch_tensor)
+        return Tensor(Model.get_model().placeholder(
+            external_tensor=dl_tensor,
+            rank=rank,
+            name=name,
+        ))
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    if not _is_list_or_tuple(strides):
+        raise ValueError("strides should be a list or tuple of integers")
+    if not _is_list_or_tuple(offsets):
+        raise ValueError("offsets should be a list or tuple of integers")
+    if not _is_list_or_tuple(padded_shape):
+        raise ValueError("padded_shape should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if any(len(arg) > 4 for arg in (shape, strides, offsets, padded_shape)):
+        raise ValueError("Only support tensors with up to 4 dimensions")
+    print(shape)
+    return Tensor(Model.get_model().placeholder(
+        Dims(shape),
+        dtype.ctype(),
+        Dims(strides),
+        Dims(offsets),
+        Dims(padded_shape),
+        rank,
+        name,
+        None,
+    ))
 
 
 def add(
@@ -630,6 +688,7 @@ def all_reduce(
 
 __all__ = [
     "tensor",
+    "placeholder",
     "parameter",
     "reshape",
     "identity",

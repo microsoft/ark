@@ -8,6 +8,7 @@
 
 #include <ark/executor.hpp>
 #include <ark/model.hpp>
+#include <unordered_map>
 
 #include "gpu/gpu_memory.hpp"
 #include "logging.hpp"
@@ -134,7 +135,8 @@ DLTensor SharedTensor::dl_tensor() const {
 
 }  // namespace ark
 
-static py::capsule tensor_to_dlpack(ark::Executor &self, const ark::Tensor &tensor) {
+static py::capsule tensor_to_dlpack(ark::Executor &self,
+                                    const ark::Tensor &tensor) {
     auto shared_tensor = new ark::SharedTensor(self, tensor);
     DLManagedTensor *dl_managed_tensor = new DLManagedTensor();
     dl_managed_tensor->dl_tensor = shared_tensor->dl_tensor();
@@ -146,8 +148,9 @@ static py::capsule tensor_to_dlpack(ark::Executor &self, const ark::Tensor &tens
         }
     };
     const char *capsule_name = "dltensor";
-    PyObject *dl_capsule = PyCapsule_New(static_cast<void *>(dl_managed_tensor),
-                                         capsule_name, [](PyObject *capsule) {
+    PyObject *dl_capsule = PyCapsule_New(
+        static_cast<void *>(dl_managed_tensor), capsule_name,
+        [](PyObject *capsule) {
             const char *name = PyCapsule_GetName(capsule);
             auto *dl_managed_tensor = static_cast<DLManagedTensor *>(
                 PyCapsule_GetPointer(capsule, name));
@@ -169,8 +172,17 @@ void register_executor(py::module &m) {
              })
         .def("plan", &ark::Executor::plan)
         .def("name", &ark::Executor::name)
-        .def("compile", &ark::Executor::compile, py::arg("device_id"),
-             py::arg("plan"), py::arg("name") = "executor")
+        .def("compile", 
+            [](ark::Executor *self, int device_id, std::string &plan, const std::string &name,
+               const std::unordered_map<ark::Tensor, uintptr_t> &external_tensors) {
+                std::unordered_map<ark::Tensor, void *> tensor_map;
+                for (const auto &[tensor, ptr] : external_tensors) {
+                    tensor_map[tensor] = reinterpret_cast<void *>(ptr);
+                }
+                self->compile(plan, device_id, name, tensor_map);
+            },
+            py::arg("device_id"), py::arg("plan"), py::arg("name") = "executor",
+            py::arg("external_tensors") = std::unordered_map<ark::Tensor, uintptr_t>())
         .def("launch", [](ark::Executor *self, uintptr_t stream, bool loop_mode) {
                  self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode);
              },

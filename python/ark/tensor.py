@@ -7,7 +7,6 @@ from typing import Callable, List, Union, Type
 from _ark_core import _Dims, _Tensor, _NullTensor
 from .data_type import DataType
 from .runtime import Runtime
-from .model import Model
 
 try:
     import torch
@@ -45,6 +44,15 @@ class Tensor:
         self._tensor = _tensor
         self.initializer: Initializer = initializer
         self.requires_grad = requires_grad
+    
+    def __hash__(self):
+        return self._tensor.id()
+    
+    def __eq__(self, other):
+        if not isinstance(other, Tensor):
+            return False
+        return self._tensor.id() == other._tensor.id()
+
 
     def shape(self) -> List[int]:
         """
@@ -132,13 +140,6 @@ class Tensor:
             )
         return rt.executor.tensor_to_dlpack(self._tensor)
 
-    @staticmethod
-    def from_dlpack(ext_tensor) -> "Tensor":
-        """
-        Copies the tensor from a DLPack tensor to the device.
-        """
-        return Tensor(_Tensor(ext_tensor))
-
     def to_torch(self) -> torch.Tensor:
         """
         Returns a torch tensor that shares the same memory with the device tensor.
@@ -150,22 +151,6 @@ class Tensor:
         # Keep dl_capsule alive not to free the memory
         torch_view.__ark_buffer__ = dl_capsule
         return torch_view
-
-    @staticmethod
-    def from_torch(tensor: torch.Tensor) -> "Tensor":
-        """
-        Returns an ARK tensor that shares the same memory with the torch tensor.
-        """
-        if _no_torch:
-            raise ImportError("torch is not available")
-        elif not tensor.is_contiguous():
-            raise ValueError("Torch tensor must be contiguous.")
-        elif tensor.device.type == "cpu":
-            raise ValueError("Torch tensor must be on a device.")
-        ark_tensor = Tensor.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
-        # Share ownership of the memory with the torch tensor
-        ark_tensor.__torch_buffer__ = tensor
-        return ark_tensor
 
     def copy(
         self, data: Union[np.ndarray, torch.Tensor], stream: int = 0
@@ -216,33 +201,36 @@ class Tensor:
         return self
 
 
-class Parameter(Tensor, torch.nn.Parameter):
+class Parameter(Tensor):
     """
     A tensor as a parameter.
     """
 
     def __init__(
         self,
-        tensor: Union[_Tensor, "torch.nn.Parameter"],
+        tensor: _Tensor,
+        from_torch: bool,
     ):
         """
         Initializes a new instance of the Parameter class.
+        Args:
+            _tensor (_ark_core._Tensor): The underlying _Tensor object.
+            from_torch: Indicates if the Parameter is tied to a torch.nn.Paramter
         """
-        if not _no_torch and isinstance(tensor, torch.nn.Parameter):
-            ark_tensor = Tensor.from_torch(tensor)
-            core_tensor = ark_tensor._tensor
+        if not _no_torch and from_torch:
+            _tensor = tensor._tensor
             self.torch_param = tensor
             self.staged_tensor = None
             Tensor.__init__(
                 self,
-                core_tensor,
+                _tensor,
                 requires_grad=tensor.requires_grad,
             )
         elif isinstance(tensor, _Tensor):
-            core_tensor = tensor
+            _tensor = tensor
             self.torch_param = None
             self.staged_tensor = None
-            Tensor.__init__(self, core_tensor, requires_grad=False)
+            Tensor.__init__(self, _tensor, requires_grad=False)
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"
