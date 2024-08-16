@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ghcr.io/microsoft/ark/ark:base-cuda12.1
+ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="ARK"
@@ -10,10 +10,11 @@ ENV ARK_SRC_DIR="/tmp/ark" \
 ADD . ${ARK_SRC_DIR}
 WORKDIR ${ARK_SRC_DIR}
 
-# Install Lcov
+# Install Lcov and clang-format
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         lcov \
+        clang-format \
         && \
     apt-get autoremove && \
     apt-get clean && \
@@ -26,6 +27,14 @@ RUN curl -L ${CMAKE_URL} -o ${CMAKE_HOME}.tar.gz && \
     tar xzf ${CMAKE_HOME}.tar.gz -C /usr/local && \
     rm -rf ${CMAKE_HOME}.tar.gz
 ENV PATH="/usr/local/cmake-${CMAKE_VERSION}-linux-x86_64/bin:${PATH}"
+
+# Install Python dependencies
+ADD . /tmp/ark
+WORKDIR /tmp/ark
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
+
+# Install PyTorch and black
+RUN python3 -m pip install --no-cache-dir torch black
 
 # Set PATH
 RUN echo PATH="${PATH}" > /etc/environment

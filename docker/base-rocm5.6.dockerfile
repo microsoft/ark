@@ -1,6 +1,6 @@
 # Temporal Dockerfile for building ARK base image for ROCm 5.6
 
-ARG BASE_IMAGE=rocm/dev-ubuntu-20.04:5.6.1-complete
+ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="ARK"
