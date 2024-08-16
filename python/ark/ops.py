@@ -238,13 +238,24 @@ def placeholder(
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
     rank: int = -1,
-    data: int = 0,
+    data: Union[int, "torch.Tensor"] = 0,
     name: str = "placeholder",
 ) -> Tensor:
     """ """
+    if not _no_torch and isinstance(data, torch.Tensor):
+        # Should we support initializing shape dtype stride offset and padded_shape
+        # just by passing in a torch.Tensor?
+        data = data.data_ptr()
     return Tensor(
-        _cpp_tensor(
-            shape, dtype, strides, offsets, padded_shape, rank, data, name
+        Model.get_model().placeholder(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            data,
+            name,
         )
     )
 

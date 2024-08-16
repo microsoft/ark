@@ -172,22 +172,39 @@ void register_executor(py::module &m) {
              })
         .def("plan", &ark::Executor::plan)
         .def("name", &ark::Executor::name)
-        .def("compile", 
-            [](ark::Executor *self, int device_id, std::string &plan, const std::string &name,
-               const std::unordered_map<ark::Tensor, uintptr_t> &external_tensors) {
-                std::unordered_map<ark::Tensor, void *> tensor_map;
-                for (const auto &[tensor, ptr] : external_tensors) {
-                    tensor_map[tensor] = reinterpret_cast<void *>(ptr);
+        .def("compile", &ark::Executor::compile, py::arg("device_id"),
+             py::arg("plan"), py::arg("name") = "executor")
+        .def(
+            "launch",
+            [](ark::Executor *self, uintptr_t stream, bool loop_mode,
+               const std::unordered_map<ark::Tensor, uintptr_t>
+                   &placeholder_data) {
+                std::unordered_map<ark::Tensor, void *> tensor_ptr_map;
+                for (const auto &[tensor, addr] : placeholder_data) {
+                    tensor_ptr_map[tensor] = reinterpret_cast<void *>(addr);
                 }
-                self->compile(plan, device_id, name, tensor_map);
+
+                self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode,
+                             tensor_ptr_map);
             },
-            py::arg("device_id"), py::arg("plan"), py::arg("name") = "executor",
-            py::arg("external_tensors") = std::unordered_map<ark::Tensor, uintptr_t>())
-        .def("launch", [](ark::Executor *self, uintptr_t stream, bool loop_mode) {
-                 self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode);
-             },
-             py::arg("stream") = 0, py::arg("loop_mode") = true)
-        .def("run", &ark::Executor::run, py::arg("iter"))
+            py::arg("stream") = 0, py::arg("loop_mode") = true,
+            py::arg("placeholder_data") =
+                std::unordered_map<ark::Tensor, void *>())
+
+        .def(
+            "run",
+            [](ark::Executor *self, int iter,
+               const std::unordered_map<ark::Tensor, uintptr_t>
+                   &placeholder_data) {
+                std::unordered_map<ark::Tensor, void *> tensor_ptr_map;
+                for (const auto &[tensor, addr] : placeholder_data) {
+                    tensor_ptr_map[tensor] = reinterpret_cast<void *>(addr);
+                }
+                self->run(iter, tensor_ptr_map);
+            },
+            py::arg("iter"),
+            py::arg("placeholder_data") =
+                std::unordered_map<ark::Tensor, void *>())
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
         .def("barrier", &ark::Executor::barrier)

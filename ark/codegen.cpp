@@ -192,9 +192,9 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     // Generate the global arguments
     std::stringstream global_args_ss, function_args_ss, arg_types_ss;
     for (const auto &[buf_id, kernel_arg] : buffer_id_to_kernel_arg_) {
-        const auto &[arg, arg_addr] = kernel_arg;
-        global_args_ss << "void *" << arg << ", ";
-        function_args_ss << arg << ", ";
+        const auto &arg_name = kernel_arg.first;
+        global_args_ss << "void *" << arg_name << ", ";
+        function_args_ss << arg_name << ", ";
         arg_types_ss << "void *, ";
     }
     std::string global_args = global_args_ss.str();
@@ -280,7 +280,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                     ss << "(" << tns->data_type()->type_str() << "*)&_buf["
                        << offset << "]";
                 } else {
-                    const auto &[name, ptr] = it->second;
+                    const auto &name = it->second.first;
                     ss << "(" << tns->data_type()->type_str() << "*)" << name;
                 }
             } else if (arg.type_name() == "OFFSET") {
@@ -292,7 +292,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                     size_t offset = buffer_offset + moff.value();
                     ss << offset;
                 } else {
-                    const auto &[name, ptr] = it->second;
+                    const auto &name = it->second.first;
                     size_t offset = moff.value();
                     ss << "(uint64_t)((char*)" << name << " + " << offset
                        << ")";

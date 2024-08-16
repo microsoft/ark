@@ -105,7 +105,7 @@ def test_ark_to_torch_aliasing(dtype: ark.DataType):
     runtime.stop()
     runtime.reset()
 
-pytest.mark.skip()
+
 def test_conversion_torch():
     if _no_torch:
         pytest.skip("PyTorch not available")
@@ -149,8 +149,16 @@ def test_bin_op(dtype, ark_op: ArkBinOp, torch_op: TorchBinOp, tensor_dims):
     input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     other_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     expected_output = torch_op(input_tensor, other_tensor).cpu().numpy()
-    input_ark_view = ark.placeholder(torch_tensor=input_tensor)
-    other_ark_view = ark.placeholder(torch_tensor=other_tensor)
+    input_ark_view = ark.placeholder(
+        shape=tensor_dims,
+        dtype=ark.DataType.from_torch(dtype),
+        data=input_tensor.data_ptr(),
+    )
+    other_ark_view = ark.placeholder(
+        shape=tensor_dims,
+        dtype=ark.DataType.from_torch(dtype),
+        data=other_tensor.data_ptr(),
+    )
     output = ark_op(input_ark_view, other_ark_view)
     runtime = ark.Runtime()
     runtime.launch()
@@ -170,7 +178,11 @@ def test_unary_op(dtype, ark_op: ArkUnOp, torch_op: TorchUnOp, tensor_dims):
     ark.init()
     input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     expected_output = torch_op(input_tensor).cpu().numpy()
-    input_ark_view = ark.placeholder(torch_tensor=input_tensor)
+    input_ark_view = ark.placeholder(
+        shape=tensor_dims,
+        dtype=ark.DataType.from_torch(dtype),
+        data=input_tensor,
+    )
     output = ark_op(input_ark_view)
     runtime = ark.Runtime()
     runtime.launch()
@@ -189,8 +201,12 @@ def test_torch_to_ark_aliasing(dtype, tensor_dims):
     input_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
     other_tensor = torch.randn(tensor_dims, dtype=dtype, device="cuda:0")
 
-    input_ark_view = ark.placeholder(torch_tensor=input_tensor)
-    other_ark_view = ark.placeholder(torch_tensor=other_tensor)
+    input_ark_view = ark.placeholder(
+        tensor_dims, dtype=ark.DataType.from_torch(dtype), data=input_tensor
+    )
+    other_ark_view = ark.placeholder(
+        tensor_dims, dtype=ark.DataType.from_torch(dtype), data=other_tensor
+    )
 
     output = ark.add(input_ark_view, other_ark_view)
     # Perform in place operations
@@ -240,8 +256,6 @@ def test_bin_op_staged(
     runtime.reset()
     assert np.allclose(output_host, expected_output)
 
-test_bin_op_staged(torch.float16, ark.add, torch.add, (2, 3))
-
 
 @pytest.mark.parametrize(
     "dtype, ark_op, torch_op, tensor_dims",
@@ -259,11 +273,9 @@ def test_unary_op_staged(
     output = ark_op(input_ark_view)
     runtime = ark.Runtime()
     tensor_mapping = {input_ark_view: input_tensor}
-    runtime.launch()
+    runtime.launch(loop_mode=False)
     runtime.run(tensor_mappings=tensor_mapping)
     output_host = output.to_numpy()
     runtime.stop()
     runtime.reset()
     assert np.allclose(output_host, expected_output)
-
-test_unary_op_staged(torch.float16, ark.exp, torch.exp, (3, 3))

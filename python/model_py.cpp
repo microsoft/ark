@@ -178,27 +178,6 @@ void register_model(py::module &m) {
         .def("tensor", &ark::Model::tensor, py::arg("shape"),
              py::arg("data_type"), py::arg("strides"), py::arg("offsets"),
              py::arg("padded_shape"), py::arg("rank"), py::arg("name"))
-        .def("placeholder",
-             py::overload_cast<const ark::Dims &, const ark::DataType &,
-                               const ark::Dims &, const ark::Dims &,
-                               const ark::Dims &, int, const std::string &,
-                               void *>(&ark::Model::placeholder),
-             py::arg("shape"), py::arg("data_type"), py::arg("strides"),
-             py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
-             py::arg("name"), py::arg("data"))
-        .def(
-            "placeholder",
-            [](ark::Model &self, py::capsule input, int rank,
-               const std::string &name) {
-                DLManagedTensor *dl_tensor =
-                    static_cast<DLManagedTensor *>(input.get_pointer());
-                DLTensorMetadata metadata = extractDLTensorMetadata(dl_tensor);
-                ark::DataType ark_dtype = from_dl_dtype(metadata.dtype);
-                ark::Dims shape(metadata.shape);
-                return self.placeholder(shape, ark_dtype, {}, {}, {}, rank,
-                                        name, metadata.data_ptr);
-            },
-            py::arg("external_tensor"), py::arg("rank"), py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
