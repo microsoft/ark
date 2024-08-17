@@ -772,11 +772,9 @@ void Executor::Impl::launch(
     loop_mode_ = loop_mode;
 
     if (loop_mode_) {
-        // should we add an identifier to specify which plan the kernel executes
-        // i.e. ark_loop_kernel_2 for the second plan
-        kernel_name_ = "ark_loop_kernel_ark_kernel";
+        kernel_name_ = "ark_loop_kernel";
     } else {
-        kernel_name_ = "ark_kernel_ark_kernel";
+        kernel_name_ = "ark_kernel";
     }
 
     auto get_global_rt = [&](const std::string &symbol) {

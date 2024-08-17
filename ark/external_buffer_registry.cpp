@@ -13,8 +13,8 @@ ExternalBufferRegistry &ExternalBufferRegistry::get_instance() {
 }
 
 void ExternalBufferRegistry::set(const size_t id, void *data) {
-    //if (data == nullptr) {
-      //  ERR(InternalError, "data is nullptr.");
+    // if (data == nullptr) {
+    //   ERR(InternalError, "data is nullptr.");
     // }
     buffers_[id] = data;
 }
@@ -27,12 +27,6 @@ void *ExternalBufferRegistry::get(const size_t id) const {
     return nullptr;
 }
 
-bool ExternalBufferRegistry::has_buffer(const size_t id) const {
-        return buffers_.find(id) != buffers_.end();
-    }
-
-void ExternalBufferRegistry::clear() {
-    buffers_.clear();
-}
+void ExternalBufferRegistry::clear() { buffers_.clear(); }
 
 }  // namespace ark

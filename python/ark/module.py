@@ -44,7 +44,7 @@ class Module:
         elif isinstance(__value, Parameter):
             self.register_parameter(__name, __value)
         elif not _no_torch and isinstance(__value, torch.nn.Parameter):
-            shape, dtype = list(__value.shape), DataType.from_torch(dtype)
+            shape, dtype = list(__value.shape), DataType.from_torch(__value.dtype)
             __value = Parameter(placeholder(shape, dtype, data=__value), True)
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)

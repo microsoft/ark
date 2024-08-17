@@ -17,8 +17,6 @@ class ExternalBufferRegistry {
 
     void *get(const size_t id) const;
 
-    bool has_buffer(const size_t id) const;
-
     void clear();
 
    private:

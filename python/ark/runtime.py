@@ -7,6 +7,7 @@ from enum import Enum
 from ._ark_core import _Executor
 from .planner import Planner, Plan
 from typing import Dict
+
 try:
     import torch
 
@@ -29,6 +30,8 @@ class Runtime:
     """
     Convenience class for running a model.
     """
+
+    _loop_mode: bool = True
 
     class State(Enum):
         """
@@ -113,11 +116,18 @@ class Runtime:
             self.executor.compile(plan_str, device_id)
         self.executor.launch(stream, loop_mode, tensor_mappings)
         self.state = Runtime.State.LaunchedNotRunning
+        Runtime._loop_mode = loop_mode
 
     def run(self, iter=1, non_blocking=False, tensor_mappings={}):
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
+        if Runtime._loop_mode and tensor_mappings:
+            raise ValueError(
+                "`loop_mode` argument when calling `runtime.launch` "
+                "must be set to false in order to pass non-empty "
+                "tensor mappings in `runtime.run`."
+            )
         if self.state != Runtime.State.LaunchedNotRunning:
             logging.error(f"ARK runtime is not launched")
             raise RuntimeError(f"ARK runtime is not launched")
