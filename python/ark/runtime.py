@@ -6,6 +6,16 @@ from enum import Enum
 
 from ._ark_core import _Executor
 from .planner import Planner, Plan
+from typing import Dict
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 class _RuntimeState:
@@ -20,6 +30,8 @@ class Runtime:
     """
     Convenience class for running a model.
     """
+
+    _loop_mode: bool = True
 
     class State(Enum):
         """
@@ -73,6 +85,7 @@ class Runtime:
         device_id: int = 0,
         stream: int = 0,
         loop_mode: bool = True,
+        tensor_mappings: Dict = {},
     ):
         """
         Create an executor and schedule the ARK model. The scheduler will generate
@@ -87,7 +100,13 @@ class Runtime:
         if self.launched():
             # Stop the current running model
             self.stop()
-
+        for ark_tensor in list(tensor_mappings.keys()):
+            torch_tensor = tensor_mappings[ark_tensor]
+            if not isinstance(torch_tensor, torch.Tensor):
+                raise ValueError("Must bind PyTorch tensor")
+            internal_ark_tensor = ark_tensor._tensor
+            tensor_mappings[internal_ark_tensor] = torch_tensor.data_ptr()
+            del tensor_mappings[ark_tensor]
         # Recompile if the previous launch was not compiled with the same info
         # or if this is the first launch
         if (
@@ -95,19 +114,32 @@ class Runtime:
             or device_id != self.executor.device_id()
         ):
             self.executor.compile(plan_str, device_id)
-
-        self.executor.launch(stream, loop_mode)
+        self.executor.launch(stream, loop_mode, tensor_mappings)
         self.state = Runtime.State.LaunchedNotRunning
+        Runtime._loop_mode = loop_mode
 
-    def run(self, iter=1, non_blocking=False):
+    def run(self, iter=1, non_blocking=False, tensor_mappings={}):
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
+        if Runtime._loop_mode and tensor_mappings:
+            raise ValueError(
+                "`loop_mode` argument when calling `runtime.launch` "
+                "must be set to false in order to pass non-empty "
+                "tensor mappings in `runtime.run`."
+            )
         if self.state != Runtime.State.LaunchedNotRunning:
             logging.error(f"ARK runtime is not launched")
             raise RuntimeError(f"ARK runtime is not launched")
         self.state = Runtime.State.Running
-        self.executor.run(iter)
+        for ark_tensor in list(tensor_mappings.keys()):
+            torch_tensor = tensor_mappings[ark_tensor]
+            if not isinstance(torch_tensor, torch.Tensor):
+                raise ValueError("Must bind PyTorch tensor")
+            internal_ark_tensor = ark_tensor._tensor
+            tensor_mappings[internal_ark_tensor] = torch_tensor.data_ptr()
+            del tensor_mappings[ark_tensor]
+        self.executor.run(iter, tensor_mappings)
         if not non_blocking:
             self.wait()
 

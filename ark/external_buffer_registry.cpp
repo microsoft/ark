@@ -13,9 +13,9 @@ ExternalBufferRegistry &ExternalBufferRegistry::get_instance() {
 }
 
 void ExternalBufferRegistry::set(const size_t id, void *data) {
-    if (data == nullptr) {
-        ERR(InternalError, "data is nullptr.");
-    }
+    // if (data == nullptr) {
+    //   ERR(InternalError, "data is nullptr.");
+    // }
     buffers_[id] = data;
 }
 

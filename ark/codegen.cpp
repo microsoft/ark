@@ -4,6 +4,7 @@
 #include "codegen.hpp"
 
 #include <list>
+#include <utility>
 
 #include "ark/data_type.hpp"
 #include "env.h"
@@ -55,8 +56,8 @@ class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
          const std::map<size_t, size_t> &buffer_id_to_offset,
-         const std::vector<std::string> &external_args,
-         const std::map<size_t, std::string> &buffer_id_to_name,
+         const std::map<size_t, std::pair<std::string, void *>>
+             &buffer_id_to_kernel_arg,
          const std::string &name);
     ~Impl() = default;
 
@@ -82,8 +83,7 @@ class CodeGenerator::Impl {
     friend class CodeGenerator;
 
     std::map<size_t, size_t> buffer_id_to_offset_;
-    std::vector<std::string> external_args_;
-    std::map<size_t, std::string> buffer_id_to_name_;
+    std::map<size_t, std::pair<std::string, void *>> buffer_id_to_kernel_arg_;
     std::string name_;
     int rank_;
     int world_size_;
@@ -92,14 +92,13 @@ class CodeGenerator::Impl {
     std::string code_;
 };
 
-CodeGenerator::Impl::Impl(
-    const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
-    const std::vector<std::string> &external_args,
-    const std::map<size_t, std::string> &buffer_id_to_name,
-    const std::string &name)
+CodeGenerator::Impl::Impl(const PlanJson &plan,
+                          const std::map<size_t, size_t> &buffer_id_to_offset,
+                          const std::map<size_t, std::pair<std::string, void *>>
+                              &buffer_id_to_kernel_arg,
+                          const std::string &name)
     : buffer_id_to_offset_(buffer_id_to_offset),
-      external_args_(external_args),
-      buffer_id_to_name_(buffer_id_to_name),
+      buffer_id_to_kernel_arg_(buffer_id_to_kernel_arg),
       name_(name) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
@@ -192,9 +191,10 @@ CodeGenerator::Impl::Impl(
 
     // Generate the global arguments
     std::stringstream global_args_ss, function_args_ss, arg_types_ss;
-    for (const auto &arg : external_args_) {
-        global_args_ss << "void *" << arg << ", ";
-        function_args_ss << arg << ", ";
+    for (const auto &[buf_id, kernel_arg] : buffer_id_to_kernel_arg_) {
+        const auto &arg_name = kernel_arg.first;
+        global_args_ss << "void *" << arg_name << ", ";
+        function_args_ss << arg_name << ", ";
         arg_types_ss << "void *, ";
     }
     std::string global_args = global_args_ss.str();
@@ -219,7 +219,7 @@ CodeGenerator::Impl::Impl(
         {"@NUM_WARPS_PER_BLOCK@", std::to_string(num_warps_per_proc_)},
         {"@DEFINITIONS@", definitions_ss.str()},
         {"@BODY@", body_ss.str()},
-        {"@NAME@", (name_.empty() ? "" : "_" + name_)},
+        {"@NAME@", (!name_.empty() ? "" : name_)},
         {"@GLOBAL_ARGS@", global_args},
         {"@FUNCTION_ARGS@", function_args},
         {"@ARG_TYPES@", arg_types},
@@ -273,29 +273,28 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
                 size_t buffer_id = tns->buffer()->id();
-                if (buffer_id_to_name_.find(buffer_id) ==
-                    buffer_id_to_name_.end()) {
+                auto it = buffer_id_to_kernel_arg_.find(buffer_id);
+                if (it == buffer_id_to_kernel_arg_.end()) {
                     size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
                     size_t offset = buffer_offset + ModelOffset(tns).value();
                     ss << "(" << tns->data_type()->type_str() << "*)&_buf["
                        << offset << "]";
                 } else {
-                    ss << "(" << tns->data_type()->type_str() << "*)"
-                       << buffer_id_to_name_.at(buffer_id);
+                    const auto &name = it->second.first;
+                    ss << "(" << tns->data_type()->type_str() << "*)" << name;
                 }
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_id = moff.buffer_id();
-                if (buffer_id_to_name_.find(buffer_id) ==
-                    buffer_id_to_name_.end()) {
+                auto it = buffer_id_to_kernel_arg_.find(buffer_id);
+                if (it == buffer_id_to_kernel_arg_.end()) {
                     size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
                     size_t offset = buffer_offset + moff.value();
                     ss << offset;
                 } else {
-                    const std::string &buffer_name =
-                        buffer_id_to_name_.at(buffer_id);
+                    const auto &name = it->second.first;
                     size_t offset = moff.value();
-                    ss << "(uint64_t)((char*)" << buffer_name << " + " << offset
+                    ss << "(uint64_t)((char*)" << name << " + " << offset
                        << ")";
                 }
             } else {
@@ -372,8 +371,7 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(PlanError, "not enough resources for task group: ",
-                tg.dump());
+            ERR(PlanError, "not enough resources for task group: ", tg.dump());
         }
 
         size_t task_b = *task_range.begin();
@@ -498,11 +496,11 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 
 CodeGenerator::CodeGenerator(
     const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
-    const std::vector<std::string> &external_args,
-    const std::map<size_t, std::string> &buffer_id_to_name,
+    const std::map<size_t, std::pair<std::string, void *>>
+        &buffer_id_to_kernel_arg,
     const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, external_args,
-                                   buffer_id_to_name, name)) {}
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset,
+                                   buffer_id_to_kernel_arg, name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

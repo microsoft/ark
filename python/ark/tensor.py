@@ -45,6 +45,15 @@ class Tensor:
         self._tensor = _tensor
         self.initializer: Initializer = initializer
         self.requires_grad = requires_grad
+    
+    def __hash__(self):
+        return self._tensor.id()
+    
+    def __eq__(self, other):
+        if not isinstance(other, Tensor):
+            return False
+        return self._tensor.id() == other._tensor.id()
+
 
     def shape(self) -> List[int]:
         """
@@ -224,33 +233,36 @@ class Tensor:
         return self
 
 
-class Parameter(Tensor, torch.nn.Parameter):
+class Parameter(Tensor):
     """
     A tensor as a parameter.
     """
 
     def __init__(
         self,
-        tensor: Union[_Tensor, "torch.nn.Parameter"],
+        tensor: _Tensor,
+        from_torch: bool,
     ):
         """
         Initializes a new instance of the Parameter class.
+        Args:
+            _tensor (_ark_core._Tensor): The underlying _Tensor object.
+            from_torch: Indicates if the Parameter is tied to a torch.nn.Paramter
         """
-        if not _no_torch and isinstance(tensor, torch.nn.Parameter):
-            ark_tensor = Tensor.from_torch(tensor)
-            core_tensor = ark_tensor._tensor
+        if not _no_torch and from_torch:
+            _tensor = tensor._tensor
             self.torch_param = tensor
             self.staged_tensor = None
             Tensor.__init__(
                 self,
-                core_tensor,
+                _tensor,
                 requires_grad=tensor.requires_grad,
             )
         elif isinstance(tensor, _Tensor):
-            core_tensor = tensor
+            _tensor = tensor
             self.torch_param = None
             self.staged_tensor = None
-            Tensor.__init__(self, core_tensor, requires_grad=False)
+            Tensor.__init__(self, _tensor, requires_grad=False)
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"

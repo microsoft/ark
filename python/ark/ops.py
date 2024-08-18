@@ -1,11 +1,20 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import List, Iterable, Union
+from typing import List, Iterable, Union, Optional
 
 from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
 from .data_type import DataType, fp32
 from .model import Model
+
+try:
+    import torch
+
+    _no_torch = False
+except ImportError:
+    from . import torch_mock as torch
+
+    _no_torch = True
 
 
 def _is_list_or_tuple(obj):
@@ -229,13 +238,24 @@ def placeholder(
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
     rank: int = -1,
-    data: int = 0,
+    data: Union[int, "torch.Tensor"] = 0,
     name: str = "placeholder",
 ) -> Tensor:
     """ """
+    if not _no_torch and isinstance(data, torch.Tensor):
+        # Should we support initializing shape dtype stride offset and padded_shape
+        # just by passing in a torch.Tensor?
+        data = data.data_ptr()
     return Tensor(
-        _cpp_tensor(
-            shape, dtype, strides, offsets, padded_shape, rank, data, name
+        Model.get_model().placeholder(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            data,
+            name,
         )
     )
 
@@ -614,6 +634,7 @@ def all_reduce(
 
 __all__ = [
     "tensor",
+    "placeholder",
     "parameter",
     "reshape",
     "identity",
