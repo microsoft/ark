@@ -5,18 +5,11 @@ import numpy as np
 from typing import Callable, Iterable, List, Union, Type
 
 from ._ark_core import _Dims, _Tensor, _NullTensor
+from .torch import torch, _no_torch
 from .data_type import DataType, fp32
 from .runtime import Runtime
 from .model import Model
 
-try:
-    import torch
-
-    _no_torch = False
-except ImportError:
-    from . import torch_mock as torch
-
-    _no_torch = True
 
 NullTensor = _NullTensor
 
@@ -45,15 +38,32 @@ class Tensor:
         self._tensor = _tensor
         self.initializer: Initializer = initializer
         self.requires_grad = requires_grad
-    
+
     def __hash__(self):
         return self._tensor.id()
-    
+
     def __eq__(self, other):
         if not isinstance(other, Tensor):
             return False
         return self._tensor.id() == other._tensor.id()
 
+    @classmethod
+    def __torch_function__(cls, func, types, args=(), kwargs=None):
+        if kwargs is None:
+            kwargs = {}
+        new_args = []
+        for arg in args:
+            if isinstance(arg, Tensor):
+                new_args.append(Tensor.to_torch(arg))
+            else:
+                new_args.append(arg)
+        new_kwargs = {}
+        for key, value in kwargs.items():
+            if isinstance(value, Tensor):
+                new_kwargs[key] = Tensor.to_torch(value)
+            else:
+                new_kwargs[key] = value
+        return func(*new_args, **new_kwargs)
 
     def shape(self) -> List[int]:
         """

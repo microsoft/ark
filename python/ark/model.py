@@ -32,6 +32,13 @@ class Model(_Model):
         return _ModelState.world_size
 
     @staticmethod
+    def get_device_id():
+        """
+        Get the device id.
+        """
+        return _ModelState.device_id
+
+    @staticmethod
     def set_rank(rank: int):
         """
         Set the rank of the model.
@@ -44,6 +51,15 @@ class Model(_Model):
         Set the world size of the model.
         """
         _ModelState.world_size = world_size
+
+    @staticmethod
+    def set_device_id(device_id: int):
+        """
+        Set the device id.
+        """
+        if device_id < 0:
+            raise ValueError("device_id must be non-negative")
+        _ModelState.device_id = device_id
 
     @staticmethod
     def reset():
@@ -81,3 +97,4 @@ class _ModelState:
     model: Model = None
     rank: int = 0
     world_size: int = 1
+    device_id: int = 0

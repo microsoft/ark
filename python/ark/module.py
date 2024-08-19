@@ -5,19 +5,11 @@ import logging
 import numpy as np
 from typing import Any, Dict, Union
 from .tensor import Parameter
+from .torch import torch, _no_torch
 from .runtime import Runtime
 from .model import Model
 from .data_type import DataType
-
-try:
-    import torch
-    from .ops import placeholder
-
-    _no_torch = False
-except ImportError:
-    from . import torch_mock as torch
-
-    _no_torch = True
+from .ops import placeholder
 
 
 class Module:
@@ -44,7 +36,9 @@ class Module:
         elif isinstance(__value, Parameter):
             self.register_parameter(__name, __value)
         elif not _no_torch and isinstance(__value, torch.nn.Parameter):
-            shape, dtype = list(__value.shape), DataType.from_torch(__value.dtype)
+            shape, dtype = list(__value.shape), DataType.from_torch(
+                __value.dtype
+            )
             __value = Parameter(placeholder(shape, dtype, data=__value), True)
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)

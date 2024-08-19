@@ -5,17 +5,10 @@ import logging
 from enum import Enum
 
 from ._ark_core import _Executor
+from .torch import torch
 from .planner import Planner, Plan
+from .model import Model
 from typing import Dict
-
-try:
-    import torch
-
-    _no_torch = False
-except ImportError:
-    from . import torch_mock as torch
-
-    _no_torch = True
 
 
 class _RuntimeState:
@@ -82,7 +75,7 @@ class Runtime:
     def launch(
         self,
         plan: Plan = None,
-        device_id: int = 0,
+        device_id: int = -1,
         stream: int = 0,
         loop_mode: bool = True,
         tensor_mappings: Dict = {},
@@ -92,7 +85,9 @@ class Runtime:
         the CUDA kernels. The GPU context and the connection between GPUs will be
         initialized. The executor will compile the cuda kernels and launch the ARK runtime.
         """
-        if device_id < 0:
+        if device_id == -1:
+            device_id = Model.get_device_id()
+        elif device_id < 0:
             logging.error(f"Invalid device_id: {device_id}")
             raise ValueError(f"Invalid device_id: {device_id}")
         plan = Planner(device_id).plan() if plan is None else plan

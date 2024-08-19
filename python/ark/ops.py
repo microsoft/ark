@@ -4,17 +4,9 @@
 from typing import List, Iterable, Union, Optional
 
 from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
+from .torch import torch, _no_torch
 from .data_type import DataType, fp32
 from .model import Model
-
-try:
-    import torch
-
-    _no_torch = False
-except ImportError:
-    from . import torch_mock as torch
-
-    _no_torch = True
 
 
 def _is_list_or_tuple(obj):
@@ -238,7 +230,7 @@ def placeholder(
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
     rank: int = -1,
-    data: Union[int, "torch.Tensor"] = 0,
+    data: Union[int, torch.Tensor] = 0,
     name: str = "placeholder",
 ) -> Tensor:
     """ """
