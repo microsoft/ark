@@ -2,12 +2,9 @@
 # Licensed under the MIT license.
 
 import numpy
+from .torch import torch
 from . import _ark_core
 
-try:
-    import torch
-except ImportError:
-    from . import torch_mock as torch
 
 _REGISTRY_DATA_TYPE = {
     "fp32": {"np": numpy.float32, "torch": torch.float32},

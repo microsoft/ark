@@ -2,21 +2,14 @@
 # Licensed under the MIT license.
 
 import numpy as np
-from typing import Callable, List, Union, Type
+from typing import Callable, Iterable, List, Union, Type
 
 from ._ark_core import _Dims, _Tensor, _NullTensor
-from .data_type import DataType
+from .torch import torch, _no_torch
+from .data_type import DataType, fp32
 from .runtime import Runtime
 from .model import Model
 
-try:
-    import torch
-
-    _no_torch = False
-except ImportError:
-    from . import torch_mock as torch
-
-    _no_torch = True
 
 NullTensor = _NullTensor
 
@@ -45,6 +38,32 @@ class Tensor:
         self._tensor = _tensor
         self.initializer: Initializer = initializer
         self.requires_grad = requires_grad
+
+    def __hash__(self):
+        return self._tensor.id()
+
+    def __eq__(self, other):
+        if not isinstance(other, Tensor):
+            return False
+        return self._tensor.id() == other._tensor.id()
+
+    @classmethod
+    def __torch_function__(cls, func, types, args=(), kwargs=None):
+        if kwargs is None:
+            kwargs = {}
+        new_args = []
+        for arg in args:
+            if isinstance(arg, Tensor):
+                new_args.append(Tensor.to_torch(arg))
+            else:
+                new_args.append(arg)
+        new_kwargs = {}
+        for key, value in kwargs.items():
+            if isinstance(value, Tensor):
+                new_kwargs[key] = Tensor.to_torch(value)
+            else:
+                new_kwargs[key] = value
+        return func(*new_args, **new_kwargs)
 
     def shape(self) -> List[int]:
         """
@@ -137,7 +156,8 @@ class Tensor:
         """
         Copies the tensor from a DLPack tensor to the device.
         """
-        return Tensor(_Tensor(ext_tensor))
+        # return Tensor(_Tensor(ext_tensor))
+        raise NotImplementedError("from_dlpack is not implemented yet")
 
     def to_torch(self) -> torch.Tensor:
         """
@@ -162,7 +182,14 @@ class Tensor:
             raise ValueError("Torch tensor must be contiguous.")
         elif tensor.device.type == "cpu":
             raise ValueError("Torch tensor must be on a device.")
-        ark_tensor = Tensor.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
+        # TODO: support strides and offsets
+        ark_tensor = Tensor(
+            _cpp_tensor(
+                shape=list(tensor.shape),
+                dtype=DataType.from_torch(tensor.dtype),
+                data=tensor.data_ptr(),
+            )
+        )
         # Share ownership of the memory with the torch tensor
         ark_tensor.__torch_buffer__ = tensor
         return ark_tensor
@@ -216,33 +243,36 @@ class Tensor:
         return self
 
 
-class Parameter(Tensor, torch.nn.Parameter):
+class Parameter(Tensor):
     """
     A tensor as a parameter.
     """
 
     def __init__(
         self,
-        tensor: Union[_Tensor, "torch.nn.Parameter"],
+        tensor: _Tensor,
+        from_torch: bool,
     ):
         """
         Initializes a new instance of the Parameter class.
+        Args:
+            _tensor (_ark_core._Tensor): The underlying _Tensor object.
+            from_torch: Indicates if the Parameter is tied to a torch.nn.Paramter
         """
-        if not _no_torch and isinstance(tensor, torch.nn.Parameter):
-            ark_tensor = Tensor.from_torch(tensor)
-            core_tensor = ark_tensor._tensor
+        if not _no_torch and from_torch:
+            _tensor = tensor._tensor
             self.torch_param = tensor
             self.staged_tensor = None
             Tensor.__init__(
                 self,
-                core_tensor,
+                _tensor,
                 requires_grad=tensor.requires_grad,
             )
         elif isinstance(tensor, _Tensor):
-            core_tensor = tensor
+            _tensor = tensor
             self.torch_param = None
             self.staged_tensor = None
-            Tensor.__init__(self, core_tensor, requires_grad=False)
+            Tensor.__init__(self, _tensor, requires_grad=False)
         else:
             raise TypeError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"
@@ -263,3 +293,57 @@ class Parameter(Tensor, torch.nn.Parameter):
         if ark_tensor is None or not isinstance(ark_tensor, Tensor):
             raise ValueError("cannot use non-ARK tensor to update ARK gradient")
         self.staged_tensor = ark_tensor
+
+
+def _is_list_or_tuple(obj):
+    return isinstance(obj, list) or isinstance(obj, tuple)
+
+
+def _cpp_tensor(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
+    rank: int = -1,
+    data: int = None,
+    name: str = "",
+) -> Tensor:
+    if not _is_list_or_tuple(shape):
+        raise ValueError("shape should be a list or tuple of integers")
+    if not _is_list_or_tuple(strides):
+        raise ValueError("strides should be a list or tuple of integers")
+    if not _is_list_or_tuple(offsets):
+        raise ValueError("offsets should be a list or tuple of integers")
+    if not _is_list_or_tuple(padded_shape):
+        raise ValueError("padded_shape should be a list or tuple of integers")
+    # only support tensors with up to 4 dimensions
+    if (
+        len(shape) > 4
+        or len(strides) > 4
+        or len(offsets) > 4
+        or len(padded_shape) > 4
+    ):
+        raise ValueError("Only support tensors with up to 4 dimensions")
+    if data is not None:
+        cpp_tensor = Model.get_model().placeholder(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            data,
+            name,
+        )
+    else:
+        cpp_tensor = Model.get_model().tensor(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            name,
+        )
+    return cpp_tensor

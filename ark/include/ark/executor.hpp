@@ -9,6 +9,7 @@
 #include <ark/tensor.hpp>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace ark {
@@ -45,10 +46,14 @@ class Executor {
                  const std::string &name = "executor");
 
     /// Launch the executor. This must be called after `compile()`.
-    void launch(Stream stream = nullptr, bool loop_mode = true);
+    void launch(
+        Stream stream = nullptr, bool loop_mode = true,
+        const std::unordered_map<Tensor, void *> &placeholder_data = {});
 
     /// Run the executor for `iter` iterations.
-    void run(int iter);
+    void run(
+        int iter,
+        const std::unordered_map<Tensor, void *> &placeholder_data = {});
 
     /// Wait for the previous run to finish.
     void wait(int64_t max_spin_count = -1);
@@ -99,13 +104,15 @@ class Model;
 
 class DefaultExecutor : public Executor {
    public:
-    DefaultExecutor(
-        const Model &model, int device_id = -1, Stream stream = nullptr,
-        const std::vector<Planner::ConfigRule> &config_rules = {},
-        const std::string &name = "DefaultExecutor", bool loop_mode = true);
+    DefaultExecutor(const Model &model, int device_id = -1,
+                    Stream stream = nullptr,
+                    const std::vector<Planner::ConfigRule> &config_rules = {},
+                    const std::string &name = "DefaultExecutor",
+                    bool loop_mode = true);
 
     /// Launch the default executor.
-    void launch();
+    void launch(
+        const std::unordered_map<Tensor, void *> &placeholder_data = {});
 };
 
 }  // namespace ark

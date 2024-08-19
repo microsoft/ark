@@ -4,19 +4,12 @@
 import logging
 import numpy as np
 from typing import Any, Dict, Union
-from .tensor import Tensor, Parameter
+from .tensor import Parameter
+from .torch import torch, _no_torch
 from .runtime import Runtime
-from .init import init
 from .model import Model
-
-try:
-    import torch
-
-    _no_torch = False
-except ImportError:
-    from . import torch_mock as torch
-
-    _no_torch = True
+from .data_type import DataType
+from .ops import placeholder
 
 
 class Module:
@@ -43,7 +36,10 @@ class Module:
         elif isinstance(__value, Parameter):
             self.register_parameter(__name, __value)
         elif not _no_torch and isinstance(__value, torch.nn.Parameter):
-            __value = Parameter(__value)
+            shape, dtype = list(__value.shape), DataType.from_torch(
+                __value.dtype
+            )
+            __value = Parameter(placeholder(shape, dtype, data=__value), True)
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
@@ -151,14 +147,16 @@ class _Function(torch.autograd.Function):
         input_requires_grad = 0
         for arg in args:
             if isinstance(arg, torch.Tensor):
-                input_args.append(Tensor.from_torch(arg))
+                shape, dtype = list(arg.shape), DataType.from_torch(arg.dtype)
+                input_args.append(placeholder(shape, dtype, data=arg))
                 if arg.requires_grad:
                     input_requires_grad += 1
             else:
                 input_args.append(arg)
         for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
-                input_kwargs[k] = Tensor.from_torch(v)
+                shape, dtype = list(arg.shape), DataType.from_torch(arg.dtype)
+                input_kwargs[k] = placeholder(shape, dtype, data=v)
                 if v.requires_grad:
                     input_requires_grad += 1
             else:
@@ -180,7 +178,12 @@ class _Function(torch.autograd.Function):
         PyTorch parameters.
         """
         Model.reset()
-        ark_grad_outputs = [Tensor.from_torch(grad) for grad in grad_outputs]
+        # i think we should support placeholder initialization
+        # with just pytorch tensor
+        ark_grad_outputs = []
+        for grad in grad_outputs:
+            shape, dtype = list(grad.shape), DataType.from_torch(grad.dtype)
+            ark_grad_outputs.append(placeholder(shape, dtype, data=grad))
         grads = ctx.ark_module.backward(*ark_grad_outputs)
         grad_inputs, grad_weights = (
             grads[: ctx.num_inp_grad],

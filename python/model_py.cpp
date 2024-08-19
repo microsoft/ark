@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <dlpack/dlpack.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -8,7 +9,64 @@
 #include <ark/model.hpp>
 #include <ark/model_graph.hpp>
 
+#include "logging.hpp"
+
 namespace py = pybind11;
+
+struct DLTensorMetadata {
+    void *data_ptr;
+    int32_t device_id;
+    DLDeviceType device_type;
+    int32_t ndim;
+    DLDataType dtype;
+    std::vector<int64_t> shape;
+    std::vector<int64_t> strides;
+    uint64_t byte_offset;
+};
+
+static DLTensorMetadata extractDLTensorMetadata(DLManagedTensor *dl_tensor) {
+    DLTensorMetadata metadata;
+    metadata.data_ptr = dl_tensor->dl_tensor.data;
+    metadata.device_id = dl_tensor->dl_tensor.device.device_id;
+    metadata.device_type = dl_tensor->dl_tensor.device.device_type;
+    metadata.ndim = dl_tensor->dl_tensor.ndim;
+    metadata.dtype = dl_tensor->dl_tensor.dtype;
+    metadata.shape.assign(
+        dl_tensor->dl_tensor.shape,
+        dl_tensor->dl_tensor.shape + dl_tensor->dl_tensor.ndim);
+    if (dl_tensor->dl_tensor.strides != nullptr) {
+        metadata.strides.assign(
+            dl_tensor->dl_tensor.strides,
+            dl_tensor->dl_tensor.strides + dl_tensor->dl_tensor.ndim);
+    }
+    metadata.byte_offset = dl_tensor->dl_tensor.byte_offset;
+    return metadata;
+}
+
+static ark::DataType from_dl_dtype(const DLDataType &dl_dtype) {
+    if (dl_dtype.lanes != 1) {
+        ERR(ark::UnsupportedError, "unsupported data type");
+    }
+    ark::DataType ark_dtype;
+    if (dl_dtype.code == kDLFloat && dl_dtype.bits == 32) {
+        ark_dtype = ark::FP32;
+    } else if (dl_dtype.code == kDLFloat && dl_dtype.bits == 16) {
+        ark_dtype = ark::FP16;
+    } else if (dl_dtype.code == kDLBfloat && dl_dtype.bits == 16) {
+        ark_dtype = ark::BF16;
+    } else if (dl_dtype.code == kDLInt && dl_dtype.bits == 32) {
+        ark_dtype = ark::INT32;
+    } else if (dl_dtype.code == kDLUInt && dl_dtype.bits == 32) {
+        ark_dtype = ark::UINT32;
+    } else if (dl_dtype.code == kDLInt && dl_dtype.bits == 8) {
+        ark_dtype = ark::INT8;
+    } else if (dl_dtype.code == kDLUInt && dl_dtype.bits == 8) {
+        ark_dtype = ark::UINT8;
+    } else {
+        ERR(ark::UnsupportedError, "unsupported data type");
+    }
+    return ark_dtype;
+}
 
 void register_model(py::module &m) {
     py::class_<ark::Model, ark::ModelGraph>(m, "_Model")
@@ -71,6 +129,19 @@ void register_model(py::module &m) {
              py::arg("input"), py::arg("other"), py::arg("output"),
              py::arg("name"))
         .def("noop", &ark::Model::noop, py::arg("input"), py::arg("name"))
+        .def(
+            "placeholder",
+            [](ark::Model &model, const ark::Dims &shape,
+               const ark::DataType &data_type, const ark::Dims &strides,
+               const ark::Dims &offsets, const ark::Dims &padded_shape,
+               int rank, uintptr_t data, const std::string &name) {
+                return model.placeholder(shape, data_type, strides, offsets,
+                                         padded_shape, rank,
+                                         reinterpret_cast<void *>(data), name);
+            },
+            py::arg("shape"), py::arg("data_type"), py::arg("strides"),
+            py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
+            py::arg("data"), py::arg("name"))
         .def("reduce_max", &ark::Model::reduce_max, py::arg("input"),
              py::arg("axis"), py::arg("keepdims"), py::arg("output"),
              py::arg("name"))
@@ -104,14 +175,9 @@ void register_model(py::module &m) {
                                const std::string &>(&ark::Model::sub),
              py::arg("input"), py::arg("other"), py::arg("output"),
              py::arg("name"))
-        .def("tensor",
-             py::overload_cast<const ark::Dims &, const ark::DataType &,
-                               const ark::Dims &, const ark::Dims &,
-                               const ark::Dims &, int, const std::string &>(
-                 &ark::Model::tensor),
-             py::arg("shape"), py::arg("data_type"), py::arg("strides"),
-             py::arg("offsets"), py::arg("padded_shape"), py::arg("rank"),
-             py::arg("name"))
+        .def("tensor", &ark::Model::tensor, py::arg("shape"),
+             py::arg("data_type"), py::arg("strides"), py::arg("offsets"),
+             py::arg("padded_shape"), py::arg("rank"), py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),

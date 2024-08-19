@@ -16,6 +16,7 @@
 #include "ops/ops_math.hpp"
 #include "ops/ops_matmul.hpp"
 #include "ops/ops_noop.hpp"
+#include "ops/ops_placeholder.hpp"
 #include "ops/ops_reduce.hpp"
 #include "ops/ops_refer.hpp"
 #include "ops/ops_reshape.hpp"
@@ -78,6 +79,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Sqrt);
         MODEL_OP_TYPE_REGISTER(Sub);
         MODEL_OP_TYPE_REGISTER(Tensor);
+        MODEL_OP_TYPE_REGISTER(Placeholder);
         MODEL_OP_TYPE_REGISTER(Transpose);
         MODEL_OP_TYPE_REGISTER(SendPacket);
         MODEL_OP_TYPE_REGISTER(RecvPacket);
