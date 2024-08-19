@@ -43,6 +43,10 @@ class ModelBuffer {
     // but the same tag can only be used for one receiving buffer.
     void tag_recv(int remote_rank, int tag);
 
+    void *data() const;
+
+    void *data(void *data);
+
     Json serialize() const;
 
     static std::shared_ptr<ModelBuffer> deserialize(const Json &serialized);

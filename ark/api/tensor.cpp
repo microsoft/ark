@@ -68,6 +68,20 @@ Dims Tensor::torch_strides() const {
     return Dims();
 }
 
+void *Tensor::data() const {
+    if (ref_) {
+        return ref_->data();
+    }
+    return nullptr;
+}
+
+void *Tensor::data(void *data) {
+    if (ref_) {
+        return ref_->data(data);
+    }
+    return nullptr;
+}
+
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
     if (tensor.is_null()) {
         os << "null";

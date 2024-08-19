@@ -92,6 +92,14 @@ size_t ModelTensor::shape_bytes() const {
     return shape_.nelems() * data_type_->bytes();
 }
 
+void *ModelTensor::data() const {
+    return buffer_->data();
+}
+
+void *ModelTensor::data(void *data) {
+    return buffer_->data(data);
+}
+
 Json ModelTensor::serialize() const {
     Json j;
     j["Id"] = id_;

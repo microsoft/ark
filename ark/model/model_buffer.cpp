@@ -35,6 +35,21 @@ void ModelBuffer::tag_recv(int remote_rank, int tag) {
     recv_tags_.insert(TagInfo{remote_rank, tag});
 }
 
+void *ModelBuffer::data() const {
+    if (is_external_) {
+        return ExternalBufferRegistry::get_instance().get(id_);
+    }
+    return nullptr;
+}
+
+void *ModelBuffer::data(void *data) {
+    if (is_external_) {
+        ExternalBufferRegistry::get_instance().set(id_, data);
+        return data;
+    }
+    return nullptr;
+}
+
 Json ModelBuffer::serialize() const {
     Json j;
     j["Id"] = id_;

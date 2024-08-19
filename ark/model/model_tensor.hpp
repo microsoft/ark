@@ -37,6 +37,10 @@ class ModelTensor {
 
     size_t shape_bytes() const;
 
+    void *data() const;
+
+    void *data(void *data);
+
     Json serialize() const;
 
     static std::shared_ptr<ModelTensor> deserialize(const Json &serialized);
