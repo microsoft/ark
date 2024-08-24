@@ -18,9 +18,17 @@ void register_tensor(py::module& m) {
         .def("padded_shape", &ark::Tensor::padded_shape)
         .def("data_type", &ark::Tensor::data_type)
         .def("torch_strides", &ark::Tensor::torch_strides)
-        .def("data", [](const ark::Tensor& self) { return reinterpret_cast<uintptr_t>(self.data()); })
-        .def("data", [](ark::Tensor& self, uintptr_t data) { return self.data(reinterpret_cast<void*>(data)); }, py::arg("data"));
-
+        .def("data",
+             [](const ark::Tensor& self) {
+                 return reinterpret_cast<uintptr_t>(self.data());
+             })
+        .def(
+            "data",
+            [](ark::Tensor& self, uintptr_t data) {
+                return self.data(reinterpret_cast<void*>(data));
+            },
+            py::arg("data"))
+        .def("is_external", &ark::Tensor::is_external);
 
     m.attr("_NullTensor") = &ark::NullTensor;
 }

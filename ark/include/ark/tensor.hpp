@@ -56,6 +56,8 @@ class Tensor {
     void *data() const;
 
     void *data(void *data);
+
+    bool is_external() const;
 };
 
 const Tensor NullTensor;

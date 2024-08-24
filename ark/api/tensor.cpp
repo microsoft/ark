@@ -82,6 +82,13 @@ void *Tensor::data(void *data) {
     return nullptr;
 }
 
+bool Tensor::is_external() const {
+    if (ref_) {
+        return ref_->is_external();
+    }
+    return false;
+}
+
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
     if (tensor.is_null()) {
         os << "null";

@@ -100,6 +100,8 @@ void *ModelTensor::data(void *data) {
     return buffer_->data(data);
 }
 
+bool ModelTensor::is_external() const { return buffer_->is_external(); }
+
 Json ModelTensor::serialize() const {
     Json j;
     j["Id"] = id_;

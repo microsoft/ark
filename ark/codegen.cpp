@@ -7,8 +7,8 @@
 #include <utility>
 
 #include "ark/data_type.hpp"
+#include "buffer_registry.hpp"
 #include "env.h"
-#include "external_buffer_registry.hpp"
 #include "file_io.h"
 #include "logging.hpp"
 #include "model/model_buffer.hpp"
@@ -56,9 +56,7 @@ class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
          const std::map<size_t, size_t> &buffer_id_to_offset,
-         const std::map<size_t, std::pair<std::string, void *>>
-             &buffer_id_to_kernel_arg,
-         const std::string &name);
+         const std::set<size_t> &extra_buffer_ids, const std::string &name);
     ~Impl() = default;
 
    private:
@@ -83,7 +81,7 @@ class CodeGenerator::Impl {
     friend class CodeGenerator;
 
     std::map<size_t, size_t> buffer_id_to_offset_;
-    std::map<size_t, std::pair<std::string, void *>> buffer_id_to_kernel_arg_;
+    std::set<size_t> extra_buffer_ids_;
     std::string name_;
     int rank_;
     int world_size_;
@@ -94,11 +92,10 @@ class CodeGenerator::Impl {
 
 CodeGenerator::Impl::Impl(const PlanJson &plan,
                           const std::map<size_t, size_t> &buffer_id_to_offset,
-                          const std::map<size_t, std::pair<std::string, void *>>
-                              &buffer_id_to_kernel_arg,
+                          const std::set<size_t> &extra_buffer_ids,
                           const std::string &name)
     : buffer_id_to_offset_(buffer_id_to_offset),
-      buffer_id_to_kernel_arg_(buffer_id_to_kernel_arg),
+      extra_buffer_ids_(extra_buffer_ids),
       name_(name) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
@@ -191,8 +188,8 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
 
     // Generate the global arguments
     std::stringstream global_args_ss, function_args_ss, arg_types_ss;
-    for (const auto &[buf_id, kernel_arg] : buffer_id_to_kernel_arg_) {
-        const auto &arg_name = kernel_arg.first;
+    for (auto buf_id : extra_buffer_ids_) {
+        std::string arg_name = "_ext_buf_" + std::to_string(buf_id);
         global_args_ss << "void *" << arg_name << ", ";
         function_args_ss << arg_name << ", ";
         arg_types_ss << "void *, ";
@@ -263,6 +260,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
     }
     ss << "__device__ void t" << task_json["Id"]
        << "(char *_buf, int _idx, int _spw, @GLOBAL_ARGS@) {\n";
+    auto &buf_reg = BufferRegistry::get_instance();
     op_idx = 0;
     for (auto &op_json : task_json["Ops"]) {
         auto op = ModelOp::deserialize(op_json);
@@ -273,29 +271,36 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
                 size_t buffer_id = tns->buffer()->id();
-                auto it = buffer_id_to_kernel_arg_.find(buffer_id);
-                if (it == buffer_id_to_kernel_arg_.end()) {
-                    size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
+                auto it = buffer_id_to_offset_.find(buffer_id);
+                auto buf_info = buf_reg.get(buffer_id);
+                if ((buf_info && buf_info->is_external) ||
+                    (it == buffer_id_to_offset_.end())) {
+                    ss << "(" << tns->data_type()->type_str() << "*)_ext_buf_"
+                       << buffer_id;
+                } else {
+                    size_t buffer_offset;
+                    buffer_offset = it->second;
                     size_t offset = buffer_offset + ModelOffset(tns).value();
                     ss << "(" << tns->data_type()->type_str() << "*)&_buf["
                        << offset << "]";
-                } else {
-                    const auto &name = it->second.first;
-                    ss << "(" << tns->data_type()->type_str() << "*)" << name;
                 }
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_id = moff.buffer_id();
-                auto it = buffer_id_to_kernel_arg_.find(buffer_id);
-                if (it == buffer_id_to_kernel_arg_.end()) {
-                    size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
+                auto buf_info = buf_reg.get(buffer_id);
+                if (buf_info && buf_info->is_external) {
+                    size_t offset = moff.value();
+                    ss << "(uint64_t)((char*)_ext_buf_" << buffer_id << " + "
+                       << offset << ")";
+                } else {
+                    size_t buffer_offset;
+                    auto it = buffer_id_to_offset_.find(buffer_id);
+                    if (it == buffer_id_to_offset_.end()) {
+                        ERR(InternalError, "buffer ID not found: ", buffer_id);
+                    }
+                    buffer_offset = it->second;
                     size_t offset = buffer_offset + moff.value();
                     ss << offset;
-                } else {
-                    const auto &name = it->second.first;
-                    size_t offset = moff.value();
-                    ss << "(uint64_t)((char*)" << name << " + " << offset
-                       << ")";
                 }
             } else {
                 ss << arg.serialize().begin().value();
@@ -496,11 +501,9 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 
 CodeGenerator::CodeGenerator(
     const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
-    const std::map<size_t, std::pair<std::string, void *>>
-        &buffer_id_to_kernel_arg,
-    const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset,
-                                   buffer_id_to_kernel_arg, name)) {}
+    const std::set<size_t> &extra_buffer_ids, const std::string &name)
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, extra_buffer_ids,
+                                   name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

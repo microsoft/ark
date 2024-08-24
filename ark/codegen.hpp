@@ -6,8 +6,8 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
-#include <utility>
 
 #include "model/model_json.hpp"
 
@@ -17,8 +17,7 @@ class CodeGenerator {
    public:
     CodeGenerator(const PlanJson &plan,
                   const std::map<size_t, size_t> &buffer_id_to_offset,
-                  const std::map<size_t, std::pair<std::string, void *>>
-                      &buffer_id_to_kernel_arg,
+                  const std::set<size_t> &extra_buffer_ids,
                   const std::string &name = "ark_kernel");
 
     ~CodeGenerator() = default;

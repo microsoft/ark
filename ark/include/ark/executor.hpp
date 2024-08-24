@@ -39,16 +39,17 @@ class Executor {
     /// Return the plan string.
     std::string plan() const;
 
-    const std::string &name() const;
+    /// Return the name of the executor.
+    std::string name() const;
 
     /// Compile the model. This must be called before `launch()`.
     void compile(const std::string &plan, int device_id,
                  const std::string &name = "executor");
 
     /// Launch the executor. This must be called after `compile()`.
-    void launch(
-        Stream stream = nullptr, bool loop_mode = true,
-        const std::unordered_map<Tensor, void *> &placeholder_data = {});
+    void launch(const std::unordered_map<Tensor, void *> &placeholder_data = {},
+                Stream stream = nullptr, bool loop_mode = true,
+                bool record = false);
 
     /// Run the executor for `iter` iterations.
     void run(
@@ -108,11 +109,14 @@ class DefaultExecutor : public Executor {
                     Stream stream = nullptr,
                     const std::vector<Planner::ConfigRule> &config_rules = {},
                     const std::string &name = "DefaultExecutor",
-                    bool loop_mode = true);
+                    bool loop_mode = true, bool record = false);
 
     /// Launch the default executor.
     void launch(
         const std::unordered_map<Tensor, void *> &placeholder_data = {});
+
+   private:
+    bool record_;
 };
 
 }  // namespace ark

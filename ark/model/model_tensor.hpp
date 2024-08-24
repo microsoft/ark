@@ -41,6 +41,8 @@ class ModelTensor {
 
     void *data(void *data);
 
+    bool is_external() const;
+
     Json serialize() const;
 
     static std::shared_ptr<ModelTensor> deserialize(const Json &serialized);

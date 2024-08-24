@@ -3,7 +3,7 @@
 
 #include "ops_placeholder.hpp"
 
-#include "external_buffer_registry.hpp"
+#include "buffer_registry.hpp"
 #include "logging.hpp"
 #include "ops_common.hpp"
 
@@ -18,7 +18,7 @@ ModelOpPlaceholder::ModelOpPlaceholder(ModelBufferRef buffer, const Dims &shape,
         buffer = std::make_shared<ModelBuffer>(-1, true);
     }
 
-    ExternalBufferRegistry::get_instance().set(buffer->id(), data);
+    BufferRegistry::get_instance().set(buffer->id(), data, -1, true);
 
     ModelTensorRef tensor = std::make_shared<ModelTensor>(
         data_type, buffer, shape, strides, offsets, padded_shape);
