@@ -367,7 +367,7 @@ class PlanResource {
    public:
     PlanResource(const PlanJson &plan_json, int device_id,
                  const std::string &name,
-                 std::shared_ptr<CommResource> comm_resource);
+                 std::shared_ptr<CommResource> &comm_resource);
 
     const PlanJson &plan_json() const { return plan_json_; }
 
@@ -390,7 +390,7 @@ class PlanResource {
     PlanJson plan_json_;
     int device_id_;
     std::string name_;
-    std::shared_ptr<CommResource> comm_resource_;
+    std::shared_ptr<CommResource> &comm_resource_;
 
     std::shared_ptr<GpuMemory> buffer_;
     std::map<size_t, size_t> internal_buffer_id_to_offset_;
@@ -402,7 +402,7 @@ class PlanResource {
 
 PlanResource::PlanResource(const PlanJson &plan_json, int device_id,
                            const std::string &name,
-                           std::shared_ptr<CommResource> comm_resource)
+                           std::shared_ptr<CommResource> &comm_resource)
     : plan_json_(plan_json),
       device_id_(device_id),
       name_(name),
@@ -722,6 +722,7 @@ void PlanResource::init_kernel() {
 
     int world_size = plan_json_["WorldSize"];
     if (world_size <= 1) return;
+    int rank = plan_json_["Rank"];
 
     auto get_global_rt = [&](const std::string &symbol) {
         return reinterpret_cast<void *>(kernel_->get_global(symbol));
@@ -736,6 +737,7 @@ void PlanResource::init_kernel() {
         proxy_secondary_handles(world_size);
     std::vector<mscclpp::SmChannel::DeviceHandle> sm_handles(world_size);
     for (int i = 0; i < world_size; i++) {
+        if (i == rank) continue;
         auto resource = comm_resource_->resource(i);
         if (!resource) continue;
         std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> p_hdls;
@@ -778,15 +780,14 @@ void PlanResource::launch_kernel(const std::string &name,
                                  const std::vector<void *> &args,
                                  gpuStream stream) {
     std::vector<void *> kernel_args = args;
-    for (size_t ext_buf_id : extra_buffer_ids_) {
-        auto ext_buf_addr = BufferRegistry::get_instance().get(ext_buf_id);
-        if (!ext_buf_addr) {
+    for (size_t id : extra_buffer_ids_) {
+        auto info = BufferRegistry::get_instance().get(id);
+        if (!info) {
             ERR(InternalError, "External buffer not found.");
-        }
-        if (ext_buf_addr->data == nullptr) {
+        } else if (info->data == nullptr) {
             ERR(InvalidUsageError, "External buffer data is nullptr.");
         }
-        kernel_args.push_back(&(ext_buf_addr->data));
+        kernel_args.push_back(&(info->data));
     }
     kernel_->launch(name, stream, kernel_args);
 }
@@ -930,7 +931,6 @@ void Executor::Impl::launch(
         atomicStoreRelaxed(flag_->ref<int>(), 0);
         auto buffer = foreground_plan_resource_->buffer();
         void *buf_ptr = buffer ? buffer->ref() : nullptr;
-        LOG(WARN, "buf_ptr: ", buf_ptr);
         void *flag_ptr = flag_->ref();
         std::vector<void *> args = {&buf_ptr, &flag_ptr};
         foreground_plan_resource_->launch_kernel("ark_loop_kernel", args,
@@ -1095,7 +1095,8 @@ void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
     auto buf_id = tensor.ref()->buffer()->id();
     auto info = BufferRegistry::get_instance().get(buf_id);
     if (!info) {
-        ERR(InvalidUsageError, "Tensor buffer is not allocated.");
+        ERR(InvalidUsageError, "Tensor buffer ID ", buf_id,
+            " is not allocated.");
     }
     size_t device_id = info->device_id;
     GLOG(gpuSetDevice(device_id));
