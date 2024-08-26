@@ -392,6 +392,8 @@ class PlanResource {
     std::string name_;
     std::shared_ptr<CommResource> &comm_resource_;
 
+    int rank_;
+    int world_size_;
     std::shared_ptr<GpuMemory> buffer_;
     std::map<size_t, size_t> internal_buffer_id_to_offset_;
     // extra buffers: external buffers or buffers that are allocated by other
@@ -429,11 +431,11 @@ PlanResource::PlanResource(const PlanJson &plan_json, int device_id,
 }
 
 void PlanResource::verify_plan() {
-    int rank = plan_json_["Rank"];
-    int world_size = plan_json_["WorldSize"];
-    if (rank < 0 || rank >= world_size) {
-        ERR(InvalidUsageError, "Invalid rank ", rank, " with world size ",
-            world_size);
+    rank_ = plan_json_["Rank"];
+    world_size_ = plan_json_["WorldSize"];
+    if (rank_ < 0 || rank_ >= world_size_) {
+        ERR(InvalidUsageError, "Invalid rank ", rank_, " with world size ",
+            world_size_);
     }
     auto gpu_manager = GpuManager::get_instance(device_id_);
     if (!gpu_manager->info().arch->belongs_to(
@@ -446,24 +448,22 @@ void PlanResource::verify_plan() {
 }
 
 void PlanResource::init_comm_resource() {
-    int rank = plan_json_["Rank"];
-    int world_size = plan_json_["WorldSize"];
     if (comm_resource_) {
-        if (comm_resource_->rank() != rank) {
+        if (comm_resource_->rank() != rank_) {
             ERR(InvalidUsageError,
                 "Rank should be consistent across all plans. "
                 "Expected ",
-                rank, " but got ", comm_resource_->rank());
+                rank_, " but got ", comm_resource_->rank());
         }
-        if (comm_resource_->world_size() != world_size) {
+        if (comm_resource_->world_size() != world_size_) {
             ERR(InvalidUsageError,
                 "World size should be consistent across all "
                 "plans. Expected ",
-                world_size, " but got ", comm_resource_->world_size());
+                world_size_, " but got ", comm_resource_->world_size());
         }
-    } else if (world_size > 1) {
+    } else if (world_size_ > 1) {
         comm_resource_ =
-            std::make_shared<CommResource>(device_id_, rank, world_size);
+            std::make_shared<CommResource>(device_id_, rank_, world_size_);
     }
 }
 
@@ -541,23 +541,28 @@ void PlanResource::init_internal_buffers() {
     std::map<int, std::map<int, size_t>> remote_rank_to_send_tag_to_buffer_id;
     std::map<int, std::map<int, size_t>> remote_rank_to_recv_tag_to_buffer_id;
 
+    auto is_remote = [&](const std::shared_ptr<ModelBuffer> &buffer) {
+        return buffer->rank() != rank_ && buffer->rank() != -1;
+    };
+
     // TODO: improve memory planning
     size_t offset = 0;
-    int rank = plan_json_["Rank"];
     for (auto &[buf_id, buf_info] : buffer_id_to_info) {
         auto &buffer = buf_info->buffer;
-        int r = buffer->rank();
-        if (r != rank && r != -1) {
+        if (is_remote(buffer)) {
             // this is a remote buffer
             if (buffer->is_external()) {
                 ERR(InvalidUsageError,
                     "Communication with external buffers is not supported");
             }
+            int r = buffer->rank();
             for (const auto &tag_info : buffer->send_tags()) {
+                // This remote buffer will send data to local buffers
                 remote_rank_to_send_tag_to_buffer_id[r][tag_info.second] =
                     buf_id;
             }
             for (const auto &tag_info : buffer->recv_tags()) {
+                // This remote buffer will receive data from local buffers
                 remote_rank_to_recv_tag_to_buffer_id[r][tag_info.second] =
                     buf_id;
             }
@@ -569,14 +574,17 @@ void PlanResource::init_internal_buffers() {
             // previous plan.
             extra_buffer_ids_.insert(buf_id);
         } else {
+            // Assign an offset to this internal local buffer
             internal_buffer_id_to_offset_[buf_id] = offset;
             for (const auto &tag_info : buffer->send_tags()) {
+                // This local buffer will send data to remote ranks
                 remote_rank_to_send_tags_and_offsets[tag_info.first]
                     .first.push_back(tag_info.second);
                 remote_rank_to_send_tags_and_offsets[tag_info.first]
                     .second.push_back(offset);
             }
             for (const auto &tag_info : buffer->recv_tags()) {
+                // This local buffer will receive data from remote ranks
                 remote_rank_to_recv_tags_and_offsets[tag_info.first]
                     .first.push_back(tag_info.second);
                 remote_rank_to_recv_tags_and_offsets[tag_info.first]
@@ -585,21 +593,14 @@ void PlanResource::init_internal_buffers() {
             offset += buf_info->bytes;
         }
     }
+    size_t total_bytes = offset;
 
     // Allocate memory for internal local buffers
-    if (offset > 0) {
-        buffer_ = GpuManager::get_instance(device_id_)->malloc(offset, 65536);
-        for (auto &[buf_id, buf_info] : buffer_id_to_info) {
-            auto &buffer = buf_info->buffer;
-            if (buffer->is_external()) continue;
-            int r = buffer->rank();
-            if (r != rank && r != -1) continue;
-            auto it = internal_buffer_id_to_offset_.find(buf_id);
-            if (it == internal_buffer_id_to_offset_.end()) {
-                continue;
-            }
-            size_t off = it->second;
-            BufferRegistry::get_instance().set(buffer->id(), buffer_->ref(off),
+    if (total_bytes > 0) {
+        buffer_ =
+            GpuManager::get_instance(device_id_)->malloc(total_bytes, 65536);
+        for (auto &[buf_id, buf_offset] : internal_buffer_id_to_offset_) {
+            BufferRegistry::get_instance().set(buf_id, buffer_->ref(buf_offset),
                                                device_id_, false);
         }
     }
@@ -676,7 +677,13 @@ void PlanResource::init_internal_buffers() {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 1);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 2);
         for (int i = 0; i < len; ++i) {
-            size_t buf_id = send_tag_to_buffer_id[tags[i]];
+            auto it = send_tag_to_buffer_id.find(tags[i]);
+            if (it == send_tag_to_buffer_id.end()) {
+                LOG(WARN, "Send tag ", tags[i], " from remote rank ",
+                    remote_rank, " is unexpected");
+                continue;
+            }
+            size_t buf_id = it->second;
             internal_buffer_id_to_offset_[buf_id] = offsets[i];
         }
     }
@@ -693,7 +700,13 @@ void PlanResource::init_internal_buffers() {
         bootstrap->recv(tags.data(), len * sizeof(int), remote_rank, 4);
         bootstrap->recv(offsets.data(), len * sizeof(size_t), remote_rank, 5);
         for (int i = 0; i < len; ++i) {
-            size_t buf_id = recv_tag_to_buffer_id[tags[i]];
+            auto it = recv_tag_to_buffer_id.find(tags[i]);
+            if (it == recv_tag_to_buffer_id.end()) {
+                LOG(WARN, "Recv tag ", tags[i], " from remote rank ",
+                    remote_rank, " is unexpected");
+                continue;
+            }
+            size_t buf_id = it->second;
             internal_buffer_id_to_offset_[buf_id] = offsets[i];
         }
     }
@@ -720,9 +733,7 @@ void PlanResource::init_kernel() {
                       {num_sm, 1, 1}, std::max(smem_block_total, size_t(4))));
     kernel_->compile();
 
-    int world_size = plan_json_["WorldSize"];
-    if (world_size <= 1) return;
-    int rank = plan_json_["Rank"];
+    if (world_size_ <= 1) return;
 
     auto get_global_rt = [&](const std::string &symbol) {
         return reinterpret_cast<void *>(kernel_->get_global(symbol));
@@ -732,12 +743,12 @@ void PlanResource::init_kernel() {
         get_global_rt("ARK_PROXY_SECONDARY_CHANS");
     void *sm_chan_addr = get_global_rt("ARK_SM_CHANS");
     std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> proxy_handles(
-        world_size);
+        world_size_);
     std::vector<mscclpp::SimpleProxyChannel::DeviceHandle>
-        proxy_secondary_handles(world_size);
-    std::vector<mscclpp::SmChannel::DeviceHandle> sm_handles(world_size);
-    for (int i = 0; i < world_size; i++) {
-        if (i == rank) continue;
+        proxy_secondary_handles(world_size_);
+    std::vector<mscclpp::SmChannel::DeviceHandle> sm_handles(world_size_);
+    for (int i = 0; i < world_size_; i++) {
+        if (i == rank_) continue;
         auto resource = comm_resource_->resource(i);
         if (!resource) continue;
         std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> p_hdls;
@@ -845,6 +856,9 @@ class Executor::Impl {
     bool loop_mode_;
 
    private:
+    std::shared_ptr<BufferRegistry::Info> get_buffer_info(
+        const Tensor &tensor) const;
+
     std::map<PlanResourceKey, std::shared_ptr<PlanResource>> plan_resources_;
     std::shared_ptr<PlanResource> foreground_plan_resource_;
     std::shared_ptr<CommResource> comm_resource_;
@@ -1023,23 +1037,28 @@ void Executor::Impl::barrier() {
     }
 }
 
-void *Executor::Impl::tensor_address(const Tensor &tensor) const {
+std::shared_ptr<BufferRegistry::Info> Executor::Impl::get_buffer_info(
+    const Tensor &tensor) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
-    auto &ext_buf_reg = BufferRegistry::get_instance();
-    auto info = ext_buf_reg.get(buffer_id);
-    if (info) {
-        return info->data;
+    auto &buf_reg = BufferRegistry::get_instance();
+    auto info = buf_reg.get(buffer_id);
+    if (!info || !(info->data)) {
+        ERR(InvalidUsageError,
+            "Tensor has no allocated memory. "
+            "This is likely caused by accessing a tensor that is optimized "
+            "out by the compiler or not used in any plan passed to the "
+            "executor.");
     }
-    return nullptr;
+    return info;
+}
+
+void *Executor::Impl::tensor_address(const Tensor &tensor) const {
+    return get_buffer_info(tensor)->data;
 }
 
 void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                                  Stream stream, bool is_d2d) const {
-    auto buf_id = tensor.ref()->buffer()->id();
-    auto info = BufferRegistry::get_instance().get(buf_id);
-    if (!info) {
-        ERR(InvalidUsageError, "Tensor buffer is not allocated.");
-    }
+    auto info = get_buffer_info(tensor);
     size_t device_id = info->device_id;
     GLOG(gpuSetDevice(device_id));
     std::shared_ptr<GpuStream> copy_stream;
@@ -1092,12 +1111,7 @@ void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
 void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
                                   size_t bytes, Stream stream,
                                   bool is_d2d) const {
-    auto buf_id = tensor.ref()->buffer()->id();
-    auto info = BufferRegistry::get_instance().get(buf_id);
-    if (!info) {
-        ERR(InvalidUsageError, "Tensor buffer ID ", buf_id,
-            " is not allocated.");
-    }
+    auto info = get_buffer_info(tensor);
     size_t device_id = info->device_id;
     GLOG(gpuSetDevice(device_id));
     std::shared_ptr<GpuStream> copy_stream;
