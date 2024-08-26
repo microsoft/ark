@@ -118,7 +118,8 @@ std::shared_ptr<GpuHostMemory> GpuManager::malloc_host(size_t bytes,
 }
 
 std::shared_ptr<GpuEvent> GpuManager::create_event(bool disable_timing) const {
-    return std::shared_ptr<GpuEvent>(new GpuEvent(disable_timing));
+    return std::shared_ptr<GpuEvent>(
+        new GpuEvent(pimpl_->gpu_id_, disable_timing));
 }
 
 std::shared_ptr<GpuStream> GpuManager::create_stream() const {

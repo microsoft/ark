@@ -59,8 +59,8 @@ ark::unittest::State test_communication_send_recv_unidir() {
             ark::Model model(gpu_id, 2);
             ark::Tensor tns = model.tensor({1024}, ark::FP16);
             if (gpu_id == 1) {
-                tns = model.send(tns, 0, 0);
-                model.send_done(tns);
+                auto out_tns = model.send(tns, 0, 0);
+                model.send_done(out_tns);
             }
             if (gpu_id == 0) {
                 tns = model.recv(tns, 1, 0);

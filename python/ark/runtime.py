@@ -109,7 +109,7 @@ class Runtime:
             or device_id != self.executor.device_id()
         ):
             self.executor.compile(plan_str, device_id)
-        self.executor.launch(stream, loop_mode, tensor_mappings)
+        self.executor.launch(tensor_mappings, stream, loop_mode)
         self.state = Runtime.State.LaunchedNotRunning
         Runtime._loop_mode = loop_mode
 
@@ -127,14 +127,11 @@ class Runtime:
             logging.error(f"ARK runtime is not launched")
             raise RuntimeError(f"ARK runtime is not launched")
         self.state = Runtime.State.Running
+        ph_map = {}
         for ark_tensor in list(tensor_mappings.keys()):
-            torch_tensor = tensor_mappings[ark_tensor]
-            if not isinstance(torch_tensor, torch.Tensor):
-                raise ValueError("Must bind PyTorch tensor")
-            internal_ark_tensor = ark_tensor._tensor
-            tensor_mappings[internal_ark_tensor] = torch_tensor.data_ptr()
-            del tensor_mappings[ark_tensor]
-        self.executor.run(iter, tensor_mappings)
+            t = tensor_mappings[ark_tensor]
+            ph_map[ark_tensor._tensor] = t.data_ptr()
+        self.executor.run(iter, ph_map)
         if not non_blocking:
             self.wait()
 

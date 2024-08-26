@@ -43,6 +43,14 @@ class ModelBuffer {
     // but the same tag can only be used for one receiving buffer.
     void tag_recv(int remote_rank, int tag);
 
+    // Return the underlying data pointer if this buffer is allocated.
+    // Otherwise, return nullptr.
+    void *data() const;
+
+    // Set the underlying data pointer if this buffer is externally managed.
+    // Return the input data pointer. Otherwise, return nullptr.
+    void *data(void *data);
+
     Json serialize() const;
 
     static std::shared_ptr<ModelBuffer> deserialize(const Json &serialized);

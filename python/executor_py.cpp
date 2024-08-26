@@ -176,20 +176,23 @@ void register_executor(py::module &m) {
              py::arg("plan"), py::arg("name") = "executor")
         .def(
             "launch",
-            [](ark::Executor *self, uintptr_t stream, bool loop_mode,
+            [](ark::Executor *self,
                const std::unordered_map<ark::Tensor, uintptr_t>
-                   &placeholder_data) {
+                   &placeholder_data,
+               uintptr_t stream, bool loop_mode, bool record) {
                 std::unordered_map<ark::Tensor, void *> tensor_ptr_map;
                 for (const auto &[tensor, addr] : placeholder_data) {
                     tensor_ptr_map[tensor] = reinterpret_cast<void *>(addr);
                 }
 
-                self->launch(reinterpret_cast<ark::Stream>(stream), loop_mode,
-                             tensor_ptr_map);
+                self->launch(tensor_ptr_map,
+                             reinterpret_cast<ark::Stream>(stream), loop_mode,
+                             record);
             },
-            py::arg("stream") = 0, py::arg("loop_mode") = true,
             py::arg("placeholder_data") =
-                std::unordered_map<ark::Tensor, void *>())
+                std::unordered_map<ark::Tensor, void *>(),
+            py::arg("stream") = 0, py::arg("loop_mode") = true,
+            py::arg("record") = false)
 
         .def(
             "run",

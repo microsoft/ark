@@ -76,12 +76,12 @@ def copy(
     output: Tensor = NullTensor,
     name: str = "copy",
 ) -> Tensor:
-    """Data caopy."""
+    """Data copy."""
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
-        intput = intput._tensor
-    return Tensor(Model.get_model().copy(intput, output, name))
+        input = input._tensor
+    return Tensor(Model.get_model().copy(input, output, name))
 
 
 def div(

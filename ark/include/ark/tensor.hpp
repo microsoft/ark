@@ -52,6 +52,12 @@ class Tensor {
     const DataType &data_type() const;
 
     Dims torch_strides() const;
+
+    void *data() const;
+
+    void *data(void *data);
+
+    bool is_external() const;
 };
 
 const Tensor NullTensor;

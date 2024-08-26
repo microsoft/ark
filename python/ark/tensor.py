@@ -89,6 +89,23 @@ class Tensor:
         """
         return DataType.from_ctype(self._tensor.data_type())
 
+    def data_ptr(self) -> int:
+        """
+        Returns the underlying data pointer.
+        """
+        rt = Runtime.get_runtime()
+        if not rt.launched():
+            raise RuntimeError(
+                "`Tensor.data_ptr()` is usable only after you call `Runtime.launch()`."
+            )
+        return rt.executor.tensor_address(self._tensor)
+
+    def is_external(self) -> bool:
+        """
+        Returns true if the tensor's data is not managed by ARK.
+        """
+        return self._tensor.is_external()
+
     def to_numpy(
         self, ndarray: np.ndarray = None, stream: int = 0
     ) -> np.ndarray:

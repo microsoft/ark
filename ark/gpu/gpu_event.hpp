@@ -19,13 +19,14 @@ class GpuEvent {
     GpuEvent(const GpuEvent &) = delete;
     GpuEvent &operator=(const GpuEvent &) = delete;
 
+    int device_id() const;
     void record(gpuStream stream);
     float elapsed_msec(const GpuEvent &other) const;
 
    protected:
     friend class GpuManager;
 
-    GpuEvent(bool disable_timing = false);
+    GpuEvent(int device_id, bool disable_timing = false);
 
    private:
     class Impl;
