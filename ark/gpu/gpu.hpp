@@ -54,7 +54,7 @@ ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunction, CUfunction, hipFunction_t);
 ARK_GPU_DEFINE_TYPE_ALIAS(gpuFunctionAttribute, CUfunction_attribute,
                           hipFunction_attribute);
 ARK_GPU_DEFINE_TYPE_ALIAS(gpuPointerAttributes, cudaPointerAttributes,
-                          hipPointerAttributes);
+                          hipPointerAttribute_t);
 
 // runtime API
 ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuSuccess, cudaSuccess, hipSuccess);

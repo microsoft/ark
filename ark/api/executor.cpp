@@ -307,6 +307,7 @@ void CommResource::connect(const PlanJson &plan_json,
     }
 
     for (auto &[remote_rank, resource] : rank_to_resource_) {
+        auto remote_regmem_id = rank_to_remote_regmem_id[remote_rank];
         auto add_proxy_channel =
             [&](std::shared_ptr<ConnectionResource> conn_resource) {
                 if (!conn_resource) return;
@@ -315,7 +316,7 @@ void CommResource::connect(const PlanJson &plan_json,
                         proxy_service_->proxyChannel(
                             proxy_service_->buildAndAddSemaphore(
                                 *comm_, conn_resource->connection)),
-                        rank_to_remote_regmem_id[remote_rank], regmem_id));
+                        remote_regmem_id, regmem_id));
             };
         // NOTE: We can create multiple proxy channels here if we need in the
         // future
