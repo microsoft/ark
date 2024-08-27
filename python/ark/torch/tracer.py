@@ -247,7 +247,7 @@ class Tracer:
         return cls
 
     def autograd_trace_(
-        self, gm: torch.nn.Module, _: List[torch.Tensor]
+        self, gm: torch.nn.Module, forward_inputs: List[torch.Tensor]
     ) -> Callable:
         for _, param in gm.named_parameters(remove_duplicate=False):
             self.params.append(param)
@@ -264,7 +264,7 @@ class Tracer:
 
         return torch._dynamo.backends.common.aot_autograd(
             fw_compiler=fw_compiler, bw_compiler=bw_compiler
-        )(gm, _)
+        )(gm, forward_inputs)
 
     def autograd_trace_impl_(
         self, gm: torch.fx.GraphModule, _: List[torch.Tensor], is_fw: bool
