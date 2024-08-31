@@ -3,11 +3,12 @@
 
 try:
     import torch
+    from torch import fx
 except ImportError:
     raise ImportError("torch is required to use this module")
 
 import logging
-from typing import List, Dict, Optional, Callable, Any
+from typing import List, Dict, Optional, Callable, Union, Any
 
 from ..planner import Planner, Plan
 from ..tensor import Tensor
@@ -204,6 +205,10 @@ class Tracer:
         self.failed: bool = False
         self.launched_fw: bool = False
         self.launched_bw: bool = False
+        self.execution_backend: List[Union[torch.nn.Module, Plan]] = []
+        self.forward_ops = []
+        self.backward_ops = []
+        self.torch_module = None
 
     def __call__(self, target: Callable) -> Callable:
         is_module = issubclass(target, torch.nn.Module)
@@ -293,8 +298,9 @@ class Tracer:
         def run(args) -> Any:
             Model.reset()
             if not self.failed:
+                op_list = self.forward_ops if is_fw else self.backward_ops
                 for node in gm.graph.nodes:
-                    logging.info(node.format_node(), node.meta)
+                    op_list.append(node)
                     if not self.handle_node_(node, is_fw):
                         print(f"Failed to handle node {node.format_node()}")
                         self.failed = True
@@ -305,8 +311,13 @@ class Tracer:
                         self.plan_fw = Planner(self.device.index).plan()
                     else:
                         self.plan_bw = Planner(self.device.index).plan()
+            if is_fw:
+                t1 = self.construct_torch_module(gm, self.forward_ops)
+                print("FORWARD TORCH: ", t1.code)
+            else:
+                t2 = self.construct_torch_module(gm, self.backward_ops)
+                print("BKACWARD TOCH: ", t2.code)
             return torch.fx.Interpreter(gm).boxed_run(args)
-
         run._boxed_call = True
         return run
 
@@ -374,7 +385,28 @@ class Tracer:
         else:
             raise ValueError(f"Unexpected node {node.format_node()}")
         return True
-
+    
+    def construct_torch_module(self, original_gm, op_seq):
+        graph = fx.Graph()
+        env = {}
+        def create_node(node):
+            if node.op == 'placeholder':
+                return graph.placeholder(node.target, type_expr=node.type)
+            elif node.op == 'get_attr':
+                return graph.get_attr(node.target)
+            elif node.op == 'call_function':
+                args = tuple(env[arg.name] if isinstance(arg, fx.Node) else arg for arg in node.args)
+                kwargs = {k: env[v.name] if isinstance(v, fx.Node) else v for k, v in node.kwargs.items()}
+                return graph.call_function(node.target, args, kwargs)
+            elif node.op == 'output':
+                args = tuple(env[arg.name] if isinstance(arg, fx.Node) else arg for arg in node.args[0])
+                return graph.output(tuple(args))
+            else:
+                raise ValueError(f"Unsupported node operation: {node.op}")
+        for node in op_seq:
+            env[node.name] = create_node(node)
+        torch_module = fx.GraphModule(original_gm, graph)
+        return torch_module
 
 def tracer(target: Callable):
     return Tracer()(target)
