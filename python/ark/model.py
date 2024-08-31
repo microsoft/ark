@@ -70,6 +70,19 @@ class Model(_Model):
         _ModelState.rank = 0
         _ModelState.world_size = 1
 
+    def __init__(self, rank: int = 0, world_size: int = 1):
+        """
+        Initialize the model.
+
+        Args:
+            rank: The rank of the model.
+            world_size: The world size of the model.
+        """
+        super().__init__(rank, world_size)
+
+    def __str__(self) -> str:
+        return self.serialize()
+
     def compress(self) -> "Model":
         """
         Compress the model.

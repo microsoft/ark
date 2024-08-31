@@ -7,7 +7,7 @@ except ImportError:
     raise ImportError("torch is required to use this module")
 
 import logging
-from typing import Type, List, Dict, Optional, Callable, Any
+from typing import List, Dict, Optional, Callable, Any
 
 from ..planner import Planner, Plan
 from ..tensor import Tensor
@@ -26,6 +26,15 @@ def handle_aten_add_scalar(
     t = tensors[node.args[0].name]
     value = node.args[1]
     return ops.add(t, value, name=node.name)
+
+
+def handle_aten_add_tensor(
+    node: torch.fx.node.Node, tensors: Dict[str, Tensor]
+) -> Tensor:
+    """Element-wise subtraction"""
+    t1 = tensors[node.args[0].name]
+    t2 = tensors[node.args[1].name]
+    return ops.add(t1, t2, name=node.name)
 
 
 def handle_aten_sub_tensor(
@@ -163,6 +172,7 @@ def handle_aten_mse_loss_backward(
 
 _REGISTRY_FUNCTION_HANDLER: Dict[str, Callable] = {
     "aten::add.Scalar": handle_aten_add_scalar,
+    "aten::add.Tensor": handle_aten_add_tensor,
     "aten::sub.Tensor": handle_aten_sub_tensor,
     "aten::mul.Tensor": handle_aten_mul_tensor,
     "aten::t": handle_aten_t,
@@ -182,7 +192,7 @@ _REGISTRY_FUNCTION_HANDLER: Dict[str, Callable] = {
 class Tracer:
     def __init__(self):
         self.tensors: Dict[str, Tensor] = {}
-        self.params: List[torch.nn.Parameter] = []
+        self.params: Optional[List[torch.nn.Parameter]] = None
         self.params_idx: int = 0
         self.inputs_fw: List[Tensor] = []
         self.inputs_bw: List[Tensor] = []
@@ -195,8 +205,15 @@ class Tracer:
         self.launched_fw: bool = False
         self.launched_bw: bool = False
 
-    def __call__(self, cls: Type[torch.nn.Module]) -> Type[torch.nn.Module]:
-        cls.forward_torch = cls.forward
+    def __call__(self, target: Callable) -> Callable:
+        is_module = issubclass(target, torch.nn.Module)
+        is_function = callable(target) and not isinstance(target, type)
+        if not is_module and not is_function:
+            raise ValueError("Tracer can only be applied to a subclass of `torch.nn.Module` or a function")
+        if is_function:
+            return torch._dynamo.optimize(self.autograd_trace_)(target)
+
+        target.forward_torch = target.forward
 
         def forward_wrapper(instance: torch.nn.Module, *args, **kwargs) -> Any:
             if self.plan_fw is None:
@@ -235,25 +252,28 @@ class Tracer:
                 param.grad = self.outputs_bw[i].to_torch()
 
         def call_wrapper(instance: torch.nn.Module, *args, **kwargs) -> Any:
+            if self.params is None:
+                params = []
+                for _, param in instance.named_parameters(remove_duplicate=False):
+                    params.append(param)
+                for _, param in instance.named_buffers(remove_duplicate=False):
+                    params.append(param)
+                self.params = params
+
             @torch._dynamo.optimize(self.autograd_trace_)
             def call(*args, **kwargs):
                 return instance.forward_torch(*args, **kwargs)
 
             return call(*args, **kwargs)
 
-        cls.forward_ark = forward_wrapper
-        cls.backward_ark = backward_wrapper
-        cls.__call__ = call_wrapper
-        return cls
+        target.forward_ark = forward_wrapper
+        target.backward_ark = backward_wrapper
+        target.__call__ = call_wrapper
+        return target
 
     def autograd_trace_(
         self, gm: torch.nn.Module, forward_inputs: List[torch.Tensor]
     ) -> Callable:
-        for _, param in gm.named_parameters(remove_duplicate=False):
-            self.params.append(param)
-        for _, param in gm.named_buffers(remove_duplicate=False):
-            self.params.append(param)
-
         def fw_compiler(gm: torch.fx.GraphModule, _):
             logging.info("==== FW Starts ====")
             return self.autograd_trace_impl_(gm, _, True)
@@ -269,25 +289,26 @@ class Tracer:
     def autograd_trace_impl_(
         self, gm: torch.fx.GraphModule, _: List[torch.Tensor], is_fw: bool
     ) -> Callable:
-        Model.reset()
-        if not self.failed:
-            for node in gm.graph.nodes:
-                logging.info(node.format_node(), node.meta)
-                if not self.handle_node_(node, is_fw):
-                    self.failed = True
-                    break
+
+        def run(args) -> Any:
+            Model.reset()
             if not self.failed:
-                Model.set_device_id(self.device.index)
-                if is_fw:
-                    self.plan_fw = Planner(self.device.index).plan()
-                else:
-                    self.plan_bw = Planner(self.device.index).plan()
+                for node in gm.graph.nodes:
+                    logging.info(node.format_node(), node.meta)
+                    if not self.handle_node_(node, is_fw):
+                        print(f"Failed to handle node {node.format_node()}")
+                        self.failed = True
+                        break
+                if not self.failed:
+                    Model.set_device_id(self.device.index)
+                    if is_fw:
+                        self.plan_fw = Planner(self.device.index).plan()
+                    else:
+                        self.plan_bw = Planner(self.device.index).plan()
+            return torch.fx.Interpreter(gm).boxed_run(args)
 
-        def boxed_fw(args) -> Any:
-            return gm.forward(*args)
-
-        boxed_fw._boxed_call = True
-        return boxed_fw
+        run._boxed_call = True
+        return run
 
     def handle_node_(self, node: torch.fx.node.Node, is_fw: bool) -> bool:
         if node.op == "placeholder":
@@ -304,6 +325,10 @@ class Tracer:
                         f"Expected dtype {meta.dtype}, got {param.dtype}"
                     )
                 if self.device is None:
+                    if param.device.type != "cuda":
+                        raise ValueError(
+                            f"Expected device cuda, got {param.device.type}"
+                        )
                     self.device = param.device
                 elif self.device != param.device:
                     raise ValueError(
@@ -351,5 +376,5 @@ class Tracer:
         return True
 
 
-def tracer(cls: Type[torch.nn.Module]):
-    return Tracer()(cls)
+def tracer(target: Callable):
+    return Tracer()(target)
