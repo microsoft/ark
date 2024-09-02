@@ -194,9 +194,9 @@ class Tracer:
         self.tensors: Dict[str, Tensor] = {}
         self.params: Optional[List[torch.nn.Parameter]] = None
         self.params_idx: int = 0
-        self.inputs_fw: List[Tensor] = []
+        self.inputs_fw: List[List[Tensor]] = []
         self.fw_plan_tns = {}
-        self.inputs_bw: List[Tensor] = []
+        self.inputs_bw: List[List[Tensor]] = []
         self.bw_plan_tns = {}
         # List of output lists, one for each ARK plan
         self.outputs_fw: List[List[Tensor]] = [] 
@@ -208,7 +208,9 @@ class Tracer:
         self.failed: bool = False
         self.launched_fw: bool = False
         self.launched_bw: bool = False
-        self.execution_segments = []
+        self.execution_segments_fw = []
+        self.ark_outputs: Dict[int, Tensor] = {}
+        self.execution_segments_bw = []
         self.intermediate_results = {}
 
     def __call__(self, target: Callable) -> Callable:
@@ -229,23 +231,21 @@ class Tracer:
                 if isinstance(backend, Plan): 
                     # use ARK
                     rt = Runtime.get_runtime()
-                    if not self.launched_fw:
-                        rt.launch(
+                    rt.launch(
                             plan=backend,
                             device_id=self.device.index,
                             loop_mode=False,
-                        )
-                        self.launched_fw = True
-                        self.launched_bw = False
-
-                    ph_map = {ph: data for ph, data in zip(self.inputs_fw, input_data)}
+                    )
+                    ph_map = {ph: data for ph, data in zip(self.inputs_fw[i], input_data)}
                     rt.run(tensor_mappings=ph_map)
-                    print(self.outputs_fw)
                     # all outputs (including intermediates): tuple(t.to_torch() for t in self.outputs_fw[i])
                     input_data = self.outputs_fw[i][-1].to_torch() 
                 else:
                     # use pytorch
-                    input_data = Tensor.from_torch(backend(input_data))
+                    input_data = [backend(input_data)]
+                    if i != len(self.execution_segments_fw) - 1:
+                        self.inputs_fw.append([Tensor.from_torch(input_data[0])])
+                    
 
             # TODO: how to get the output tensor(s)?
             return input_data
@@ -289,7 +289,11 @@ class Tracer:
         target.__call__ = call_wrapper
         return target
     
-    def partition_graph(self, gm: torch.fx.GraphModule):
+    def partition_graph(self, gm: torch.fx.GraphModule, is_fw: bool):
+        if is_fw:
+            exe_segment = self.execution_segments_fw
+        else:
+            exe_segment = self.execution_segments_bw
         current_segment = []
         backend = "ARK" 
         for node in gm.graph.nodes:
@@ -299,31 +303,31 @@ class Tracer:
                     if backend == "PyTorch":
                         # End the PyTorch segment and start a new ARK segment
                         if current_segment:
-                            self.execution_segments.append((backend, current_segment))
+                            exe_segment.append((backend, current_segment))
                         current_segment = []
                         backend = "ARK"  
                 else:
                     if backend == "ARK":
                         # End the ARK segment and start a new PyTorch segment
                         if current_segment:
-                            self.execution_segments.append((backend, current_segment))
+                            exe_segment.append((backend, current_segment))
                         current_segment = []
                         backend = "PyTorch" 
                 
             current_segment.append(node)
         
         if current_segment:
-            self.execution_segments.append((backend, current_segment))
+            exe_segment.append((backend, current_segment))
 
     def autograd_trace_(
         self, gm: torch.nn.Module, forward_inputs: List[torch.Tensor]
     ) -> Callable:
         def fw_compiler(gm: torch.fx.GraphModule, _):
-            logging.info("==== FW Starts ====")
+            print("==== FW Starts ====")
             return self.autograd_trace_impl_(gm, _, True)
 
         def bw_compiler(gm: torch.fx.GraphModule, _):
-            logging.info("==== BW Starts ====")
+            print("==== BW Starts ====")
             return self.autograd_trace_impl_(gm, _, False)
 
         return torch._dynamo.backends.common.aot_autograd(
@@ -333,55 +337,67 @@ class Tracer:
     def autograd_trace_impl_(
         self, gm: torch.fx.GraphModule, _: List[torch.Tensor], is_fw: bool
     ) -> Callable:
-        self.partition_graph(gm)
+        self.partition_graph(gm, is_fw)
+        if is_fw:
+            self.curr_plan_idx = -1
+            self.plan_fw = []
+            exe_seg = self.execution_segments_fw
+        else:
+            self.curr_plan_idx = -1
+            self.plan_bw = []
+            exe_seg = self.execution_segments_bw
+        
+        print("gm: ", gm)
         def run(args) -> Any:
-            Model.reset()
             if not self.failed:
-                self.curr_plan_idx = -1
-                for backend, op_seq in self.execution_segments:
+                for backend, op_seq in exe_seg:
                     if backend == "ARK":
                         Model.reset()
                         self.curr_plan_idx += 1
-                        curr_outputs = []
+                        curr_outputs, curr_inputs = [], []
                         for node in op_seq:
                             self.intermediate_results[node.name] = node
-                            if not self.handle_node_(node, is_fw, curr_outputs):
+                            if not self.handle_node_(node, is_fw, curr_outputs, curr_inputs):
                                 self.failed = True
                                 break
-                            if is_fw:
-                                self.outputs_fw.append(curr_outputs)
-                            else:
-                                self.outputs_bw.append(curr_outputs)
-                        curr_outputs = []
                         if not self.failed:
-                            self.outputs_fw.append(curr_outputs)
                             Model.set_device_id(self.device.index)
                             if is_fw:
+                                self.inputs_fw.append(curr_inputs)
+                                self.outputs_fw.append(curr_outputs)
                                 self.plan_fw.append(Planner(self.device.index).plan())
                             else:
+                                self.inputs_bw.append(curr_inputs)
+                                self.outputs_bw.append(curr_outputs)
                                 self.plan_bw.append(Planner(self.device.index).plan()) 
                     else: # PyTorch
                         # we have our op list stored in ops
+                        self.curr_plan_idx += 1
                         torch_module = self.construct_torch_module(gm, op_seq)
-                        self.plan_fw.append(torch_module)
-                        self.plan_bw.append(torch_module)
-                        # handle intermediate outputs computed by ARK  
-                        for node in op_seq:
-                            meta = node.meta["tensor_meta"]
-                            data = 0
-                            t = ops.placeholder(
-                                shape=meta.shape,
-                                dtype=ops.DataType.from_torch(meta.dtype),
-                                name=node.name,
-                                data=data,
-                            )
-                            self.tensors[node.name] = t
-                self.execution_segments.clear()
+                        if is_fw:
+                        
+                            self.plan_fw.append(torch_module)
+                        else:
+                            
+                            self.plan_bw.append(torch_module)
+                        # handle intermediate outputs computed by Torch  
+                        if self.curr_plan_idx != len(exe_seg) -1:
+                            for node in op_seq:
+                                meta = node.meta["tensor_meta"]
+                                data = 0
+                                t = ops.placeholder(
+                                    shape=meta.shape,
+                                    dtype=ops.DataType.from_torch(meta.dtype),
+                                    name=node.name,
+                                    data=data,
+                                )
+                                self.tensors[node.name] = t
+                
             return torch.fx.Interpreter(gm).boxed_run(args)
         run._boxed_call = True
         return run
 
-    def handle_node_(self, node: torch.fx.node.Node, is_fw: bool, curr_outputs) -> bool:
+    def handle_node_(self, node: torch.fx.node.Node, is_fw: bool, curr_outputs, curr_inputs) -> bool:
         if node.op == "placeholder":
             t = self.tensors.get(node.name, None)
             if t is not None:
@@ -418,12 +434,8 @@ class Tracer:
             )
             self.tensors[node.name] = t
             if data == 0:
-                if is_fw:
-                    self.inputs_fw.append(t)
-                else:
-                    self.inputs_bw.append(t)
+                curr_inputs.append(t)
         elif node.op == "output":
-            outputs = []
             for out in node.args[0]:
                 if isinstance(out, torch.fx.node.Node):
                     if out.name not in self.tensors:
@@ -443,6 +455,7 @@ class Tracer:
             t = _REGISTRY_FUNCTION_HANDLER[target_name](node, self.tensors)
             self.tensors[node.name] = t
             # Append to outputs_fw if this is an intermediate output for ARK
+            # if self.curr_plan_idx != len(self.execution_segments) - 1:
             curr_outputs.append(t)
         else:
             raise ValueError(f"Unexpected node {node.format_node()}")
@@ -476,9 +489,10 @@ class Tracer:
         for node in op_seq:
             env[node.name] = create_node(node)
         
-        # TODO: Support multiple output for intermediate activations
-        last_node = list(env.values())[-1]
-        graph.output(last_node)
+        # TODO: Support multiple output for intermediae activations
+        if op_seq[-1].op != 'output':
+            last_node = env[op_seq[-1].name]
+            graph.output(last_node)
         torch_module = fx.GraphModule(original_gm, graph)
         return torch_module
 
