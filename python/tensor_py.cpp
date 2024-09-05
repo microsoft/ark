@@ -9,8 +9,8 @@
 
 namespace py = pybind11;
 
-void register_tensor(py::module& m) {
-    py::class_<ark::Tensor>(m, "_Tensor")
+void register_tensor(py::module &m) {
+    py::class_<ark::Tensor>(m, "CoreTensor")
         .def("id", &ark::Tensor::id)
         .def("shape", &ark::Tensor::shape)
         .def("strides", &ark::Tensor::strides)
@@ -30,5 +30,5 @@ void register_tensor(py::module& m) {
             py::arg("data"))
         .def("is_external", &ark::Tensor::is_external);
 
-    m.attr("_NullTensor") = &ark::NullTensor;
+    m.attr("NullTensor") = &ark::NullTensor;
 }

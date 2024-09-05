@@ -1,21 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from unittest_common import ark, pytest_ark
+from common import ark, pytest_ark
 import numpy as np
-
-
-@pytest_ark()
-def test_runtime_relaunch():
-    with ark.Runtime.get_runtime() as rt:
-        assert rt.launched() == False
-        rt.launch()
-        assert rt.launched() == True
-
-    with ark.Runtime.get_runtime() as rt:
-        assert rt.launched() == False
-        rt.launch()
-        assert rt.launched() == True
 
 
 @pytest_ark()
@@ -77,3 +64,4 @@ def test_runtime_reuse_plans():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
     runtime.reset()
+

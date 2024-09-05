@@ -5,8 +5,11 @@ import copy
 import json
 from typing import Callable, Dict, List, Any
 
-from ._ark_core import _Planner, _PlannerContext
+from .core import CorePlanner, CorePlannerContext
 from .model import Model
+
+
+__all__ = ["Plan", "PlannerContext", "Planner"]
 
 
 def idnt(indent):
@@ -162,7 +165,7 @@ class Plan:
         return Plan(plan)
 
 
-class PlannerContext(_PlannerContext):
+class PlannerContext(CorePlannerContext):
     def __init__(self, **kwargs):
         """
         Plan manager for specifying the parallelization and tiling configuration of the operators in the context.
@@ -205,7 +208,7 @@ class PlannerContext(_PlannerContext):
         del self
 
 
-class Planner(_Planner):
+class Planner(CorePlanner):
     def __init__(self, device_id: int = 0):
         compressed = Model.get_model().compress()
         super().__init__(compressed, device_id)
@@ -225,6 +228,3 @@ class Planner(_Planner):
         Generate an execution plan.
         """
         return Plan.from_str(super().plan(pretty=False))
-
-
-__all__ = ["Plan", "PlannerContext", "Planner"]

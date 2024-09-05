@@ -163,7 +163,7 @@ static py::capsule tensor_to_dlpack(ark::Executor &self,
 }
 
 void register_executor(py::module &m) {
-    py::class_<ark::Executor>(m, "_Executor")
+    py::class_<ark::Executor>(m, "CoreExecutor")
         .def(py::init<>())
         .def("device_id", &ark::Executor::device_id)
         .def("stream",

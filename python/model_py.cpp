@@ -14,7 +14,7 @@
 namespace py = pybind11;
 
 void register_model(py::module &m) {
-    py::class_<ark::Model, ark::ModelGraph>(m, "_Model")
+    py::class_<ark::Model, ark::ModelGraph>(m, "CoreModel")
         .def(py::init<int, int>(), py::arg("rank"), py::arg("world_size"))
         .def("rank", &ark::Model::rank)
         .def("world_size", &ark::Model::world_size)

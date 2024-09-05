@@ -4,16 +4,19 @@
 import logging
 from enum import Enum
 
-from ._ark_core import _Executor
 from .torch import torch
+from .core import CoreExecutor
 from .planner import Planner, Plan
 from .model import Model
 from typing import Dict
 
 
-class _RuntimeState:
+__all__ = ["Runtime"]
+
+
+class RuntimeState:
     """
-    The _RuntimeState class is used to store the state of the model.
+    The RuntimeState class is used to store the state of the model.
     """
 
     runtime = None
@@ -36,10 +39,10 @@ class Runtime:
         Running = 2
 
     def __init__(self):
-        self.executor: _Executor = _Executor()
+        self.executor: CoreExecutor = CoreExecutor()
         self.state: Runtime.State = Runtime.State.Init
         self.loop_mode = True
-        _RuntimeState.runtime = self
+        RuntimeState.runtime = self
 
     @staticmethod
     def get_runtime() -> "Runtime":
@@ -47,9 +50,9 @@ class Runtime:
         Get the runtime.
         If the runtime does not exist, create a new runtime.
         """
-        if _RuntimeState.runtime is None:
-            _RuntimeState.runtime = Runtime()
-        return _RuntimeState.runtime
+        if RuntimeState.runtime is None:
+            RuntimeState.runtime = Runtime()
+        return RuntimeState.runtime
 
     def __enter__(self):
         return self
@@ -175,6 +178,3 @@ class Runtime:
         self.executor.destroy()
         self.executor = _Executor()
         self.state = Runtime.State.Init
-
-
-__all__ = ["Runtime"]

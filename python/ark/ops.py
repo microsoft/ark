@@ -7,9 +7,43 @@ from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
 from .torch import torch, _no_torch
 from .data_type import DataType, fp32
 from .model import Model
+from . import log
 
 
-def _is_list_or_tuple(obj):
+__all__ = [
+    "tensor",
+    "parameter",
+    "reshape",
+    "identity",
+    "sharding",
+    "reduce_sum",
+    "reduce_mean",
+    "reduce_max",
+    "layernorm",
+    "softmax",
+    "transpose",
+    "matmul",
+    "exp",
+    "sqrt",
+    "rsqrt",
+    "rope",
+    "relu",
+    "gelu",
+    "sigmoid",
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "all_reduce",
+    "embedding",
+    "cast",
+    "constant",
+    "ones",
+    "zeros",
+]
+
+
+def is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
 
 
@@ -161,7 +195,7 @@ def identity(
     dep_tensors = []
     for dep in deps:
         if not isinstance(dep, Tensor):
-            raise TypeError("All dependencies should be a tensor")
+            raise log.InvalidUsageError("All dependencies should be a tensor")
         dep_tensors.append(dep._tensor)
     return Tensor(Model.get_model().identity(input._tensor, dep_tensors, name))
 
@@ -355,11 +389,15 @@ def reshape(
     # tensors shape is [128, 64]
     tensor = ark.reshape(tensor, [2, 64, 64])
     """
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
+    if not is_list_or_tuple(shape):
+        raise log.InvalidUsageError(
+            "shape should be a list or tuple of integers"
+        )
     # only support tensors with up to 4 dimensions
     if len(shape) > 4:
-        raise ValueError("Only support tensors with up to 4 dimensions")
+        raise log.InvalidUsageError(
+            "Only support tensors with up to 4 dimensions"
+        )
     return Tensor(
         Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name)
     )
@@ -505,11 +543,13 @@ def transpose(
     """
     if output is not NullTensor:
         output = output._tensor
-    if not _is_list_or_tuple(perm):
-        raise ValueError("perm should be a list or tuple of integers")
+    if not is_list_or_tuple(perm):
+        raise log.InvalidUsageError(
+            "perm should be a list or tuple of integers"
+        )
     # only support tensors with up to 4 dimensions
     if len(perm) > 4:
-        raise ValueError("Only support perm up to 4 dimensions")
+        raise log.InvalidUsageError("Only support perm up to 4 dimensions")
     return Tensor(
         Model.get_model().transpose(input._tensor, perm, output, name)
     )
@@ -622,41 +662,6 @@ def all_reduce(
         input._tensor, rank, world_size, output, name
     )
     return Tensor(_tensor)
-
-
-__all__ = [
-    "tensor",
-    "placeholder",
-    "parameter",
-    "reshape",
-    "identity",
-    "sharding",
-    "noop",
-    "reduce_max",
-    "reduce_mean",
-    "reduce_sum",
-    "layernorm",
-    "softmax",
-    "transpose",
-    "matmul",
-    "exp",
-    "sqrt",
-    "rsqrt",
-    "rope",
-    "relu",
-    "gelu",
-    "sigmoid",
-    "add",
-    "sub",
-    "mul",
-    "div",
-    "all_reduce",
-    "embedding",
-    "cast",
-    "constant",
-    "ones",
-    "zeros",
-]
 
 
 # def im2col(

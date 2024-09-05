@@ -2,34 +2,37 @@
 # Licensed under the MIT license.
 
 from typing import NewType
-from ._ark_core import _Model
-
-_ModelState = NewType("_ModelState", None)
+from .core import CoreModel
 
 
-class Model(_Model):
+__all__ = ["Model"]
+
+ModelState = NewType("ModelState", None)
+
+
+class Model(CoreModel):
     @staticmethod
     def get_model():
         """
         Get the underlying model.
         """
-        if _ModelState.model is None:
-            _ModelState.model = Model(_ModelState.rank, _ModelState.world_size)
-        return _ModelState.model
+        if ModelState.model is None:
+            ModelState.model = Model(ModelState.rank, ModelState.world_size)
+        return ModelState.model
 
     @staticmethod
     def get_rank():
         """
         Get the rank of the model.
         """
-        return _ModelState.rank
+        return ModelState.rank
 
     @staticmethod
     def get_world_size():
         """
         Get the world size of the model.
         """
-        return _ModelState.world_size
+        return ModelState.world_size
 
     @staticmethod
     def get_device_id():
@@ -43,14 +46,14 @@ class Model(_Model):
         """
         Set the rank of the model.
         """
-        _ModelState.rank = rank
+        ModelState.rank = rank
 
     @staticmethod
     def set_world_size(world_size: int):
         """
         Set the world size of the model.
         """
-        _ModelState.world_size = world_size
+        ModelState.world_size = world_size
 
     @staticmethod
     def set_device_id(device_id: int):
@@ -66,9 +69,9 @@ class Model(_Model):
         """
         Reset the model state.
         """
-        _ModelState.model = None
-        _ModelState.rank = 0
-        _ModelState.world_size = 1
+        ModelState.model = None
+        ModelState.rank = 0
+        ModelState.world_size = 1
 
     def __init__(self, rank: int = 0, world_size: int = 1):
         """
@@ -102,9 +105,9 @@ class Model(_Model):
         return super().serialize(pretty)
 
 
-class _ModelState:
+class ModelState:
     """
-    The _ModelState class is used to store the state of the model.
+    The ModelState class is used to store the state of the model.
     """
 
     model: Model = None

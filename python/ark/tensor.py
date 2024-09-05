@@ -4,17 +4,17 @@
 import numpy as np
 from typing import Callable, Iterable, List, Union, Type
 
-from ._ark_core import _Dims, _Tensor, _NullTensor
+from .core import CoreDims, CoreTensor, NullTensor
 from .torch import torch, _no_torch
 from .data_type import DataType, fp32
 from .runtime import Runtime
 from .model import Model
 
 
-NullTensor = _NullTensor
+__all__ = ["Dims", "Tensor", "Parameter", "NullTensor"]
 
 
-class Dims(_Dims):
+class Dims(CoreDims):
     pass
 
 
@@ -24,14 +24,14 @@ Initializer = Type[Callable[[], Union[torch.Tensor, np.ndarray]]]
 class Tensor:
     def __init__(
         self,
-        _tensor: _Tensor,
+        _tensor: CoreTensor,
         initializer: Initializer = None,
         requires_grad: bool = False,
     ):
         """
         Initializes a new instance of the Tensor class.
         Args:
-            _tensor (_ark_core._Tensor): The underlying _Tensor object.
+            _tensor (core.CoreTensor): The underlying _Tensor object.
             initializer (Initializer): The initializer for the Tensor.
             requires_grad (bool): Whether the tensor requires gradient. Defaults to True.
         """
@@ -267,7 +267,7 @@ class Parameter(Tensor):
 
     def __init__(
         self,
-        tensor: _Tensor,
+        tensor: CoreTensor,
         from_torch: bool,
     ):
         """

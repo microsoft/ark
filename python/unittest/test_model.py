@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from unittest_common import ark, pytest_ark
+from common import ark, pytest_ark
 import json
 
 

@@ -1,15 +1,17 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from . import _ark_core
+from . import core
 from .model import Model
-from .runtime import _RuntimeState
+from .runtime import RuntimeState
+
+__all__ = ["init"]
 
 
 def init():
     """Initializes ARK."""
     Model.reset()
-    if _RuntimeState.runtime is not None:
-        del _RuntimeState.runtime
-        _RuntimeState.runtime = None
-    _ark_core.init()
+    if RuntimeState.runtime is not None:
+        del RuntimeState.runtime
+        RuntimeState.runtime = None
+    core.init()

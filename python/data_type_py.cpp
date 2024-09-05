@@ -10,7 +10,7 @@
 namespace py = pybind11;
 
 void register_data_type(py::module &m) {
-    py::class_<ark::DataType>(m, "_DataType")
+    py::class_<ark::DataType>(m, "CoreDataType")
         .def("__eq__", &ark::DataType::operator==)
         .def("__ne__", &ark::DataType::operator!=)
         .def("is_null", &ark::DataType::is_null)
