@@ -1,12 +1,13 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import ark
+from common import ark, pytest_ark
 
 
+@pytest_ark()
 def test_error():
-    ark.init()
     try:
-        ark.tensor([0])
+        raise ark.InternalError("test")
     except ark.BaseError as e:
-        assert isinstance(e, ark.ModelError)
+        assert isinstance(e, ark.InternalError)
+        assert str(e) == "test"

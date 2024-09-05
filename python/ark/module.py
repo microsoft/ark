@@ -5,6 +5,9 @@ import logging
 import numpy as np
 from typing import Any, Dict
 from .tensor import Parameter
+from . import log
+
+__all__ = ["Module"]
 
 
 class Module:
@@ -63,7 +66,7 @@ class Module:
         Loads a model from a state_dict and copy the parameters to the device GPU.
         Must be called after the executor is launched.
         """
-        logging.info("Loading model from state_dict")
+        log.INFO("Loading model from state_dict")
 
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
@@ -71,9 +74,7 @@ class Module:
             param.from_numpy(state_dict[name])
             all_keys.remove(name)
         if all_keys:
-            logging.warning(
-                f"{len(all_keys)} unused parameter(s) in state_dict"
-            )
+            log.WARN(f"{len(all_keys)} unused parameter(s) in state_dict")
 
     def state_dict(self, prefix: str = "") -> Dict[str, np.ndarray]:
         """

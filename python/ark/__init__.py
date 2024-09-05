@@ -1,29 +1,21 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import sys
 import os
 
 if os.environ.get("ARK_ROOT", None) is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-import _ark_core
+from .core import version
 from .model import Model
 
 
-__version__ = _ark_core.version()
+__version__ = version()
 
 
 def version():
     """Returns the version of ARK."""
     return __version__
-
-
-def srand(seed):
-    """Sets the seed for random number generation."""
-    _ark_core.srand(seed)
 
 
 def set_rank(rank):
@@ -41,16 +33,7 @@ from .tensor import Dims, Tensor, Parameter
 from .module import Module
 from .runtime import Runtime
 from .serialize import save, load
-from .data_type import (
-    DataType,
-    fp16,
-    fp32,
-    int32,
-    uint32,
-    int8,
-    uint8,
-    byte,
-)
+from .data_type import *
 from .ops import *
 from .planner import *
 from .error import *

@@ -1,13 +1,12 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import ark
+from common import ark, pytest_ark
 import json
 
 
+@pytest_ark()
 def test_model():
-    ark.init()
-
     input_tensor = ark.tensor([64, 64], ark.fp16)
     other_tensor = ark.tensor([64, 64], ark.fp16)
     ark.add(input_tensor, other_tensor)

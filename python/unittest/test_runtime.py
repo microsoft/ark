@@ -1,18 +1,12 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import ark
+from common import ark, pytest_ark
 
 
-def test_runtime_relaunch():
-    ark.init()
-
+@pytest_ark()
+def test_runtime_empty():
     with ark.Runtime.get_runtime() as rt:
-        assert rt.launched() == False
         rt.launch()
-        assert rt.launched() == True
-
-    with ark.Runtime.get_runtime() as rt:
-        assert rt.launched() == False
-        rt.launch()
-        assert rt.launched() == True
+        rt.run()
+        rt.stop()

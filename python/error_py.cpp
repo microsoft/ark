@@ -9,12 +9,11 @@
 
 namespace py = pybind11;
 
-#define REGISTER_ERROR_PY(_name)                      \
-    py::register_exception<ark::_name>(m, "_" #_name, \
-                                       m.attr("_BaseError").ptr())
+#define REGISTER_ERROR_PY(_name) \
+    py::register_exception<ark::_name>(m, #_name, m.attr("BaseError").ptr())
 
 void register_error(py::module &m) {
-    py::register_exception<ark::BaseError>(m, "_BaseError");
+    py::register_exception<ark::BaseError>(m, "BaseError");
 
     REGISTER_ERROR_PY(InternalError);
     REGISTER_ERROR_PY(InvalidUsageError);

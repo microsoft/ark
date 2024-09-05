@@ -4,23 +4,23 @@
 import numpy as np
 from typing import List
 
-from _ark_core import _Dims, _Tensor, _NullTensor
+from .core import CoreDims, CoreTensor, NullTensor
 from .data_type import DataType
 from .runtime import Runtime
 
-NullTensor = _NullTensor
+__all__ = ["Dims", "Tensor", "Parameter", "NullTensor"]
 
 
-class Dims(_Dims):
+class Dims(CoreDims):
     pass
 
 
 class Tensor:
-    def __init__(self, _tensor: _Tensor):
+    def __init__(self, _tensor: CoreTensor):
         """
         Initializes a new instance of the Tensor class.
         Args:
-            _tensor (_ark_core._Tensor): The underlying _Tensor object.
+            _tensor (core.CoreTensor): The underlying CoreTensor object.
         """
         self._tensor = _tensor
 
@@ -97,7 +97,7 @@ class Parameter(Tensor):
     A tensor as a parameter.
     """
 
-    def __init__(self, _tensor: _Tensor):
+    def __init__(self, _tensor: CoreTensor):
         """
         Initializes a new instance of the Parameter class.
         """
