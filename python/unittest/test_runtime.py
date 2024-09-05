@@ -6,6 +6,13 @@ import numpy as np
 
 
 @pytest_ark()
+def test_runtime_empty():
+    with ark.Runtime.get_runtime() as rt:
+        rt.launch()
+        rt.run()
+        rt.stop()
+
+@pytest_ark()
 def test_runtime_init():
     M, N = 64, 64
     input_tensor = ark.tensor([M, N], ark.fp16)
