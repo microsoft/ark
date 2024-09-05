@@ -10,7 +10,6 @@ from .data_type import DataType, fp32
 from .runtime import Runtime
 from .model import Model
 
-
 __all__ = ["Dims", "Tensor", "Parameter", "NullTensor"]
 
 
