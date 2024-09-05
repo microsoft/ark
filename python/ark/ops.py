@@ -99,8 +99,7 @@ def add(
     output: Tensor = NullTensor,
     name: str = "add",
 ) -> Union[Tensor, float]:
-    """
-    """
+    """ """
     if isinstance(input, Tensor) and isinstance(other, Tensor):
         a = input._tensor
         b = other._tensor
@@ -127,8 +126,7 @@ def cast(
     output: Tensor = NullTensor,
     name: str = "cast",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -142,8 +140,7 @@ def constant(
     dtype: DataType = fp32,
     name: str = "constant",
 ) -> Tensor:
-    """
-    """
+    """ """
     return Tensor(
         Model.get_model().constant(value, Dims(shape), dtype.ctype(), name)
     )
@@ -152,8 +149,7 @@ def constant(
 def copy(
     input: Union[Tensor, float], output: Tensor = NullTensor, name: str = "copy"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
@@ -167,8 +163,7 @@ def div(
     output: Tensor = NullTensor,
     name: str = "div",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -182,8 +177,7 @@ def embedding(
     output: Tensor = NullTensor,
     name: str = "embedding",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -194,8 +188,7 @@ def embedding(
 def exp(
     input: Tensor, output: Tensor = NullTensor, name: str = "exp"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().exp(input._tensor, output, name))
@@ -204,8 +197,7 @@ def exp(
 def gelu(
     input: Tensor, output: Tensor = NullTensor, name: str = "gelu"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().gelu(input._tensor, output, name))
@@ -214,8 +206,7 @@ def gelu(
 def identity(
     input: Tensor, deps: List[Tensor] = [], name: str = "identity"
 ) -> Tensor:
-    """
-    """
+    """ """
     dep_tensors = []
     for dep in deps:
         if not isinstance(dep, Tensor):
@@ -232,8 +223,7 @@ def matmul(
     transpose_other: bool = False,
     name: str = "matmul",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -254,8 +244,7 @@ def mul(
     output: Tensor = NullTensor,
     name: str = "mul",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -264,8 +253,7 @@ def mul(
 
 
 def noop(input: Tensor, name: str = "noop"):
-    """
-    """
+    """ """
     Model.get_model().noop(input._tensor, name)
 
 
@@ -276,8 +264,7 @@ def reduce_max(
     output: Tensor = NullTensor,
     name: str = "reduce_max",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -294,8 +281,7 @@ def reduce_mean(
     output: Tensor = NullTensor,
     name: str = "reduce_mean",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -312,8 +298,7 @@ def reduce_sum(
     output: Tensor = NullTensor,
     name: str = "reduce_sum",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -326,8 +311,7 @@ def reduce_sum(
 def relu(
     input: Tensor, output: Tensor = NullTensor, name: str = "relu"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().relu(input._tensor, output, name))
@@ -372,8 +356,7 @@ def rope(
     output: Tensor = NullTensor,
     name: str = "rope",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -384,8 +367,7 @@ def rope(
 def rsqrt(
     input: Tensor, output: Tensor = NullTensor, name: str = "rsqrt"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().rsqrt(input._tensor, output, name))
@@ -394,8 +376,7 @@ def rsqrt(
 def sharding(
     input: Tensor, axis: int, dim_per_shard: int, name: str = "sharding"
 ) -> List[Tensor]:
-    """
-    """
+    """ """
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
@@ -405,8 +386,7 @@ def sharding(
 def sigmoid(
     input: Tensor, output: Tensor = NullTensor, name: str = "sigmoid"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().sigmoid(input._tensor, output, name))
@@ -415,8 +395,7 @@ def sigmoid(
 def sqrt(
     input: Tensor, output: Tensor = NullTensor, name: str = "sqrt"
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().sqrt(input._tensor, output, name))
@@ -428,8 +407,7 @@ def sub(
     output: Tensor = NullTensor,
     name: str = "sub",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -446,8 +424,7 @@ def tensor(
     rank: int = -1,
     name: str = "",
 ) -> Tensor:
-    """
-    """
+    """ """
     return Tensor(
         _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
     )
@@ -459,8 +436,7 @@ def transpose(
     output: Tensor = NullTensor,
     name: str = "transpose",
 ) -> Tensor:
-    """
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if not is_list_or_tuple(perm):
@@ -485,16 +461,14 @@ def mean(
     output: Tensor = NullTensor,
     name: str = "mean",
 ) -> Tensor:
-    """
-    """
+    """ """
     return reduce_mean(input, axis, keepdims, output, name)
 
 
 def ones(
     shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
 ) -> Tensor:
-    """
-    """
+    """ """
     return Tensor(
         Model.get_model().constant(1, Dims(shape), dtype.ctype(), name)
     )
@@ -508,8 +482,7 @@ def parameter(
     padded_shape: Iterable[int] = [],
     name: str = "",
 ) -> Parameter:
-    """
-    """
+    """ """
     return Parameter(
         _tensor(shape, dtype, strides, offsets, padded_shape, name)
     )
@@ -518,8 +491,7 @@ def parameter(
 def softmax(
     input: Tensor, output: Tensor = NullTensor, name: str = "softmax"
 ) -> Tensor:
-    """
-    """
+    """ """
     max = reduce_max(input, axis=-1)
     output = sub(input, max, output=output)
     output = exp(output, output=output)
@@ -544,8 +516,7 @@ def layernorm(
 def zeros(
     shape: Iterable[int], dtype: DataType = fp32, name: str = "zeros"
 ) -> Tensor:
-    """
-    """
+    """ """
     return Tensor(
         Model.get_model().constant(0, Dims(shape), dtype.ctype(), name)
     )
