@@ -36,6 +36,7 @@ __all__ = [
     "all_reduce",
     "embedding",
     "cast",
+    "copy",
     "constant",
     "ones",
     "zeros",
@@ -99,10 +100,6 @@ def add(
     name: str = "add",
 ) -> Union[Tensor, float]:
     """
-    Performs an element-wise addition operator between the `input`
-    tensor and the `other` tensor.
-    Usage:
-    tensor_add = ark.add(tensor1, tensor2)
     """
     if isinstance(input, Tensor) and isinstance(other, Tensor):
         a = input._tensor
@@ -130,7 +127,8 @@ def cast(
     output: Tensor = NullTensor,
     name: str = "cast",
 ) -> Tensor:
-    """Type casting."""
+    """
+    """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -144,7 +142,8 @@ def constant(
     dtype: DataType = fp32,
     name: str = "constant",
 ) -> Tensor:
-    """Constant."""
+    """
+    """
     return Tensor(
         Model.get_model().constant(value, Dims(shape), dtype.ctype(), name)
     )
@@ -153,12 +152,13 @@ def constant(
 def copy(
     input: Union[Tensor, float], output: Tensor = NullTensor, name: str = "copy"
 ) -> Tensor:
-    """Data caopy."""
+    """
+    """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
-        intput = intput._tensor
-    return Tensor(Model.get_model().copy(intput, output, name))
+        input = input._tensor
+    return Tensor(Model.get_model().copy(input, output, name))
 
 
 def div(
@@ -168,10 +168,6 @@ def div(
     name: str = "div",
 ) -> Tensor:
     """
-    Performs an element-wise division operator between the
-    `input` tensor and the `other` tensor.
-    Usage:
-    tensor_mul = ark.div(tensor1, tensor2)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -186,7 +182,8 @@ def embedding(
     output: Tensor = NullTensor,
     name: str = "embedding",
 ) -> Tensor:
-    """Embedding layer."""
+    """
+    """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -198,9 +195,6 @@ def exp(
     input: Tensor, output: Tensor = NullTensor, name: str = "exp"
 ) -> Tensor:
     """
-    Calculates the exponential of the `input` tensor, element-wise.
-    Usage:
-    tensor_exp = ark.exp(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -211,12 +205,6 @@ def gelu(
     input: Tensor, output: Tensor = NullTensor, name: str = "gelu"
 ) -> Tensor:
     """
-    Applies the Gaussian Error Linear Unit (GELU) activation
-    function to the `input` tensor, element-wise. GELU is a smooth
-    approximation of the rectifier function and is widely used in
-    deep learning models.
-    Usage:
-    tensor_gelu = ark.gelu(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -227,9 +215,6 @@ def identity(
     input: Tensor, deps: List[Tensor] = [], name: str = "identity"
 ) -> Tensor:
     """
-    Returns an identical tensor of `input` with execution dependencies `deps`.
-    Usage:
-    tensor_identity = ark.identity(tensor, deps=[tensor1, tensor2])
     """
     dep_tensors = []
     for dep in deps:
@@ -248,13 +233,6 @@ def matmul(
     name: str = "matmul",
 ) -> Tensor:
     """
-    Performs matrix multiplication between the `input` tensor and
-    `other` tensor, storing the result in `output`. Optional
-    parameters allow controlling the behavior of the multiplication,
-    such as transposing the input tensors and applying a ReLU
-    activation.
-    Usage:
-    tensor_matmul = ark.matmul(tensor1, tensor2)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -277,10 +255,6 @@ def mul(
     name: str = "mul",
 ) -> Tensor:
     """
-    Performs an element-wise multiplication operator between the
-    `input` tensor and the `other` tensor.
-    Usage:
-    tensor_mul = ark.mul(tensor1, tensor2)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -291,7 +265,6 @@ def mul(
 
 def noop(input: Tensor, name: str = "noop"):
     """
-    No operation. Returns nothing.
     """
     Model.get_model().noop(input._tensor, name)
 
@@ -304,10 +277,6 @@ def reduce_max(
     name: str = "reduce_max",
 ) -> Tensor:
     """
-    Performs reduction along the `axis` of the `input` tensor and
-    stores the result in `output`.
-    Usage:
-    tensor_reduce_max = ark.reduce_max(tensor, axis=1)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -326,10 +295,6 @@ def reduce_mean(
     name: str = "reduce_mean",
 ) -> Tensor:
     """
-    Performs reduction along the `axis` of the `input` tensor and
-    stores the result in `output`.
-    Usage:
-    tensor_reduce_mean = ark.reduce_mean(tensor, axis=1)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -348,12 +313,6 @@ def reduce_sum(
     name: str = "reduce_sum",
 ) -> Tensor:
     """
-    Performs reduction along the `axis` of the `input` tensor and
-    stores the result in `output`.
-    Usage:
-    # tensors shape is [64, 128]
-    tensor_reduce_sum = ark.reduce_sum(tensor, axis=1)
-    # tensor_reduce_sum is a tensor with shape [64, 1]
     """
     if output is not NullTensor:
         output = output._tensor
@@ -368,10 +327,6 @@ def relu(
     input: Tensor, output: Tensor = NullTensor, name: str = "relu"
 ) -> Tensor:
     """
-    Applies the ReLU activation function to the `input` tensor,
-    element-wise.
-    Usage:
-    tensor_relu = ark.relu(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -418,9 +373,6 @@ def rope(
     name: str = "rope",
 ) -> Tensor:
     """
-    Calculates the square root of the `input` tensor, element-wise.
-    Usage:
-    tensor_rsqrt = ark.rsqrt(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -433,9 +385,6 @@ def rsqrt(
     input: Tensor, output: Tensor = NullTensor, name: str = "rsqrt"
 ) -> Tensor:
     """
-    Calculates the square root of the `input` tensor, element-wise.
-    Usage:
-    tensor_rsqrt = ark.rsqrt(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -446,13 +395,6 @@ def sharding(
     input: Tensor, axis: int, dim_per_shard: int, name: str = "sharding"
 ) -> List[Tensor]:
     """
-    Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
-    Usage:
-    # tensors shape is [64, 128]
-    tensor_sharding = ark.sharding(tensor, axis=1, dim_per_shard=64)
-    # tensor_sharding is a list of 2 tensors, each of which has shape [64, 64]
-    # The first tensor's buffer is the same as the first 64 columns of tensor
-    # The second tensor's buffer is the same as the last 64 columns of tensor
     """
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
@@ -464,10 +406,6 @@ def sigmoid(
     input: Tensor, output: Tensor = NullTensor, name: str = "sigmoid"
 ) -> Tensor:
     """
-    Applies the Sigmoid activation function to the `input` tensor,
-    element-wise.
-    Usage:
-    tensor_sigmoid = ark.sigmoid(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -478,9 +416,6 @@ def sqrt(
     input: Tensor, output: Tensor = NullTensor, name: str = "sqrt"
 ) -> Tensor:
     """
-    Calculates the square root of the `input` tensor, element-wise.
-    Usage:
-    tensor_sqrt = ark.sqrt(tensor)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -494,10 +429,6 @@ def sub(
     name: str = "sub",
 ) -> Tensor:
     """
-    Performs an element-wise addition operator between the `input`
-    tensor and the `other` tensor.
-    Usage:
-    tensor_add = ark.sub(tensor1, tensor2)
     """
     if output is not NullTensor:
         output = output._tensor
@@ -516,10 +447,6 @@ def tensor(
     name: str = "",
 ) -> Tensor:
     """
-    Construct a tensor with given shape and data type.
-    Usage:
-    tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
-    tensor = ark.tensor([1, 2], dtype=ark.fp16)
     """
     return Tensor(
         _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
@@ -533,13 +460,6 @@ def transpose(
     name: str = "transpose",
 ) -> Tensor:
     """
-    Transposes the `input` tensor according to the given `perm` permutation.
-    For example, transpose(input, [0, 1 ,3, 2]) will swap the last two
-    dimensions of the input tensor. Currently, only 4D tensors are supported.
-    Usage:
-    # tensors shape is [1, 64, 128, 32]
-    tensor_transpose = ark.transpose(tensor, perm=[0, 1, 3, 2])
-    # tensor_transpose is a tensor with shape [1, 64, 32, 128]
     """
     if output is not NullTensor:
         output = output._tensor
@@ -565,14 +485,16 @@ def mean(
     output: Tensor = NullTensor,
     name: str = "mean",
 ) -> Tensor:
-    """Alias of reduce_mean."""
+    """
+    """
     return reduce_mean(input, axis, keepdims, output, name)
 
 
 def ones(
     shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
 ) -> Tensor:
-    """Ones."""
+    """
+    """
     return Tensor(
         Model.get_model().constant(1, Dims(shape), dtype.ctype(), name)
     )
@@ -587,7 +509,6 @@ def parameter(
     name: str = "",
 ) -> Parameter:
     """
-    Construct a parameter with given shape and data type.
     """
     return Parameter(
         _tensor(shape, dtype, strides, offsets, padded_shape, name)
@@ -598,9 +519,6 @@ def softmax(
     input: Tensor, output: Tensor = NullTensor, name: str = "softmax"
 ) -> Tensor:
     """
-    Applies softmax  to the `input` tensor on the last dimension.
-    Usage:
-    tensor_softmax = ark.softmax(tensor)
     """
     max = reduce_max(input, axis=-1)
     output = sub(input, max, output=output)
@@ -626,7 +544,8 @@ def layernorm(
 def zeros(
     shape: Iterable[int], dtype: DataType = fp32, name: str = "zeros"
 ) -> Tensor:
-    """Zeros."""
+    """
+    """
     return Tensor(
         Model.get_model().constant(0, Dims(shape), dtype.ctype(), name)
     )

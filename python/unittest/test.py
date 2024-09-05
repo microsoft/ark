@@ -4,4 +4,5 @@
 from test_data_type import *
 from test_error import *
 from test_model import *
+from test_ops import *
 from test_runtime import *
