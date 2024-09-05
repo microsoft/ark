@@ -41,7 +41,7 @@ static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
 }
 
 void register_executor(py::module &m) {
-    py::class_<ark::Executor>(m, "_Executor")
+    py::class_<ark::Executor>(m, "CoreExecutor")
         .def(py::init([](int device_id, uintptr_t stream,
                          const std::string &name, const std::string &plan,
                          bool loop_mode) {

@@ -16,7 +16,7 @@
 // Grep SIGALRM and exit.
 static void sigalrm_timeout_handler(int) {
     signal(SIGALRM, SIG_IGN);
-    UNITTEST_FEXIT("timeout");
+    UNITTEST_FAIL("timeout");
 }
 
 namespace ark {
@@ -64,7 +64,7 @@ void wait_all_threads() {
 int spawn_process(std::function<State()> func) {
     pid_t pid = fork();
     if (pid < 0) {
-        UNITTEST_UEXIT("fork() failed");
+        UNITTEST_UNEXPECTED("fork() failed");
     } else if (pid == 0) {
         State ret = func();
         std::exit(ret);
@@ -82,7 +82,7 @@ void wait_all_processes() {
         do {
             pid = wait(&status);
             if (pid == -1) {
-                UNITTEST_UEXIT("wait() failed");
+                UNITTEST_UNEXPECTED("wait() failed");
             }
         } while (!WIFEXITED(status));
         status = WEXITSTATUS(status);

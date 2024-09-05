@@ -10,7 +10,7 @@
 namespace py = pybind11;
 
 void register_model_graph(py::module &m) {
-    py::class_<ark::ModelGraph>(m, "_ModelGraph")
+    py::class_<ark::ModelGraph>(m, "CoreModelGraph")
         .def("serialize", &ark::ModelGraph::serialize,
              py::arg("pretty") = true);
 }

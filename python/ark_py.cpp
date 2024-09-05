@@ -12,6 +12,7 @@ extern void register_dims(py::module &m);
 extern void register_error(py::module &m);
 extern void register_executor(py::module &m);
 extern void register_init(py::module &m);
+extern void register_log(py::module &m);
 extern void register_model_graph(py::module &m);
 extern void register_model(py::module &m);
 extern void register_planner(py::module &m);
@@ -19,7 +20,7 @@ extern void register_random(py::module &m);
 extern void register_tensor(py::module &m);
 extern void register_version(py::module &m);
 
-PYBIND11_MODULE(_ark_core, m) {
+PYBIND11_MODULE(core, m) {
     m.doc() = "Bind ARK C++ APIs to Python";
 
     register_data_type(m);
@@ -27,6 +28,7 @@ PYBIND11_MODULE(_ark_core, m) {
     register_error(m);
     register_executor(m);
     register_init(m);
+    register_log(m);
     register_model_graph(m);
     register_model(m);
     register_planner(m);

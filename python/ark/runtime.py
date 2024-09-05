@@ -4,20 +4,23 @@
 import logging
 from enum import Enum
 
-from _ark_core import _Executor
+from .core import CoreExecutor
 from .planner import Planner, Plan
 
 
-class _RuntimeState:
+__all__ = ["Executor", "Runtime"]
+
+
+class RuntimeState:
     """
-    The _RuntimeState class is used to store the state of the model.
+    The RuntimeState class is used to store the state of the model.
     """
 
     runtime = None
     executor = None
 
 
-class Executor(_Executor):
+class Executor(CoreExecutor):
     pass
 
 
@@ -40,14 +43,14 @@ class Runtime:
         """
         Get the runtime.
         """
-        if _RuntimeState.runtime is None:
-            _RuntimeState.runtime = Runtime()
-        return _RuntimeState.runtime
+        if RuntimeState.runtime is None:
+            RuntimeState.runtime = Runtime()
+        return RuntimeState.runtime
 
     def __init__(self):
         self.executor: Executor = None
         self.state: Runtime.State = Runtime.State.Init
-        _RuntimeState.runtime = self
+        RuntimeState.runtime = self
 
     def __del__(self):
         self.reset()
@@ -92,19 +95,19 @@ class Runtime:
         # If the RuntimeState is init, we need to create a new executor and
         # compile the kernels
         if self.state == Runtime.State.Init:
-            if _RuntimeState.executor is not None:
-                if not _RuntimeState.executor.destroyed():
+            if RuntimeState.executor is not None:
+                if not RuntimeState.executor.destroyed():
                     logging.warn("Destroying an old executor")
-                    _RuntimeState.executor.destroy()
+                    RuntimeState.executor.destroy()
 
-            _RuntimeState.executor = Executor(
+            RuntimeState.executor = Executor(
                 device_id,
                 stream,
                 "ArkRuntime",
                 str(plan),
                 loop_mode,
             )
-            self.executor = _RuntimeState.executor
+            self.executor = RuntimeState.executor
             self.executor.compile()
         self.executor.launch()
         self.state = Runtime.State.LaunchedNotRunning

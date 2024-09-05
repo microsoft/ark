@@ -2,10 +2,21 @@
 # Licensed under the MIT license.
 
 import numpy
-from . import _ark_core
+from . import core
+from . import log
+
+__all__ = [
+    "DataType",
+    "fp16",
+    "fp32",
+    "int32",
+    "uint32",
+    "int8",
+    "uint8",
+]
 
 
-_REGISTRY_DATA_TYPE = {
+REGISTRY_DATA_TYPE = {
     "fp32": {"np": numpy.float32},
     "fp16": {"np": numpy.float16},
     "bf16": {"np": None},
@@ -13,19 +24,16 @@ _REGISTRY_DATA_TYPE = {
     "uint32": {"np": numpy.uint32},
     "int8": {"np": numpy.int8},
     "uint8": {"np": numpy.uint8},
-    "byte": {"np": numpy.ubyte},
 }
 
 
 class MetaDataType(type):
     def __new__(cls, name, bases, attrs):
         new_class = super().__new__(cls, name, bases, attrs)
-        if name in _REGISTRY_DATA_TYPE:
-            reg = _REGISTRY_DATA_TYPE[name]
+        if name in REGISTRY_DATA_TYPE:
+            reg = REGISTRY_DATA_TYPE[name]
             new_class.to_numpy = staticmethod(lambda: reg["np"])
-            new_class.ctype = staticmethod(
-                lambda: getattr(_ark_core, name.upper())
-            )
+            new_class.ctype = staticmethod(lambda: getattr(core, name.upper()))
             new_class.element_size = staticmethod(
                 lambda: new_class.ctype().bytes()
             )
@@ -49,12 +57,16 @@ class DataType(metaclass=MetaDataType):
             DataType: The corresponding ark data type.
 
         Raises:
-            ValueError: If there is no defined conversion from numpy data type to ark data type.
+            InvalidUsageError: If there is no defined conversion from numpy data type to ark data type.
         """
-        for type_name, reg in _REGISTRY_DATA_TYPE.items():
+        if not isinstance(np_type, numpy.dtype):
+            raise log.InvalidUsageError(
+                f"Expected a numpy data type, but got {type(np_type)}"
+            )
+        for type_name, reg in REGISTRY_DATA_TYPE.items():
             if reg["np"] == np_type:
                 return DataType.from_name(type_name)
-        raise ValueError(
+        raise log.InvalidUsageError(
             f"Undefined conversion from numpy data type {np_type}"
             f" to ark data type."
         )
@@ -75,16 +87,16 @@ class DataType(metaclass=MetaDataType):
         """
         ret = globals().get(type_name, None)
         if ret is None:
-            raise ValueError(f"Undefined data type {type_name}")
+            raise log.InvalidUsageError(f"Undefined data type {type_name}")
         return ret
 
     @staticmethod
-    def from_ctype(ctype: _ark_core._DataType) -> "DataType":
+    def from_ctype(ctype: core.CoreDataType) -> "DataType":
         """
         Return the corresponding ark data type.
 
         Parameters:
-            ctype (_ark_core._DataType): The cpp type.
+            ctype (core.CoreDataType): The cpp type.
 
         Returns:
             DataType: The corresponding ark data type.
@@ -92,6 +104,10 @@ class DataType(metaclass=MetaDataType):
         Raises:
             ValueError: If the data type is not defined.
         """
+        if not isinstance(ctype, core.CoreDataType):
+            raise log.InvalidUsageError(
+                f"Expected a core data type, but got {type(ctype)}"
+            )
         return DataType.from_name(ctype.name().lower())
 
     @staticmethod
@@ -105,12 +121,12 @@ class DataType(metaclass=MetaDataType):
         ...
 
     @staticmethod
-    def ctype() -> _ark_core._DataType:
+    def ctype() -> core.CoreDataType:
         """
         Return the corresponding cpp type.
 
         Returns:
-            _ark_core._DataType: The corresponding cpp type.
+            core.CoreDataType: The corresponding cpp type.
         """
         ...
 
