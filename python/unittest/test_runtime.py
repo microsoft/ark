@@ -64,4 +64,3 @@ def test_runtime_reuse_plans():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
     runtime.reset()
-
