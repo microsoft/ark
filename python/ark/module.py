@@ -201,16 +201,3 @@ class _Function(torch.autograd.Function):
                 pytorch_grad = param.staged_tensor.to_torch()
                 param.torch_param.grad = pytorch_grad
         return (None, *grad_inputs)
-
-
-class RuntimeModule(torch.nn.Module):
-    """
-    Wraps an ARK module to be used as a PyTorch autograd function.
-    """
-
-    def __init__(self, ark_module):
-        super().__init__()
-        self.ark_module = ark_module
-
-    def forward(self, *args, **kwargs):
-        return _Function.apply(self.ark_module, *args, **kwargs)
