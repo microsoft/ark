@@ -86,7 +86,7 @@ class DataType(metaclass=MetaDataType):
         Raises:
             ValueError: If there is no defined conversion from torch data type to ark data type.
         """
-        for type_name, reg in _REGISTRY_DATA_TYPE.items():
+        for type_name, reg in REGISTRY_DATA_TYPE.items():
             if reg["torch"] == torch_type:
                 return DataType.from_name(type_name)
         raise ValueError(

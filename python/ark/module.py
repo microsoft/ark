@@ -3,13 +3,8 @@
 
 import logging
 import numpy as np
-from typing import Any, Dict, Union
+from typing import Any, Dict
 from .tensor import Parameter
-from .torch import torch, _no_torch
-from .runtime import Runtime
-from .model import Model
-from .data_type import DataType
-from .ops import placeholder
 from . import log
 
 __all__ = ["Module"]
@@ -21,7 +16,6 @@ class Module:
     """
 
     def __init__(self):
-        super().__init__()
         # The submodules of the module.
         self.sub_modules: dict[str, "Module"] = dict()
         # The parameters of the module.
@@ -31,18 +25,11 @@ class Module:
         """
         When setting an attribute, if the attribute is a Module, add it to
         the sub_modules. If the attribute is a Tensor and this Tensor is a
-        parameter, add it to the parameters. If the attribute is a
-        torch.nn.Parameter, convert it to an ARK Parameter before adding.
+        parameter, add it to the parameters.
         """
         if isinstance(__value, Module):
             self.register_module(__name, __value)
         elif isinstance(__value, Parameter):
-            self.register_parameter(__name, __value)
-        elif not _no_torch and isinstance(__value, torch.nn.Parameter):
-            shape, dtype = list(__value.shape), DataType.from_torch(
-                __value.dtype
-            )
-            __value = Parameter(placeholder(shape, dtype, data=__value), True)
             self.register_parameter(__name, __value)
         super().__setattr__(__name, __value)
 
@@ -73,10 +60,7 @@ class Module:
         return params_dict
 
     def load_state_dict(
-        self,
-        state_dict: Dict[str, Union[np.ndarray, torch.Tensor]],
-        prefix: str = "",
-        stream: int = 0,
+        self, state_dict: Dict[str, np.ndarray], prefix: str = ""
     ):
         """
         Loads a model from a state_dict and copy the parameters to the device GPU.
@@ -87,117 +71,19 @@ class Module:
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
         for name, param in pd.items():
-            data = state_dict.get(name, None)
-            if data is None:
-                continue
-            param.copy(data, stream=stream)
+            param.from_numpy(state_dict[name])
             all_keys.remove(name)
         if all_keys:
             log.WARN(f"{len(all_keys)} unused parameter(s) in state_dict")
 
-    def state_dict(
-        self,
-        prefix: str = "",
-        mode: str = "numpy",
-        stream: int = 0,
-    ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
+    def state_dict(self, prefix: str = "") -> Dict[str, np.ndarray]:
         """
         Copies the parameters from the device GPU to the host and saves the
         model to a state_dict.
         Must be called after the executor is launched.
         """
-        if mode == "numpy":
-            return {
-                k: v.to_numpy(stream=stream)
-                for k, v in self.params_dict(prefix).items()
-            }
-        elif mode == "torch":
-            return {
-                k: v.to_torch(stream=stream)
-                for k, v in self.params_dict(prefix).items()
-            }
-        raise ValueError(f"Unsupported mode: {mode}")
+        return {k: v.to_numpy() for k, v in self.params_dict(prefix).items()}
 
     def forward(self, *args: Any, **kwargs: Any) -> Any: ...
 
     def backward(self, *args: Any, **kwargs: Any) -> Any: ...
-
-    def initialize(self):
-        for param in self.parameters.values():
-            param.initialize()
-        for module in self.sub_modules.values():
-            module.initialize()
-
-
-class _Function(torch.autograd.Function):
-    """
-    Facilitates the integration of ARK modules with PyTorch's
-    autograd system by defining custom forward and backward passes that
-    utilize the user's defined ARK module.
-    """
-
-    @staticmethod
-    def forward(ctx, ark_module, *args, **kwargs):
-        """
-        Returns a PyTorch tensor that is the result
-        of the forward pass of the ARK module.
-        """
-        Model.reset()
-        ctx.ark_module = ark_module
-        input_args, input_kwargs = [], {}
-        input_requires_grad = 0
-        for arg in args:
-            if isinstance(arg, torch.Tensor):
-                shape, dtype = list(arg.shape), DataType.from_torch(arg.dtype)
-                input_args.append(placeholder(shape, dtype, data=arg))
-                if arg.requires_grad:
-                    input_requires_grad += 1
-            else:
-                input_args.append(arg)
-        for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
-                shape, dtype = list(arg.shape), DataType.from_torch(arg.dtype)
-                input_kwargs[k] = placeholder(shape, dtype, data=v)
-                if v.requires_grad:
-                    input_requires_grad += 1
-            else:
-                input_kwargs[k] = v
-        ctx.num_inp_grad = input_requires_grad
-        output = ark_module.forward(*input_args, **input_kwargs)
-        rt = Runtime.get_runtime()
-        rt.launch()
-        rt.run()
-        rt.stop()
-        output = output.to_torch()
-        return output
-
-    @staticmethod
-    def backward(ctx, *grad_outputs):
-        """
-        Converts the gradient outputs to ARK format, computes the gradients for the input
-        and parameters using the ARK module backwards pass, and updates the gradients of the corresponding
-        PyTorch parameters.
-        """
-        Model.reset()
-        # i think we should support placeholder initialization
-        # with just pytorch tensor
-        ark_grad_outputs = []
-        for grad in grad_outputs:
-            shape, dtype = list(grad.shape), DataType.from_torch(grad.dtype)
-            ark_grad_outputs.append(placeholder(shape, dtype, data=grad))
-        grads = ctx.ark_module.backward(*ark_grad_outputs)
-        grad_inputs, grad_weights = (
-            grads[: ctx.num_inp_grad],
-            grads[ctx.num_inp_grad :],
-        )
-        params_dict = ctx.ark_module.params_dict()
-        rt = Runtime.get_runtime()
-        rt.launch()
-        rt.run()
-        rt.stop()
-        grad_inputs = [grad.to_torch() for grad in grad_inputs]
-        for _, param in params_dict.items():
-            if param.staged_tensor is not None:
-                pytorch_grad = param.staged_tensor.to_torch()
-                param.torch_param.grad = pytorch_grad
-        return (None, *grad_inputs)
