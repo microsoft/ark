@@ -4,6 +4,7 @@
 from enum import Enum
 
 from . import log
+from .tensor import Tensor
 from .torch import torch
 from .executor import Executor
 from .planner import Planner, Plan
@@ -96,7 +97,12 @@ class Runtime:
         self.state = Runtime.StateCode.LaunchedNotRunning
         self.loop_mode = loop_mode
 
-    def run(self, iter=1, non_blocking=False, tensor_mappings={}):
+    def run(
+        self,
+        iter: int = 1,
+        non_blocking: bool = False,
+        tensor_mappings: Dict[Tensor, torch.Tensor] = {},
+    ):
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
