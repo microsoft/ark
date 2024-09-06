@@ -1,11 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import logging
 from enum import Enum
 
+from . import log
 from .torch import torch
-from .core import CoreExecutor
+from .executor import Executor
 from .planner import Planner, Plan
 from .model import Model
 from typing import Dict
@@ -14,24 +14,14 @@ from typing import Dict
 __all__ = ["Runtime"]
 
 
-class RuntimeState:
-    """
-    The RuntimeState class is used to store the state of the model.
-    """
-
-    runtime = None
-
-
 class Runtime:
     """
     Convenience class for running a model.
     """
 
-    _loop_mode: bool = True
-
-    class State(Enum):
+    class StateCode(Enum):
         """
-        Runtime states.
+        Runtime state code.
         """
 
         Init = 0
@@ -39,41 +29,34 @@ class Runtime:
         Running = 2
 
     def __init__(self):
-        self.executor: CoreExecutor = CoreExecutor()
-        self.state: Runtime.State = Runtime.State.Init
-        self.loop_mode = True
-        RuntimeState.runtime = self
+        self.loop_mode: bool = True
+        self.state: Runtime.StateCode = Runtime.StateCode.Init
 
-    @staticmethod
-    def get_runtime() -> "Runtime":
-        """
-        Get the runtime.
-        If the runtime does not exist, create a new runtime.
-        """
-        if RuntimeState.runtime is None:
-            RuntimeState.runtime = Runtime()
-        return RuntimeState.runtime
-
-    def __enter__(self):
+    def __enter__(self) -> "Runtime":
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.reset()
+        if self.launched():
+            self.stop()
+
+    def __del__(self):
+        if self.launched():
+            self.stop()
 
     def launched(self) -> bool:
         """
         Check if the runtime is launched.
         """
         return (
-            self.state == Runtime.State.LaunchedNotRunning
-            or self.state == Runtime.State.Running
+            self.state == Runtime.StateCode.LaunchedNotRunning
+            or self.state == Runtime.StateCode.Running
         )
 
     def running(self) -> bool:
         """
         Check if the runtime is running.
         """
-        return self.state == Runtime.State.Running
+        return self.state == Runtime.StateCode.Running
 
     def launch(
         self,
@@ -91,8 +74,7 @@ class Runtime:
         if device_id == -1:
             device_id = Model.get_device_id()
         elif device_id < 0:
-            logging.error(f"Invalid device_id: {device_id}")
-            raise ValueError(f"Invalid device_id: {device_id}")
+            raise log.InvalidUsageError(f"Invalid device_id: {device_id}")
         plan = Planner(device_id).plan() if plan is None else plan
         plan_str = str(plan)
         if self.launched():
@@ -101,40 +83,37 @@ class Runtime:
         for ark_tensor in list(tensor_mappings.keys()):
             torch_tensor = tensor_mappings[ark_tensor]
             if not isinstance(torch_tensor, torch.Tensor):
-                raise ValueError("Must bind PyTorch tensor")
+                raise log.InvalidUsageError("Must bind PyTorch tensor")
             internal_ark_tensor = ark_tensor._tensor
             tensor_mappings[internal_ark_tensor] = torch_tensor.data_ptr()
             del tensor_mappings[ark_tensor]
         # Recompile if the previous launch was not compiled with the same info
         # or if this is the first launch
-        if (
-            plan_str != self.executor.plan()
-            or device_id != self.executor.device_id()
-        ):
-            self.executor.compile(plan_str, device_id)
-        self.executor.launch(tensor_mappings, stream, loop_mode)
-        self.state = Runtime.State.LaunchedNotRunning
-        Runtime._loop_mode = loop_mode
+        exe = Executor.get()
+        if plan_str != exe.plan() or device_id != exe.device_id():
+            exe.compile(plan_str, device_id)
+        exe.launch(tensor_mappings, stream, loop_mode)
+        self.state = Runtime.StateCode.LaunchedNotRunning
+        self.loop_mode = loop_mode
 
     def run(self, iter=1, non_blocking=False, tensor_mappings={}):
         """
         Run the ARK program for iter iterations and wait for the kernel to finish.
         """
-        if Runtime._loop_mode and tensor_mappings:
-            raise ValueError(
+        if self.loop_mode and tensor_mappings:
+            raise log.InvalidUsageError(
                 "`loop_mode` argument when calling `runtime.launch` "
                 "must be set to false in order to pass non-empty "
                 "tensor mappings in `runtime.run`."
             )
-        if self.state != Runtime.State.LaunchedNotRunning:
-            logging.error(f"ARK runtime is not launched")
-            raise RuntimeError(f"ARK runtime is not launched")
-        self.state = Runtime.State.Running
+        if self.state != Runtime.StateCode.LaunchedNotRunning:
+            raise log.InvalidUsageError(f"ARK runtime is not launched")
+        self.state = Runtime.StateCode.Running
         ph_map = {}
         for ark_tensor in list(tensor_mappings.keys()):
             t = tensor_mappings[ark_tensor]
             ph_map[ark_tensor._tensor] = t.data_ptr()
-        self.executor.run(iter, ph_map)
+        Executor.get().run(iter, ph_map)
         if not non_blocking:
             self.wait()
 
@@ -142,20 +121,19 @@ class Runtime:
         """
         Barrier for all ranks.
         """
-        if self.state != Runtime.State.LaunchedNotRunning:
-            logging.error("ARK runtime is not launched")
-            raise RuntimeError("ARK runtime is not launched")
-        self.executor.barrier()
+        if self.state != Runtime.StateCode.LaunchedNotRunning:
+            raise log.InvalidUsageError("ARK runtime is not launched")
+        Executor.get().barrier()
 
     def wait(self):
         """
         Wait for the kernel to finish.
         """
-        if self.state != Runtime.State.Running:
-            logging.warning(f"ARK runtime is not running, skip waiting")
+        if self.state != Runtime.StateCode.Running:
+            log.WARN(f"ARK runtime is not running, skip waiting")
             return
-        self.executor.wait()
-        self.state = Runtime.State.LaunchedNotRunning
+        Executor.get().wait()
+        self.state = Runtime.StateCode.LaunchedNotRunning
 
     def stop(self) -> float:
         """
@@ -163,18 +141,8 @@ class Runtime:
         Once this is called, we need to call `launch()` again to run the model again.
         """
         if not self.launched():
-            logging.warning(f"ARK runtime is never launched, skip stopping")
+            log.WARN(f"ARK runtime is never launched, skip stopping")
             return
-        elapsed = self.executor.stop()
-        self.state = Runtime.State.LaunchedNotRunning
+        elapsed = Executor.get().stop()
+        self.state = Runtime.StateCode.LaunchedNotRunning
         return elapsed
-
-    def reset(self):
-        """
-        Reset the runtime.
-        """
-        if self.launched():
-            self.stop()
-        self.executor.destroy()
-        self.executor = _Executor()
-        self.state = Runtime.State.Init

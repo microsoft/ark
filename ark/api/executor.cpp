@@ -858,7 +858,7 @@ class Executor::Impl {
 
    private:
     std::shared_ptr<BufferRegistry::Info> get_buffer_info(
-        const Tensor &tensor) const;
+        const Tensor &tensor, bool fail_on_null) const;
 
     std::map<PlanResourceKey, std::shared_ptr<PlanResource>> plan_resources_;
     std::shared_ptr<PlanResource> foreground_plan_resource_;
@@ -1039,11 +1039,11 @@ void Executor::Impl::barrier() {
 }
 
 std::shared_ptr<BufferRegistry::Info> Executor::Impl::get_buffer_info(
-    const Tensor &tensor) const {
+    const Tensor &tensor, bool fail_on_null) const {
     size_t buffer_id = tensor.ref()->buffer()->id();
     auto &buf_reg = BufferRegistry::get_instance();
     auto info = buf_reg.get(buffer_id);
-    if (!info || !(info->data)) {
+    if (fail_on_null && (!info || !(info->data))) {
         ERR(InvalidUsageError,
             "Tensor has no allocated memory. "
             "This is likely caused by accessing a tensor that is optimized "
@@ -1054,12 +1054,16 @@ std::shared_ptr<BufferRegistry::Info> Executor::Impl::get_buffer_info(
 }
 
 void *Executor::Impl::tensor_address(const Tensor &tensor) const {
-    return get_buffer_info(tensor)->data;
+    auto info = get_buffer_info(tensor, false);
+    if (!info || !(info->data)) {
+        return nullptr;
+    }
+    return info->data;
 }
 
 void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
                                  Stream stream, bool is_d2d) const {
-    auto info = get_buffer_info(tensor);
+    auto info = get_buffer_info(tensor, true);
     size_t device_id = info->device_id;
     GLOG(gpuSetDevice(device_id));
     std::shared_ptr<GpuStream> copy_stream;
@@ -1112,7 +1116,7 @@ void Executor::Impl::tensor_read(const Tensor &tensor, void *data, size_t bytes,
 void Executor::Impl::tensor_write(const Tensor &tensor, const void *data,
                                   size_t bytes, Stream stream,
                                   bool is_d2d) const {
-    auto info = get_buffer_info(tensor);
+    auto info = get_buffer_info(tensor, true);
     size_t device_id = info->device_id;
     GLOG(gpuSetDevice(device_id));
     std::shared_ptr<GpuStream> copy_stream;

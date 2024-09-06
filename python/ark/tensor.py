@@ -4,10 +4,11 @@
 import numpy as np
 from typing import Callable, Iterable, List, Union, Type
 
+from . import log
 from .core import CoreDims, CoreTensor, NullTensor
 from .torch import torch, _no_torch
 from .data_type import DataType, fp32
-from .runtime import Runtime
+from .executor import Executor
 from .model import Model
 
 __all__ = ["Dims", "Tensor", "Parameter", "NullTensor"]
@@ -92,18 +93,29 @@ class Tensor:
         """
         Returns the underlying data pointer.
         """
-        rt = Runtime.get_runtime()
-        if not rt.launched():
-            raise RuntimeError(
-                "`Tensor.data_ptr()` is usable only after you call `Runtime.launch()`."
-            )
-        return rt.executor.tensor_address(self._tensor)
+        return Executor.get().tensor_address(self._tensor)
 
     def is_external(self) -> bool:
         """
         Returns true if the tensor's data is not managed by ARK.
         """
         return self._tensor.is_external()
+
+    def _raise_if_no_data(self):
+        if self.data_ptr() != 0:
+            return
+        if self.is_external():
+            raise log.InvalidUsageError(
+                "Tried to access data of an external tensor that does not "
+                "have data set. This is likely because this tensor is a "
+                "placeholder and you have not set the data."
+            )
+        raise log.InvalidUsageError(
+            "Tried to access data of a tensor that is not allocated yet. "
+            "This is likely due to either you have not called "
+            "`Runtime.launch()` for the model or the tensor is unused "
+            "in the model."
+        )
 
     def to_numpy(
         self, ndarray: np.ndarray = None, stream: int = 0
@@ -113,74 +125,66 @@ class Tensor:
         a new numpy array will be created. If the tensor is not allocated,
         an empty numpy array without the data buffer will be returned.
         """
+        self._raise_if_no_data()
         np_type = self.dtype().to_numpy()
         if np_type is None:
-            raise ValueError(
+            raise log.InvalidUsageError(
                 f"Tensor data type {self.dtype().__name__} is not supported by numpy."
             )
-        rt = Runtime.get_runtime()
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.to_numpy()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
-        elif ndarray is None:
+        if ndarray is None:
             ndarray = np.zeros(self.shape(), dtype=np_type)
         elif not ndarray.flags["C_CONTIGUOUS"]:
-            raise ValueError("ndarray is not contiguous in memory")
+            raise log.InvalidUsageError("ndarray is not contiguous in memory")
         elif ndarray.shape != self.shape():
-            raise ValueError("ndarray shape does not match the tensor")
+            raise log.InvalidUsageError(
+                "ndarray shape does not match the tensor"
+            )
         elif ndarray.dtype != np_type:
-            raise ValueError("ndarray dtype does not match the tensor")
+            raise log.InvalidUsageError(
+                "ndarray dtype does not match the tensor"
+            )
         elif ndarray.nbytes != self.nelems() * self.dtype().element_size():
-            raise ValueError("ndarray size does not match the tensor")
-        rt.executor.tensor_read(self._tensor, ndarray, stream)
+            raise log.InvalidUsageError(
+                "ndarray size does not match the tensor"
+            )
+        Executor.get().tensor_read(self._tensor, ndarray, stream)
         return ndarray
 
     def from_numpy(self, ndarray: np.ndarray, stream: int = 0) -> "Tensor":
         """
         Copies the tensor from a host numpy array to the device.
         """
-        rt = Runtime.get_runtime()
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.from_numpy()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
+        self._raise_if_no_data()
         ndarray = ndarray.astype(self.dtype().to_numpy())
         if not ndarray.flags["C_CONTIGUOUS"]:
             ndarray = np.ascontiguousarray(ndarray)
         if ndarray.nbytes != self.nelems() * self.dtype().element_size():
-            raise ValueError("ndarray size does not match the tensor")
-        rt.executor.tensor_write(self._tensor, ndarray, stream)
+            raise log.InvalidUsageError(
+                "ndarray size does not match the tensor"
+            )
+        Executor.get().tensor_write(self._tensor, ndarray, stream)
         return self
 
     def to_dlpack(self):
         """
         Returns a DLPack tensor that shares the same memory with the device tensor.
         """
-        rt = Runtime.get_runtime()
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.to_dlpack()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
-        return rt.executor.tensor_to_dlpack(self._tensor)
+        self._raise_if_no_data()
+        return Executor.get().tensor_to_dlpack(self._tensor)
 
     @staticmethod
     def from_dlpack(ext_tensor) -> "Tensor":
         """
         Copies the tensor from a DLPack tensor to the device.
         """
-        # return Tensor(_Tensor(ext_tensor))
-        raise NotImplementedError("from_dlpack is not implemented yet")
+        raise log.UnsupportedError("from_dlpack is not implemented yet")
 
     def to_torch(self) -> torch.Tensor:
         """
         Returns a torch tensor that shares the same memory with the device tensor.
         """
         if _no_torch:
-            raise ImportError("torch is not available")
+            raise log.SystemError("torch is not available")
         dl_capsule = self.to_dlpack()
         torch_view = torch.utils.dlpack.from_dlpack(dl_capsule)
         # Keep dl_capsule alive not to free the memory
@@ -193,11 +197,11 @@ class Tensor:
         Returns an ARK tensor that shares the same memory with the torch tensor.
         """
         if _no_torch:
-            raise ImportError("torch is not available")
+            raise log.SystemError("torch is not available")
         elif not tensor.is_contiguous():
-            raise ValueError("Torch tensor must be contiguous.")
+            raise log.InvalidUsageError("Torch tensor must be contiguous.")
         elif tensor.device.type == "cpu":
-            raise ValueError("Torch tensor must be on a device.")
+            raise log.InvalidUsageError("Torch tensor must be on a device.")
         # TODO: support strides and offsets
         ark_tensor = Tensor(
             _cpp_tensor(
@@ -217,19 +221,16 @@ class Tensor:
         Copies data into this tensor. The data type may differ,
         but the size must match.
         """
-        rt = Runtime.get_runtime()
-        if not rt.launched():
-            raise RuntimeError(
-                "Tensor is not allocated yet. `Tensor.copy()` is "
-                "usable only after you call `Runtime.launch()`."
-            )
+        self._raise_if_no_data()
         tensor_bytes = self.nelems() * self.dtype().element_size()
         if isinstance(data, torch.Tensor):
             if not data.is_contiguous():
                 data = data.contiguous()
             if data.numel() * data.element_size() != tensor_bytes:
-                raise ValueError("data size does not match the tensor")
-            rt.executor.tensor_write(
+                raise log.InvalidUsageError(
+                    "data size does not match the tensor"
+                )
+            Executor.get().tensor_write(
                 self._tensor,
                 data.data_ptr(),
                 tensor_bytes,
@@ -243,10 +244,14 @@ class Tensor:
             if not data.flags["C_CONTIGUOUS"]:
                 data = np.ascontiguousarray(data)
             if data.nbytes != tensor_bytes:
-                raise ValueError("data size does not match the tensor")
-            rt.executor.tensor_write(self._tensor, data, stream)
+                raise log.InvalidUsageError(
+                    "data size does not match the tensor"
+                )
+            Executor.get().tensor_write(self._tensor, data, stream)
         else:
-            raise ValueError("data must be a numpy array or a torch tensor")
+            raise log.InvalidUsageError(
+                "data must be a numpy array or a torch tensor"
+            )
         return self
 
     def initialize(self) -> "Tensor":
@@ -284,13 +289,13 @@ class Parameter(Tensor):
                 _tensor,
                 requires_grad=tensor.requires_grad,
             )
-        elif isinstance(tensor, _Tensor):
+        elif isinstance(tensor, CoreTensor):
             _tensor = tensor
             self.torch_param = None
             self.staged_tensor = None
             Tensor.__init__(self, _tensor, requires_grad=False)
         else:
-            raise TypeError(
+            raise log.InvalidUsageError(
                 "tensor must be an ARK tensor or a torch.nn.Parameter"
             )
 
@@ -299,15 +304,19 @@ class Parameter(Tensor):
         Stages an ARK tensor to be used for updating the gradient of its associated parameter.
         """
         if _no_torch:
-            raise ImportError("torch is not available")
+            raise log.SystemError("torch is not available")
         if self.torch_param is None:
-            raise ValueError(
+            raise log.InvalidUsageError(
                 "there is no PyTorch parameter associated with this ARK parameter"
             )
         if not self.torch_param.requires_grad:
-            raise ValueError("parameter does not require gradient updates")
+            raise log.InvalidUsageError(
+                "parameter does not require gradient updates"
+            )
         if ark_tensor is None or not isinstance(ark_tensor, Tensor):
-            raise ValueError("cannot use non-ARK tensor to update ARK gradient")
+            raise log.InvalidUsageError(
+                "cannot use non-ARK tensor to update ARK gradient"
+            )
         self.staged_tensor = ark_tensor
 
 
@@ -326,13 +335,21 @@ def _cpp_tensor(
     name: str = "",
 ) -> Tensor:
     if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
+        raise log.InvalidUsageError(
+            "shape should be a list or tuple of integers"
+        )
     if not _is_list_or_tuple(strides):
-        raise ValueError("strides should be a list or tuple of integers")
+        raise log.InvalidUsageError(
+            "strides should be a list or tuple of integers"
+        )
     if not _is_list_or_tuple(offsets):
-        raise ValueError("offsets should be a list or tuple of integers")
+        raise log.InvalidUsageError(
+            "offsets should be a list or tuple of integers"
+        )
     if not _is_list_or_tuple(padded_shape):
-        raise ValueError("padded_shape should be a list or tuple of integers")
+        raise log.InvalidUsageError(
+            "padded_shape should be a list or tuple of integers"
+        )
     # only support tensors with up to 4 dimensions
     if (
         len(shape) > 4

@@ -3,6 +3,7 @@
 
 #include "ark/executor.hpp"
 
+#include "ark/planner.hpp"
 #include "gpu/gpu.hpp"
 #include "model/model_json.hpp"
 #include "unittest/unittest_utils.h"
@@ -52,6 +53,34 @@ ark::unittest::State test_executor() {
         executor.wait();  // nothing to do
 
         // Stop & destroy automatically.
+    }
+
+    // Raw executor test
+    ark::Model m;
+    auto tensor = m.tensor({1024}, ark::FP32);
+    m.noop(tensor);
+
+    ark::Planner planner(m, 0);
+    auto plan = planner.plan();
+    {
+        std::vector<float> array(1024);
+
+        ark::Executor exe;
+        UNITTEST_EQ(exe.tensor_address(tensor), nullptr);
+        UNITTEST_THROW(
+            exe.tensor_read(tensor, array.data(), array.size() * sizeof(float)),
+            ark::InvalidUsageError);
+        UNITTEST_THROW(exe.tensor_write(tensor, array.data(),
+                                        array.size() * sizeof(float)),
+                       ark::InvalidUsageError);
+        UNITTEST_THROW(exe.launch(), ark::InvalidUsageError);
+
+        exe.compile(plan, 0);
+        UNITTEST_NE(exe.tensor_address(tensor), nullptr);
+
+        exe.launch();
+        exe.run(1);
+        exe.wait();
     }
 
     UNITTEST_EQ(ark::gpuStreamDestroy(stream), ark::gpuSuccess);

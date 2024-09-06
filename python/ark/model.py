@@ -2,6 +2,7 @@
 # Licensed under the MIT license.
 
 from typing import NewType
+from . import log
 from .core import CoreModel
 
 
@@ -39,7 +40,7 @@ class Model(CoreModel):
         """
         Get the device id.
         """
-        return _ModelState.device_id
+        return ModelState.device_id
 
     @staticmethod
     def set_rank(rank: int):
@@ -61,8 +62,8 @@ class Model(CoreModel):
         Set the device id.
         """
         if device_id < 0:
-            raise ValueError("device_id must be non-negative")
-        _ModelState.device_id = device_id
+            raise log.InvalidUsageError("device_id must be non-negative")
+        ModelState.device_id = device_id
 
     @staticmethod
     def reset():

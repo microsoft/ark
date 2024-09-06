@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import logging
 import numpy as np
 from typing import Any, Dict
 from .tensor import Parameter

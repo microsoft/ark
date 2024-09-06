@@ -7,10 +7,11 @@ import numpy as np
 
 @pytest_ark()
 def test_runtime_empty():
-    with ark.Runtime.get_runtime() as rt:
+    with ark.Runtime() as rt:
         rt.launch()
         rt.run()
         rt.stop()
+
 
 @pytest_ark()
 def test_runtime_init():
@@ -42,7 +43,6 @@ def test_runtime_init():
     np.testing.assert_allclose(
         final_output_host, output_tensor_host + new_tensor_host
     )
-    runtime.reset()
 
 
 @pytest_ark()
@@ -70,4 +70,3 @@ def test_runtime_reuse_plans():
     np.testing.assert_allclose(
         output_tensor_host, input_tensor_host + other_tensor_host
     )
-    runtime.reset()

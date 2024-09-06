@@ -54,14 +54,14 @@ def eval(tensor: ark.Tensor):
         return tensor.to_torch()
 
 
-def perf():
+def perf(num_iter: int = 1000):
     with ark.Runtime() as rt:
         rt.launch()
 
         start = time.time()
-        rt.run(iter=1000)
+        rt.run(iter=num_iter)
         end = time.time()
-        return (end - start) / 1000
+        return (end - start) / num_iter
 
 
 if __name__ == "__main__":
