@@ -200,7 +200,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           typename DataTypeB, int LeadingDimB, bool IsColumnB,
           typename DataTypeC, int LeadingDimC, int ProblemSizeM,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
-          int TileSizeK, typename UnitOp>
+          typename UnitOp>
 DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                       int smem_per_warp) {
 #if (ARK_TARGET_CUDA_ARCH == 60)
@@ -223,6 +223,7 @@ DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         cutlass::layout::RowMajor>::type;
     using LayoutC = cutlass::layout::RowMajor;
 
+    static constexpr int TileSizeK = std::is_same_v<DataTypeC, float> ? 32 : 64;
     using GemmKernel = typename ark::GemmConfiguration<
         UnitOp, cutlass::arch::OpClassTensorOp, ArchTag, DataTypeA, LayoutA,
         DataTypeB, LayoutB, DataTypeC, LayoutC,
@@ -404,7 +405,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           typename DataTypeB, int LeadingDimB, bool IsColumnB,
           typename DataTypeC, int LeadingDimC, int ProblemSizeM,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
-          int TileSizeK, typename UnitOp>
+          typename UnitOp>
 DEVICE void gemm_cutlass(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                          int smem_per_warp) {
     using CutDataTypeA = typename cutlass::platform::conditional<
@@ -433,13 +434,13 @@ DEVICE void gemm_cutlass(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
      ARK_TARGET_CUDA_ARCH == 80)
     gemm_cuda<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB, LeadingDimB,
               IsColumnB, CutDataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-              ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
-        pC, pA, pB, uop_idx, smem_per_warp);
+              ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(pC, pA, pB, uop_idx,
+                                                          smem_per_warp);
 #elif (ARK_TARGET_CUDA_ARCH == 90)
     gemm_cuda_90<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
                  LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
                  ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM, TileSizeN,
-                 TileSizeK, UnitOp>(pC, pA, pB, uop_idx, smem_per_warp);
+                 UnitOp>(pC, pA, pB, uop_idx, smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif

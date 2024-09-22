@@ -59,8 +59,7 @@ def run_ark(
     output = module(*module_inputs)
 
     runtime = ark.Runtime()
-    # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
-    runtime.launch(num_warps_per_sm=8)
+    runtime.launch()
 
     # Load model parameters
     if state_dict:
@@ -70,7 +69,8 @@ def run_ark(
     tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
     tensor_data = [i for i in inputs if isinstance(i, np.ndarray)]
     for tensor, ndarray in zip(tensors, tensor_data):
-        tensor.from_numpy(ndarray)
+        if tensor.data_ptr() != 0:
+            tensor.from_numpy(ndarray)
 
     start_time = time.time()
 
@@ -447,7 +447,6 @@ def test_transformer_block(
     )
     output = module(feature_tensor, 0, freqs_cis_ark_tensor, None)
 
-    ark.Model.get_model().create_nodes()
     print(ark.Model.get_model().serialize())
 
     # test_module(
@@ -536,8 +535,8 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
-    test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
+    # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
+    test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
 def worker(
@@ -561,16 +560,17 @@ def worker(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ckpt_dir", type=str, required=True)
-    parser.add_argument("--ngpus", type=int, default=1)
+    parser.add_argument("--ngpus", type=int, default=1, help="Number of GPUs")
+    parser.add_argument("--ckpt_dir", type=str)
 
     ckpt_dir = parser.parse_args().ckpt_dir
     ngpus = parser.parse_args().ngpus
 
     # Configurations
     args = ModelArgs7B()
+    args.n_layers = 1
     batch_size = 1
-    seq_len = 512
+    seq_len = 2048
     dtype = np.float16
     world_size = ngpus
 
@@ -578,7 +578,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 512
+    args.max_seq_len = 2048
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size

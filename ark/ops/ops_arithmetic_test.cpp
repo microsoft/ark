@@ -216,6 +216,21 @@ ark::unittest::State test_add_broadcast() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_add_offset() {
+    {
+        ark::Model m;
+        ark::Tensor t0 = m.tensor({2, 64}, ark::FP16, {4, 128}, {2, 64});
+        ark::Tensor t1 = m.tensor({2, 64}, ark::FP16);
+        ark::Tensor out = m.add(t0, t1);
+
+        auto result = ark::op_test("add_offset", m, {t0, t1}, {out},
+                                   baseline_add<ark::half_t>);
+        UNITTEST_LOG(result);
+        UNITTEST_EQ(result.max_diff[0], 0.0f);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_add_invalid() {
     {
         ark::Model m;
@@ -421,6 +436,7 @@ int main() {
     UNITTEST(test_add_bf16);
     UNITTEST(test_add_overwrite);
     UNITTEST(test_add_broadcast);
+    UNITTEST(test_add_offset);
     UNITTEST(test_add_invalid);
     UNITTEST(test_sub_fp32);
     UNITTEST(test_sub_invalid);

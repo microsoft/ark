@@ -9,6 +9,7 @@
 #include "ark/model.hpp"
 #include "ark/planner.hpp"
 #include "ark/random.hpp"
+#include "cpu_timer.h"
 #include "env.h"
 #include "gpu/gpu_logging.hpp"
 #include "logging.hpp"
@@ -194,17 +195,21 @@ OpsTestResult op_test(
         // use a magic number here.
         int iter = 1000;
         exe.launch();
+        double start = cpu_timer();
         exe.run(iter);
-        float msec = exe.stop();
+        exe.stop();
+        double msec = (cpu_timer() - start) * 1000;
         result.iter = iter;
         result.msec_per_iter = msec / iter;
     } else {
         // Rough measure.
         int warmup_iter = 3;
-        float target_msec = 5000;
+        double target_msec = 5000;
         exe.launch();
+        double start = cpu_timer();
         exe.run(warmup_iter);
-        float warmup_msec = exe.stop();
+        exe.stop();
+        double warmup_msec = (cpu_timer() - start) * 1000;
 
         if (warmup_msec > target_msec) {
             // Warm-up was long enough.
@@ -213,8 +218,10 @@ OpsTestResult op_test(
         } else {
             int iter = int(target_msec / warmup_msec) * warmup_iter;
             exe.launch();
+            start = cpu_timer();
             exe.run(iter);
-            float msec = exe.stop();
+            exe.stop();
+            double msec = (cpu_timer() - start) * 1000;
             result.iter = iter;
             result.msec_per_iter = msec / iter;
         }

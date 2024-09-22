@@ -9,7 +9,7 @@ import ark
 import math
 from dataclasses import dataclass
 from typing import Optional
-import os
+from ark import PlannerContext as Context
 
 
 @dataclass
@@ -90,13 +90,42 @@ class RMSNorm(ark.Module):
         self.weight = ark.parameter([1, 1, dim], ark.fp32)
 
     def forward(self, x):
-        x = ark.cast(x, ark.fp32)
-        x2 = ark.mul(x, x)
-        mean = ark.reduce_mean(x2, axis=-1)
-        rrms = ark.rsqrt(mean)
-        x = ark.mul(x, rrms)
-        x = ark.mul(x, self.weight, x)
-        return ark.cast(x, self.dtype)
+        with Context(
+            warp_range=[0, 8],
+            sync=False,
+            config={
+                "NumWarps": 1,
+                "SramBytes": 0,
+                "Granularity": 7,
+            },
+        ):
+            with Context(config={"Tile": [1, 4096]}):
+                x = ark.cast(x, ark.fp32)
+                x2 = ark.mul(x, x)
+            with Context(config={"Tile": [1], "ImplType": "WarpWise"}):
+                mean = ark.reduce_mean(x2, axis=-1)
+        with Context(
+            config={
+                "NumWarps": 1,
+                "SramBytes": 0,
+                "Tile": [64, 1],
+            }
+        ):
+            mean = ark.add(mean, self.eps)
+            rrms = ark.rsqrt(mean)
+        with Context(
+            warp_range=[0, 8],
+            sync=False,
+            config={
+                "NumWarps": 1,
+                "SramBytes": 0,
+                "Tile": [1, 4096],
+                "Granularity": 7,
+            },
+        ):
+            x = ark.mul(x, rrms)
+            x = ark.mul(x, self.weight, x)
+            return ark.cast(x, self.dtype)
 
 
 class ColumnParallelLinear(ark.Module):
@@ -210,7 +239,7 @@ class RowParallelLinear(ark.Module):
         local_result = ark.matmul(
             input_parallel, self.weight, transpose_other=True
         )
-        reduced_result = ark.local_all_reduce(
+        reduced_result = ark.all_reduce(
             local_result, self.local_rank, self.world_size
         )
         return reduced_result
@@ -278,6 +307,22 @@ class Linear(ark.Module):
         return ark.matmul(x, self.weight, transpose_other=True)
 
 
+# def tester(ref_func):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             data = []
+#             kdata = {}
+#             for arg in args:
+#                 if isinstance(arg, ark.Tensor):
+#                     rand_data =
+#             ref_outputs = ref_func(*args, **kwargs)
+#             outputs = func(*args, **kwargs)
+#             return outputs
+
+#         return wrapper
+#     return decorator
+
+
 class Silu(ark.Module):
     """
     Silu activation function, silu(x) = x * sigmoid(x)
@@ -324,11 +369,30 @@ class FeedForward(ark.Module):
         )
 
     def forward(self, x):
-        # self.w2(F.silu(self.w1(x)) * self.w3(x))
-        x1 = self.w1(x)
-        x1 = Silu()(x1)
-        x2 = self.w3(x)
-        x3 = ark.mul(x1, x2)
+        with Context(
+            warp_range=[0, 8],
+            sram_range=[0, 49344],
+            sync=False,
+            config={
+                "NumWarps": 4,
+            },
+        ):
+            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
+                x1 = self.w1(x)
+            with Context(config={"SramBytes": 0, "Tile": [256, 128]}):
+                x1 = Silu()(x1)
+        with Context(
+            warp_range=[0, 8],
+            sram_range=[0, 49344],
+            sync=False,
+            config={
+                "NumWarps": 4,
+            },
+        ):
+            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
+                x2 = self.w3(x)
+            with Context(config={"SramBytes": 0, "Tile": [256, 128]}):
+                x3 = ark.mul(x1, x2)
         x4 = self.w2(x3)
         return x4
 
@@ -340,6 +404,32 @@ def apply_rotary_emb(xq, xk, freqs_cis):
     xq_out = ark.rope(xq, freqs_cis)
     xk_out = ark.rope(xk, freqs_cis)
     return xq_out, xk_out
+
+
+class Softmax(ark.Module):
+    def __init__(self):
+        super(Softmax, self).__init__()
+
+    def forward(self, input):
+        with Context(
+            warp_range=[0, 8],
+            sram_range=[0, 0],
+            sync=False,
+            config={
+                "NumWarps": 1,
+                "SramBytes": 0,
+            },
+        ):
+            with Context(config={"ImplType": "WarpWise"}):
+                max = ark.reduce_max(input, axis=-1)
+            with Context(config={"Tile": [1, 2048]}):
+                output = ark.sub(input, max)
+                output = ark.exp(output)
+            with Context(config={"ImplType": "WarpWise"}):
+                sum = ark.reduce_sum(output, axis=-1)
+            with Context(config={"Tile": [1, 2048]}):
+                output = ark.div(output, sum)
+            return output
 
 
 class Attention(ark.Module):
@@ -401,33 +491,160 @@ class Attention(ark.Module):
         mask: Optional[ark.Tensor],
     ):
         bsz, seqlen, _ = x.shape()
-        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
-        # xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        # xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        # xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        xq = ark.reshape(xq, [bsz, seqlen, self.n_local_heads, self.head_dim])
-        xk = ark.reshape(
-            xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-        )
-        xv = ark.reshape(
-            xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-        )
-        if freqs_cis is not None:
-            xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+
+        with Context(
+            warp_range=[0, 4],
+            sram_range=[0, 24672],
+            sync=False,
+            config={"NumWarps": 4},
+        ):
+            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
+                xq = self.wq(x)
+            xq = ark.reshape(
+                xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
+            )
+            with Context(config={"SramBytes": 0, "Tile": [256, 1, 128]}):
+                if freqs_cis is not None:
+                    xq = ark.rope(xq, freqs_cis)
+
+        with Context(
+            warp_range=[0, 4],
+            sram_range=[0, 24672],
+            sync=False,
+            config={"NumWarps": 4},
+        ):
+            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
+                xk = self.wk(x)
+            xk = ark.reshape(
+                xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+            )
+            with Context(config={"SramBytes": 0, "Tile": [256, 1, 128]}):
+                if freqs_cis is not None:
+                    xk = ark.rope(xk, freqs_cis)
+
+        with Context(
+            warp_range=[0, 4],
+            sram_range=[0, 24672],
+            sync=False,
+            config={"NumWarps": 4},
+        ):
+            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
+                xv = self.wv(x)
+            xv = ark.reshape(
+                xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+            )
+        #     values = xv
+        #     with Context(
+        #         config={"SramBytes": 0, "Tile": [256, 1, 128]}
+        #     ):
+        #         values = ark.transpose(values, [0, 2, 1, 3])
+
+        # with Context(
+        #     warp_range=[0, 8],
+        #     sram_range=[0, 49344],
+        #     sync=False,
+        #     config={
+        #         "NumWarps": 4,
+        #         "NumTasks": 4096,
+        #         "Granularity": 2,
+        #     },
+        # ):
+        #     with Context(
+        #         config={"SramBytes": 24672, "Tile": [256, 128]}
+        #     ):
+        #         scores = ark.matmul(xq, keys, transpose_other=True)
+        #     with Context(config={"SramBytes": 0, "Tile": [256, 128]}):
+        #         scores = ark.mul(scores, 1.0 / math.sqrt(self.head_dim))
+
+        # if mask is not None:
+        #     scores = ark.add(scores, mask)
+
+        # scores = Softmax()(scores)
+
+        # with Context(
+        #     warp_range=[0, 4],
+        #     sram_range=[0, 24672],
+        #     sync=False,
+        #     config={
+        #         "NumWarps": 4,
+        #         "NumTasks": 256,
+        #     },
+        # ):
+        #     with Context(
+        #         config={"SramBytes": 24672, "Tile": [256, 128]}
+        #     ):
+        #         output = ark.matmul(scores, values)
+        #     with Context(
+        #         config={"SramBytes": 0, "Tile": [256, 1, 128]}
+        #     ):
+        #         output = ark.transpose(output, [0, 2, 1, 3])
+        # output = ark.reshape(
+        #     output, [bsz, seqlen, self.head_dim * self.n_local_heads]
+        # )
+        # return self.wo(output)
+
+        # with Context(
+        #     warp_range=[0, 4],
+        #     sram_range=[0, 24672],
+        #     sync=False,
+        #     config={
+        #         "NumWarps": 4,
+        #     },
+        # ):
+        #     with Context(
+        #         config={"SramBytes": 24672, "Tile": [256, 128]}
+        #     ):
+        #         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
+        #     # xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
+        #     # xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        #     # xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        #     xq = ark.reshape(xq, [bsz, seqlen, self.n_local_heads, self.head_dim])
+        #     xk = ark.reshape(
+        #         xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+        #     )
+        #     xv = ark.reshape(
+        #         xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+        #     )
+        # if freqs_cis is not None:
+        #     xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
         # TODO: enable kv cache later
         keys = xk
         values = xv
         # (bs, n_local_heads, seqlen, head_dim)
-        xq = ark.transpose(xq, [0, 2, 1, 3])
+        # xq = ark.transpose(xq, [0, 2, 1, 3])
         values = ark.transpose(values, [0, 2, 1, 3])
 
-        # (bs, n_local_heads, head_dim, seqlen)
-        keys = ark.transpose(keys, [0, 2, 3, 1])
-        scores = ark.matmul(xq, keys)
-        scores = ark.mul(scores, 1.0 / math.sqrt(self.head_dim))
+        # (bs, n_local_heads, seqlen, head_dim)
+        # keys = ark.transpose(keys, [0, 2, 1, 3])
+        # scores = ark.matmul(xq, keys)
 
-        if mask is not None:
-            scores = ark.add(scores, mask)
+        xq_shards = ark.sharding(xq, 2, 1)
+        keys_shards = ark.sharding(keys, 2, 1)
+        scores = ark.tensor([bsz, self.n_local_heads, seqlen, seqlen], dtype=self.dtype)
+        scores_shards = ark.sharding(scores, 1, 1)
+        results = []
+        with Context(
+            warp_range=[0, 8],
+            sram_range=[0, 49344],
+            sync=False,
+            config={
+                "NumWarps": 4,
+                "Granularity": 2,
+                "SramBytes": 24672,
+                "Tile": [256, 128],
+            },
+        ):
+            for i in range(self.n_local_heads):
+                xq_shard_reshaped = ark.reshape(xq_shards[i], [bsz, 1, seqlen, self.head_dim])
+                keys_shard_reshaped = ark.reshape(keys_shards[i], [bsz, 1, seqlen, self.head_dim])
+                scores_shard_reshaped = ark.reshape(scores_shards[i], [bsz, 1, seqlen, seqlen])
+                res = ark.matmul(xq_shard_reshaped, keys_shard_reshaped, scores_shard_reshaped, transpose_other=True)
+                res = ark.mul(res, 1.0 / math.sqrt(self.head_dim), res)
+                if mask is not None:
+                    res = ark.add(res, mask, res)
+                results.append(res)
+            scores = ark.identity(scores, deps=results)
+
         # if self.dtype == ark.fp16:
         #     scores = ark.cast(scores, ark.fp32)
         scores = ark.softmax(scores, output=scores)
@@ -480,8 +697,25 @@ class TransformerBlock(ark.Module):
     ):
         attention_norm_x = self.attention_norm(x)
         h = self.attention.forward(attention_norm_x, start_pos, freqs_cis, mask)
-        h = ark.add(x, h)
-        out = ark.add(h, self.feed_forward(self.ffn_norm(h)))
+        with Context(
+            warp_range=[0, 4],
+            config={
+                "NumWarps": 4,
+                "Tile": [256, 128],
+                "SramBytes": 0,
+            },
+        ):
+            h = ark.add(x, h)
+        ff = self.feed_forward(self.ffn_norm(h))
+        with Context(
+            warp_range=[0, 4],
+            config={
+                "NumWarps": 4,
+                "Tile": [256, 128],
+                "SramBytes": 0,
+            },
+        ):
+            out = ark.add(h, ff)
         return out
 
 

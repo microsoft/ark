@@ -21,7 +21,7 @@ namespace ark {
 /// @tparam OutDims (ark::Vec) Output tensor leading dimensions.
 /// @tparam NCA (ark::Vec) A 2D vector with N and C dimensions of matrix A.
 /// @tparam NCB (ark::Vec) A 2D vector with N and C dimensions of matrix B.
-/// @tparam TileShape (ark::Vec) The tile shape of matmul computation (m, n, k).
+/// @tparam TileShape (ark::Vec) The output tile shape.
 /// @tparam ProblemSize (ark::Vec) The problem size of matmul computation
 /// (m, n, k).
 /// @tparam LeadingDims (ark::Vec) The leading dimensions of matrix inputs
@@ -44,7 +44,8 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                   "NCA should be two dimensional.");
     static_assert(NCB::D2 == 1 && NCB::D3 == 1,
                   "NCB should be two dimensional.");
-    static_assert(TileShape::D3 == 1, "TileShape should be three dimensional.");
+    static_assert(TileShape::D2 == 1 && TileShape::D3 == 1,
+                  "TileShape should be two dimensional.");
     static_assert(ProblemSize::D3 == 1,
                   "ProblemSize should be three dimensional.");
 
@@ -65,7 +66,6 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     constexpr int ProblemSizeK = ProblemSize::D2;
     constexpr int TileSizeM = TileShape::D0;
     constexpr int TileSizeN = TileShape::D1;
-    constexpr int TileSizeK = TileShape::D2;
 
     constexpr DimType SizeA = math::mul<OutDims::H, InnerLdimA>::value;
     constexpr DimType SizeB = math::mul<OutDims::W, InnerLdimB>::value;
@@ -103,13 +103,13 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
 #if defined(ARK_TARGET_CUDA_ARCH)
     gemm_cutlass<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
                  IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-                 ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
+                 ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(
         pC, pA, pB, uop_idx, smem_per_warp);
 #elif defined(ARK_TARGET_ROCM_ARCH)
     gemm_ck<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
             IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-            ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>(
-        pC, pA, pB, uop_idx, smem_per_warp);
+            ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(pC, pA, pB, uop_idx,
+                                                        smem_per_warp);
 #endif
     UnitOp::sync_threads();
 }

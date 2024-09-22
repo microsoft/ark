@@ -484,7 +484,9 @@ def parameter(
 ) -> Parameter:
     """ """
     return Parameter(
-        _cpp_tensor(shape, dtype, strides, offsets, padded_shape, None, name)
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, -1, None, name
+        )
     )
 
 

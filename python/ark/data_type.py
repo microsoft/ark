@@ -61,9 +61,10 @@ class DataType(metaclass=MetaDataType):
             InvalidUsageError: If there is no defined conversion from numpy data type to ark data type.
         """
         if not isinstance(np_type, numpy.dtype):
-            raise log.InvalidUsageError(
-                f"Expected a numpy data type, but got {type(np_type)}"
-            )
+            try:
+                np_type = numpy.dtype(np_type)
+            except Exception as e:
+                raise log.InvalidUsageError(f"Not a numpy data type. {str(e)}")
         for type_name, reg in REGISTRY_DATA_TYPE.items():
             if reg["np"] == np_type:
                 return DataType.from_name(type_name)

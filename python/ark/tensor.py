@@ -272,7 +272,7 @@ class Parameter(Tensor):
     def __init__(
         self,
         tensor: CoreTensor,
-        from_torch: bool,
+        from_torch: bool = False,
     ):
         """
         Initializes a new instance of the Parameter class.

@@ -11,6 +11,7 @@
 #include "model/model_json.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
+#include "model/model_tensor.hpp"
 #include "range.hpp"
 
 namespace ark {
@@ -166,11 +167,40 @@ std::string Planner::Impl::plan(bool pretty) const {
             config = op->default_config(gpu_info.arch);
         }
         check_config_field(op, config, "NumWarps");
-        check_config_field(op, config, "NumTasks");
         check_config_field(op, config, "SramBytes");
         size_t num_warps = config["NumWarps"];
-        size_t num_tasks = config["NumTasks"];
         size_t sram_bytes = config["SramBytes"];
+        size_t num_tasks;
+
+        if (!config.contains("NumTasks")) {
+            std::stringstream ss;
+            ss << "Result shape is not divided by tile. Op: "
+               << op->serialize().dump();
+            auto not_divided_error = ss.str();
+
+            auto &result_tensors = op->result_tensors();
+            if (result_tensors.empty() || !config.contains("Tile")) {
+                num_tasks = 0;
+            } else {
+                const std::vector<DimType> tile_vec = config["Tile"];
+                auto tile = Dims(tile_vec);
+                auto &result_shape = result_tensors[0]->padded_shape();
+                if (result_shape.ndims() < tile.ndims()) {
+                    ERR(PlanError, not_divided_error);
+                }
+                auto tile4 = tile.dims4();
+                auto result_shape4 = result_shape.dims4();
+                num_tasks = 1;
+                for (int i = 0; i < tile4.ndims(); i++) {
+                    if (result_shape4[i] % tile4[i] != 0) {
+                        ERR(PlanError, not_divided_error);
+                    }
+                    num_tasks *= result_shape4[i] / tile4[i];
+                }
+            }
+        } else {
+            num_tasks = config["NumTasks"];
+        }
 
         size_t granularity = config.value("Granularity", 1);
         auto ctx_id = get_context(node, "Id");

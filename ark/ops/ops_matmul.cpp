@@ -98,7 +98,7 @@ ModelOpMatmul::ModelOpMatmul(ModelTensorRef input, ModelTensorRef other,
 }
 
 std::string ModelOpMatmul::impl_name(const Json &config) const {
-    check_fields_config(config, {"NumWarps", "SramBytes", "TileShapeMNK"});
+    check_fields_config(config, {"NumWarps", "SramBytes", "Tile"});
     check_fields_args(args_, {"TransposeInput", "TransposeOther"});
 
     bool trans_input = args_.at("TransposeInput").value<bool>();
@@ -132,14 +132,14 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
 
     int num_warps = config["NumWarps"];
     int smem_bytes = config["SramBytes"];
-    Dims tile_shape_mnk = config["TileShapeMNK"].get<std::vector<DimType>>();
-    if (tile_shape_mnk.ndims() != 3) {
-        ERR(PlanError, "TileShapeMNK should have 3 elements");
+    Dims tile_shape = config["Tile"].get<std::vector<DimType>>();
+    if (tile_shape.ndims() != 2) {
+        ERR(PlanError, "Tile should have 2 elements");
     }
-    for (int i = 0; i < 3; ++i) {
-        if (padded_problem_size[i] % tile_shape_mnk[i] != 0) {
-            ERR(PlanError, "output padded shape MNK ", padded_problem_size,
-                " should be divisible by tile shape MNK ", tile_shape_mnk);
+    for (int i = 0; i < 2; ++i) {
+        if (padded_output_shape[i - 2] % tile_shape[i] != 0) {
+            ERR(PlanError, "output padded shape ", padded_output_shape,
+                " should be divisible by tile shape ", tile_shape);
         }
     }
 
@@ -161,7 +161,7 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
                                     vec_string(output->strides().dims4()),
                                     vec_string(input_dim_nc),
                                     vec_string(other_dim_nc),
-                                    vec_string(tile_shape_mnk),
+                                    vec_string(tile_shape),
                                     vec_string(padded_problem_size),
                                     vec_string(strides_acdb),
                                     std::to_string(inner_stride_a),
@@ -191,29 +191,17 @@ static const Json get_default_config(const ArchRef arch,
     DimType tm = (mnk[0] > mnk[1]) ? 256 : 128;
     DimType tn = (mnk[0] > mnk[1]) ? 128 : 256;
     if (arch->belongs_to(ARCH_CUDA_80) && data_type == FP32.ref()) {
-        return {{"NumWarps", 8},
-                {"SramBytes", 147456},
-                {"TileShapeMNK", {tm, tn, 32}}};
+        return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == FP16.ref()) {
-        return {{"NumWarps", 8},
-                {"SramBytes", 147456},
-                {"TileShapeMNK", {tm, tn, 64}}};
+        return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == BF16.ref()) {
-        return {{"NumWarps", 8},
-                {"SramBytes", 147456},
-                {"TileShapeMNK", {tm, tn, 64}}};
+        return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP32.ref()) {
-        return {{"NumWarps", 4},
-                {"SramBytes", 24672},
-                {"TileShapeMNK", {tm, tn, 16}}};
+        return {{"NumWarps", 4}, {"SramBytes", 24672}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP16.ref()) {
-        return {{"NumWarps", 4},
-                {"SramBytes", 24672},
-                {"TileShapeMNK", {tm, tn, 32}}};
+        return {{"NumWarps", 4}, {"SramBytes", 24672}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == BF16.ref()) {
-        return {{"NumWarps", 4},
-                {"SramBytes", 24624},
-                {"TileShapeMNK", {tm, tn, 32}}};
+        return {{"NumWarps", 4}, {"SramBytes", 24624}, {"Tile", {tm, tn}}};
     }
     ERR(InternalError, "Unexpected error");
     return {};
@@ -227,18 +215,12 @@ Json ModelOpMatmul::default_config(const ArchRef arch) const {
                                  args_.at("TransposeInput").value<bool>(),
                                  args_.at("TransposeOther").value<bool>());
     Json config = get_default_config(arch, result->data_type(), mnk);
-    size_t tile_x = config.at("TileShapeMNK")[0];
-    size_t tile_y = config.at("TileShapeMNK")[1];
+    size_t tile_x = config.at("Tile")[0];
+    size_t tile_y = config.at("Tile")[1];
     if (mnk[0] % tile_x != 0 || mnk[1] % tile_y != 0) {
-        ERR(PlanError, "output padded shape MNK ", mnk,
-            " should be divisible by tile shape MNK ",
-            config.at("TileShapeMNK"));
+        ERR(PlanError, "output padded shape ", Dims{mnk[0], mnk[1]},
+            " should be divisible by tile shape ", config.at("Tile"));
     }
-    Dims result_shape = result->shape().dims4();
-    size_t num_tasks = result_shape[0] * result_shape[1];
-    num_tasks *= mnk[0] / tile_x;
-    num_tasks *= mnk[1] / tile_y;
-    config["NumTasks"] = num_tasks;
     return config;
 }
 
