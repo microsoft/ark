@@ -406,32 +406,6 @@ def apply_rotary_emb(xq, xk, freqs_cis):
     return xq_out, xk_out
 
 
-class Softmax(ark.Module):
-    def __init__(self):
-        super(Softmax, self).__init__()
-
-    def forward(self, input):
-        with Context(
-            warp_range=[0, 8],
-            sram_range=[0, 0],
-            sync=False,
-            config={
-                "NumWarps": 1,
-                "SramBytes": 0,
-            },
-        ):
-            with Context(config={"ImplType": "WarpWise"}):
-                max = ark.reduce_max(input, axis=-1)
-            with Context(config={"Tile": [1, 2048]}):
-                output = ark.sub(input, max)
-                output = ark.exp(output)
-            with Context(config={"ImplType": "WarpWise"}):
-                sum = ark.reduce_sum(output, axis=-1)
-            with Context(config={"Tile": [1, 2048]}):
-                output = ark.div(output, sum)
-            return output
-
-
 class Attention(ark.Module):
     def __init__(
         self,
@@ -645,11 +619,28 @@ class Attention(ark.Module):
                 results.append(res)
             scores = ark.identity(scores, deps=results)
 
-        # if self.dtype == ark.fp16:
-        #     scores = ark.cast(scores, ark.fp32)
-        scores = ark.softmax(scores, output=scores)
-        # if self.dtype == ark.fp16:
-        #     scores = ark.cast(scores, ark.fp16)
+        def softmax(scores):
+            with Context(
+                warp_range=[0, 8],
+                sram_range=[0, 0],
+                sync=False,
+                config={
+                    "NumWarps": 1,
+                    "SramBytes": 0,
+                },
+            ):
+                with Context(config={"ImplType": "WarpWise", "Tile": [1]}):
+                    max = ark.reduce_max(scores, axis=-1)
+                with Context(config={"Tile": [1, 2048]}):
+                    output = ark.sub(scores, max)
+                    output = ark.exp(output)
+                with Context(config={"ImplType": "WarpWise", "Tile": [1]}):
+                    sum = ark.reduce_sum(output, axis=-1)
+                with Context(config={"Tile": [1, 2048]}):
+                    output = ark.div(output, sum)
+            return output
+
+        scores = softmax(scores)
 
         output = ark.matmul(
             scores, values

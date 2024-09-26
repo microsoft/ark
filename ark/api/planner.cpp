@@ -170,36 +170,56 @@ std::string Planner::Impl::plan(bool pretty) const {
         check_config_field(op, config, "SramBytes");
         size_t num_warps = config["NumWarps"];
         size_t sram_bytes = config["SramBytes"];
+        size_t max_num_tasks = 0;
         size_t num_tasks;
 
-        if (!config.contains("NumTasks")) {
+        auto &result_tensors = op->result_tensors();
+        if (!result_tensors.empty() && config.contains("Tile")) {
             std::stringstream ss;
             ss << "Result shape is not divided by tile. Op: "
                << op->serialize().dump();
             auto not_divided_error = ss.str();
 
-            auto &result_tensors = op->result_tensors();
-            if (result_tensors.empty() || !config.contains("Tile")) {
-                num_tasks = 0;
-            } else {
-                const std::vector<DimType> tile_vec = config["Tile"];
-                auto tile = Dims(tile_vec);
-                auto &result_shape = result_tensors[0]->padded_shape();
-                if (result_shape.ndims() < tile.ndims()) {
+            const std::vector<DimType> tile_vec = config["Tile"];
+            auto tile = Dims(tile_vec);
+            auto &result_shape = result_tensors[0]->padded_shape();
+            if (result_shape.ndims() < tile.ndims()) {
+                ERR(PlanError, not_divided_error);
+            }
+            auto tile4 = tile.dims4();
+            auto result_shape4 = result_shape.dims4();
+            max_num_tasks = 1;
+            for (int i = 0; i < tile4.ndims(); i++) {
+                if (tile4[i] == 0 || result_shape4[i] % tile4[i] != 0) {
                     ERR(PlanError, not_divided_error);
                 }
-                auto tile4 = tile.dims4();
-                auto result_shape4 = result_shape.dims4();
-                num_tasks = 1;
-                for (int i = 0; i < tile4.ndims(); i++) {
-                    if (result_shape4[i] % tile4[i] != 0) {
-                        ERR(PlanError, not_divided_error);
-                    }
-                    num_tasks *= result_shape4[i] / tile4[i];
-                }
+                max_num_tasks *= result_shape4[i] / tile4[i];
+            }
+            if (max_num_tasks == 0) ERR(InternalError, "max_num_tasks == 0");
+        }
+        if (config.contains("NumTasks")) {
+            num_tasks = config["NumTasks"];
+            if (max_num_tasks > 0 && num_tasks > max_num_tasks) {
+                ERR(PlanError, "NumTasks (", num_tasks,
+                    ") exceeds the maximum number of tasks calculated from the "
+                    "tile (",
+                    max_num_tasks, "). Op: ", op->serialize().dump());
+            } else if (num_tasks < max_num_tasks) {
+                LOG(WARN, "NumTasks (", num_tasks,
+                    ") is less than the maximum number of tasks calculated "
+                    "from the tile (",
+                    max_num_tasks, "). Op: ", op->serialize().dump());
             }
         } else {
-            num_tasks = config["NumTasks"];
+            num_tasks = max_num_tasks;
+        }
+        if (num_tasks == 0 && op->type() != ModelOpT::from_name("Noop")) {
+            LOG(WARN,
+                "Detected a non-virtual op that does not perform any "
+                "computation. If this is unexpected, please check if "
+                "the config includes either `NumTasks` or `Tile` "
+                "field. Op: ",
+                op->serialize().dump());
         }
 
         size_t granularity = config.value("Granularity", 1);
