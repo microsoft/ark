@@ -507,95 +507,15 @@ class Attention(ark.Module):
             xv = ark.reshape(
                 xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
             )
-        #     values = xv
-        #     with Context(
-        #         config={"SramBytes": 0, "Tile": [256, 1, 128]}
-        #     ):
-        #         values = ark.transpose(values, [0, 2, 1, 3])
 
-        # with Context(
-        #     warp_range=[0, 8],
-        #     sram_range=[0, 49344],
-        #     sync=False,
-        #     config={
-        #         "NumWarps": 4,
-        #         "NumTasks": 4096,
-        #         "Granularity": 2,
-        #     },
-        # ):
-        #     with Context(
-        #         config={"SramBytes": 24672, "Tile": [256, 128]}
-        #     ):
-        #         scores = ark.matmul(xq, keys, transpose_other=True)
-        #     with Context(config={"SramBytes": 0, "Tile": [256, 128]}):
-        #         scores = ark.mul(scores, 1.0 / math.sqrt(self.head_dim))
-
-        # if mask is not None:
-        #     scores = ark.add(scores, mask)
-
-        # scores = Softmax()(scores)
-
-        # with Context(
-        #     warp_range=[0, 4],
-        #     sram_range=[0, 24672],
-        #     sync=False,
-        #     config={
-        #         "NumWarps": 4,
-        #         "NumTasks": 256,
-        #     },
-        # ):
-        #     with Context(
-        #         config={"SramBytes": 24672, "Tile": [256, 128]}
-        #     ):
-        #         output = ark.matmul(scores, values)
-        #     with Context(
-        #         config={"SramBytes": 0, "Tile": [256, 1, 128]}
-        #     ):
-        #         output = ark.transpose(output, [0, 2, 1, 3])
-        # output = ark.reshape(
-        #     output, [bsz, seqlen, self.head_dim * self.n_local_heads]
-        # )
-        # return self.wo(output)
-
-        # with Context(
-        #     warp_range=[0, 4],
-        #     sram_range=[0, 24672],
-        #     sync=False,
-        #     config={
-        #         "NumWarps": 4,
-        #     },
-        # ):
-        #     with Context(
-        #         config={"SramBytes": 24672, "Tile": [256, 128]}
-        #     ):
-        #         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
-        #     # xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        #     # xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        #     # xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        #     xq = ark.reshape(xq, [bsz, seqlen, self.n_local_heads, self.head_dim])
-        #     xk = ark.reshape(
-        #         xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-        #     )
-        #     xv = ark.reshape(
-        #         xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-        #     )
-        # if freqs_cis is not None:
-        #     xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
         # TODO: enable kv cache later
         keys = xk
         values = xv
-        # (bs, n_local_heads, seqlen, head_dim)
-        # xq = ark.transpose(xq, [0, 2, 1, 3])
-        values = ark.transpose(values, [0, 2, 1, 3])
 
-        # (bs, n_local_heads, seqlen, head_dim)
-        # keys = ark.transpose(keys, [0, 2, 1, 3])
-        # scores = ark.matmul(xq, keys)
-
-        xq_shards = ark.sharding(xq, 2, 1)
-        keys_shards = ark.sharding(keys, 2, 1)
+        xq_shards = ark.sharding(xq, axis=2, dim_per_shard=1)
+        keys_shards = ark.sharding(keys, axis=2, dim_per_shard=1)
         scores = ark.tensor([bsz, self.n_local_heads, seqlen, seqlen], dtype=self.dtype)
-        scores_shards = ark.sharding(scores, 1, 1)
+        scores_shards = ark.sharding(scores, axis=1, dim_per_shard=1)
         results = []
         with Context(
             warp_range=[0, 8],
@@ -608,7 +528,7 @@ class Attention(ark.Module):
                 "Tile": [256, 128],
             },
         ):
-            for i in range(self.n_local_heads):
+            for i in range(len(scores_shards)):
                 xq_shard_reshaped = ark.reshape(xq_shards[i], [bsz, 1, seqlen, self.head_dim])
                 keys_shard_reshaped = ark.reshape(keys_shards[i], [bsz, 1, seqlen, self.head_dim])
                 scores_shard_reshaped = ark.reshape(scores_shards[i], [bsz, 1, seqlen, seqlen])
@@ -642,10 +562,29 @@ class Attention(ark.Module):
 
         scores = softmax(scores)
 
-        output = ark.matmul(
-            scores, values
-        )  # (bs, n_local_heads, seqlen, head_dim)
-        output = ark.transpose(output, [0, 2, 1, 3])
+        scores_shards = ark.sharding(scores, axis=1, dim_per_shard=1)
+        values_shards = ark.sharding(values, axis=2, dim_per_shard=1)
+        output = ark.tensor([bsz, seqlen, self.n_local_heads, self.head_dim], dtype=self.dtype)
+        output_shards = ark.sharding(output, axis=2, dim_per_shard=1)
+
+        results = []
+        with Context(
+            warp_range=[0, 4],
+            sram_range=[0, 24672],
+            sync=False,
+            config={
+                "NumWarps": 4,
+                "SramBytes": 24672,
+                "Tile": [256, 128],
+            },
+        ):
+            for i in range(len(output_shards)):
+                values_shard_reshaped = ark.reshape(values_shards[i], [bsz, 1, seqlen, self.head_dim])
+                scores_shard_reshaped = ark.reshape(scores_shards[i], [bsz, 1, seqlen, seqlen])
+                output_shard_reshaped = ark.reshape(output_shards[i], [bsz, 1, seqlen, self.head_dim])
+                res = ark.matmul(scores_shard_reshaped, values_shard_reshaped, output_shard_reshaped)
+                results.append(res)
+            output = ark.identity(output, deps=results)
         output = ark.reshape(
             output, [bsz, seqlen, self.head_dim * self.n_local_heads]
         )
