@@ -106,20 +106,10 @@ class RMSNorm(ark.Module):
                 mean = ark.reduce_mean(x2, axis=-1)
                 mean = ark.add(mean, self.eps)
                 rrms = ark.rsqrt(mean)
-
-        with Context(
-            warp_range=[0, 8],
-            sync=False,
-            config={
-                "NumWarps": 1,
-                "SramBytes": 0,
-                "Tile": [1, 4096],
-                "Granularity": 7,
-            },
-        ):
-            x = ark.mul(x, rrms)
-            x = ark.mul(x, self.weight, x)
-            return ark.cast(x, self.dtype)
+            with Context(config={"Tile": [1, 4096]}):
+                x = ark.mul(x, rrms)
+                x = ark.mul(x, self.weight, x)
+                return ark.cast(x, self.dtype)
 
 
 class ColumnParallelLinear(ark.Module):
@@ -668,10 +658,11 @@ class Transformer(ark.Module):
         freqs_cis: ark.Tensor,
         mask: Optional[ark.Tensor],
     ):
-        h = self.tok_embeddings(tokens)
+        with Context(warp_range=[0, 8]):
+            h = self.tok_embeddings(tokens)
 
-        for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
-        h = self.norm(h)
-        output = self.output(h)
-        return output
+            for layer in self.layers:
+                h = layer(h, start_pos, freqs_cis, mask)
+            h = self.norm(h)
+            output = self.output(h)
+            return output

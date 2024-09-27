@@ -18,9 +18,9 @@ def test_planner_processor_range():
     plan = ark.Planner().plan()
 
     pg = plan.processor_groups
-    assert len(pg) == 2
-    assert pg[0]["ProcessorRange"] == [0, 8]
-    assert pg[1]["ProcessorRange"] == [8, 16]
+    assert len(pg) == 1
+    assert pg[0]["ResourceGroups"][0]["ProcessorRange"] == [0, 8]
+    assert pg[0]["ResourceGroups"][1]["ProcessorRange"] == [8, 16]
 
 
 @pytest_ark()

@@ -17,8 +17,11 @@
 namespace ark {
 
 PlannerContext::PlannerContext(Model &model) : Context(model) {
-    this->impl_->set("Id", this->id(), ContextType::Overwrite);
-    this->impl_->set("Sync", true, ContextType::Overwrite);
+    this->impl_->set("Id", id());
+    Json val;
+    val.push_back(id());
+    val.push_back(true);
+    this->impl_->set("Sync", val);
 }
 
 void PlannerContext::check_range(const std::string &key,
@@ -28,7 +31,7 @@ void PlannerContext::check_range(const std::string &key,
         // ok
         return;
     }
-    auto prev_vec = prev.get<std::vector<int>>();
+    auto prev_vec = prev[1].get<std::vector<int>>();
     if (prev_vec.size() < 2 || prev_vec.size() > 3) {
         ERR(InternalError, "unexpected");
     }
@@ -42,43 +45,56 @@ void PlannerContext::check_range(const std::string &key,
 
 void PlannerContext::processor_range(int start, int end, int step) {
     check_range("ProcessorRange", {start, end, step});
+    Json val;
+    val.push_back(id());
     if (step == 1) {
-        this->impl_->set("ProcessorRange", {start, end},
-                         ContextType::Overwrite);
+        val.push_back({start, end});
+        this->impl_->set("ProcessorRange", {id(), {start, end}});
     } else {
-        this->impl_->set("ProcessorRange", {start, end, step},
-                         ContextType::Overwrite);
+        val.push_back({start, end, step});
+        this->impl_->set("ProcessorRange", {id(), {start, end, step}});
     }
 }
 
 void PlannerContext::warp_range(int start, int end, int step) {
     check_range("WarpRange", {start, end, step});
+    Json val;
+    val.push_back(id());
     if (step == 1) {
-        this->impl_->set("WarpRange", {start, end}, ContextType::Overwrite);
+        val.push_back({start, end});
+        this->impl_->set("WarpRange", {id(), {start, end}});
     } else {
-        this->impl_->set("WarpRange", {start, end, step},
-                         ContextType::Overwrite);
+        val.push_back({start, end, step});
+        this->impl_->set("WarpRange", {id(), {start, end, step}});
     }
 }
 
 void PlannerContext::sram_range(int start, int end, int step) {
     check_range("SramRange", {start, end, step});
+    Json val;
+    val.push_back(id());
     if (step == 1) {
-        this->impl_->set("SramRange", {start, end}, ContextType::Overwrite);
+        val.push_back({start, end});
+        this->impl_->set("SramRange", {id(), {start, end}});
     } else {
-        this->impl_->set("SramRange", {start, end, step},
-                         ContextType::Overwrite);
+        val.push_back({start, end, step});
+        this->impl_->set("SramRange", {id(), {start, end, step}});
     }
 }
 
 void PlannerContext::sync(bool sync) {
     // Sync should be always pushed with Id together.
-    this->impl_->set("Id", this->id(), ContextType::Overwrite);
-    this->impl_->set("Sync", sync, ContextType::Overwrite);
+    Json val;
+    val.push_back(id());
+    val.push_back(sync);
+    this->impl_->set("Sync", val);
 }
 
 void PlannerContext::config(const std::string &config) {
-    this->impl_->set("Config", Json::parse(config), ContextType::Extend);
+    Json val;
+    val.push_back(id());
+    val.push_back(Json::parse(config));
+    this->impl_->set("Config", val);
 }
 
 class Planner::Impl {
@@ -128,6 +144,7 @@ std::string Planner::Impl::plan(bool pretty) const {
     size_t max_warp_id = 1;
     size_t next_task_id = 0;
     int merge_root = -1;
+    int processor_group_root = -1;
     bool first_op = true;
 
     auto get_context = [&](const ModelNodeRef &node,
@@ -150,12 +167,15 @@ std::string Planner::Impl::plan(bool pretty) const {
         const auto &op = node->op;
         if (op->is_virtual()) continue;
 
-        auto ctx_config = get_latest_context(node, "Config");
-
-        Json config;
-        if (!ctx_config.empty()) {
-            config = ctx_config;
-        } else if (!config_rules_.empty()) {
+        Json config = Json::object();
+        for (auto &obj : get_context(node, "Config")) {
+            LOG(INFO, obj.dump());
+            auto &items = obj[1];
+            for (auto &item : items.items()) {
+                config[item.key()] = item.value();
+            }
+        }
+        if (config.empty() && !config_rules_.empty()) {
             const std::string op_str = op->serialize().dump();
             for (auto &rule : config_rules_) {
                 auto config_str = rule(op_str, gpu_info.arch->name());
@@ -225,8 +245,8 @@ std::string Planner::Impl::plan(bool pretty) const {
         }
 
         size_t granularity = config.value("Granularity", 1);
-        auto ctx_id_list = get_context(node, "Id").get<std::vector<int>>();
-        auto ctx_sync_list = get_context(node, "Sync").get<std::vector<bool>>();
+        auto ctx_id_list = get_context(node, "Id");
+        auto ctx_sync_list = get_context(node, "Sync");
         if (merge_root != -1) {
             bool not_found = true;
             for (auto ctx_id : ctx_id_list) {
@@ -241,15 +261,11 @@ std::string Planner::Impl::plan(bool pretty) const {
         }
         bool merge_this_node = (merge_root != -1);
         if (merge_root == -1) {
-            size_t idx = 0;
-            for (; idx < ctx_sync_list.size(); idx++) {
-                if (!ctx_sync_list[idx]) {
-                    if (ctx_id_list.size() <= idx) {
-                        ERR(InternalError,
-                            "ctx_id_list should have the same size as "
-                            "ctx_sync_list");
-                    }
-                    merge_root = ctx_id_list[idx];
+            for (auto &item : ctx_sync_list) {
+                auto &ctx_id = item[0];
+                auto &sync = item[1];
+                if (!sync) {
+                    merge_root = ctx_id;
                     break;
                 }
             }
@@ -279,34 +295,46 @@ std::string Planner::Impl::plan(bool pretty) const {
             Json processor_group;
             Json resource_group;
             bool new_processor_group = true;
+            bool id_found = false;
+            for (auto &item : ctx_processor_range_list) {
+                if (item[0] == processor_group_root) {
+                    id_found = true;
+                    break;
+                }
+            }
+            if (!id_found) {
+                processor_group_root = -1;
+            }
+            if (ctx_processor_range_list.size() > 2) {
+                ERR(UnsupportedError, "ProcessorRange list size > 2");
+            }
             if (ctx_processor_range_list.empty()) {
                 size_t num_processors = std::min(num_sm, num_tasks);
                 processor_group["ProcessorRange"] = {0, num_processors};
                 resource_group["ProcessorRange"] = {0, num_processors};
                 max_processor_id = std::max(max_processor_id, num_processors);
-            } else if (ctx_processor_range_list.size() == 1 ||
-                       !merge_this_node) {
-                auto &ctx_processor_range = ctx_processor_range_list.back();
-                processor_group["ProcessorRange"] = ctx_processor_range;
-                resource_group["ProcessorRange"] = ctx_processor_range;
+            } else if (processor_group_root == -1) {
+                processor_group_root = ctx_processor_range_list.front()[0];
+                processor_group["ProcessorRange"] = ctx_processor_range_list.front()[1];
+                resource_group["ProcessorRange"] = ctx_processor_range_list.back()[1];
                 max_processor_id = std::max(
-                    max_processor_id, ctx_processor_range[1].get<size_t>());
+                    max_processor_id, ctx_processor_range_list.front()[1][1].get<size_t>());
             } else {
                 new_processor_group = false;
                 resource_group["ProcessorRange"] =
-                    ctx_processor_range_list.back();
+                    ctx_processor_range_list.back()[1];
             }
 
             if (!ctx_warp_range.empty()) {
-                resource_group["WarpRange"] = ctx_warp_range;
+                resource_group["WarpRange"] = ctx_warp_range[1];
                 max_warp_id =
-                    std::max(max_warp_id, ctx_warp_range[1].get<size_t>());
+                    std::max(max_warp_id, ctx_warp_range[1][1].get<size_t>());
             } else {
                 resource_group["WarpRange"] = {0, num_warps};
                 max_warp_id = std::max(max_warp_id, num_warps);
             }
             if (!ctx_sram_range.empty()) {
-                resource_group["SramRange"] = ctx_sram_range;
+                resource_group["SramRange"] = ctx_sram_range[1];
             } else {
                 resource_group["SramRange"] = {0, sram_bytes};
             }
