@@ -138,17 +138,25 @@ std::string Planner::Impl::plan(bool pretty) const {
 
     auto get_context = [&](const ModelNodeRef &node,
                            const std::string &key) -> Json {
-        if (node->context.find(key) != node->context.end()) {
+        try {
             return node->context.at(key);
+        } catch (const Json::out_of_range &e) {
         }
         return Json();
+    };
+
+    auto get_latest_context = [&](const ModelNodeRef &node,
+                                  const std::string &key) -> Json {
+        auto ctx = get_context(node, key);
+        if (ctx.empty()) return Json();
+        return ctx.back();
     };
 
     for (const auto &node : model_.nodes()) {
         const auto &op = node->op;
         if (op->is_virtual()) continue;
 
-        auto ctx_config = get_context(node, "Config");
+        auto ctx_config = get_latest_context(node, "Config");
 
         Json config;
         if (!ctx_config.empty()) {
@@ -223,8 +231,8 @@ std::string Planner::Impl::plan(bool pretty) const {
         }
 
         size_t granularity = config.value("Granularity", 1);
-        auto ctx_id = get_context(node, "Id");
-        auto ctx_sync = get_context(node, "Sync");
+        auto ctx_id = get_latest_context(node, "Id");
+        auto ctx_sync = get_latest_context(node, "Sync");
         int id = ctx_id.empty() ? -1 : ctx_id.get<int>();
         bool sync = ctx_sync.empty() ? true : ctx_sync.get<bool>();
         if (id == prev_ctx_id && !sync) {
@@ -245,24 +253,31 @@ std::string Planner::Impl::plan(bool pretty) const {
             task_info["Ops"][0]["Config"] = config;
             task_infos.push_back(task_info);
 
-            auto ctx_processor_range = get_context(node, "ProcessorRange");
-            auto ctx_warp_range = get_context(node, "WarpRange");
-            auto ctx_sram_range = get_context(node, "SramRange");
+            auto ctx_processor_range_list = get_context(node, "ProcessorRange");
+            auto ctx_warp_range = get_latest_context(node, "WarpRange");
+            auto ctx_sram_range = get_latest_context(node, "SramRange");
 
             Json processor_group;
-            if (!ctx_processor_range.empty()) {
+            Json resource_group;
+            bool new_processor_group = true;
+            if (ctx_processor_range_list.empty()) {
+                size_t num_processors = std::min(num_sm, num_tasks);
+                processor_group["ProcessorRange"] = {0, num_processors};
+                resource_group["ProcessorRange"] = {0, num_processors};
+                max_processor_id = std::max(max_processor_id, num_processors);
+            } else if (ctx_processor_range_list.size() == 1 ||
+                       (id != prev_ctx_id)) {
+                auto &ctx_processor_range = ctx_processor_range_list[0];
                 processor_group["ProcessorRange"] = ctx_processor_range;
+                resource_group["ProcessorRange"] = ctx_processor_range;
                 max_processor_id = std::max(
                     max_processor_id, ctx_processor_range[1].get<size_t>());
             } else {
-                size_t num_processors = std::min(num_sm, num_tasks);
-                processor_group["ProcessorRange"] = {0, num_processors};
-                max_processor_id = std::max(max_processor_id, num_processors);
+                new_processor_group = false;
+                resource_group["ProcessorRange"] =
+                    ctx_processor_range_list.back();
             }
 
-            Json resource_group;
-            resource_group["ProcessorRange"] =
-                processor_group["ProcessorRange"];
             if (!ctx_warp_range.empty()) {
                 resource_group["WarpRange"] = ctx_warp_range;
                 max_warp_id =
@@ -280,9 +295,14 @@ std::string Planner::Impl::plan(bool pretty) const {
                                              {"TaskRange", {0, num_tasks}},
                                              {"Granularity", granularity}}};
 
-            processor_group["ResourceGroups"] = Json::array();
-            processor_group["ResourceGroups"].push_back(resource_group);
-            processor_groups.push_back(processor_group);
+            if (new_processor_group) {
+                processor_group["ResourceGroups"] = Json::array();
+                processor_group["ResourceGroups"].push_back(resource_group);
+                processor_groups.push_back(processor_group);
+            } else {
+                processor_groups.back()["ResourceGroups"].push_back(
+                    resource_group);
+            }
         }
         prev_ctx_id = id;
         first_op = false;
