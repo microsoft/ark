@@ -169,7 +169,6 @@ std::string Planner::Impl::plan(bool pretty) const {
 
         Json config = Json::object();
         for (auto &obj : get_context(node, "Config")) {
-            LOG(INFO, obj.dump());
             auto &items = obj[1];
             for (auto &item : items.items()) {
                 config[item.key()] = item.value();
