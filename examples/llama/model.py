@@ -104,15 +104,9 @@ class RMSNorm(ark.Module):
                 x2 = ark.mul(x, x)
             with Context(config={"Tile": [1], "ImplType": "WarpWise"}):
                 mean = ark.reduce_mean(x2, axis=-1)
-        with Context(
-            config={
-                "NumWarps": 1,
-                "SramBytes": 0,
-                "Tile": [64, 1],
-            }
-        ):
-            mean = ark.add(mean, self.eps)
-            rrms = ark.rsqrt(mean)
+                mean = ark.add(mean, self.eps)
+                rrms = ark.rsqrt(mean)
+
         with Context(
             warp_range=[0, 8],
             sync=False,
@@ -305,22 +299,6 @@ class Linear(ark.Module):
 
     def forward(self, x):
         return ark.matmul(x, self.weight, transpose_other=True)
-
-
-# def tester(ref_func):
-#     def decorator(func):
-#         def wrapper(*args, **kwargs):
-#             data = []
-#             kdata = {}
-#             for arg in args:
-#                 if isinstance(arg, ark.Tensor):
-#                     rand_data =
-#             ref_outputs = ref_func(*args, **kwargs)
-#             outputs = func(*args, **kwargs)
-#             return outputs
-
-#         return wrapper
-#     return decorator
 
 
 class Silu(ark.Module):

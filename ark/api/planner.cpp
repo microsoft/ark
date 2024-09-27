@@ -17,7 +17,7 @@
 namespace ark {
 
 PlannerContext::PlannerContext(Model &model) : Context(model) {
-    this->impl_->set("Id", this->id(), ContextType::Immutable);
+    this->impl_->set("Id", this->id(), ContextType::Overwrite);
 }
 
 void PlannerContext::check_range(const std::string &key,

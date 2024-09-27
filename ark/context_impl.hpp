@@ -21,6 +21,8 @@ class Context::Impl {
 
     bool has(const std::string& key) const;
 
+    Json dump() const;
+
    protected:
     friend class Context;
 

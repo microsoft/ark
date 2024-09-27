@@ -302,9 +302,16 @@ static void verify_format_plan(const Json &json) {
                                                       "NumWarpsPerProcessor",
                                                       "TaskInfos",
                                                       "ProcessorGroups"};
+    if (!json.is_object()) {
+        std::string dumped = json.dump();
+        if (dumped.size() > 100) {
+            dumped = dumped.substr(0, 100) + "...";
+        }
+        ERR(PlanError, "Plan should be a JSON object. Given: ", dumped);
+    }
     for (const auto &field : required_fields) {
         if (!json.contains(field)) {
-            ERR(PlanError, field + " not found");
+            ERR(PlanError, field, " not found");
         }
     }
     if (!json.at("TaskInfos").is_array()) {

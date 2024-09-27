@@ -62,6 +62,17 @@ std::map<std::string, Json> ModelGraphContextStack::get_all() const {
     return cur;
 }
 
+Json ModelGraphContextStack::dump() const {
+    Json j;
+    for (const auto &pair : this->storage_) {
+        j[pair.first] = Json::array();
+        for (const auto &value : pair.second) {
+            j[pair.first].emplace_back(*value);
+        }
+    }
+    return j;
+}
+
 ModelGraph::Impl::Impl(const ModelGraph::Impl &other) { *this = other; }
 
 ModelGraph::Impl &ModelGraph::Impl::operator=(const ModelGraph::Impl &other) {

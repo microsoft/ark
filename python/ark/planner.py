@@ -195,6 +195,15 @@ class PlannerContext(CorePlannerContext):
         if config is not None:
             self.config(json.dumps(config))
 
+    def dump(self) -> str:
+        """
+        Dump the context stack.
+
+        Returns:
+            str: The context stack in JSON format.
+        """
+        return super().dump()
+
     def __enter__(self) -> "PlannerContext":
         """
         Enter the plan manager.
