@@ -184,8 +184,6 @@ class PlannerContext(CorePlannerContext):
         sync: bool = kwargs.get("sync", True)
         config: Dict[str, Any] = kwargs.get("config", None)
 
-        print(f"ctx id = {super().id()}")
-
         if prange is not None:
             self.processor_range(*prange)
         if wrange is not None:
