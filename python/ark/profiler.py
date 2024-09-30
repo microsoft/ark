@@ -9,9 +9,10 @@ from .runtime import Runtime
 from .planner import Plan
 
 
-def timeit(plan: Plan, iter: int, loop_mode: bool):
+def timeit(plan: Plan, iter: int, loop_mode: bool, warmup: int = 3):
     with Runtime() as rt:
         rt.launch(plan=plan, loop_mode=loop_mode)
+        rt.run(iter=warmup)
         start_time = time.time()
         rt.run(iter=iter)
         end_time = time.time()
@@ -47,7 +48,10 @@ class Profiler:
             "ProcessorGroups": [None],
         }
         for i in range(num_processor_groups):
-            if target_processor_groups is not None and i not in target_processor_groups:
+            if (
+                target_processor_groups is not None
+                and i not in target_processor_groups
+            ):
                 continue
             new_plan["ProcessorGroups"][0] = self.plan.processor_groups[i]
             lat_per_iter = timeit(Plan(new_plan), iter, loop_mode)
@@ -81,12 +85,16 @@ if __name__ == "__main__":
         type=str,
         help="Target processor groups to profile",
     )
-    parser.add_argument("--plan", type=str, help="Path to the plan file", required=True)
+    parser.add_argument(
+        "--plan", type=str, help="Path to the plan file", required=True
+    )
     args = parser.parse_args()
 
     target_processor_groups = None
     if args.target_processor_groups is not None:
-        target_processor_groups = list(map(int, args.target_processor_groups.split(",")))
+        target_processor_groups = list(
+            map(int, args.target_processor_groups.split(","))
+        )
 
     plan = Plan.from_file(args.plan)
     profiler = Profiler(plan)

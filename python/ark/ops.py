@@ -13,6 +13,8 @@ from . import log
 __all__ = [
     "tensor",
     "parameter",
+    "placeholder",
+    "noop",
     "reshape",
     "identity",
     "sharding",

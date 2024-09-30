@@ -35,9 +35,9 @@ class Tensor:
             initializer (Initializer): The initializer for the Tensor.
             requires_grad (bool): Whether the tensor requires gradient. Defaults to True.
         """
-        self._tensor = _tensor
+        self._tensor: CoreTensor = _tensor
         self.initializer: Initializer = initializer
-        self.requires_grad = requires_grad
+        self.requires_grad: bool = requires_grad
 
     def __hash__(self):
         return self._tensor.id()
@@ -46,6 +46,69 @@ class Tensor:
         if not isinstance(other, Tensor):
             return False
         return self._tensor.id() == other._tensor.id()
+
+    def __getitem__(self, index) -> "Tensor":
+        if not isinstance(index, tuple):
+            index = (index,)
+        new_shape = []
+        new_strides = []
+        new_offsets = []
+        new_padded_shape = []
+        if len(index) > len(self.shape()):
+            raise log.InvalidUsageError(
+                f"Index has more dimensions than the tensor. Index: "
+                f"{index}, tensor shape: {self.shape()}"
+            )
+        for i, idx in enumerate(index):
+            shape_len = self.shape()[i]
+            padded_shape_len = self._padded_shape()[i]
+            pad_len = padded_shape_len - shape_len
+            if isinstance(idx, int):
+                new_shape.append(1)
+                new_strides.append(self.strides()[i])
+                new_offsets.append(idx)
+                if idx == shape_len - 1:
+                    new_padded_shape.append(1 + pad_len)
+                else:
+                    new_padded_shape.append(1)
+            elif isinstance(idx, slice):
+                start = idx.start or 0
+                stop = idx.stop or self.shape()[i]
+                step = idx.step or 1
+                if step < 0:
+                    start, stop = stop + 1, start + 1
+                if step != 1 and step != -1:
+                    # TODO: support step other than 1 or -1
+                    raise log.UnsupportedError(
+                        f"Step must be 1 or -1. Given: {step}"
+                    )
+                new_shape.append(stop - start)
+                new_strides.append(self.strides()[i])
+                new_offsets.append(start)
+                if stop == shape_len:
+                    new_padded_shape.append(stop + pad_len - start)
+                else:
+                    new_padded_shape.append(stop - start)
+            else:
+                raise log.InvalidUsageError(
+                    f"Index must be an integer or a slice. Index: {idx}"
+                )
+        new_shape = Dims(new_shape)
+        new_strides = Dims(new_strides)
+        new_offsets = Dims(new_offsets)
+        new_padded_shape = Dims(new_padded_shape)
+        new_tensor = Tensor(
+            Model.get_model().refer(
+                self._tensor,
+                new_shape,
+                new_strides,
+                new_offsets,
+                new_padded_shape,
+                "",
+            )
+        )
+        new_tensor.requires_grad = self.requires_grad
+        return new_tensor
 
     @classmethod
     def __torch_function__(cls, func, types, args=(), kwargs=None):
@@ -64,6 +127,12 @@ class Tensor:
             else:
                 new_kwargs[key] = value
         return func(*new_args, **new_kwargs)
+
+    def _padded_shape(self) -> List[int]:
+        """
+        Returns the padded shape of the tensor.
+        """
+        return self._tensor.padded_shape().vector()
 
     def shape(self) -> List[int]:
         """

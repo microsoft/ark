@@ -26,17 +26,22 @@ namespace ark {
 /// (m, n, k).
 /// @tparam LeadingDims (ark::Vec) The leading dimensions of matrix inputs
 /// and outputs. (lda, ldc, ldc, ldb).
-/// @tparam InnerLdimA (int) The leading dimension of the inner dimension of A.
-/// @tparam InnerLdimB (int) The leading dimension of the inner dimension of B.
+/// @tparam BatchStrideNA (int)
+/// @tparam BatchStrideCA (int)
+/// @tparam BatchStrideNB (int)
+/// @tparam BatchStrideCB (int)
+/// @tparam BatchStrideNC (int)
+/// @tparam BatchStrideCC (int)
 /// @tparam IsColumnA (bool) Whether matrix A is column-major.
 /// @tparam IsColumnB (bool) Whether matrix B is column-major.
 /// @tparam NumWarps (int) The number of warps per uop.
 /// @tparam SmemBytes (int) The size of shared memory per uop.
 ///
 template <typename OutDims, typename NCA, typename NCB, typename TileShape,
-          typename ProblemSize, typename LeadingDims, int InnerLdimA,
-          int InnerLdimB, bool IsColumnA, bool IsColumnB, int NumWarps,
-          int SmemBytes, typename DataTypeA, typename DataTypeB,
+          typename ProblemSize, typename LeadingDims, int BatchStrideNA,
+          int BatchStrideCA, int BatchStrideNB, int BatchStrideCB,
+          int BatchStrideNC, int BatchStrideCC, bool IsColumnA, bool IsColumnB,
+          int NumWarps, int SmemBytes, typename DataTypeA, typename DataTypeB,
           typename DataTypeC>
 DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                    int smem_per_warp) {
@@ -67,38 +72,13 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     constexpr int TileSizeM = TileShape::D0;
     constexpr int TileSizeN = TileShape::D1;
 
-    constexpr DimType SizeA = math::mul<OutDims::H, InnerLdimA>::value;
-    constexpr DimType SizeB = math::mul<OutDims::W, InnerLdimB>::value;
-    constexpr DimType SizeC = math::mul<OutDims::H, OutDims::W>::value;
-    static_assert(SizeA >= 0, "");
-    static_assert(SizeB >= 0, "");
-    static_assert(SizeC >= 0, "");
-
     int un = UnitOp::uop_idx_n(uop_idx);
     int uc = UnitOp::uop_idx_c(uop_idx);
 
     // Broadcasting
-    DataTypeA *pA;
-    DataTypeB *pB;
-    DataTypeC *pC = &C[un * math::mul<CC, SizeC>::value + uc * SizeC];
-    if constexpr (NCA::D0 == 1 && NCA::D1 == 1) {
-        pA = A;
-    } else if constexpr (NCA::D0 == 1) {
-        pA = &A[uc * SizeA];
-    } else if constexpr (NCA::D1 == 1) {
-        pA = &A[un * SizeA];
-    } else {
-        pA = &A[un * math::mul<CC, SizeA>::value + uc * SizeA];
-    }
-    if constexpr (NCB::D0 == 1 && NCB::D1 == 1) {
-        pB = B;
-    } else if constexpr (NCB::D0 == 1) {
-        pB = &B[uc * SizeB];
-    } else if constexpr (NCB::D1 == 1) {
-        pB = &B[un * SizeB];
-    } else {
-        pB = &B[un * math::mul<CC, SizeB>::value + uc * SizeB];
-    }
+    DataTypeA *pA = &A[un * BatchStrideNA + uc * BatchStrideCA];
+    DataTypeB *pB = &B[un * BatchStrideNB + uc * BatchStrideCB];
+    DataTypeC *pC = &C[un * BatchStrideNC + uc * BatchStrideCC];
 
 #if defined(ARK_TARGET_CUDA_ARCH)
     gemm_cutlass<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
@@ -111,7 +91,6 @@ DEVICE void matmul(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
             ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(pC, pA, pB, uop_idx,
                                                         smem_per_warp);
 #endif
-    UnitOp::sync_threads();
 }
 
 }  // namespace ark

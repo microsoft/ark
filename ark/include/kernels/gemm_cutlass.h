@@ -260,6 +260,8 @@ DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
         UnitOp::template shared_memory<GemmKernel::SharedStorage>(
             smem_per_warp);
 
+    UnitOp::sync_threads();
+
     GemmKernel gemm_kernel{};
     gemm_kernel(params, *ps);
 }

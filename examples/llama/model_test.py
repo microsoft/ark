@@ -406,68 +406,6 @@ def test_attention(
     )
 
 
-def test_transformer_block(
-    args: ModelArgs,
-    batch_size: int,
-    seq_len: int,
-    dtype: np.dtype,
-    rank: int = 0,
-    world_size: int = 1,
-):
-    #
-    freqs_cis = precompute_freqs_cis(
-        args.dim // args.n_heads, args.max_seq_len * 2
-    )[0:seq_len]
-
-    freqs_cis_ark = freqs_cis.astype(np.complex64)
-    freqs_cis_ark = (
-        np.stack([freqs_cis_ark.real, freqs_cis_ark.imag], axis=-1)
-        .astype(dtype)
-        .reshape(1, seq_len, 1, args.dim // args.n_heads)
-    )
-
-    feature = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, args.dim)
-    ).astype(dtype)
-
-    module = model_ark.Attention(
-        args, ark.DataType.from_numpy(dtype), rank, world_size
-    )
-    # module_inputs = [
-    #     ark.tensor(list(i.shape), ark.DataType.from_numpy(i.dtype))
-    #     if isinstance(i, np.ndarray)
-    #     else i
-    #     for i in inputs
-    # ]
-    feature_tensor = ark.tensor(
-        list(feature.shape), ark.DataType.from_numpy(feature.dtype)
-    )
-    freqs_cis_ark_tensor = ark.tensor(
-        list(freqs_cis_ark.shape), ark.DataType.from_numpy(freqs_cis_ark.dtype)
-    )
-    output = module(feature_tensor, 0, freqs_cis_ark_tensor, None)
-
-    print(ark.Model.get_model().serialize())
-
-    # test_module(
-    #     module_class_ark=model_ark.TransformerBlock,
-    #     module_args_ark=[
-    #         0,
-    #         args,
-    #         ark.DataType.from_numpy(dtype),
-    #         rank,
-    #         world_size,
-    #     ],
-    #     inputs_ark=[feature, 0, freqs_cis_ark, None],
-    #     module_class_pt=model_pt.TransformerBlock,
-    #     module_args_pt=[0, args],
-    #     inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
-    #     module_name_prefix="layers.0",
-    #     rank=rank,
-    #     world_size=world_size,
-    # )
-
-
 def test_transformer(
     args: ModelArgs,
     batch_size: int,
@@ -535,7 +473,6 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
     test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 

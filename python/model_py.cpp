@@ -96,6 +96,9 @@ void register_model(py::module &m) {
         .def("reduce_sum", &ark::Model::reduce_sum, py::arg("input"),
              py::arg("axis"), py::arg("keepdims"), py::arg("output"),
              py::arg("name"))
+        .def("refer", &ark::Model::refer, py::arg("input"), py::arg("shape"),
+             py::arg("strides"), py::arg("offsets"), py::arg("padded_shape"),
+             py::arg("name"))
         .def("relu", &ark::Model::relu, py::arg("input"), py::arg("output"),
              py::arg("name"))
         .def("reshape", &ark::Model::reshape, py::arg("input"),

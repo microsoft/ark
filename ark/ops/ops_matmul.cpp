@@ -125,6 +125,7 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
     Dims other_shape_dims4 = other->shape().dims4();
     Dims input_dim_nc{input_shape_dims4[0], input_shape_dims4[1]};
     Dims other_dim_nc{other_shape_dims4[0], other_shape_dims4[1]};
+    Dims output_dim_nc = broadcast_shape(input_dim_nc, other_dim_nc);
 
     Dims strides_acdb{
         input->strides().dims4()[-1], output->strides().dims4()[-1],
@@ -156,6 +157,37 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
         inner_stride_b = other->strides().dims4()[-2];
     }
 
+    DimType size_a = inner_stride_a * output->strides()[-2];
+    DimType size_b = inner_stride_b * output->strides()[-1];
+    DimType size_c = output->strides()[-2] * output->strides()[-1];
+    DimType batch_stride_c_a = input_dim_nc[1] == 1 ? 0 : size_a;
+    DimType batch_stride_n_a =
+        input_dim_nc[0] == 1 ? 0 : size_a * input_dim_nc[1];
+    DimType batch_stride_c_b = other_dim_nc[1] == 1 ? 0 : size_b;
+    DimType batch_stride_n_b =
+        other_dim_nc[0] == 1 ? 0 : size_b * other_dim_nc[1];
+    DimType batch_stride_c_c = output_dim_nc[1] == 1 ? 0 : size_c;
+    DimType batch_stride_n_c =
+        output_dim_nc[0] == 1 ? 0 : size_c * output_dim_nc[1];
+    if (config.contains("BatchStrideNA")) {
+        batch_stride_n_a = config["BatchStrideNA"].get<DimType>();
+    }
+    if (config.contains("BatchStrideNB")) {
+        batch_stride_n_b = config["BatchStrideNB"].get<DimType>();
+    }
+    if (config.contains("BatchStrideNC")) {
+        batch_stride_n_c = config["BatchStrideNC"].get<DimType>();
+    }
+    if (config.contains("BatchStrideCA")) {
+        batch_stride_c_a = config["BatchStrideCA"].get<DimType>();
+    }
+    if (config.contains("BatchStrideCB")) {
+        batch_stride_c_b = config["BatchStrideCB"].get<DimType>();
+    }
+    if (config.contains("BatchStrideCC")) {
+        batch_stride_c_c = config["BatchStrideCC"].get<DimType>();
+    }
+
     return function_name_string("matmul",
                                 {
                                     vec_string(output->strides().dims4()),
@@ -164,8 +196,12 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
                                     vec_string(tile_shape),
                                     vec_string(padded_problem_size),
                                     vec_string(strides_acdb),
-                                    std::to_string(inner_stride_a),
-                                    std::to_string(inner_stride_b),
+                                    std::to_string(batch_stride_n_a),
+                                    std::to_string(batch_stride_c_a),
+                                    std::to_string(batch_stride_n_b),
+                                    std::to_string(batch_stride_c_b),
+                                    std::to_string(batch_stride_n_c),
+                                    std::to_string(batch_stride_c_c),
                                     std::to_string(trans_input),
                                     std::to_string(trans_other),
                                     std::to_string(num_warps),
@@ -173,8 +209,8 @@ std::string ModelOpMatmul::impl_name(const Json &config) const {
                                 });
 }
 
-std::vector<ModelOpArg> ModelOpMatmul::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpMatmul::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
