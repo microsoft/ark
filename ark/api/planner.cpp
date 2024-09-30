@@ -196,13 +196,25 @@ std::string Planner::Impl::plan(bool pretty) const {
 
         auto &result_tensors = op->result_tensors();
         if (!result_tensors.empty() && config.contains("Tile")) {
+            const std::vector<DimType> tile_vec = config["Tile"];
+            std::vector<DimType> trim_leading_ones;
+            for (size_t i = 0; i < tile_vec.size(); i++) {
+                if (tile_vec[i] != 1) {
+                    trim_leading_ones = std::vector<DimType>(
+                        tile_vec.begin() + i, tile_vec.end());
+                    break;
+                }
+            }
+            if (trim_leading_ones.empty()) {
+                trim_leading_ones.push_back(1);
+            }
+            Dims tile(trim_leading_ones);
+
             std::stringstream ss;
-            ss << "Result shape is not divided by tile. Op: "
-               << op->serialize().dump();
+            ss << "Result shape is not divided by tile "
+               << tile << ". Op: " << op->serialize().dump();
             auto not_divided_error = ss.str();
 
-            const std::vector<DimType> tile_vec = config["Tile"];
-            auto tile = Dims(tile_vec);
             auto &result_shape = result_tensors[0]->padded_shape();
             if (result_shape.ndims() < tile.ndims()) {
                 ERR(PlanError, not_divided_error);
