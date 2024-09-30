@@ -531,61 +531,6 @@ class Attention(ark.Module):
             self.dtype,
         )
 
-        if seqlen == 2048:
-            tile = [256, 128]
-            sram = 24672
-        elif seqlen == 128:
-            tile = [128, 64]
-            sram = 16480
-        else:
-            raise ValueError(f"Unsupported seqlen {seqlen}")
-
-        num_tile = seqlen * self.args.dim // tile[0] // tile[1]
-
-        with Context(processor_range=[0, NUM_SM]):
-            with Context(
-                processor_range=[0, NUM_SM // 3],
-                config={"NumWarps": 4},
-                sync=False,
-            ):
-                with Context(config={"SramBytes": sram, "Tile": tile}):
-                    xq = ark.matmul(x_norm, self.wq.weight, transpose_other=True)
-                xq = ark.reshape(
-                    xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
-                )
-                with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
-                    if freqs_cis is not None:
-                        xq = ark.rope(xq, freqs_cis, xq_scratch[:, :seqlen, :, :])
-
-                xq_scratch = ark.identity(xq_scratch, deps=[xq])
-
-            with Context(
-                processor_range=[NUM_SM // 3, 2 * NUM_SM // 3],
-                config={"NumWarps": 4},
-                sync=False,
-            ):
-                with Context(config={"SramBytes": sram, "Tile": tile}):
-                    xk = ark.matmul(x_norm, self.wk.weight, transpose_other=True)
-                xk = ark.reshape(
-                    xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-                )
-                with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
-                    if freqs_cis is not None:
-                        xk = ark.rope(xk, freqs_cis, xk_scratch[:, :seqlen, :, :])
-
-                xk_scratch = ark.identity(xk_scratch, deps=[xk])
-
-            with Context(
-                processor_range=[2 * NUM_SM // 3, NUM_SM],
-                config={"NumWarps": 4},
-                sync=False,
-            ):
-                with Context(config={"SramBytes": sram, "Tile": tile}):
-                    xv = ark.matmul(x_norm, self.wv.weight, transpose_other=True)
-                xv = ark.reshape(
-                    xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-                )
-
         def calc_scores(xq_scratch, xk_scratch, mask):
             xq = xq_scratch[:, :, 0, :]
             xk = xk_scratch[:, :, 0, :]
@@ -646,8 +591,63 @@ class Attention(ark.Module):
                     output = ark.div(tmp, sum)
             return output
 
-        scores = calc_scores(xq_scratch, xk_scratch, mask)
-        scores = softmax(scores)
+        if seqlen == 2048:
+            tile = [256, 128]
+            sram = 24672
+        elif seqlen == 128:
+            tile = [128, 64]
+            sram = 16480
+        else:
+            raise ValueError(f"Unsupported seqlen {seqlen}")
+
+        with Context(
+            processor_range=[0, 128],
+            config={"NumWarps": 4},
+            sync=False,
+        ):
+            with Context(config={"SramBytes": sram, "Tile": tile}):
+                xq = ark.matmul(x_norm, self.wq.weight, transpose_other=True)
+            xq = ark.reshape(
+                xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
+            )
+            with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
+                if freqs_cis is not None:
+                    xq = ark.rope(xq, freqs_cis, xq_scratch[:, :seqlen, :, :])
+
+            xq_scratch = ark.identity(xq_scratch, deps=[xq])
+
+        with Context(
+            processor_range=[128, 256],
+            config={"NumWarps": 4},
+            sync=False,
+        ):
+            with Context(config={"SramBytes": sram, "Tile": tile}):
+                xk = ark.matmul(x_norm, self.wk.weight, transpose_other=True)
+            xk = ark.reshape(
+                xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+            )
+            with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
+                if freqs_cis is not None:
+                    xk = ark.rope(xk, freqs_cis, xk_scratch[:, :seqlen, :, :])
+
+            xk_scratch = ark.identity(xk_scratch, deps=[xk])
+
+        with Context(
+            processor_range=[256, NUM_SM],
+            config={"NumWarps": 4},
+            sync=False,
+        ):
+            with Context(config={"SramBytes": sram, "Tile": tile}):
+                xv = ark.matmul(x_norm, self.wv.weight, transpose_other=True)
+            xv = ark.reshape(
+                xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+            )
+
+        with Context(
+            processor_range=[0, 256],
+        ):
+            scores = calc_scores(xq_scratch, xk_scratch, mask)
+            scores = softmax(scores)
 
         output_scratch = ark.tensor(
             [
