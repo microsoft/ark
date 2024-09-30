@@ -65,6 +65,7 @@ class Runtime:
         device_id: int = -1,
         stream: int = 0,
         loop_mode: bool = True,
+        record: bool = False,
         tensor_mappings: Dict = {},
     ):
         """
@@ -93,7 +94,7 @@ class Runtime:
         exe = Executor.get()
         if plan_str != exe.plan() or device_id != exe.device_id():
             exe.compile(plan_str, device_id)
-        exe.launch(tensor_mappings, stream, loop_mode)
+        exe.launch(tensor_mappings, stream, loop_mode, record)
         self.state = Runtime.StateCode.LaunchedNotRunning
         self.loop_mode = loop_mode
 
@@ -148,7 +149,7 @@ class Runtime:
         """
         if not self.launched():
             log.WARN(f"ARK runtime is never launched, skip stopping")
-            return
+            return -1
         elapsed = Executor.get().stop()
         self.state = Runtime.StateCode.LaunchedNotRunning
         return elapsed

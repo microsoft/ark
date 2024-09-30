@@ -11,12 +11,21 @@ from .planner import Plan
 
 def timeit(plan: Plan, iter: int, loop_mode: bool, warmup: int = 3):
     with Runtime() as rt:
-        rt.launch(plan=plan, loop_mode=loop_mode)
-        rt.run(iter=warmup)
-        start_time = time.time()
-        rt.run(iter=iter)
-        end_time = time.time()
-        return (end_time - start_time) / iter
+        if loop_mode:
+            rt.launch(plan=plan, loop_mode=loop_mode)
+            rt.run(iter=warmup)
+            rt.stop()
+            start_time = time.time()
+            rt.run(iter=iter)
+            elapsed = time.time() - start_time
+        else:
+            rt.launch(plan=plan, loop_mode=loop_mode)
+            rt.run(iter=warmup)
+            rt.stop()
+            rt.launch(plan=plan, loop_mode=loop_mode, record=True)
+            rt.run(iter=iter)
+            elapsed = rt.stop() / 1.0e3
+        return elapsed / iter
 
 
 class Profiler:
