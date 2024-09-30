@@ -11,6 +11,11 @@ from dataclasses import dataclass
 from typing import Optional
 from ark import PlannerContext as Context
 
+NUM_SM = 304
+NUM_WARPS_PER_SM = 8
+NUM_WARPS = NUM_SM * NUM_WARPS_PER_SM
+WARP_SIZE = 64
+SRAM_PER_SM = 65536
 
 @dataclass
 class ModelArgs:
@@ -88,6 +93,7 @@ class RMSNorm(ark.Module):
         self.eps = eps
         self.dtype = dtype
         self.weight = ark.parameter([1, 1, dim], ark.fp32)
+        self.dim = dim
 
     def forward(self, x):
         with Context(
@@ -98,14 +104,14 @@ class RMSNorm(ark.Module):
                 "Granularity": 7,
             },
         ):
-            with Context(config={"Tile": [1, 4096]}):
+            with Context(config={"Tile": [self.dim]}):
                 x = ark.cast(x, ark.fp32)
                 x2 = ark.mul(x, x)
             with Context(config={"Tile": [1], "ImplType": "WarpWise"}):
                 mean = ark.reduce_mean(x2, axis=-1)
                 mean = ark.add(mean, self.eps)
                 rrms = ark.rsqrt(mean)
-            with Context(config={"Tile": [1, 4096]}):
+            with Context(config={"Tile": [self.dim]}):
                 x = ark.mul(x, rrms)
                 x = ark.mul(x, self.weight, x)
                 return ark.cast(x, self.dtype)
@@ -248,9 +254,51 @@ class ParallelEmbedding(ark.Module):
         self.world_size = world_size
         self.local_rank = local_rank
 
-    def forward(self, x):
+    def forward(self, x: ark.Tensor):
         if self.world_size == 1:
-            return ark.embedding(x, self.weight)
+            config = {"SramBytes": 0}
+            num_vecs = x.nelems()
+            if num_vecs >= NUM_WARPS:
+                config.update({"NumWarps": 1, "Tile": [self.dim]})
+                num_parts = 1
+            else:
+                min_elem_per_warp = WARP_SIZE * 2
+                max_warps_per_vec = (self.dim + min_elem_per_warp - 1) // min_elem_per_warp
+                warps_per_vec = min(max_warps_per_vec, NUM_WARPS // num_vecs)
+                if warps_per_vec <= NUM_WARPS_PER_SM:
+                    config.update({"NumWarps": warps_per_vec, "Tile": [self.dim]})
+                    num_parts = 1
+                else:
+                    num_parts = warps_per_vec // NUM_WARPS_PER_SM
+                    max_num_parts = 4
+                    assert NUM_SM % max_num_parts == 0
+                    assert 2 ** (max_num_parts.bit_length() - 1) == max_num_parts
+                    if num_parts > max_num_parts:
+                        num_parts = max_num_parts
+                    # make it max power of 2 smaller than num_parts
+                    num_parts = 2 ** (num_parts.bit_length() - 1)
+                    config.update(
+                        {
+                            "NumWarps": NUM_WARPS_PER_SM,
+                            "Tile": [self.dim // num_parts],
+                        }
+                    )
+            with Context(processor_range=[0, NUM_SM], config=config):
+                if num_parts == 1:
+                    return ark.embedding(x, self.weight)
+                emb_output = ark.tensor([x.shape()[0], x.shape()[1], self.dim], self.dtype)
+                emb_parts = []
+                dim_per_part = self.dim // num_parts
+                for i in range(num_parts):
+                    with Context(processor_range=[i * NUM_SM // num_parts, (i + 1) * NUM_SM // num_parts]):
+                        emb_parts.append(
+                            ark.embedding(
+                                x,
+                                self.weight[:, (i * dim_per_part) : ((i + 1) * dim_per_part)],
+                                emb_output[:, :, (i * dim_per_part) : ((i + 1) * dim_per_part)],
+                            )
+                        )
+                return ark.identity(emb_output, deps=emb_parts)
 
         output_tensor = ark.tensor(
             [x.shape()[0], x.shape()[1], self.out_dim], self.dtype
@@ -272,22 +320,6 @@ class ParallelEmbedding(ark.Module):
         return ark.reshape(
             gather_out, [x.shape()[0], x.shape()[1], self.out_dim]
         )
-
-
-class Linear(ark.Module):
-    """
-    Linear layer module with weights and no bias.
-    """
-
-    def __init__(
-        self, in_dim: int, out_dim: int, dtype: ark.DataType = ark.fp16
-    ):
-        super().__init__()
-        self.dtype = dtype
-        self.weight = ark.parameter([out_dim, in_dim], dtype)
-
-    def forward(self, x):
-        return ark.matmul(x, self.weight, transpose_other=True)
 
 
 class Silu(ark.Module):
@@ -324,6 +356,7 @@ class FeedForward(ark.Module):
         hidden_dim = multiple_of * (
             (hidden_dim + multiple_of - 1) // multiple_of
         )
+        self.hidden_dim = hidden_dim
 
         self.w1 = ColumnParallelLinear(
             dim, hidden_dim, dtype, False, local_rank, world_size
@@ -337,21 +370,31 @@ class FeedForward(ark.Module):
 
     def forward(self, x, ffn_norm):
         h = ffn_norm(x)
+
+        seqlen = h.shape()[1]
+        schedule = None
+        if seqlen == 2048:
+            schedule = [
+                [1792, [256, 128], 24672],
+                [256, [128, 128], 16480],
+            ]
+        elif seqlen == 128:
+            schedule = [
+                [128, [128, 64], 16480],
+            ]
+        else:
+            raise ValueError(f"Unsupported seqlen {seqlen}")
+
         with Context(
-            processor_range=[0, 304],
-            sram_range=[0, 49344],
-            config={"NumWarps": 4},
+            processor_range=[0, NUM_SM], config={"NumWarps": 4},
         ):
             out_shape = h.shape()
             out_shape[-1] = self.w1.out_dim
             out = ark.tensor(out_shape, h.dtype())
             pos = 0
-            for dim, tile, sram in [
-                [1792, [256, 128], 24672],
-                [256, [128, 128], 16480],
-            ]:
+            for dim, tile, sram in schedule:
                 with Context(
-                    processor_range=[0, 304], sync=False, config={"Tile": tile}
+                    processor_range=[0, NUM_SM], sync=False, config={"Tile": tile}
                 ):
                     h_shard = h[:, pos : pos + dim, :]
                     out_shard = out[:, pos : pos + dim, :]
@@ -363,7 +406,7 @@ class FeedForward(ark.Module):
                         x1 = Silu()(x1)
                 # We don't need a barrier here but somehow the performance is better with it
                 with Context(
-                    processor_range=[0, 304], sync=False, config={"Tile": tile}
+                    processor_range=[0, NUM_SM], sync=False, config={"Tile": tile}
                 ):
                     with Context(config={"SramBytes": sram}):
                         x2 = ark.matmul(
@@ -374,12 +417,21 @@ class FeedForward(ark.Module):
                     out = ark.identity(out, deps=[x3])
                     pos += dim
 
+        if seqlen == 2048:
+            tile = [256, 128]
+            sram = 24672
+        elif seqlen == 128:
+            tile = [128, 64]
+            sram = 16480
+        else:
+            raise ValueError(f"Unsupported seqlen {seqlen}")
+
         with Context(
             warp_range=[0, 4],
             config={
                 "NumWarps": 4,
-                "Tile": [256, 128],
-                "SramBytes": 24672,
+                "Tile": tile,
+                "SramBytes": sram,
             },
             sync=False,
         ):
@@ -410,6 +462,7 @@ class Attention(ark.Module):
         )
         model_parallel_size = world_size
         self.dtype = dtype
+        self.args = args
         self.n_local_heads = args.n_heads // model_parallel_size
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
@@ -478,51 +531,60 @@ class Attention(ark.Module):
             self.dtype,
         )
 
-        with Context(
-            warp_range=[0, 4],
-            sram_range=[0, 24672],
-            sync=False,
-            config={"NumWarps": 4},
-        ):
-            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
-                xq = ark.matmul(x_norm, self.wq.weight, transpose_other=True)
-            xq = ark.reshape(
-                xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
-            )
-            with Context(config={"SramBytes": 0, "Tile": [256, 1, 128]}):
-                if freqs_cis is not None:
-                    xq = ark.rope(xq, freqs_cis, xq_scratch[:, :seqlen, :, :])
+        if seqlen == 2048:
+            tile = [256, 128]
+            sram = 24672
+        elif seqlen == 128:
+            tile = [128, 64]
+            sram = 16480
+        else:
+            raise ValueError(f"Unsupported seqlen {seqlen}")
 
-            xq_scratch = ark.identity(xq_scratch, deps=[xq])
+        num_tile = seqlen * self.args.dim // tile[0] // tile[1]
 
-        with Context(
-            warp_range=[0, 4],
-            sram_range=[0, 24672],
-            sync=False,
-            config={"NumWarps": 4},
-        ):
-            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
-                xk = ark.matmul(x_norm, self.wk.weight, transpose_other=True)
-            xk = ark.reshape(
-                xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-            )
-            with Context(config={"SramBytes": 0, "Tile": [256, 1, 128]}):
-                if freqs_cis is not None:
-                    xk = ark.rope(xk, freqs_cis, xk_scratch[:, :seqlen, :, :])
+        with Context(processor_range=[0, NUM_SM]):
+            with Context(
+                processor_range=[0, NUM_SM // 3],
+                config={"NumWarps": 4},
+                sync=False,
+            ):
+                with Context(config={"SramBytes": sram, "Tile": tile}):
+                    xq = ark.matmul(x_norm, self.wq.weight, transpose_other=True)
+                xq = ark.reshape(
+                    xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
+                )
+                with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
+                    if freqs_cis is not None:
+                        xq = ark.rope(xq, freqs_cis, xq_scratch[:, :seqlen, :, :])
 
-            xk_scratch = ark.identity(xk_scratch, deps=[xk])
+                xq_scratch = ark.identity(xq_scratch, deps=[xq])
 
-        with Context(
-            warp_range=[0, 4],
-            sram_range=[0, 24672],
-            sync=False,
-            config={"NumWarps": 4},
-        ):
-            with Context(config={"SramBytes": 24672, "Tile": [256, 128]}):
-                xv = ark.matmul(x_norm, self.wv.weight, transpose_other=True)
-            xv = ark.reshape(
-                xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
-            )
+            with Context(
+                processor_range=[NUM_SM // 3, 2 * NUM_SM // 3],
+                config={"NumWarps": 4},
+                sync=False,
+            ):
+                with Context(config={"SramBytes": sram, "Tile": tile}):
+                    xk = ark.matmul(x_norm, self.wk.weight, transpose_other=True)
+                xk = ark.reshape(
+                    xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+                )
+                with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
+                    if freqs_cis is not None:
+                        xk = ark.rope(xk, freqs_cis, xk_scratch[:, :seqlen, :, :])
+
+                xk_scratch = ark.identity(xk_scratch, deps=[xk])
+
+            with Context(
+                processor_range=[2 * NUM_SM // 3, NUM_SM],
+                config={"NumWarps": 4},
+                sync=False,
+            ):
+                with Context(config={"SramBytes": sram, "Tile": tile}):
+                    xv = ark.matmul(x_norm, self.wv.weight, transpose_other=True)
+                xv = ark.reshape(
+                    xv, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
+                )
 
         def calc_scores(xq_scratch, xk_scratch, mask):
             xq = xq_scratch[:, :, 0, :]
@@ -533,11 +595,20 @@ class Attention(ark.Module):
             xk = ark.reshape(
                 xk, [bsz, self.n_local_kv_heads, seqlen, self.head_dim]
             )
+            if seqlen == 2048:
+                tile = [256, 128]
+                sram = 24672
+            elif seqlen == 128:
+                tile = [128, 128]
+                sram = 16480
+            else:
+                raise ValueError(f"Unsupported seqlen {seqlen}")
+
             with Context(
                 sync=False,
                 config={
-                    "Tile": [256, 128],
-                    "SramBytes": 24672,
+                    "Tile": tile,
+                    "SramBytes": sram,
                     "NumWarps": 4,
                     "BatchStrideCA": self.head_dim,
                     "BatchStrideNA": (
@@ -566,12 +637,12 @@ class Attention(ark.Module):
             ):
                 with Context(config={"ImplType": "WarpWise", "Tile": [1]}):
                     max = ark.reduce_max(scores, axis=-1)
-                with Context(config={"Tile": [1, 2048]}):
+                with Context(config={"Tile": [seqlen]}):
                     tmp = ark.sub(scores, max)
                     tmp = ark.exp(tmp)
                 with Context(config={"ImplType": "WarpWise", "Tile": [1]}):
                     sum = ark.reduce_sum(tmp, axis=-1)
-                with Context(config={"Tile": [1, 2048]}):
+                with Context(config={"Tile": [seqlen]}):
                     output = ark.div(tmp, sum)
             return output
 
@@ -587,11 +658,20 @@ class Attention(ark.Module):
             ],
             dtype=self.dtype,
         )
+        if seqlen == 2048:
+            tile = [256, 128]
+            sram = 24672
+        elif seqlen == 128:
+            tile = [128, 128]
+            sram = 16480
+        else:
+            raise ValueError(f"Unsupported seqlen {seqlen}")
+
         with Context(
             sync=False,
             config={
-                "Tile": [256, 128],
-                "SramBytes": 24672,
+                "Tile": tile,
+                "SramBytes": sram,
                 "NumWarps": 4,
                 "BatchStrideCB": self.head_dim,
                 "BatchStrideNB": self.n_local_kv_heads * seqlen * self.head_dim,
@@ -612,11 +692,20 @@ class Attention(ark.Module):
         output = ark.reshape(
             output, [bsz, seqlen, self.head_dim * self.n_local_heads]
         )
+        if seqlen == 2048:
+            tile = [256, 128]
+            sram = 24672
+        elif seqlen == 128:
+            tile = [128, 128]
+            sram = 16480
+        else:
+            raise ValueError(f"Unsupported seqlen {seqlen}")
+
         with Context(
             config={
                 "NumWarps": 4,
-                "Tile": [256, 128],
-                "SramBytes": 24672,
+                "Tile": tile,
+                "SramBytes": sram,
             },
             sync=False,
         ):
@@ -701,14 +790,25 @@ class Transformer(ark.Module):
         freqs_cis: ark.Tensor,
         mask: Optional[ark.Tensor],
     ):
-        with Context(warp_range=[0, 8], sram_range=[0, 49344]):
+        with Context(warp_range=[0, NUM_WARPS_PER_SM], sram_range=[0, 49344]):
             h = self.tok_embeddings(tokens)
 
             for layer in self.layers:
                 h = layer(h, start_pos, freqs_cis, mask)
             h = self.norm(h)
+
+            seqlen = h.shape()[1]
+            if seqlen == 2048:
+                tile = [256, 128]
+                sram = 24672
+            elif seqlen == 128:
+                tile = [128, 128]
+                sram = 16480
+            else:
+                raise ValueError(f"Unsupported seqlen {seqlen}")
+
             with Context(
-                config={"Tile": [256, 128], "SramBytes": 24672, "NumWarps": 4}
+                config={"Tile": tile, "SramBytes": sram, "NumWarps": 4}
             ):
                 output = self.output(h)
             return output
