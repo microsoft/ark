@@ -17,6 +17,7 @@ NUM_WARPS = NUM_SM * NUM_WARPS_PER_SM
 WARP_SIZE = 64
 SRAM_PER_SM = 65536
 
+
 @dataclass
 class ModelArgs:
     dim: int = 4096
@@ -263,16 +264,22 @@ class ParallelEmbedding(ark.Module):
                 num_parts = 1
             else:
                 min_elem_per_warp = WARP_SIZE * 2
-                max_warps_per_vec = (self.dim + min_elem_per_warp - 1) // min_elem_per_warp
+                max_warps_per_vec = (
+                    self.dim + min_elem_per_warp - 1
+                ) // min_elem_per_warp
                 warps_per_vec = min(max_warps_per_vec, NUM_WARPS // num_vecs)
                 if warps_per_vec <= NUM_WARPS_PER_SM:
-                    config.update({"NumWarps": warps_per_vec, "Tile": [self.dim]})
+                    config.update(
+                        {"NumWarps": warps_per_vec, "Tile": [self.dim]}
+                    )
                     num_parts = 1
                 else:
                     num_parts = warps_per_vec // NUM_WARPS_PER_SM
                     max_num_parts = 4
                     assert NUM_SM % max_num_parts == 0
-                    assert 2 ** (max_num_parts.bit_length() - 1) == max_num_parts
+                    assert (
+                        2 ** (max_num_parts.bit_length() - 1) == max_num_parts
+                    )
                     if num_parts > max_num_parts:
                         num_parts = max_num_parts
                     # make it max power of 2 smaller than num_parts
@@ -286,16 +293,34 @@ class ParallelEmbedding(ark.Module):
             with Context(processor_range=[0, NUM_SM], config=config):
                 if num_parts == 1:
                     return ark.embedding(x, self.weight)
-                emb_output = ark.tensor([x.shape()[0], x.shape()[1], self.dim], self.dtype)
+                emb_output = ark.tensor(
+                    [x.shape()[0], x.shape()[1], self.dim], self.dtype
+                )
                 emb_parts = []
                 dim_per_part = self.dim // num_parts
                 for i in range(num_parts):
-                    with Context(processor_range=[i * NUM_SM // num_parts, (i + 1) * NUM_SM // num_parts]):
+                    with Context(
+                        processor_range=[
+                            i * NUM_SM // num_parts,
+                            (i + 1) * NUM_SM // num_parts,
+                        ]
+                    ):
                         emb_parts.append(
                             ark.embedding(
                                 x,
-                                self.weight[:, (i * dim_per_part) : ((i + 1) * dim_per_part)],
-                                emb_output[:, :, (i * dim_per_part) : ((i + 1) * dim_per_part)],
+                                self.weight[
+                                    :,
+                                    (i * dim_per_part) : (
+                                        (i + 1) * dim_per_part
+                                    ),
+                                ],
+                                emb_output[
+                                    :,
+                                    :,
+                                    (i * dim_per_part) : (
+                                        (i + 1) * dim_per_part
+                                    ),
+                                ],
                             )
                         )
                 return ark.identity(emb_output, deps=emb_parts)
@@ -385,37 +410,61 @@ class FeedForward(ark.Module):
         else:
             raise ValueError(f"Unsupported seqlen {seqlen}")
 
-        with Context(
-            processor_range=[0, NUM_SM], config={"NumWarps": 4},
-        ):
-            out_shape = h.shape()
-            out_shape[-1] = self.w1.out_dim
-            out = ark.tensor(out_shape, h.dtype())
-            pos = 0
-            for dim, tile, sram in schedule:
-                with Context(
-                    processor_range=[0, NUM_SM], sync=False, config={"Tile": tile}
-                ):
-                    h_shard = h[:, pos : pos + dim, :]
-                    out_shard = out[:, pos : pos + dim, :]
-                    with Context(config={"SramBytes": sram}):
-                        x1 = ark.matmul(
-                            h_shard, self.w1.weight, transpose_other=True
-                        )
-                    with Context(config={"SramBytes": 0}):
-                        x1 = Silu()(x1)
-                # We don't need a barrier here but somehow the performance is better with it
-                with Context(
-                    processor_range=[0, NUM_SM], sync=False, config={"Tile": tile}
-                ):
-                    with Context(config={"SramBytes": sram}):
-                        x2 = ark.matmul(
-                            h_shard, self.w3.weight, transpose_other=True
-                        )
-                    with Context(config={"SramBytes": 0}):
-                        x3 = ark.mul(x1, x2, out_shard)
-                    out = ark.identity(out, deps=[x3])
-                    pos += dim
+        out_shape = h.shape()
+        out_shape[-1] = self.w1.out_dim
+        out = ark.tensor(out_shape, h.dtype())
+        pos = 0
+
+        dim, tile, sram = schedule[0]
+
+        with Context(sync=False, config={"Tile": tile, "NumWarps": 4}):
+            h_shard = h[:, pos : pos + dim, :]
+            out_shard = out[:, pos : pos + dim, :]
+            with Context(config={"SramBytes": sram}):
+                x1 = ark.matmul(h_shard, self.w1.weight, transpose_other=True)
+            with Context(config={"SramBytes": 0}):
+                x1 = Silu()(x1)
+
+        # We don't need a barrier here but somehow the performance is better with it
+        with Context(sync=False, config={"Tile": tile, "NumWarps": 4}):
+            with Context(config={"SramBytes": sram}):
+                x2 = ark.matmul(h_shard, self.w3.weight, transpose_other=True)
+            with Context(config={"SramBytes": 0}):
+                x3 = ark.mul(x1, x2, out_shard)
+            out = ark.identity(out, deps=[x3])
+            pos += dim
+
+        if len(schedule) > 1:
+            dim, tile, sram = schedule[1]
+            with Context(
+                processor_range=[0, NUM_SM // 2],
+                sync=False,
+                config={"Tile": tile, "NumWarps": 4},
+            ):
+                h_shard = h[:, pos : pos + dim, :]
+                out_shard = out[:, pos : pos + dim, :]
+                with Context(config={"SramBytes": sram}):
+                    x1 = ark.matmul(
+                        h_shard, self.w1.weight, transpose_other=True
+                    )
+                with Context(config={"SramBytes": 0}):
+                    x1 = Silu()(x1)
+
+            with Context(
+                processor_range=[NUM_SM // 2, NUM_SM],
+                sync=False,
+                config={"Tile": tile, "NumWarps": 4, "SramBytes": sram},
+            ):
+                x2 = ark.matmul(h_shard, self.w3.weight, transpose_other=True)
+            with Context(
+                processor_range=[0, NUM_SM],
+                sync=False,
+                config={"Tile": tile, "NumWarps": 4},
+            ):
+                with Context(config={"SramBytes": 0}):
+                    x3 = ark.mul(x1, x2, out_shard)
+                out = ark.identity(out, deps=[x3])
+            pos += dim
 
         if seqlen == 2048:
             tile = [256, 128]
@@ -610,7 +659,9 @@ class Attention(ark.Module):
             xq = ark.reshape(
                 xq, [bsz, seqlen, self.n_local_heads, self.head_dim]
             )
-            with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
+            with Context(
+                config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}
+            ):
                 if freqs_cis is not None:
                     xq = ark.rope(xq, freqs_cis, xq_scratch[:, :seqlen, :, :])
 
@@ -626,7 +677,9 @@ class Attention(ark.Module):
             xk = ark.reshape(
                 xk, [bsz, seqlen, self.n_local_kv_heads, self.head_dim]
             )
-            with Context(config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}):
+            with Context(
+                config={"SramBytes": 0, "Tile": [tile[0], 1, tile[1]]}
+            ):
                 if freqs_cis is not None:
                     xk = ark.rope(xk, freqs_cis, xk_scratch[:, :seqlen, :, :])
 
