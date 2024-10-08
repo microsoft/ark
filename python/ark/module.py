@@ -1,7 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import logging
 import numpy as np
 from typing import Any, Dict
 from .tensor import Parameter
@@ -71,6 +70,9 @@ class Module:
         all_keys = set(state_dict.keys())
         pd = self.params_dict(prefix)
         for name, param in pd.items():
+            if param.data_ptr() == 0:
+                log.WARN(f"Parameter {name} is not initialized")
+                continue
             param.from_numpy(state_dict[name])
             all_keys.remove(name)
         if all_keys:

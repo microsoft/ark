@@ -17,9 +17,9 @@ enum class ContextType {
 class Context {
    public:
     ///
-    /// Construct an empty context for the given model.
+    /// Context handler of the given model.
     ///
-    /// @param model The model to create the context for.
+    /// @param model The model to manipulate the context for.
     ///
     Context(Model& model);
 
@@ -77,6 +77,9 @@ class Context {
     ///
     void set(const std::string& key, const std::string& value,
              ContextType type = ContextType::Overwrite);
+
+    /// Return the entire context stacks as a JSON format string.
+    std::string dump() const;
 
    protected:
     friend class PlannerContext;

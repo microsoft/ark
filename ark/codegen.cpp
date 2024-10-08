@@ -4,8 +4,10 @@
 #include "codegen.hpp"
 
 #include <list>
+#include <utility>
 
 #include "ark/data_type.hpp"
+#include "buffer_registry.hpp"
 #include "env.h"
 #include "file_io.h"
 #include "logging.hpp"
@@ -24,7 +26,18 @@ static std::string replace(
         size_t pos = 0;
         while ((pos = result.find(kv.first, pos)) != std::string::npos) {
             result.replace(pos, kv.first.length(), kv.second);
-            pos += kv.second.length();
+            if ((kv.first == "@GLOBAL_ARGS@" || kv.first == "@FUNCTION_ARGS@" ||
+                 kv.first == "@ARG_TYPES@") &&
+                kv.second.empty()) {
+                size_t comma_pos = pos;
+                if (comma_pos >= 2 && result.substr(comma_pos - 2, 2) == ", ") {
+                    result.erase(comma_pos - 2, 2);
+                    pos -= 2;
+                }
+
+            } else {
+                pos += kv.second.length();
+            }
         }
     }
     return result;
@@ -43,11 +56,11 @@ class CodeGenerator::Impl {
    public:
     Impl(const PlanJson &plan,
          const std::map<size_t, size_t> &buffer_id_to_offset,
-         const std::string &name);
+         const std::set<size_t> &extra_buffer_ids, const std::string &name);
     ~Impl() = default;
 
    private:
-    std::string def_op(const Json &op_json, size_t task_id, size_t op_idx);
+    std::pair<std::string, size_t> def_op(const Json &op_json);
 
     std::string def_task(const Json &task_json);
 
@@ -67,7 +80,10 @@ class CodeGenerator::Impl {
    protected:
     friend class CodeGenerator;
 
+    std::set<size_t> op_hashes_;
+    std::set<size_t> task_hashes_;
     std::map<size_t, size_t> buffer_id_to_offset_;
+    std::set<size_t> extra_buffer_ids_;
     std::string name_;
     int rank_;
     int world_size_;
@@ -78,8 +94,11 @@ class CodeGenerator::Impl {
 
 CodeGenerator::Impl::Impl(const PlanJson &plan,
                           const std::map<size_t, size_t> &buffer_id_to_offset,
+                          const std::set<size_t> &extra_buffer_ids,
                           const std::string &name)
-    : buffer_id_to_offset_(buffer_id_to_offset), name_(name) {
+    : buffer_id_to_offset_(buffer_id_to_offset),
+      extra_buffer_ids_(extra_buffer_ids),
+      name_(name) {
     rank_ = plan.at("Rank");
     world_size_ = plan.at("WorldSize");
     num_procs_ = plan.at("NumProcessors");
@@ -166,83 +185,170 @@ CodeGenerator::Impl::Impl(const PlanJson &plan,
     const std::string &template_path =
         ark_root + "/include/kernels/kernel_template.in";
     if (!is_file(template_path)) {
-        ERR(InternalError, "kernel template file not found: ", template_path);
+        ERR(InvalidUsageError,
+            "kernel template file not found: ", template_path,
+            ". Please make sure the ARK_ROOT environment variable is set "
+            "correctly.");
     }
+
+    // Generate the global arguments
+    std::stringstream global_args_ss, function_args_ss, arg_types_ss;
+    for (auto buf_id : extra_buffer_ids_) {
+        std::string arg_name = "_ext_buf_" + std::to_string(buf_id);
+        global_args_ss << "void *" << arg_name << ", ";
+        function_args_ss << arg_name << ", ";
+        arg_types_ss << "void *, ";
+    }
+    std::string global_args = global_args_ss.str();
+    std::string function_args = function_args_ss.str();
+    std::string arg_types = arg_types_ss.str();
+    if (!global_args.empty()) {
+        global_args.pop_back();
+        global_args.pop_back();
+    }
+    if (!function_args.empty()) {
+        function_args.pop_back();
+        function_args.pop_back();
+    }
+    if (!arg_types.empty()) {
+        arg_types.pop_back();
+        arg_types.pop_back();
+    }
+
     std::string template_code = read_file(template_path);
     std::map<std::string, std::string> replacements = {
         {"@NUM_BLOCKS@", std::to_string(num_procs_)},
         {"@NUM_WARPS_PER_BLOCK@", std::to_string(num_warps_per_proc_)},
         {"@DEFINITIONS@", definitions_ss.str()},
         {"@BODY@", body_ss.str()},
-        {"@NAME@", (name_.empty() ? "" : "_" + name_)},
+        {"@NAME@", (!name_.empty() ? "" : name_)},
+        {"@GLOBAL_ARGS@", global_args},
+        {"@FUNCTION_ARGS@", function_args},
+        {"@ARG_TYPES@", arg_types},
     };
     code_ = replace(template_code, replacements);
 }
 
-std::string CodeGenerator::Impl::def_op(const Json &op_json, size_t task_id,
-                                        size_t op_idx) {
+std::pair<std::string, size_t> CodeGenerator::Impl::def_op(
+    const Json &op_json) {
     auto op = ModelOp::deserialize(op_json);
     auto impl_name = op->impl_name(op_json["Config"]);
     auto impl_args = op->impl_args(op_json["Config"]);
-    std::stringstream ss;
-    ss << "__forceinline__ __device__ void t" << task_id << "_o" << op_idx
-       << "(";
+    std::stringstream ss_desc;
     size_t arg_idx = 0;
     for (auto &arg : impl_args) {
         if (arg.type_name() == "TENSOR") {
             auto tns = arg.value<ModelTensorRef>();
-            ss << tns->data_type()->type_str() << "*";
+            ss_desc << tns->data_type()->type_str() << "*";
         } else if (arg.type_name() == "OFFSET") {
-            ss << "uint64_t";
+            ss_desc << "uint64_t";
         } else {
-            ss << arg.type_str();
+            ss_desc << arg.type_str();
         }
-        ss << " _" << arg_idx++ << ", ";
+        ss_desc << " _" << arg_idx++ << ", ";
     }
-    ss << "int _idx, int _spw) {\n  " << impl_name << "(";
+    ss_desc << "int _idx, int _spw) {\n  " << impl_name << "(";
     for (size_t i = 0; i < impl_args.size(); ++i) {
-        ss << "_" << i << ", ";
+        ss_desc << "_" << i << ", ";
     }
-    ss << "_idx, _spw);\n}\n";
-    return ss.str();
+    ss_desc << "_idx, _spw);\n}\n";
+    auto desc_str = ss_desc.str();
+    size_t op_hash = std::hash<std::string>{}(desc_str);
+    std::stringstream ss;
+    ss << "__forceinline__ __device__ void __op_" << std::hex << op_hash
+       << std::dec << "(";
+    ss << desc_str;
+    return {ss.str(), op_hash};
 }
 
 std::string CodeGenerator::Impl::def_task(const Json &task_json) {
     std::stringstream ss;
-    size_t op_idx = 0;
+    std::stringstream ss_hash_concat;
+    std::vector<size_t> op_hash_list;
     for (auto &op_json : task_json["Ops"]) {
-        ss << this->def_op(op_json, task_json["Id"], op_idx++);
+        auto [def_str, hash] = this->def_op(op_json);
+        if (op_hashes_.find(hash) == op_hashes_.end()) {
+            ss << def_str;
+            op_hashes_.insert(hash);
+        }
+        ss_hash_concat << std::hex << hash;
+        op_hash_list.push_back(hash);
     }
-    ss << "__device__ void t" << task_json["Id"]
-       << "(char* _buf, int _idx, int _spw) {\n";
-    op_idx = 0;
+    size_t task_hash = std::hash<std::string>{}(ss_hash_concat.str());
+    std::stringstream ss_desc;
+    auto &buf_reg = BufferRegistry::get_instance();
+    size_t op_idx = 0;
+    std::map<std::string, size_t> ptr_str_to_index;
+    std::vector<std::string> ptr_str_list;
     for (auto &op_json : task_json["Ops"]) {
         auto op = ModelOp::deserialize(op_json);
         auto impl_args = op->impl_args(op_json["Config"]);
-        ss << "  t" << task_json["Id"] << "_o" << op_idx++ << "(";
-        for (size_t i = 0; i < impl_args.size(); ++i) {
-            auto &arg = impl_args[i];
+        ss_desc << "  __op_" << std::hex << op_hash_list[op_idx++] << std::dec
+                << "(";
+        for (auto &arg : impl_args) {
             if (arg.type_name() == "TENSOR") {
                 auto tns = arg.value<ModelTensorRef>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(tns->buffer()->id());
-                size_t offset = buffer_offset + ModelOffset(tns).value();
-                ss << "(" << tns->data_type()->type_str() << "*)&_buf["
-                   << offset << "]";
+                size_t buffer_id = tns->buffer()->id();
+                auto it = buffer_id_to_offset_.find(buffer_id);
+                auto buf_info = buf_reg.get(buffer_id);
+                std::string ptr_str;
+                if ((buf_info && buf_info->is_external) ||
+                    (it == buffer_id_to_offset_.end())) {
+                    ptr_str = "_ext_buf_" + std::to_string(buffer_id);
+                } else {
+                    size_t buffer_offset;
+                    buffer_offset = it->second;
+                    size_t offset = buffer_offset + ModelOffset(tns).value();
+                    ptr_str = "&_buf[" + std::to_string(offset) + "]";
+                }
+                size_t ptr_idx;
+                if (ptr_str_to_index.find(ptr_str) == ptr_str_to_index.end()) {
+                    ptr_idx = ptr_str_to_index.size();
+                    ptr_str_to_index[ptr_str] = ptr_idx;
+                    ptr_str_list.push_back(ptr_str);
+                } else {
+                    ptr_idx = ptr_str_to_index[ptr_str];
+                }
+                ss_desc << "(" << tns->data_type()->type_str() << "*)_"
+                        << ptr_idx;
             } else if (arg.type_name() == "OFFSET") {
                 auto moff = arg.value<ModelOffset>();
-                size_t buffer_offset =
-                    buffer_id_to_offset_.at(moff.buffer_id());
+                size_t buffer_id = moff.buffer_id();
+                auto buf_info = buf_reg.get(buffer_id);
+                if (buf_info && buf_info->is_external) {
+                    ERR(InternalError, "cannot offset external buffer");
+                }
+                size_t buffer_offset;
+                auto it = buffer_id_to_offset_.find(buffer_id);
+                if (it == buffer_id_to_offset_.end()) {
+                    ERR(InternalError, "buffer ID not found: ", buffer_id);
+                }
+                buffer_offset = it->second;
                 size_t offset = buffer_offset + moff.value();
-                ss << offset;
+                ss_desc << offset;
             } else {
-                ss << arg.serialize().begin().value();
+                ss_desc << arg.serialize().begin().value();
             }
-            ss << ", ";
+            ss_desc << ", ";
         }
-        ss << "_idx, _spw);\n";
+        ss_desc << "_idx, _spw);\n";
     }
-    ss << "}\n";
+    if (task_hashes_.find(task_hash) == task_hashes_.end()) {
+        ss << "__device__ void __task_" << std::hex << task_hash << std::dec
+           << "(";
+        for (size_t i = 0; i < ptr_str_list.size(); ++i) {
+            ss << "void *_" << i << ", ";
+        }
+        ss << "int _idx, int _spw) {\n" << ss_desc.str() << "}\n";
+        task_hashes_.insert(task_hash);
+    }
+    ss << "__forceinline__ __device__ void __t" << task_json["Id"]
+       << "(char *_buf, int _idx, int _spw, @GLOBAL_ARGS@) {\n";
+    ss << "  __task_" << std::hex << task_hash << std::dec << "(";
+    for (auto &ptr_str : ptr_str_list) {
+        ss << ptr_str << ", ";
+    }
+    ss << "_idx, _spw);\n}\n";
     return ss.str();
 }
 
@@ -265,7 +371,8 @@ std::string CodeGenerator::Impl::task_seq(
     ss << "task_seq<" << proc_b << ", " << proc_e << ", " << proc_s << ", "
        << proc_cur << ", " << task_b << ", " << task_e << ", " << task_s << ", "
        << task_gran << ", " << num_slots << ", " << slot_num_warps << ", "
-       << slot_sram_bytes << ", t" << task_id << ">(_buf);\n";
+       << slot_sram_bytes << ", __t" << task_id
+       << ">(_buf, @FUNCTION_ARGS@);\n";
     return ss.str();
 }
 
@@ -288,10 +395,14 @@ std::string CodeGenerator::Impl::resource_group(
     size_t proc_b = *rg_proc_range.begin();
     size_t proc_e = *rg_proc_range.end();
     size_t proc_s = rg_proc_range.step();
+    std::map<size_t, Json> task_infos_map;
+    for (auto &task_info : task_infos) {
+        task_infos_map[task_info.at("Id").get<size_t>()] = task_info;
+    }
     std::stringstream ss;
     for (auto &tg : rg_json["TaskGroups"]) {
         size_t task_id = tg["TaskId"];
-        auto &task_info = task_infos[task_id];
+        auto &task_info = task_infos_map.at(task_id);
         Range<size_t> task_range(tg["TaskRange"][0], tg["TaskRange"][1]);
         size_t task_gran = tg["Granularity"];
         size_t num_warps_per_task = task_info["NumWarps"];
@@ -305,7 +416,7 @@ std::string CodeGenerator::Impl::resource_group(
             n_slots = total_warps / num_warps_per_task;
         }
         if (n_slots == 0) {
-            ERR(PlanError, "not enough resources for task group");
+            ERR(PlanError, "not enough resources for task group: ", tg.dump());
         }
 
         size_t task_b = *task_range.begin();
@@ -430,8 +541,9 @@ std::string CodeGenerator::Impl::sync_process_range(const Range<size_t> &range,
 
 CodeGenerator::CodeGenerator(
     const PlanJson &plan, const std::map<size_t, size_t> &buffer_id_to_offset,
-    const std::string &name)
-    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, name)) {}
+    const std::set<size_t> &extra_buffer_ids, const std::string &name)
+    : impl_(std::make_shared<Impl>(plan, buffer_id_to_offset, extra_buffer_ids,
+                                   name)) {}
 
 std::string CodeGenerator::code() const { return impl_->code_; }
 

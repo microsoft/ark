@@ -3,15 +3,13 @@
 
 from . import core
 from .model import Model
-from .runtime import RuntimeState
+from .executor import Executor
 
 __all__ = ["init"]
 
 
 def init():
     """Initializes ARK."""
+    Executor.reset()
     Model.reset()
-    if RuntimeState.executor is not None:
-        if not RuntimeState.executor.destroyed():
-            RuntimeState.executor.destroy()
     core.init()

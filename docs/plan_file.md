@@ -6,6 +6,7 @@ See an example plan file: [Example 1](../examples/tutorial/default_plan.json)
 
     - Rank (Int)
     - WorldSize (Int)
+    - Architecture (String)
     - NumProcessors (Int)
     - NumWarpsPerProcessor (Int)
     - TaskInfos (Array of TaskInfo)
@@ -42,6 +43,23 @@ See an example plan file: [Example 1](../examples/tutorial/default_plan.json)
 
 `ProcessorRange`, `WarpRange`, `SramRange`, and `TaskRange` are in the "range" format, i.e., `[Begin, End, Step]` that indicates an arithmetic integer sequence with a common difference of `Step`, starting from `Begin` and ends before `End` (does not include `End`). They alternatively can be in the format `[Begin, End]` that assumes `Step` is 1.
 
+## Architecture
+
+A name that refers to the hardware architecture where the plan is supposed to run over. The following names are currently supported.
+
+- `ANY`: compatible with all architectures.
+
+- NVIDIA Family
+    - `CUDA`: compatible with all supported NVIDIA architectures.
+    - `CUDA_70`: compatible with NVIDIA Volta architecture.
+    - `CUDA_80`: compatible with NVIDIA Ampere architecture.
+    - `CUDA_90`: compatible with NVIDIA Hopper architecture.
+
+- AMD Family
+    - `ROCM`: compatible with all supported AMD architectures.
+    - `ROCM_90A`: compatible with AMD CDNA 2 (GFX90A) architecture.
+    - `ROCM_942`: compatible with AMD CDNA 3 (GFX942) architecture.
+
 ## TaskInfo
 
 A `TaskInfo` object describes a sequential set of operators. The followings describe each field of `TaskInfo`.
@@ -57,47 +75,36 @@ Structure of an `Op` object in a plan file is the same as [the one in the model 
 
 ### Config Details
 
-The followings explain a few fields that many configs commonly consist of.
+The followings explain a few fields that many configs consist of.
 
-- `NumWarps`: number of concurrent warps needed to calculate a single output tile.
-- `SramBytes`: bytes of SRAM needed to calculate a single output tile.
-- `NumTasks`: total number of output tiles need to compute.
+- `Tile` (Optional): up-to-4-dimensional shape of a single tile. A tile refers to elements that each task calculates for the first result tensor. The shape of the first result tensor should be divisible by the tile shape. `Tile` may not be needed depending on the operator type.
+- `NumWarps`: number of concurrent warps needed to calculate a single tile.
+- `SramBytes`: bytes of SRAM needed to calculate a single tile.
+- `NumTasks` (Optional): total number of tiles need to compute. If `NumTasks` is not provided, it will be calculated as the number of elements in the first result tensor divided by the number of elements in a single `Tile`. If both `NumTasks` and `Tile` are not provided, no computation will be conducted (regarded as `NumTask == 0`).
 
 The followings describe `Config` structure of different types of operators.
 
-- `Matmul`
-    - `NumWarps`
-    - `SramBytes`
-    - `NumTasks`
-    - `TileShapeMNK`: tile shape of matrix multiplication in the [M,N,K] format.
-    - `TilePadMNK`: this field is not well defined and will be updated in the future. Currently, it should be the same as `TileShapeMNK`.
-
 - `ReduceSum`, `ReduceMax`, `ReduceMean`
+    - `Tile` (Optional)
     - `NumWarps`
     - `SramBytes`
-    - `NumTasks`
+    - `NumTasks` (Optional)
     - `ImplType`: type of reduction implementation, either `WarpWise` or `ElementWise`.
 
 - `Send`, `SendDone`, `Recv`
-    - `NumWarps`: should be always 1.
+    - `NumWarps`
     - `SramBytes`: should be always 0.
     - `NumTasks`: should be always 1.
-
-- `Embedding`
-    - `NumWarps`
-    - `SramBytes`
-    - `NumTasks`
 
 - `Noop`
     - `NumWarps`: should be always 1.
     - `SramBytes`: should be always 0.
-    - `NumTasks`: should be always 0.
 
 - `Default`: all other operators that are not listed above follow this structure.
+    - `Tile` (Optional)
     - `NumWarps`
     - `SramBytes`
-    - `NumTasks`
-    - `Tile`: 2-dimensional shape of a single output tile.
+    - `NumTasks` (Optional)
 
 ## ProcessorGroup
 
@@ -116,6 +123,6 @@ A `ResourceGroup` object describes computing tasks that use the entire or a subs
 
 ## TaskGroup
 
-A `TaskGroup` object describes computing tasks. Each task can be typically considered as computing a single output tile of an operator. The `TaskId` field declares the type of task, of which details are found from `TaskInfos`. The `TaskRange` field declares tasks to run, which should be within the range `[0, NumTasks)` where `NumTasks` is found from `Config` of operators in the `TaskInfo`. If there are multiple operators in a `TaskInfo`, all operators should have the same `NumTasks`.
+A `TaskGroup` object describes computing tasks. Each task can be typically considered as computing a single result tile of an operator. The `TaskId` field declares the type of task, of which details are found from `TaskInfos`. The `TaskRange` field declares tasks to run, which should be within the range `[0, NumTasks)` where `NumTasks` is found from `Config` of operators in the `TaskInfo`. If there are multiple operators in a `TaskInfo`, all operators should have the same `NumTasks`.
 
 Tasks in the `TaskRange` are distributed across processors in the resource group. If `Granularity` is 1, the distribution is round-robin. Otherwise, the distribution assigns `Granularity` consequent tasks to each processor (as long as there are enough tasks), and then assign the following task to the next processor. `Granularity` should be always a positive integer.

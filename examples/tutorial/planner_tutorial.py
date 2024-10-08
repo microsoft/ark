@@ -54,14 +54,14 @@ def eval(tensor: ark.Tensor):
         return tensor.to_torch()
 
 
-def perf():
+def perf(num_iter: int = 1000):
     with ark.Runtime() as rt:
         rt.launch()
 
         start = time.time()
-        rt.run(iter=1000)
+        rt.run(iter=num_iter)
         end = time.time()
-        return (end - start) / 1000
+        return (end - start) / num_iter
 
 
 if __name__ == "__main__":
@@ -69,14 +69,13 @@ if __name__ == "__main__":
 
     shape = (32, 2048, 2048)
 
-    # input = torch.randn(*shape).to("cuda:0")
-    input = ark.tensor(shape)
+    input = torch.randn(*shape).to("cuda:0")
 
-    output = Softmax()(input)
+    output = Softmax()(ark.Tensor.from_torch(input))
 
-    # if torch.allclose(eval(output), F.softmax(input, dim=-1), atol=1e-5):
-    #     print("Correct result")
-    # else:
-    #     print("Incorrect result")
+    if torch.allclose(eval(output), F.softmax(input, dim=-1), atol=1e-5):
+        print("Correct result")
+    else:
+        print("Incorrect result")
 
     print(f"Performance: {(perf() * 1e3):.3f} ms/iter")

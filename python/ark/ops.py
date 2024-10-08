@@ -1,9 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from typing import List, Iterable, Union
+from typing import List, Iterable, Union, Optional
 
-from .tensor import Dims, Tensor, Parameter, NullTensor
+from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
+from .torch import torch, _no_torch
 from .data_type import DataType, fp32
 from .model import Model
 from . import log
@@ -12,6 +13,8 @@ from . import log
 __all__ = [
     "tensor",
     "parameter",
+    "placeholder",
+    "noop",
     "reshape",
     "identity",
     "sharding",
@@ -45,52 +48,6 @@ __all__ = [
 
 def is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
-
-
-def _tensor(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    strides: Iterable[int] = [],
-    offsets: Iterable[int] = [],
-    padded_shape: Iterable[int] = [],
-    rank: int = -1,
-    name: str = "",
-) -> Tensor:
-    if not is_list_or_tuple(shape):
-        raise log.InvalidUsageError(
-            "shape should be a list or tuple of integers"
-        )
-    if not is_list_or_tuple(strides):
-        raise log.InvalidUsageError(
-            "strides should be a list or tuple of integers"
-        )
-    if not is_list_or_tuple(offsets):
-        raise log.InvalidUsageError(
-            "offsets should be a list or tuple of integers"
-        )
-    if not is_list_or_tuple(padded_shape):
-        raise log.InvalidUsageError(
-            "padded_shape should be a list or tuple of integers"
-        )
-    # only support tensors with up to 4 dimensions
-    if (
-        len(shape) > 4
-        or len(strides) > 4
-        or len(offsets) > 4
-        or len(padded_shape) > 4
-    ):
-        raise log.InvalidUsageError(
-            "Only support tensors with up to 4 dimensions"
-        )
-    return Model.get_model().tensor(
-        Dims(shape),
-        dtype.ctype(),
-        Dims(strides),
-        Dims(offsets),
-        Dims(padded_shape),
-        rank,
-        name,
-    )
 
 
 def add(
@@ -147,7 +104,9 @@ def constant(
 
 
 def copy(
-    input: Union[Tensor, float], output: Tensor = NullTensor, name: str = "copy"
+    input: Union[Tensor, float],
+    output: Tensor = NullTensor,
+    name: str = "copy",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -186,7 +145,9 @@ def embedding(
 
 
 def exp(
-    input: Tensor, output: Tensor = NullTensor, name: str = "exp"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "exp",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -195,7 +156,9 @@ def exp(
 
 
 def gelu(
-    input: Tensor, output: Tensor = NullTensor, name: str = "gelu"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "gelu",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -257,6 +220,35 @@ def noop(input: Tensor, name: str = "noop"):
     Model.get_model().noop(input._tensor, name)
 
 
+def placeholder(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
+    rank: int = -1,
+    data: Union[int, torch.Tensor] = 0,
+    name: str = "placeholder",
+) -> Tensor:
+    """ """
+    if not _no_torch and isinstance(data, torch.Tensor):
+        # Should we support initializing shape dtype stride offset and padded_shape
+        # just by passing in a torch.Tensor?
+        data = data.data_ptr()
+    return Tensor(
+        Model.get_model().placeholder(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            data,
+            name,
+        )
+    )
+
+
 def reduce_max(
     input: Tensor,
     axis: int,
@@ -309,7 +301,9 @@ def reduce_sum(
 
 
 def relu(
-    input: Tensor, output: Tensor = NullTensor, name: str = "relu"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "relu",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -365,7 +359,9 @@ def rope(
 
 
 def rsqrt(
-    input: Tensor, output: Tensor = NullTensor, name: str = "rsqrt"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "rsqrt",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -384,7 +380,9 @@ def sharding(
 
 
 def sigmoid(
-    input: Tensor, output: Tensor = NullTensor, name: str = "sigmoid"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "sigmoid",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -393,7 +391,9 @@ def sigmoid(
 
 
 def sqrt(
-    input: Tensor, output: Tensor = NullTensor, name: str = "sqrt"
+    input: Tensor,
+    output: Tensor = NullTensor,
+    name: str = "sqrt",
 ) -> Tensor:
     """ """
     if output is not NullTensor:
@@ -426,7 +426,9 @@ def tensor(
 ) -> Tensor:
     """ """
     return Tensor(
-        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, rank, None, name
+        )
     )
 
 
@@ -484,7 +486,9 @@ def parameter(
 ) -> Parameter:
     """ """
     return Parameter(
-        _tensor(shape, dtype, strides, offsets, padded_shape, name)
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, -1, None, name
+        )
     )
 
 
@@ -514,7 +518,9 @@ def layernorm(
 
 
 def zeros(
-    shape: Iterable[int], dtype: DataType = fp32, name: str = "zeros"
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    name: str = "zeros",
 ) -> Tensor:
     """ """
     return Tensor(

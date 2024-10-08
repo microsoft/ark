@@ -3,6 +3,7 @@
 
 #include "ark/tensor.hpp"
 
+#include "model/model_buffer.hpp"
 #include "model/model_data_type.hpp"
 #include "model/model_tensor.hpp"
 
@@ -48,6 +49,44 @@ const DataType &Tensor::data_type() const {
         return DataType::from_name(ref_->data_type()->type_name());
     }
     return NONE;
+}
+
+Dims Tensor::torch_strides() const {
+    if (ref_) {
+        Dims st = ref_->strides();
+        int ndims = st.ndims();
+        std::vector<DimType> tmp;
+        for (int i = 1; i < ndims; ++i) {
+            tmp.push_back(st[i]);
+        }
+        tmp.push_back(1);
+        for (int i = ndims - 2; i >= 0; --i) {
+            tmp[i] *= tmp[i + 1];
+        }
+        return Dims(tmp);
+    }
+    return Dims();
+}
+
+void *Tensor::data() const {
+    if (ref_) {
+        return ref_->data();
+    }
+    return nullptr;
+}
+
+void *Tensor::data(void *data) {
+    if (ref_) {
+        return ref_->data(data);
+    }
+    return nullptr;
+}
+
+bool Tensor::is_external() const {
+    if (ref_) {
+        return ref_->is_external();
+    }
+    return false;
 }
 
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {

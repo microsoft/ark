@@ -52,14 +52,15 @@ Json ModelGraphContextStack::get(const std::string &key) const {
     return Json();
 }
 
-std::map<std::string, Json> ModelGraphContextStack::get_all() const {
-    std::map<std::string, Json> cur;
+Json ModelGraphContextStack::dump() const {
+    Json j = Json::object();
     for (const auto &pair : this->storage_) {
-        if (!pair.second.empty()) {
-            cur[pair.first] = *pair.second.back();
+        j[pair.first] = Json::array();
+        for (const auto &value : pair.second) {
+            j[pair.first].emplace_back(*value);
         }
     }
-    return cur;
+    return j;
 }
 
 ModelGraph::Impl::Impl(const ModelGraph::Impl &other) { *this = other; }
@@ -216,7 +217,7 @@ ModelNodeRef ModelGraph::Impl::add_op(ModelOpRef op) {
         producer->consumers.push_back(node);
     }
 
-    node->context = context_stack_->get_all();
+    node->context = context_stack_->dump();
 
     nodes_.push_back(node);
     return node;

@@ -29,10 +29,10 @@ Llama2 examples over ARK.
 4. Download Llama2 model weights and tokenizer weights.
     * The model and tokenizer should be compatible with the [official PyTorch implementation](https://github.com/facebookresearch/llama/blob/main/llama).
 
-5. Run the model accuracy test. `--pth_path` is the path to the model weights file (`consolidated.00.pth`).
+5. Run the model accuracy test. `--ckpt_dir` is the directory where the model weight files are at (e.g., `consolidated.00.pth`).
 
     ```bash
-    python3 model_test.py --pth_path=/path/to/model/weights.pth
+    python3 model_test.py --ckpt_dir=/directory/of/model/weights
     ```
 
 6. Test text generation. `--pth_path` is the path to the model weights file (`consolidated.00.pth`), `--tok_path` is the path to the tokenizer weights file (`tokenizer.model`), and `--params_path` is the path to the model parameters (`params.json`).

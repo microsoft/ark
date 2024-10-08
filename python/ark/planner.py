@@ -5,6 +5,7 @@ import copy
 import json
 from typing import Callable, Dict, List, Any
 
+from . import error
 from .core import CorePlanner, CorePlannerContext
 from .model import Model
 
@@ -155,13 +156,27 @@ class Plan:
 
     @staticmethod
     def from_str(plan_str: str) -> "Plan":
-        plan = json.loads(plan_str)
+        try:
+            plan = json.loads(plan_str)
+        except json.JSONDecodeError:
+            raise error.InvalidUsageError(
+                "Plan string is not a valid JSON string."
+            )
         return Plan(plan)
 
     @staticmethod
     def from_file(file_path: str) -> "Plan":
-        with open(file_path, "r") as f:
-            plan = json.load(f)
+        try:
+            with open(file_path, "r") as f:
+                plan = json.load(f)
+        except FileNotFoundError:
+            raise error.InvalidUsageError(
+                f"Plan file {file_path} does not exist."
+            )
+        except json.JSONDecodeError:
+            raise error.InvalidUsageError(
+                f"Plan file {file_path} is not a valid JSON file."
+            )
         return Plan(plan)
 
 
@@ -195,6 +210,15 @@ class PlannerContext(CorePlannerContext):
         if config is not None:
             self.config(json.dumps(config))
 
+    def dump(self) -> str:
+        """
+        Dump the context stack.
+
+        Returns:
+            str: The context stack in JSON format.
+        """
+        return super().dump()
+
     def __enter__(self) -> "PlannerContext":
         """
         Enter the plan manager.
@@ -227,4 +251,4 @@ class Planner(CorePlanner):
         """
         Generate an execution plan.
         """
-        return Plan.from_str(super().plan(pretty=False))
+        return Plan.from_str(super().plan(pretty=True))
