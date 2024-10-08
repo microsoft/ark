@@ -405,7 +405,7 @@ class FeedForward(ark.Module):
             ]
         elif seqlen == 128:
             schedule = [
-                [128, [128, 64], 16480],
+                [128, [128, 64], 12384],
             ]
         else:
             raise ValueError(f"Unsupported seqlen {seqlen}")
@@ -471,7 +471,7 @@ class FeedForward(ark.Module):
             sram = 24672
         elif seqlen == 128:
             tile = [128, 64]
-            sram = 16480
+            sram = 12384
         else:
             raise ValueError(f"Unsupported seqlen {seqlen}")
 
@@ -645,7 +645,7 @@ class Attention(ark.Module):
             sram = 24672
         elif seqlen == 128:
             tile = [128, 64]
-            sram = 16480
+            sram = 12384
         else:
             raise ValueError(f"Unsupported seqlen {seqlen}")
 
