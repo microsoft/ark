@@ -14,8 +14,8 @@
 #include "common/unit_op.h"
 #include "reduce.h"
 
-extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle ARK_PROXY_CHANS[];
-extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle
+extern __constant__ mscclpp::ProxyChannelDeviceHandle ARK_PROXY_CHANS[];
+extern __constant__ mscclpp::ProxyChannelDeviceHandle
     ARK_PROXY_SECONDARY_CHANS[];
 extern __constant__ mscclpp::SmChannelDeviceHandle ARK_SM_CHANS[];
 

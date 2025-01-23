@@ -162,8 +162,7 @@ class CommResource {
 
     struct ConnectionResource {
         std::shared_ptr<mscclpp::Connection> connection;
-        std::vector<std::shared_ptr<mscclpp::SimpleProxyChannel>>
-            proxy_channels;
+        std::vector<std::shared_ptr<mscclpp::ProxyChannel>> proxy_channels;
         std::vector<std::shared_ptr<mscclpp::SmChannel>> sm_channels;
     };
 
@@ -312,11 +311,11 @@ void CommResource::connect(const PlanJson &plan_json,
             [&](std::shared_ptr<ConnectionResource> conn_resource) {
                 if (!conn_resource) return;
                 conn_resource->proxy_channels.push_back(
-                    std::make_shared<mscclpp::SimpleProxyChannel>(
+                    std::make_shared<mscclpp::ProxyChannel>(
                         proxy_service_->proxyChannel(
                             proxy_service_->buildAndAddSemaphore(
-                                *comm_, conn_resource->connection)),
-                        remote_regmem_id, regmem_id));
+                                *comm_, conn_resource->connection),
+                            remote_regmem_id, regmem_id)));
             };
         // NOTE: We can create multiple proxy channels here if we need in the
         // future
@@ -743,16 +742,15 @@ void PlanResource::init_kernel() {
     void *proxy_secondary_chan_addr =
         get_global_rt("ARK_PROXY_SECONDARY_CHANS");
     void *sm_chan_addr = get_global_rt("ARK_SM_CHANS");
-    std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> proxy_handles(
+    std::vector<mscclpp::ProxyChannel::DeviceHandle> proxy_handles(world_size_);
+    std::vector<mscclpp::ProxyChannel::DeviceHandle> proxy_secondary_handles(
         world_size_);
-    std::vector<mscclpp::SimpleProxyChannel::DeviceHandle>
-        proxy_secondary_handles(world_size_);
     std::vector<mscclpp::SmChannel::DeviceHandle> sm_handles(world_size_);
     for (int i = 0; i < world_size_; i++) {
         if (i == rank_) continue;
         auto resource = comm_resource_->resource(i);
         if (!resource) continue;
-        std::vector<mscclpp::SimpleProxyChannel::DeviceHandle> p_hdls;
+        std::vector<mscclpp::ProxyChannel::DeviceHandle> p_hdls;
         if (resource->ipc) {
             sm_handles[i] = resource->ipc->sm_channels[0]->deviceHandle();
             p_hdls.push_back(resource->ipc->proxy_channels[0]->deviceHandle());
@@ -772,14 +770,14 @@ void PlanResource::init_kernel() {
     }
     auto tmp_stream = gpu_manager->create_stream();
     GLOG(gpuSetDevice(device_id_));
-    GLOG(gpuMemcpyAsync(proxy_chan_addr, proxy_handles.data(),
-                        proxy_handles.size() *
-                            sizeof(mscclpp::SimpleProxyChannel::DeviceHandle),
-                        gpuMemcpyHostToDevice, tmp_stream->get()));
+    GLOG(gpuMemcpyAsync(
+        proxy_chan_addr, proxy_handles.data(),
+        proxy_handles.size() * sizeof(mscclpp::ProxyChannel::DeviceHandle),
+        gpuMemcpyHostToDevice, tmp_stream->get()));
     GLOG(gpuMemcpyAsync(proxy_secondary_chan_addr,
                         proxy_secondary_handles.data(),
                         proxy_secondary_handles.size() *
-                            sizeof(mscclpp::SimpleProxyChannel::DeviceHandle),
+                            sizeof(mscclpp::ProxyChannel::DeviceHandle),
                         gpuMemcpyHostToDevice, tmp_stream->get()));
     GLOG(gpuMemcpyAsync(
         sm_chan_addr, sm_handles.data(),
