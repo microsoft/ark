@@ -274,7 +274,6 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
         ss_hash_concat << std::hex << hash;
         op_hash_list.push_back(hash);
     }
-    size_t task_hash = std::hash<std::string>{}(ss_hash_concat.str());
     std::stringstream ss_desc;
     auto &buf_reg = BufferRegistry::get_instance();
     size_t op_idx = 0;
@@ -333,6 +332,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
         }
         ss_desc << "_idx, _spw);\n";
     }
+    size_t task_hash = std::hash<std::string>{}(ss_desc.str());
     if (task_hashes_.find(task_hash) == task_hashes_.end()) {
         ss << "__device__ void __task_" << std::hex << task_hash << std::dec
            << "(";
