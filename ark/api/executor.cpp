@@ -7,8 +7,8 @@
 #include <list>
 #include <memory>
 #include <mscclpp/core.hpp>
-#include <mscclpp/proxy_channel.hpp>
-#include <mscclpp/sm_channel.hpp>
+#include <mscclpp/memory_channel.hpp>
+#include <mscclpp/port_channel.hpp>
 #include <utility>
 
 #include "ark/data_type.hpp"
@@ -162,8 +162,8 @@ class CommResource {
 
     struct ConnectionResource {
         std::shared_ptr<mscclpp::Connection> connection;
-        std::vector<std::shared_ptr<mscclpp::ProxyChannel>> proxy_channels;
-        std::vector<std::shared_ptr<mscclpp::SmChannel>> sm_channels;
+        std::vector<std::shared_ptr<mscclpp::PortChannel>> proxy_channels;
+        std::vector<std::shared_ptr<mscclpp::MemoryChannel>> sm_channels;
     };
 
     struct RankResource {
@@ -311,8 +311,8 @@ void CommResource::connect(const PlanJson &plan_json,
             [&](std::shared_ptr<ConnectionResource> conn_resource) {
                 if (!conn_resource) return;
                 conn_resource->proxy_channels.push_back(
-                    std::make_shared<mscclpp::ProxyChannel>(
-                        proxy_service_->proxyChannel(
+                    std::make_shared<mscclpp::PortChannel>(
+                        proxy_service_->portChannel(
                             proxy_service_->buildAndAddSemaphore(
                                 *comm_, conn_resource->connection),
                             remote_regmem_id, regmem_id)));
@@ -340,7 +340,7 @@ void CommResource::connect(const PlanJson &plan_json,
         // NOTE: We can create multiple sm channels here if we need in the
         // future
         resource->ipc->sm_channels.push_back(
-            std::make_shared<mscclpp::SmChannel>(
+            std::make_shared<mscclpp::MemoryChannel>(
                 sm_semaphores[remote_rank][0],
                 rank_to_remote_regmem[remote_rank], regmem.data(), nullptr));
     }
@@ -742,15 +742,15 @@ void PlanResource::init_kernel() {
     void *proxy_secondary_chan_addr =
         get_global_rt("ARK_PROXY_SECONDARY_CHANS");
     void *sm_chan_addr = get_global_rt("ARK_SM_CHANS");
-    std::vector<mscclpp::ProxyChannel::DeviceHandle> proxy_handles(world_size_);
-    std::vector<mscclpp::ProxyChannel::DeviceHandle> proxy_secondary_handles(
+    std::vector<mscclpp::PortChannel::DeviceHandle> proxy_handles(world_size_);
+    std::vector<mscclpp::PortChannel::DeviceHandle> proxy_secondary_handles(
         world_size_);
-    std::vector<mscclpp::SmChannel::DeviceHandle> sm_handles(world_size_);
+    std::vector<mscclpp::MemoryChannel::DeviceHandle> sm_handles(world_size_);
     for (int i = 0; i < world_size_; i++) {
         if (i == rank_) continue;
         auto resource = comm_resource_->resource(i);
         if (!resource) continue;
-        std::vector<mscclpp::ProxyChannel::DeviceHandle> p_hdls;
+        std::vector<mscclpp::PortChannel::DeviceHandle> p_hdls;
         if (resource->ipc) {
             sm_handles[i] = resource->ipc->sm_channels[0]->deviceHandle();
             p_hdls.push_back(resource->ipc->proxy_channels[0]->deviceHandle());
@@ -772,16 +772,16 @@ void PlanResource::init_kernel() {
     GLOG(gpuSetDevice(device_id_));
     GLOG(gpuMemcpyAsync(
         proxy_chan_addr, proxy_handles.data(),
-        proxy_handles.size() * sizeof(mscclpp::ProxyChannel::DeviceHandle),
+        proxy_handles.size() * sizeof(mscclpp::PortChannel::DeviceHandle),
         gpuMemcpyHostToDevice, tmp_stream->get()));
     GLOG(gpuMemcpyAsync(proxy_secondary_chan_addr,
                         proxy_secondary_handles.data(),
                         proxy_secondary_handles.size() *
-                            sizeof(mscclpp::ProxyChannel::DeviceHandle),
+                            sizeof(mscclpp::PortChannel::DeviceHandle),
                         gpuMemcpyHostToDevice, tmp_stream->get()));
     GLOG(gpuMemcpyAsync(
         sm_chan_addr, sm_handles.data(),
-        sm_handles.size() * sizeof(mscclpp::SmChannel::DeviceHandle),
+        sm_handles.size() * sizeof(mscclpp::MemoryChannel::DeviceHandle),
         gpuMemcpyHostToDevice, tmp_stream->get()));
     GLOG(gpuStreamSynchronize(tmp_stream->get()));
 }

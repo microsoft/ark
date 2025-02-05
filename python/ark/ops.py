@@ -43,6 +43,9 @@ __all__ = [
     "constant",
     "ones",
     "zeros",
+    "send",
+    "send_done",
+    "recv",
 ]
 
 
@@ -452,6 +455,43 @@ def transpose(
         Model.get_model().transpose(input._tensor, perm, output, name)
     )
 
+
+################################################################################
+
+
+def send(
+    input: Tensor,
+    remote_rank: int,
+    tag: int,
+    output: Tensor = NullTensor,
+    name: str = "send",
+):
+    """ """
+    if output is not NullTensor:
+        output = output._tensor
+    return Tensor(
+        Model.get_model().send(input._tensor, remote_rank, tag, output, name)
+    )
+
+
+def send_done(
+    input: Tensor,
+    name: str = "send_done",
+):
+    """ """
+    return Tensor(Model.get_model().send_done(input._tensor, name))
+
+
+def recv(
+    output: Tensor,
+    remote_rank: int,
+    tag: int,
+    name: str = "recv",
+):
+    """ """
+    return Tensor(
+        Model.get_model().recv(output._tensor, remote_rank, tag, name)
+    )
 
 ################################################################################
 

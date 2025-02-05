@@ -128,6 +128,13 @@ void register_model(py::module &m) {
              py::arg("padded_shape"), py::arg("rank"), py::arg("name"))
         .def("transpose", &ark::Model::transpose, py::arg("input"),
              py::arg("permutation"), py::arg("output"), py::arg("name"))
+        .def("send", &ark::Model::send, py::arg("input"),
+             py::arg("remote_rank"), py::arg("tag"), py::arg("output"),
+             py::arg("name"))
+        .def("send_done", &ark::Model::send_done, py::arg("input"),
+             py::arg("name"))
+        .def("recv", &ark::Model::recv, py::arg("output"),
+             py::arg("remote_rank"), py::arg("tag"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
              py::arg("rank"), py::arg("world_size"), py::arg("output"),
              py::arg("name"));

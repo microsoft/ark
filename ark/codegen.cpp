@@ -354,11 +354,11 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
 
 std::string CodeGenerator::Impl::def_channels(int world_size) {
     std::stringstream ss;
-    ss << "__constant__ mscclpp::ProxyChannelDeviceHandle ";
+    ss << "__constant__ mscclpp::PortChannelDeviceHandle ";
     ss << "ARK_PROXY_CHANS[" << world_size << "];\n";
-    ss << "__constant__ mscclpp::ProxyChannelDeviceHandle ";
+    ss << "__constant__ mscclpp::PortChannelDeviceHandle ";
     ss << "ARK_PROXY_SECONDARY_CHANS[" << world_size << "];\n";
-    ss << "__constant__ mscclpp::SmChannelDeviceHandle ";
+    ss << "__constant__ mscclpp::MemoryChannelDeviceHandle ";
     ss << "ARK_SM_CHANS[" << world_size << "];\n";
     return ss.str();
 }
