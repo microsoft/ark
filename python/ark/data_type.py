@@ -66,7 +66,7 @@ class DataType(metaclass=MetaDataType):
             except Exception as e:
                 raise log.InvalidUsageError(f"Not a numpy data type. {str(e)}")
         for type_name, reg in REGISTRY_DATA_TYPE.items():
-            if reg["np"] == np_type:
+            if reg["np"] is not None and reg["np"] == np_type:
                 return DataType.from_name(type_name)
         raise log.InvalidUsageError(
             f"Undefined conversion from numpy data type {np_type}"
@@ -88,7 +88,7 @@ class DataType(metaclass=MetaDataType):
             ValueError: If there is no defined conversion from torch data type to ark data type.
         """
         for type_name, reg in REGISTRY_DATA_TYPE.items():
-            if reg["torch"] == torch_type:
+            if reg["torch"] is not None and reg["torch"] == torch_type:
                 return DataType.from_name(type_name)
         raise ValueError(
             f"Undefined conversion from torch data type {torch_type}"

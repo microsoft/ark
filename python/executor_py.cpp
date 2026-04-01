@@ -172,8 +172,8 @@ void register_executor(py::module &m) {
              })
         .def("plan", &ark::Executor::plan)
         .def("name", &ark::Executor::name)
-        .def("compile", &ark::Executor::compile, py::arg("device_id"),
-             py::arg("plan"), py::arg("name") = "executor")
+        .def("compile", &ark::Executor::compile, py::arg("plan"),
+             py::arg("device_id"), py::arg("name") = "executor")
         .def(
             "launch",
             [](ark::Executor *self,

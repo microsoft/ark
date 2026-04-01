@@ -223,10 +223,12 @@ std::string Planner::Impl::plan(bool pretty) const {
             auto result_shape4 = result_shape.dims4();
             max_num_tasks = 1;
             for (int i = 0; i < tile4.ndims(); i++) {
-                if (tile4[i] == 0 || result_shape4[i] % tile4[i] != 0) {
-                    ERR(PlanError, not_divided_error);
+                if (tile4[i] == 0) {
+                    ERR(PlanError, "Tile dimension is zero. Op: ",
+                        op->serialize().dump());
                 }
-                max_num_tasks *= result_shape4[i] / tile4[i];
+                max_num_tasks *=
+                    (result_shape4[i] + tile4[i] - 1) / tile4[i];
             }
             if (max_num_tasks == 0) ERR(InternalError, "max_num_tasks == 0");
         }
