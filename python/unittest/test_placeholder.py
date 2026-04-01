@@ -3,6 +3,7 @@
 
 from common import ark, pytest_ark
 import numpy as np
+import pytest
 
 
 @pytest_ark()
@@ -171,3 +172,50 @@ def test_placeholder_runtime_rebinding():
     assert np.allclose(result2, 11.0), (
         f"Run 2: expected 11.0, got {result2[:5]}"
     )
+
+
+@pytest_ark(need_torch=True)
+def test_placeholder_rebind_in_loop_mode_raises():
+    """Test that rebinding in loop_mode=True raises an error."""
+    import torch
+
+    t = ark.placeholder([64], ark.fp32)
+    out = ark.add(t, 1.0)
+
+    input1 = torch.ones(64, dtype=torch.float32, device="cuda:0")
+
+    with ark.Runtime() as rt:
+        rt.launch(loop_mode=True, tensor_mappings={t: input1})
+
+        input2 = torch.ones(64, dtype=torch.float32, device="cuda:0") * 2.0
+        with pytest.raises(ark.error.InvalidUsageError):
+            rt.run(tensor_mappings={t: input2})
+
+
+@pytest_ark(need_torch=True)
+def test_placeholder_mapping_requires_torch_tensor():
+    """Test that tensor_mappings rejects non-torch values."""
+    import torch
+
+    t = ark.placeholder([64], ark.fp32)
+    out = ark.add(t, 1.0)
+
+    with ark.Runtime() as rt:
+        with pytest.raises(ark.error.InvalidUsageError):
+            # Pass a numpy array instead of torch tensor
+            rt.launch(tensor_mappings={t: np.ones(64, dtype=np.float32)})
+
+
+@pytest_ark(need_torch=True)
+def test_placeholder_unbound_launch_raises():
+    """Test that launching with unbound placeholder raises an error."""
+    import torch
+
+    t = ark.placeholder([64], ark.fp32)
+    out = ark.add(t, 1.0)
+
+    with ark.Runtime() as rt:
+        # Launch without binding the placeholder — should fail
+        with pytest.raises(Exception):
+            rt.launch()
+            rt.run()
