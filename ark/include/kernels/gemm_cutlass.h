@@ -59,6 +59,13 @@ struct InstructionShape<cutlass::arch::Sm80, ElementAccumulator, WarpShape> {
     using value = cutlass::gemm::GemmShape<16, 8, K>;
 };
 
+// SM90 reuses SM80 instruction shapes for backward-compatible CUTLASS 2.x path.
+template <typename ElementAccumulator, typename WarpShape>
+struct InstructionShape<cutlass::arch::Sm90, ElementAccumulator, WarpShape> {
+    static constexpr int K = std::is_same_v<ElementAccumulator, float> ? 8 : 16;
+    using value = cutlass::gemm::GemmShape<16, 8, K>;
+};
+
 template <typename UnitOp, typename OperatorClass, typename ArchTag,
           typename ElementA, typename LayoutA, typename ElementB,
           typename LayoutB, typename ElementC, typename LayoutC, typename Shape>
@@ -210,7 +217,9 @@ DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
 #elif (ARK_TARGET_CUDA_ARCH == 80)
     using ArchTag = cutlass::arch::Sm80;
 #elif (ARK_TARGET_CUDA_ARCH == 90)
-    static_assert(false, "Use gemm_cuda_90 instead.");
+    // Use SM80 CUTLASS 2.x path on SM90 for backward compatibility.
+    // SM90-native TMA/WGMMA path is not yet implemented.
+    using ArchTag = cutlass::arch::Sm80;
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif
@@ -433,16 +442,11 @@ DEVICE void gemm_cutlass(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     CutDataTypeB *pB = reinterpret_cast<CutDataTypeB *>(B);
 
 #if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
-     ARK_TARGET_CUDA_ARCH == 80)
+     ARK_TARGET_CUDA_ARCH == 80 || ARK_TARGET_CUDA_ARCH == 90)
     gemm_cuda<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB, LeadingDimB,
               IsColumnB, CutDataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
               ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(pC, pA, pB, uop_idx,
                                                           smem_per_warp);
-#elif (ARK_TARGET_CUDA_ARCH == 90)
-    gemm_cuda_90<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
-                 LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
-                 ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM, TileSizeN,
-                 UnitOp>(pC, pA, pB, uop_idx, smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif

@@ -232,6 +232,12 @@ static const Json get_default_config(const ArchRef arch,
         return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_CUDA_80) && data_type == BF16.ref()) {
         return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
+    } else if (arch->belongs_to(ARCH_CUDA_90) && data_type == FP32.ref()) {
+        return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
+    } else if (arch->belongs_to(ARCH_CUDA_90) && data_type == FP16.ref()) {
+        return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
+    } else if (arch->belongs_to(ARCH_CUDA_90) && data_type == BF16.ref()) {
+        return {{"NumWarps", 8}, {"SramBytes", 147456}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP32.ref()) {
         return {{"NumWarps", 4}, {"SramBytes", 24672}, {"Tile", {tm, tn}}};
     } else if (arch->belongs_to(ARCH_ROCM_942) && data_type == FP16.ref()) {
