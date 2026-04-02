@@ -21,9 +21,9 @@ ModelOpEmbedding::ModelOpEmbedding(ModelTensorRef input, ModelTensorRef weight,
     if (output) {
         check_match_data_type(weight, output);
     } else {
-        Dims input_shape = input->shape().dims4();
-        Dims output_shape(input_shape[1], input_shape[2], input_shape[3],
-                          weight->shape()[-1]);
+        auto shape_vec = input->shape().vector();
+        shape_vec.push_back(weight->shape()[-1]);
+        Dims output_shape(shape_vec);
         output = std::make_shared<ModelTensor>(
             weight->data_type(), std::make_shared<ModelBuffer>(), output_shape);
     }

@@ -3,6 +3,7 @@
 
 #include "ark/executor.hpp"
 
+#include "ark/planner.hpp"
 #include "gpu/gpu.hpp"
 #include "model/model_json.hpp"
 #include "unittest/unittest_utils.h"
@@ -20,7 +21,6 @@ ark::unittest::State test_executor() {
         UNITTEST_EQ(executor.device_id(), 0);
         UNITTEST_EQ(executor.stream(), stream);
 
-        executor.compile();
         executor.launch();
         executor.run(1);
         executor.wait();
@@ -31,7 +31,6 @@ ark::unittest::State test_executor() {
     }
     {
         ark::DefaultExecutor executor(empty, 0, stream, {}, "test", LoopMode);
-        executor.compile();
         executor.launch();
         executor.run(1);
         executor.wait();
@@ -46,9 +45,7 @@ ark::unittest::State test_executor() {
     }
     {
         ark::DefaultExecutor executor(empty, 0, stream, {}, "test", LoopMode);
-        UNITTEST_THROW(executor.launch(), ark::InvalidUsageError);
 
-        executor.compile();
         executor.launch();
         executor.launch();  // Will be ignored with a warning.
         executor.run(1);
@@ -56,6 +53,34 @@ ark::unittest::State test_executor() {
         executor.wait();  // nothing to do
 
         // Stop & destroy automatically.
+    }
+
+    // Raw executor test
+    ark::Model m;
+    auto tensor = m.tensor({1024}, ark::FP32);
+    m.noop(tensor);
+
+    ark::Planner planner(m, 0);
+    auto plan = planner.plan();
+    {
+        std::vector<float> array(1024);
+
+        ark::Executor exe;
+        UNITTEST_EQ(exe.tensor_address(tensor), nullptr);
+        UNITTEST_THROW(
+            exe.tensor_read(tensor, array.data(), array.size() * sizeof(float)),
+            ark::InvalidUsageError);
+        UNITTEST_THROW(exe.tensor_write(tensor, array.data(),
+                                        array.size() * sizeof(float)),
+                       ark::InvalidUsageError);
+        UNITTEST_THROW(exe.launch(), ark::InvalidUsageError);
+
+        exe.compile(plan, 0);
+        UNITTEST_NE(exe.tensor_address(tensor), nullptr);
+
+        exe.launch();
+        exe.run(1);
+        exe.wait();
     }
 
     UNITTEST_EQ(ark::gpuStreamDestroy(stream), ark::gpuSuccess);
@@ -86,9 +111,8 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
     m.noop(tensor);
 
     ark::DefaultExecutor executor(m, 0);
-    executor.compile();
-    executor.launch();
-    UNITTEST_GT(executor.tensor_address(tensor), 0);
+
+    UNITTEST_NE(executor.tensor_address(tensor), nullptr);
 
     // Copy data from CPU array to ARK tensor
     executor.tensor_write(tensor, host_data.data(),
@@ -107,20 +131,28 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
         dev_data[i] = -1;
     }
 
+    ark::gpuStream stream;
     UNITTEST_EQ(
-        ark::gpuMemcpy(dev_data.data(), dev_ptr, shape.nelems() * sizeof(float),
-                       ark::gpuMemcpyDeviceToHost),
+        ark::gpuStreamCreateWithFlags(&stream, ark::gpuStreamNonBlocking),
         ark::gpuSuccess);
+
+    UNITTEST_EQ(ark::gpuMemcpyAsync(dev_data.data(), dev_ptr,
+                                    shape.nelems() * sizeof(float),
+                                    ark::gpuMemcpyDeviceToHost, stream),
+                ark::gpuSuccess);
+    UNITTEST_EQ(ark::gpuStreamSynchronize(stream), ark::gpuSuccess);
+
     for (size_t i = 0; i < dev_data.size(); ++i) {
         UNITTEST_EQ(dev_data[i], static_cast<float>(i));
         dev_data[i] = -1;
     }
 
     // Copy -1s back to GPU array
-    UNITTEST_EQ(
-        ark::gpuMemcpy(dev_ptr, dev_data.data(), shape.nelems() * sizeof(float),
-                       ark::gpuMemcpyHostToDevice),
-        ark::gpuSuccess);
+    UNITTEST_EQ(ark::gpuMemcpyAsync(dev_ptr, dev_data.data(),
+                                    shape.nelems() * sizeof(float),
+                                    ark::gpuMemcpyHostToDevice, stream),
+                ark::gpuSuccess);
+    UNITTEST_EQ(ark::gpuStreamSynchronize(stream), ark::gpuSuccess);
 
     // Copy data from GPU array to ARK tensor
     executor.tensor_write(tensor, dev_ptr, shape.nelems() * sizeof(float),
@@ -136,10 +168,6 @@ ark::unittest::State test_executor_tensor_read_write(ark::Dims shape,
     }
 
     // Provide a stream
-    ark::gpuStream stream;
-    UNITTEST_EQ(
-        ark::gpuStreamCreateWithFlags(&stream, ark::gpuStreamNonBlocking),
-        ark::gpuSuccess);
     executor.tensor_read(tensor, host_data.data(),
                          shape.nelems() * sizeof(float), stream);
     executor.tensor_write(tensor, host_data.data(),
@@ -169,15 +197,19 @@ ark::unittest::State test_executor_tensor_read_write_stride_offset() {
 }
 
 ark::unittest::State test_executor_invalid() {
+    ark::Executor exe;
+
+    // Invalid plan.
+    UNITTEST_THROW(exe.compile("not a json", 0), ark::InvalidUsageError);
+
     // Invalid device ID.
-    UNITTEST_THROW(ark::Executor(-1, nullptr, "test", ""),
+    UNITTEST_THROW(exe.compile(ark::PlanJson().dump(), -1),
                    ark::InvalidUsageError);
 
     // Invalid rank.
     ark::PlanJson plan;
     plan["Rank"] = 1;
-    UNITTEST_THROW(ark::Executor(0, nullptr, "test", plan.dump(), true),
-                   ark::InvalidUsageError);
+    UNITTEST_THROW(exe.compile(plan.dump(), 0), ark::InvalidUsageError);
 
     return ark::unittest::SUCCESS;
 }

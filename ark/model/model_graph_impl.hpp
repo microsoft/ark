@@ -38,7 +38,7 @@ class ModelGraphContextStack {
 
     Json get(const std::string &key) const;
 
-    std::map<std::string, Json> get_all() const;
+    Json dump() const;
 };
 
 class ModelGraph::Impl {

@@ -91,9 +91,6 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang
     target_link_options(coverage_config INTERFACE --coverage)
 endif()
 
-# Find ibverbs
-include(FindIBVerbs)
-
 # Find NUMA
 include(FindNUMA)
 

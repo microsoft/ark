@@ -9,7 +9,6 @@
 void test_reshape_checker(ark::Model &m, ark::Tensor t0, ark::Tensor t1,
                           const std::string &) {
     ark::DefaultExecutor exe(m);
-    exe.compile();
 
     std::vector<float> data_vec(t0.shape().nelems());
     std::iota(data_vec.begin(), data_vec.end(), 1.0f);
@@ -208,6 +207,38 @@ ark::unittest::State test_reshape_padded() {
 
         test_reshape_checker(model, tns0, tns1, "test_reshape_padded");
     }
+    {
+        ark::Model model;
+        ark::Tensor tns0 =
+            model.tensor({1024, 1, 128}, ark::FP32, {1024, 64, 128}, {0, 8, 0});
+        ark::Tensor tns1 = model.reshape(tns0, {1024, 128});
+
+        UNITTEST_EQ(tns1.shape(), ark::Dims(1024, 128));
+        UNITTEST_EQ(tns1.strides(), ark::Dims(1024, 8192));
+        UNITTEST_EQ(tns1.offsets(), ark::Dims(0, 1024));
+
+        // For preventing optimize-out
+        model.noop(tns0);
+        model.noop(tns1);
+
+        test_reshape_checker(model, tns0, tns1, "test_reshape_padded");
+    }
+    {
+        ark::Model model;
+        ark::Tensor tns0 =
+            model.tensor({1024, 2, 128}, ark::FP32, {1024, 64, 128}, {0, 8, 0});
+        ark::Tensor tns1 = model.reshape(tns0, {1024, 256});
+
+        UNITTEST_EQ(tns1.shape(), ark::Dims(1024, 256));
+        UNITTEST_EQ(tns1.strides(), ark::Dims(1024, 8192));
+        UNITTEST_EQ(tns1.offsets(), ark::Dims(0, 1024));
+
+        // For preventing optimize-out
+        model.noop(tns0);
+        model.noop(tns1);
+
+        test_reshape_checker(model, tns0, tns1, "test_reshape_padded");
+    }
     return ark::unittest::SUCCESS;
 }
 
@@ -268,6 +299,12 @@ ark::unittest::State test_reshape_invalid() {
         ark::Model model;
         ark::Tensor tns = model.tensor({64, 256}, ark::FP32, {64, 512});
         UNITTEST_THROW(model.reshape(tns, {16384}), ark::ModelError);
+    }
+    {
+        ark::Model model;
+        ark::Tensor tns =
+            model.tensor({1024, 1}, ark::FP32, {1024, 64}, {0, 8});
+        UNITTEST_THROW(model.reshape(tns, {1024}), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

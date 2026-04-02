@@ -6,8 +6,8 @@
 #ifndef ARK_KERNELS_H_
 #define ARK_KERNELS_H_
 
-#include <mscclpp/proxy_channel_device.hpp>
-#include <mscclpp/sm_channel_device.hpp>
+#include <mscclpp/memory_channel_device.hpp>
+#include <mscclpp/port_channel_device.hpp>
 
 #include "arithmetic.h"
 #include "cast.h"

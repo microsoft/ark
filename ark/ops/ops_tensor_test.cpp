@@ -20,7 +20,6 @@ ark::unittest::State test_tensor_strides() {
 
     // Create an executor
     ark::DefaultExecutor exe(model);
-    exe.compile();
 
     // Fill buffer data: {1.0, 2.0, 3.0, 4.0}
     std::vector<float> data(shape.nelems());
@@ -53,7 +52,6 @@ ark::unittest::State test_tensor_memcpy() {
 
     // Create an executor
     ark::DefaultExecutor exe(model);
-    exe.compile();
 
     // Fill buffer data: {1.0, 2.0, 3.0, ..., 3024.0}
     std::vector<float> data(strides.nelems());
@@ -138,7 +136,6 @@ ark::unittest::State test_tensor_layout() {
 
     // Create an executor
     ark::DefaultExecutor exe(model);
-    exe.compile();
 
     // Fill tensor data: {1.0, 2.0, 3.0, ..., 120.0}
     std::vector<float> data(2 * 3 * 4 * 5);

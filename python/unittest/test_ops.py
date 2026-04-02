@@ -58,7 +58,7 @@ def test_ops_embedding():
     a = ark.tensor([64, 64], ark.int32)
     b = ark.tensor([100, 4096], ark.fp16)
     c = ark.embedding(a, b)
-    assert c.shape() == [1, 64, 64, 4096]
+    assert c.shape() == [64, 64, 4096]
 
 
 @pytest_ark()

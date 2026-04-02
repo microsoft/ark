@@ -52,12 +52,12 @@ ark::unittest::State test_context() {
 
     UNITTEST_EQ(nodes[0]->context.size(), 0);
     UNITTEST_EQ(nodes[1]->context.size(), 1);
-    UNITTEST_EQ(nodes[1]->context.at("key0"), ark::Json("val1"));
+    UNITTEST_EQ(nodes[1]->context.at("key0"), ark::Json({"val1"}));
     UNITTEST_EQ(nodes[2]->context.size(), 2);
-    UNITTEST_EQ(nodes[2]->context.at("key0"), ark::Json("val1"));
-    UNITTEST_EQ(nodes[2]->context.at("key1"), ark::Json("val2"));
+    UNITTEST_EQ(nodes[2]->context.at("key0"), ark::Json({"val1"}));
+    UNITTEST_EQ(nodes[2]->context.at("key1"), ark::Json({"val2"}));
     UNITTEST_EQ(nodes[3]->context.size(), 1);
-    UNITTEST_EQ(nodes[3]->context.at("key0"), ark::Json("val3"));
+    UNITTEST_EQ(nodes[3]->context.at("key0"), ark::Json({"val3"}));
 
     return ark::unittest::SUCCESS;
 }

@@ -13,6 +13,7 @@ namespace py = pybind11;
 void register_planner(py::module &m) {
     py::class_<ark::PlannerContext>(m, "CorePlannerContext")
         .def(py::init<ark::Model &>())
+        .def("id", &ark::PlannerContext::id)
         .def("processor_range", &ark::PlannerContext::processor_range,
              py::arg("start"), py::arg("end"), py::arg("step") = 1)
         .def("warp_range", &ark::PlannerContext::warp_range, py::arg("start"),
@@ -20,7 +21,8 @@ void register_planner(py::module &m) {
         .def("sram_range", &ark::PlannerContext::sram_range, py::arg("start"),
              py::arg("end"), py::arg("step") = 1)
         .def("sync", &ark::PlannerContext::sync, py::arg("sync"))
-        .def("config", &ark::PlannerContext::config, py::arg("config"));
+        .def("config", &ark::PlannerContext::config, py::arg("config"))
+        .def("dump", &ark::PlannerContext::dump);
 
     py::class_<ark::Planner>(m, "CorePlanner")
         .def(py::init<const ark::Model &, int>())

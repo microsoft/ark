@@ -16,7 +16,7 @@ namespace ark {
 
 class GpuManager {
    public:
-    static std::shared_ptr<GpuManager> get_instance(int gpu_id);
+    static std::shared_ptr<GpuManager> get_instance(int device_id);
 
     GpuManager(const GpuManager &) = delete;
     ~GpuManager() = default;
@@ -54,7 +54,7 @@ class GpuManager {
     };
 
    private:
-    GpuManager(int gpu_id);
+    GpuManager(int device_id);
 
     class Impl;
     std::shared_ptr<Impl> pimpl_;

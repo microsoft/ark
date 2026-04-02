@@ -11,22 +11,28 @@
 
 namespace ark {
 
-// Reshape `input` to `shape`. This interface does not support -1 as a dimension
-// of `shape`, because Dims does not allow -1 as a valid dimension.
+// Reshape `input` to `inferred_shape`. This interface does not support -1 as a
+// dimension of `inferred_shape`.
 static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
                            bool allowzero, Dims &new_shape, Dims &new_strides,
                            Dims &new_offs) {
     const auto &orig_shape = input->shape();
     const auto &orig_strides = input->strides();
     const auto &orig_offsets = input->offsets();
+
+    std::stringstream ss;
+    ss << "reshape failed as the number of elements mismatch: reshape from "
+       << orig_shape << " to " << inferred_shape
+       << " (allowzero = " << allowzero << ")";
+    auto nelems_mismatch_error = ss.str();
+
     // Calculate the new shape
     std::vector<DimType> new_shape_vec;
     if (inferred_shape.ndims() == 0) {
         // Convert to a scalar
         new_shape_vec.emplace_back(1);
         if (orig_shape.nelems() != 1) {
-            ERR(ModelError, "number of elements mismatch: reshape from ",
-                orig_shape, " to ", inferred_shape);
+            ERR(ModelError, nelems_mismatch_error);
         }
     } else {
         DimType total_size = 1;
@@ -46,13 +52,12 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
             }
         }
         if (orig_shape.nelems() != total_size) {
-            ERR(ModelError, "number of elements mismatch: reshape from ",
-                orig_shape, " to ", inferred_shape);
+            ERR(ModelError, nelems_mismatch_error);
         }
     }
     new_shape = new_shape_vec;
 
-    std::stringstream ss;
+    ss = std::stringstream();
     ss << "reshape failed as the strides of the input tensor is incompatible "
           "with the new shape. A workaround is copying the input tensor to a "
           "new tensor, so that the data becomes sequential in memory. ";
@@ -104,12 +109,26 @@ static void reshape_helper(ModelTensorRef input, const Dims &inferred_shape,
         } else {
             if (orig_strides[orig_idx] != orig_shape[orig_idx] ||
                 orig_offsets[orig_idx] != 0) {
-                ERR(ModelError, incompatible_strides_error);
-            }
-            orig_idx--;
-            if (orig_idx >= 0) {
-                orig_shape_stack *= orig_shape[orig_idx];
-                orig_strides_stack *= orig_strides[orig_idx];
+                if (orig_shape[orig_idx] != 1 || reverse_strides.empty()) {
+                    ERR(ModelError, incompatible_strides_error);
+                }
+                *reverse_strides.rbegin() *= orig_strides[orig_idx];
+                DimType new_off = orig_offsets[orig_idx];
+                for (auto i = orig_idx + 1; i < orig_strides.ndims(); i++) {
+                    new_off *= orig_strides[i];
+                }
+                *reverse_offsets.rbegin() = new_off;
+                orig_idx--;
+                if (orig_idx >= 0) {
+                    orig_shape_stack = orig_shape[orig_idx];
+                    orig_strides_stack = orig_strides[orig_idx];
+                }
+            } else {
+                orig_idx--;
+                if (orig_idx >= 0) {
+                    orig_shape_stack *= orig_shape[orig_idx];
+                    orig_strides_stack *= orig_strides[orig_idx];
+                }
             }
         }
     }

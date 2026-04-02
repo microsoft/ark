@@ -41,12 +41,6 @@ def quickstart_tutorial():
         output_tensor_host, input_tensor_host + other_tensor_host
     )
 
-    # Stop the ARK runtime (undo Runtime.launch())
-    runtime.stop()
-
-    # Reset the ARK runtime (free all resources)
-    runtime.reset()
-
     print("Quickstart tutorial is successful!")
 
 

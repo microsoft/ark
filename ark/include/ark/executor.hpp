@@ -9,18 +9,20 @@
 #include <ark/tensor.hpp>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace ark {
 
 using Stream = void *;
 
+class GpuMemory;
+
 /// Convenience class for executing a model.
 class Executor {
    public:
     /// Constructor.
-    Executor(int device_id, Stream stream, const std::string &name,
-             const std::string &plan, bool loop_mode = true);
+    Executor();
 
     /// Destructor.
     ~Executor();
@@ -31,23 +33,33 @@ class Executor {
     /// Return the stream of the executor.
     Stream stream() const;
 
+    /// Return the buffer of the executor.
+    std::shared_ptr<GpuMemory> buffer() const;
+
     /// Return the plan string.
     std::string plan() const;
 
+    /// Return the name of the executor.
+    std::string name() const;
+
     /// Compile the model. This must be called before `launch()`.
-    void compile();
+    void compile(const std::string &plan, int device_id,
+                 const std::string &name = "executor");
 
-    /// Launch the model (not running yet). This must be called after
-    /// `compile()`.
-    void launch();
+    /// Launch the executor. This must be called after `compile()`.
+    void launch(const std::unordered_map<Tensor, void *> &placeholder_data = {},
+                Stream stream = nullptr, bool loop_mode = true,
+                bool record = false);
 
-    /// Run the model for `iter` iterations.
-    void run(int iter);
+    /// Run the executor for `iter` iterations.
+    void run(
+        int iter,
+        const std::unordered_map<Tensor, void *> &placeholder_data = {});
 
     /// Wait for the previous run to finish.
     void wait(int64_t max_spin_count = -1);
 
-    /// Stop the model and return the elapsed time in milliseconds.
+    /// Stop the executor and return the elapsed time in milliseconds.
     /// Once this is called, we need to call `launch()` again to run the model
     /// again.
     float stop(int64_t max_spin_count = -1);
@@ -62,7 +74,7 @@ class Executor {
     bool destroyed() const;
 
     /// Return the raw virtual address of the tensor.
-    uintptr_t tensor_address(const Tensor &tensor) const;
+    void *tensor_address(const Tensor &tensor) const;
 
     template <typename T>
     void tensor_read(const Tensor &tensor, std::vector<T> &data,
@@ -93,10 +105,18 @@ class Model;
 
 class DefaultExecutor : public Executor {
    public:
-    DefaultExecutor(
-        const Model &model, int device_id = -1, Stream stream = nullptr,
-        const std::vector<Planner::ConfigRule> &config_rules = {},
-        const std::string &name = "DefaultExecutor", bool loop_mode = true);
+    DefaultExecutor(const Model &model, int device_id = -1,
+                    Stream stream = nullptr,
+                    const std::vector<Planner::ConfigRule> &config_rules = {},
+                    const std::string &name = "DefaultExecutor",
+                    bool loop_mode = true, bool record = false);
+
+    /// Launch the default executor.
+    void launch(
+        const std::unordered_map<Tensor, void *> &placeholder_data = {});
+
+   private:
+    bool record_;
 };
 
 }  // namespace ark

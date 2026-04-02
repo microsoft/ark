@@ -58,7 +58,6 @@ ark::unittest::State test_ops_identity() {
 
     // Create an executor
     ark::DefaultExecutor exe(model);
-    exe.compile();
 
     int num_elem = 2 * 3 * 4 * 5;
 

@@ -59,8 +59,7 @@ def run_ark(
     output = module(*module_inputs)
 
     runtime = ark.Runtime()
-    # Prefer num_warps_per_sm = 16 for nvidia and 8 for amd
-    runtime.launch(num_warps_per_sm=8)
+    runtime.launch()
 
     # Load model parameters
     if state_dict:
@@ -70,7 +69,8 @@ def run_ark(
     tensors = [i for i in module_inputs if isinstance(i, ark.Tensor)]
     tensor_data = [i for i in inputs if isinstance(i, np.ndarray)]
     for tensor, ndarray in zip(tensors, tensor_data):
-        tensor.from_numpy(ndarray)
+        if tensor.data_ptr() != 0:
+            tensor.from_numpy(ndarray)
 
     start_time = time.time()
 
@@ -363,112 +363,6 @@ def test_column_parallel_linear(
     )
 
 
-def test_attention(
-    args: ModelArgs,
-    batch_size: int,
-    seq_len: int,
-    dtype: np.dtype,
-    rank: int = 0,
-    world_size: int = 1,
-):
-    #
-    freqs_cis = precompute_freqs_cis(
-        args.dim // args.n_heads, args.max_seq_len * 2
-    )[0:seq_len]
-
-    freqs_cis_ark = freqs_cis.astype(np.complex64)
-    freqs_cis_ark = (
-        np.stack([freqs_cis_ark.real, freqs_cis_ark.imag], axis=-1)
-        .astype(dtype)
-        .reshape(1, seq_len, 1, args.dim // args.n_heads)
-    )
-
-    seed = 1695878986  # int(time.time())
-    print(f"seed: {seed}")
-    np.random.seed(seed)
-    feature = np.random.uniform(
-        low=-0.1, high=0.1, size=(batch_size, seq_len, args.dim)
-    ).astype(dtype)
-
-    test_module(
-        module_class_ark=model_ark.Attention,
-        module_args_ark=[
-            args,
-            ark.DataType.from_numpy(dtype),
-            rank,
-            world_size,
-        ],
-        inputs_ark=[feature, 0, freqs_cis_ark, None],
-        module_class_pt=model_pt.Attention,
-        module_args_pt=[args],
-        inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
-        module_name_prefix="layers.0.attention",
-    )
-
-
-def test_transformer_block(
-    args: ModelArgs,
-    batch_size: int,
-    seq_len: int,
-    dtype: np.dtype,
-    rank: int = 0,
-    world_size: int = 1,
-):
-    #
-    freqs_cis = precompute_freqs_cis(
-        args.dim // args.n_heads, args.max_seq_len * 2
-    )[0:seq_len]
-
-    freqs_cis_ark = freqs_cis.astype(np.complex64)
-    freqs_cis_ark = (
-        np.stack([freqs_cis_ark.real, freqs_cis_ark.imag], axis=-1)
-        .astype(dtype)
-        .reshape(1, seq_len, 1, args.dim // args.n_heads)
-    )
-
-    feature = np.random.uniform(
-        low=-1, high=1, size=(batch_size, seq_len, args.dim)
-    ).astype(dtype)
-
-    module = model_ark.Attention(
-        args, ark.DataType.from_numpy(dtype), rank, world_size
-    )
-    # module_inputs = [
-    #     ark.tensor(list(i.shape), ark.DataType.from_numpy(i.dtype))
-    #     if isinstance(i, np.ndarray)
-    #     else i
-    #     for i in inputs
-    # ]
-    feature_tensor = ark.tensor(
-        list(feature.shape), ark.DataType.from_numpy(feature.dtype)
-    )
-    freqs_cis_ark_tensor = ark.tensor(
-        list(freqs_cis_ark.shape), ark.DataType.from_numpy(freqs_cis_ark.dtype)
-    )
-    output = module(feature_tensor, 0, freqs_cis_ark_tensor, None)
-
-    ark.Model.get_model().create_nodes()
-    print(ark.Model.get_model().serialize())
-
-    # test_module(
-    #     module_class_ark=model_ark.TransformerBlock,
-    #     module_args_ark=[
-    #         0,
-    #         args,
-    #         ark.DataType.from_numpy(dtype),
-    #         rank,
-    #         world_size,
-    #     ],
-    #     inputs_ark=[feature, 0, freqs_cis_ark, None],
-    #     module_class_pt=model_pt.TransformerBlock,
-    #     module_args_pt=[0, args],
-    #     inputs_pt=[feature.astype(dtype), 0, freqs_cis, None],
-    #     module_name_prefix="layers.0",
-    #     rank=rank,
-    #     world_size=world_size,
-    # )
-
-
 def test_transformer(
     args: ModelArgs,
     batch_size: int,
@@ -535,9 +429,7 @@ def test(args, batch_size, seq_len, dtype, rank, world_size):
     # test_rmsnorm(args, batch_size, seq_len, dtype)
     # test_row_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
     # test_column_parallel_linear(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_attention(args, batch_size, seq_len, dtype, rank, world_size)
-    test_transformer_block(args, batch_size, seq_len, dtype, rank, world_size)
-    # test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
+    test_transformer(args, batch_size, seq_len, dtype, rank, world_size)
 
 
 def worker(
@@ -561,16 +453,17 @@ def worker(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ckpt_dir", type=str, required=True)
-    parser.add_argument("--ngpus", type=int, default=1)
+    parser.add_argument("--ngpus", type=int, default=1, help="Number of GPUs")
+    parser.add_argument("--ckpt_dir", type=str)
 
     ckpt_dir = parser.parse_args().ckpt_dir
     ngpus = parser.parse_args().ngpus
 
     # Configurations
     args = ModelArgs7B()
+    args.n_layers = 1
     batch_size = 1
-    seq_len = 512
+    seq_len = 2048
     dtype = np.float16
     world_size = ngpus
 
@@ -578,7 +471,7 @@ if __name__ == "__main__":
     args.vocab_size = 32000
 
     # Reduce max_seq_len due to OOM from the PyTorch model
-    args.max_seq_len = 512
+    args.max_seq_len = 2048
 
     # Verify the configurations
     assert batch_size <= args.max_batch_size

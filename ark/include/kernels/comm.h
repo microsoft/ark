@@ -4,9 +4,9 @@
 #ifndef ARK_KERNELS_COMM_H_
 #define ARK_KERNELS_COMM_H_
 
+#include <mscclpp/memory_channel_device.hpp>
 #include <mscclpp/packet_device.hpp>
-#include <mscclpp/proxy_channel_device.hpp>
-#include <mscclpp/sm_channel_device.hpp>
+#include <mscclpp/port_channel_device.hpp>
 
 #include "common/atomic.h"
 #include "common/broadcast.h"
@@ -14,10 +14,10 @@
 #include "common/unit_op.h"
 #include "reduce.h"
 
-extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle ARK_PROXY_CHANS[];
-extern __constant__ mscclpp::SimpleProxyChannelDeviceHandle
+extern __constant__ mscclpp::PortChannelDeviceHandle ARK_PROXY_CHANS[];
+extern __constant__ mscclpp::PortChannelDeviceHandle
     ARK_PROXY_SECONDARY_CHANS[];
-extern __constant__ mscclpp::SmChannelDeviceHandle ARK_SM_CHANS[];
+extern __constant__ mscclpp::MemoryChannelDeviceHandle ARK_SM_CHANS[];
 
 namespace ark {
 namespace comm {
@@ -251,7 +251,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename DataType>
 DEVICE void read(int ChanId, size_t remote_offset, size_t local_offset,
                  int uop_idx, [[maybe_unused]] int smem_per_warp) {
-    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    const mscclpp::MemoryChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
     char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
     char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
     DataType *local_data = reinterpret_cast<DataType *>(local);
@@ -266,7 +266,7 @@ template <typename InDims, typename InShape, typename OutDims,
           typename DataType>
 DEVICE void write(int ChanId, size_t remote_offset, size_t local_offset,
                   int uop_idx, [[maybe_unused]] int smem_per_warp) {
-    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
+    const mscclpp::MemoryChannelDeviceHandle &chan = ARK_SM_CHANS[ChanId];
     char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
     char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
     DataType *local_data = reinterpret_cast<DataType *>(local);
@@ -282,7 +282,7 @@ template <typename InDims, typename InShape, typename OutDims,
 DEVICE void writePacket(int chan_id, size_t remote_offset, size_t local_offset,
                         int uop_idx, [[maybe_unused]] int smem_per_warp) {
     using Payload = typename PacketType::Payload;
-    const mscclpp::SmChannelDeviceHandle &chan = ARK_SM_CHANS[chan_id];
+    const mscclpp::MemoryChannelDeviceHandle &chan = ARK_SM_CHANS[chan_id];
     char *local = reinterpret_cast<char *>(chan.src_) + local_offset;
     char *remote = reinterpret_cast<char *>(chan.dst_) + remote_offset;
     Payload *local_data = reinterpret_cast<Payload *>(local);

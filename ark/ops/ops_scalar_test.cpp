@@ -66,7 +66,6 @@ ark::unittest::State test_scalar_assign_fp16() {
         ark::Tensor t = m.constant(7, ark::Dims(4, 2, 50), ark::FP16);
 
         ark::DefaultExecutor exe(m);
-        exe.compile();
 
         exe.launch();
         exe.run(1);
@@ -84,7 +83,6 @@ ark::unittest::State test_scalar_assign_fp16() {
         ark::Tensor out = m.copy(7, t);
 
         ark::DefaultExecutor exe(m);
-        exe.compile();
 
         std::vector<ark::half_t> data(4 * 2 * 50, 3);
         exe.tensor_write(t, data);
@@ -109,7 +107,6 @@ ark::unittest::State test_scalar_assign_fp32() {
         ark::Tensor out = m.copy(7);
 
         ark::DefaultExecutor exe(m);
-        exe.compile();
 
         exe.launch();
         exe.run(1);

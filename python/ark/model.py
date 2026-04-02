@@ -2,6 +2,7 @@
 # Licensed under the MIT license.
 
 from typing import NewType
+from . import log
 from .core import CoreModel
 
 
@@ -35,6 +36,13 @@ class Model(CoreModel):
         return ModelState.world_size
 
     @staticmethod
+    def get_device_id():
+        """
+        Get the device id.
+        """
+        return ModelState.device_id
+
+    @staticmethod
     def set_rank(rank: int):
         """
         Set the rank of the model.
@@ -49,6 +57,15 @@ class Model(CoreModel):
         ModelState.world_size = world_size
 
     @staticmethod
+    def set_device_id(device_id: int):
+        """
+        Set the device id.
+        """
+        if device_id < 0:
+            raise log.InvalidUsageError("device_id must be non-negative")
+        ModelState.device_id = device_id
+
+    @staticmethod
     def reset():
         """
         Reset the model state.
@@ -56,6 +73,19 @@ class Model(CoreModel):
         ModelState.model = None
         ModelState.rank = 0
         ModelState.world_size = 1
+
+    def __init__(self, rank: int = 0, world_size: int = 1):
+        """
+        Initialize the model.
+
+        Args:
+            rank: The rank of the model.
+            world_size: The world size of the model.
+        """
+        super().__init__(rank, world_size)
+
+    def __str__(self) -> str:
+        return self.serialize()
 
     def compress(self) -> "Model":
         """
@@ -84,3 +114,4 @@ class ModelState:
     model: Model = None
     rank: int = 0
     world_size: int = 1
+    device_id: int = 0
