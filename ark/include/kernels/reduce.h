@@ -397,6 +397,8 @@ struct WwiseReduce {
 
         DataType reduced[NelemPerThread];
 
+        UnitOp::sync_threads();
+
         ReduceType::template identity<NelemPerThread>(reduced);
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
             int idx_in = idx_in_base + idx_w;
@@ -438,8 +440,6 @@ struct WwiseReduce {
             ReduceType::template postReduce<1>(&out[idx_out], &reduced[0],
                                                InShape::W);
         }
-
-        UnitOp::sync_threads();
     }
 };
 

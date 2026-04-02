@@ -31,6 +31,8 @@ struct Ewise1 {
         int uh = UnitOp::uop_idx_h(uop_idx);
         int uw = UnitOp::uop_idx_w(uop_idx);
 
+        UnitOp::sync_threads();
+
         for (int tid = UnitOp::thread_id();; tid += UnitOp::NumThreads) {
             int tid_w = (tid * NelemPerThread) % UnitOutDims::W;
             int tid_h =
@@ -50,8 +52,6 @@ struct Ewise1 {
 
             CompType::compute(out, in, idx_n, idx_c, idx_h, idx_w);
         }
-
-        UnitOp::sync_threads();
     }
 };
 

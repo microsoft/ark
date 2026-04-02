@@ -9,10 +9,9 @@
 #include <string>
 
 #include "ark/error.hpp"
+#include "ark/log.hpp"
 
 namespace ark {
-
-typedef enum { DEBUG, INFO, WARN, ERROR } LogLevel;
 
 class Logging {
    public:
@@ -46,43 +45,44 @@ void _log_helper(std::stringstream &ss, T value, Args... args) {
     _log_helper(ss, args...);
 }
 
-template <LogLevel Level, bool AppendNewLine, typename T, typename... Args>
-inline std::string _log_msg(const std::string &file, int line, T value,
+template <typename T, typename... Args>
+inline std::string _log_msg(LogLevel level, bool append_newline,
+                            const std::string &file, int line, T value,
                             Args... args) {
     std::stringstream ss;
-    _log_header(ss, Level, file, line);
+    _log_header(ss, level, file, line);
     _log_helper(ss, value, args...);
-    if constexpr (AppendNewLine) ss << std::endl;
+    if (append_newline) ss << std::endl;
     return ss.str();
 }
 
-template <LogLevel Level, typename T, typename... Args>
-inline void _log(const std::string &file, int line, T value, Args... args) {
-    if (Level >= get_logging().get_level()) {
-        std::clog << _log_msg<Level, true>(file, line, value, args...);
+template <typename T, typename... Args>
+inline void _log(LogLevel level, const std::string &file, int line, T value,
+                 Args... args) {
+    if (level >= get_logging().get_level()) {
+        std::clog << _log_msg(level, true, file, line, value, args...);
     }
-    if constexpr (Level == ERROR) {
+    if (level == ERROR) {
         throw std::runtime_error("ARK runtime error");
     }
 }
 
 template <typename Exception, typename T, typename... Args>
 inline void _err(const std::string &file, int line, T value, Args... args) {
-    throw Exception(_log_msg<ERROR, false>(file, line, value, args...));
+    throw Exception(_log_msg(ERROR, false, file, line, value, args...));
 }
 
 // Logging.
 #define LOG(level, ...)                                    \
     do {                                                   \
-        ark::_log<level>(__FILE__, __LINE__, __VA_ARGS__); \
+        ark::_log(level, __FILE__, __LINE__, __VA_ARGS__); \
         break;                                             \
     } while (0)
 
-#define ERR(exception, ...)                                             \
-    do {                                                                \
-        std::string exc_str = " (" #exception ")";                      \
-        ark::_err<exception>(__FILE__, __LINE__, __VA_ARGS__, exc_str); \
-        break;                                                          \
+#define ERR(exception, ...)                                    \
+    do {                                                       \
+        ark::_err<exception>(__FILE__, __LINE__, __VA_ARGS__); \
+        break;                                                 \
     } while (0)
 
 #define CHECK(cond)                                                  \

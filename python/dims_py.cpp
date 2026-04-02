@@ -13,7 +13,7 @@ namespace py = pybind11;
 void register_dims(py::module &m) {
     m.attr("DIMS_LEN") = py::int_(ark::DIMS_LEN);
 
-    py::class_<ark::Dims>(m, "_Dims")
+    py::class_<ark::Dims>(m, "CoreDims")
         .def(py::init<>())
         .def(py::init<ark::DimType>())
         .def(py::init<ark::DimType, ark::DimType>())

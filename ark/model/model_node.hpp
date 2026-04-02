@@ -28,7 +28,7 @@ class ModelNode {
     UniqueList<ModelNodeRef> producers;
 
     /// Graph context of this node.
-    std::map<std::string, Json> context;
+    Json context;
 };
 
 }  // namespace ark

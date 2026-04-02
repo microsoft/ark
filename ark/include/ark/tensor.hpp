@@ -31,8 +31,6 @@ class Tensor {
     Tensor(ModelTensorRef ref) : ref_(ref) {}
     Tensor(const Tensor &other) = default;
     Tensor &operator=(const Tensor &other) = default;
-    Tensor(void *data_ptr, int32_t device_id, const std::vector<int64_t> &shape,
-           const DataType &dtype);
 
     bool operator==(const Tensor &other) const { return ref_ == other.ref_; }
     bool operator!=(const Tensor &other) const { return ref_ != other.ref_; }
@@ -52,6 +50,14 @@ class Tensor {
     Dims padded_shape() const;
 
     const DataType &data_type() const;
+
+    Dims torch_strides() const;
+
+    void *data() const;
+
+    void *data(void *data);
+
+    bool is_external() const;
 };
 
 const Tensor NullTensor;
@@ -59,5 +65,14 @@ const Tensor NullTensor;
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 
 }  // namespace ark
+
+namespace std {
+template <>
+struct hash<ark::Tensor> {
+    size_t operator()(const ark::Tensor &t) const noexcept {
+        return t.id();
+    }
+};
+}  // namespace std
 
 #endif  // ARK_TENSOR_HPP

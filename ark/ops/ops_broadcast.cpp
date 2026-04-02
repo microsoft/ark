@@ -94,7 +94,7 @@ ModelOpBroadcast2::ModelOpBroadcast2(const std::string &type_name,
 std::string ModelOpBroadcast2::impl_name(const Json &config) const {
     check_fields_config(config, {"NumWarps", "Tile"});
     int num_warps = config["NumWarps"];
-    auto &tile_shape = config["Tile"];
+    Dims unit_out_dims(config.at("Tile").get<std::vector<DimType>>());
 
     return function_name_string(
         pascal_to_snake(type()->type_name()),
@@ -104,8 +104,8 @@ std::string ModelOpBroadcast2::impl_name(const Json &config) const {
          vec_string(read_tensors_[1]->shape().dims4()),
          vec_string(write_tensors_[0]->strides().dims4()),
          vec_string(write_tensors_[0]->shape().dims4()),
-         vec_string({1, 1, tile_shape[0], tile_shape[1]}),
-         std::to_string(num_warps), std::to_string(0)});
+         vec_string(unit_out_dims.dims4()), std::to_string(num_warps),
+         std::to_string(0)});
 }
 
 std::vector<ModelOpArg> ModelOpBroadcast2::impl_args([

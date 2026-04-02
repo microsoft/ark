@@ -6,9 +6,9 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 
-#include "model_buffer_manager.hpp"
 #include "model/model_json.hpp"
 
 namespace ark {
@@ -17,6 +17,7 @@ class CodeGenerator {
    public:
     CodeGenerator(const PlanJson &plan,
                   const std::map<size_t, size_t> &buffer_id_to_offset,
+                  const std::set<size_t> &extra_buffer_ids,
                   const std::string &name = "ark_kernel");
 
     ~CodeGenerator() = default;

@@ -1,76 +1,66 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import json
-from typing import Any, Dict, List, Iterable, Union
+from typing import List, Iterable, Union, Optional
 
-from .tensor import Dims, Tensor, Parameter, NullTensor
+from .tensor import Dims, Tensor, Parameter, NullTensor, _cpp_tensor
+from .torch import torch, _no_torch
 from .data_type import DataType, fp32
 from .model import Model
+from . import log
 
 
-def _is_list_or_tuple(obj):
+__all__ = [
+    "tensor",
+    "parameter",
+    "placeholder",
+    "noop",
+    "reshape",
+    "identity",
+    "sharding",
+    "reduce_sum",
+    "reduce_mean",
+    "reduce_max",
+    "layernorm",
+    "softmax",
+    "transpose",
+    "matmul",
+    "exp",
+    "sqrt",
+    "rsqrt",
+    "rope",
+    "relu",
+    "gelu",
+    "sigmoid",
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "all_reduce",
+    "embedding",
+    "cast",
+    "copy",
+    "constant",
+    "ones",
+    "zeros",
+    "send",
+    "send_done",
+    "recv",
+]
+
+
+def is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
-
-
-def _config_to_str(config: Union[str, Dict[str, Any]]) -> str:
-    if isinstance(config, str):
-        return config
-    return json.dumps(config)
-
-
-def _tensor(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    strides: Iterable[int] = [],
-    offsets: Iterable[int] = [],
-    padded_shape: Iterable[int] = [],
-    rank: int = -1,
-    name: str = "",
-) -> Tensor:
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
-    if not _is_list_or_tuple(strides):
-        raise ValueError("strides should be a list or tuple of integers")
-    if not _is_list_or_tuple(offsets):
-        raise ValueError("offsets should be a list or tuple of integers")
-    if not _is_list_or_tuple(padded_shape):
-        raise ValueError("padded_shape should be a list or tuple of integers")
-    # only support tensors with up to 4 dimensions
-    if (
-        len(shape) > 4
-        or len(strides) > 4
-        or len(offsets) > 4
-        or len(padded_shape) > 4
-    ):
-        raise ValueError("Only support tensors with up to 4 dimensions")
-    return Model.get_model().tensor(
-        Dims(shape),
-        dtype.ctype(),
-        Dims(strides),
-        Dims(offsets),
-        Dims(padded_shape),
-        rank,
-        name,
-    )
 
 
 def add(
     input: Union[Tensor, float],
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "add",
 ) -> Union[Tensor, float]:
-    """
-    Performs an element-wise addition operator between the `input`
-    tensor and the `other` tensor.
-    Usage:
-    tensor_add = ark.add(tensor1, tensor2)
-    """
+    """ """
     if isinstance(input, Tensor) and isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         a = input._tensor
         b = other._tensor
     elif isinstance(input, Tensor):
@@ -83,33 +73,24 @@ def add(
         return input + other
     else:
         return Tensor(
-            Model.get_model().copy(
-                input + other, output._tensor, _config_to_str(config), name
-            )
+            Model.get_model().copy(input + other, output._tensor, name)
         )
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().add(a, b, output, _config_to_str(config), name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().add(a, b, output, name))
 
 
 def cast(
     input: Tensor,
     dtype: DataType,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "cast",
 ) -> Tensor:
-    """Type casting."""
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().cast(
-            input._tensor, dtype.ctype(), output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+        Model.get_model().cast(input._tensor, dtype.ctype(), output, name)
     )
 
 
@@ -118,143 +99,86 @@ def constant(
     shape: Iterable[int],
     dtype: DataType = fp32,
     name: str = "constant",
-    runtime_id: int = -1,
 ) -> Tensor:
-    """Constant."""
+    """ """
     return Tensor(
-        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name),
-        runtime_id=runtime_id,
+        Model.get_model().constant(value, Dims(shape), dtype.ctype(), name)
     )
 
 
 def copy(
     input: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "copy",
 ) -> Tensor:
-    """Data caopy."""
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
-        intput = intput._tensor
-    return Tensor(
-        Model.get_model().copy(intput, output, _config_to_str(config), name),
-        runtime_id=input.runtime_id,
-    )
+        input = input._tensor
+    return Tensor(Model.get_model().copy(input, output, name))
 
 
 def div(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "div",
 ) -> Tensor:
-    """
-    Performs an element-wise division operator between the
-    `input` tensor and the `other` tensor.
-    Usage:
-    tensor_mul = ark.div(tensor1, tensor2)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(
-        Model.get_model().div(
-            input._tensor, other, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().div(input._tensor, other, output, name))
 
 
 def embedding(
     input: Tensor,
     weight: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "embedding",
 ) -> Tensor:
-    """Embedding layer."""
-    if input.runtime_id != weight.runtime_id:
-        raise ValueError("Tensors must be on the same runtime")
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
-        Model.get_model().embedding(
-            input._tensor, weight._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+        Model.get_model().embedding(input._tensor, weight._tensor, output, name)
     )
 
 
 def exp(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "exp",
 ) -> Tensor:
-    """
-    Calculates the exponential of the `input` tensor, element-wise.
-    Usage:
-    tensor_exp = ark.exp(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().exp(
-            input._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().exp(input._tensor, output, name))
 
 
 def gelu(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "gelu",
 ) -> Tensor:
-    """
-    Applies the Gaussian Error Linear Unit (GELU) activation
-    function to the `input` tensor, element-wise. GELU is a smooth
-    approximation of the rectifier function and is widely used in
-    deep learning models.
-    Usage:
-    tensor_gelu = ark.gelu(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().gelu(
-            input._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().gelu(input._tensor, output, name))
 
 
 def identity(
     input: Tensor, deps: List[Tensor] = [], name: str = "identity"
 ) -> Tensor:
-    """
-    Returns an identical tensor of `input` with execution dependencies `deps`.
-    Usage:
-    tensor_identity = ark.identity(tensor, deps=[tensor1, tensor2])
-    """
+    """ """
     dep_tensors = []
     for dep in deps:
         if not isinstance(dep, Tensor):
-            raise TypeError("All dependencies should be a tensor")
-        if input.runtime_id != dep.runtime_id:
-            raise ValueError("All tensors must be on the same runtime")
+            raise log.InvalidUsageError("All dependencies should be a tensor")
         dep_tensors.append(dep._tensor)
-    return Tensor(
-        Model.get_model().identity(input._tensor, dep_tensors, name),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().identity(input._tensor, dep_tensors, name))
 
 
 def matmul(
@@ -263,20 +187,9 @@ def matmul(
     output: Tensor = NullTensor,
     transpose_input: bool = False,
     transpose_other: bool = False,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "matmul",
 ) -> Tensor:
-    """
-    Performs matrix multiplication between the `input` tensor and
-    `other` tensor, storing the result in `output`. Optional
-    parameters allow controlling the behavior of the multiplication,
-    such as transposing the input tensors and applying a ReLU
-    activation.
-    Usage:
-    tensor_matmul = ark.matmul(tensor1, tensor2)
-    """
-    if input.runtime_id != other.runtime_id:
-        raise ValueError("Tensors must be on the same runtime")
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -286,10 +199,8 @@ def matmul(
             output,
             transpose_input,
             transpose_other,
-            _config_to_str(config),
             name,
-        ),
-        runtime_id=input.runtime_id,
+        )
     )
 
 
@@ -297,34 +208,48 @@ def mul(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "mul",
 ) -> Tensor:
-    """
-    Performs an element-wise multiplication operator between the
-    `input` tensor and the `other` tensor.
-    Usage:
-    tensor_mul = ark.mul(tensor1, tensor2)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(
-        Model.get_model().mul(
-            input._tensor, other, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().mul(input._tensor, other, output, name))
 
 
 def noop(input: Tensor, name: str = "noop"):
-    """
-    No operation. Returns nothing.
-    """
+    """ """
     Model.get_model().noop(input._tensor, name)
+
+
+def placeholder(
+    shape: Iterable[int],
+    dtype: DataType = fp32,
+    strides: Iterable[int] = [],
+    offsets: Iterable[int] = [],
+    padded_shape: Iterable[int] = [],
+    rank: int = -1,
+    data: Union[int, torch.Tensor] = 0,
+    name: str = "placeholder",
+) -> Tensor:
+    """ """
+    if not _no_torch and isinstance(data, torch.Tensor):
+        # Should we support initializing shape dtype stride offset and padded_shape
+        # just by passing in a torch.Tensor?
+        data = data.data_ptr()
+    return Tensor(
+        Model.get_model().placeholder(
+            Dims(shape),
+            dtype.ctype(),
+            Dims(strides),
+            Dims(offsets),
+            Dims(padded_shape),
+            rank,
+            data,
+            name,
+        )
+    )
 
 
 def reduce_max(
@@ -332,22 +257,15 @@ def reduce_max(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_max",
 ) -> Tensor:
-    """
-    Performs reduction along the `axis` of the `input` tensor and
-    stores the result in `output`.
-    Usage:
-    tensor_reduce_max = ark.reduce_max(tensor, axis=1)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_max(
-            input._tensor, axis, keepdims, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+            input._tensor, axis, keepdims, output, name
+        )
     )
 
 
@@ -356,22 +274,15 @@ def reduce_mean(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_mean",
 ) -> Tensor:
-    """
-    Performs reduction along the `axis` of the `input` tensor and
-    stores the result in `output`.
-    Usage:
-    tensor_reduce_mean = ark.reduce_mean(tensor, axis=1)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_mean(
-            input._tensor, axis, keepdims, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+            input._tensor, axis, keepdims, output, name
+        )
     )
 
 
@@ -380,47 +291,27 @@ def reduce_sum(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "reduce_sum",
 ) -> Tensor:
-    """
-    Performs reduction along the `axis` of the `input` tensor and
-    stores the result in `output`.
-    Usage:
-    # tensors shape is [64, 128]
-    tensor_reduce_sum = ark.reduce_sum(tensor, axis=1)
-    # tensor_reduce_sum is a tensor with shape [64, 1]
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
         Model.get_model().reduce_sum(
-            input._tensor, axis, keepdims, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+            input._tensor, axis, keepdims, output, name
+        )
     )
 
 
 def relu(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "relu",
 ) -> Tensor:
-    """
-    Applies the ReLU activation function to the `input` tensor,
-    element-wise.
-    Usage:
-    tensor_relu = ark.relu(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().relu(
-            input._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().relu(input._tensor, output, name))
 
 
 def reshape(
@@ -442,14 +333,17 @@ def reshape(
     # tensors shape is [128, 64]
     tensor = ark.reshape(tensor, [2, 64, 64])
     """
-    if not _is_list_or_tuple(shape):
-        raise ValueError("shape should be a list or tuple of integers")
+    if not is_list_or_tuple(shape):
+        raise log.InvalidUsageError(
+            "shape should be a list or tuple of integers"
+        )
     # only support tensors with up to 4 dimensions
     if len(shape) > 4:
-        raise ValueError("Only support tensors with up to 4 dimensions")
+        raise log.InvalidUsageError(
+            "Only support tensors with up to 4 dimensions"
+        )
     return Tensor(
-        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name),
-        runtime_id=input.runtime_id,
+        Model.get_model().reshape(input._tensor, Dims(shape), allowzero, name)
     )
 
 
@@ -457,135 +351,71 @@ def rope(
     input: Tensor,
     other: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "rope",
 ) -> Tensor:
-    """
-    Calculates the square root of the `input` tensor, element-wise.
-    Usage:
-    tensor_rsqrt = ark.rsqrt(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    if input.runtime_id != other.runtime_id:
-        raise ValueError("Tensors must be on the same runtime")
     return Tensor(
-        Model.get_model().rope(
-            input._tensor, other._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+        Model.get_model().rope(input._tensor, other._tensor, output, name)
     )
 
 
 def rsqrt(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "rsqrt",
 ) -> Tensor:
-    """
-    Calculates the square root of the `input` tensor, element-wise.
-    Usage:
-    tensor_rsqrt = ark.rsqrt(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().rsqrt(
-            input._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().rsqrt(input._tensor, output, name))
 
 
 def sharding(
     input: Tensor, axis: int, dim_per_shard: int, name: str = "sharding"
 ) -> List[Tensor]:
-    """
-    Shard `input` along `axis` into `dim_per_shard`-dimensional shards.
-    Usage:
-    # tensors shape is [64, 128]
-    tensor_sharding = ark.sharding(tensor, axis=1, dim_per_shard=64)
-    # tensor_sharding is a list of 2 tensors, each of which has shape [64, 64]
-    # The first tensor's buffer is the same as the first 64 columns of tensor
-    # The second tensor's buffer is the same as the last 64 columns of tensor
-    """
+    """ """
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
-    return [
-        Tensor(_tensor, runtime_id=input.runtime_id) for _tensor in _tensor_list
-    ]
+    return [Tensor(_tensor) for _tensor in _tensor_list]
 
 
 def sigmoid(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "sigmoid",
 ) -> Tensor:
-    """
-    Applies the Sigmoid activation function to the `input` tensor,
-    element-wise.
-    Usage:
-    tensor_sigmoid = ark.sigmoid(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().sigmoid(
-            input._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().sigmoid(input._tensor, output, name))
 
 
 def sqrt(
     input: Tensor,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "sqrt",
 ) -> Tensor:
-    """
-    Calculates the square root of the `input` tensor, element-wise.
-    Usage:
-    tensor_sqrt = ark.sqrt(tensor)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    return Tensor(
-        Model.get_model().sqrt(
-            input._tensor, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().sqrt(input._tensor, output, name))
 
 
 def sub(
     input: Tensor,
     other: Union[Tensor, float],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "sub",
 ) -> Tensor:
-    """
-    Performs an element-wise addition operator between the `input`
-    tensor and the `other` tensor.
-    Usage:
-    tensor_add = ark.sub(tensor1, tensor2)
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
-        if input.runtime_id != other.runtime_id:
-            raise ValueError("Tensors must be on the same runtime")
         other = other._tensor
-    return Tensor(
-        Model.get_model().sub(
-            input._tensor, other, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
-    )
+    return Tensor(Model.get_model().sub(input._tensor, other, output, name))
 
 
 def tensor(
@@ -596,16 +426,12 @@ def tensor(
     padded_shape: Iterable[int] = [],
     rank: int = -1,
     name: str = "",
-    runtime_id: int = -1,
 ) -> Tensor:
-    """
-    Construct a tensor with given shape and data type.
-    Usage:
-    tensor = ark.tensor([1, 2, 3, 4], dtype=ark.fp32)
-    tensor = ark.tensor([1, 2], dtype=ark.fp16)
-    """
+    """ """
     return Tensor(
-        _tensor(shape, dtype, strides, offsets, padded_shape, rank, name)
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, rank, None, name
+        )
     )
 
 
@@ -613,32 +439,59 @@ def transpose(
     input: Tensor,
     perm: Iterable[int],
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "transpose",
 ) -> Tensor:
-    """
-    Transposes the `input` tensor according to the given `perm` permutation.
-    For example, transpose(input, [0, 1 ,3, 2]) will swap the last two
-    dimensions of the input tensor. Currently, only 4D tensors are supported.
-    Usage:
-    # tensors shape is [1, 64, 128, 32]
-    tensor_transpose = ark.transpose(tensor, perm=[0, 1, 3, 2])
-    # tensor_transpose is a tensor with shape [1, 64, 32, 128]
-    """
+    """ """
     if output is not NullTensor:
         output = output._tensor
-    if not _is_list_or_tuple(perm):
-        raise ValueError("perm should be a list or tuple of integers")
+    if not is_list_or_tuple(perm):
+        raise log.InvalidUsageError(
+            "perm should be a list or tuple of integers"
+        )
     # only support tensors with up to 4 dimensions
     if len(perm) > 4:
-        raise ValueError("Only support perm up to 4 dimensions")
+        raise log.InvalidUsageError("Only support perm up to 4 dimensions")
     return Tensor(
-        Model.get_model().transpose(
-            input._tensor, perm, output, _config_to_str(config), name
-        ),
-        runtime_id=input.runtime_id,
+        Model.get_model().transpose(input._tensor, perm, output, name)
     )
 
+
+################################################################################
+
+
+def send(
+    input: Tensor,
+    remote_rank: int,
+    tag: int,
+    output: Tensor = NullTensor,
+    name: str = "send",
+):
+    """ """
+    if output is not NullTensor:
+        output = output._tensor
+    return Tensor(
+        Model.get_model().send(input._tensor, remote_rank, tag, output, name)
+    )
+
+
+def send_done(
+    input: Tensor,
+    name: str = "send_done",
+):
+    """ """
+    return Tensor(Model.get_model().send_done(input._tensor, name))
+
+
+def recv(
+    output: Tensor,
+    remote_rank: int,
+    tag: int,
+    name: str = "recv",
+):
+    """ """
+    return Tensor(
+        Model.get_model().recv(output._tensor, remote_rank, tag, name)
+    )
 
 ################################################################################
 
@@ -648,23 +501,18 @@ def mean(
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
-    config: Union[str, Dict[str, Any]] = "",
     name: str = "mean",
 ) -> Tensor:
-    """Alias of reduce_mean."""
-    return reduce_mean(input, axis, keepdims, output, config, name)
+    """ """
+    return reduce_mean(input, axis, keepdims, output, name)
 
 
 def ones(
-    shape: Iterable[int],
-    dtype: DataType = fp32,
-    name: str = "ones",
-    runtime_id: int = -1,
+    shape: Iterable[int], dtype: DataType = fp32, name: str = "ones"
 ) -> Tensor:
-    """Ones."""
+    """ """
     return Tensor(
-        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name),
-        runtime_id=runtime_id,
+        Model.get_model().constant(1, Dims(shape), dtype.ctype(), name)
     )
 
 
@@ -675,25 +523,19 @@ def parameter(
     offsets: Iterable[int] = [],
     padded_shape: Iterable[int] = [],
     name: str = "",
-    runtime_id: int = -1,
 ) -> Parameter:
-    """
-    Construct a parameter with given shape and data type.
-    """
+    """ """
     return Parameter(
-        _tensor(shape, dtype, strides, offsets, padded_shape, name),
-        runtime_id=runtime_id,
+        _cpp_tensor(
+            shape, dtype, strides, offsets, padded_shape, -1, None, name
+        )
     )
 
 
 def softmax(
     input: Tensor, output: Tensor = NullTensor, name: str = "softmax"
 ) -> Tensor:
-    """
-    Applies softmax  to the `input` tensor on the last dimension.
-    Usage:
-    tensor_softmax = ark.softmax(tensor)
-    """
+    """ """
     max = reduce_max(input, axis=-1)
     output = sub(input, max, output=output)
     output = exp(output, output=output)
@@ -719,12 +561,10 @@ def zeros(
     shape: Iterable[int],
     dtype: DataType = fp32,
     name: str = "zeros",
-    runtime_id: int = -1,
 ) -> Tensor:
-    """Zeros."""
+    """ """
     return Tensor(
-        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name),
-        runtime_id=runtime_id,
+        Model.get_model().constant(0, Dims(shape), dtype.ctype(), name)
     )
 
 
@@ -756,39 +596,6 @@ def all_reduce(
         input._tensor, rank, world_size, output, name
     )
     return Tensor(_tensor)
-
-
-__all__ = [
-    "tensor",
-    "parameter",
-    "reshape",
-    "identity",
-    "sharding",
-    "reduce_sum",
-    "reduce_mean",
-    "reduce_max",
-    "layernorm",
-    "softmax",
-    "transpose",
-    "matmul",
-    "exp",
-    "sqrt",
-    "rsqrt",
-    "rope",
-    "relu",
-    "gelu",
-    "sigmoid",
-    "add",
-    "sub",
-    "mul",
-    "div",
-    "all_reduce",
-    "embedding",
-    "cast",
-    "constant",
-    "ones",
-    "zeros",
-]
 
 
 # def im2col(

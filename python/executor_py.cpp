@@ -8,8 +8,11 @@
 
 #include <ark/executor.hpp>
 #include <ark/model.hpp>
-#include <iostream>
-#include <stdexcept>
+#include <unordered_map>
+
+#include "gpu/gpu_memory.hpp"
+#include "logging.hpp"
+
 namespace py = pybind11;
 
 static void tensor_write(ark::Executor *exe, const ark::Tensor &tensor,
@@ -42,37 +45,37 @@ static void tensor_read(ark::Executor *exe, const ark::Tensor &tensor,
                      reinterpret_cast<ark::Stream>(stream), is_d2d);
 }
 
-static DLDataType get_dl_dtype(const ark::DataType &ark_data_type) {
-    DLDataType dl_data_type;
-    dl_data_type.lanes = 1;
-    if (ark_data_type == ark::FP32) {
-        dl_data_type.code = kDLFloat;
-        dl_data_type.bits = 32;
-    } else if (ark_data_type == ark::FP16) {
-        dl_data_type.code = kDLFloat;
-        dl_data_type.bits = 16;
-    } else if (ark_data_type == ark::BF16) {
-        dl_data_type.code = kDLBfloat;
-        dl_data_type.bits = 16;
-    } else if (ark_data_type == ark::INT32) {
-        dl_data_type.code = kDLInt;
-        dl_data_type.bits = 32;
-    } else if (ark_data_type == ark::UINT32) {
-        dl_data_type.code = kDLUInt;
-        dl_data_type.bits = 32;
-    } else if (ark_data_type == ark::INT8) {
-        dl_data_type.code = kDLInt;
-        dl_data_type.bits = 8;
-    } else if (ark_data_type == ark::UINT8) {
-        dl_data_type.code = kDLUInt;
-        dl_data_type.bits = 8;
-    } else if (ark_data_type == ark::BYTE) {
-        dl_data_type.code = kDLUInt;
-        dl_data_type.bits = 8;
+static DLDataType to_dl_dtype(const ark::DataType &ark_dtype) {
+    DLDataType dl_dtype;
+    dl_dtype.lanes = 1;
+    if (ark_dtype == ark::FP32) {
+        dl_dtype.code = kDLFloat;
+        dl_dtype.bits = 32;
+    } else if (ark_dtype == ark::FP16) {
+        dl_dtype.code = kDLFloat;
+        dl_dtype.bits = 16;
+    } else if (ark_dtype == ark::BF16) {
+        dl_dtype.code = kDLBfloat;
+        dl_dtype.bits = 16;
+    } else if (ark_dtype == ark::INT32) {
+        dl_dtype.code = kDLInt;
+        dl_dtype.bits = 32;
+    } else if (ark_dtype == ark::UINT32) {
+        dl_dtype.code = kDLUInt;
+        dl_dtype.bits = 32;
+    } else if (ark_dtype == ark::INT8) {
+        dl_dtype.code = kDLInt;
+        dl_dtype.bits = 8;
+    } else if (ark_dtype == ark::UINT8) {
+        dl_dtype.code = kDLUInt;
+        dl_dtype.bits = 8;
+    } else if (ark_dtype == ark::BYTE) {
+        dl_dtype.code = kDLUInt;
+        dl_dtype.bits = 8;
     } else {
-        throw std::runtime_error("unexpected error");
+        ERR(ark::InternalError, "unexpected");
     }
-    return dl_data_type;
+    return dl_dtype;
 }
 
 static DLDeviceType get_device_type() {
@@ -85,93 +88,138 @@ static DLDeviceType get_device_type() {
 #endif
 }
 
-static DLManagedTensor *to_dlpack(ark::Executor &exe,
-                                  const ark::Tensor &tensor) {
-    DLTensor dl_tensor;
-    dl_tensor.data = reinterpret_cast<void *>(exe.tensor_address(tensor));
-    size_t offset_in_elements =
-        tensor.offsets().is_no_dim() ? 0 : tensor.offsets().vector()[0];
-    dl_tensor.byte_offset = offset_in_elements * tensor.data_type().bytes();
-    dl_tensor.device.device_type = get_device_type();
-    dl_tensor.device.device_id = static_cast<int32_t>(exe.device_id());
-    dl_tensor.ndim = static_cast<int32_t>(tensor.shape().ndims());
-    dl_tensor.dtype = get_dl_dtype(tensor.data_type());
+namespace ark {
 
-    dl_tensor.shape =
-        tensor.shape().is_no_dim() ? nullptr : new int64_t[dl_tensor.ndim];
-    dl_tensor.strides =
-        tensor.strides().is_no_dim() ? nullptr : new int64_t[dl_tensor.ndim];
-    auto shape = tensor.shape();
-    if (dl_tensor.shape) {
-        for (int i = 0; i < dl_tensor.ndim; ++i) {
-            dl_tensor.shape[i] = shape[i];
-        }
-    }
-    if (dl_tensor.strides) {
-        dl_tensor.strides[dl_tensor.ndim - 1] = 1;
-        for (int i = dl_tensor.ndim - 2; i >= 0; --i) {
-            dl_tensor.strides[i] =
-                dl_tensor.shape[i + 1] * dl_tensor.strides[i + 1];
-        }
-    }
+class SharedTensor {
+   public:
+    SharedTensor(Executor &exe, const Tensor &tensor);
+    ~SharedTensor() = default;
+
+    DLTensor dl_tensor() const;
+
+   private:
+    std::shared_ptr<GpuMemory> buffer_;
+    void *data_;
+    int device_id_;
+    DataType dtype_;
+    std::shared_ptr<std::vector<int64_t>> shape_;
+    std::shared_ptr<std::vector<int64_t>> strides_;
+    std::shared_ptr<std::vector<int64_t>> offsets_;
+};
+
+SharedTensor::SharedTensor(Executor &exe, const Tensor &tensor) {
+    buffer_ = exe.buffer();
+    data_ = reinterpret_cast<void *>(exe.tensor_address(tensor));
+    device_id_ = exe.device_id();
+    dtype_ = tensor.data_type();
+    shape_ = std::make_shared<std::vector<int64_t>>(tensor.shape().vector());
+    strides_ =
+        std::make_shared<std::vector<int64_t>>(tensor.torch_strides().vector());
+    offsets_ =
+        std::make_shared<std::vector<int64_t>>(tensor.offsets().vector());
+}
+
+DLTensor SharedTensor::dl_tensor() const {
+    DLTensor dl_tensor;
+    dl_tensor.data = data_;
+    size_t offset_in_elements = offsets_->empty() ? 0 : offsets_->at(0);
+    dl_tensor.byte_offset = offset_in_elements * dtype_.bytes();
+    dl_tensor.device.device_type = get_device_type();
+    dl_tensor.device.device_id = device_id_;
+    dl_tensor.ndim = static_cast<int32_t>(shape_->size());
+    dl_tensor.dtype = to_dl_dtype(dtype_);
+    dl_tensor.shape = shape_->data();
+    dl_tensor.strides = strides_->data();
+    return dl_tensor;
+}
+
+}  // namespace ark
+
+static py::capsule tensor_to_dlpack(ark::Executor &self,
+                                    const ark::Tensor &tensor) {
+    auto shared_tensor = new ark::SharedTensor(self, tensor);
     DLManagedTensor *dl_managed_tensor = new DLManagedTensor();
-    dl_managed_tensor->dl_tensor = dl_tensor;
-    dl_managed_tensor->manager_ctx = nullptr;
+    dl_managed_tensor->dl_tensor = shared_tensor->dl_tensor();
+    dl_managed_tensor->manager_ctx = shared_tensor;
     dl_managed_tensor->deleter = [](DLManagedTensor *self) {
-        if (self->dl_tensor.shape) {
-            delete[] self->dl_tensor.shape;
-            self->dl_tensor.shape = nullptr;
-        }
-        if (self->dl_tensor.strides) {
-            delete[] self->dl_tensor.strides;
-            self->dl_tensor.strides = nullptr;
+        if (self->manager_ctx) {
+            delete static_cast<ark::SharedTensor *>(self->manager_ctx);
+            self->manager_ctx = nullptr;
         }
     };
-    return dl_managed_tensor;
-}
-
-void free_capsule(PyObject *capsule) {
-    const char *name = PyCapsule_GetName(capsule);
-    auto *dl_managed_tensor =
-        static_cast<DLManagedTensor *>(PyCapsule_GetPointer(capsule, name));
-    if (dl_managed_tensor) {
-        dl_managed_tensor->deleter(dl_managed_tensor);
-        dl_managed_tensor = nullptr;
-    }
-}
-
-py::capsule to_dlpack_capsule(ark::Executor &self, const ark::Tensor &tensor) {
-    DLManagedTensor *dl_managed_tensor = to_dlpack(self, tensor);
     const char *capsule_name = "dltensor";
-    PyObject *dl_capsule = PyCapsule_New(static_cast<void *>(dl_managed_tensor),
-                                         capsule_name, free_capsule);
+    PyObject *dl_capsule = PyCapsule_New(
+        static_cast<void *>(dl_managed_tensor), capsule_name,
+        [](PyObject *capsule) {
+            const char *name = PyCapsule_GetName(capsule);
+            auto *dl_managed_tensor = static_cast<DLManagedTensor *>(
+                PyCapsule_GetPointer(capsule, name));
+            if (dl_managed_tensor) {
+                dl_managed_tensor->deleter(dl_managed_tensor);
+                dl_managed_tensor = nullptr;
+            }
+        });
     return py::reinterpret_steal<py::capsule>(dl_capsule);
 }
 
 void register_executor(py::module &m) {
-    py::class_<ark::Executor>(m, "_Executor")
-        .def(py::init([](int device_id, uintptr_t stream,
-                         const std::string &name, const std::string &plan,
-                         bool loop_mode) {
-            return new ark::Executor(device_id,
-                                     reinterpret_cast<ark::Stream>(stream),
-                                     name, plan, loop_mode);
-        }))
+    py::class_<ark::Executor>(m, "CoreExecutor")
+        .def(py::init<>())
         .def("device_id", &ark::Executor::device_id)
         .def("stream",
              [](ark::Executor *self) {
                  return reinterpret_cast<uintptr_t>(self->stream());
              })
         .def("plan", &ark::Executor::plan)
-        .def("compile", &ark::Executor::compile)
-        .def("launch", &ark::Executor::launch)
-        .def("run", &ark::Executor::run, py::arg("iter"))
+        .def("name", &ark::Executor::name)
+        .def("compile", &ark::Executor::compile, py::arg("plan"),
+             py::arg("device_id"), py::arg("name") = "executor")
+        .def(
+            "launch",
+            [](ark::Executor *self,
+               const std::unordered_map<ark::Tensor, uintptr_t>
+                   &placeholder_data,
+               uintptr_t stream, bool loop_mode, bool record) {
+                std::unordered_map<ark::Tensor, void *> tensor_ptr_map;
+                for (const auto &[tensor, addr] : placeholder_data) {
+                    tensor_ptr_map[tensor] = reinterpret_cast<void *>(addr);
+                }
+
+                self->launch(tensor_ptr_map,
+                             reinterpret_cast<ark::Stream>(stream), loop_mode,
+                             record);
+            },
+            py::arg("placeholder_data") =
+                std::unordered_map<ark::Tensor, void *>(),
+            py::arg("stream") = 0, py::arg("loop_mode") = true,
+            py::arg("record") = false)
+
+        .def(
+            "run",
+            [](ark::Executor *self, int iter,
+               const std::unordered_map<ark::Tensor, uintptr_t>
+                   &placeholder_data) {
+                std::unordered_map<ark::Tensor, void *> tensor_ptr_map;
+                for (const auto &[tensor, addr] : placeholder_data) {
+                    tensor_ptr_map[tensor] = reinterpret_cast<void *>(addr);
+                }
+                self->run(iter, tensor_ptr_map);
+            },
+            py::arg("iter"),
+            py::arg("placeholder_data") =
+                std::unordered_map<ark::Tensor, void *>())
         .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
         .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
         .def("barrier", &ark::Executor::barrier)
         .def("destroy", &ark::Executor::destroy)
         .def("destroyed", &ark::Executor::destroyed)
-        .def("tensor_address", &ark::Executor::tensor_address)
+        .def(
+            "tensor_address",
+            [](ark::Executor *self, const ark::Tensor &tensor) {
+                return reinterpret_cast<uintptr_t>(
+                    self->tensor_address(tensor));
+            },
+            py::arg("tensor"))
         .def("tensor_read",
              py::overload_cast<ark::Executor *, const ark::Tensor &, py::buffer,
                                uintptr_t>(&tensor_read),
@@ -190,5 +238,5 @@ void register_executor(py::module &m) {
                                size_t, uintptr_t, bool>(&tensor_write),
              py::arg("tensor"), py::arg("address"), py::arg("bytes"),
              py::arg("stream"), py::arg("is_d2d"))
-        .def("get_dl_tensor", &to_dlpack_capsule);
+        .def("tensor_to_dlpack", &tensor_to_dlpack);
 }

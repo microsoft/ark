@@ -85,10 +85,20 @@ std::string ModelOpTranspose::impl_name(const Json &config) const {
     auto permutation = args_.at("Permutation").value<Dims>();
     auto perm_str = permutation_str(permutation);
     int num_warps = config["NumWarps"];
-    auto &tile_shape = config["Tile"];
-    Dims unit_out_dims{tile_shape[0], tile_shape[1]};
-    if (tile_shape[0] < 0) unit_out_dims[0] = write_tensors_[0]->strides()[-2];
-    if (tile_shape[1] < 0) unit_out_dims[1] = write_tensors_[0]->strides()[-1];
+    Dims unit_out_dims{config["Tile"].get<std::vector<DimType>>()};
+    auto result_tensor_shape = result_tensors_[0]->shape();
+    if (unit_out_dims.ndims() > result_tensor_shape.ndims()) {
+        ERR(ModelError,
+            "The number of dimensions of Tile should be less than or equal to "
+            "the number of dimensions of the result tensor. Given Tile: ",
+            unit_out_dims, ", output tensor shape: ", result_tensor_shape);
+    }
+    int ndims = unit_out_dims.ndims();
+    for (int i = 0; i < ndims; ++i) {
+        if (unit_out_dims[i] < 0) {
+            unit_out_dims[i] = result_tensor_shape[i - ndims];
+        }
+    }
 
     return function_name_string(
         "transpose" + perm_str,

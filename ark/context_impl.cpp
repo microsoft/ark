@@ -52,4 +52,8 @@ bool Context::Impl::has(const std::string& key) const {
     return context_manager_->has(key);
 }
 
+Json Context::Impl::dump() const {
+    return context_manager_->dump();
+}
+
 }  // namespace ark

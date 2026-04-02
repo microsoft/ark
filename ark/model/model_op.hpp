@@ -57,7 +57,7 @@ class ModelOp {
 
     virtual Json default_config(
         [[maybe_unused]] const ArchRef arch = ARCH_ANY) const {
-        return {{"NumTasks", 0}, {"NumWarps", 0}, {"SramBytes", 0}};
+        return {{"NumWarps", 0}, {"SramBytes", 0}};
     }
 
     void set_name(const std::string &name) { name_ = name; }

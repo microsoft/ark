@@ -63,6 +63,8 @@ struct LayerNorm {
                           (tid_c + uc * UnitOutDims::C) * InDims::HW +
                           (tid_n + un * UnitOutDims::N) * InDims::CHW;
 
+        UnitOp::sync_threads();
+
         DataType mean;
         DataType cmp;
         ReduceTypeMean::template identity<1>(&mean);
@@ -108,7 +110,6 @@ struct LayerNorm {
             out[idx_out] = type::Mul::compute(
                 type::Sub::compute(in[idx_in], mean), variance);
         }
-        UnitOp::sync_threads();
     }
 };
 

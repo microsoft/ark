@@ -6,7 +6,6 @@
 #include <pybind11/stl.h>
 
 #include <ark/init.hpp>
-#include <sstream>
 
 namespace py = pybind11;
 

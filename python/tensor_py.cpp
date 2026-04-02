@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#include <dlpack/dlpack.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -10,61 +9,26 @@
 
 namespace py = pybind11;
 
-struct DLTensorMetadata {
-    void* data_ptr;
-    int32_t device_id;
-    DLDeviceType device_type;
-    int32_t ndim;
-    DLDataType dtype;
-    std::vector<int64_t> shape;
-    std::vector<int64_t> strides;
-    uint64_t byte_offset;
-};
-
-static DLTensorMetadata extractDLTensorMetadata(DLManagedTensor* dl_tensor) {
-    DLTensorMetadata metadata;
-    metadata.data_ptr = dl_tensor->dl_tensor.data;
-    metadata.device_id = dl_tensor->dl_tensor.device.device_id;
-    metadata.device_type = dl_tensor->dl_tensor.device.device_type;
-    metadata.ndim = dl_tensor->dl_tensor.ndim;
-    metadata.dtype = dl_tensor->dl_tensor.dtype;
-    metadata.shape.assign(
-        dl_tensor->dl_tensor.shape,
-        dl_tensor->dl_tensor.shape + dl_tensor->dl_tensor.ndim);
-    if (dl_tensor->dl_tensor.strides != nullptr) {
-        metadata.strides.assign(
-            dl_tensor->dl_tensor.strides,
-            dl_tensor->dl_tensor.strides + dl_tensor->dl_tensor.ndim);
-    }
-    metadata.byte_offset = dl_tensor->dl_tensor.byte_offset;
-    return metadata;
-}
-
-void register_tensor(py::module& m) {
-    py::class_<ark::Tensor>(m, "_Tensor")
-        .def(py::init([](py::capsule capsule, const ark::DataType& dtype) {
-            DLManagedTensor* dl_tensor = (DLManagedTensor*)capsule;
-            if (!dl_tensor) {
-                throw std::runtime_error(
-                    "Capsule does not contain a DLManagedTensor");
-            }
-            DLTensorMetadata metadata = extractDLTensorMetadata(dl_tensor);
-            int32_t device_id = metadata.device_id;
-            void* data_ptr = metadata.data_ptr;
-            auto shape = metadata.shape;
-
-            return new ark::Tensor(data_ptr, device_id, shape, dtype);
-        }))
+void register_tensor(py::module &m) {
+    py::class_<ark::Tensor>(m, "CoreTensor")
         .def("id", &ark::Tensor::id)
-        .def("shape", &ark::Tensor::shape, py::return_value_policy::reference)
-        .def("strides", &ark::Tensor::strides,
-             py::return_value_policy::reference)
-        .def("offsets", &ark::Tensor::offsets,
-             py::return_value_policy::reference)
-        .def("padded_shape", &ark::Tensor::padded_shape,
-             py::return_value_policy::reference)
-        .def("data_type", &ark::Tensor::data_type,
-             py::return_value_policy::reference);
+        .def("shape", &ark::Tensor::shape)
+        .def("strides", &ark::Tensor::strides)
+        .def("offsets", &ark::Tensor::offsets)
+        .def("padded_shape", &ark::Tensor::padded_shape)
+        .def("data_type", &ark::Tensor::data_type)
+        .def("torch_strides", &ark::Tensor::torch_strides)
+        .def("data",
+             [](const ark::Tensor& self) {
+                 return reinterpret_cast<uintptr_t>(self.data());
+             })
+        .def(
+            "data",
+            [](ark::Tensor& self, uintptr_t data) {
+                return self.data(reinterpret_cast<void*>(data));
+            },
+            py::arg("data"))
+        .def("is_external", &ark::Tensor::is_external);
 
-    m.attr("_NullTensor") = &ark::NullTensor;
+    m.attr("NullTensor") = &ark::NullTensor;
 }

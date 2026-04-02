@@ -6,6 +6,7 @@ build/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
 # Git
 **/.git

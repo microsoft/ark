@@ -12,6 +12,7 @@ ark::unittest::State test_ipc_hosts() {
     auto tmp_hostfile = tmp_dir + "/.test_ipc_hostfile";
     ark::write_file(tmp_hostfile, "127.0.0.1\n127.0.0.1\n127.0.0.1\n");
     ::setenv("ARK_HOSTFILE", tmp_hostfile.c_str(), 1);
+    ::setenv("ARK_KEEP_TMP", "1", 1);
     ark::init();
 
     UNITTEST_EQ(ark::get_host(0, true), "127.0.0.1");
@@ -31,6 +32,7 @@ ark::unittest::State test_ipc_hosts_unknown_host() {
     auto tmp_hostfile = tmp_dir + "/.test_ipc_hostfile";
     ark::write_file(tmp_hostfile, "unknown\nunknown\nunknown\n");
     ::setenv("ARK_HOSTFILE", tmp_hostfile.c_str(), 1);
+    ::setenv("ARK_KEEP_TMP", "1", 1);
     ark::init();
 
     UNITTEST_THROW(ark::get_host(0, true), ark::InvalidUsageError);

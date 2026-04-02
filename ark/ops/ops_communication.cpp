@@ -41,8 +41,8 @@ ModelOpSend::ModelOpSend(ModelTensorRef input, int remote_rank, int tag,
 }
 
 std::string ModelOpSend::impl_name(const Json &config) const {
-    check_fields_config(config,
-                        {"ChannelType", "NumTasks", "NumWarps", "SramBytes"});
+    check_fields_config(
+        config, {"ChannelType", "Signal", "NumTasks", "NumWarps", "SramBytes"});
     auto &input = read_tensors_[0];
     auto &output = write_tensors_[0];
     int remote_rank = output->buffer()->rank();

@@ -24,6 +24,8 @@ class ModelContextManager {
 
     Json get(const std::string& key) const;
 
+    Json dump() const;
+
    private:
     std::shared_ptr<ModelGraphContextStack> context_stack_;
     std::vector<std::string> keys_;

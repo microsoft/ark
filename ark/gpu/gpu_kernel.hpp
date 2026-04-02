@@ -18,19 +18,18 @@ class GpuKernel {
    public:
     GpuKernel(int gpu_id, const std::string& codes,
               const std::array<int, 3>& block_dim,
-              const std::array<int, 3>& grid_dim, size_t smem_bytes,
-              const std::string& kernel_name);
+              const std::array<int, 3>& grid_dim, size_t smem_bytes);
 
     void init(int gpu_id, const std::string& codes,
               const std::array<int, 3>& block_dim,
-              const std::array<int, 3>& grid_dim, size_t smem_bytes,
-              const std::string& kernel_name);
+              const std::array<int, 3>& grid_dim, size_t smem_bytes);
     void compile();
-    void launch(gpuStream stream, std::vector<void*>& args);
+    void launch(const std::string& kernel_name, gpuStream stream,
+                std::vector<void*>& args);
 
     gpuDeviceptr get_global(const std::string& name,
                             bool ignore_not_found = false) const;
-    bool is_compiled() const { return function_ != nullptr; }
+    bool is_compiled() const { return !bin_.empty(); }
 
    protected:
     std::shared_ptr<GpuManager> gpu_manager_;

@@ -376,7 +376,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           typename DataTypeB, int LeadingDimB, bool IsColumnB,
           typename DataTypeC, int LeadingDimC, int ProblemSizeM,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
-          int TileSizeK, typename UnitOp>
+          typename UnitOp>
 struct CkGemm {
     static_assert(LeadingDimA >= 0, "");
     static_assert(LeadingDimB >= 0, "");
@@ -386,7 +386,6 @@ struct CkGemm {
     static_assert(ProblemSizeK >= 0, "");
     static_assert(TileSizeM >= 0, "");
     static_assert(TileSizeN >= 0, "");
-    static_assert(TileSizeK >= 0, "");
 
     using AccumulateType = fp32;
 
@@ -514,13 +513,13 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           typename DataTypeB, int LeadingDimB, bool IsColumnB,
           typename DataTypeC, int LeadingDimC, int ProblemSizeM,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
-          int TileSizeK, typename UnitOp>
+          typename UnitOp>
 DEVICE void gemm_ck(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
                     int smem_per_warp) {
     using CkGemm =
         CkGemm<DataTypeA, LeadingDimA, IsColumnA, DataTypeB, LeadingDimB,
                IsColumnB, DataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
-               ProblemSizeK, TileSizeM, TileSizeN, TileSizeK, UnitOp>;
+               ProblemSizeK, TileSizeM, TileSizeN, UnitOp>;
     CkGemm gemm;
     gemm.Run(C, A, B, uop_idx, smem_per_warp);
 }

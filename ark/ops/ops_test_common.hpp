@@ -60,7 +60,7 @@ float reduction_abs_error_bound(float max_abs, int reduction_length) {
     // If the reduction length is too large, the error will be dominated by
     // the rounding error of the reduction itself.
     if (reduction_length > (1 << (NumFracBits + 1))) {
-        UNITTEST_FEXIT("reduction length is too large");
+        UNITTEST_FAIL("reduction length is too large");
     }
     float max_diff =
         reduction_length * 2 * max_abs * 1.0f / (1 << (NumFracBits + 1));

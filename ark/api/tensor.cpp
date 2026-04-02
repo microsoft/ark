@@ -9,19 +9,6 @@
 
 namespace ark {
 
-Tensor::Tensor(void* data_ptr, int32_t device_id,
-               const std::vector<int64_t>& shape,
-               const DataType& dtype) {
-    size_t external_data_size = std::accumulate(shape.begin(), shape.end(), 1,
-                                                std::multiplies<int64_t>()) *
-                                dtype.bytes();
-    auto buffer =
-        std::make_shared<ModelBuffer>(data_ptr, external_data_size, device_id);
-    auto tensor = std::make_shared<ModelTensor>(dtype.ref(), buffer, Dims(shape),
-                                                Dims(shape), Dims(), Dims());
-    ref_ = tensor;
-}
-
 size_t Tensor::id() const {
     if (ref_) {
         return ref_->id();
@@ -57,14 +44,52 @@ Dims Tensor::padded_shape() const {
     return Dims();
 }
 
-const DataType& Tensor::data_type() const {
+const DataType &Tensor::data_type() const {
     if (ref_) {
         return DataType::from_name(ref_->data_type()->type_name());
     }
     return NONE;
 }
 
-std::ostream& operator<<(std::ostream& os, const Tensor& tensor) {
+Dims Tensor::torch_strides() const {
+    if (ref_) {
+        Dims st = ref_->strides();
+        int ndims = st.ndims();
+        std::vector<DimType> tmp;
+        for (int i = 1; i < ndims; ++i) {
+            tmp.push_back(st[i]);
+        }
+        tmp.push_back(1);
+        for (int i = ndims - 2; i >= 0; --i) {
+            tmp[i] *= tmp[i + 1];
+        }
+        return Dims(tmp);
+    }
+    return Dims();
+}
+
+void *Tensor::data() const {
+    if (ref_) {
+        return ref_->data();
+    }
+    return nullptr;
+}
+
+void *Tensor::data(void *data) {
+    if (ref_) {
+        return ref_->data(data);
+    }
+    return nullptr;
+}
+
+bool Tensor::is_external() const {
+    if (ref_) {
+        return ref_->is_external();
+    }
+    return false;
+}
+
+std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
     if (tensor.is_null()) {
         os << "null";
     } else {

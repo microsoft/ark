@@ -8,13 +8,14 @@
 const std::string void_kernel = "extern \"C\" __global__ void kernel() {}";
 
 ark::unittest::State test_gpu_kernel() {
-    ark::GpuKernel kernel(0, void_kernel, {1, 1, 1}, {1, 1, 1}, 0, "kernel");
+    ark::GpuKernel kernel(0, void_kernel, {1, 1, 1}, {1, 1, 1}, 0);
     UNITTEST_TRUE(!kernel.is_compiled());
     kernel.compile();
     UNITTEST_TRUE(kernel.is_compiled());
     std::vector<void*> args;
+    UNITTEST_THROW(kernel.launch("", nullptr, args), ark::InvalidUsageError);
     for (int i = 0; i < 10; i++) {
-        kernel.launch(nullptr, args);
+        kernel.launch("kernel", nullptr, args);
     }
     return ark::unittest::SUCCESS;
 }

@@ -11,7 +11,7 @@ if(ARK_USE_ROCM)
     set_source_files_properties(${CU_SOURCES} PROPERTIES LANGUAGE CXX)
 endif()
 
-set(COMMON_LIBS ARK::numa ARK::ibverbs pthread rt)
+set(COMMON_LIBS ARK::numa pthread rt)
 
 # ARK object
 target_include_directories(ark_obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -20,7 +20,6 @@ target_include_directories(ark_obj SYSTEM PRIVATE
     ${DLPACK_INCLUDE_DIRS}
     ${JSON_INCLUDE_DIRS}
     ${MSCCLPP_INCLUDE_DIRS}
-    ${IBVERBS_INCLUDE_DIRS}
     ${NUMA_INCLUDE_DIRS}
 )
 
@@ -55,7 +54,6 @@ if(ARK_BUILD_TESTS)
         target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
         target_include_directories(${exe_name} SYSTEM PRIVATE
             ${JSON_INCLUDE_DIRS}
-            ${IBVERBS_INCLUDE_DIRS}
             ${NUMA_INCLUDE_DIRS}
         )
 
