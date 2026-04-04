@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "file_io.h"
+#include "gpu/gpu.hpp"
 #include "logging.hpp"
 
 // Grep SIGALRM and exit.
@@ -95,6 +96,13 @@ void wait_all_processes() {
 
 // Run the given test function.
 State test(std::function<State()> test_func) { return test_func(); }
+
+// Get the number of available GPUs.
+int get_gpu_count() {
+    int count = 0;
+    if (gpuGetDeviceCount(&count) != gpuSuccess) return 0;
+    return count;
+}
 
 //
 std::string get_kernel_code(const std::string &name) {

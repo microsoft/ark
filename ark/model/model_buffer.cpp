@@ -80,8 +80,7 @@ std::shared_ptr<ModelBuffer> ModelBuffer::deserialize(const Json &serialized) {
     } else if (!serialized.contains("SendTags")) {
         ERR(ModelError, "ModelBuffer deserialization failed: missing SendTags");
     } else if (!serialized.contains("RecvTags")) {
-        ERR(ModelError,
-            "ModelBuffer deserialization failed: missing RecvTags");
+        ERR(ModelError, "ModelBuffer deserialization failed: missing RecvTags");
     } else if (!serialized.contains("IsExternal")) {
         ERR(ModelError,
             "ModelBuffer deserialization failed: missing IsExternal");

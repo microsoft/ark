@@ -87,8 +87,9 @@ ark::unittest::State test_planner_context_processor_range() {
             auto t = model.add(t0, t1);
             tensors.push_back(t);
 
-            UNITTEST_EQ(ctx.get("ProcessorRange"),
-                        ark::Json({subctx.id(), {0 * (int)i, 2 * (int)i}}).dump());
+            UNITTEST_EQ(
+                ctx.get("ProcessorRange"),
+                ark::Json({subctx.id(), {0 * (int)i, 2 * (int)i}}).dump());
         }
 
         UNITTEST_TRUE(model.verify());
@@ -131,15 +132,13 @@ ark::unittest::State test_planner_context_warp_range() {
         ctx.warp_range(0, 4);
         t3 = model.relu(t2);
 
-        UNITTEST_EQ(ctx.get("WarpRange"),
-                    ark::Json({ctx.id(), {0, 4}}).dump());
+        UNITTEST_EQ(ctx.get("WarpRange"), ark::Json({ctx.id(), {0, 4}}).dump());
 
         // node 2
         ctx.warp_range(2, 4);
         t4 = model.sqrt(t3);
 
-        UNITTEST_EQ(ctx.get("WarpRange"),
-                    ark::Json({ctx.id(), {2, 4}}).dump());
+        UNITTEST_EQ(ctx.get("WarpRange"), ark::Json({ctx.id(), {2, 4}}).dump());
 
         // Invalid usage: range (0, 4) is out of previous range (2, 4)
         UNITTEST_THROW(ctx.warp_range(0, 4), ark::PlanError);
@@ -197,15 +196,13 @@ ark::unittest::State test_planner_context_sram_range() {
         ctx.sram_range(0, 4);
         t3 = model.relu(t2);
 
-        UNITTEST_EQ(ctx.get("SramRange"),
-                    ark::Json({ctx.id(), {0, 4}}).dump());
+        UNITTEST_EQ(ctx.get("SramRange"), ark::Json({ctx.id(), {0, 4}}).dump());
 
         // node 2
         ctx.sram_range(2, 4);
         t4 = model.sqrt(t3);
 
-        UNITTEST_EQ(ctx.get("SramRange"),
-                    ark::Json({ctx.id(), {2, 4}}).dump());
+        UNITTEST_EQ(ctx.get("SramRange"), ark::Json({ctx.id(), {2, 4}}).dump());
 
         // Invalid usage: range (0, 4) is out of previous range (2, 4)
         UNITTEST_THROW(ctx.sram_range(0, 4), ark::PlanError);
@@ -263,15 +260,13 @@ ark::unittest::State test_planner_context_sync() {
         ctx.sync(false);
         t3 = model.relu(t2);
 
-        UNITTEST_EQ(ctx.get("Sync"),
-                    ark::Json({ctx.id(), false}).dump());
+        UNITTEST_EQ(ctx.get("Sync"), ark::Json({ctx.id(), false}).dump());
 
         // node 2
         ctx.sync(true);
         t4 = model.sqrt(t3);
 
-        UNITTEST_EQ(ctx.get("Sync"),
-                    ark::Json({ctx.id(), true}).dump());
+        UNITTEST_EQ(ctx.get("Sync"), ark::Json({ctx.id(), true}).dump());
     }
     {
         // node 3
@@ -280,8 +275,7 @@ ark::unittest::State test_planner_context_sync() {
         ctx.sync(true);
         t5 = model.exp(t2);
 
-        UNITTEST_EQ(ctx.get("Sync"),
-                    ark::Json({ctx.id(), true}).dump());
+        UNITTEST_EQ(ctx.get("Sync"), ark::Json({ctx.id(), true}).dump());
     }
 
     UNITTEST_TRUE(model.verify());
@@ -297,8 +291,9 @@ ark::unittest::State test_planner_context_sync() {
     UNITTEST_EQ(nodes[1]->context.at("Sync"),
                 ark::Json({{sync_id_1, true}, {sync_id_1, false}}));
     UNITTEST_GE(nodes[2]->context.size(), 1);
-    UNITTEST_EQ(nodes[2]->context.at("Sync"),
-                ark::Json({{sync_id_1, true}, {sync_id_1, false}, {sync_id_1, true}}));
+    UNITTEST_EQ(
+        nodes[2]->context.at("Sync"),
+        ark::Json({{sync_id_1, true}, {sync_id_1, false}, {sync_id_1, true}}));
     UNITTEST_GE(nodes[3]->context.size(), 1);
     UNITTEST_EQ(nodes[3]->context.at("Sync"),
                 ark::Json({{sync_id_2, true}, {sync_id_2, true}}));
@@ -361,7 +356,8 @@ ark::unittest::State test_planner_context_config() {
                 ark::Json({{cfg_id_1, {{"key0", "val1"}}}}));
     UNITTEST_GE(nodes[2]->context.size(), 1);
     UNITTEST_EQ(nodes[2]->context.at("Config"),
-                ark::Json({{cfg_id_1, {{"key0", "val1"}}}, {cfg_id_1, {{"key1", "val2"}}}}));
+                ark::Json({{cfg_id_1, {{"key0", "val1"}}},
+                           {cfg_id_1, {{"key1", "val2"}}}}));
     UNITTEST_GE(nodes[3]->context.size(), 1);
     UNITTEST_EQ(nodes[3]->context.at("Config"),
                 ark::Json({{cfg_id_2, {{"key2", "val3"}}}}));

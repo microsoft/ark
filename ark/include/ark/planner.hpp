@@ -38,8 +38,8 @@ class Planner {
 
     ~Planner();
 
-    using ConfigRule = std::function<std::string(const std::string &op,
-                                                 const std::string &arch)>;
+    using ConfigRule = std::function<std::string(const std::string& op,
+                                                 const std::string& arch)>;
 
     void install_config_rule(ConfigRule rule);
 

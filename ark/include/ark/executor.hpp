@@ -52,9 +52,8 @@ class Executor {
                 bool record = false);
 
     /// Run the executor for `iter` iterations.
-    void run(
-        int iter,
-        const std::unordered_map<Tensor, void *> &placeholder_data = {});
+    void run(int iter,
+             const std::unordered_map<Tensor, void *> &placeholder_data = {});
 
     /// Wait for the previous run to finish.
     void wait(int64_t max_spin_count = -1);

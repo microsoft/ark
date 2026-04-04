@@ -92,13 +92,9 @@ size_t ModelTensor::shape_bytes() const {
     return shape_.nelems() * data_type_->bytes();
 }
 
-void *ModelTensor::data() const {
-    return buffer_->data();
-}
+void *ModelTensor::data() const { return buffer_->data(); }
 
-void *ModelTensor::data(void *data) {
-    return buffer_->data(data);
-}
+void *ModelTensor::data(void *data) { return buffer_->data(data); }
 
 bool ModelTensor::is_external() const { return buffer_->is_external(); }
 

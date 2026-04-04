@@ -92,12 +92,10 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
         output_shape.insert(axis, 1);
     }
 
-    Dims unit_out_dims(
-        config.at("Tile").get<std::vector<DimType>>());
+    Dims unit_out_dims(config.at("Tile").get<std::vector<DimType>>());
     auto udims4 = unit_out_dims.dims4();
     if (udims4[axis] != 1) {
-        ERR(PlanError,
-            "Tile dimension along reduce axis (", axis,
+        ERR(PlanError, "Tile dimension along reduce axis (", axis,
             ") must be 1, got ", udims4[axis]);
     }
 
@@ -115,8 +113,8 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
         });
 }
 
-std::vector<ModelOpArg> ModelOpReduce::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpReduce::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 

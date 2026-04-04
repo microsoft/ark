@@ -21,7 +21,7 @@
     constexpr auto alias = cuda_const;
 #define ARK_GPU_DEFINE_FUNC_ALIAS(alias, cuda_func, rocm_func) \
     template <typename... Args>                                \
-    inline auto alias(Args &&... args) {                       \
+    inline auto alias(Args &&...args) {                        \
         return cuda_func(std::forward<Args>(args)...);         \
     }
 
@@ -35,7 +35,7 @@
     constexpr auto alias = rocm_const;
 #define ARK_GPU_DEFINE_FUNC_ALIAS(alias, cuda_func, rocm_func) \
     template <typename... Args>                                \
-    inline auto alias(Args &&... args) {                       \
+    inline auto alias(Args &&...args) {                        \
         return rocm_func(std::forward<Args>(args)...);         \
     }
 
@@ -148,6 +148,8 @@ ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpy, cudaMemcpy, hipMemcpy);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemcpyAsync, cudaMemcpyAsync, hipMemcpyAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuMemsetAsync, cudaMemsetAsync, hipMemsetAsync);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuSetDevice, cudaSetDevice, hipSetDevice);
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetDeviceCount, cudaGetDeviceCount,
+                          hipGetDeviceCount);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamCreateWithFlags, cudaStreamCreateWithFlags,
                           hipStreamCreateWithFlags);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuStreamDestroy, cudaStreamDestroy,

@@ -42,6 +42,8 @@ void wait_all_processes();
 
 State test(std::function<State()> test_func);
 //
+int get_gpu_count();
+//
 std::string get_kernel_code(const std::string &name);
 
 }  // namespace unittest
@@ -85,6 +87,15 @@ std::string get_kernel_code(const std::string &name);
 // Unexpected error occurred inside the unittest framework.
 #define UNITTEST_UNEXPECTED(...) \
     UNITTEST_EXIT(ark::unittest::UNEXPECTED, __VA_ARGS__)
+
+// Skip the test if the condition is true.
+#define UNITTEST_SKIP(cond)                \
+    do {                                   \
+        if (cond) {                        \
+            UNITTEST_LOG("Skip: " #cond);  \
+            return ark::unittest::SUCCESS; \
+        }                                  \
+    } while (0)
 
 // Success.
 #define UNITTEST_SUCCESS() UNITTEST_EXIT(ark::unittest::SUCCESS, "")

@@ -91,7 +91,8 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
     std::vector<ark::Tensor> outputs;
     size_t out_off = flag % 2 == 0 ? 0 : nbytes_per_rank * 2;
     ark::Dims out_shape = {nbytes_per_rank * 2};
-    ark::Dims out_strides = {nbytes_per_rank * 2 * 2}; // packet + double buffer
+    ark::Dims out_strides = {nbytes_per_rank * 2 *
+                             2};  // packet + double buffer
     for (int i = 0; i < rank_num; i++) {
         if (i != rank) {
             outputs.push_back(m.tensor(out_shape, ark::UINT8, out_strides,
@@ -121,7 +122,8 @@ void test_all_reduce_packet_internal(ark::DimType nelem) {
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
             ark::Tensor data = m.mul(ones, float(gpu_id + 1));
-            ark::Tensor output = all_reduce_packet(m, data, gpu_id, NumGpus, 1, data);
+            ark::Tensor output =
+                all_reduce_packet(m, data, gpu_id, NumGpus, 1, data);
 
             std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
                                               ark::half_t(1.0f));
@@ -186,7 +188,6 @@ ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
     return res;
 }
 
-
 template <int NumGpus>
 void test_all_reduce_sm_internal(ark::DimType nelem) {
     auto config_rule = [nelem](const std::string op_str, const std::string) {
@@ -244,36 +245,42 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
 }
 
 ark::unittest::State test_all_reduce_4gpus() {
+    UNITTEST_SKIP(ark::unittest::get_gpu_count() < 4);
     test_all_reduce_internal<4>(64);
     test_all_reduce_internal<4>(8192);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_8gpus() {
+    UNITTEST_SKIP(ark::unittest::get_gpu_count() < 8);
     test_all_reduce_internal<8>(64);
     test_all_reduce_internal<8>(8192);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_packet_4gpus() {
+    UNITTEST_SKIP(ark::unittest::get_gpu_count() < 4);
     test_all_reduce_packet_internal<4>(2048);
     test_all_reduce_packet_internal<4>(8192);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_packet_8gpus() {
+    UNITTEST_SKIP(ark::unittest::get_gpu_count() < 8);
     test_all_reduce_packet_internal<8>(2048);
     test_all_reduce_packet_internal<8>(8192);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_sm_4gpus() {
+    UNITTEST_SKIP(ark::unittest::get_gpu_count() < 4);
     test_all_reduce_sm_internal<4>(2048 * 1024);
     test_all_reduce_sm_internal<4>(8192 * 1024);
     return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_sm_8gpus() {
+    UNITTEST_SKIP(ark::unittest::get_gpu_count() < 8);
     test_all_reduce_sm_internal<8>(2048 * 1024);
     test_all_reduce_sm_internal<8>(8192 * 1024);
     return ark::unittest::SUCCESS;
