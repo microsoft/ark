@@ -9,19 +9,25 @@ import torch.nn.functional as F
 from conftest import ark, DEVICE
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_embedding(dtype):
     vocab_size, embed_dim = 100, 64
-    indices = torch.randint(0, vocab_size, (4, 8), device=DEVICE).to(torch.int32)
+    indices = torch.randint(0, vocab_size, (4, 8), device=DEVICE).to(
+        torch.int32
+    )
     weight = torch.randn(vocab_size, embed_dim, dtype=dtype, device=DEVICE)
     result = ark.embedding(indices, weight).eval()
     expected = F.embedding(indices, weight)
-    assert torch.allclose(result, expected, atol=0, rtol=0), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=0, rtol=0
+    ), f"max_diff={(result - expected).abs().max()}"
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_rope(dtype):
     """Test rotary positional embedding against PyTorch complex-multiply reference.
     ARK's rope computes element-wise complex multiplication on consecutive pairs:
@@ -35,11 +41,14 @@ def test_rope(dtype):
     # PyTorch reference: complex multiply on paired elements
     a = x.reshape(*shape[:-1], -1, 2)
     b = other.reshape(*shape[:-1], -1, 2)
-    expected = torch.stack([
-        a[..., 0] * b[..., 0] - a[..., 1] * b[..., 1],
-        a[..., 0] * b[..., 1] + a[..., 1] * b[..., 0],
-    ], dim=-1).reshape(shape)
+    expected = torch.stack(
+        [
+            a[..., 0] * b[..., 0] - a[..., 1] * b[..., 1],
+            a[..., 0] * b[..., 1] + a[..., 1] * b[..., 0],
+        ],
+        dim=-1,
+    ).reshape(shape)
     atol = 1e-5 if dtype == torch.float32 else 5e-2
-    assert torch.allclose(result, expected, atol=atol, rtol=1e-3), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-3
+    ), f"max_diff={(result - expected).abs().max()}"

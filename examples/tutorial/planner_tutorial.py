@@ -35,12 +35,16 @@ class Softmax(ark.Module):
                 "NumTasks": 65536,
             },
         ):
-            with ark.PlannerContext(config={"ImplType": "WarpWise", "Tile": [1, 1]}):
+            with ark.PlannerContext(
+                config={"ImplType": "WarpWise", "Tile": [1, 1]}
+            ):
                 max = ark.reduce_max(input, axis=-1)
             with ark.PlannerContext(config={"Tile": [1, 2048]}):
                 output = ark.sub(input, max)
                 output = ark.exp(output)
-            with ark.PlannerContext(config={"ImplType": "WarpWise", "Tile": [1, 1]}):
+            with ark.PlannerContext(
+                config={"ImplType": "WarpWise", "Tile": [1, 1]}
+            ):
                 sum = ark.reduce_sum(output, axis=-1)
             with ark.PlannerContext(config={"Tile": [1, 2048]}):
                 output = ark.div(output, sum)

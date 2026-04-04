@@ -16,9 +16,9 @@ def test_softmax(dtype):
     result = ark.softmax(a).eval()
     expected = F.softmax(a, dim=-1)
     atol = 1e-5 if dtype == torch.float32 else 1e-3
-    assert torch.allclose(result, expected, atol=atol, rtol=1e-3), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-3
+    ), f"max_diff={(result - expected).abs().max()}"
 
 
 def test_layernorm():
@@ -28,6 +28,6 @@ def test_layernorm():
     mean = a.mean(dim=-1, keepdim=True)
     var = ((a - mean) ** 2).mean(dim=-1, keepdim=True)
     expected = (a - mean) / torch.sqrt(var + 1e-6)
-    assert torch.allclose(result, expected, atol=1e-4, rtol=1e-4), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=1e-4, rtol=1e-4
+    ), f"max_diff={(result - expected).abs().max()}"

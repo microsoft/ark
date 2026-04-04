@@ -40,7 +40,9 @@ class TestModelPytorch(nn.Module):
     def __init__(self):
         super(TestModelPytorch, self).__init__()
         self.weight_1 = nn.Parameter(torch.ones(d_model, d_ff, device="cuda:0"))
-        self.submodule_weight_2 = nn.Parameter(torch.ones(d_ff, d_model, device="cuda:0"))
+        self.submodule_weight_2 = nn.Parameter(
+            torch.ones(d_ff, d_model, device="cuda:0")
+        )
         self.layernorm = nn.LayerNorm(d_model, device="cuda:0")
 
     def forward(self, inputs):
@@ -53,11 +55,18 @@ class TestModelPytorch(nn.Module):
 
 def module_test():
     # Create torch tensors for input and weights
-    input_tensor = torch.randn(
-        batch_size, seq_len, d_model, dtype=torch.float32, device="cuda:0"
-    ) * 0.1
-    weight_1 = torch.randn(d_model, d_ff, dtype=torch.float32, device="cuda:0") * 0.1
-    weight_2 = torch.randn(d_ff, d_model, dtype=torch.float32, device="cuda:0") * 0.1
+    input_tensor = (
+        torch.randn(
+            batch_size, seq_len, d_model, dtype=torch.float32, device="cuda:0"
+        )
+        * 0.1
+    )
+    weight_1 = (
+        torch.randn(d_model, d_ff, dtype=torch.float32, device="cuda:0") * 0.1
+    )
+    weight_2 = (
+        torch.randn(d_ff, d_model, dtype=torch.float32, device="cuda:0") * 0.1
+    )
 
     # Build and evaluate the ARK model
     ark_model = TestModelARK(weight_1, weight_2)
@@ -77,10 +86,14 @@ def module_test():
 
     print("ARK module test")
     print(
-        "batch_size:", batch_size,
-        "seq_len:", seq_len,
-        "d_model:", d_model,
-        "d_ff:", d_ff,
+        "batch_size:",
+        batch_size,
+        "seq_len:",
+        seq_len,
+        "d_model:",
+        d_model,
+        "d_ff:",
+        d_ff,
     )
     print("max error:", max_error, "avg error:", avg_error)
 

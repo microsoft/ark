@@ -8,7 +8,9 @@ import torch
 from conftest import ark, DEVICE
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_matmul_nn(dtype):
     M, N, K = 256, 256, 512
     a = torch.randn(M, K, dtype=dtype, device=DEVICE)
@@ -16,9 +18,9 @@ def test_matmul_nn(dtype):
     result = ark.matmul(a, b).eval()
     expected = a @ b
     atol = 1e-3 if dtype == torch.float32 else 1e-1
-    assert torch.allclose(result, expected, atol=atol, rtol=1e-2), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-2
+    ), f"max_diff={(result - expected).abs().max()}"
 
 
 def test_matmul_nt():
@@ -27,9 +29,9 @@ def test_matmul_nt():
     b = torch.randn(N, K, dtype=torch.float16, device=DEVICE)
     result = ark.matmul(a, b, transpose_other=True).eval()
     expected = a @ b.t()
-    assert torch.allclose(result, expected, atol=1e-1, rtol=1e-2), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=1e-1, rtol=1e-2
+    ), f"max_diff={(result - expected).abs().max()}"
 
 
 def test_matmul_tn():
@@ -38,9 +40,9 @@ def test_matmul_tn():
     b = torch.randn(K, N, dtype=torch.float16, device=DEVICE)
     result = ark.matmul(a, b, transpose_input=True).eval()
     expected = a.t() @ b
-    assert torch.allclose(result, expected, atol=1e-1, rtol=1e-2), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=1e-1, rtol=1e-2
+    ), f"max_diff={(result - expected).abs().max()}"
 
 
 def test_matmul_tt():
@@ -49,9 +51,9 @@ def test_matmul_tt():
     b = torch.randn(N, K, dtype=torch.float16, device=DEVICE)
     result = ark.matmul(a, b, transpose_input=True, transpose_other=True).eval()
     expected = a.t() @ b.t()
-    assert torch.allclose(result, expected, atol=1e-1, rtol=1e-2), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=1e-1, rtol=1e-2
+    ), f"max_diff={(result - expected).abs().max()}"
 
 
 def test_matmul_batched():
@@ -60,6 +62,6 @@ def test_matmul_batched():
     b = torch.randn(B, K, N, dtype=torch.float16, device=DEVICE)
     result = ark.matmul(a, b).eval()
     expected = a @ b
-    assert torch.allclose(result, expected, atol=3e-1, rtol=1e-2), (
-        f"max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=3e-1, rtol=1e-2
+    ), f"max_diff={(result - expected).abs().max()}"

@@ -20,6 +20,7 @@ def _ark_init():
 def _get_compiled_plan():
     """Return the plan string currently compiled in the executor."""
     from ark.executor import Executor
+
     return Executor.get().plan()
 
 
@@ -52,9 +53,9 @@ def test_eval_recompile_on_different_graph():
     plan2 = _get_compiled_plan()
     assert torch.allclose(r2, a * b)
 
-    assert plan1 != plan2, (
-        "Different graph structure should produce a different plan"
-    )
+    assert (
+        plan1 != plan2
+    ), "Different graph structure should produce a different plan"
 
 
 def test_eval_recompile_on_graph_update():
@@ -78,9 +79,9 @@ def test_eval_recompile_on_graph_update():
     assert torch.allclose(r2, (a + b) + a)
 
     # The plan must have changed (graph grew from 1 op to 2 ops)
-    assert plan1 != plan2, (
-        "Extending the graph should produce a different plan and recompile"
-    )
+    assert (
+        plan1 != plan2
+    ), "Extending the graph should produce a different plan and recompile"
 
 
 def test_eval_with_torch_stream():

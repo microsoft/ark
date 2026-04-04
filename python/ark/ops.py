@@ -187,7 +187,9 @@ def gelu(
 
 
 def identity(
-    input: Union[Tensor, "torch.Tensor"], deps: List[Tensor] = [], name: str = "identity"
+    input: Union[Tensor, "torch.Tensor"],
+    deps: List[Tensor] = [],
+    name: str = "identity",
 ) -> Tensor:
     """ """
     input = _ensure_ark(input)
@@ -404,7 +406,10 @@ def rsqrt(
 
 
 def sharding(
-    input: Union[Tensor, "torch.Tensor"], axis: int, dim_per_shard: int, name: str = "sharding"
+    input: Union[Tensor, "torch.Tensor"],
+    axis: int,
+    dim_per_shard: int,
+    name: str = "sharding",
 ) -> List[Tensor]:
     """ """
     input = _ensure_ark(input)
@@ -529,6 +534,7 @@ def recv(
     return Tensor(
         Model.get_model().recv(output._tensor, remote_rank, tag, name)
     )
+
 
 ################################################################################
 

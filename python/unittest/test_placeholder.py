@@ -13,9 +13,7 @@ def test_placeholder_is_external():
     assert t_placeholder.is_external(), "Placeholder tensor should be external"
 
     t_regular = ark.tensor([64], ark.fp32)
-    assert not t_regular.is_external(), (
-        "Regular tensor should not be external"
-    )
+    assert not t_regular.is_external(), "Regular tensor should not be external"
 
 
 @pytest_ark(need_torch=True)
@@ -34,9 +32,9 @@ def test_placeholder_immediate_binding():
         result = out.to_numpy()
 
     expected = torch_data.cpu().numpy() + 1.0
-    assert np.allclose(result, expected), (
-        f"max diff: {np.max(np.abs(result - expected))}"
-    )
+    assert np.allclose(
+        result, expected
+    ), f"max diff: {np.max(np.abs(result - expected))}"
 
 
 @pytest_ark(need_torch=True)
@@ -44,7 +42,9 @@ def test_placeholder_scalar_add():
     """Test placeholder with scalar addition on non-aligned shape."""
     import torch
 
-    torch_data = torch.arange(10, dtype=torch.float32, device="cuda:0").reshape(10, 1)
+    torch_data = torch.arange(10, dtype=torch.float32, device="cuda:0").reshape(
+        10, 1
+    )
     t = ark.placeholder([10, 1], ark.fp32, data=torch_data)
     out = ark.add(t, 5.0)
 
@@ -55,9 +55,9 @@ def test_placeholder_scalar_add():
         result = out.to_numpy()
 
     expected = torch_data.cpu().numpy() + 5.0
-    assert np.allclose(result, expected), (
-        f"max diff: {np.max(np.abs(result - expected))}"
-    )
+    assert np.allclose(
+        result, expected
+    ), f"max diff: {np.max(np.abs(result - expected))}"
 
 
 @pytest_ark(need_torch=True)
@@ -79,9 +79,9 @@ def test_placeholder_multiple():
         result = out.to_numpy()
 
     expected = torch_a.cpu().numpy() + torch_b.cpu().numpy()
-    assert np.allclose(result, expected), (
-        f"max diff: {np.max(np.abs(result - expected))}"
-    )
+    assert np.allclose(
+        result, expected
+    ), f"max diff: {np.max(np.abs(result - expected))}"
 
 
 @pytest_ark(need_torch=True)
@@ -100,9 +100,9 @@ def test_placeholder_fp16():
         result = out.to_numpy()
 
     expected = torch_data.cpu().numpy() * 0.5
-    assert np.allclose(result, expected, atol=1e-2), (
-        f"max diff: {np.max(np.abs(result - expected))}"
-    )
+    assert np.allclose(
+        result, expected, atol=1e-2
+    ), f"max diff: {np.max(np.abs(result - expected))}"
 
 
 @pytest_ark(need_torch=True)
@@ -122,9 +122,9 @@ def test_placeholder_from_torch():
         result = out.to_numpy()
 
     expected = torch_tensor.cpu().numpy() + 10.0
-    assert np.allclose(result, expected), (
-        f"max diff: {np.max(np.abs(result - expected))}"
-    )
+    assert np.allclose(
+        result, expected
+    ), f"max diff: {np.max(np.abs(result - expected))}"
 
 
 @pytest_ark(need_torch=True)
@@ -144,9 +144,9 @@ def test_placeholder_tensor_mappings_launch():
         result = out.to_numpy()
 
     expected = torch_input.cpu().numpy() * 3.0
-    assert np.allclose(result, expected), (
-        f"max diff: {np.max(np.abs(result - expected))}"
-    )
+    assert np.allclose(
+        result, expected
+    ), f"max diff: {np.max(np.abs(result - expected))}"
 
 
 @pytest_ark(need_torch=True)
@@ -169,9 +169,9 @@ def test_placeholder_runtime_rebinding():
         result2 = out.to_numpy()
 
     assert np.allclose(result1, 6.0), f"Run 1: expected 6.0, got {result1[:5]}"
-    assert np.allclose(result2, 11.0), (
-        f"Run 2: expected 11.0, got {result2[:5]}"
-    )
+    assert np.allclose(
+        result2, 11.0
+    ), f"Run 2: expected 11.0, got {result2[:5]}"
 
 
 @pytest_ark(need_torch=True)

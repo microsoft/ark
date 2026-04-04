@@ -15,9 +15,9 @@ def test_reduce_sum_fp32(axis):
     result = ark.reduce_sum(a, axis=axis).eval()
     expected = torch.sum(a, dim=axis, keepdim=True)
     atol = shape[axis] * 1e-5
-    assert torch.allclose(result, expected, atol=atol, rtol=1e-4), (
-        f"axis={axis}, max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-4
+    ), f"axis={axis}, max_diff={(result - expected).abs().max()}"
 
 
 @pytest.mark.parametrize("axis", [0, 3])
@@ -27,9 +27,9 @@ def test_reduce_sum_fp16(axis):
     result = ark.reduce_sum(a, axis=axis).eval()
     expected = torch.sum(a, dim=axis, keepdim=True)
     atol = shape[axis] * 2e-2
-    assert torch.allclose(result, expected, atol=atol, rtol=1e-2), (
-        f"axis={axis}, max_diff={(result - expected).abs().max()}"
-    )
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-2
+    ), f"axis={axis}, max_diff={(result - expected).abs().max()}"
 
 
 def test_reduce_max_fp32():

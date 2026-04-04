@@ -18,7 +18,9 @@ def quickstart_tutorial():
     output = ark.add(input_tensor, other_tensor).eval()
 
     # Check if the output tensor is equal to the sum of the input and other tensor
-    torch.testing.assert_close(output, input_tensor + other_tensor, atol=0, rtol=0)
+    torch.testing.assert_close(
+        output, input_tensor + other_tensor, atol=0, rtol=0
+    )
 
     print("Quickstart tutorial is successful!")
 

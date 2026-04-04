@@ -118,8 +118,10 @@ class MultiHeadAttentionOptimized(ark.Module):
             # scale — element-wise, tile matches matmul
             with ark.PlannerContext(
                 config={
-                    "NumWarps": 8, "SramBytes": 0,
-                    "Tile": [TM, S], "NumTasks": num_tasks,
+                    "NumWarps": 8,
+                    "SramBytes": 0,
+                    "Tile": [TM, S],
+                    "NumTasks": num_tasks,
                 },
             ):
                 s = ark.mul(s, self.scale)
@@ -127,7 +129,8 @@ class MultiHeadAttentionOptimized(ark.Module):
             # reduce_max — NOW with Tile=[TM,1] to match task count
             with ark.PlannerContext(
                 config={
-                    "NumWarps": 8, "SramBytes": 256,
+                    "NumWarps": 8,
+                    "SramBytes": 256,
                     "ImplType": "WarpWise",
                     "Tile": [TM, 1],
                 },
@@ -137,8 +140,10 @@ class MultiHeadAttentionOptimized(ark.Module):
             # sub + exp
             with ark.PlannerContext(
                 config={
-                    "NumWarps": 8, "SramBytes": 0,
-                    "Tile": [TM, S], "NumTasks": num_tasks,
+                    "NumWarps": 8,
+                    "SramBytes": 0,
+                    "Tile": [TM, S],
+                    "NumTasks": num_tasks,
                 },
             ):
                 s = ark.sub(s, m)
@@ -147,7 +152,8 @@ class MultiHeadAttentionOptimized(ark.Module):
             # reduce_sum — Tile=[TM,1]
             with ark.PlannerContext(
                 config={
-                    "NumWarps": 8, "SramBytes": 256,
+                    "NumWarps": 8,
+                    "SramBytes": 256,
                     "ImplType": "WarpWise",
                     "Tile": [TM, 1],
                 },
@@ -157,8 +163,10 @@ class MultiHeadAttentionOptimized(ark.Module):
             # div
             with ark.PlannerContext(
                 config={
-                    "NumWarps": 8, "SramBytes": 0,
-                    "Tile": [TM, S], "NumTasks": num_tasks,
+                    "NumWarps": 8,
+                    "SramBytes": 0,
+                    "Tile": [TM, S],
+                    "NumTasks": num_tasks,
                 },
             ):
                 p = ark.div(s, l)

@@ -49,7 +49,9 @@ def test_correctness(B, H, N, D, dtype=torch.float16):
 
     # ARK vanilla — uses eval()
     result = MultiHeadAttention(D)(
-        ark.Tensor.from_torch(q), ark.Tensor.from_torch(k_t), ark.Tensor.from_torch(v)
+        ark.Tensor.from_torch(q),
+        ark.Tensor.from_torch(k_t),
+        ark.Tensor.from_torch(v),
     ).eval()
 
     # Reference
@@ -67,7 +69,9 @@ def test_correctness(B, H, N, D, dtype=torch.float16):
     diff = (result - ref).abs().max().item()
     atol = 5e-2 if dtype == torch.float16 else 1e-1
     ok = diff < atol
-    print(f"  B={B} H={H} N={N:4d} D={D}  diff={diff:.4f} vs {label}  {'PASS' if ok else 'FAIL'}")
+    print(
+        f"  B={B} H={H} N={N:4d} D={D}  diff={diff:.4f} vs {label}  {'PASS' if ok else 'FAIL'}"
+    )
     return ok
 
 
@@ -143,7 +147,9 @@ def bench_ark(B, H, N, D, mha_cls, mha_args, dtype=torch.float16):
     ark.init()
     mha = mha_cls(*mha_args)
     out = mha(
-        ark.Tensor.from_torch(q), ark.Tensor.from_torch(k_t), ark.Tensor.from_torch(v)
+        ark.Tensor.from_torch(q),
+        ark.Tensor.from_torch(k_t),
+        ark.Tensor.from_torch(v),
     )
 
     with ark.Runtime() as rt:
@@ -252,9 +258,15 @@ def test_correctness(batch, heads, seq_len, head_dim, dtype=torch.float16):
     print(f"  B={batch}, H={heads}, N={seq_len}, D={head_dim}", end="")
     scale = 1.0 / math.sqrt(head_dim)
 
-    q = torch.randn(batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0")
-    k = torch.randn(batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0")
-    v = torch.randn(batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0")
+    q = torch.randn(
+        batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0"
+    )
+    k = torch.randn(
+        batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0"
+    )
+    v = torch.randn(
+        batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0"
+    )
 
     # Reference: FlashAttention-2
     ref = flash_attn_reference(q, k, v, scale)
@@ -263,7 +275,11 @@ def test_correctness(batch, heads, seq_len, head_dim, dtype=torch.float16):
     ark.init()
     k_t = k.transpose(-2, -1).contiguous()
     mha = MultiHeadAttention(head_dim)
-    ark_out = mha(ark.Tensor.from_torch(q), ark.Tensor.from_torch(k_t), ark.Tensor.from_torch(v))
+    ark_out = mha(
+        ark.Tensor.from_torch(q),
+        ark.Tensor.from_torch(k_t),
+        ark.Tensor.from_torch(v),
+    )
     with ark.Runtime() as rt:
         rt.launch()
         rt.run()
@@ -292,9 +308,15 @@ def bench_one(label, run_fn, num_warmup=10, num_iter=50):
 def run_benchmark(batch, heads, seq_len, head_dim, dtype=torch.float16):
     scale = 1.0 / math.sqrt(head_dim)
 
-    q = torch.randn(batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0")
-    k = torch.randn(batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0")
-    v = torch.randn(batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0")
+    q = torch.randn(
+        batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0"
+    )
+    k = torch.randn(
+        batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0"
+    )
+    v = torch.randn(
+        batch, heads, seq_len, head_dim, dtype=dtype, device="cuda:0"
+    )
     k_t = k.transpose(-2, -1).contiguous()
 
     # --- FlashAttention-2 (Tri Dao) ---
@@ -316,7 +338,11 @@ def run_benchmark(batch, heads, seq_len, head_dim, dtype=torch.float16):
     # --- ARK Vanilla ---
     ark.init()
     mha = MultiHeadAttention(head_dim)
-    ark_out = mha(ark.Tensor.from_torch(q), ark.Tensor.from_torch(k_t), ark.Tensor.from_torch(v))
+    ark_out = mha(
+        ark.Tensor.from_torch(q),
+        ark.Tensor.from_torch(k_t),
+        ark.Tensor.from_torch(v),
+    )
     with ark.Runtime() as rt:
         rt.launch()
         vanilla_ms = bench_one("ARK", lambda: rt.run(iter=1), num_warmup=5)
@@ -324,7 +350,11 @@ def run_benchmark(batch, heads, seq_len, head_dim, dtype=torch.float16):
     # --- ARK Optimized (fused softmax) ---
     ark.init()
     mha_opt = MultiHeadAttentionOptimized(head_dim, seq_len)
-    ark_out2 = mha_opt(ark.Tensor.from_torch(q), ark.Tensor.from_torch(k_t), ark.Tensor.from_torch(v))
+    ark_out2 = mha_opt(
+        ark.Tensor.from_torch(q),
+        ark.Tensor.from_torch(k_t),
+        ark.Tensor.from_torch(v),
+    )
     with ark.Runtime() as rt:
         rt.launch()
         opt_ms = bench_one("ARK-Opt", lambda: rt.run(iter=1), num_warmup=5)

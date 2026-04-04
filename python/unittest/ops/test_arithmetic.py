@@ -8,7 +8,9 @@ import torch
 from conftest import ark, DEVICE
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_add(dtype):
     a = torch.randn(8192, dtype=dtype, device=DEVICE)
     b = torch.randn(8192, dtype=dtype, device=DEVICE)
@@ -64,7 +66,9 @@ def test_div_fp32():
 FACTOR = 0.75
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 @pytest.mark.parametrize("shape", [(4, 2, 1), (4, 2, 1024)])
 def test_scalar_mul(dtype, shape):
     a = torch.randn(shape, dtype=dtype, device=DEVICE)

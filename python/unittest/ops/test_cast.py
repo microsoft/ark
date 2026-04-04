@@ -20,7 +20,9 @@ from conftest import ark, DEVICE
     ],
 )
 def test_cast(src_dtype, dst_dtype, ark_dst):
-    a = torch.randn(4, 2, 1024, dtype=torch.float32, device=DEVICE).to(src_dtype)
+    a = torch.randn(4, 2, 1024, dtype=torch.float32, device=DEVICE).to(
+        src_dtype
+    )
     result = ark.cast(a, ark_dst).eval()
     expected = a.to(dst_dtype)
     assert result.dtype == dst_dtype
