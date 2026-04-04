@@ -1,4 +1,4 @@
-name: "Unit Tests (CUDA)"
+name: "Unit Tests"
 
 on:
   push:
@@ -11,22 +11,33 @@ on:
 
 jobs:
   UnitTest:
-    runs-on: [ self-hosted ]
     defaults:
       run:
         shell: bash
     timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - cuda: cuda12.8
-            container: nvcr.io/nvidia/pytorch:25.01-py3
+          - platform: cuda
+            runner: [self-hosted, CUDA]
+            container: nvcr.io/nvidia/pytorch:26.03-py3
+            container_options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
+          - platform: rocm
+            runner: [self-hosted, ROCM]
+            container: rocm/pytorch:rocm7.2.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+            container_options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
+    runs-on: ${{ matrix.runner }}
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.cuda }}
+      group: ${{ github.workflow }}-${{ matrix.platform }}-${{ github.ref }}
       cancel-in-progress: true
     container:
       image: ${{ matrix.container }}
-      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
+      options: ${{ matrix.container_options }}
 
     steps:
       - name: Checkout
@@ -35,6 +46,11 @@ jobs:
       - name: Dubious ownership exception
         run: |
           git config --global --add safe.directory /__w/ark/ark
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
 
       - name: Build
         run: |
@@ -47,6 +63,10 @@ jobs:
         run: |
           cd build
           ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+
+      - name: C++ Coverage
+        run: |
+          cd build
           lcov --capture --directory . --output-file cpp_coverage.info
           lcov --remove cpp_coverage.info \
               '/usr/*' \
@@ -88,3 +108,8 @@ jobs:
       - name: Run Tutorials
         run: |
           python3 ./examples/tutorial/quickstart_tutorial.py
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp-${{ matrix.platform }}"
