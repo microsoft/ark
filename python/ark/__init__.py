@@ -7,7 +7,7 @@ if os.environ.get("ARK_ROOT", None) is None:
     os.environ["ARK_ROOT"] = os.path.abspath(os.path.dirname(__file__))
 
 from .core import version
-from .model import Model
+from .model import Model, set_model, current_model, use_model
 
 
 __version__ = version()

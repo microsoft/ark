@@ -38,6 +38,8 @@ class Tensor:
         self._tensor: CoreTensor = _tensor
         self.initializer: Initializer = initializer
         self.requires_grad: bool = requires_grad
+        # Track which model this tensor belongs to for eval()
+        self._model: Model = Model.get_model()
 
     def __hash__(self):
         return self._tensor.id()
@@ -282,6 +284,37 @@ class Tensor:
         # Share ownership of the memory with the torch tensor
         ark_tensor.__torch_buffer__ = tensor
         return ark_tensor
+
+    def eval(self, stream: "torch.cuda.Stream" = None) -> torch.Tensor:
+        """
+        Evaluate the ARK graph that produces this tensor and return the result
+        as a torch tensor. Creates a runtime, compiles the graph, runs it,
+        and returns the output via DLPack (zero-copy).
+
+        Multiple independent ARK graphs can coexist — each tensor tracks
+        which model it belongs to, and eval() only runs that model.
+        The executor skips GPU recompilation if the plan hasn't changed.
+
+        Args:
+            stream: Optional torch CUDA stream to run on.
+
+        Returns:
+            torch.Tensor: The result tensor on the same device.
+        """
+        if _no_torch:
+            raise log.SystemError("torch is not available")
+        from .runtime import Runtime
+        from .planner import Planner
+
+        plan = Planner(model=self._model).plan()
+        cuda_stream = stream.cuda_stream if stream is not None else 0
+
+        with Runtime() as rt:
+            rt.launch(plan=plan, stream=cuda_stream, loop_mode=False)
+            rt.run()
+            result = self.to_torch()
+
+        return result
 
     def copy(
         self, data: Union[np.ndarray, torch.Tensor], stream: int = 0

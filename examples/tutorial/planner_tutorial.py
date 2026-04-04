@@ -35,23 +35,16 @@ class Softmax(ark.Module):
                 "NumTasks": 65536,
             },
         ):
-            with ark.PlannerContext(config={"ImplType": "WarpWise"}):
+            with ark.PlannerContext(config={"ImplType": "WarpWise", "Tile": [1, 1]}):
                 max = ark.reduce_max(input, axis=-1)
             with ark.PlannerContext(config={"Tile": [1, 2048]}):
                 output = ark.sub(input, max)
                 output = ark.exp(output)
-            with ark.PlannerContext(config={"ImplType": "WarpWise"}):
+            with ark.PlannerContext(config={"ImplType": "WarpWise", "Tile": [1, 1]}):
                 sum = ark.reduce_sum(output, axis=-1)
             with ark.PlannerContext(config={"Tile": [1, 2048]}):
                 output = ark.div(output, sum)
             return output
-
-
-def eval(tensor: ark.Tensor):
-    with ark.Runtime() as rt:
-        rt.launch()
-        rt.run()
-        return tensor.to_torch()
 
 
 def perf(num_iter: int = 1000):
@@ -73,7 +66,7 @@ if __name__ == "__main__":
 
     output = Softmax()(ark.Tensor.from_torch(input))
 
-    if torch.allclose(eval(output), F.softmax(input, dim=-1), atol=1e-5):
+    if torch.allclose(output.eval(), F.softmax(input, dim=-1), atol=1e-5):
         print("Correct result")
     else:
         print("Incorrect result")

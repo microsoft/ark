@@ -10,6 +10,13 @@ from .model import Model
 from . import log
 
 
+def _ensure_ark(x):
+    """Convert a torch.Tensor to an ARK Tensor if needed."""
+    if not _no_torch and isinstance(x, torch.Tensor):
+        return Tensor.from_torch(x)
+    return x
+
+
 __all__ = [
     "tensor",
     "parameter",
@@ -54,12 +61,14 @@ def is_list_or_tuple(obj):
 
 
 def add(
-    input: Union[Tensor, float],
-    other: Union[Tensor, float],
+    input: Union[Tensor, float, "torch.Tensor"],
+    other: Union[Tensor, float, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "add",
 ) -> Union[Tensor, float]:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
     if isinstance(input, Tensor) and isinstance(other, Tensor):
         a = input._tensor
         b = other._tensor
@@ -81,12 +90,13 @@ def add(
 
 
 def cast(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     dtype: DataType,
     output: Tensor = NullTensor,
     name: str = "cast",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -107,11 +117,12 @@ def constant(
 
 
 def copy(
-    input: Union[Tensor, float],
+    input: Union[Tensor, float, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "copy",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
@@ -120,12 +131,14 @@ def copy(
 
 
 def div(
-    input: Tensor,
-    other: Union[Tensor, float],
+    input: Union[Tensor, "torch.Tensor"],
+    other: Union[Tensor, float, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "div",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -134,12 +147,14 @@ def div(
 
 
 def embedding(
-    input: Tensor,
-    weight: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
+    weight: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "embedding",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    weight = _ensure_ark(weight)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -148,31 +163,34 @@ def embedding(
 
 
 def exp(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "exp",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().exp(input._tensor, output, name))
 
 
 def gelu(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "gelu",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().gelu(input._tensor, output, name))
 
 
 def identity(
-    input: Tensor, deps: List[Tensor] = [], name: str = "identity"
+    input: Union[Tensor, "torch.Tensor"], deps: List[Tensor] = [], name: str = "identity"
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     dep_tensors = []
     for dep in deps:
         if not isinstance(dep, Tensor):
@@ -182,14 +200,16 @@ def identity(
 
 
 def matmul(
-    input: Tensor,
-    other: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
+    other: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     transpose_input: bool = False,
     transpose_other: bool = False,
     name: str = "matmul",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -205,12 +225,14 @@ def matmul(
 
 
 def mul(
-    input: Tensor,
-    other: Union[Tensor, float],
+    input: Union[Tensor, "torch.Tensor"],
+    other: Union[Tensor, float, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "mul",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -218,8 +240,9 @@ def mul(
     return Tensor(Model.get_model().mul(input._tensor, other, output, name))
 
 
-def noop(input: Tensor, name: str = "noop"):
+def noop(input: Union[Tensor, "torch.Tensor"], name: str = "noop"):
     """ """
+    input = _ensure_ark(input)
     Model.get_model().noop(input._tensor, name)
 
 
@@ -253,13 +276,14 @@ def placeholder(
 
 
 def reduce_max(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
     name: str = "reduce_max",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -270,13 +294,14 @@ def reduce_max(
 
 
 def reduce_mean(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
     name: str = "reduce_mean",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -287,13 +312,14 @@ def reduce_mean(
 
 
 def reduce_sum(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     axis: int,
     keepdims: bool = True,
     output: Tensor = NullTensor,
     name: str = "reduce_sum",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -304,18 +330,19 @@ def reduce_sum(
 
 
 def relu(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "relu",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().relu(input._tensor, output, name))
 
 
 def reshape(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     shape: Iterable[int],
     allowzero: bool = False,
     name: str = "reshape",
@@ -338,6 +365,7 @@ def reshape(
             "shape should be a list or tuple of integers"
         )
     # only support tensors with up to 4 dimensions
+    input = _ensure_ark(input)
     if len(shape) > 4:
         raise log.InvalidUsageError(
             "Only support tensors with up to 4 dimensions"
@@ -348,12 +376,14 @@ def reshape(
 
 
 def rope(
-    input: Tensor,
-    other: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
+    other: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "rope",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -362,20 +392,22 @@ def rope(
 
 
 def rsqrt(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "rsqrt",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().rsqrt(input._tensor, output, name))
 
 
 def sharding(
-    input: Tensor, axis: int, dim_per_shard: int, name: str = "sharding"
+    input: Union[Tensor, "torch.Tensor"], axis: int, dim_per_shard: int, name: str = "sharding"
 ) -> List[Tensor]:
     """ """
+    input = _ensure_ark(input)
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
@@ -383,34 +415,38 @@ def sharding(
 
 
 def sigmoid(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "sigmoid",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().sigmoid(input._tensor, output, name))
 
 
 def sqrt(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "sqrt",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().sqrt(input._tensor, output, name))
 
 
 def sub(
-    input: Tensor,
-    other: Union[Tensor, float],
+    input: Union[Tensor, "torch.Tensor"],
+    other: Union[Tensor, float, "torch.Tensor"],
     output: Tensor = NullTensor,
     name: str = "sub",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -436,12 +472,13 @@ def tensor(
 
 
 def transpose(
-    input: Tensor,
+    input: Union[Tensor, "torch.Tensor"],
     perm: Iterable[int],
     output: Tensor = NullTensor,
     name: str = "transpose",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
     if output is not NullTensor:
         output = output._tensor
     if not is_list_or_tuple(perm):

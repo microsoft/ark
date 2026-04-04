@@ -233,8 +233,10 @@ class PlannerContext(CorePlannerContext):
 
 
 class Planner(CorePlanner):
-    def __init__(self, device_id: int = 0):
-        compressed = Model.get_model().compress()
+    def __init__(self, device_id: int = 0, model: "Model" = None):
+        if model is None:
+            model = Model.get_model()
+        compressed = model.compress()
         super().__init__(compressed, device_id)
 
     def install_config_rule(self, rule: Callable[[str, str], str]):

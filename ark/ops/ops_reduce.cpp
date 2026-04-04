@@ -49,7 +49,7 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
 }
 
 std::string ModelOpReduce::impl_name(const Json &config) const {
-    check_fields_config(config, {"NumWarps", "SramBytes", "ImplType"});
+    check_fields_config(config, {"NumWarps", "SramBytes", "ImplType", "Tile"});
     check_fields_args(args_, {"Axis", "KeepDim"});
 
     std::string red_type;
@@ -92,6 +92,15 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
         output_shape.insert(axis, 1);
     }
 
+    Dims unit_out_dims(
+        config.at("Tile").get<std::vector<DimType>>());
+    auto udims4 = unit_out_dims.dims4();
+    if (udims4[axis] != 1) {
+        ERR(PlanError,
+            "Tile dimension along reduce axis (", axis,
+            ") must be 1, got ", udims4[axis]);
+    }
+
     return function_name_string(
         "reduce_" + impl_type + "_" + red_type,
         {
@@ -99,7 +108,7 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
             vec_string(read_tensors_[0]->shape().dims4()),
             vec_string(output_strides.dims4()),
             vec_string(output_shape.dims4()),
-            vec_string(Dims(1, 1, 1, 1)),
+            vec_string(udims4),
             std::to_string(num_warps),
             std::to_string(sram_bytes),
             std::to_string(axis),
@@ -122,6 +131,7 @@ Json ModelOpReduce::default_config([[maybe_unused]] const ArchRef arch) const {
         config["ImplType"] = "ElementWise";
         config["SramBytes"] = 0;
     }
+    config["Tile"] = {1, 1, 1, 1};
     config["NumTasks"] = result_tensors_[0]->shape().nelems();
     return config;
 }

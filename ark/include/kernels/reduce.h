@@ -431,12 +431,26 @@ struct WwiseReduce {
             UnitOp::sync_threads();
         }
 
-        // final reduction on shared memory using warp shuffle.
-        reduced[0] = warpsReduce<ReduceType, UnitOp, UnitOp::NumThreads>(
-            reduced[0], tid, smem_per_warp);
+        // final reduction using warp shuffle.
+        // PhysicalThreadsPerRow = actual number of HW threads per row.
+        constexpr int PhysicalThreadsPerRow =
+            UnitOp::NumThreads / NonReduceDimLength;
+        static_assert(PhysicalThreadsPerRow > 0,
+                      "Not enough threads for the tile dimensions. "
+                      "Increase NumWarps or decrease Tile H dimension.");
+        if constexpr (PhysicalThreadsPerRow <= Arch::ThreadsPerWarp) {
+            // All threads for one row are within a single warp.
+            reduced[0] =
+                warpReduce<ReduceType, PhysicalThreadsPerRow>(reduced[0]);
+        } else {
+            // Threads for one row span multiple warps — need shared memory.
+            reduced[0] = warpsReduce<ReduceType, UnitOp,
+                                     PhysicalThreadsPerRow>(
+                reduced[0], tid % PhysicalThreadsPerRow, smem_per_warp);
+        }
 
-        // write the result to output.
-        if (tid % ThreadsPerRow == 0) {
+        // write the result to output — first thread of each row group.
+        if (tid % PhysicalThreadsPerRow == 0) {
             ReduceType::template postReduce<1>(&out[idx_out], &reduced[0],
                                                InShape::W);
         }

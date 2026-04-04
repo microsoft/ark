@@ -4,10 +4,8 @@
 """
 Tutorial: Using ARK with PyTorch tensors.
 
-Shows how to:
-1. Create ARK placeholder tensors backed by PyTorch memory
-2. Run ARK computation on torch-owned GPU memory
-3. Read results back as PyTorch tensors
+Shows how to use eval() to run ARK computation on torch tensors
+and get torch tensor results directly.
 """
 
 import ark
@@ -19,26 +17,12 @@ ark.init()
 x = torch.ones(64, dtype=torch.float32, device="cuda:0") * 2
 y = torch.ones(64, dtype=torch.float32, device="cuda:0") * 3
 
-# Create ARK placeholders backed by torch memory
-a = ark.placeholder([64], ark.fp32, data=x)
-b = ark.placeholder([64], ark.fp32, data=y)
+# Run ARK computation and get result as a torch tensor
+result = ark.add(x, y).eval()
+print(f"x + y = {result}")  # tensor([5., 5., ...])
 
-# Define ARK computation
-z = ark.add(a, b)
-
-# Launch and run
-with ark.Runtime() as rt:
-    rt.launch()
-    rt.run()
-
-    # Read result back as a torch tensor (zero-copy via DLPack)
-    result = z.to_torch()
-    print(f"x + y = {result}")  # tensor([5., 5., ...])
-
-    # Modify torch inputs and re-run
-    x.fill_(10)
-    y.fill_(20)
-    rt.run()
-
-    result = z.to_torch()
-    print(f"10 + 20 = {result}")  # tensor([30., 30., ...])
+# Run again with different values
+x = torch.ones(64, dtype=torch.float32, device="cuda:0") * 10
+y = torch.ones(64, dtype=torch.float32, device="cuda:0") * 20
+result = ark.add(x, y).eval()
+print(f"10 + 20 = {result}")  # tensor([30., 30., ...])

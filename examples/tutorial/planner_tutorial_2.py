@@ -1,8 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import numpy as np
 import ark
+import torch
 
 
 def quickstart_tutorial():
@@ -10,9 +10,8 @@ def quickstart_tutorial():
     ark.init()
 
     M, N, K = 1024, 1024, 1024
-    m0 = ark.tensor([M, K], ark.fp16)
-    m1 = ark.tensor([N, K], ark.fp16)
-    m2 = ark.tensor([M, K], ark.fp16)
+    m0 = torch.randn(M, K, dtype=torch.float16, device="cuda:0") * 0.01
+    m1 = torch.randn(N, K, dtype=torch.float16, device="cuda:0") * 0.01
 
     # stage 1: matmul
     with ark.PlannerContext(processor_range=[0, 108]):
@@ -20,6 +19,7 @@ def quickstart_tutorial():
         t0 = ark.matmul(m0, m1, transpose_other=True)
 
     # stage 2: parallel copy and matmul
+    m2 = ark.tensor([M, K], ark.fp16)
     with ark.PlannerContext(processor_range=[0, 54]):
         # Use SMs 0~53
         t1 = ark.matmul(t0, m1)
@@ -27,27 +27,20 @@ def quickstart_tutorial():
         # Use SMs 54~107
         t2 = ark.copy(input=t0, output=m2)
 
-    # Initialize the ARK runtime
-    runtime = ark.Runtime()
-
-    # Launch the ARK runtime
-    runtime.launch()
-
-    # Initialize
-    m0_host = np.random.rand(M, K).astype(np.float16) * 0.01
-    m0.from_numpy(m0_host)
-    m1_host = np.random.rand(N, K).astype(np.float16) * 0.01
-    m1.from_numpy(m1_host)
-
-    # Run the ARK program
-    runtime.run()
+    # Evaluate and check results
+    with ark.Runtime() as rt:
+        rt.launch()
+        rt.run()
+        t0_result = t0.to_torch()
+        t1_result = t1.to_torch()
+        t2_result = t2.to_torch()
 
     # Check the matmul result
-    res_host = np.matmul(np.matmul(m0_host, m1_host.T), m1_host)
-    np.testing.assert_allclose(t1.to_numpy(), res_host, rtol=1e-3, atol=1e-3)
+    expected = torch.matmul(torch.matmul(m0, m1.T), m1)
+    torch.testing.assert_close(t1_result, expected, rtol=1e-3, atol=1e-3)
 
     # Check the copy result
-    np.testing.assert_equal(t2.to_numpy(), t0.to_numpy())
+    torch.testing.assert_close(t2_result, t0_result, atol=0, rtol=0)
 
     print("Successful!")
 
