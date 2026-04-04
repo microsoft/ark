@@ -75,7 +75,7 @@ jobs:
               --cov=python/ark \
               --cov-report lcov:py_coverage.info \
               --verbose \
-              ../python/unittest/test.py
+              ../python/unittest/
 
       - name: Report Coverage
         env:
