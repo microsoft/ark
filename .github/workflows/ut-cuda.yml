@@ -11,31 +11,26 @@ on:
 
 jobs:
   UnitTest:
-    runs-on: [ self-hosted, A100 ]
+    runs-on: [ self-hosted ]
     defaults:
       run:
         shell: bash
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       matrix:
-        cuda: [ cuda11.8, cuda12.2 ]
+        include:
+          - cuda: cuda12.8
+            container: nvcr.io/nvidia/pytorch:25.01-py3
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.cuda }}
       cancel-in-progress: true
     container:
-      image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.cuda }}"
+      image: ${{ matrix.container }}
       options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: LockGPUClock
-        run: |
-          sudo nvidia-smi -pm 1
-          for i in $(seq 0 $(( $(nvidia-smi -L | wc -l) - 1 ))); do
-            sudo nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
-          done
 
       - name: Dubious ownership exception
         run: |
@@ -43,6 +38,7 @@ jobs:
 
       - name: Build
         run: |
+          apt-get update && apt-get install -y lcov
           mkdir build && cd build
           cmake -DCMAKE_BUILD_TYPE=Debug ..
           make -j ut ark_py
