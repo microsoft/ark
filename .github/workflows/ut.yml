@@ -29,7 +29,7 @@ jobs:
             container_options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
           - platform: rocm
             runner: [self-hosted, ROCM]
-            container: rocm/pytorch:rocm7.2.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+            container: rocm/pytorch:rocm6.2.3_ubuntu22.04_py3.10_pytorch_release_2.3.0
             container_options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
     runs-on: ${{ matrix.runner }}
     concurrency:
@@ -56,7 +56,11 @@ jobs:
         run: |
           apt-get update && apt-get install -y lcov
           mkdir build && cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug"
+          if [ "${{ matrix.platform }}" = "rocm" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc"
+          fi
+          cmake $CMAKE_ARGS ..
           make -j ut ark_py
 
       - name: Run C++ UT

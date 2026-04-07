@@ -2,6 +2,7 @@
 # Licensed under the MIT license.
 
 import pytest
+import functools
 import ark
 
 
@@ -19,6 +20,7 @@ def pytest_ark(need_torch: bool = False):
                     test_func
                 )
 
+        @functools.wraps(test_func)
         def wrapper(*args, **kwargs):
             ark.init()
             test_func(*args, **kwargs)

@@ -9,7 +9,8 @@ if(NOT CUDAToolkit_FOUND)
     return()
 endif()
 
-set(CMAKE_CUDA_ARCHITECTURES "60")
+# Use sm_80 as minimum for the detection check.
+set(CMAKE_CUDA_ARCHITECTURES "80")
 if(NOT CMAKE_CUDA_COMPILER)
     # In case the CUDA Toolkit directory is not in the PATH
     find_program(CUDA_COMPILER

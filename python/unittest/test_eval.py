@@ -91,6 +91,8 @@ def test_eval_with_torch_stream():
     x = torch.ones(64, dtype=torch.float32, device=DEVICE)
 
     for i in range(5):
+        # Reset ARK model each iteration so eval() only runs the single add op
+        ark.init()
         # torch op on the stream: x = x * 2
         with torch.cuda.stream(s):
             x = x * 2
