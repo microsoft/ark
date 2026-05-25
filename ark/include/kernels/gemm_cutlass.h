@@ -20,6 +20,8 @@
 #include "cutlass/epilogue/thread/linear_combination.h"
 // clang-format on
 
+#include "cutlass/epilogue/thread/linear_combination_gelu.h"
+
 #include "common/checker.h"
 #include "common/unit_op.h"
 
@@ -98,6 +100,44 @@ struct GemmConfiguration {
         ElementA, LayoutA, ElementB, LayoutB, ElementC, LayoutC,
         ElementAccumulator, OperatorClass, ArchTag, Shape, WarpShape, InstShape,
         cutlass::epilogue::thread::LinearCombination<
+            ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
+            ElementAccumulator, ElementAccumulator>,
+        ark::GemmThreadblockSwizzle<UnitOp>, 3>;
+};
+
+/// GemmConfiguration with GELU activation fused into epilogue.
+/// D = gelu(alpha * A*B + beta * C)
+template <typename UnitOp, typename OperatorClass, typename ArchTag,
+          typename ElementA, typename LayoutA, typename ElementB,
+          typename LayoutB, typename ElementC, typename LayoutC, typename Shape>
+struct GemmConfigurationGelu {
+    static_assert(std::is_same_v<ElementA, float> ||
+                      std::is_same_v<ElementA, cutlass::half_t> ||
+                      std::is_same_v<ElementA, cutlass::bfloat16_t>,
+                  "ElementA must be float, half, or bfloat16");
+    static_assert(std::is_same_v<ElementB, float> ||
+                      std::is_same_v<ElementB, cutlass::half_t> ||
+                      std::is_same_v<ElementB, cutlass::bfloat16_t>,
+                  "ElementB must be float, half, or bfloat16");
+    static_assert(std::is_same_v<ElementC, float> ||
+                      std::is_same_v<ElementC, cutlass::half_t> ||
+                      std::is_same_v<ElementC, cutlass::bfloat16_t>,
+                  "ElementC must be float, half, or bfloat16");
+    using ElementAccumulator = typename std::conditional_t<
+        std::is_same_v<ElementC, cutlass::bfloat16_t>, float, ElementC>;
+    static constexpr int NumWarps = UnitOp::NumWarps;
+    static constexpr int NumWarpsN =
+        1 << math::div_up<math::log2_up<NumWarps>::value, 2>::value;
+    static constexpr int NumWarpsM = NumWarps / NumWarpsN;
+    using WarpShape =
+        cutlass::gemm::GemmShape<Shape::kM / NumWarpsM, Shape::kN / NumWarpsN,
+                                 Shape::kK>;
+    using InstShape = typename InstructionShape<ArchTag, ElementAccumulator,
+                                                WarpShape>::value;
+    using Gemm = cutlass::gemm::device::Gemm<
+        ElementA, LayoutA, ElementB, LayoutB, ElementC, LayoutC,
+        ElementAccumulator, OperatorClass, ArchTag, Shape, WarpShape, InstShape,
+        cutlass::epilogue::thread::LinearCombinationGELU<
             ElementC, 128 / cutlass::sizeof_bits<ElementC>::value,
             ElementAccumulator, ElementAccumulator>,
         ark::GemmThreadblockSwizzle<UnitOp>, 3>;
@@ -263,6 +303,147 @@ DEVICE void gemm_cuda(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
     // for ARK, instead we need uop_idx to determine the tile offset.
     // Since swizzle_log_tile is the input to get_tile_offset(), we can
     // use it to pass uop_idx.
+    params.swizzle_log_tile = uop_idx;
+
+    typename GemmKernel::SharedStorage *ps =
+        UnitOp::template shared_memory<GemmKernel::SharedStorage>(
+            smem_per_warp);
+
+    UnitOp::sync_threads();
+
+    GemmKernel gemm_kernel{};
+    gemm_kernel(params, *ps);
+}
+
+/// CUDA GeMM with residual addition: D = A*B + Residual (beta=1).
+/// Takes a separate residual pointer that is added to the matmul output.
+template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
+          typename DataTypeB, int LeadingDimB, bool IsColumnB,
+          typename DataTypeC, int LeadingDimC, int ProblemSizeM,
+          int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
+          typename UnitOp>
+DEVICE void gemm_cuda_add(DataTypeC *D, DataTypeA *A, DataTypeB *B,
+                          DataTypeC *Residual, int uop_idx,
+                          int smem_per_warp) {
+#if (ARK_TARGET_CUDA_ARCH == 60)
+    using ArchTag = cutlass::arch::Sm60;
+#elif (ARK_TARGET_CUDA_ARCH == 70)
+    using ArchTag = cutlass::arch::Sm70;
+#elif (ARK_TARGET_CUDA_ARCH == 80)
+    using ArchTag = cutlass::arch::Sm80;
+#elif (ARK_TARGET_CUDA_ARCH == 90)
+    using ArchTag = cutlass::arch::Sm80;
+#else
+    static_assert(false, "Unsupported CUDA arch.");
+#endif
+
+    using LayoutA = typename cutlass::platform::conditional<
+        IsColumnA, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
+    using LayoutB = typename cutlass::platform::conditional<
+        IsColumnB, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
+    using LayoutC = cutlass::layout::RowMajor;
+
+    static constexpr int TileSizeK = std::is_same_v<DataTypeC, float> ? 32 : 64;
+    using GemmType = typename ark::GemmConfiguration<
+        UnitOp, cutlass::arch::OpClassTensorOp, ArchTag, DataTypeA, LayoutA,
+        DataTypeB, LayoutB, DataTypeC, LayoutC,
+        cutlass::gemm::GemmShape<TileSizeM, TileSizeN,
+                                 TileSizeK>>::Gemm;
+    using GemmKernel = typename GemmType::GemmKernel;
+
+    IsEq<GemmKernel::kThreadCount, UnitOp::NumThreads>();
+    IsEq<sizeof(GemmKernel::SharedStorage), UnitOp::SmemBytes>();
+
+    LayoutA layout_a(LeadingDimA);
+    LayoutB layout_b(LeadingDimB);
+    LayoutC layout_c(LeadingDimC);
+    cutlass::TensorRef<DataTypeA, LayoutA> ref_a(A, layout_a);
+    cutlass::TensorRef<DataTypeB, LayoutB> ref_b(B, layout_b);
+    cutlass::TensorRef<DataTypeC, LayoutC> ref_c(Residual, layout_c);
+    cutlass::TensorRef<DataTypeC, LayoutC> ref_d(D, layout_c);
+
+    cutlass::gemm::GemmCoord problem_size(ProblemSizeM, ProblemSizeN,
+                                          ProblemSizeK);
+
+    ark::GemmThreadblockSwizzle<UnitOp> swizzle;
+    cutlass::gemm::GemmCoord tiled_shape(swizzle.get_tiled_shape());
+
+    // Set alpha=1, beta=1 so output = 1*A*B + 1*Residual
+    using EpilogueOp = typename GemmType::EpilogueOutputOp;
+    typename EpilogueOp::Params epilogue_params(
+        typename EpilogueOp::ElementCompute(1),
+        typename EpilogueOp::ElementCompute(1));
+
+    typename GemmKernel::Params params(problem_size, tiled_shape, ref_a, ref_b,
+                                       ref_c, ref_d, epilogue_params);
+    params.swizzle_log_tile = uop_idx;
+
+    typename GemmKernel::SharedStorage *ps =
+        UnitOp::template shared_memory<GemmKernel::SharedStorage>(
+            smem_per_warp);
+
+    UnitOp::sync_threads();
+
+    GemmKernel gemm_kernel{};
+    gemm_kernel(params, *ps);
+}
+/// Output = gelu(A * B). Same structure as gemm_cuda but uses
+/// GemmConfigurationGelu which applies GELU in the CUTLASS epilogue thread.
+template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
+          typename DataTypeB, int LeadingDimB, bool IsColumnB,
+          typename DataTypeC, int LeadingDimC, int ProblemSizeM,
+          int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
+          typename UnitOp>
+DEVICE void gemm_cuda_gelu(DataTypeC *C, DataTypeA *A, DataTypeB *B,
+                           int uop_idx, int smem_per_warp) {
+#if (ARK_TARGET_CUDA_ARCH == 60)
+    using ArchTag = cutlass::arch::Sm60;
+#elif (ARK_TARGET_CUDA_ARCH == 70)
+    using ArchTag = cutlass::arch::Sm70;
+#elif (ARK_TARGET_CUDA_ARCH == 80)
+    using ArchTag = cutlass::arch::Sm80;
+#elif (ARK_TARGET_CUDA_ARCH == 90)
+    using ArchTag = cutlass::arch::Sm80;
+#else
+    static_assert(false, "Unsupported CUDA arch.");
+#endif
+
+    using LayoutA = typename cutlass::platform::conditional<
+        IsColumnA, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
+    using LayoutB = typename cutlass::platform::conditional<
+        IsColumnB, cutlass::layout::ColumnMajor,
+        cutlass::layout::RowMajor>::type;
+    using LayoutC = cutlass::layout::RowMajor;
+
+    static constexpr int TileSizeK = std::is_same_v<DataTypeC, float> ? 32 : 64;
+    using GemmKernel = typename ark::GemmConfigurationGelu<
+        UnitOp, cutlass::arch::OpClassTensorOp, ArchTag, DataTypeA, LayoutA,
+        DataTypeB, LayoutB, DataTypeC, LayoutC,
+        cutlass::gemm::GemmShape<TileSizeM, TileSizeN,
+                                 TileSizeK>>::Gemm::GemmKernel;
+
+    IsEq<GemmKernel::kThreadCount, UnitOp::NumThreads>();
+    IsEq<sizeof(GemmKernel::SharedStorage), UnitOp::SmemBytes>();
+
+    LayoutA layout_a(LeadingDimA);
+    LayoutB layout_b(LeadingDimB);
+    LayoutC layout_c(LeadingDimC);
+    cutlass::TensorRef<DataTypeA, LayoutA> ref_a(A, layout_a);
+    cutlass::TensorRef<DataTypeB, LayoutB> ref_b(B, layout_b);
+    cutlass::TensorRef<DataTypeC, LayoutC> ref_c(C, layout_c);
+
+    cutlass::gemm::GemmCoord problem_size(ProblemSizeM, ProblemSizeN,
+                                          ProblemSizeK);
+    cutlass::gemm::GemmCoord threadblock_shape(TileSizeM, TileSizeN, TileSizeK);
+
+    ark::GemmThreadblockSwizzle<UnitOp> swizzle;
+    cutlass::gemm::GemmCoord tiled_shape(swizzle.get_tiled_shape());
+
+    typename GemmKernel::Params params(problem_size, tiled_shape, ref_a, ref_b,
+                                       ref_c, ref_c);
     params.swizzle_log_tile = uop_idx;
 
     typename GemmKernel::SharedStorage *ps =
@@ -447,6 +628,88 @@ DEVICE void gemm_cutlass(DataTypeC *C, DataTypeA *A, DataTypeB *B, int uop_idx,
               IsColumnB, CutDataTypeC, LeadingDimC, ProblemSizeM, ProblemSizeN,
               ProblemSizeK, TileSizeM, TileSizeN, UnitOp>(pC, pA, pB, uop_idx,
                                                           smem_per_warp);
+#else
+    static_assert(false, "Unsupported CUDA arch.");
+#endif
+}
+
+/// Row-major GeMM with GELU activation fused into the epilogue.
+template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
+          typename DataTypeB, int LeadingDimB, bool IsColumnB,
+          typename DataTypeC, int LeadingDimC, int ProblemSizeM,
+          int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
+          typename UnitOp>
+DEVICE void gemm_cutlass_gelu(DataTypeC *C, DataTypeA *A, DataTypeB *B,
+                              int uop_idx, int smem_per_warp) {
+    using CutDataTypeA = typename cutlass::platform::conditional<
+        std::is_same<DataTypeA, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeA, bf16>::value, cutlass::bfloat16_t,
+            DataTypeA>::type>::type;
+
+    using CutDataTypeB = typename cutlass::platform::conditional<
+        std::is_same<DataTypeB, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeB, bf16>::value, cutlass::bfloat16_t,
+            DataTypeB>::type>::type;
+
+    using CutDataTypeC = typename cutlass::platform::conditional<
+        std::is_same<DataTypeC, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeC, bf16>::value, cutlass::bfloat16_t,
+            DataTypeC>::type>::type;
+
+    CutDataTypeC *pC = reinterpret_cast<CutDataTypeC *>(C);
+    CutDataTypeA *pA = reinterpret_cast<CutDataTypeA *>(A);
+    CutDataTypeB *pB = reinterpret_cast<CutDataTypeB *>(B);
+
+#if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
+     ARK_TARGET_CUDA_ARCH == 80 || ARK_TARGET_CUDA_ARCH == 90)
+    gemm_cuda_gelu<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
+                   LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
+                   ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM,
+                   TileSizeN, UnitOp>(pC, pA, pB, uop_idx, smem_per_warp);
+#else
+    static_assert(false, "Unsupported CUDA arch.");
+#endif
+}
+
+/// Row-major GeMM with residual addition: D = A*B + Residual.
+template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
+          typename DataTypeB, int LeadingDimB, bool IsColumnB,
+          typename DataTypeC, int LeadingDimC, int ProblemSizeM,
+          int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
+          typename UnitOp>
+DEVICE void gemm_cutlass_add(DataTypeC *D, DataTypeA *A, DataTypeB *B,
+                             DataTypeC *Residual, int uop_idx,
+                             int smem_per_warp) {
+    using CutDataTypeA = typename cutlass::platform::conditional<
+        std::is_same<DataTypeA, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeA, bf16>::value, cutlass::bfloat16_t,
+            DataTypeA>::type>::type;
+    using CutDataTypeB = typename cutlass::platform::conditional<
+        std::is_same<DataTypeB, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeB, bf16>::value, cutlass::bfloat16_t,
+            DataTypeB>::type>::type;
+    using CutDataTypeC = typename cutlass::platform::conditional<
+        std::is_same<DataTypeC, fp16>::value, cutlass::half_t,
+        typename cutlass::platform::conditional<
+            std::is_same<DataTypeC, bf16>::value, cutlass::bfloat16_t,
+            DataTypeC>::type>::type;
+
+    CutDataTypeC *pD = reinterpret_cast<CutDataTypeC *>(D);
+    CutDataTypeA *pA = reinterpret_cast<CutDataTypeA *>(A);
+    CutDataTypeB *pB = reinterpret_cast<CutDataTypeB *>(B);
+    CutDataTypeC *pR = reinterpret_cast<CutDataTypeC *>(Residual);
+
+#if (ARK_TARGET_CUDA_ARCH == 60 || ARK_TARGET_CUDA_ARCH == 70 || \
+     ARK_TARGET_CUDA_ARCH == 80 || ARK_TARGET_CUDA_ARCH == 90)
+    gemm_cuda_add<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
+                  LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
+                  ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM,
+                  TileSizeN, UnitOp>(pD, pA, pB, pR, uop_idx, smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif
