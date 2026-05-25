@@ -30,14 +30,12 @@
 #include "utils/utils_net.hpp"
 
 #if defined(ARK_CUDA)
-#include <cuda/atomic>
+#include <mscclpp/atomic_device.hpp>
 static int atomicLoadRelaxed(int *ptr) {
-    // Use volatile for WC memory to ensure non-cached reads
-    return *(volatile int *)ptr;
+    return mscclpp::atomicLoad(ptr, mscclpp::memoryOrderRelaxed);
 }
 static void atomicStoreRelaxed(int *ptr, int val) {
-    // Use volatile for WC memory to ensure non-cached writes
-    *(volatile int *)ptr = val;
+    mscclpp::atomicStore(ptr, val, mscclpp::memoryOrderRelaxed);
 }
 #elif defined(ARK_ROCM)
 static int atomicLoadRelaxed(int *ptr) {
@@ -765,13 +763,7 @@ void PlanResource::init_kernel() {
             proxy_secondary_handles[i] = p_hdls[1];
         }
     }
-    // Set current device BEFORE creating the temp stream — otherwise at
-    // world_size ≥ 4 the parent process's "current device" is not device_id_
-    // for rank N-1 (the GpuManager singleton was created earlier and never
-    // re-pinned the device on subsequent get_instance() calls), so the
-    // stream gets bound to the wrong device and the subsequent
-    // gpuMemcpyAsync into the JIT-resolved __constant__ ARK_SM_CHANS address
-    // fails with cudaErrorInvalidValue.
+    // Pin current device - see set_current() rationale in compile().
     gpu_manager->set_current();
     auto tmp_stream = gpu_manager->create_stream();
     GLOG(gpuMemcpyAsync(
@@ -895,7 +887,7 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
         // CUDA resources. The GpuManager singleton only calls gpuSetDevice
         // when it's first constructed, so subsequent get_instance() calls
         // (or any code path that touched a different device in between) can
-        // leave the wrong current device on the thread — at world_size ≥ 4
+        // leave the wrong current device on the thread - at world_size ≥ 4
         // this manifests as cross-device events/streams that later trigger
         // cudaErrorInvalidValue on rank N-1.
         gpu_manager->set_current();
@@ -943,26 +935,19 @@ void Executor::Impl::launch(
     loop_mode_ = loop_mode;
     elapsed_msec_ = -1;
 
-    if (record) {
-        timer_begin_->record(stream_raw_);
-        is_recording_ = true;
-    }
-    // Defensive: ensure the calling thread's CUDA current device matches the
-    // plan's device before launch. After fork() into multiprocess ranks, the
-    // child's current device is inherited from parent (usually 0). At
-    // world_size ≥ 4 this consistently hangs rank N-1's kernel launch.
+    // Pin current device - see set_current() rationale in compile().
     if (foreground_plan_resource_) {
         GpuManager::get_instance(foreground_plan_resource_->device_id())
             ->set_current();
     }
+    if (record) {
+        timer_begin_->record(stream_raw_);
+        is_recording_ = true;
+    }
     if (comm_resource_) {
         comm_resource_->proxy_service()->startProxy();
-        // Barrier across all ranks BEFORE launching the persistent kernel.
-        // At world_size ≥ 4 we observed deterministic hangs in cuLaunchKernel
-        // on the highest-rank process — the failure mode suggested some
-        // ranks raced ahead with launch while others were still finalizing
-        // mscclpp proxy setup. Synchronizing here makes the persistent-kernel
-        // launch reproducible and fixes the TP=4/8 hang.
+        // Barrier across all ranks BEFORE launching the persistent kernel
+        // so that no rank races ahead while others finalize proxy setup.
         comm_resource_->bootstrap()->barrier();
     }
 

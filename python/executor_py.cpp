@@ -220,8 +220,8 @@ void register_executor(py::module &m) {
             py::arg("iter"),
             py::arg("placeholder_data") =
                 std::unordered_map<ark::Tensor, void *>())
-        .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = 100000000)
-        .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = 100000000)
+        .def("wait", &ark::Executor::wait, py::arg("max_spin_count") = -1)
+        .def("stop", &ark::Executor::stop, py::arg("max_spin_count") = -1)
         .def("barrier", &ark::Executor::barrier)
         .def("destroy", &ark::Executor::destroy)
         .def("destroyed", &ark::Executor::destroyed)

@@ -214,11 +214,96 @@ ark::unittest::State test_executor_invalid() {
     return ark::unittest::SUCCESS;
 }
 
+// Smoke test: compile + launch on device 0 with a ReLU kernel.
+// The set_current() calls in compile() and launch() are exercised but are
+// effectively no-ops on device 0. The multi-GPU pinning fix (world_size >= 4)
+// requires multi-process testing and is not covered here.
+ark::unittest::State test_executor_device_pinning() {
+    ark::Model m;
+    auto tensor = m.tensor({256}, ark::FP32);
+    auto out = m.relu(tensor);
+
+    ark::Planner planner(m, 0);
+    auto plan = planner.plan();
+
+    // Compile and launch on device 0 — set_current() is called in
+    // compile() and launch() but is a no-op on device 0.
+    ark::Executor exe;
+    exe.compile(plan, 0);
+    exe.launch();
+
+    // Write data, run, read back
+    std::vector<float> input(256);
+    for (int i = 0; i < 256; ++i) input[i] = static_cast<float>(i - 128);
+    exe.tensor_write(tensor, input.data(), input.size() * sizeof(float));
+
+    exe.run(1);
+    exe.wait();
+
+    std::vector<float> output(256);
+    exe.tensor_read(out, output.data(), output.size() * sizeof(float));
+
+    // Verify ReLU: max(0, x)
+    for (int i = 0; i < 256; ++i) {
+        float expected = std::max(0.0f, input[i]);
+        UNITTEST_EQ(output[i], expected);
+    }
+
+    exe.stop();
+    return ark::unittest::SUCCESS;
+}
+
+// Test repeated compile-launch-stop cycles on the same executor to verify
+// that device pinning and resource cleanup work correctly across cycles.
+ark::unittest::State test_executor_recompile_cycle() {
+    ark::Model m;
+    auto tensor = m.tensor({64}, ark::FP32);
+    m.noop(tensor);
+
+    ark::Planner planner(m, 0);
+    auto plan = planner.plan();
+
+    ark::Executor exe;
+    for (int cycle = 0; cycle < 3; ++cycle) {
+        exe.compile(plan, 0);
+        exe.launch();
+        exe.run(1);
+        exe.wait();
+        exe.stop();
+    }
+    return ark::unittest::SUCCESS;
+}
+
+// Smoke test: run multiple iterations in loop mode to exercise the
+// atomicLoad/Store polling path. Does not inspect flag values directly;
+// verifies only that the host-side poll completes without hanging.
+ark::unittest::State test_executor_flag_polling() {
+    ark::Model m;
+    auto tensor = m.tensor({64}, ark::FP32);
+    m.noop(tensor);
+
+    ark::DefaultExecutor executor(m, 0);
+    executor.launch();
+
+    // Run a few iterations and wait — exercises the atomicLoad/Store
+    // polling loop on the host-mapped flag buffer.
+    for (int i = 0; i < 5; ++i) {
+        executor.run(1);
+        executor.wait();
+    }
+
+    executor.stop();
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     UNITTEST(test_executor_loop);
     UNITTEST(test_executor_no_loop);
     UNITTEST(test_executor_tensor_read_write_no_stride);
     UNITTEST(test_executor_tensor_read_write_stride_offset);
     UNITTEST(test_executor_invalid);
+    UNITTEST(test_executor_device_pinning);
+    UNITTEST(test_executor_recompile_cycle);
+    UNITTEST(test_executor_flag_polling);
     return 0;
 }
