@@ -32,12 +32,12 @@
 #if defined(ARK_CUDA)
 #include <cuda/atomic>
 static int atomicLoadRelaxed(int *ptr) {
-    return cuda::atomic_ref<int, cuda::thread_scope_system>{*ptr}.load(
-        cuda::memory_order_relaxed);
+    // Use volatile for WC memory to ensure non-cached reads
+    return *(volatile int *)ptr;
 }
 static void atomicStoreRelaxed(int *ptr, int val) {
-    cuda::atomic_ref<int, cuda::thread_scope_system>{*ptr}.store(
-        val, cuda::memory_order_relaxed);
+    // Use volatile for WC memory to ensure non-cached writes
+    *(volatile int *)ptr = val;
 }
 #elif defined(ARK_ROCM)
 static int atomicLoadRelaxed(int *ptr) {
@@ -161,7 +161,7 @@ class CommResource {
     }
 
     struct ConnectionResource {
-        std::shared_ptr<mscclpp::Connection> connection;
+        mscclpp::Connection connection;
         std::vector<std::shared_ptr<mscclpp::PortChannel>> proxy_channels;
         std::vector<std::shared_ptr<mscclpp::MemoryChannel>> sm_channels;
     };
@@ -248,12 +248,11 @@ void CommResource::connect(const PlanJson &plan_json,
     mscclpp::RegisteredMemory regmem =
         comm_->registerMemory(buffer->ref(), buffer->bytes(), all_transports);
 
-    using ConnectionFuture =
-        mscclpp::NonblockingFuture<std::shared_ptr<mscclpp::Connection>>;
+    using ConnectionFuture = std::shared_future<mscclpp::Connection>;
     std::map<int, ConnectionFuture> rank_to_ipc_connection_future;
     std::map<int, ConnectionFuture> rank_to_eth_connection_future;
     std::map<int, ConnectionFuture> rank_to_ib_connection_future;
-    std::map<int, mscclpp::NonblockingFuture<mscclpp::RegisteredMemory>>
+    std::map<int, std::shared_future<mscclpp::RegisteredMemory>>
         rank_to_remote_regmem_future;
 
     for (auto remote_rank : remote_ranks) {
@@ -266,25 +265,26 @@ void CommResource::connect(const PlanJson &plan_json,
         rank_to_resource_[remote_rank] = resource;
         int remote_node = rank_to_node(remote_rank);
         if (remote_node == this_node) {
-            rank_to_ipc_connection_future[remote_rank] = comm_->connectOnSetup(
-                remote_rank, 0, mscclpp::Transport::CudaIpc);
+            rank_to_ipc_connection_future[remote_rank] = comm_->connect(
+                mscclpp::EndpointConfig(mscclpp::Transport::CudaIpc),
+                remote_rank, 0);
             resource->ipc = std::make_shared<ConnectionResource>();
         }
         if ((remote_node != this_node) && get_env().disable_ib) {
-            rank_to_eth_connection_future[remote_rank] = comm_->connectOnSetup(
-                remote_rank, 0, mscclpp::Transport::Ethernet);
+            rank_to_eth_connection_future[remote_rank] = comm_->connect(
+                mscclpp::EndpointConfig(mscclpp::Transport::Ethernet),
+                remote_rank, 0);
             resource->eth = std::make_shared<ConnectionResource>();
         }
         if (!get_env().disable_ib) {
-            rank_to_ib_connection_future[remote_rank] =
-                comm_->connectOnSetup(remote_rank, 0, IBs[device_id_]);
+            rank_to_ib_connection_future[remote_rank] = comm_->connect(
+                mscclpp::EndpointConfig(IBs[device_id_]), remote_rank, 0);
             resource->ib = std::make_shared<ConnectionResource>();
         }
-        comm_->sendMemoryOnSetup(regmem, remote_rank, 0);
+        comm_->sendMemory(regmem, remote_rank, 0);
         rank_to_remote_regmem_future[remote_rank] =
-            comm_->recvMemoryOnSetup(remote_rank, 0);
+            comm_->recvMemory(remote_rank, 0);
     }
-    comm_->setup();
 
     for (auto &[remote_rank, future] : rank_to_ipc_connection_future) {
         rank_to_resource_[remote_rank]->ipc->connection = future.get();
@@ -323,18 +323,15 @@ void CommResource::connect(const PlanJson &plan_json,
         add_proxy_channel(resource->eth);
         add_proxy_channel(resource->ib);
     }
-    comm_->setup();
-
-    std::map<int,
-             std::vector<std::shared_ptr<mscclpp::SmDevice2DeviceSemaphore>>>
+    std::map<
+        int, std::vector<std::shared_ptr<mscclpp::MemoryDevice2DeviceSemaphore>>>
         sm_semaphores;
     for (auto &[remote_rank, resource] : rank_to_resource_) {
         // NOTE: We can create multiple semaphores here if we need in the future
         sm_semaphores[remote_rank].push_back(
-            std::make_shared<mscclpp::SmDevice2DeviceSemaphore>(
+            std::make_shared<mscclpp::MemoryDevice2DeviceSemaphore>(
                 *comm_, resource->ipc->connection));
     }
-    comm_->setup();
 
     for (auto &[remote_rank, resource] : rank_to_resource_) {
         // NOTE: We can create multiple sm channels here if we need in the
@@ -342,7 +339,7 @@ void CommResource::connect(const PlanJson &plan_json,
         resource->ipc->sm_channels.push_back(
             std::make_shared<mscclpp::MemoryChannel>(
                 sm_semaphores[remote_rank][0],
-                rank_to_remote_regmem[remote_rank], regmem.data(), nullptr));
+                rank_to_remote_regmem[remote_rank], regmem, nullptr));
     }
 }
 
@@ -768,8 +765,15 @@ void PlanResource::init_kernel() {
             proxy_secondary_handles[i] = p_hdls[1];
         }
     }
+    // Set current device BEFORE creating the temp stream — otherwise at
+    // world_size ≥ 4 the parent process's "current device" is not device_id_
+    // for rank N-1 (the GpuManager singleton was created earlier and never
+    // re-pinned the device on subsequent get_instance() calls), so the
+    // stream gets bound to the wrong device and the subsequent
+    // gpuMemcpyAsync into the JIT-resolved __constant__ ARK_SM_CHANS address
+    // fails with cudaErrorInvalidValue.
+    gpu_manager->set_current();
     auto tmp_stream = gpu_manager->create_stream();
-    GLOG(gpuSetDevice(device_id_));
     GLOG(gpuMemcpyAsync(
         proxy_chan_addr, proxy_handles.data(),
         proxy_handles.size() * sizeof(mscclpp::PortChannel::DeviceHandle),
@@ -887,10 +891,18 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
     }
     if (prev_device_id != device_id) {
         auto gpu_manager = GpuManager::get_instance(device_id);
+        // Pin the calling thread to this device before allocating per-device
+        // CUDA resources. The GpuManager singleton only calls gpuSetDevice
+        // when it's first constructed, so subsequent get_instance() calls
+        // (or any code path that touched a different device in between) can
+        // leave the wrong current device on the thread — at world_size ≥ 4
+        // this manifests as cross-device events/streams that later trigger
+        // cudaErrorInvalidValue on rank N-1.
+        gpu_manager->set_current();
         timer_begin_ = gpu_manager->create_event();
         timer_end_ = gpu_manager->create_event();
         flag_ = gpu_manager->malloc_host(
-            sizeof(int), gpuHostAllocMapped | gpuHostAllocWriteCombined);
+            sizeof(int), gpuHostAllocMapped);
         stream_ = gpu_manager->create_stream();
     }
     PlanResourceKey key(plan, device_id, name);
@@ -935,8 +947,23 @@ void Executor::Impl::launch(
         timer_begin_->record(stream_raw_);
         is_recording_ = true;
     }
+    // Defensive: ensure the calling thread's CUDA current device matches the
+    // plan's device before launch. After fork() into multiprocess ranks, the
+    // child's current device is inherited from parent (usually 0). At
+    // world_size ≥ 4 this consistently hangs rank N-1's kernel launch.
+    if (foreground_plan_resource_) {
+        GpuManager::get_instance(foreground_plan_resource_->device_id())
+            ->set_current();
+    }
     if (comm_resource_) {
         comm_resource_->proxy_service()->startProxy();
+        // Barrier across all ranks BEFORE launching the persistent kernel.
+        // At world_size ≥ 4 we observed deterministic hangs in cuLaunchKernel
+        // on the highest-rank process — the failure mode suggested some
+        // ranks raced ahead with launch while others were still finalizing
+        // mscclpp proxy setup. Synchronizing here makes the persistent-kernel
+        // launch reproducible and fixes the TP=4/8 hang.
+        comm_resource_->bootstrap()->barrier();
     }
 
     if (loop_mode_) {
@@ -1003,9 +1030,6 @@ void Executor::Impl::wait(int64_t max_spin_count) {
             }
         }
     } else {
-        if (max_spin_count >= 0) {
-            LOG(WARN, "max_spin_count is ignored in non-loop mode.");
-        }
         GLOG(gpuStreamSynchronize(stream_raw_));
     }
 }

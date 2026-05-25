@@ -9,7 +9,11 @@ if(NOT CUDAToolkit_FOUND)
     return()
 endif()
 
-set(CMAKE_CUDA_ARCHITECTURES "60")
+# Use sm_80 as minimum for the detection check.
+# Must be a CACHE variable so cmake applies it before enable_language(CUDA)
+# tests the compiler. Without CACHE, cmake 3.25+ may probe with a default
+# architecture (e.g., compute_60) that newer CUDA toolkits have dropped.
+set(CMAKE_CUDA_ARCHITECTURES "80" CACHE STRING "CUDA architectures for GPU detection" FORCE)
 if(NOT CMAKE_CUDA_COMPILER)
     # In case the CUDA Toolkit directory is not in the PATH
     find_program(CUDA_COMPILER

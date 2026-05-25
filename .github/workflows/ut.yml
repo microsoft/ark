@@ -1,0 +1,119 @@
+name: "Unit Tests"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  UnitTest:
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: cuda
+            runner: [self-hosted, CUDA]
+            container: nvcr.io/nvidia/pytorch:26.03-py3
+            container_options: --privileged --ipc=host --gpus='"device=4,5,6,7"' --ulimit memlock=-1:-1
+          - platform: rocm
+            runner: [self-hosted, ROCM]
+            container: rocm/pytorch:rocm6.2.3_ubuntu22.04_py3.10_pytorch_release_2.3.0
+            container_options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
+    runs-on: ${{ matrix.runner }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.platform }}-${{ github.ref }}
+      cancel-in-progress: true
+    container:
+      image: ${{ matrix.container }}
+      options: ${{ matrix.container_options }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dubious ownership exception
+        run: |
+          git config --global --add safe.directory /__w/ark/ark
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - name: Build
+        run: |
+          apt-get update && apt-get install -y lcov
+          mkdir build && cd build
+          CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug"
+          if [ "${{ matrix.platform }}" = "rocm" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc"
+          fi
+          cmake $CMAKE_ARGS ..
+          make -j ut ark_py
+
+      - name: Run C++ UT
+        run: |
+          cd build
+          ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+
+      - name: C++ Coverage
+        run: |
+          cd build
+          lcov --capture --directory . --output-file cpp_coverage.info
+          lcov --remove cpp_coverage.info \
+              '/usr/*' \
+              '/tmp/*' \
+              '*/build/*' \
+              '*/third_party/*' \
+              '*/ark/*_test.*' \
+              '*/examples/*' \
+              '*/python/*' \
+              '*/ark/unittest/unittest_utils.cpp' \
+              --output-file cpp_coverage.info
+          lcov --list cpp_coverage.info
+
+      - name: Install Python Dependencies
+        run: |
+          python3 -m pip install -r requirements.txt
+
+      - name: Run Python UT
+        run: |
+          cd build
+          PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
+              --cov=python/ark \
+              --cov-report lcov:py_coverage.info \
+              --verbose \
+              ../python/unittest/
+
+      - name: Report Coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          cd build
+          lcov -a cpp_coverage.info -a py_coverage.info -o coverage.info
+          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+
+      - name: Install Python
+        run: |
+          python3 -m pip install .
+
+      - name: Run Tutorials
+        run: |
+          python3 ./examples/tutorial/quickstart_tutorial.py
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp-${{ matrix.platform }}"
