@@ -121,9 +121,21 @@ SharedTensor::SharedTensor(Executor &exe, const Tensor &tensor) {
 
 DLTensor SharedTensor::dl_tensor() const {
     DLTensor dl_tensor;
-    dl_tensor.data = data_;
-    size_t offset_in_elements = offsets_->empty() ? 0 : offsets_->at(0);
-    dl_tensor.byte_offset = offset_in_elements * dtype_.bytes();
+    // Compute the linear element offset from multi-dimensional offsets
+    // and strides: sum(offsets[i] * strides[i]) for all dimensions.
+    // Bake the offset directly into the data pointer since some frameworks
+    // (e.g., PyTorch) may not reliably use DLTensor::byte_offset.
+    size_t offset_in_elements = 0;
+    if (!offsets_->empty() && !strides_->empty()) {
+        for (size_t i = 0; i < offsets_->size() && i < strides_->size(); ++i) {
+            offset_in_elements += static_cast<size_t>(offsets_->at(i)) *
+                                  static_cast<size_t>(strides_->at(i));
+        }
+    }
+    size_t byte_offset = offset_in_elements * dtype_.bytes();
+    dl_tensor.data = reinterpret_cast<void *>(
+        reinterpret_cast<uintptr_t>(data_) + byte_offset);
+    dl_tensor.byte_offset = 0;
     dl_tensor.device.device_type = get_device_type();
     dl_tensor.device.device_id = device_id_;
     dl_tensor.ndim = static_cast<int32_t>(shape_->size());
