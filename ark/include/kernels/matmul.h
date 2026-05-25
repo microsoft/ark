@@ -217,10 +217,10 @@ template <typename OutDims, typename NCA, typename NCB, typename TileShape,
           typename DataTypeA, typename DataTypeB, typename DataTypeC>
 DEVICE void matmul_scale(DataTypeC *C, DataTypeA *A, DataTypeB *B,
                          int uop_idx, int smem_per_warp) {
-    static_assert(NCA::D2 == 1 && NCA::D3 == 1);
-    static_assert(NCB::D2 == 1 && NCB::D3 == 1);
-    static_assert(TileShape::D2 == 1 && TileShape::D3 == 1);
-    static_assert(ProblemSize::D3 == 1);
+    static_assert(NCA::D2 == 1 && NCA::D3 == 1, "NCA should be two dimensional.");
+    static_assert(NCB::D2 == 1 && NCB::D3 == 1, "NCB should be two dimensional.");
+    static_assert(TileShape::D2 == 1 && TileShape::D3 == 1, "TileShape should be two dimensional.");
+    static_assert(ProblemSize::D3 == 1, "ProblemSize D3 should be 1.");
 
     constexpr int NC = (NCA::D0 > NCB::D0) ? NCA::D0 : NCB::D0;
     constexpr int CC = (NCA::D1 > NCB::D1) ? NCA::D1 : NCB::D1;

@@ -114,6 +114,12 @@ DEVICE void gemm_with_functor(DataTypeC *C, DataTypeA *A, DataTypeB *B,
     using LayoutC = cutlass::layout::RowMajor;
 
     static constexpr int TileSizeK = std::is_same_v<DataTypeC, float> ? 32 : 64;
+    // NOTE: GemmConfiguration uses ElementC as accumulator for fp16 (half_t),
+    // and float for bf16/fp32. Functors that need fp32 precision throughout
+    // (e.g., exp, erff) should use a dedicated GemmConfiguration with
+    // ElementAccumulator = float. FunctorScale's float cast is sufficient
+    // for simple multiply, but FunctorScaleExp may lose precision with fp16
+    // accumulators.
     using GemmKernel = typename ark::GemmConfiguration<
         UnitOp, cutlass::arch::OpClassTensorOp, ArchTag, DataTypeA, LayoutA,
         DataTypeB, LayoutB, DataTypeC, LayoutC,

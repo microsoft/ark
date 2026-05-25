@@ -333,6 +333,8 @@ std::string ModelOpMatmulGelu::impl_name(const Json &config) const {
     // The name starts with "matmul<" — replace prefix
     if (name.substr(0, 7) == "matmul<") {
         name = "matmul_gelu<" + name.substr(7);
+    } else {
+        ERR(InvalidStateError, "unexpected matmul impl_name format: ", name);
     }
     return name;
 }
@@ -369,6 +371,8 @@ std::string ModelOpMatmulScale::impl_name(const Json &config) const {
         name = "matmul_scale<" + name.substr(7);
         // Remove trailing ">" and add scale bits
         name = name.substr(0, name.size() - 1) + ", " + std::to_string(conv.u) + ">";
+    } else {
+        ERR(InvalidStateError, "unexpected matmul impl_name format: ", name);
     }
     return name;
 }
@@ -400,9 +404,15 @@ ModelOpMatmulAdd::ModelOpMatmulAdd(ModelTensorRef input, ModelTensorRef other,
             input->data_type(), std::make_shared<ModelBuffer>(), output_shape,
             Dims{}, Dims{}, padded_output_shape);
     }
-    // Residual must match output shape
+    // Residual must match output shape and strides
     check_match_shape(residual, output_shape);
     check_match_padded_shape(residual, padded_output_shape);
+    if (residual->strides() != output->strides()) {
+        ERR(InvalidUsageError,
+            "MatmulAdd requires residual and output to have matching strides. "
+            "Residual strides: ", residual->strides(),
+            ", output strides: ", output->strides());
+    }
 
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
 
@@ -424,7 +434,12 @@ std::string ModelOpMatmulAdd::impl_name(const Json &config) const {
 
     const auto &input = read_tensors_[0];
     const auto &other = read_tensors_[1];
+    const auto &residual = read_tensors_[2];
     const auto &output = result_tensors_[0];
+
+    check_match_data_type(input, other);
+    check_match_data_type(input, output);
+    check_match_data_type(input, residual);
 
     Dims padded_problem_size = calc_problem_size(
         input->padded_shape(), other->padded_shape(), trans_input, trans_other);
@@ -472,6 +487,25 @@ std::string ModelOpMatmulAdd::impl_name(const Json &config) const {
     DimType batch_stride_c_c = output_dim_nc[1] == 1 ? 0 : size_c;
     DimType batch_stride_n_c =
         output_dim_nc[0] == 1 ? 0 : size_c * output_dim_nc[1];
+
+    if (config.contains("BatchStrideNA")) {
+        batch_stride_n_a = config["BatchStrideNA"].get<DimType>();
+    }
+    if (config.contains("BatchStrideCA")) {
+        batch_stride_c_a = config["BatchStrideCA"].get<DimType>();
+    }
+    if (config.contains("BatchStrideNB")) {
+        batch_stride_n_b = config["BatchStrideNB"].get<DimType>();
+    }
+    if (config.contains("BatchStrideCB")) {
+        batch_stride_c_b = config["BatchStrideCB"].get<DimType>();
+    }
+    if (config.contains("BatchStrideNC")) {
+        batch_stride_n_c = config["BatchStrideNC"].get<DimType>();
+    }
+    if (config.contains("BatchStrideCC")) {
+        batch_stride_c_c = config["BatchStrideCC"].get<DimType>();
+    }
 
     return function_name_string("matmul_add",
                                 {
@@ -530,6 +564,7 @@ Tensor Model::mma(Tensor input, Tensor other, Tensor output,
 }
 
 // ---- Mma: matmul with REGISTER output tensor ----
+// See TensorLocation::REGISTER TODO in model_tensor.hpp
 
 ModelOpMma::ModelOpMma(ModelTensorRef input, ModelTensorRef other,
                        ModelTensorRef output, bool trans_input,
@@ -560,6 +595,7 @@ Tensor Model::store(Tensor output, Tensor input, const std::string &name) {
 }
 
 // ---- Store: write register tensor to global memory ----
+// See TensorLocation::REGISTER TODO in model_tensor.hpp
 
 ModelOpStore::ModelOpStore(ModelTensorRef input, ModelTensorRef output)
     : ModelOpCopy(input, output) {

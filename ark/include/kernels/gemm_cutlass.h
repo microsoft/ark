@@ -123,8 +123,8 @@ struct GemmConfigurationGelu {
                       std::is_same_v<ElementC, cutlass::half_t> ||
                       std::is_same_v<ElementC, cutlass::bfloat16_t>,
                   "ElementC must be float, half, or bfloat16");
-    using ElementAccumulator = typename std::conditional_t<
-        std::is_same_v<ElementC, cutlass::bfloat16_t>, float, ElementC>;
+    // Always use float accumulator: GELU's erff needs fp32 precision.
+    using ElementAccumulator = float;
     static constexpr int NumWarps = UnitOp::NumWarps;
     static constexpr int NumWarpsN =
         1 << math::div_up<math::log2_up<NumWarps>::value, 2>::value;
@@ -354,7 +354,7 @@ DEVICE void gemm_cuda_add(DataTypeC *D, DataTypeA *A, DataTypeB *B,
     using GemmKernel = typename GemmType::GemmKernel;
 
     IsEq<GemmKernel::kThreadCount, UnitOp::NumThreads>();
-    IsEq<sizeof(GemmKernel::SharedStorage), UnitOp::SmemBytes>();
+    IsEq<sizeof(typename GemmKernel::SharedStorage), UnitOp::SmemBytes>();
 
     LayoutA layout_a(LeadingDimA);
     LayoutB layout_b(LeadingDimB);
@@ -381,7 +381,7 @@ DEVICE void gemm_cuda_add(DataTypeC *D, DataTypeA *A, DataTypeB *B,
     params.swizzle_log_tile = uop_idx;
 
     typename GemmKernel::SharedStorage *ps =
-        UnitOp::template shared_memory<GemmKernel::SharedStorage>(
+        UnitOp::template shared_memory<typename GemmKernel::SharedStorage>(
             smem_per_warp);
 
     UnitOp::sync_threads();
@@ -426,7 +426,7 @@ DEVICE void gemm_cuda_gelu(DataTypeC *C, DataTypeA *A, DataTypeB *B,
                                  TileSizeK>>::Gemm::GemmKernel;
 
     IsEq<GemmKernel::kThreadCount, UnitOp::NumThreads>();
-    IsEq<sizeof(GemmKernel::SharedStorage), UnitOp::SmemBytes>();
+    IsEq<sizeof(typename GemmKernel::SharedStorage), UnitOp::SmemBytes>();
 
     LayoutA layout_a(LeadingDimA);
     LayoutB layout_b(LeadingDimB);
@@ -447,7 +447,7 @@ DEVICE void gemm_cuda_gelu(DataTypeC *C, DataTypeA *A, DataTypeB *B,
     params.swizzle_log_tile = uop_idx;
 
     typename GemmKernel::SharedStorage *ps =
-        UnitOp::template shared_memory<GemmKernel::SharedStorage>(
+        UnitOp::template shared_memory<typename GemmKernel::SharedStorage>(
             smem_per_warp);
 
     UnitOp::sync_threads();

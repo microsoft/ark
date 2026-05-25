@@ -41,7 +41,7 @@ DEVICE void matmul_scale(DataTypeC *C, DataTypeA *A, DataTypeB *B,
     DataTypeC *pC = &C[un * BatchStrideNC + uc * BatchStrideCC];
 
     FunctorScale functor{scale};
-    gemm_with_functor<
+    gemm_cutlass_fused<
         typename std::remove_const<DataTypeA>::type, LeadingDimA, IsColumnA,
         typename std::remove_const<DataTypeB>::type, LeadingDimB, IsColumnB,
         DataTypeC, LeadingDimC,
