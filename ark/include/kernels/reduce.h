@@ -50,8 +50,11 @@ DEVICE bf16 warpReduce(bf16 val) {
 }
 
 // Reduce single-precision `val` within multiple warps.
+// @param warp_offset Offset into shared storage to avoid aliasing when
+//        multiple independent row groups share the same shared memory.
 template <typename ReduceType, typename UnitOp, int LanesNum, typename DataType>
-DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp) {
+DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp,
+                            int warp_offset = 0) {
     val = warpReduce<ReduceType, LanesNum>(val);
     if constexpr (LanesNum > Arch::ThreadsPerWarp) {
         ReduceSharedStorage<DataType> *shared =
@@ -60,11 +63,11 @@ DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp) {
         int laneId = tid & (Arch::ThreadsPerWarp - 1);
         int warpId = tid >> math::log2_up<Arch::ThreadsPerWarp>::value;
         if (laneId == 0) {
-            shared->storage[warpId] = val;
+            shared->storage[warpId + warp_offset] = val;
         }
         UnitOp::sync_threads();
         if (laneId < (LanesNum >> math::log2_up<Arch::ThreadsPerWarp>::value)) {
-            val = shared->storage[laneId];
+            val = shared->storage[laneId + warp_offset];
         } else {
             ReduceType::template identity<1>(&val);
         }
@@ -357,13 +360,11 @@ struct WwiseReduce {
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
         constexpr int InConsecBytes = sizeof(DataType) * InShape::W;
         constexpr int NelemPerThread =
-            (InConsecBytes % 16 == 0)
-                ? 16 / sizeof(DataType)
-                : (InConsecBytes % 8 == 0)
-                    ? 8 / sizeof(DataType)
-                    : (InConsecBytes % 4 == 0)
-                        ? 4 / sizeof(DataType)
-                        : (InConsecBytes % 2 == 0) ? 2 / sizeof(DataType) : 1;
+            (InConsecBytes % 16 == 0)  ? 16 / sizeof(DataType)
+            : (InConsecBytes % 8 == 0) ? 8 / sizeof(DataType)
+            : (InConsecBytes % 4 == 0) ? 4 / sizeof(DataType)
+            : (InConsecBytes % 2 == 0) ? 2 / sizeof(DataType)
+                                       : 1;
 
         constexpr int NonReduceDimLength =
             UnitOutDims::N * UnitOutDims::C * UnitOutDims::H;
@@ -411,32 +412,61 @@ struct WwiseReduce {
         if constexpr (NelemPerThread > 8) {
 #pragma unroll
             for (int i = 8; i < NelemPerThread; i += 8) {
-                ReduceType::template reduce<8>(&reduced[0], &reduced[0], &reduced[i]);
+                ReduceType::template reduce<8>(&reduced[0], &reduced[0],
+                                               &reduced[i]);
             }
-            ReduceType::template reduce<4>(&reduced[0], &reduced[0], &reduced[4]);
-            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<4>(&reduced[0], &reduced[0],
+                                           &reduced[4]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0],
+                                           &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         } else if constexpr (NelemPerThread == 8) {
-            ReduceType::template reduce<4>(&reduced[0], &reduced[0], &reduced[4]);
-            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<4>(&reduced[0], &reduced[0],
+                                           &reduced[4]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0],
+                                           &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         } else if constexpr (NelemPerThread == 4) {
-            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0],
+                                           &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         } else if constexpr (NelemPerThread == 2) {
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         }
 
         if constexpr (InShape::W % ThreadsPerRow != 0) {
             UnitOp::sync_threads();
         }
 
-        // final reduction on shared memory using warp shuffle.
-        reduced[0] = warpsReduce<ReduceType, UnitOp, UnitOp::NumThreads>(
-            reduced[0], tid, smem_per_warp);
+        // final reduction using warp shuffle.
+        // PhysicalThreadsPerRow = actual number of HW threads per row.
+        constexpr int PhysicalThreadsPerRow =
+            UnitOp::NumThreads / NonReduceDimLength;
+        static_assert(PhysicalThreadsPerRow > 0,
+                      "Not enough threads for the tile dimensions. "
+                      "Increase NumWarps or decrease Tile H dimension.");
+        if constexpr (PhysicalThreadsPerRow <= Arch::ThreadsPerWarp) {
+            // All threads for one row are within a single warp.
+            reduced[0] =
+                warpReduce<ReduceType, PhysicalThreadsPerRow>(reduced[0]);
+        } else {
+            // Threads for one row span multiple warps — need shared memory.
+            // Each row needs its own section of shared storage to avoid
+            // aliasing when multiple rows reduce in parallel.
+            constexpr int WarpsPerRow =
+                PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+            int row_in_tile = tid / PhysicalThreadsPerRow;
+            reduced[0] = warpsReduce<ReduceType, UnitOp, PhysicalThreadsPerRow>(
+                reduced[0], tid % PhysicalThreadsPerRow, smem_per_warp,
+                row_in_tile * WarpsPerRow);
+        }
 
-        // write the result to output.
-        if (tid % ThreadsPerRow == 0) {
+        // write the result to output — first thread of each row group.
+        if (tid % PhysicalThreadsPerRow == 0) {
             ReduceType::template postReduce<1>(&out[idx_out], &reduced[0],
                                                InShape::W);
         }
