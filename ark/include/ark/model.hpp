@@ -151,6 +151,23 @@ class Model : public ModelGraph {
     Tensor matmul(Tensor input, Tensor other, Tensor output = NullTensor,
                   bool trans_input = false, bool trans_other = false,
                   const std::string &name = "");
+    Tensor matmul_gelu(Tensor input, Tensor other,
+                       Tensor output = NullTensor,
+                       bool trans_input = false, bool trans_other = false,
+                       const std::string &name = "");
+    Tensor matmul_scale(Tensor input, Tensor other, float scale,
+                        Tensor output = NullTensor,
+                        bool trans_input = false, bool trans_other = false,
+                        const std::string &name = "");
+    Tensor matmul_add(Tensor input, Tensor other, Tensor residual,
+                      Tensor output = NullTensor,
+                      bool trans_input = false, bool trans_other = false,
+                      const std::string &name = "");
+    Tensor mma(Tensor input, Tensor other, Tensor output = NullTensor,
+               bool trans_input = false, bool trans_other = false,
+               const std::string &name = "");
+    Tensor store(Tensor output, Tensor input,
+                 const std::string &name = "");
     // Implements the 'im2col' method for 2D convolution layers, which takes an
     // `input` tensor and reshapes it to a 2D matrix by extracting image patches
     // from the input tensor based on the provided parameters.

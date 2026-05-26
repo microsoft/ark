@@ -12,8 +12,9 @@ namespace ark {
 
 ModelTensor::ModelTensor(ModelDataType data_type, ModelBufferRef buffer,
                          const Dims &shape, const Dims &strides,
-                         const Dims &offsets, const Dims &padded_shape)
-    : data_type_(data_type), buffer_(buffer) {
+                         const Dims &offsets, const Dims &padded_shape,
+                         TensorLocation location)
+    : data_type_(data_type), buffer_(buffer), location_(location) {
     if (shape.is_no_dim()) {
         // Assume a single-element constant
         shape_ = {1};
@@ -86,6 +87,7 @@ ModelTensor::ModelTensor(const ModelTensor &other) {
     strides_ = other.strides_;
     offsets_ = other.offsets_;
     padded_shape_ = other.padded_shape_;
+    location_ = other.location_;
 }
 
 size_t ModelTensor::shape_bytes() const {
@@ -111,6 +113,7 @@ Json ModelTensor::serialize() const {
     j["Offsets"] = offsets_.vector();
     j["PaddedShape"] = padded_shape_.vector();
     j["Buffer"] = buffer_->serialize();
+    j["Location"] = static_cast<int>(location_);
     return j;
 }
 
@@ -139,6 +142,10 @@ std::shared_ptr<ModelTensor> ModelTensor::deserialize(const Json &serialized) {
         serialized["Offsets"].get<std::vector<DimType>>(),
         serialized["PaddedShape"].get<std::vector<DimType>>());
     ret->id_ = serialized["Id"];
+    if (serialized.contains("Location")) {
+        ret->location_ = static_cast<TensorLocation>(
+            serialized["Location"].get<int>());
+    }
     return ret;
 }
 

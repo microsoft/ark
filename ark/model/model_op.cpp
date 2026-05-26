@@ -60,6 +60,11 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Exp);
         MODEL_OP_TYPE_REGISTER(Gelu);
         MODEL_OP_TYPE_REGISTER(Matmul);
+        MODEL_OP_TYPE_REGISTER(MatmulGelu);
+        MODEL_OP_TYPE_REGISTER(MatmulScale);
+        MODEL_OP_TYPE_REGISTER(MatmulAdd);
+        MODEL_OP_TYPE_REGISTER(Mma);
+        MODEL_OP_TYPE_REGISTER(Store);
         MODEL_OP_TYPE_REGISTER(Mul);
         MODEL_OP_TYPE_REGISTER(Noop);
         MODEL_OP_TYPE_REGISTER(Recv);
