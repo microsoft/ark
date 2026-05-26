@@ -57,6 +57,10 @@ DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp,
                             int warp_offset = 0) {
     val = warpReduce<ReduceType, LanesNum>(val);
     if constexpr (LanesNum > Arch::ThreadsPerWarp) {
+        // Barrier before shared memory write to prevent a back-to-back
+        // warpsReduce call from overwriting storage before all warps
+        // finish reading the previous result.
+        UnitOp::sync_threads();
         ReduceSharedStorage<DataType> *shared =
             UnitOp::template shared_memory<ReduceSharedStorage<DataType>>(
                 smem_per_warp);
@@ -449,6 +453,10 @@ struct WwiseReduce {
         static_assert(PhysicalThreadsPerRow > 0,
                       "Not enough threads for the tile dimensions. "
                       "Increase NumWarps or decrease Tile H dimension.");
+        static_assert(PhysicalThreadsPerRow <= Arch::ThreadsPerWarp ||
+                          PhysicalThreadsPerRow % Arch::ThreadsPerWarp == 0,
+                      "PhysicalThreadsPerRow must be <= warp size or a "
+                      "multiple of warp size");
         if constexpr (PhysicalThreadsPerRow <= Arch::ThreadsPerWarp) {
             // All threads for one row are within a single warp.
             reduced[0] =

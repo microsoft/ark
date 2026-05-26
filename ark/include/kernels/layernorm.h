@@ -17,7 +17,7 @@ struct LayerNormShapeChecker {
                   "Dimension C of input and output do not match");
     static_assert(InShape::H == OutShape::H,
                   "Dimension H of input and output do not match");
-    static_assert(OutShape::W == OutShape::W,
+    static_assert(InShape::W == OutShape::W,
                   "Dimension W of input and output do not match");
 };
 
@@ -42,6 +42,10 @@ struct LayerNorm {
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         static_assert(
             (UnitOp::NumThreads * NelemPerThread) % NonReduceDimLength == 0);
+        static_assert(UnitOp::NumThreads % NonReduceDimLength == 0,
+                      "NumThreads must be evenly divisible by "
+                      "NonReduceDimLength for correct physical "
+                      "thread-to-row assignment");
         constexpr int ThreadsPerRow =
             (UnitOp::NumThreads * NelemPerThread) / NonReduceDimLength;
 
@@ -68,6 +72,12 @@ struct LayerNorm {
         // Compute warp_offset for multi-row shared memory partitioning
         constexpr int PhysicalThreadsPerRow =
             UnitOp::NumThreads / NonReduceDimLength;
+        static_assert(PhysicalThreadsPerRow > 0,
+                      "Not enough threads for tile dimensions");
+        static_assert(PhysicalThreadsPerRow <= Arch::ThreadsPerWarp ||
+                          PhysicalThreadsPerRow % Arch::ThreadsPerWarp == 0,
+                      "PhysicalThreadsPerRow must be <= warp size or a "
+                      "multiple of warp size");
         constexpr int WarpsPerRow = PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
         int row_in_tile = tid / PhysicalThreadsPerRow;
         int warp_offset = row_in_tile * WarpsPerRow;
@@ -96,7 +106,7 @@ struct LayerNorm {
 
         // Reduce sum across physical threads (each thread already accumulated
         // NelemPerThread elements locally, so we reduce PhysicalThreadsPerRow threads).
-        sum = warpsReduce<ReduceTypeMean, UnitOp, PhysicalThreadsPerRow>(
+        sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
             sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
         float fmean = sum / static_cast<float>(InShape::W);
 
@@ -110,7 +120,7 @@ struct LayerNorm {
             }
         }
 
-        var_sum = warpsReduce<ReduceTypeMean, UnitOp, PhysicalThreadsPerRow>(
+        var_sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
             var_sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
         float inv_std = rsqrtf(var_sum / static_cast<float>(InShape::W) + 1e-5f);
 

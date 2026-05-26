@@ -207,6 +207,13 @@ class Model : public ModelGraph {
     // Sigmoid activation
     Tensor sigmoid(Tensor input, Tensor output = NullTensor,
                    const std::string &name = "");
+    // Layer normalization
+    Tensor layernorm(Tensor input, Tensor gamma, Tensor beta,
+                     Tensor output = NullTensor,
+                     const std::string &name = "");
+    // Softmax
+    Tensor softmax(Tensor input, Tensor output = NullTensor,
+                   const std::string &name = "");
     // Performs rotary position embedding (RoPE) on the `input` tensor
     Tensor rope(Tensor input, Tensor other, Tensor output = NullTensor,
                 const std::string &name = "");

@@ -42,6 +42,10 @@ struct Softmax {
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         static_assert(
             (UnitOp::NumThreads * NelemPerThread) % NonReduceDimLength == 0);
+        static_assert(UnitOp::NumThreads % NonReduceDimLength == 0,
+                      "NumThreads must be evenly divisible by "
+                      "NonReduceDimLength for correct physical "
+                      "thread-to-row assignment");
         constexpr int ThreadsPerRow =
             (UnitOp::NumThreads * NelemPerThread) / NonReduceDimLength;
 
@@ -68,6 +72,12 @@ struct Softmax {
         // Compute warp_offset for multi-row shared memory partitioning
         constexpr int PhysicalThreadsPerRow =
             UnitOp::NumThreads / NonReduceDimLength;
+        static_assert(PhysicalThreadsPerRow > 0,
+                      "Not enough threads for tile dimensions");
+        static_assert(PhysicalThreadsPerRow <= Arch::ThreadsPerWarp ||
+                          PhysicalThreadsPerRow % Arch::ThreadsPerWarp == 0,
+                      "PhysicalThreadsPerRow must be <= warp size or a "
+                      "multiple of warp size");
         constexpr int WarpsPerRow = PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
         int row_in_tile = tid / PhysicalThreadsPerRow;
         int warp_offset = row_in_tile * WarpsPerRow;
@@ -78,7 +88,7 @@ struct Softmax {
 
         // --- Pass 1: Read input ONCE, cache in registers, find max ---
         float cached[MaxElemsPerThread];
-        float max_val = -1e30f;
+        float max_val = type::Constant<float>::lowest();
         int num_elems = 0;
 #pragma unroll
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
@@ -93,29 +103,25 @@ struct Softmax {
             }
         }
 
-        // Reduce max across threads
-        // Use ReduceTypeMax with DataType for shared-memory compatibility
-        DataType max_dt = type::Cast::compute<DataType>(max_val);
-        max_dt = warpsReduce<ReduceTypeMax, UnitOp, PhysicalThreadsPerRow>(
-            max_dt, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
-        float fmax = type::Cast::compute<float>(max_dt);
+        // Reduce max across warps in float precision
+        max_val = warpsReduce<ReduceTypeMax, UnitOp, PhysicalThreadsPerRow>(
+            max_val, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
 
         // --- Pass 2: Compute exp(x - max) from registers, accumulate sum ---
         float sum = 0.0f;
 #pragma unroll
         for (int i = 0; i < MaxElemsPerThread; i++) {
             if (i < num_elems) {
-                float exp_val = expf(cached[i] - fmax);
+                float exp_val = expf(cached[i] - max_val);
                 cached[i] = exp_val;  // reuse cache for exp values
                 sum += exp_val;
             }
         }
 
-        // Reduce sum across threads
-        DataType sum_dt = type::Cast::compute<DataType>(sum);
-        sum_dt = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
-            sum_dt, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
-        float inv_sum = 1.0f / type::Cast::compute<float>(sum_dt);
+        // Reduce sum across warps in float precision
+        sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
+            sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
+        float inv_sum = 1.0f / sum;
 
         // --- Pass 3: Divide by sum and write output (single global write) ---
         int wi = 0;
