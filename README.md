@@ -4,13 +4,13 @@ A GPU-driven system framework for scalable AI applications.
 
 [![Latest Release](https://img.shields.io/github/release/microsoft/ark.svg)](https://github.com/microsoft/ark/releases/latest)
 [![License](https://img.shields.io/github/license/microsoft/ark.svg)](LICENSE)
-[![CodeQL](https://github.com/microsoft/ark/actions/workflows/codeql.yml/badge.svg)](https://github.com/microsoft/ark/actions/workflows/codeql.yml)
+[![Unit Tests](https://github.com/microsoft/ark/actions/workflows/ut.yml/badge.svg)](https://github.com/microsoft/ark/actions/workflows/ut.yml)
 [![codecov](https://codecov.io/gh/microsoft/ark/graph/badge.svg?token=XmMOK85GOB)](https://codecov.io/gh/microsoft/ark)
 
 | Pipelines         | Build Status      |
 |-------------------|-------------------|
 | Unit Tests (CUDA) | [![Build Status](https://dev.azure.com/binyli/HPC/_apis/build/status%2Fark-test?branchName=main)](https://dev.azure.com/binyli/HPC/_build/latest?definitionId=6&branchName=main) |
-| Unit Tests (ROCm) | [![Unit Tests (ROCm)](https://github.com/microsoft/ark/actions/workflows/ut-rocm.yml/badge.svg?branch=main)](https://github.com/microsoft/ark/actions/workflows/ut-rocm.yml) |
+| Unit Tests (ROCm) | [![Unit Tests (ROCm)](https://github.com/microsoft/ark/actions/workflows/ut.yml/badge.svg?branch=main)](https://github.com/microsoft/ark/actions/workflows/ut.yml) |
 
 *NOTE (Nov 2023): ROCm unit tests will be replaced into an Azure pipeline in the future.*
 

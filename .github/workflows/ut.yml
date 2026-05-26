@@ -8,6 +8,8 @@ on:
     branches:
       - main
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: '42 20 * * 4'
 
 jobs:
   UnitTest:
@@ -64,11 +66,13 @@ jobs:
           make -j ut ark_py
 
       - name: Run C++ UT
+        if: github.event_name != 'schedule'
         run: |
           cd build
           ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
 
       - name: C++ Coverage
+        if: github.event_name != 'schedule'
         run: |
           cd build
           lcov --capture --directory . --output-file cpp_coverage.info
@@ -85,10 +89,12 @@ jobs:
           lcov --list cpp_coverage.info
 
       - name: Install Python Dependencies
+        if: github.event_name != 'schedule'
         run: |
           python3 -m pip install -r requirements.txt
 
       - name: Run Python UT
+        if: github.event_name != 'schedule'
         run: |
           cd build
           PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
@@ -98,6 +104,7 @@ jobs:
               ../python/unittest/
 
       - name: Report Coverage
+        if: github.event_name != 'schedule'
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
@@ -106,10 +113,12 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
       - name: Install Python
+        if: github.event_name != 'schedule'
         run: |
           python3 -m pip install .
 
       - name: Run Tutorials
+        if: github.event_name != 'schedule'
         run: |
           python3 ./examples/tutorial/quickstart_tutorial.py
 

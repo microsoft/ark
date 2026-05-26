@@ -42,7 +42,8 @@ fi
 if $LINT_CPP; then
     echo "Linting C++ code..."
     # Find all git-tracked files with .c/.h/.cpp/.hpp/.cc/.cu/.cuh extensions
-    files=$(git -C "$PROJECT_ROOT" ls-files --cached | grep -E '\.(c|h|cpp|hpp|cc|cu|cuh)$' | sed "s|^|$PROJECT_ROOT/|")
+    # Exclude third_party/ to match project convention (not our code to format)
+    files=$(git -C "$PROJECT_ROOT" ls-files --cached | grep -E '\.(c|h|cpp|hpp|cc|cu|cuh)$' | grep -v -E '(third_party/)' | sed "s|^|$PROJECT_ROOT/|")
     if [ -n "$files" ]; then
         if $DRY_RUN; then
             clang-format -style=file --dry-run --Werror $files
@@ -58,12 +59,15 @@ fi
 if $LINT_PYTHON; then
     echo "Linting Python code..."
     # Find all git-tracked files with .py extension
-    files=$(git -C "$PROJECT_ROOT" ls-files --cached | grep -E '\.py$' | sed "s|^|$PROJECT_ROOT/|")
+    # Exclude paths matching pyproject.toml [tool.black] exclude patterns;
+    # black's exclude regex only applies during directory traversal, not to
+    # explicitly-listed files, so we must filter them out here.
+    files=$(git -C "$PROJECT_ROOT" ls-files --cached | grep -E '\.py$' | grep -v -E '(third_party/|\.eggs/|docs/|examples/llama/llama/)' | sed "s|^|$PROJECT_ROOT/|")
     if [ -n "$files" ]; then
         if $DRY_RUN; then
-            python3 -m black --check --diff $files
+            python3 -m black --check --diff --config "$PROJECT_ROOT/pyproject.toml" $files
         else
-            python3 -m black $files
+            python3 -m black --config "$PROJECT_ROOT/pyproject.toml" $files
         fi
         if [ $? -ne 0 ]; then
             EXIT_CODE=1
