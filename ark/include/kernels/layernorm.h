@@ -26,7 +26,7 @@ struct LayerNormShapeChecker {
 // gamma and beta are 1-D tensors of size W (the normalization dimension).
 //
 // Optimized: single global memory read (register cache), float accumulation,
-// vectorized loads/stores for reduced instruction count.
+// multi-element-per-thread unrolling for reduced loop overhead.
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           typename DataType, int NelemPerThread, bool HasGammaBeta>
@@ -79,6 +79,8 @@ struct LayerNorm {
                       "PhysicalThreadsPerRow must be <= warp size or a "
                       "multiple of warp size");
         constexpr int WarpsPerRow = PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+        static_assert(WarpsPerRow * NonReduceDimLength <= Arch::ThreadsPerWarp,
+                      "Too many warps for ReduceSharedStorage capacity");
         int row_in_tile = tid / PhysicalThreadsPerRow;
         int warp_offset = row_in_tile * WarpsPerRow;
 
@@ -145,7 +147,9 @@ struct LayerNorm {
     }
 };
 
-// Free function for layernorm without gamma/beta (backward compatible).
+// Free function for layernorm without gamma/beta. Currently unused by the op
+// layer (which always uses layernorm_affine), but retained for kernel-level API
+// completeness and potential future use (e.g., non-affine LayerNorm op).
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           int NelemPerThread = 1, typename DataType>

@@ -4,9 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "ark/model.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 // Baseline: row-wise softmax.
 // For each row (last dim = W):
@@ -114,6 +112,30 @@ ark::unittest::State test_softmax_small_row() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_softmax_w1() {
+    // W=1 boundary: softmax output must be exactly 1.0
+    ark::Model m;
+    ark::Tensor input = m.tensor({4, 1}, ark::FP32);
+    ark::Tensor out = m.softmax(input);
+
+    auto result = ark::op_test("softmax_w1", m, {input}, {out},
+                               baseline_softmax<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_softmax_invalid() {
+    // Output shape mismatch
+    {
+        ark::Model m;
+        ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
+        ark::Tensor bad_out = m.tensor({4, 512}, ark::FP32);  // wrong W
+        UNITTEST_THROW(m.softmax(input, bad_out), ark::ModelError);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_softmax_fp32);
@@ -121,5 +143,7 @@ int main() {
     UNITTEST(test_softmax_bf16);
     UNITTEST(test_softmax_batch);
     UNITTEST(test_softmax_small_row);
+    UNITTEST(test_softmax_w1);
+    UNITTEST(test_softmax_invalid);
     return ark::unittest::SUCCESS;
 }

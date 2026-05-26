@@ -3,9 +3,7 @@
 
 #include <cmath>
 
-#include "ark/model.hpp"
 #include "ops_test_common.hpp"
-#include "unittest/unittest_utils.h"
 
 // Baseline: LayerNorm with affine (gamma, beta).
 // For each row (last dim = W), compute:
@@ -85,7 +83,7 @@ ark::unittest::State test_layernorm_fp16() {
     auto result = ark::op_test("layernorm_fp16", m, {input, gamma, beta},
                                {out}, baseline_layernorm<ark::half_t>);
     UNITTEST_LOG(result);
-    UNITTEST_TRUE(result.max_diff[0] < 5e-2f);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
     return ark::unittest::SUCCESS;
 }
 
@@ -118,6 +116,36 @@ ark::unittest::State test_layernorm_batch() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_layernorm_small_row() {
+    // Small last dim — tests edge case where W < warp size
+    ark::Model m;
+    ark::Tensor input = m.tensor({8, 16}, ark::FP32);
+    ark::Tensor gamma = m.tensor({16}, ark::FP32);
+    ark::Tensor beta = m.tensor({16}, ark::FP32);
+    ark::Tensor out = m.layernorm(input, gamma, beta);
+
+    auto result = ark::op_test("layernorm_small_row", m, {input, gamma, beta},
+                               {out}, baseline_layernorm<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_layernorm_w1() {
+    // W=1 boundary: variance=0, epsilon dominates
+    ark::Model m;
+    ark::Tensor input = m.tensor({4, 1}, ark::FP32);
+    ark::Tensor gamma = m.tensor({1}, ark::FP32);
+    ark::Tensor beta = m.tensor({1}, ark::FP32);
+    ark::Tensor out = m.layernorm(input, gamma, beta);
+
+    auto result = ark::op_test("layernorm_w1", m, {input, gamma, beta},
+                               {out}, baseline_layernorm<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_layernorm_invalid() {
     // gamma/beta shape mismatch
     {
@@ -136,6 +164,8 @@ int main() {
     UNITTEST(test_layernorm_fp16);
     UNITTEST(test_layernorm_bf16);
     UNITTEST(test_layernorm_batch);
+    UNITTEST(test_layernorm_small_row);
+    UNITTEST(test_layernorm_w1);
     UNITTEST(test_layernorm_invalid);
     return ark::unittest::SUCCESS;
 }

@@ -79,6 +79,8 @@ struct Softmax {
                       "PhysicalThreadsPerRow must be <= warp size or a "
                       "multiple of warp size");
         constexpr int WarpsPerRow = PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+        static_assert(WarpsPerRow * NonReduceDimLength <= Arch::ThreadsPerWarp,
+                      "Too many warps for ReduceSharedStorage capacity");
         int row_in_tile = tid / PhysicalThreadsPerRow;
         int warp_offset = row_in_tile * WarpsPerRow;
 
@@ -121,6 +123,8 @@ struct Softmax {
         // Reduce sum across warps in float precision
         sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
             sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
+        // Note: if all inputs are -inf, sum==0 and output is NaN
+        // (matches PyTorch behavior).
         float inv_sum = 1.0f / sum;
 
         // --- Pass 3: Divide by sum and write output (single global write) ---
