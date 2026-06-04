@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -o pipefail
 
 PROJECT_ROOT=$(dirname "$(realpath "$0")")/..
 LINT_CPP=false
@@ -46,12 +47,13 @@ if $LINT_CPP; then
     files=$(git -C "$PROJECT_ROOT" ls-files --cached | grep -E '\.(c|h|cpp|hpp|cc|cu|cuh)$' | grep -v -E '(third_party/)' | sed "s|^|$PROJECT_ROOT/|")
     if [ -n "$files" ]; then
         if $DRY_RUN; then
-            clang-format -style=file --dry-run --Werror $files
+            if ! echo "$files" | xargs -d '\n' clang-format -style=file --dry-run --Werror; then
+                EXIT_CODE=1
+            fi
         else
-            clang-format -style=file -i $files
-        fi
-        if [ $? -ne 0 ]; then
-            EXIT_CODE=1
+            if ! echo "$files" | xargs -d '\n' clang-format -style=file -i; then
+                EXIT_CODE=1
+            fi
         fi
     fi
 fi
@@ -65,12 +67,13 @@ if $LINT_PYTHON; then
     files=$(git -C "$PROJECT_ROOT" ls-files --cached | grep -E '\.py$' | grep -v -E '(third_party/|\.eggs/|docs/|examples/llama/llama/)' | sed "s|^|$PROJECT_ROOT/|")
     if [ -n "$files" ]; then
         if $DRY_RUN; then
-            python3 -m black --check --diff --config "$PROJECT_ROOT/pyproject.toml" $files
+            if ! echo "$files" | xargs -d '\n' python3 -m black --check --diff --config "$PROJECT_ROOT/pyproject.toml"; then
+                EXIT_CODE=1
+            fi
         else
-            python3 -m black --config "$PROJECT_ROOT/pyproject.toml" $files
-        fi
-        if [ $? -ne 0 ]; then
-            EXIT_CODE=1
+            if ! echo "$files" | xargs -d '\n' python3 -m black --config "$PROJECT_ROOT/pyproject.toml"; then
+                EXIT_CODE=1
+            fi
         fi
     fi
 fi

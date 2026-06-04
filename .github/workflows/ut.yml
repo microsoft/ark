@@ -13,6 +13,7 @@ on:
 
 jobs:
   UnitTest:
+    if: github.event_name != 'schedule'
     defaults:
       run:
         shell: bash
@@ -20,7 +21,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -48,11 +48,6 @@ jobs:
       - name: Dubious ownership exception
         run: |
           git config --global --add safe.directory /__w/ark/ark
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: cpp
 
       - name: Build
         run: |
@@ -122,7 +117,42 @@ jobs:
         run: |
           python3 ./examples/tutorial/quickstart_tutorial.py
 
+  CodeQL:
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/microsoft/ark/ark:base-dev-cuda12.2
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    concurrency:
+      group: ${{ github.workflow }}-codeql-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dubious ownership exception
+        run: |
+          git config --global --add safe.directory /__w/ark/ark
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - name: Build
+        run: |
+          mkdir build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DARK_BYPASS_GPU_CHECK=ON -DARK_USE_CUDA=ON -DARK_BUILD_TESTS=OFF ..
+          make build ark_py
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:cpp-${{ matrix.platform }}"
+          category: "/language:cpp"
