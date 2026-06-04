@@ -7,7 +7,7 @@ on:
 
 jobs:
   linters:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -28,7 +28,7 @@ jobs:
       run: bash tools/lint.sh dry
 
   spelling:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
