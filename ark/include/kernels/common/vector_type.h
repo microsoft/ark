@@ -71,8 +71,8 @@ struct Constant {
 template <typename IntrinsicType, typename InputVtype>
 struct IntrinsicCompute1Exists {
     template <typename U>
-    static auto test(const InputVtype &)
-        -> decltype(&U::compute, std::true_type{});
+    static auto test(const InputVtype &) -> decltype(&U::compute,
+                                                     std::true_type{});
 
     template <typename>
     static auto test(...) -> std::false_type;
@@ -84,8 +84,9 @@ struct IntrinsicCompute1Exists {
 template <typename IntrinsicType, typename InputVtype>
 struct IntrinsicCompute2Exists {
     template <typename U>
-    static auto test(const InputVtype &, const InputVtype &)
-        -> decltype(&U::compute, std::true_type{});
+    static auto test(const InputVtype &,
+                     const InputVtype &) -> decltype(&U::compute,
+                                                     std::true_type{});
 
     template <typename>
     static auto test(...) -> std::false_type;
