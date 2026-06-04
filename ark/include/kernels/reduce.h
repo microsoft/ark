@@ -357,13 +357,11 @@ struct WwiseReduce {
             ReduceShapeChecker<InShape, OutShape, UnitOutDims, Axis>;
         constexpr int InConsecBytes = sizeof(DataType) * InShape::W;
         constexpr int NelemPerThread =
-            (InConsecBytes % 16 == 0)
-                ? 16 / sizeof(DataType)
-                : (InConsecBytes % 8 == 0)
-                    ? 8 / sizeof(DataType)
-                    : (InConsecBytes % 4 == 0)
-                        ? 4 / sizeof(DataType)
-                        : (InConsecBytes % 2 == 0) ? 2 / sizeof(DataType) : 1;
+            (InConsecBytes % 16 == 0)  ? 16 / sizeof(DataType)
+            : (InConsecBytes % 8 == 0) ? 8 / sizeof(DataType)
+            : (InConsecBytes % 4 == 0) ? 4 / sizeof(DataType)
+            : (InConsecBytes % 2 == 0) ? 2 / sizeof(DataType)
+                                       : 1;
 
         constexpr int NonReduceDimLength =
             UnitOutDims::N * UnitOutDims::C * UnitOutDims::H;
@@ -411,20 +409,30 @@ struct WwiseReduce {
         if constexpr (NelemPerThread > 8) {
 #pragma unroll
             for (int i = 8; i < NelemPerThread; i += 8) {
-                ReduceType::template reduce<8>(&reduced[0], &reduced[0], &reduced[i]);
+                ReduceType::template reduce<8>(&reduced[0], &reduced[0],
+                                               &reduced[i]);
             }
-            ReduceType::template reduce<4>(&reduced[0], &reduced[0], &reduced[4]);
-            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<4>(&reduced[0], &reduced[0],
+                                           &reduced[4]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0],
+                                           &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         } else if constexpr (NelemPerThread == 8) {
-            ReduceType::template reduce<4>(&reduced[0], &reduced[0], &reduced[4]);
-            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<4>(&reduced[0], &reduced[0],
+                                           &reduced[4]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0],
+                                           &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         } else if constexpr (NelemPerThread == 4) {
-            ReduceType::template reduce<2>(&reduced[0], &reduced[0], &reduced[2]);
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<2>(&reduced[0], &reduced[0],
+                                           &reduced[2]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         } else if constexpr (NelemPerThread == 2) {
-            ReduceType::template reduce<1>(&reduced[0], &reduced[0], &reduced[1]);
+            ReduceType::template reduce<1>(&reduced[0], &reduced[0],
+                                           &reduced[1]);
         }
 
         if constexpr (InShape::W % ThreadsPerRow != 0) {

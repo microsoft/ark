@@ -71,8 +71,8 @@ std::string ModelOpSend::impl_name(const Json &config) const {
          output->data_type()->type_str()});
 }
 
-std::vector<ModelOpArg> ModelOpSend::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpSend::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[0])};
 }
 
@@ -107,13 +107,13 @@ std::string ModelOpSendDone::impl_name(const Json &config) const {
                                           std::to_string(remote_rank)});
 }
 
-std::vector<ModelOpArg> ModelOpSendDone::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpSendDone::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {};
 }
 
-Json ModelOpSendDone::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpSendDone::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     return {{"ChannelType", "Proxy"},
             {"NumTasks", 1},
             {"NumWarps", 1},
@@ -138,8 +138,8 @@ ModelOpRecv::ModelOpRecv(ModelTensorRef output, int remote_rank, int tag)
 }
 
 std::string ModelOpRecv::impl_name(const Json &config) const {
-    check_fields_config(config,
-                        {"ChannelType", "NumTasks", "NumWarps", "SramBytes", "Wait"});
+    check_fields_config(
+        config, {"ChannelType", "NumTasks", "NumWarps", "SramBytes", "Wait"});
     std::string channel_type = config["ChannelType"];
     bool wait = config["Wait"];
     if (channel_type != "Proxy" && channel_type != "SecondaryProxy" &&
@@ -155,8 +155,8 @@ std::string ModelOpRecv::impl_name(const Json &config) const {
          std::to_string(max_spin_cnt), std::to_string(wait)});
 }
 
-std::vector<ModelOpArg> ModelOpRecv::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpRecv::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {};
 }
 
@@ -231,13 +231,13 @@ std::string ModelOpSendPacket::impl_name(const Json &config) const {
                          packet_type, std::to_string(flag)});
 }
 
-std::vector<ModelOpArg> ModelOpSendPacket::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpSendPacket::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[0])};
 }
 
-Json ModelOpSendPacket::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpSendPacket::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     if (arch->belongs_to(ARCH_ROCM)) {
         config["PacketType"] = "mscclpp::LL8Packet";
@@ -324,13 +324,13 @@ std::string ModelOpRecvPacket::impl_name(const Json &config) const {
                         packet_type, std::to_string(flag)});
 }
 
-std::vector<ModelOpArg> ModelOpRecvPacket::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpRecvPacket::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {ModelOffset(write_tensors_[0]), ModelOffset(read_tensors_[1])};
 }
 
-Json ModelOpRecvPacket::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpRecvPacket::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     if (arch->belongs_to(ARCH_ROCM)) {
         config["PacketType"] = "mscclpp::LL8Packet";
@@ -418,8 +418,8 @@ std::string ModelOpRecvReduceSendPacket::impl_name(const Json &config) const {
          input->data_type()->type_str(), std::to_string(flag)});
 }
 
-std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args(
+    [[maybe_unused]] const Json &config) const {
     std::vector<ModelOpArg> args = {write_tensors_[0], read_tensors_[0],
                                     read_tensors_[1]};
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
@@ -431,8 +431,8 @@ std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args([
     return args;
 }
 
-Json ModelOpRecvReduceSendPacket::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpRecvReduceSendPacket::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     if (arch->belongs_to(ARCH_ROCM)) {
         config["PacketType"] = "mscclpp::LL8Packet";
@@ -452,12 +452,10 @@ Json ModelOpRecvReduceSendPacket::default_config([
     return config;
 }
 
-ModelOpRecvReduceSend::ModelOpRecvReduceSend(ModelTensorRef input,
-                                             ModelTensorRef output, int rank,
-                                             const std::vector<int> &remote_ranks,
-                                             int recv_tag, int output_tag,
-                                             std::vector<ModelTensorRef> &peer_output_refs,
-                                             ModelTensorRef scratch)
+ModelOpRecvReduceSend::ModelOpRecvReduceSend(
+    ModelTensorRef input, ModelTensorRef output, int rank,
+    const std::vector<int> &remote_ranks, int recv_tag, int output_tag,
+    std::vector<ModelTensorRef> &peer_output_refs, ModelTensorRef scratch)
     : ModelOp("RecvReduceSend") {
     check_null(input);
     uint32_t n_remote_ranks = remote_ranks.size();
@@ -519,8 +517,8 @@ std::string ModelOpRecvReduceSend::impl_name(const Json &config) const {
          input->data_type()->type_str(), input->data_type()->type_str()});
 }
 
-std::vector<ModelOpArg> ModelOpRecvReduceSend::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpRecvReduceSend::impl_args(
+    [[maybe_unused]] const Json &config) const {
     std::vector<ModelOpArg> args = {write_tensors_[0], read_tensors_[0],
                                     read_tensors_[1]};
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
@@ -532,8 +530,8 @@ std::vector<ModelOpArg> ModelOpRecvReduceSend::impl_args([
     return args;
 }
 
-Json ModelOpRecvReduceSend::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpRecvReduceSend::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
@@ -576,12 +574,13 @@ std::string ModelOpDeviceSync::impl_name(const Json &config) const {
                         std::to_string(peer_num), std::to_string(rank)});
 }
 
-std::vector<ModelOpArg> ModelOpDeviceSync::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpDeviceSync::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {};
 }
 
-Json ModelOpDeviceSync::default_config([[maybe_unused]] const ArchRef arch) const {
+Json ModelOpDeviceSync::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     return {{"ChannelType", "Proxy"},
             {"NumTasks", 1},
             {"NumWarps", 1},

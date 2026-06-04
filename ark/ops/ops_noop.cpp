@@ -16,8 +16,8 @@ std::string ModelOpNoop::impl_name([[maybe_unused]] const Json &config) const {
     return function_name_string("noop");
 }
 
-std::vector<ModelOpArg> ModelOpNoop::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpNoop::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {};
 }
 

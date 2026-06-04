@@ -68,7 +68,10 @@ DEVICE void gemm_cuda_scale(DataTypeC *C, DataTypeA *A, DataTypeB *B,
     cutlass::gemm::GemmCoord tiled_shape(swizzle.get_tiled_shape());
 
     // Decode scale from bits
-    union { uint32_t u; float f; } conv;
+    union {
+        uint32_t u;
+        float f;
+    } conv;
     conv.u = ScaleBits;
 
     // Create OutputOp params with alpha=scale, beta=0

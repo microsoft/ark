@@ -120,7 +120,8 @@ DEVICE void sync_warps() {
             if (atomicInc(&state->cnt[group_id], MaxOldCnt) == MaxOldCnt) {
                 state->flag[group_id] = tmp;
             } else {
-                while (atomicAdd(&state->flag[group_id], 0) != tmp);
+                while (atomicAdd(&state->flag[group_id], 0) != tmp)
+                    ;
             }
             state->is_inc_flag[group_id] = tmp;
         }

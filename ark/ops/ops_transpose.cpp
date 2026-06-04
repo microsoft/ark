@@ -112,13 +112,13 @@ std::string ModelOpTranspose::impl_name(const Json &config) const {
         });
 }
 
-std::vector<ModelOpArg> ModelOpTranspose::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpTranspose::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-Json ModelOpTranspose::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpTranspose::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

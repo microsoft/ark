@@ -50,8 +50,8 @@ class ModelOp {
         return "";
     }
 
-    virtual std::vector<ModelOpArg> impl_args([
-        [maybe_unused]] const Json &config) const {
+    virtual std::vector<ModelOpArg> impl_args(
+        [[maybe_unused]] const Json &config) const {
         return {};
     }
 

@@ -17,7 +17,8 @@ using ModelDataType = std::shared_ptr<ModelDataT>;
 enum class TensorLocation {
     GLOBAL,    // GPU global memory (HBM) — default, current behavior
     SHARED,    // Shared memory (SMEM) — scoped to one thread block
-    REGISTER,  // Register file — scoped to one warp group (no buffer allocation)
+    REGISTER,  // Register file — scoped to one warp group (no buffer
+               // allocation)
                // TODO: Register-level fusion is not yet implemented.
                // Planner and buffer allocator do not yet skip global
                // allocation for REGISTER tensors. See ModelOpMma/ModelOpStore.

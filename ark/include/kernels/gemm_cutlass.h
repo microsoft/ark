@@ -20,10 +20,9 @@
 #include "cutlass/epilogue/thread/linear_combination.h"
 // clang-format on
 
-#include "cutlass/epilogue/thread/linear_combination_gelu.h"
-
 #include "common/checker.h"
 #include "common/unit_op.h"
+#include "cutlass/epilogue/thread/linear_combination_gelu.h"
 
 namespace ark {
 
@@ -323,8 +322,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
           typename UnitOp>
 DEVICE void gemm_cuda_add(DataTypeC *D, DataTypeA *A, DataTypeB *B,
-                          DataTypeC *Residual, int uop_idx,
-                          int smem_per_warp) {
+                          DataTypeC *Residual, int uop_idx, int smem_per_warp) {
 #if (ARK_TARGET_CUDA_ARCH == 60)
     using ArchTag = cutlass::arch::Sm60;
 #elif (ARK_TARGET_CUDA_ARCH == 70)
@@ -349,8 +347,7 @@ DEVICE void gemm_cuda_add(DataTypeC *D, DataTypeA *A, DataTypeB *B,
     using GemmType = typename ark::GemmConfiguration<
         UnitOp, cutlass::arch::OpClassTensorOp, ArchTag, DataTypeA, LayoutA,
         DataTypeB, LayoutB, DataTypeC, LayoutC,
-        cutlass::gemm::GemmShape<TileSizeM, TileSizeN,
-                                 TileSizeK>>::Gemm;
+        cutlass::gemm::GemmShape<TileSizeM, TileSizeN, TileSizeK>>::Gemm;
     using GemmKernel = typename GemmType::GemmKernel;
 
     IsEq<GemmKernel::kThreadCount, UnitOp::NumThreads>();

@@ -39,14 +39,14 @@ std::string ModelOpScalarAssign::impl_name(const Json &config) const {
                           std::to_string(num_warps), std::to_string(0)});
 }
 
-std::vector<ModelOpArg> ModelOpScalarAssign::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpScalarAssign::impl_args(
+    [[maybe_unused]] const Json &config) const {
     float val = args_.at("Value").value<float>();
     return {result_tensors_[0], val};
 }
 
-Json ModelOpScalarAssign::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpScalarAssign::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;
@@ -84,8 +84,8 @@ ModelOpScalarAdd::ModelOpScalarAdd(ModelTensorRef input, float factor,
     verify();
 }
 
-std::vector<ModelOpArg> ModelOpScalarAdd::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpScalarAdd::impl_args(
+    [[maybe_unused]] const Json &config) const {
     float factor = args_.at("Factor").value<float>();
     return {result_tensors_[0], read_tensors_[0], factor};
 }
@@ -106,8 +106,8 @@ ModelOpScalarMul::ModelOpScalarMul(ModelTensorRef input, float factor,
     verify();
 }
 
-std::vector<ModelOpArg> ModelOpScalarMul::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpScalarMul::impl_args(
+    [[maybe_unused]] const Json &config) const {
     float factor = args_.at("Factor").value<float>();
     return {result_tensors_[0], read_tensors_[0], factor};
 }

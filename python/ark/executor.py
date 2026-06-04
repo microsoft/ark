@@ -3,7 +3,6 @@
 
 from .core import CoreExecutor
 
-
 __all__ = ["Executor"]
 
 

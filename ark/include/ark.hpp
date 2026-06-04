@@ -14,9 +14,9 @@
 #include <ark/error.hpp>
 #include <ark/executor.hpp>
 #include <ark/init.hpp>
+#include <ark/model.hpp>
 #include <ark/model_graph.hpp>
 #include <ark/model_ref.hpp>
-#include <ark/model.hpp>
 #include <ark/planner.hpp>
 #include <ark/random.hpp>
 #include <ark/tensor.hpp>

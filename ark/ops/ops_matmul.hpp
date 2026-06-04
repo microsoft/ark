@@ -86,7 +86,8 @@ class ModelOpStore : public ModelOpCopy {
    public:
     ModelOpStore() = default;
     ModelOpStore(ModelTensorRef input, ModelTensorRef output);
-    // Override to use "copy" kernel (not "store" which clashes with load_store.h)
+    // Override to use "copy" kernel (not "store" which clashes with
+    // load_store.h)
     std::string impl_name(const Json &config) const override;
 };
 

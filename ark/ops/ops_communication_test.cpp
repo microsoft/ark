@@ -346,7 +346,8 @@ ark::unittest::State test_communication_send_recv_reduce_packet() {
         ark::unittest::spawn_process([gpu_id]() {
             ark::Model model(gpu_id, 2);
             ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
-            std::vector<ark::Tensor> shard_tensors = model.sharding(tns_data, 0, 512);
+            std::vector<ark::Tensor> shard_tensors =
+                model.sharding(tns_data, 0, 512);
 
             int peer_gpu_id = (gpu_id + 1) % 2;
             model.send_packet(shard_tensors[peer_gpu_id], peer_gpu_id, 0, 1);
@@ -389,8 +390,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
             config["NumTasks"] = 4;
             config["NumWarps"] = 4;
             config["SramBytes"] = 0;
-        }
-        else if (op.at("Type") == "DeviceSync") {
+        } else if (op.at("Type") == "DeviceSync") {
             config["ChannelType"] = "Sm";
             config["NumTasks"] = 1;
             config["NumWarps"] = 1;

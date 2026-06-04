@@ -103,7 +103,6 @@ class ModelOpRecvReduceSend : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
-
 class ModelOpDeviceSync : public ModelOp {
    public:
     ModelOpDeviceSync() = default;

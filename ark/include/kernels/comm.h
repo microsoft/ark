@@ -414,8 +414,7 @@ DEVICE void read_reduce_and_write(
                                  DataType, NelemPerThread, Rank, NPeers,
                                  nelems_per_rank>>::run(dst, src, scratch,
                                                         peer_offsets, uop_idx);
-    }
-    else {
+    } else {
         PacketType *scratch = reinterpret_cast<PacketType *>(scratch_base);
         comm::PacketReduce<
             OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes, PacketType,

@@ -9,7 +9,6 @@ from .data_type import DataType, fp32
 from .model import Model
 from . import log
 
-
 __all__ = [
     "tensor",
     "parameter",
@@ -492,6 +491,7 @@ def recv(
     return Tensor(
         Model.get_model().recv(output._tensor, remote_rank, tag, name)
     )
+
 
 ################################################################################
 

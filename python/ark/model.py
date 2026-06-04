@@ -5,7 +5,6 @@ from typing import NewType
 from . import log
 from .core import CoreModel
 
-
 __all__ = ["Model"]
 
 ModelState = NewType("ModelState", None)

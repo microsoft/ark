@@ -27,8 +27,6 @@ Json ModelContextManager::get(const std::string& key) const {
     return context_stack_->get(key);
 }
 
-Json ModelContextManager::dump() const {
-    return context_stack_->dump();
-}
+Json ModelContextManager::dump() const { return context_stack_->dump(); }
 
 }  // namespace ark
