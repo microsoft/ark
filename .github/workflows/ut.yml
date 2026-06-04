@@ -26,7 +26,7 @@ jobs:
       matrix:
         include:
           - platform: cuda
-            runner: [self-hosted, a100]
+            runner: [self-hosted, CUDA]
             container: nvcr.io/nvidia/pytorch:26.03-py3
             container_options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
           - platform: rocm
