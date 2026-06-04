@@ -334,7 +334,7 @@ std::string ModelOpMatmulGelu::impl_name(const Json &config) const {
     if (name.substr(0, 7) == "matmul<") {
         name = "matmul_gelu<" + name.substr(7);
     } else {
-        ERR(InvalidStateError, "unexpected matmul impl_name format: ", name);
+        ERR(InternalError, "unexpected matmul impl_name format: ", name);
     }
     return name;
 }
@@ -372,7 +372,7 @@ std::string ModelOpMatmulScale::impl_name(const Json &config) const {
         // Remove trailing ">" and add scale bits
         name = name.substr(0, name.size() - 1) + ", " + std::to_string(conv.u) + ">";
     } else {
-        ERR(InvalidStateError, "unexpected matmul impl_name format: ", name);
+        ERR(InternalError, "unexpected matmul impl_name format: ", name);
     }
     return name;
 }
