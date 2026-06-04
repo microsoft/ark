@@ -323,8 +323,8 @@ void CommResource::connect(const PlanJson &plan_json,
         add_proxy_channel(resource->eth);
         add_proxy_channel(resource->ib);
     }
-    std::map<
-        int, std::vector<std::shared_ptr<mscclpp::MemoryDevice2DeviceSemaphore>>>
+    std::map<int, std::vector<
+                      std::shared_ptr<mscclpp::MemoryDevice2DeviceSemaphore>>>
         sm_semaphores;
     for (auto &[remote_rank, resource] : rank_to_resource_) {
         // NOTE: We can create multiple semaphores here if we need in the future
@@ -895,8 +895,7 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
         gpu_manager->set_current();
         timer_begin_ = gpu_manager->create_event();
         timer_end_ = gpu_manager->create_event();
-        flag_ = gpu_manager->malloc_host(
-            sizeof(int), gpuHostAllocMapped);
+        flag_ = gpu_manager->malloc_host(sizeof(int), gpuHostAllocMapped);
         stream_ = gpu_manager->create_stream();
     }
     PlanResourceKey key(plan, device_id, name);
