@@ -194,7 +194,7 @@ ark::unittest::State test_communication_send_recv_bidir_sm() {
             config["ChannelType"] = "Sm";
             config["Signal"] = true;
             config["Tile"] = {1, 256};
-            config["NumTasks"] = 4;
+            config["NumTasks"] = 2;
             config["NumWarps"] = 4;
             config["SramBytes"] = 0;
         } else if (op.at("Type") == "SendDone") {
@@ -387,7 +387,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
             config["ChannelType"] = "Sm";
             config["Signal"] = false;
             config["Tile"] = {1, 256};
-            config["NumTasks"] = 4;
+            config["NumTasks"] = 2;
             config["NumWarps"] = 4;
             config["SramBytes"] = 0;
         } else if (op.at("Type") == "DeviceSync") {
