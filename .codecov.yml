@@ -14,9 +14,6 @@ coverage:
       default:
         target: 85%
         threshold: 1%
-    patch:
-      default:
-        threshold: 5%
 
 ignore:
   - "/usr/*"

@@ -572,8 +572,137 @@ ark::unittest::State test_matmul_invalid() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_matmul_host_ops() {
+    // Host-only: exercise default_config, impl_name, and impl_args for
+    // matmul variants without a GPU.
+    {
+        // Matmul + select_tile_config (128x256 is tile-aligned)
+        ark::Model m;
+        ark::Tensor a = m.tensor({128, 64}, ark::FP16);
+        ark::Tensor b = m.tensor({64, 256}, ark::FP16);
+        ark::Tensor c = m.matmul(a, b);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // MatmulGelu
+        ark::Model m;
+        ark::Tensor a = m.tensor({128, 64}, ark::FP16);
+        ark::Tensor b = m.tensor({64, 128}, ark::FP16);
+        ark::Tensor c = m.matmul_gelu(a, b);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_TRUE(name.find("matmul_gelu") != std::string::npos);
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // MatmulScale
+        ark::Model m;
+        ark::Tensor a = m.tensor({128, 64}, ark::FP16);
+        ark::Tensor b = m.tensor({64, 128}, ark::FP16);
+        ark::Tensor c = m.matmul_scale(a, b, 0.125f);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_TRUE(name.find("matmul_scale") != std::string::npos);
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // MatmulAdd
+        ark::Model m;
+        ark::Tensor a = m.tensor({128, 64}, ark::FP16);
+        ark::Tensor b = m.tensor({64, 128}, ark::FP16);
+        ark::Tensor res = m.tensor({128, 128}, ark::FP16);
+        ark::Tensor c = m.matmul_add(a, b, res);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // Mma + Store
+        ark::Model m;
+        ark::Tensor a = m.tensor({128, 64}, ark::FP16);
+        ark::Tensor b = m.tensor({64, 128}, ark::FP16);
+        ark::Tensor c = m.mma(a, b);
+        ark::Tensor d = m.store(ark::NullTensor, c);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // select_tile_config with small shapes (different tile candidates)
+        ark::Model m;
+        ark::Tensor a = m.tensor({64, 64}, ark::FP16);
+        ark::Tensor b = m.tensor({64, 64}, ark::FP16);
+        m.matmul(a, b);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+        }
+    }
+    {
+        // select_tile_config with larger shape to trigger bigger tile
+        ark::Model m;
+        ark::Tensor a = m.tensor({256, 128}, ark::FP16);
+        ark::Tensor b = m.tensor({128, 256}, ark::FP16);
+        m.matmul(a, b);
+
+        auto nodes = m.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+        }
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
+    UNITTEST(test_matmul_host_ops);
     UNITTEST(test_matmul_model);
     UNITTEST(test_matmul_fp16);
     UNITTEST(test_matmul_fp32);
