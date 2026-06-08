@@ -122,6 +122,10 @@ class Runtime:
             raise log.InvalidUsageError(f"ARK runtime is not launched")
         tensor_mappings = self._normalize_tensor_mappings(tensor_mappings)
         exe = Executor.get()
+        if tensor_mappings and not self.loop_mode:
+            exe.stop()
+            exe.launch(tensor_mappings, self.stream, False, self.record)
+            tensor_mappings = {}
         self.state = Runtime.StateCode.Running
         exe.run(iter, tensor_mappings)
         if not non_blocking:
