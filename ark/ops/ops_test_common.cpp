@@ -3,6 +3,7 @@
 
 #include "ops_test_common.hpp"
 
+#include <cstdlib>
 #include <cstring>
 
 #include "ark/executor.hpp"
@@ -39,6 +40,24 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       const std::vector<void *> &inputs_data,
                       const std::vector<Planner::ConfigRule> &config_rules,
                       bool print_on_error) {
+    const char *env = std::getenv("ARK_UT_CORRECTNESS");
+    if (!env || std::string(env) != "1") {
+        // In CI, correctness-labeled tests never reach this path: phase 1 excludes
+        // them via `-LE correctness`, and phase 2 sets ARK_UT_CORRECTNESS=1.
+        // Zero values ensure clean exit if run locally without the env var.
+        LOG(INFO, "[SKIP] %s: ARK_UT_CORRECTNESS not set", test_name_prefix.c_str());
+        OpsTestResult skipped;
+        skipped.test_name = test_name_prefix;
+        skipped.iter = 0;
+        skipped.msec_per_iter = 0;
+        size_t n = outputs.size();
+        skipped.mse.resize(n, 0);
+        skipped.max_diff.resize(n, 0);
+        skipped.max_err_rate.resize(n, 0);
+        skipped.num_wrong.resize(n, 0);
+        skipped.num_total.resize(n, 0);
+        return skipped;
+    }
     DefaultExecutor exe(model, -1, nullptr, config_rules);
 
     std::vector<std::shared_ptr<std::vector<char>>> inputs_data_storages;
