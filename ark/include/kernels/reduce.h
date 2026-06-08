@@ -50,21 +50,28 @@ DEVICE bf16 warpReduce(bf16 val) {
 }
 
 // Reduce single-precision `val` within multiple warps.
+// @param warp_offset Offset into shared storage to avoid aliasing when
+//        multiple independent row groups share the same shared memory.
 template <typename ReduceType, typename UnitOp, int LanesNum, typename DataType>
-DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp) {
+DEVICE DataType warpsReduce(DataType val, int tid, int smem_per_warp,
+                            int warp_offset = 0) {
     val = warpReduce<ReduceType, LanesNum>(val);
     if constexpr (LanesNum > Arch::ThreadsPerWarp) {
+        // Barrier before shared memory write to prevent a back-to-back
+        // warpsReduce call from overwriting storage before all warps
+        // finish reading the previous result.
+        UnitOp::sync_threads();
         ReduceSharedStorage<DataType> *shared =
             UnitOp::template shared_memory<ReduceSharedStorage<DataType>>(
                 smem_per_warp);
         int laneId = tid & (Arch::ThreadsPerWarp - 1);
         int warpId = tid >> math::log2_up<Arch::ThreadsPerWarp>::value;
         if (laneId == 0) {
-            shared->storage[warpId] = val;
+            shared->storage[warpId + warp_offset] = val;
         }
         UnitOp::sync_threads();
         if (laneId < (LanesNum >> math::log2_up<Arch::ThreadsPerWarp>::value)) {
-            val = shared->storage[laneId];
+            val = shared->storage[laneId + warp_offset];
         } else {
             ReduceType::template identity<1>(&val);
         }
@@ -439,12 +446,35 @@ struct WwiseReduce {
             UnitOp::sync_threads();
         }
 
-        // final reduction on shared memory using warp shuffle.
-        reduced[0] = warpsReduce<ReduceType, UnitOp, UnitOp::NumThreads>(
-            reduced[0], tid, smem_per_warp);
+        // final reduction using warp shuffle.
+        // PhysicalThreadsPerRow = actual number of HW threads per row.
+        constexpr int PhysicalThreadsPerRow =
+            UnitOp::NumThreads / NonReduceDimLength;
+        static_assert(PhysicalThreadsPerRow > 0,
+                      "Not enough threads for the tile dimensions. "
+                      "Increase NumWarps or decrease Tile H dimension.");
+        static_assert(PhysicalThreadsPerRow <= Arch::ThreadsPerWarp ||
+                          PhysicalThreadsPerRow % Arch::ThreadsPerWarp == 0,
+                      "PhysicalThreadsPerRow must be <= warp size or a "
+                      "multiple of warp size");
+        if constexpr (PhysicalThreadsPerRow <= Arch::ThreadsPerWarp) {
+            // All threads for one row are within a single warp.
+            reduced[0] =
+                warpReduce<ReduceType, PhysicalThreadsPerRow>(reduced[0]);
+        } else {
+            // Threads for one row span multiple warps — need shared memory.
+            // Each row needs its own section of shared storage to avoid
+            // aliasing when multiple rows reduce in parallel.
+            constexpr int WarpsPerRow =
+                PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+            int row_in_tile = tid / PhysicalThreadsPerRow;
+            reduced[0] = warpsReduce<ReduceType, UnitOp, PhysicalThreadsPerRow>(
+                reduced[0], tid % PhysicalThreadsPerRow, smem_per_warp,
+                row_in_tile * WarpsPerRow);
+        }
 
-        // write the result to output.
-        if (tid % ThreadsPerRow == 0) {
+        // write the result to output — first thread of each row group.
+        if (tid % PhysicalThreadsPerRow == 0) {
             ReduceType::template postReduce<1>(&out[idx_out], &reduced[0],
                                                InShape::W);
         }

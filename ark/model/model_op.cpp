@@ -13,6 +13,7 @@
 #include "ops/ops_communication.hpp"
 #include "ops/ops_copy.hpp"
 #include "ops/ops_embedding.hpp"
+#include "ops/ops_layernorm.hpp"
 #include "ops/ops_math.hpp"
 #include "ops/ops_matmul.hpp"
 #include "ops/ops_noop.hpp"
@@ -22,6 +23,7 @@
 #include "ops/ops_reshape.hpp"
 #include "ops/ops_rope.hpp"
 #include "ops/ops_scalar.hpp"
+#include "ops/ops_softmax.hpp"
 #include "ops/ops_tensor.hpp"
 #include "ops/ops_transpose.hpp"
 #include "utils/utils_string.hpp"
@@ -59,6 +61,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Embedding);
         MODEL_OP_TYPE_REGISTER(Exp);
         MODEL_OP_TYPE_REGISTER(Gelu);
+        MODEL_OP_TYPE_REGISTER(LayerNorm);
         MODEL_OP_TYPE_REGISTER(Matmul);
         MODEL_OP_TYPE_REGISTER(MatmulGelu);
         MODEL_OP_TYPE_REGISTER(MatmulScale);
@@ -81,6 +84,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(Send);
         MODEL_OP_TYPE_REGISTER(SendDone);
         MODEL_OP_TYPE_REGISTER(Sigmoid);
+        MODEL_OP_TYPE_REGISTER(Softmax);
         MODEL_OP_TYPE_REGISTER(Sqrt);
         MODEL_OP_TYPE_REGISTER(Sub);
         MODEL_OP_TYPE_REGISTER(Tensor);

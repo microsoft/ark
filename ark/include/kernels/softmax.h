@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-#ifndef ARK_KERNELS_LAYERNORM_H_
-#define ARK_KERNELS_LAYERNORM_H_
+#ifndef ARK_KERNELS_SOFTMAX_H_
+#define ARK_KERNELS_SOFTMAX_H_
 
 #include "reduce.h"
 
 namespace ark {
 
-// Static checkers if InShape can be reduced into OutShape.
+// Static checkers for Softmax shapes.
 template <typename InShape, typename OutShape>
-struct LayerNormShapeChecker {
+struct SoftmaxShapeChecker {
     static_assert(InShape::N == OutShape::N,
                   "Dimension N of input and output do not match");
     static_assert(InShape::C == OutShape::C,
@@ -21,23 +21,23 @@ struct LayerNormShapeChecker {
                   "Dimension W of input and output do not match");
 };
 
-// Perform layer normalization on input and write the result on output.
-// When HasGammaBeta is true, applies affine transform: gamma * normalized + beta.
-// gamma and beta are 1-D tensors of size W (the normalization dimension).
-//
+// Monolithic softmax along the last dimension (W).
 // Optimized: single global memory read (register cache), float accumulation,
-// multi-element-per-thread unrolling for reduced loop overhead.
+// fused passes for reduced memory traffic.
+// Pass 1: read input → cache in registers, find max
+// Pass 2: from registers, compute exp(x - max) and sum (store in registers)
+// Pass 3: divide by sum, write output (single global write)
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
-          typename DataType, int NelemPerThread, bool HasGammaBeta>
-struct LayerNorm {
+          typename DataType, int NelemPerThread>
+struct Softmax {
     using UnitOp = UnitOp<OutDims, OutShape, UnitOutDims, NumWarps, SmemBytes>;
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
+
     static DEVICE void run(DataType *out, const DataType *in,
-                           const DataType *gamma, const DataType *beta,
                            int uop_idx, int smem_per_warp) {
-        using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
+        using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
 
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         static_assert(
@@ -88,10 +88,9 @@ struct LayerNorm {
             (InShape::W + ThreadsPerRow - 1) / ThreadsPerRow;
         constexpr int MaxElemsPerThread = OuterIters * NelemPerThread;
 
-        // --- Pass 1: Read input ONCE from global memory, cache in registers,
-        //             accumulate sum for mean (float accumulation) ---
+        // --- Pass 1: Read input ONCE, cache in registers, find max ---
         float cached[MaxElemsPerThread];
-        float sum = 0.0f;
+        float max_val = type::Constant<float>::lowest();
         int num_elems = 0;
 #pragma unroll
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
@@ -100,46 +99,43 @@ struct LayerNorm {
                 if (idx_w + j < InShape::W) {
                     float val = type::Cast::compute<float>(in[idx_in_base + idx_w + j]);
                     cached[num_elems] = val;
-                    sum += val;
+                    if (val > max_val) max_val = val;
                     num_elems++;
                 }
             }
         }
 
-        // Reduce sum across physical threads (each thread already accumulated
-        // NelemPerThread elements locally, so we reduce PhysicalThreadsPerRow threads).
-        sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
-            sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
-        float fmean = sum / static_cast<float>(InShape::W);
+        // Reduce max across warps in float precision
+        max_val = warpsReduce<ReduceTypeMax, UnitOp, PhysicalThreadsPerRow>(
+            max_val, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
 
-        // --- Pass 2: Compute variance from cached registers (no global read) ---
-        float var_sum = 0.0f;
+        // --- Pass 2: Compute exp(x - max) from registers, accumulate sum ---
+        float sum = 0.0f;
 #pragma unroll
         for (int i = 0; i < MaxElemsPerThread; i++) {
             if (i < num_elems) {
-                float diff = cached[i] - fmean;
-                var_sum += diff * diff;
+                float exp_val = expf(cached[i] - max_val);
+                cached[i] = exp_val;  // reuse cache for exp values
+                sum += exp_val;
             }
         }
 
-        var_sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
-            var_sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
-        float inv_std = rsqrtf(var_sum / static_cast<float>(InShape::W) + 1e-5f);
+        // Reduce sum across warps in float precision
+        sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
+            sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
+        // Note: if all inputs are -inf, sum==0 and output is NaN
+        // (matches PyTorch behavior).
+        float inv_sum = 1.0f / sum;
 
-        // --- Pass 3: Normalize and write output (from registers) ---
+        // --- Pass 3: Divide by sum and write output (single global write) ---
         int wi = 0;
 #pragma unroll
         for (int idx_w = tid_w; idx_w < InShape::W; idx_w += ThreadsPerRow) {
 #pragma unroll
             for (int j = 0; j < NelemPerThread; j++) {
                 if (idx_w + j < InShape::W) {
-                    float normalized = (cached[wi] - fmean) * inv_std;
-                    if constexpr (HasGammaBeta) {
-                        normalized = normalized *
-                            type::Cast::compute<float>(gamma[idx_w + j]) +
-                            type::Cast::compute<float>(beta[idx_w + j]);
-                    }
-                    out[idx_out_base + idx_w + j] = type::Cast::compute<DataType>(normalized);
+                    out[idx_out_base + idx_w + j] =
+                        type::Cast::compute<DataType>(cached[wi] * inv_sum);
                     wi++;
                 }
             }
@@ -147,31 +143,17 @@ struct LayerNorm {
     }
 };
 
-// Free function for layernorm without gamma/beta. Currently unused by the op
-// layer (which always uses layernorm_affine), but retained for kernel-level API
-// completeness and potential future use (e.g., non-affine LayerNorm op).
+// Free function wrapper for softmax.
 template <typename InDims, typename InShape, typename OutDims,
           typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
           int NelemPerThread = 1, typename DataType>
-DEVICE void layernorm(DataType *out, const DataType *in, int uop_idx,
-                      int smem_per_warp) {
-    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-              SmemBytes, DataType, NelemPerThread, false>::run(
-                  out, in, nullptr, nullptr, uop_idx, smem_per_warp);
-}
-
-// Free function for layernorm with gamma/beta affine transform.
-template <typename InDims, typename InShape, typename OutDims,
-          typename OutShape, typename UnitOutDims, int NumWarps, int SmemBytes,
-          int NelemPerThread = 1, typename DataType>
-DEVICE void layernorm_affine(DataType *out, const DataType *in,
-                             const DataType *gamma, const DataType *beta,
-                             int uop_idx, int smem_per_warp) {
-    LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-              SmemBytes, DataType, NelemPerThread, true>::run(
-                  out, in, gamma, beta, uop_idx, smem_per_warp);
+DEVICE void softmax(DataType *out, const DataType *in, int uop_idx,
+                    int smem_per_warp) {
+    Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
+            SmemBytes, DataType, NelemPerThread>::run(
+                out, in, uop_idx, smem_per_warp);
 }
 
 }  // namespace ark
 
-#endif  // ARK_KERNELS_LAYERNORM_H_
+#endif  // ARK_KERNELS_SOFTMAX_H_
