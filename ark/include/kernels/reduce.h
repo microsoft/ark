@@ -49,7 +49,9 @@ DEVICE bf16 warpReduce(bf16 val) {
     return type::Cast::compute<bf16>(tmp);
 }
 
-// Reduce single-precision `val` within multiple warps.
+// Reduce `val` across multiple warps using shared memory.
+// All threads in the block must call this function when LanesNum > warp size
+// (internal barriers require uniform participation to avoid deadlock).
 // @param warp_offset Offset into shared storage to avoid aliasing when
 //        multiple independent row groups share the same shared memory.
 template <typename ReduceType, typename UnitOp, int LanesNum, typename DataType>
@@ -467,6 +469,9 @@ struct WwiseReduce {
             // aliasing when multiple rows reduce in parallel.
             constexpr int WarpsPerRow =
                 PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+            static_assert(
+                WarpsPerRow * NonReduceDimLength <= Arch::ThreadsPerWarp,
+                "Too many warps * rows for ReduceSharedStorage capacity");
             int row_in_tile = tid / PhysicalThreadsPerRow;
             reduced[0] = warpsReduce<ReduceType, UnitOp, PhysicalThreadsPerRow>(
                 reduced[0], tid % PhysicalThreadsPerRow, smem_per_warp,

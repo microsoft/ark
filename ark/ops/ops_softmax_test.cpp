@@ -112,6 +112,19 @@ ark::unittest::State test_softmax_small_row() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_softmax_non_pow2() {
+    // Non-power-of-2 W — exercises boundary guards (idx_w + j < W)
+    ark::Model m;
+    ark::Tensor input = m.tensor({4, 127}, ark::FP32);
+    ark::Tensor out = m.softmax(input);
+
+    auto result = ark::op_test("softmax_non_pow2", m, {input}, {out},
+                               baseline_softmax<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_softmax_w1() {
     // W=1 boundary: softmax output must be exactly 1.0
     ark::Model m;
@@ -143,6 +156,7 @@ int main() {
     UNITTEST(test_softmax_bf16);
     UNITTEST(test_softmax_batch);
     UNITTEST(test_softmax_small_row);
+    UNITTEST(test_softmax_non_pow2);
     UNITTEST(test_softmax_w1);
     UNITTEST(test_softmax_invalid);
     return ark::unittest::SUCCESS;

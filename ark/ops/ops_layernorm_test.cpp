@@ -131,6 +131,21 @@ ark::unittest::State test_layernorm_small_row() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_layernorm_non_pow2() {
+    // Non-power-of-2 W — exercises boundary guards (idx_w + j < W)
+    ark::Model m;
+    ark::Tensor input = m.tensor({4, 127}, ark::FP32);
+    ark::Tensor gamma = m.tensor({127}, ark::FP32);
+    ark::Tensor beta = m.tensor({127}, ark::FP32);
+    ark::Tensor out = m.layernorm(input, gamma, beta);
+
+    auto result = ark::op_test("layernorm_non_pow2", m, {input, gamma, beta},
+                               {out}, baseline_layernorm<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_layernorm_w1() {
     // W=1 boundary: variance=0, epsilon dominates
     ark::Model m;
@@ -165,6 +180,7 @@ int main() {
     UNITTEST(test_layernorm_bf16);
     UNITTEST(test_layernorm_batch);
     UNITTEST(test_layernorm_small_row);
+    UNITTEST(test_layernorm_non_pow2);
     UNITTEST(test_layernorm_w1);
     UNITTEST(test_layernorm_invalid);
     return ark::unittest::SUCCESS;
