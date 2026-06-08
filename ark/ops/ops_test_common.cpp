@@ -42,10 +42,9 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       bool print_on_error) {
     const char *env = std::getenv("ARK_UT_CORRECTNESS");
     if (!env || std::string(env) != "1") {
-        // In CI, correctness-labeled tests never reach this path: phase 1 excludes
-        // them via `-LE correctness`, and phase 2 sets ARK_UT_CORRECTNESS=1.
-        // Zero values ensure clean exit if run locally without the env var.
-        LOG(INFO, "[SKIP] %s: ARK_UT_CORRECTNESS not set", test_name_prefix.c_str());
+        // Zero values let callers pass without GPU work.
+        LOG(INFO, "[SKIP] %s: ARK_UT_CORRECTNESS not set",
+            test_name_prefix.c_str());
         OpsTestResult skipped;
         skipped.test_name = test_name_prefix;
         skipped.iter = 0;

@@ -64,7 +64,7 @@ jobs:
         if: github.event_name != 'schedule'
         run: |
           cd build
-          ARK_ROOT=$PWD ctest -LE correctness --stop-on-failure --verbose --schedule-random
+          ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
 
       - name: Run C++ UT (correctness)
         if: github.event_name != 'schedule'
