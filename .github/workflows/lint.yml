@@ -7,7 +7,7 @@ on:
 
 jobs:
   linters:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -16,22 +16,19 @@ jobs:
     - name: Install ClangFormat
       run: sudo apt-get install -y clang-format
 
-    - name: Run git-clang-format
-      run: git clang-format --style=file --diff
-
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: '3.12'
 
     - name: Install Python dependencies
-      run: python3.8 -m pip install black
+      run: pip install black
 
-    - name: Run black
-      run: python3.8 -m black --check --config pyproject.toml .
+    - name: Run lint
+      run: bash tools/lint.sh dry
 
   spelling:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository

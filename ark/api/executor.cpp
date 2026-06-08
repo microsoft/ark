@@ -6,6 +6,7 @@
 #include <cmath>
 #include <list>
 #include <memory>
+#include <mscclpp/atomic_device.hpp>
 #include <mscclpp/core.hpp>
 #include <mscclpp/memory_channel.hpp>
 #include <mscclpp/port_channel.hpp>
@@ -29,22 +30,12 @@
 #include "model/model_tensor.hpp"
 #include "utils/utils_net.hpp"
 
-#if defined(ARK_CUDA)
-#include <mscclpp/atomic_device.hpp>
 static int atomicLoadRelaxed(int *ptr) {
     return mscclpp::atomicLoad(ptr, mscclpp::memoryOrderRelaxed);
 }
 static void atomicStoreRelaxed(int *ptr, int val) {
     mscclpp::atomicStore(ptr, val, mscclpp::memoryOrderRelaxed);
 }
-#elif defined(ARK_ROCM)
-static int atomicLoadRelaxed(int *ptr) {
-    return __atomic_load_n(ptr, __ATOMIC_RELAXED);
-}
-static void atomicStoreRelaxed(int *ptr, int val) {
-    __atomic_store_n(ptr, val, __ATOMIC_RELAXED);
-}
-#endif  // defined(ARK_ROCM)
 
 namespace ark {
 
@@ -321,8 +312,8 @@ void CommResource::connect(const PlanJson &plan_json,
         add_proxy_channel(resource->eth);
         add_proxy_channel(resource->ib);
     }
-    std::map<
-        int, std::vector<std::shared_ptr<mscclpp::MemoryDevice2DeviceSemaphore>>>
+    std::map<int, std::vector<
+                      std::shared_ptr<mscclpp::MemoryDevice2DeviceSemaphore>>>
         sm_semaphores;
     for (auto &[remote_rank, resource] : rank_to_resource_) {
         // NOTE: We can create multiple semaphores here if we need in the future
@@ -893,8 +884,7 @@ void Executor::Impl::compile(const std::string &plan, int device_id,
         gpu_manager->set_current();
         timer_begin_ = gpu_manager->create_event();
         timer_end_ = gpu_manager->create_event();
-        flag_ = gpu_manager->malloc_host(
-            sizeof(int), gpuHostAllocMapped);
+        flag_ = gpu_manager->malloc_host(sizeof(int), gpuHostAllocMapped);
         stream_ = gpu_manager->create_stream();
     }
     PlanResourceKey key(plan, device_id, name);

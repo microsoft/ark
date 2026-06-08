@@ -7,7 +7,8 @@
 // global→global data path for fused elementwise ops.
 //
 // Data flow:
-//   global(A,B) → shared → MMA → accum(registers) → Functor → Epilogue → global(C)
+//   global(A,B) → shared → MMA → accum(registers) → Functor → Epilogue →
+//   global(C)
 //
 // vs current matmul + separate elementwise:
 //   global(A,B) → shared → MMA → Epilogue → global(C)
@@ -91,8 +92,7 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
           typename UnitOp, typename Functor>
 DEVICE void gemm_with_functor(DataTypeC *C, DataTypeA *A, DataTypeB *B,
-                              Functor functor,
-                              int uop_idx, int smem_per_warp) {
+                              Functor functor, int uop_idx, int smem_per_warp) {
 #if (ARK_TARGET_CUDA_ARCH == 60)
     using ArchTag = cutlass::arch::Sm60;
 #elif (ARK_TARGET_CUDA_ARCH == 70)
@@ -145,8 +145,8 @@ DEVICE void gemm_with_functor(DataTypeC *C, DataTypeA *A, DataTypeB *B,
     ark::GemmThreadblockSwizzle<UnitOp> swizzle;
     cutlass::gemm::GemmCoord tiled_shape(swizzle.get_tiled_shape());
 
-    typename GemmKernel::Params params(problem_size, tiled_shape,
-                                       ref_a, ref_b, ref_c, ref_c);
+    typename GemmKernel::Params params(problem_size, tiled_shape, ref_a, ref_b,
+                                       ref_c, ref_c);
     params.swizzle_log_tile = uop_idx;
 
     typename GemmKernel::SharedStorage *ps =
@@ -174,13 +174,13 @@ DEVICE void gemm_with_functor(DataTypeC *C, DataTypeA *A, DataTypeB *B,
         (ProblemSizeK + Mma::Shape::kK - 1) / Mma::Shape::kK;
     int thread_idx = threadIdx.x % GemmKernel::kThreadCount;
 
-    typename Mma::IteratorA iterator_A(
-        params.params_A, params.ref_A.data(),
-        {ProblemSizeM, ProblemSizeK}, thread_idx, tb_offset_A);
+    typename Mma::IteratorA iterator_A(params.params_A, params.ref_A.data(),
+                                       {ProblemSizeM, ProblemSizeK}, thread_idx,
+                                       tb_offset_A);
 
-    typename Mma::IteratorB iterator_B(
-        params.params_B, params.ref_B.data(),
-        {ProblemSizeK, ProblemSizeN}, thread_idx, tb_offset_B);
+    typename Mma::IteratorB iterator_B(params.params_B, params.ref_B.data(),
+                                       {ProblemSizeK, ProblemSizeN}, thread_idx,
+                                       tb_offset_B);
 
     int warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0) %
                    GemmKernel::WarpCount::kCount;
@@ -230,8 +230,8 @@ template <typename DataTypeA, int LeadingDimA, bool IsColumnA,
           int ProblemSizeN, int ProblemSizeK, int TileSizeM, int TileSizeN,
           typename UnitOp, typename Functor>
 DEVICE void gemm_cutlass_fused(DataTypeC *C, DataTypeA *A, DataTypeB *B,
-                               Functor functor,
-                               int uop_idx, int smem_per_warp) {
+                               Functor functor, int uop_idx,
+                               int smem_per_warp) {
     using CutDataTypeA = typename cutlass::platform::conditional<
         std::is_same<DataTypeA, fp16>::value, cutlass::half_t,
         typename cutlass::platform::conditional<
@@ -259,8 +259,8 @@ DEVICE void gemm_cutlass_fused(DataTypeC *C, DataTypeA *A, DataTypeB *B,
     gemm_with_functor<CutDataTypeA, LeadingDimA, IsColumnA, CutDataTypeB,
                       LeadingDimB, IsColumnB, CutDataTypeC, LeadingDimC,
                       ProblemSizeM, ProblemSizeN, ProblemSizeK, TileSizeM,
-                      TileSizeN, UnitOp, Functor>(pC, pA, pB, functor,
-                                                   uop_idx, smem_per_warp);
+                      TileSizeN, UnitOp, Functor>(pC, pA, pB, functor, uop_idx,
+                                                  smem_per_warp);
 #else
     static_assert(false, "Unsupported CUDA arch.");
 #endif

@@ -211,8 +211,8 @@ std::string Planner::Impl::plan(bool pretty) const {
             Dims tile(trim_leading_ones);
 
             std::stringstream ss;
-            ss << "Result shape is not divided by tile "
-               << tile << ". Op: " << op->serialize().dump();
+            ss << "Result shape is not divided by tile " << tile
+               << ". Op: " << op->serialize().dump();
             auto not_divided_error = ss.str();
 
             auto &result_shape = result_tensors[0]->padded_shape();
@@ -224,11 +224,10 @@ std::string Planner::Impl::plan(bool pretty) const {
             max_num_tasks = 1;
             for (int i = 0; i < tile4.ndims(); i++) {
                 if (tile4[i] == 0) {
-                    ERR(PlanError, "Tile dimension is zero. Op: ",
-                        op->serialize().dump());
+                    ERR(PlanError,
+                        "Tile dimension is zero. Op: ", op->serialize().dump());
                 }
-                max_num_tasks *=
-                    (result_shape4[i] + tile4[i] - 1) / tile4[i];
+                max_num_tasks *= (result_shape4[i] + tile4[i] - 1) / tile4[i];
             }
             if (max_num_tasks == 0) ERR(InternalError, "max_num_tasks == 0");
         }
@@ -328,10 +327,13 @@ std::string Planner::Impl::plan(bool pretty) const {
                 max_processor_id = std::max(max_processor_id, num_processors);
             } else if (processor_group_root == -1) {
                 processor_group_root = ctx_processor_range_list.front()[0];
-                processor_group["ProcessorRange"] = ctx_processor_range_list.front()[1];
-                resource_group["ProcessorRange"] = ctx_processor_range_list.back()[1];
+                processor_group["ProcessorRange"] =
+                    ctx_processor_range_list.front()[1];
+                resource_group["ProcessorRange"] =
+                    ctx_processor_range_list.back()[1];
                 max_processor_id = std::max(
-                    max_processor_id, ctx_processor_range_list.front()[1][1].get<size_t>());
+                    max_processor_id,
+                    ctx_processor_range_list.front()[1][1].get<size_t>());
             } else {
                 new_processor_group = false;
                 resource_group["ProcessorRange"] =

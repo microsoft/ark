@@ -17,7 +17,8 @@ class Context::Impl {
 
     Json get(const std::string& key) const;
 
-    void set(const std::string& key, const Json& value_json, ContextType type = ContextType::Overwrite);
+    void set(const std::string& key, const Json& value_json,
+             ContextType type = ContextType::Overwrite);
 
     bool has(const std::string& key) const;
 

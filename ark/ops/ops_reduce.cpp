@@ -106,8 +106,8 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
         });
 }
 
-std::vector<ModelOpArg> ModelOpReduce::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpReduce::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0]};
 }
 

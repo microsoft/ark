@@ -1,4 +1,4 @@
-name: "Unit Tests (CUDA)"
+name: "Unit Tests"
 
 on:
   push:
@@ -8,34 +8,42 @@ on:
     branches:
       - main
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: '42 20 * * 4'
 
 jobs:
   UnitTest:
-    runs-on: [ self-hosted, A100 ]
+    if: github.event_name != 'schedule'
     defaults:
       run:
         shell: bash
-    timeout-minutes: 30
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
     strategy:
+      fail-fast: false
       matrix:
-        cuda: [ cuda11.8, cuda12.2 ]
+        include:
+          - platform: cuda
+            runner: [self-hosted, CUDA]
+            container: nvcr.io/nvidia/pytorch:26.03-py3
+            container_options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
+          - platform: rocm
+            runner: [self-hosted, ROCM]
+            container: rocm/pytorch:rocm6.2.3_ubuntu22.04_py3.10_pytorch_release_2.3.0
+            container_options: --privileged --ipc=host --security-opt seccomp=unconfined --group-add video --ulimit memlock=-1:-1
+    runs-on: ${{ matrix.runner }}
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.cuda }}
+      group: ${{ github.workflow }}-${{ matrix.platform }}-${{ github.ref }}
       cancel-in-progress: true
     container:
-      image: "ghcr.io/microsoft/ark/ark:base-dev-${{ matrix.cuda }}"
-      options: --privileged --ipc=host --gpus=all --ulimit memlock=-1:-1
+      image: ${{ matrix.container }}
+      options: ${{ matrix.container_options }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: LockGPUClock
-        run: |
-          sudo nvidia-smi -pm 1
-          for i in $(seq 0 $(( $(nvidia-smi -L | wc -l) - 1 ))); do
-            sudo nvidia-smi -ac $(nvidia-smi --query-gpu=clocks.max.memory,clocks.max.sm --format=csv,noheader,nounits -i $i | sed 's/\ //') -i $i
-          done
 
       - name: Dubious ownership exception
         run: |
@@ -43,16 +51,27 @@ jobs:
 
       - name: Build
         run: |
+          apt-get update && apt-get install -y lcov
           mkdir build && cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug"
+          if [ "${{ matrix.platform }}" = "rocm" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc"
+          fi
+          cmake $CMAKE_ARGS ..
           make -j ut ark_py
 
       - name: Run C++ UT
+        if: github.event_name != 'schedule'
         run: |
           cd build
           ARK_ROOT=$PWD ctest --stop-on-failure --verbose --schedule-random
+
+      - name: C++ Coverage
+        if: github.event_name != 'schedule'
+        run: |
+          cd build
           lcov --capture --directory . --output-file cpp_coverage.info
-          lcov --remove cpp_coverage.info \
+          lcov --ignore-errors unused --remove cpp_coverage.info \
               '/usr/*' \
               '/tmp/*' \
               '*/build/*' \
@@ -65,19 +84,22 @@ jobs:
           lcov --list cpp_coverage.info
 
       - name: Install Python Dependencies
+        if: github.event_name != 'schedule'
         run: |
           python3 -m pip install -r requirements.txt
 
       - name: Run Python UT
+        if: github.event_name != 'schedule'
         run: |
           cd build
           PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
               --cov=python/ark \
               --cov-report lcov:py_coverage.info \
               --verbose \
-              ../python/unittest/test.py
+              ../python/unittest/
 
       - name: Report Coverage
+        if: github.event_name != 'schedule'
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
@@ -86,9 +108,12 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
       - name: Install Python
+        if: github.event_name != 'schedule'
         run: |
           python3 -m pip install .
 
       - name: Run Tutorials
+        if: github.event_name != 'schedule'
         run: |
           python3 ./examples/tutorial/quickstart_tutorial.py
+

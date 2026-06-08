@@ -65,13 +65,27 @@ if(ARK_USE_CUDA)
     endif()
 
     # Set CUDA architectures
-    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 13)
+        # CUDA 13+ dropped sm_60 and sm_70
+        set(CMAKE_CUDA_ARCHITECTURES 80 90)
+    elseif(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70 80 90)
+    elseif(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 11)
         set(CMAKE_CUDA_ARCHITECTURES 60 70 80)
     endif()
 
-    # Hopper architecture
-    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 12)
-        set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} 90)
+    # CUDA 13+ moved CCCL headers into a cccl/ subdirectory.
+    # Add it to the include path so third-party code (e.g. MSCCL++)
+    # that includes <cuda/atomic> can still find the headers.
+    if(CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 13)
+        list(GET CUDAToolkit_INCLUDE_DIRS 0 _CUDA_INCLUDE_FIRST)
+        set(CCCL_INCLUDE_DIR "${_CUDA_INCLUDE_FIRST}/cccl")
+        if(EXISTS "${CCCL_INCLUDE_DIR}")
+            include_directories(SYSTEM "${CCCL_INCLUDE_DIR}")
+            message(STATUS "CUDA 13+: added CCCL include dir ${CCCL_INCLUDE_DIR}")
+        else()
+            message(WARNING "CUDA 13+: CCCL include dir not found at ${CCCL_INCLUDE_DIR}. Build may fail.")
+        endif()
     endif()
 else()  # ARK_USE_ROCM
     set(CMAKE_HIP_STANDARD 17)

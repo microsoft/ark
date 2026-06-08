@@ -9,7 +9,7 @@
 
 namespace py = pybind11;
 
-void register_tensor(py::module &m) {
+void register_tensor(py::module& m) {
     py::class_<ark::Tensor>(m, "CoreTensor")
         .def("id", &ark::Tensor::id)
         .def("shape", &ark::Tensor::shape)

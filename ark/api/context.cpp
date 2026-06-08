@@ -29,8 +29,6 @@ void Context::set(const std::string& key, const std::string& value,
     this->impl_->set(key, value_json, type);
 }
 
-std::string Context::dump() const {
-    return this->impl_->dump().dump();
-}
+std::string Context::dump() const { return this->impl_->dump().dump(); }
 
 }  // namespace ark

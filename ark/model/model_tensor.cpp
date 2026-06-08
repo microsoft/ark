@@ -94,13 +94,9 @@ size_t ModelTensor::shape_bytes() const {
     return shape_.nelems() * data_type_->bytes();
 }
 
-void *ModelTensor::data() const {
-    return buffer_->data();
-}
+void *ModelTensor::data() const { return buffer_->data(); }
 
-void *ModelTensor::data(void *data) {
-    return buffer_->data(data);
-}
+void *ModelTensor::data(void *data) { return buffer_->data(data); }
 
 bool ModelTensor::is_external() const { return buffer_->is_external(); }
 
@@ -143,8 +139,8 @@ std::shared_ptr<ModelTensor> ModelTensor::deserialize(const Json &serialized) {
         serialized["PaddedShape"].get<std::vector<DimType>>());
     ret->id_ = serialized["Id"];
     if (serialized.contains("Location")) {
-        ret->location_ = static_cast<TensorLocation>(
-            serialized["Location"].get<int>());
+        ret->location_ =
+            static_cast<TensorLocation>(serialized["Location"].get<int>());
     }
     return ret;
 }

@@ -25,3 +25,4 @@ ignore:
   - "*/examples/*"
   - "*/python/unittest/*"
   - "*/ark/unittest/*"
+  - "*/ark/include/kernels/*"

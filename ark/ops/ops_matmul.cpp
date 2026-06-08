@@ -2,12 +2,12 @@
 // Licensed under the MIT license.
 
 #include "ops_matmul.hpp"
-#include "ops_copy.hpp"
-#include "../model/model_tensor.hpp"
 
 #include <utility>
 
+#include "../model/model_tensor.hpp"
 #include "ops_common.hpp"
+#include "ops_copy.hpp"
 #include "utils/utils_math.hpp"
 
 namespace ark {
@@ -231,17 +231,18 @@ static const Json select_tile_config(const ArchRef arch,
                                      const Dims &mnk) {
     DimType M = mnk[0], N = mnk[1];
     // Candidate tiles: {TileM, TileN, NumWarps}
-    // Ordered from smallest to largest. For each, M%TileM==0 and N%TileN==0 required.
-    struct TileConfig { DimType tm; DimType tn; int nw; };
+    // Ordered from smallest to largest. For each, M%TileM==0 and N%TileN==0
+    // required.
+    struct TileConfig {
+        DimType tm;
+        DimType tn;
+        int nw;
+    };
     // Only tiles validated to compile with CUTLASS 2.x epilogue.
     // [32,*] tiles fail due to epilogue OutputTileOptimalThreadMap zero-size.
     static const TileConfig candidates[] = {
-        {64, 64, 4},
-        {64, 128, 4},
-        {128, 64, 4},
-        {128, 128, 8},
-        {128, 256, 8},
-        {256, 128, 8},
+        {64, 64, 4},   {64, 128, 4},  {128, 64, 4},
+        {128, 128, 8}, {128, 256, 8}, {256, 128, 8},
     };
     // Find the best tile: prefer larger tiles (more compute per tile, better
     // pipeline amortization) but fall back to smaller tiles when there aren't
@@ -249,7 +250,8 @@ static const Json select_tile_config(const ArchRef arch,
     int best = -1;
     size_t best_tasks = 0;
     size_t best_tile_area = 0;
-    for (int i = 0; i < (int)(sizeof(candidates) / sizeof(candidates[0])); i++) {
+    for (int i = 0; i < (int)(sizeof(candidates) / sizeof(candidates[0]));
+         i++) {
         auto &c = candidates[i];
         if (M % c.tm == 0 && N % c.tn == 0) {
             size_t tasks = (M / c.tm) * (N / c.tn);
@@ -257,7 +259,11 @@ static const Json select_tile_config(const ArchRef arch,
             bool pick = (best == -1);
             if (!pick && best_tasks < 4 && tasks > best_tasks) pick = true;
             if (!pick && tasks >= 4 && tile_area > best_tile_area) pick = true;
-            if (pick) { best = i; best_tasks = tasks; best_tile_area = tile_area; }
+            if (pick) {
+                best = i;
+                best_tasks = tasks;
+                best_tile_area = tile_area;
+            }
         }
     }
     if (best == -1) {
@@ -334,7 +340,7 @@ std::string ModelOpMatmulGelu::impl_name(const Json &config) const {
     if (name.substr(0, 7) == "matmul<") {
         name = "matmul_gelu<" + name.substr(7);
     } else {
-        ERR(InvalidStateError, "unexpected matmul impl_name format: ", name);
+        ERR(InternalError, "unexpected matmul impl_name format: ", name);
     }
     return name;
 }
@@ -350,7 +356,8 @@ Tensor Model::matmul_gelu(Tensor input, Tensor other, Tensor output,
 
 // ---- MatmulScale: matmul with register-level scale fusion ----
 
-ModelOpMatmulScale::ModelOpMatmulScale(ModelTensorRef input, ModelTensorRef other,
+ModelOpMatmulScale::ModelOpMatmulScale(ModelTensorRef input,
+                                       ModelTensorRef other,
                                        ModelTensorRef output, bool trans_input,
                                        bool trans_other, float scale)
     : ModelOpMatmul(input, other, output, trans_input, trans_other) {
@@ -366,13 +373,17 @@ std::string ModelOpMatmulScale::impl_name(const Json &config) const {
     if (name.substr(0, 7) == "matmul<") {
         // Insert scale parameter: matmul_scale<..., ScaleBits>
         // Encode scale as integer bits for template parameter
-        union { float f; uint32_t u; } conv;
+        union {
+            float f;
+            uint32_t u;
+        } conv;
         conv.f = scale;
         name = "matmul_scale<" + name.substr(7);
         // Remove trailing ">" and add scale bits
-        name = name.substr(0, name.size() - 1) + ", " + std::to_string(conv.u) + ">";
+        name = name.substr(0, name.size() - 1) + ", " + std::to_string(conv.u) +
+               ">";
     } else {
-        ERR(InvalidStateError, "unexpected matmul impl_name format: ", name);
+        ERR(InternalError, "unexpected matmul impl_name format: ", name);
     }
     return name;
 }
@@ -410,8 +421,8 @@ ModelOpMatmulAdd::ModelOpMatmulAdd(ModelTensorRef input, ModelTensorRef other,
     if (residual->strides() != output->strides()) {
         ERR(InvalidUsageError,
             "MatmulAdd requires residual and output to have matching strides. "
-            "Residual strides: ", residual->strides(),
-            ", output strides: ", output->strides());
+            "Residual strides: ",
+            residual->strides(), ", output strides: ", output->strides());
     }
 
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
@@ -549,14 +560,13 @@ Tensor Model::matmul_add(Tensor input, Tensor other, Tensor residual,
                          const std::string &name) {
     return impl_
         ->create_op<ModelOpMatmulAdd>(name, input.ref(), other.ref(),
-                                      residual.ref(), output.ref(),
-                                      trans_input, trans_other)
+                                      residual.ref(), output.ref(), trans_input,
+                                      trans_other)
         ->result_tensors()[0];
 }
 
-Tensor Model::mma(Tensor input, Tensor other, Tensor output,
-                     bool trans_input, bool trans_other,
-                     const std::string &name) {
+Tensor Model::mma(Tensor input, Tensor other, Tensor output, bool trans_input,
+                  bool trans_other, const std::string &name) {
     return impl_
         ->create_op<ModelOpMma>(name, input.ref(), other.ref(), output.ref(),
                                 trans_input, trans_other)
@@ -587,10 +597,8 @@ std::string ModelOpMma::impl_name(const Json &config) const {
     return ModelOpMatmul::impl_name(config);
 }
 
-
 Tensor Model::store(Tensor output, Tensor input, const std::string &name) {
-    return impl_
-        ->create_op<ModelOpStore>(name, input.ref(), output.ref())
+    return impl_->create_op<ModelOpStore>(name, input.ref(), output.ref())
         ->result_tensors()[0];
 }
 
@@ -622,11 +630,7 @@ std::string ModelOpStore::impl_name(const Json &config) const {
          vec_string(read_tensors_[0]->shape().dims4()),
          vec_string(write_tensors_[0]->strides().dims4()),
          vec_string(write_tensors_[0]->shape().dims4()),
-         vec_string(unit_out_dims.dims4()),
-         std::to_string(num_warps),
-         "0"});
+         vec_string(unit_out_dims.dims4()), std::to_string(num_warps), "0"});
 }
-
-
 
 }  // namespace ark

@@ -93,6 +93,15 @@ void baseline_sqrt(std::vector<void *> &outputs,
     }
 };
 
+std::vector<float> stable_positive_radical_inputs(ark::DimType nelems) {
+    static const float kInputs[] = {0.25f, 1.0f, 4.0f, 16.0f};
+    std::vector<float> data(nelems);
+    for (ark::DimType i = 0; i < nelems; ++i) {
+        data[i] = kInputs[i % 4];
+    }
+    return data;
+}
+
 ark::unittest::State test_gelu_fp32() {
     ark::Model m;
     ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
@@ -240,9 +249,10 @@ ark::unittest::State test_math_rsqrt_fp32() {
     ark::Model m;
     ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
     ark::Tensor out = m.rsqrt(t);
+    auto data = stable_positive_radical_inputs(t.shape().nelems());
 
-    auto result =
-        ark::op_test("math_rsqrt_fp32", m, {t}, {out}, baseline_rsqrt<float>);
+    auto result = ark::op_test("math_rsqrt_fp32", m, {t}, {out},
+                               baseline_rsqrt<float>, {data.data()});
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
     return ark::unittest::SUCCESS;
@@ -306,9 +316,10 @@ ark::unittest::State test_math_sqrt_fp32() {
     ark::Model m;
     ark::Tensor t = m.tensor({4, 2, 1024}, ark::FP32);
     ark::Tensor out = m.sqrt(t);
+    auto data = stable_positive_radical_inputs(t.shape().nelems());
 
-    auto result =
-        ark::op_test("math_sqrt_fp32", m, {t}, {out}, baseline_sqrt<float>);
+    auto result = ark::op_test("math_sqrt_fp32", m, {t}, {out},
+                               baseline_sqrt<float>, {data.data()});
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-6f);
     return ark::unittest::SUCCESS;
@@ -318,9 +329,11 @@ ark::unittest::State test_math_sqrt_fp16_small_last_dim() {
     ark::Model m;
     ark::Tensor t = m.tensor({4, 1024, 1}, ark::FP16, {4, 1024, 2});
     ark::Tensor out = m.sqrt(t);
+    auto fp32_data = stable_positive_radical_inputs(t.shape().nelems());
+    std::vector<ark::half_t> data(fp32_data.begin(), fp32_data.end());
 
     auto result = ark::op_test("math_sqrt_fp16_small_last_dim", m, {t}, {out},
-                               baseline_sqrt<ark::half_t>);
+                               baseline_sqrt<ark::half_t>, {data.data()});
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
     return ark::unittest::SUCCESS;

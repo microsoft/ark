@@ -91,7 +91,8 @@ ark::Tensor all_reduce_packet(ark::Model &m, ark::Tensor input, int rank,
     std::vector<ark::Tensor> outputs;
     size_t out_off = flag % 2 == 0 ? 0 : nbytes_per_rank * 2;
     ark::Dims out_shape = {nbytes_per_rank * 2};
-    ark::Dims out_strides = {nbytes_per_rank * 2 * 2}; // packet + double buffer
+    ark::Dims out_strides = {nbytes_per_rank * 2 *
+                             2};  // packet + double buffer
     for (int i = 0; i < rank_num; i++) {
         if (i != rank) {
             outputs.push_back(m.tensor(out_shape, ark::UINT8, out_strides,
@@ -121,7 +122,8 @@ void test_all_reduce_packet_internal(ark::DimType nelem) {
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
             ark::Tensor data = m.mul(ones, float(gpu_id + 1));
-            ark::Tensor output = all_reduce_packet(m, data, gpu_id, NumGpus, 1, data);
+            ark::Tensor output =
+                all_reduce_packet(m, data, gpu_id, NumGpus, 1, data);
 
             std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
                                               ark::half_t(1.0f));
@@ -185,7 +187,6 @@ ark::Tensor all_reduce_sm(ark::Model &m, ark::Tensor input, int rank,
     ark::Tensor res = m.device_sync(input, rank, rank_num);
     return res;
 }
-
 
 template <int NumGpus>
 void test_all_reduce_sm_internal(ark::DimType nelem) {

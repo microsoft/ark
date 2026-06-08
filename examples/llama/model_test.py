@@ -11,7 +11,6 @@ import argparse
 import multiprocessing as mp
 from pathlib import Path
 
-
 sys.path.append("llama")
 import llama.model as model_pt
 import model as model_ark
@@ -20,7 +19,6 @@ from typing import Dict, List
 from dataclasses import dataclass
 from model import ModelArgs, ModelArgs7B
 from generator import precompute_freqs_cis
-
 
 ckpt_dir: str = ""
 

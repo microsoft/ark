@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 """LLaMA 2 Transformer model.
-   Correspond to https://github.com/facebookresearch/llama/blob/main/llama/model.py
+Correspond to https://github.com/facebookresearch/llama/blob/main/llama/model.py
 """
 
 import ark

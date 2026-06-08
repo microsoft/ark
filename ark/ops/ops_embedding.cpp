@@ -54,13 +54,13 @@ std::string ModelOpEmbedding::impl_name(const Json &config) const {
         });
 }
 
-std::vector<ModelOpArg> ModelOpEmbedding::impl_args([
-    [maybe_unused]] const Json &config) const {
+std::vector<ModelOpArg> ModelOpEmbedding::impl_args(
+    [[maybe_unused]] const Json &config) const {
     return {result_tensors_[0], read_tensors_[0], read_tensors_[1]};
 }
 
-Json ModelOpEmbedding::default_config([
-    [maybe_unused]] const ArchRef arch) const {
+Json ModelOpEmbedding::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 0;

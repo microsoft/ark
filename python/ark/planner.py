@@ -9,7 +9,6 @@ from . import error
 from .core import CorePlanner, CorePlannerContext
 from .model import Model
 
-
 __all__ = ["Plan", "PlannerContext", "Planner"]
 
 

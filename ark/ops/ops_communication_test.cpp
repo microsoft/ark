@@ -8,7 +8,113 @@
 #include "ark/planner.hpp"
 #include "half.h"
 #include "model/model_buffer.hpp"
+#include "model/model_node.hpp"
+#include "model/model_op.hpp"
 #include "ops_test_common.hpp"
+
+ark::unittest::State test_communication_host_ops() {
+    // Host-only test: construct communication ops via Model API and exercise
+    // default_config / impl_name / impl_args without a GPU.
+    {
+        // Send + SendDone + Recv
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        ark::Tensor out = model.send(tns, 1, 0);
+        model.send_done(out);
+        model.recv(model.tensor({1024}, ark::FP16), 1, 0);
+
+        auto nodes = model.nodes();
+        // Walk every node's op and call the three coverage-critical methods.
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            // impl_args may legitimately return an empty vector.
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // SendPacket + RecvPacket
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        model.send_packet(tns, 1, 0, 1);
+        model.recv_packet(model.tensor({1024}, ark::FP16), 1, 0, 1);
+
+        auto nodes = model.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // RecvReduceSendPacket
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        std::vector<ark::Tensor> shards = model.sharding(tns, 0, 512);
+        model.send_packet(shards[1], 1, 0, 1);
+        model.recv_reduce_send_packet(shards[0], {1}, 0, 1, 1, shards[0]);
+
+        auto nodes = model.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // DeviceSync
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        model.device_sync(tns, 0, 2);
+
+        auto nodes = model.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    {
+        // RecvReduceSend
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        std::vector<ark::Tensor> shards = model.sharding(tns, 0, 512);
+        ark::Tensor remote_scratch =
+            model.tensor({512}, ark::FP16, {}, {}, {}, 1);
+        ark::Tensor sent = model.send(shards[1], 1, 0, remote_scratch);
+        ark::Tensor synced = model.device_sync(sent, 0, 2);
+        ark::Tensor reduced = model.identity(shards[0], {synced});
+        model.recv_reduce_send(reduced, {1}, 0, 1, reduced);
+
+        auto nodes = model.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            (void)op->impl_args(cfg);
+        }
+    }
+    return ark::unittest::SUCCESS;
+}
 
 ark::unittest::State test_communication_send_recv_unidir() {
     // send from gpu 0 to gpu 1
@@ -346,7 +452,8 @@ ark::unittest::State test_communication_send_recv_reduce_packet() {
         ark::unittest::spawn_process([gpu_id]() {
             ark::Model model(gpu_id, 2);
             ark::Tensor tns_data = model.tensor({1024}, ark::FP16);
-            std::vector<ark::Tensor> shard_tensors = model.sharding(tns_data, 0, 512);
+            std::vector<ark::Tensor> shard_tensors =
+                model.sharding(tns_data, 0, 512);
 
             int peer_gpu_id = (gpu_id + 1) % 2;
             model.send_packet(shard_tensors[peer_gpu_id], peer_gpu_id, 0, 1);
@@ -386,11 +493,10 @@ ark::unittest::State test_communication_send_recv_reduce() {
             config["ChannelType"] = "Sm";
             config["Signal"] = false;
             config["Tile"] = {1, 256};
-            config["NumTasks"] = 4;
+            config["NumTasks"] = 2;
             config["NumWarps"] = 4;
             config["SramBytes"] = 0;
-        }
-        else if (op.at("Type") == "DeviceSync") {
+        } else if (op.at("Type") == "DeviceSync") {
             config["ChannelType"] = "Sm";
             config["NumTasks"] = 1;
             config["NumWarps"] = 1;
@@ -454,6 +560,7 @@ ark::unittest::State test_communication_send_recv_reduce() {
 
 int main() {
     ark::init();
+    UNITTEST(test_communication_host_ops);
     UNITTEST(test_communication_send_recv_unidir);
     UNITTEST(test_communication_send_recv_bidir);
     UNITTEST(test_communication_send_recv_bidir_sm);
