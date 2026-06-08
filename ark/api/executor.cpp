@@ -6,7 +6,6 @@
 #include <cmath>
 #include <list>
 #include <memory>
-#include <mscclpp/atomic_device.hpp>
 #include <mscclpp/core.hpp>
 #include <mscclpp/memory_channel.hpp>
 #include <mscclpp/port_channel.hpp>
@@ -31,11 +30,14 @@
 #include "utils/utils_net.hpp"
 
 #if defined(ARK_CUDA)
+#include <cuda/atomic>
 static int atomicLoadRelaxed(int *ptr) {
-    return mscclpp::atomicLoad(ptr, mscclpp::memoryOrderRelaxed);
+    return cuda::atomic_ref<int, cuda::thread_scope_system>{*ptr}.load(
+        cuda::memory_order_relaxed);
 }
 static void atomicStoreRelaxed(int *ptr, int val) {
-    mscclpp::atomicStore(ptr, val, mscclpp::memoryOrderRelaxed);
+    cuda::atomic_ref<int, cuda::thread_scope_system>{*ptr}.store(
+        val, cuda::memory_order_relaxed);
 }
 #elif defined(ARK_ROCM)
 static int atomicLoadRelaxed(int *ptr) {
