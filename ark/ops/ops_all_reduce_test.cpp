@@ -271,6 +271,8 @@ void test_all_reduce_inplace_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
+// Baseline: the corruption bug requires gpu_num >= 3; this case
+// validates the in-place path works correctly for the simpler 2-GPU ring.
 ark::unittest::State test_all_reduce_inplace_2gpus() {
     test_all_reduce_inplace_internal<2>(64);
     test_all_reduce_inplace_internal<2>(8192);
