@@ -490,10 +490,17 @@ ark::unittest::State test_communication_send_recv_reduce() {
         auto op = nlohmann::json::parse(op_str);
         nlohmann::json config;
         if (op.at("Type") == "Send") {
+            constexpr int tile_y = 256;
+            const auto &shape = op.at("WriteTensors")[0].at("PaddedShape");
+            size_t num_tasks = 1;
+            for (const auto &dim : shape) {
+                num_tasks *= dim.get<size_t>();
+            }
+            num_tasks = (num_tasks + tile_y - 1) / tile_y;
             config["ChannelType"] = "Sm";
             config["Signal"] = false;
-            config["Tile"] = {1, 256};
-            config["NumTasks"] = 2;
+            config["Tile"] = {1, tile_y};
+            config["NumTasks"] = num_tasks;
             config["NumWarps"] = 4;
             config["SramBytes"] = 0;
         } else if (op.at("Type") == "DeviceSync") {
@@ -558,6 +565,41 @@ ark::unittest::State test_communication_send_recv_reduce() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_communication_allreduce_packet_fused_model() {
+    // Single-GPU model-level test: construct the fused allreduce op and
+    // verify impl_name / impl_args / default_config produce valid output.
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        ark::Tensor result = model.all_reduce_packet(tns, 0, 2);
+
+        auto nodes = model.nodes();
+        bool found = false;
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            if (op->type() != ark::ModelOpT::from_name("AllReducePacketFused"))
+                continue;
+            found = true;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_FALSE(cfg.empty());
+            // default_config does not include NumProcs; stamp it manually
+            // (the planner does this at plan time).
+            cfg["NumProcs"] = cfg["NumTasks"].get<int>();
+            auto name = op->impl_name(cfg);
+            UNITTEST_FALSE(name.empty());
+            // Verify the kernel name appears in the impl_name string.
+            UNITTEST_TRUE(name.find("allreduce_packet_fused") !=
+                          std::string::npos);
+            auto args = op->impl_args(cfg);
+            // (output, input, scratch_ptr, scratch_offset_remote)
+            UNITTEST_EQ(args.size(), 4);
+        }
+        UNITTEST_TRUE(found);
+    }
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     ark::init();
     UNITTEST(test_communication_host_ops);
@@ -567,5 +609,6 @@ int main() {
     UNITTEST(test_communication_send_packet);
     UNITTEST(test_communication_send_recv_reduce_packet);
     UNITTEST(test_communication_send_recv_reduce);
+    UNITTEST(test_communication_allreduce_packet_fused_model);
     return ark::unittest::SUCCESS;
 }

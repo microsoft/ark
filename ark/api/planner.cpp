@@ -357,6 +357,22 @@ std::string Planner::Impl::plan(bool pretty) const {
                                              {"TaskRange", {0, num_tasks}},
                                              {"Granularity", granularity}}};
 
+            // Stamp NumProcs into the op's Config so ops that template their
+            // kernels on the block count (e.g. ModelOpAllReducePacketFused)
+            // can read it from `impl_name`. Other ops ignore the field.
+            if (task_infos.back()["Ops"][0].at("Type") ==
+                "AllReducePacketFused") {
+                auto &pr = resource_group["ProcessorRange"];
+                size_t pr_begin = pr[0].get<size_t>();
+                size_t pr_end = pr[1].get<size_t>();
+                size_t pr_step =
+                    (pr.size() >= 3) ? pr[2].get<size_t>() : 1;
+                size_t num_procs =
+                    (pr_end - pr_begin + pr_step - 1) / pr_step;
+                task_infos.back()["Ops"][0]["Config"]["NumProcs"] =
+                    num_procs;
+            }
+
             if (new_processor_group) {
                 processor_group["ResourceGroups"] = Json::array();
                 processor_group["ResourceGroups"].push_back(resource_group);

@@ -103,6 +103,26 @@ class ModelOpRecvReduceSend : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
+// Fused intra-node packet allreduce — one device function emits the three
+// phases of the LL-packet allreduce (scatter → reduce → broadcast).
+// Replaces M36's three-op recursive-doubling chain (`send_packet`,
+// `recv_reduce_send_packet`, `recv_packet`) used by the old
+// `Model::all_reduce_packet`.
+class ModelOpAllReducePacketFused : public ModelOp {
+   public:
+    ModelOpAllReducePacketFused() = default;
+    ModelOpAllReducePacketFused(ModelTensorRef input, ModelTensorRef output,
+                                int rank, int rank_num, uint32_t flag,
+                                ModelTensorRef scratch,
+                                std::vector<ModelTensorRef> &peer_scratch_refs);
+
+    std::string impl_name(const Json &config) const override;
+
+    std::vector<ModelOpArg> impl_args(const Json &config) const override;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
 class ModelOpDeviceSync : public ModelOp {
    public:
     ModelOpDeviceSync() = default;
