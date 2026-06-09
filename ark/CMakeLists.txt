@@ -77,4 +77,21 @@ if(ARK_BUILD_TESTS)
         set_tests_properties(${exe_name} PROPERTIES TIMEOUT 3600)
         add_dependencies(ut ${exe_name})
     endforeach()
+
+    # Tests that call op_test() and require ARK_UT_CORRECTNESS=1 for real validation.
+    # Keep in sync: grep -l 'op_test(' ark/ops/*_test.cpp
+    set(CORRECTNESS_TESTS
+        ops_all_reduce_test
+        ops_arithmetic_test
+        ops_cast_test
+        ops_copy_test
+        ops_embedding_test
+        ops_math_test
+        ops_matmul_test
+        ops_reduce_test
+        ops_rope_test
+        ops_scalar_test
+        ops_transpose_test
+    )
+    set_tests_properties(${CORRECTNESS_TESTS} PROPERTIES LABELS "correctness")
 endif()
