@@ -35,8 +35,8 @@ struct Softmax {
 
     static_assert(NelemPerThread > 0, "NelemPerThread must be positive");
 
-    static DEVICE void run(DataType *out, const DataType *in,
-                           int uop_idx, int smem_per_warp) {
+    static DEVICE void run(DataType *out, const DataType *in, int uop_idx,
+                           int smem_per_warp) {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
         static_assert(sizeof(InOutChk) > 0, "");
 
@@ -79,7 +79,8 @@ struct Softmax {
                           PhysicalThreadsPerRow % Arch::ThreadsPerWarp == 0,
                       "PhysicalThreadsPerRow must be <= warp size or a "
                       "multiple of warp size");
-        constexpr int WarpsPerRow = PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+        constexpr int WarpsPerRow =
+            PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
         static_assert(WarpsPerRow * NonReduceDimLength <= Arch::ThreadsPerWarp,
                       "Too many warps for ReduceSharedStorage capacity");
         int row_in_tile = tid / PhysicalThreadsPerRow;
@@ -98,7 +99,8 @@ struct Softmax {
 #pragma unroll
             for (int j = 0; j < NelemPerThread; j++) {
                 if (idx_w + j < InShape::W) {
-                    float val = type::Cast::compute<float>(in[idx_in_base + idx_w + j]);
+                    float val =
+                        type::Cast::compute<float>(in[idx_in_base + idx_w + j]);
                     cached[num_elems] = val;
                     if (val > max_val) max_val = val;
                     num_elems++;
@@ -151,8 +153,8 @@ template <typename InDims, typename InShape, typename OutDims,
 DEVICE void softmax(DataType *out, const DataType *in, int uop_idx,
                     int smem_per_warp) {
     Softmax<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-            SmemBytes, DataType, NelemPerThread>::run(
-                out, in, uop_idx, smem_per_warp);
+            SmemBytes, DataType, NelemPerThread>::run(out, in, uop_idx,
+                                                      smem_per_warp);
 }
 
 }  // namespace ark

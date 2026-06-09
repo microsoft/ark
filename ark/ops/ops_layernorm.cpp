@@ -32,9 +32,9 @@ ModelOpLayerNorm::ModelOpLayerNorm(ModelTensorRef input, ModelTensorRef gamma,
         check_match_data_type(input, output);
         check_match_shape(output, input->shape());
     } else {
-        output = std::make_shared<ModelTensor>(
-            input->data_type(), std::make_shared<ModelBuffer>(),
-            input->shape());
+        output = std::make_shared<ModelTensor>(input->data_type(),
+                                               std::make_shared<ModelBuffer>(),
+                                               input->shape());
     }
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
     read_tensors_ = {input, gamma, beta};
@@ -83,8 +83,8 @@ Json ModelOpLayerNorm::default_config(
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 256;
-    // The tile must cover the entire W dimension since layernorm reduces along W.
-    // Each task processes one complete row.
+    // The tile must cover the entire W dimension since layernorm reduces along
+    // W. Each task processes one complete row.
     auto shape = result_tensors_[0]->shape().dims4();
     config["Tile"] = {1, 1, 1, static_cast<int64_t>(shape[3])};
     // One task per row (N * C * H)

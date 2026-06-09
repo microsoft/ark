@@ -22,8 +22,8 @@ struct LayerNormShapeChecker {
 };
 
 // Perform layer normalization on input and write the result on output.
-// When HasGammaBeta is true, applies affine transform: gamma * normalized + beta.
-// gamma and beta are 1-D tensors of size W (the normalization dimension).
+// When HasGammaBeta is true, applies affine transform: gamma * normalized +
+// beta. gamma and beta are 1-D tensors of size W (the normalization dimension).
 //
 // Optimized: single global memory read (register cache), float accumulation,
 // multi-element-per-thread unrolling for reduced loop overhead.
@@ -79,7 +79,8 @@ struct LayerNorm {
                           PhysicalThreadsPerRow % Arch::ThreadsPerWarp == 0,
                       "PhysicalThreadsPerRow must be <= warp size or a "
                       "multiple of warp size");
-        constexpr int WarpsPerRow = PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
+        constexpr int WarpsPerRow =
+            PhysicalThreadsPerRow / Arch::ThreadsPerWarp;
         static_assert(WarpsPerRow * NonReduceDimLength <= Arch::ThreadsPerWarp,
                       "Too many warps for ReduceSharedStorage capacity");
         int row_in_tile = tid / PhysicalThreadsPerRow;
@@ -99,7 +100,8 @@ struct LayerNorm {
 #pragma unroll
             for (int j = 0; j < NelemPerThread; j++) {
                 if (idx_w + j < InShape::W) {
-                    float val = type::Cast::compute<float>(in[idx_in_base + idx_w + j]);
+                    float val =
+                        type::Cast::compute<float>(in[idx_in_base + idx_w + j]);
                     cached[num_elems] = val;
                     sum += val;
                     num_elems++;
@@ -108,12 +110,14 @@ struct LayerNorm {
         }
 
         // Reduce sum across physical threads (each thread already accumulated
-        // NelemPerThread elements locally, so we reduce PhysicalThreadsPerRow threads).
+        // NelemPerThread elements locally, so we reduce PhysicalThreadsPerRow
+        // threads).
         sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
             sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
         float fmean = sum / static_cast<float>(InShape::W);
 
-        // --- Pass 2: Compute variance from cached registers (no global read) ---
+        // --- Pass 2: Compute variance from cached registers (no global read)
+        // ---
         float var_sum = 0.0f;
 #pragma unroll
         for (int i = 0; i < MaxElemsPerThread; i++) {
@@ -125,7 +129,8 @@ struct LayerNorm {
 
         var_sum = warpsReduce<ReduceTypeSum, UnitOp, PhysicalThreadsPerRow>(
             var_sum, tid % PhysicalThreadsPerRow, smem_per_warp, warp_offset);
-        float inv_std = rsqrtf(var_sum / static_cast<float>(InShape::W) + 1e-5f);
+        float inv_std =
+            rsqrtf(var_sum / static_cast<float>(InShape::W) + 1e-5f);
 
         // --- Pass 3: Normalize and write output (from registers) ---
         int wi = 0;
@@ -136,11 +141,13 @@ struct LayerNorm {
                 if (idx_w + j < InShape::W) {
                     float normalized = (cached[wi] - fmean) * inv_std;
                     if constexpr (HasGammaBeta) {
-                        normalized = normalized *
-                            type::Cast::compute<float>(gamma[idx_w + j]) +
+                        normalized =
+                            normalized *
+                                type::Cast::compute<float>(gamma[idx_w + j]) +
                             type::Cast::compute<float>(beta[idx_w + j]);
                     }
-                    out[idx_out_base + idx_w + j] = type::Cast::compute<DataType>(normalized);
+                    out[idx_out_base + idx_w + j] =
+                        type::Cast::compute<DataType>(normalized);
                     wi++;
                 }
             }
@@ -157,8 +164,9 @@ template <typename InDims, typename InShape, typename OutDims,
 DEVICE void layernorm(DataType *out, const DataType *in, int uop_idx,
                       int smem_per_warp) {
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-              SmemBytes, DataType, NelemPerThread, false>::run(
-                  out, in, nullptr, nullptr, uop_idx, smem_per_warp);
+              SmemBytes, DataType, NelemPerThread, false>::run(out, in, nullptr,
+                                                               nullptr, uop_idx,
+                                                               smem_per_warp);
 }
 
 // Free function for layernorm with gamma/beta affine transform.
@@ -169,8 +177,9 @@ DEVICE void layernorm_affine(DataType *out, const DataType *in,
                              const DataType *gamma, const DataType *beta,
                              int uop_idx, int smem_per_warp) {
     LayerNorm<InDims, InShape, OutDims, OutShape, UnitOutDims, NumWarps,
-              SmemBytes, DataType, NelemPerThread, true>::run(
-                  out, in, gamma, beta, uop_idx, smem_per_warp);
+              SmemBytes, DataType, NelemPerThread, true>::run(out, in, gamma,
+                                                              beta, uop_idx,
+                                                              smem_per_warp);
 }
 
 }  // namespace ark
