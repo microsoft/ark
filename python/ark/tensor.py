@@ -47,6 +47,7 @@ class Tensor:
         self._model: "Model" = (
             _model if _model is not None else Model.get_model()
         )
+        self._device_id: int = Model.get_device_id()
 
     def __hash__(self):
         return self._tensor.id()
@@ -361,7 +362,7 @@ class Tensor:
         from .planner import Planner
         from .runtime import Runtime
 
-        device_id = Model.get_device_id()
+        device_id = self._device_id
         planner = Planner(device_id=device_id, model=self._model)
         plan = planner.plan()
 

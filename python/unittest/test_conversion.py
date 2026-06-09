@@ -3,7 +3,6 @@
 
 from common import ark, pytest_ark
 import numpy as np
-import pytest
 
 
 @pytest_ark(need_torch=True)

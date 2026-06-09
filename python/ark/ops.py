@@ -10,16 +10,6 @@ from .model import Model
 from . import log
 
 
-def _ensure_ark(t):
-    """
-    If *t* is a ``torch.Tensor``, convert it to an ARK ``Tensor`` via
-    ``Tensor.from_torch()``. Otherwise return *t* unchanged.
-    """
-    if not _no_torch and isinstance(t, torch.Tensor):
-        return Tensor.from_torch(t)
-    return t
-
-
 __all__ = [
     "tensor",
     "parameter",
@@ -57,6 +47,16 @@ __all__ = [
     "send_done",
     "recv",
 ]
+
+
+def _ensure_ark(t):
+    """
+    If *t* is a ``torch.Tensor``, convert it to an ARK ``Tensor`` via
+    ``Tensor.from_torch()``. Otherwise return *t* unchanged.
+    """
+    if not _no_torch and isinstance(t, torch.Tensor):
+        return Tensor.from_torch(t)
+    return t
 
 
 def is_list_or_tuple(obj):

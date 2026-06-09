@@ -1,10 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-import pytest
-
-torch = pytest.importorskip("torch")
-
 import numpy as np
 from common import ark, pytest_ark
 
@@ -12,6 +8,8 @@ from common import ark, pytest_ark
 @pytest_ark(need_torch=True)
 def test_eval_basic():
     """Test basic Tensor.eval() — compile, run, return torch tensor."""
+    import torch
+
     x = torch.ones(64, dtype=torch.float32, device="cuda:0") * 3.0
     out = ark.add(x, 2.0)
 
@@ -25,6 +23,8 @@ def test_eval_basic():
 @pytest_ark(need_torch=True)
 def test_eval_chain():
     """Test eval on a chained computation."""
+    import torch
+
     x = torch.ones(64, dtype=torch.float16, device="cuda:0") * 4.0
     y = ark.mul(x, 2.0)
     z = ark.add(y, 1.0)
@@ -39,6 +39,8 @@ def test_eval_chain():
 @pytest_ark(need_torch=True)
 def test_eval_relu():
     """Test eval with relu op."""
+    import torch
+
     x = torch.tensor(
         [-1.0, 0.0, 1.0, 2.0], dtype=torch.float32, device="cuda:0"
     )
@@ -55,6 +57,8 @@ def test_eval_relu():
 @pytest_ark(need_torch=True)
 def test_eval_matmul():
     """Test eval with matmul."""
+    import torch
+
     a = torch.ones(4, 64, dtype=torch.float16, device="cuda:0")
     b = torch.ones(64, 8, dtype=torch.float16, device="cuda:0")
     out = ark.matmul(a, b)
@@ -67,8 +71,10 @@ def test_eval_matmul():
 
 
 @pytest_ark(need_torch=True)
-def test_eval_returns_fresh_runtime():
-    """Test that eval creates a fresh Runtime each call (no state leak)."""
+def test_eval_independent_calls():
+    """Test that independent eval calls on different graphs produce correct results."""
+    import torch
+
     x = torch.ones(64, dtype=torch.float32, device="cuda:0") * 2.0
     out = ark.add(x, 3.0)
 
@@ -78,12 +84,12 @@ def test_eval_returns_fresh_runtime():
         torch.ones(64, dtype=torch.float32, device="cuda:0") * 5.0,
     )
 
-    # Second eval on the same tensor should also work
-    ark.init()
-    x2 = torch.ones(64, dtype=torch.float32, device="cuda:0") * 10.0
-    out2 = ark.add(x2, 1.0)
-    result2 = out2.eval()
-    assert torch.allclose(
-        result2,
-        torch.ones(64, dtype=torch.float32, device="cuda:0") * 11.0,
-    )
+    # Second eval on a different graph should also work
+    with ark.use_model(None):
+        x2 = torch.ones(64, dtype=torch.float32, device="cuda:0") * 10.0
+        out2 = ark.add(x2, 1.0)
+        result2 = out2.eval()
+        assert torch.allclose(
+            result2,
+            torch.ones(64, dtype=torch.float32, device="cuda:0") * 11.0,
+        )
