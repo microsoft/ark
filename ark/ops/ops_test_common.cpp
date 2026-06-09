@@ -10,7 +10,6 @@
 #include "ark/planner.hpp"
 #include "ark/random.hpp"
 #include "cpu_timer.h"
-#include "env.h"
 #include "gpu/gpu_logging.hpp"
 #include "logging.hpp"
 #include "model/model_data_type.hpp"
@@ -39,6 +38,21 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       const std::vector<void *> &inputs_data,
                       const std::vector<Planner::ConfigRule> &config_rules,
                       bool print_on_error) {
+    if (ark::unittest::get_gpu_count() < 1) {
+        LOG(INFO, "[SKIP] %s: no GPU available",
+            test_name_prefix.c_str());
+        OpsTestResult skipped;
+        skipped.test_name = test_name_prefix;
+        skipped.iter = 0;
+        skipped.msec_per_iter = 0;
+        size_t n = outputs.size();
+        skipped.mse.resize(n, 0);
+        skipped.max_diff.resize(n, 0);
+        skipped.max_err_rate.resize(n, 0);
+        skipped.num_wrong.resize(n, 0);
+        skipped.num_total.resize(n, 0);
+        return skipped;
+    }
     DefaultExecutor exe(model, -1, nullptr, config_rules);
 
     std::vector<std::shared_ptr<std::vector<char>>> inputs_data_storages;
