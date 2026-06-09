@@ -60,8 +60,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
         return make_skipped();
     }
     if (ark::unittest::get_gpu_count() < 1) {
-        LOG(INFO, "[SKIP] %s: no GPU available",
-            test_name_prefix.c_str());
+        LOG(INFO, "[SKIP] %s: no GPU available", test_name_prefix.c_str());
         return make_skipped();
     }
     DefaultExecutor exe(model, -1, nullptr, config_rules);
