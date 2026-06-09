@@ -247,6 +247,42 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
+template <int NumGpus>
+void test_all_reduce_inplace_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor ones = m.tensor({nelem}, ark::FP16);
+            ark::Tensor data = m.mul(ones, float(gpu_id + 1));
+            // In-place: pass the same tensor as both input and output.
+            ark::Tensor output = m.all_reduce(data, gpu_id, NumGpus, data);
+
+            std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
+                                              ark::half_t(1.0f));
+            auto result = ark::op_test(
+                "all_reduce_inplace", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+ark::unittest::State test_all_reduce_inplace_2gpus() {
+    test_all_reduce_inplace_internal<2>(64);
+    test_all_reduce_inplace_internal<2>(8192);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_inplace_4gpus() {
+    test_all_reduce_inplace_internal<4>(64);
+    test_all_reduce_inplace_internal<4>(8192);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_all_reduce_4gpus() {
     test_all_reduce_internal<4>(64);
     test_all_reduce_internal<4>(8192);
@@ -284,6 +320,8 @@ ark::unittest::State test_all_reduce_sm_8gpus() {
 }
 
 int main() {
+    UNITTEST(test_all_reduce_inplace_2gpus);
+    UNITTEST(test_all_reduce_inplace_4gpus);
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
     UNITTEST(test_all_reduce_packet_4gpus);
