@@ -9,7 +9,6 @@ from .data_type import DataType, fp32
 from .model import Model
 from . import log
 
-
 __all__ = [
     "tensor",
     "parameter",
