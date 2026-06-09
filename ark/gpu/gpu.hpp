@@ -125,11 +125,11 @@ ARK_GPU_DEFINE_CONSTANT_ALIAS(gpuPointerAttributeSyncMemops,
                               HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS);
 
 // runtime API
+ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetDeviceCount, cudaGetDeviceCount,
+                          hipGetDeviceCount);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetErrorString, cudaGetErrorString,
                           hipGetErrorString);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetLastError, cudaGetLastError, hipGetLastError);
-ARK_GPU_DEFINE_FUNC_ALIAS(gpuGetDeviceCount, cudaGetDeviceCount,
-                          hipGetDeviceCount);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuPointerGetAttributes, cudaPointerGetAttributes,
                           hipPointerGetAttributes);
 ARK_GPU_DEFINE_FUNC_ALIAS(gpuDeviceGetAttribute, cudaDeviceGetAttribute,
