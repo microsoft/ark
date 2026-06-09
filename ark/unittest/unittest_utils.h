@@ -247,7 +247,7 @@ std::string get_kernel_code(const std::string &name);
 #define UNITTEST_SKIP(cond)                                          \
     do {                                                             \
         if (cond) {                                                  \
-            LOG(ark::INFO, "unittest skip: " #cond);               \
+            LOG(ark::INFO, "unittest skip: " #cond);                 \
             std::exit(ark::unittest::SUCCESS);                       \
         }                                                            \
     } while (0)
