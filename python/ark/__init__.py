@@ -8,6 +8,7 @@ if os.environ.get("ARK_ROOT", None) is None:
 
 from .core import version
 from .model import Model
+from .model import set_model, current_model, use_model
 
 __version__ = version()
 

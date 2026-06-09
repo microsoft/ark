@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import functools
 import pytest
 import ark
 
@@ -19,6 +20,7 @@ def pytest_ark(need_torch: bool = False):
                     test_func
                 )
 
+        @functools.wraps(test_func)
         def wrapper(*args, **kwargs):
             ark.init()
             test_func(*args, **kwargs)

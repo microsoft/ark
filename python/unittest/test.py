@@ -10,3 +10,5 @@ from test_planner import *
 from test_profiler import *
 from test_runtime import *
 from test_tensor import *
+from test_conversion import *
+from test_eval import *

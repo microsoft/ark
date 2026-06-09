@@ -27,6 +27,7 @@ class Tensor:
         _tensor: CoreTensor,
         initializer: Initializer = None,
         requires_grad: bool = False,
+        _model: "Model" = None,
     ):
         """
         Initializes a new instance of the Tensor class.
@@ -34,10 +35,18 @@ class Tensor:
             _tensor (core.CoreTensor): The underlying _Tensor object.
             initializer (Initializer): The initializer for the Tensor.
             requires_grad (bool): Whether the tensor requires gradient. Defaults to True.
+            _model (Model): The model this tensor belongs to. If None,
+                the current model is used.
         """
         self._tensor: CoreTensor = _tensor
         self.initializer: Initializer = initializer
         self.requires_grad: bool = requires_grad
+        # Note: Model.get_model() creates a default model if none exists.
+        # The model is captured eagerly so that eval() uses the model that
+        # was active when the tensor was created.
+        self._model: "Model" = (
+            _model if _model is not None else Model.get_model()
+        )
 
     def __hash__(self):
         return self._tensor.id()
@@ -331,6 +340,37 @@ class Tensor:
             data = self.initializer()
             self.copy(data)
         return self
+
+    def eval(self, stream: int = 0) -> torch.Tensor:
+        """
+        Compile the graph, run it, and return the result as a torch tensor.
+
+        A fresh ``Planner`` and ``Runtime`` are created each call.
+        The build system's file-level compile cache avoids redundant
+        ``nvcc`` invocations across calls, but the ``Runtime`` object
+        is not reused.
+
+        Args:
+            stream: CUDA stream ordinal for the execution. Defaults to 0.
+
+        Returns:
+            torch.Tensor: The result tensor on the same device.
+        """
+        if _no_torch:
+            raise log.SystemError("torch is not available")
+        from .planner import Planner
+        from .runtime import Runtime
+
+        device_id = Model.get_device_id()
+        planner = Planner(device_id=device_id, model=self._model)
+        plan = planner.plan()
+
+        with Runtime() as rt:
+            rt.launch(
+                plan=plan, device_id=device_id, stream=stream, loop_mode=False
+            )
+            rt.run()
+            return self.to_torch()
 
 
 class Parameter(Tensor):

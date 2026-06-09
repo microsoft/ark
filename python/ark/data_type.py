@@ -10,6 +10,7 @@ __all__ = [
     "DataType",
     "fp16",
     "fp32",
+    "bf16",
     "int32",
     "uint32",
     "int8",
