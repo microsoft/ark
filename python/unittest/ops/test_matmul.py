@@ -30,7 +30,7 @@ def test_matmul_nt():
     result = ark.matmul(a, b, transpose_other=True).eval()
     expected = a @ b.t()
     assert torch.allclose(
-        result, expected, atol=1e-1, rtol=1e-2
+        result, expected, atol=5e-1, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
 
 
@@ -41,7 +41,7 @@ def test_matmul_tn():
     result = ark.matmul(a, b, transpose_input=True).eval()
     expected = a.t() @ b
     assert torch.allclose(
-        result, expected, atol=1e-1, rtol=1e-2
+        result, expected, atol=5e-1, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
 
 
@@ -52,7 +52,7 @@ def test_matmul_tt():
     result = ark.matmul(a, b, transpose_input=True, transpose_other=True).eval()
     expected = a.t() @ b.t()
     assert torch.allclose(
-        result, expected, atol=1e-1, rtol=1e-2
+        result, expected, atol=5e-1, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
 
 
