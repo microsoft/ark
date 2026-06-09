@@ -38,6 +38,7 @@ struct LayerNorm {
                            const DataType *gamma, const DataType *beta,
                            int uop_idx, int smem_per_warp) {
         using InOutChk = LayerNormShapeChecker<InShape, OutShape>;
+        static_assert(sizeof(InOutChk) > 0, "");
 
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         static_assert(

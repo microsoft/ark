@@ -159,14 +159,55 @@ ark::unittest::State test_layernorm_w1() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_layernorm_large_w() {
+    // Large inner dim — exercises numerical stability for W=4096
+    ark::Model m;
+    ark::Tensor input = m.tensor({1, 1, 1, 4096}, ark::FP32);
+    ark::Tensor gamma = m.tensor({4096}, ark::FP32);
+    ark::Tensor beta = m.tensor({4096}, ark::FP32);
+    ark::Tensor out = m.layernorm(input, gamma, beta);
+
+    auto result = ark::op_test("layernorm_large_w", m, {input, gamma, beta},
+                               {out}, baseline_layernorm<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_layernorm_invalid() {
-    // gamma/beta shape mismatch
+    // gamma shape mismatch
     {
         ark::Model m;
         ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
         ark::Tensor gamma = m.tensor({512}, ark::FP32);  // wrong size
         ark::Tensor beta = m.tensor({1024}, ark::FP32);
         UNITTEST_THROW(m.layernorm(input, gamma, beta), ark::ModelError);
+    }
+    // beta shape mismatch
+    {
+        ark::Model m;
+        ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
+        ark::Tensor gamma = m.tensor({1024}, ark::FP32);
+        ark::Tensor beta = m.tensor({512}, ark::FP32);  // wrong size
+        UNITTEST_THROW(m.layernorm(input, gamma, beta), ark::ModelError);
+    }
+    // data type mismatch (gamma)
+    {
+        ark::Model m;
+        ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
+        ark::Tensor gamma = m.tensor({1024}, ark::FP16);  // wrong type
+        ark::Tensor beta = m.tensor({1024}, ark::FP32);
+        UNITTEST_THROW(m.layernorm(input, gamma, beta), ark::ModelError);
+    }
+    // output shape mismatch
+    {
+        ark::Model m;
+        ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
+        ark::Tensor gamma = m.tensor({1024}, ark::FP32);
+        ark::Tensor beta = m.tensor({1024}, ark::FP32);
+        ark::Tensor bad_out = m.tensor({4, 512}, ark::FP32);  // wrong shape
+        UNITTEST_THROW(m.layernorm(input, gamma, beta, bad_out),
+                       ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }
@@ -180,6 +221,7 @@ int main() {
     UNITTEST(test_layernorm_small_row);
     UNITTEST(test_layernorm_non_pow2);
     UNITTEST(test_layernorm_w1);
+    UNITTEST(test_layernorm_large_w);
     UNITTEST(test_layernorm_invalid);
     return ark::unittest::SUCCESS;
 }

@@ -38,6 +38,7 @@ struct Softmax {
     static DEVICE void run(DataType *out, const DataType *in,
                            int uop_idx, int smem_per_warp) {
         using InOutChk = SoftmaxShapeChecker<InShape, OutShape>;
+        static_assert(sizeof(InOutChk) > 0, "");
 
         constexpr int NonReduceDimLength = UnitOutDims::NCH;
         static_assert(

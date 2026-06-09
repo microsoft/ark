@@ -138,12 +138,32 @@ ark::unittest::State test_softmax_w1() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_softmax_large_w() {
+    // Large inner dim — exercises numerical stability for W=4096
+    ark::Model m;
+    ark::Tensor input = m.tensor({1, 1, 1, 4096}, ark::FP32);
+    ark::Tensor out = m.softmax(input);
+
+    auto result = ark::op_test("softmax_large_w", m, {input}, {out},
+                               baseline_softmax<float>);
+    UNITTEST_LOG(result);
+    UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_softmax_invalid() {
     // Output shape mismatch
     {
         ark::Model m;
         ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
         ark::Tensor bad_out = m.tensor({4, 512}, ark::FP32);  // wrong W
+        UNITTEST_THROW(m.softmax(input, bad_out), ark::ModelError);
+    }
+    // Data type mismatch
+    {
+        ark::Model m;
+        ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
+        ark::Tensor bad_out = m.tensor({4, 1024}, ark::FP16);
         UNITTEST_THROW(m.softmax(input, bad_out), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
@@ -158,6 +178,7 @@ int main() {
     UNITTEST(test_softmax_small_row);
     UNITTEST(test_softmax_non_pow2);
     UNITTEST(test_softmax_w1);
+    UNITTEST(test_softmax_large_w);
     UNITTEST(test_softmax_invalid);
     return ark::unittest::SUCCESS;
 }
