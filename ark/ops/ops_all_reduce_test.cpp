@@ -27,6 +27,7 @@ template <int NumGpus>
 void test_all_reduce_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
@@ -118,6 +119,7 @@ template <int NumGpus>
 void test_all_reduce_packet_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
@@ -224,6 +226,7 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
     };
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem, config_rule]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
