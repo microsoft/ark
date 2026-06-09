@@ -25,4 +25,5 @@ ignore:
   - "*/examples/*"
   - "*/python/unittest/*"
   - "*/ark/unittest/*"
+  - "*/ark/ops/ops_test_common.*"
   - "*/ark/include/kernels/*"
