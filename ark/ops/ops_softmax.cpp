@@ -16,9 +16,9 @@ ModelOpSoftmax::ModelOpSoftmax(ModelTensorRef input, ModelTensorRef output)
         check_match_data_type(input, output);
         check_match_shape(output, input->shape());
     } else {
-        output = std::make_shared<ModelTensor>(
-            input->data_type(), std::make_shared<ModelBuffer>(),
-            input->shape());
+        output = std::make_shared<ModelTensor>(input->data_type(),
+                                               std::make_shared<ModelBuffer>(),
+                                               input->shape());
     }
     ModelTensorRef result = std::make_shared<ModelTensor>(*output);
     read_tensors_ = {input};
@@ -60,8 +60,7 @@ std::vector<ModelOpArg> ModelOpSoftmax::impl_args(
     return {result_tensors_[0], read_tensors_[0]};
 }
 
-Json ModelOpSoftmax::default_config(
-    [[maybe_unused]] const ArchRef arch) const {
+Json ModelOpSoftmax::default_config([[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
     config["SramBytes"] = 256;
@@ -72,8 +71,7 @@ Json ModelOpSoftmax::default_config(
 }
 
 Tensor Model::softmax(Tensor input, Tensor output, const std::string &name) {
-    return impl_
-        ->create_op<ModelOpSoftmax>(name, input.ref_, output.ref_)
+    return impl_->create_op<ModelOpSoftmax>(name, input.ref_, output.ref_)
         ->result_tensors()[0];
 }
 

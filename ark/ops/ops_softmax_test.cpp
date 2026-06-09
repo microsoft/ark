@@ -55,8 +55,8 @@ ark::unittest::State test_softmax_fp32() {
     ark::Tensor input = m.tensor({4, 1024}, ark::FP32);
     ark::Tensor out = m.softmax(input);
 
-    auto result =
-        ark::op_test("softmax_fp32", m, {input}, {out}, baseline_softmax<float>);
+    auto result = ark::op_test("softmax_fp32", m, {input}, {out},
+                               baseline_softmax<float>);
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;
@@ -131,8 +131,8 @@ ark::unittest::State test_softmax_w1() {
     ark::Tensor input = m.tensor({4, 1}, ark::FP32);
     ark::Tensor out = m.softmax(input);
 
-    auto result = ark::op_test("softmax_w1", m, {input}, {out},
-                               baseline_softmax<float>);
+    auto result =
+        ark::op_test("softmax_w1", m, {input}, {out}, baseline_softmax<float>);
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-5f);
     return ark::unittest::SUCCESS;

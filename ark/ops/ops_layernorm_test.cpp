@@ -50,11 +50,9 @@ void baseline_layernorm(std::vector<void *> &outputs,
 
         // normalize + affine
         for (ark::DimType j = 0; j < W; ++j) {
-            float normed =
-                (static_cast<float>(row_in[j]) - mean) * inv_std;
-            row_out[j] =
-                T(static_cast<float>(gamma[j]) * normed +
-                  static_cast<float>(beta[j]));
+            float normed = (static_cast<float>(row_in[j]) - mean) * inv_std;
+            row_out[j] = T(static_cast<float>(gamma[j]) * normed +
+                           static_cast<float>(beta[j]));
         }
     }
 }
@@ -66,8 +64,8 @@ ark::unittest::State test_layernorm_fp32() {
     ark::Tensor beta = m.tensor({1024}, ark::FP32);
     ark::Tensor out = m.layernorm(input, gamma, beta);
 
-    auto result = ark::op_test("layernorm_fp32", m, {input, gamma, beta},
-                               {out}, baseline_layernorm<float>);
+    auto result = ark::op_test("layernorm_fp32", m, {input, gamma, beta}, {out},
+                               baseline_layernorm<float>);
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
     return ark::unittest::SUCCESS;
@@ -80,8 +78,8 @@ ark::unittest::State test_layernorm_fp16() {
     ark::Tensor beta = m.tensor({768}, ark::FP16);
     ark::Tensor out = m.layernorm(input, gamma, beta);
 
-    auto result = ark::op_test("layernorm_fp16", m, {input, gamma, beta},
-                               {out}, baseline_layernorm<ark::half_t>);
+    auto result = ark::op_test("layernorm_fp16", m, {input, gamma, beta}, {out},
+                               baseline_layernorm<ark::half_t>);
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-2f);
     return ark::unittest::SUCCESS;
@@ -94,8 +92,8 @@ ark::unittest::State test_layernorm_bf16() {
     ark::Tensor beta = m.tensor({768}, ark::BF16);
     ark::Tensor out = m.layernorm(input, gamma, beta);
 
-    auto result = ark::op_test("layernorm_bf16", m, {input, gamma, beta},
-                               {out}, baseline_layernorm<ark::bfloat16_t>);
+    auto result = ark::op_test("layernorm_bf16", m, {input, gamma, beta}, {out},
+                               baseline_layernorm<ark::bfloat16_t>);
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 5e-2f);
     return ark::unittest::SUCCESS;
@@ -154,8 +152,8 @@ ark::unittest::State test_layernorm_w1() {
     ark::Tensor beta = m.tensor({1}, ark::FP32);
     ark::Tensor out = m.layernorm(input, gamma, beta);
 
-    auto result = ark::op_test("layernorm_w1", m, {input, gamma, beta},
-                               {out}, baseline_layernorm<float>);
+    auto result = ark::op_test("layernorm_w1", m, {input, gamma, beta}, {out},
+                               baseline_layernorm<float>);
     UNITTEST_LOG(result);
     UNITTEST_TRUE(result.max_diff[0] < 1e-4f);
     return ark::unittest::SUCCESS;
