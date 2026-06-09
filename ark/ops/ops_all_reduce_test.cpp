@@ -277,6 +277,12 @@ ark::unittest::State test_all_reduce_inplace_2gpus() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_all_reduce_inplace_3gpus() {
+    test_all_reduce_inplace_internal<3>(64);
+    test_all_reduce_inplace_internal<3>(8192);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_all_reduce_inplace_4gpus() {
     test_all_reduce_inplace_internal<4>(64);
     test_all_reduce_inplace_internal<4>(8192);
@@ -321,6 +327,7 @@ ark::unittest::State test_all_reduce_sm_8gpus() {
 
 int main() {
     UNITTEST(test_all_reduce_inplace_2gpus);
+    UNITTEST(test_all_reduce_inplace_3gpus);
     UNITTEST(test_all_reduce_inplace_4gpus);
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
