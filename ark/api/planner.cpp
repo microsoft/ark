@@ -357,9 +357,9 @@ std::string Planner::Impl::plan(bool pretty) const {
                                              {"TaskRange", {0, num_tasks}},
                                              {"Granularity", granularity}}};
 
-            // Stamp NumProcs into the op's Config so ops that template their
-            // kernels on the block count (e.g. ModelOpAllReducePacketFused)
-            // can read it from `impl_name`. Other ops ignore the field.
+            // Override NumProcs with the actual processor count from
+            // ProcessorRange. default_config sets NumProcs = NumTasks,
+            // but the planner may assign fewer processors.
             if (task_infos.back()["Ops"][0].at("Type") ==
                 "AllReducePacketFused") {
                 auto &pr = resource_group["ProcessorRange"];

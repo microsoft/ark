@@ -607,7 +607,7 @@ def all_reduce_packet(
     name: str = "all_reduce_packet",
 ) -> Tensor:
     """
-    Packet-based intra-node all-reduce — single-shot recursive doubling using
+    Packet-based intra-node all-reduce — single-shot reduce-scatter + allgather using
     LL packet channels (fused data+flag write). NOT a ring chain; per-rank
     cost is constant in `world_size` for the in-block portion, and the entire
     operation completes in 3 task phases regardless of `world_size`.

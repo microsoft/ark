@@ -59,6 +59,10 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
     // Total: 2 × NPkts × 16 = nelems_int32 × 16 = nelems_fp16 × 8 bytes.
     size_t nelems = input.shape().nelems();
     size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
+    if (nelems % (elems_per_uint32 * 2 * rank_num) != 0) {
+        ERR(ModelError, "all_reduce_packet: nelems (", nelems,
+            ") must be divisible by ", elems_per_uint32 * 2 * rank_num);
+    }
     size_t nelems_int32 = nelems / elems_per_uint32;
     size_t n_pkts = nelems_int32 / 2;  // each packet carries uint2 = 2×u32
     size_t packet_size = 16;           // sizeof(mscclpp::LL16Packet)

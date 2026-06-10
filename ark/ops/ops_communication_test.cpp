@@ -583,19 +583,28 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
             found = true;
             auto cfg = op->default_config(ark::ARCH_CUDA_80);
             UNITTEST_FALSE(cfg.empty());
-            // default_config does not include NumProcs; stamp it manually
-            // (the planner does this at plan time).
-            cfg["NumProcs"] = cfg["NumTasks"].get<int>();
             auto name = op->impl_name(cfg);
             UNITTEST_FALSE(name.empty());
             // Verify the kernel name appears in the impl_name string.
             UNITTEST_TRUE(name.find("allreduce_packet_fused") !=
                           std::string::npos);
             auto args = op->impl_args(cfg);
-            // (output, input, scratch_ptr, scratch_offset_remote)
-            UNITTEST_EQ(args.size(), 4);
+            // (output, input, scratch_ptr, scratch_offset_remote, input_offset)
+            UNITTEST_EQ(args.size(), 5);
         }
         UNITTEST_TRUE(found);
+    }
+    // Verify rank_num < 2 is rejected.
+    {
+        ark::Model model(0, 1);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        UNITTEST_THROW(model.all_reduce_packet(tns, 0, 1), ark::ModelError);
+    }
+    // Verify non-divisible tensor size is rejected.
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1023}, ark::FP16);
+        UNITTEST_THROW(model.all_reduce_packet(tns, 0, 2), ark::ModelError);
     }
     return ark::unittest::SUCCESS;
 }

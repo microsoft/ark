@@ -114,7 +114,7 @@ class ModelOpAllReducePacketFused : public ModelOp {
     ModelOpAllReducePacketFused(ModelTensorRef input, ModelTensorRef output,
                                 int rank, int rank_num, uint32_t flag,
                                 ModelTensorRef scratch,
-                                std::vector<ModelTensorRef> &peer_scratch_refs);
+                                const std::vector<ModelTensorRef> &peer_scratch_refs);
 
     std::string impl_name(const Json &config) const override;
 

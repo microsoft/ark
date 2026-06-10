@@ -463,7 +463,7 @@ Json ModelOpRecvReduceSendPacket::default_config(
 ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
     ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
     uint32_t flag, ModelTensorRef scratch,
-    std::vector<ModelTensorRef> &peer_scratch_refs)
+    const std::vector<ModelTensorRef> &peer_scratch_refs)
     : ModelOp("AllReducePacketFused") {
     check_null(input);
     check_null(output);
@@ -519,9 +519,9 @@ std::string ModelOpAllReducePacketFused::impl_name(const Json &config) const {
 
 std::vector<ModelOpArg> ModelOpAllReducePacketFused::impl_args(
     [[maybe_unused]] const Json &config) const {
-    // (output, input, scratch_ptr, scratch_offset_remote)
+    // (output, input, scratch_ptr, scratch_offset_remote, input_offset)
     return {write_tensors_[0], read_tensors_[0], read_tensors_[1],
-            ModelOffset(read_tensors_[1])};
+            ModelOffset(read_tensors_[1]), ModelOffset(read_tensors_[0])};
 }
 
 Json ModelOpAllReducePacketFused::default_config(
@@ -547,6 +547,7 @@ Json ModelOpAllReducePacketFused::default_config(
     config["SramBytes"] = 0;
     config["Tile"] = {1, 1};  // not used by this op, but required by codegen
     config["NumTasks"] = blocks_per_peer * static_cast<int>(n_peers);
+    config["NumProcs"] = config["NumTasks"];
     return config;
 }
 

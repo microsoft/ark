@@ -465,6 +465,8 @@ DEVICE void device_sync(int, int) {
 //                               internal-buffer allocation is symmetric
 //                               for symmetric collectives, peers' scratch
 //                               is at the same local offset as ours
+//   input_offset              — offset (in bytes) of the input tensor
+//                               within its device buffer
 //   task_id                   — block-relative index in [0, NumProcs)
 //
 // Block-to-peer mapping requirement (initial implementation):
@@ -477,7 +479,8 @@ template <int NPeers, int Rank, int NumProcs, int NumWarps,
           uint32_t Flag = 1>
 DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
                                    void *scratch,
-                                   uint64_t scratch_offset_remote, int task_id,
+                                   uint64_t scratch_offset_remote,
+                                   uint64_t input_offset, int task_id,
                                    int /*sram_per_warp*/) {
     using Payload = typename PacketType::Payload;
     static_assert(NPeers >= 1, "Need at least one peer");
@@ -491,14 +494,13 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
     constexpr int NThreadsPerBlock = NumWarps * 32;
     constexpr int WorldSize = NPeers + 1;
     constexpr int ElemsPerUint32 = sizeof(uint32_t) / sizeof(DataType);
+    static_assert(NelemsTotal % (ElemsPerUint32 * 2 * WorldSize) == 0,
+                  "NelemsTotal must be divisible by WorldSize * 2 * ElemsPerUint32");
     constexpr int NelemsInt32 = NelemsTotal / ElemsPerUint32;
     constexpr int NPkts = NelemsInt32 / 2;
     constexpr int NelemsPerRank = NelemsInt32 / WorldSize;
     constexpr int NPktsPerRank = NelemsPerRank / 2;
     constexpr int NBlocksPerPeer = NumProcs / NPeers;
-    // Under the NumProcs % NPeers == 0 constraint, NActiveBlocks == NumProcs.
-    // Guards below are kept for future relaxation of the divisibility requirement.
-    constexpr int NActiveBlocks = NBlocksPerPeer * NPeers;
     constexpr int NelemsPerPacket = sizeof(Payload) / sizeof(DataType);
 
     const int peer_idx = task_id / NBlocksPerPeer;
@@ -510,11 +512,11 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
         NPkts * sizeof(PacketType);
 
     // ----- Phase 1: putPackets to peer's scratch[Rank slot] -----
-    if (task_id < NActiveBlocks) {
+    if (task_id < NumProcs) {
         auto &chan = ARK_SM_CHANS[remote_rank];
         uint64_t dst_off = scratch_offset_remote +
                            Rank * NPktsPerRank * sizeof(PacketType);
-        uint64_t src_off = remote_rank * NelemsPerRank * sizeof(uint32_t);
+        uint64_t src_off = input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
         chan.template putPackets<PacketType>(
             dst_off, src_off, NelemsPerRank * sizeof(uint32_t), peer_tid,
             peer_total_threads, Flag);
@@ -557,7 +559,7 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
     }
 
     // ----- Phase 3: read result packets for this peer's shard -----
-    if (task_id < NActiveBlocks) {
+    if (task_id < NumProcs) {
         PacketType *result_base = reinterpret_cast<PacketType *>(
             reinterpret_cast<char *>(scratch) + SCRATCH_INPUT_BYTES +
             remote_rank * NPktsPerRank * sizeof(PacketType));
