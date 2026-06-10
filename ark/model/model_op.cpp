@@ -94,6 +94,7 @@ const ModelOpType ModelOpT::from_name(const std::string &type_name) {
         MODEL_OP_TYPE_REGISTER(RecvPacket);
         MODEL_OP_TYPE_REGISTER(RecvReduceSendPacket);
         MODEL_OP_TYPE_REGISTER(RecvReduceSend);
+        MODEL_OP_TYPE_REGISTER(AllReducePacketFused);
         MODEL_OP_TYPE_REGISTER(DeviceSync);
     }
     auto it = instances.find(type_name);

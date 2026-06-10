@@ -452,6 +452,100 @@ Json ModelOpRecvReduceSendPacket::default_config(
     return config;
 }
 
+// Fused intra-node packet allreduce. Replaces the three-op chain
+// (send_packet → recv_reduce_send_packet → recv_packet) with a single op.
+ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
+    ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
+    uint32_t flag, ModelTensorRef scratch,
+    const std::vector<ModelTensorRef> &peer_scratch_refs)
+    : ModelOp("AllReducePacketFused") {
+    check_null(input);
+    check_null(output);
+    check_null(scratch);
+    if (scratch->buffer()->rank() != rank && scratch->buffer()->rank() != -1) {
+        ERR(ModelError,
+            "invalid local scratch buffer rank: ", scratch->buffer()->rank(),
+            ", expected: ", rank);
+    }
+    uint32_t n_peers = rank_num - 1;
+    if (peer_scratch_refs.size() != n_peers) {
+        ERR(ModelError, "expected ", n_peers, " peer scratch refs, got ",
+            peer_scratch_refs.size());
+    }
+    // The peer scratches are listed as write tensors purely so that
+    // `CommResource::connect()` discovers the remote ranks and sets up SM
+    // channels to them. The kernel uses `ARK_SM_CHANS[remote_rank].dst_`
+    // directly + the local scratch offset (which is identical on every rank
+    // for symmetric internal-buffer allocation).
+    read_tensors_ = {input, scratch};
+    write_tensors_ = {output};
+    for (auto &p : peer_scratch_refs) {
+        write_tensors_.push_back(p);
+    }
+    ModelTensorRef result = std::make_shared<ModelTensor>(*output);
+    result_tensors_ = {result};
+    args_ = {
+        {"Flag", ModelOpArg(flag)},
+        {"NPeers", ModelOpArg(n_peers)},
+        {"Rank", ModelOpArg(rank)},
+    };
+    verify();
+}
+
+std::string ModelOpAllReducePacketFused::impl_name(const Json &config) const {
+    check_fields_config(config, {"NumProcs", "NumWarps", "PacketType",
+                                 "NumTasks", "SramBytes", "Tile"});
+    auto &input = read_tensors_[0];
+    uint32_t flag = args_.at("Flag").value<uint32_t>();
+    uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
+    int rank = args_.at("Rank").value<int>();
+    int num_warps = config.at("NumWarps");
+    int num_procs = config.at("NumProcs");
+    std::string packet_type = config.at("PacketType");
+    // Total fp16 elements in input — compile-time constant.
+    DimType nelems_total = input->shape().nelems();
+    return function_name_string(
+        "allreduce_packet_fused",
+        {std::to_string(n_peers), std::to_string(rank),
+         std::to_string(num_procs), std::to_string(num_warps), packet_type,
+         input->data_type()->type_str(), std::to_string(nelems_total),
+         std::to_string(flag)});
+}
+
+std::vector<ModelOpArg> ModelOpAllReducePacketFused::impl_args(
+    [[maybe_unused]] const Json &config) const {
+    // (output, input, scratch_ptr, scratch_offset_remote, input_offset)
+    return {write_tensors_[0], read_tensors_[0], read_tensors_[1],
+            ModelOffset(read_tensors_[1]), ModelOffset(read_tensors_[0])};
+}
+
+Json ModelOpAllReducePacketFused::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
+    Json config;
+    config["PacketType"] = "mscclpp::LL16Packet";
+    // Tuning follows mscclpp's `getDefaultBlockNumAndThreadNum` in
+    // src/ext/collectives/allreduce/allreduce_packet.cu:
+    //   - small (<32 KB): 4 blocks per peer, 1024 threads
+    //   - larger:         8 blocks per peer, 512 threads (<=153KB) or 1024
+    // We translate "blocks per peer × n_peers" into NumTasks (the planner
+    // hands us that many blocks, capped by the ProcessorRange when the
+    // user supplies a PlannerContext).
+    auto &input = read_tensors_[0];
+    DimType input_bytes = input->shape().nelems() * input->data_type()->bytes();
+    uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
+    int blocks_per_peer = (input_bytes < (32 << 10)) ? 4 : 8;
+    int num_warps = 32;  // 1024 threads / 32 = 32 warps per block
+    if (input_bytes >= (32 << 10) && input_bytes <= 153600) {
+        num_warps = 16;  // 512 threads
+    }
+    config["NumWarps"] = num_warps;
+    config["SramBytes"] = 0;
+    config["Tile"] = {1, 1};  // not used by this op, but required by codegen
+    config["NumTasks"] = blocks_per_peer * static_cast<int>(n_peers);
+    config["NumProcs"] = config["NumTasks"];
+    return config;
+}
+
 ModelOpRecvReduceSend::ModelOpRecvReduceSend(
     ModelTensorRef input, ModelTensorRef output, int rank,
     const std::vector<int> &remote_ranks, int recv_tag, int output_tag,
