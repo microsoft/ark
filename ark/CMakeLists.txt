@@ -86,11 +86,13 @@ if(ARK_BUILD_TESTS)
         ops_cast_test
         ops_copy_test
         ops_embedding_test
+        ops_layernorm_test
         ops_math_test
         ops_matmul_test
         ops_reduce_test
         ops_rope_test
         ops_scalar_test
+        ops_softmax_test
         ops_transpose_test
     )
     set_tests_properties(${CORRECTNESS_TESTS} PROPERTIES LABELS "correctness")
