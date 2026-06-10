@@ -53,6 +53,9 @@ def _ensure_ark(t):
     """
     If *t* is a ``torch.Tensor``, convert it to an ARK ``Tensor`` via
     ``Tensor.from_torch()``. Otherwise return *t* unchanged.
+
+    When used on an ``output`` parameter, the returned ARK tensor shares memory
+    with the original torch tensor via ``Tensor.from_torch``.
     """
     if not _no_torch and isinstance(t, torch.Tensor):
         return Tensor.from_torch(t)
@@ -691,6 +694,8 @@ def all_reduce_packet(
     Returns:
         Tensor: The reduced tensor.
     """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     _tensor = Model.get_model().all_reduce_packet(

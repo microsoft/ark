@@ -92,3 +92,21 @@ def test_eval_independent_calls():
             result2,
             torch.ones(64, dtype=torch.float32, device="cuda:0") * 11.0,
         )
+
+
+@pytest_ark(need_torch=True)
+def test_eval_cross_model_isolation():
+    """eval() uses the model captured at tensor creation, not the current model."""
+    import torch
+
+    with ark.use_model() as m1:
+        x = torch.ones(64, dtype=torch.float32, device="cuda:0")
+        out = ark.add(x, 2.0)
+
+    # Switch to a different model — out should still eval against m1
+    with ark.use_model() as m2:
+        _ = ark.tensor([32], ark.fp32)  # populate m2
+
+    result = out.eval()
+    expected = torch.ones(64, dtype=torch.float32, device="cuda:0") * 3.0
+    assert torch.allclose(result, expected)

@@ -91,6 +91,18 @@ def test_conversion_ensure_ark_converts_torch():
 
 
 @pytest_ark(need_torch=True)
+def test_conversion_cpu_torch_raises():
+    """Passing a CPU torch tensor to an op raises InvalidUsageError."""
+    import torch
+    import ark.log as log
+    import pytest
+
+    cpu_t = torch.ones(64, dtype=torch.float32)  # CPU
+    with pytest.raises(log.InvalidUsageError):
+        ark.add(cpu_t, 1.0)
+
+
+@pytest_ark(need_torch=True)
 def test_conversion_ops_accept_torch():
     """Test that ops accept torch tensors directly via _ensure_ark."""
     import torch
