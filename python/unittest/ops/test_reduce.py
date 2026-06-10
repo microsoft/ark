@@ -25,21 +25,10 @@ def test_reduce_sum_fp32(axis):
 
 
 @pytest.mark.parametrize("axis", [0, 3])
-def test_reduce_sum_fp16(axis):
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+def test_reduce_sum_half(axis, dtype):
     shape = [7, 2, 4, 1024]
-    a = torch.randn(shape, dtype=torch.float16, device=DEVICE) * 0.1
-    result = ark.reduce_sum(a, axis=axis).eval()
-    expected = torch.sum(a, dim=axis, keepdim=True)
-    atol = shape[axis] * 2e-2
-    assert torch.allclose(
-        result, expected, atol=atol, rtol=1e-2
-    ), f"axis={axis}, max_diff={(result - expected).abs().max()}"
-
-
-@pytest.mark.parametrize("axis", [0, 3])
-def test_reduce_sum_bf16(axis):
-    shape = [7, 2, 4, 1024]
-    a = torch.randn(shape, dtype=torch.bfloat16, device=DEVICE) * 0.1
+    a = torch.randn(shape, dtype=dtype, device=DEVICE) * 0.1
     result = ark.reduce_sum(a, axis=axis).eval()
     expected = torch.sum(a, dim=axis, keepdim=True)
     atol = shape[axis] * 2e-2
@@ -59,15 +48,19 @@ def test_reduce_sum_no_keepdims():
     ), f"max_diff={(result - expected).abs().max()}"
 
 
-def test_reduce_max_fp32():
-    a = torch.randn(1, 1, 2, 8192, dtype=torch.float32, device=DEVICE)
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+def test_reduce_max(dtype):
+    a = torch.randn(1, 1, 2, 8192, dtype=dtype, device=DEVICE)
     result = ark.reduce_max(a, axis=-1).eval()
     expected = torch.max(a, dim=-1, keepdim=True).values
     assert torch.allclose(result, expected, atol=0, rtol=0)
 
 
-def test_reduce_mean_fp32():
-    a = torch.randn(1, 1, 2, 8192, dtype=torch.float32, device=DEVICE) * 0.1
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+def test_reduce_mean(dtype):
+    a = torch.randn(1, 1, 2, 8192, dtype=dtype, device=DEVICE) * 0.1
     result = ark.reduce_mean(a, axis=-1).eval()
     expected = torch.mean(a, dim=-1, keepdim=True)
-    assert torch.allclose(result, expected, atol=1e-4, rtol=1e-4)
+    atol = 1e-4 if dtype == torch.float32 else 1e-2
+    rtol = 1e-4 if dtype == torch.float32 else 1e-2
+    assert torch.allclose(result, expected, atol=atol, rtol=rtol)

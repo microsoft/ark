@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Numerical tests for arithmetic ops: add, sub, mul, div (tensor and scalar)."""
+"""Numerical tests for arithmetic ops (add, sub, mul, div), constants, and scalar copy."""
 
 import pytest
 
@@ -94,6 +94,7 @@ def test_scalar_sub(shape):
 @pytest.mark.parametrize("shape", [(4, 2, 1), (4, 2, 1024)])
 def test_scalar_div(shape):
     a = torch.randn(shape, dtype=torch.float16, device=DEVICE)
+    # fp16 scalar division may differ in rounding from PyTorch
     assert torch.allclose(
         ark.div(a, FACTOR).eval(), a / FACTOR, atol=1e-3, rtol=1e-3
     )
