@@ -8,9 +8,9 @@ from . import log
 
 __all__ = [
     "DataType",
+    "bf16",
     "fp16",
     "fp32",
-    "bf16",
     "int32",
     "uint32",
     "int8",

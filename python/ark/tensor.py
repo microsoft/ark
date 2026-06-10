@@ -48,6 +48,10 @@ class Tensor:
             _model if _model is not None else Model.get_model()
         )
         self._device_id: int = Model.get_device_id()
+        # Note: _device_id is captured from global state, not derived from
+        # _model. In multi-device setups, callers should ensure the device id
+        # is set correctly before creating tensors. A future API may derive
+        # this from the model directly.
 
     def __hash__(self):
         return self._tensor.id()
@@ -108,14 +112,15 @@ class Tensor:
         new_offsets = Dims(new_offsets)
         new_padded_shape = Dims(new_padded_shape)
         new_tensor = Tensor(
-            Model.get_model().refer(
+            self._model.refer(
                 self._tensor,
                 new_shape,
                 new_strides,
                 new_offsets,
                 new_padded_shape,
                 "",
-            )
+            ),
+            _model=self._model,
         )
         new_tensor.requires_grad = self.requires_grad
         return new_tensor
