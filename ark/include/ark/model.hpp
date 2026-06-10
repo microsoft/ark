@@ -203,6 +203,13 @@ class Model : public ModelGraph {
     // Sigmoid activation
     Tensor sigmoid(Tensor input, Tensor output = NullTensor,
                    const std::string &name = "");
+    // Layer normalization along the last dimension with affine transform (gamma
+    // * normalized + beta).
+    Tensor layernorm(Tensor input, Tensor gamma, Tensor beta,
+                     Tensor output = NullTensor, const std::string &name = "");
+    // Softmax along the last dimension (W).
+    Tensor softmax(Tensor input, Tensor output = NullTensor,
+                   const std::string &name = "");
     // Performs rotary position embedding (RoPE) on the `input` tensor
     Tensor rope(Tensor input, Tensor other, Tensor output = NullTensor,
                 const std::string &name = "");

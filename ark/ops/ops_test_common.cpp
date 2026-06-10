@@ -3,6 +3,7 @@
 
 #include "ops_test_common.hpp"
 
+#include <cstdlib>
 #include <cstring>
 
 #include "ark/executor.hpp"
@@ -38,9 +39,7 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
                       const std::vector<void *> &inputs_data,
                       const std::vector<Planner::ConfigRule> &config_rules,
                       bool print_on_error) {
-    if (ark::unittest::get_gpu_count() < 1) {
-        LOG(INFO, "[SKIP] %s: no GPU available",
-            test_name_prefix.c_str());
+    auto make_skipped = [&]() {
         OpsTestResult skipped;
         skipped.test_name = test_name_prefix;
         skipped.iter = 0;
@@ -52,6 +51,17 @@ OpsTestResult op_test(const std::string &test_name_prefix, const Model &model,
         skipped.num_wrong.resize(n, 0);
         skipped.num_total.resize(n, 0);
         return skipped;
+    };
+    const char *env = std::getenv("ARK_UT_CORRECTNESS");
+    if (!env || std::string(env) != "1") {
+        // Zero values let callers pass without GPU work.
+        LOG(INFO, "[SKIP] %s: ARK_UT_CORRECTNESS not set",
+            test_name_prefix.c_str());
+        return make_skipped();
+    }
+    if (ark::unittest::get_gpu_count() < 1) {
+        LOG(INFO, "[SKIP] %s: no GPU available", test_name_prefix.c_str());
+        return make_skipped();
     }
     DefaultExecutor exe(model, -1, nullptr, config_rules);
 

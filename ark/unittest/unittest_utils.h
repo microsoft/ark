@@ -244,13 +244,14 @@ std::string get_kernel_code(const std::string &name);
 #define UNITTEST_LOG(...) LOG(ark::INFO, __VA_ARGS__)
 
 // Skip the current test (exit with SUCCESS) if @p cond is true.
-// NOTE: calls std::exit(); only use inside a spawn_process() lambda.
-#define UNITTEST_SKIP(cond)                                          \
-    do {                                                             \
-        if (cond) {                                                  \
-            LOG(ark::INFO, "unittest skip: " #cond);                 \
-            std::exit(ark::unittest::SUCCESS);                       \
-        }                                                            \
+// WARNING: calls std::exit(), which skips local destructors.
+// Only safe inside spawn_process() child lambdas.
+#define UNITTEST_SKIP(cond)                          \
+    do {                                             \
+        if (cond) {                                  \
+            LOG(ark::INFO, "unittest skip: " #cond); \
+            std::exit(ark::unittest::SUCCESS);       \
+        }                                            \
     } while (0)
 
 #endif  // ARK_UNITTEST_UNITTEST_UTILS_H_
