@@ -437,6 +437,136 @@ DEVICE void device_sync(int, int) {
     }
 }
 
+// Fused intra-node packet allreduce, mirroring mscclpp's `allreducePacket`
+// kernel (`src/ext/collectives/allreduce/allreduce_packet.cu`). The three
+// phases (scatter → reduce → broadcast) live in a single device function;
+// inter-phase synchronization is provided by the LL packet flag itself
+// (writer sets data+flag, reader spins on flag), so no cross-block barrier
+// is needed.
+//
+// Template parameters:
+//   NPeers     — world_size - 1; this rank's peer count
+//   Rank       — this rank's world index [0, NPeers]
+//   NumProcs   — number of blocks the planner gave this op
+//                (= (ProcEnd - ProcBegin) / ProcStep, supplied at codegen)
+//   NumWarps   — warps per block
+//   PacketType — `mscclpp::LL16Packet` (only LL16 supported initially;
+//                Payload = uint2 = 4 fp16 elements per packet)
+//   DataType   — element type (only fp16 supported initially)
+//   NelemsTotal — total elements in the input tensor (compile-time, from
+//                 shape)
+//   Flag       — compile-time flag value used by the LL packet protocol
+//                (per-iter flag rotation is deferred work)
+//
+// Runtime arguments:
+//   output / input / scratch  — base pointers
+//   scratch_offset_remote     — offset (in bytes) of the scratch tensor
+//                               within ALL ranks' device buffers; since
+//                               internal-buffer allocation is symmetric
+//                               for symmetric collectives, peers' scratch
+//                               is at the same local offset as ours
+//   input_offset              — offset (in bytes) of the input tensor
+//                               within its device buffer
+//   task_id                   — block-relative index in [0, NumProcs)
+//
+// Block-to-peer mapping requirement (initial implementation):
+//   NumProcs >= NPeers AND NumProcs % NPeers == 0
+template <int NPeers, int Rank, int NumProcs, int NumWarps, typename PacketType,
+          typename DataType, int NelemsTotal, uint32_t Flag = 1>
+DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
+                                   void *scratch,
+                                   uint64_t scratch_offset_remote,
+                                   uint64_t input_offset, int task_id,
+                                   int /*sram_per_warp*/) {
+    using Payload = typename PacketType::Payload;
+    static_assert(NPeers >= 1, "Need at least one peer");
+    static_assert(NumProcs >= NPeers && (NumProcs % NPeers) == 0,
+                  "Initial port requires NumProcs >= NPeers and divisible");
+    static_assert(std::is_same<Payload, uint2>::value,
+                  "Only LL16Packet (Payload=uint2) supported initially");
+    static_assert(sizeof(DataType) <= sizeof(uint32_t),
+                  "DataType must be <= 4 bytes");
+
+    constexpr int NThreadsPerBlock = NumWarps * 32;
+    constexpr int WorldSize = NPeers + 1;
+    constexpr int ElemsPerUint32 = sizeof(uint32_t) / sizeof(DataType);
+    static_assert(
+        NelemsTotal % (ElemsPerUint32 * 2 * WorldSize) == 0,
+        "NelemsTotal must be divisible by WorldSize * 2 * ElemsPerUint32");
+    constexpr int NelemsInt32 = NelemsTotal / ElemsPerUint32;
+    constexpr int NPkts = NelemsInt32 / 2;
+    constexpr int NelemsPerRank = NelemsInt32 / WorldSize;
+    constexpr int NPktsPerRank = NelemsPerRank / 2;
+    constexpr int NBlocksPerPeer = NumProcs / NPeers;
+    constexpr int NelemsPerPacket = sizeof(Payload) / sizeof(DataType);
+
+    const int peer_idx = task_id / NBlocksPerPeer;
+    const int local_block_idx = task_id % NBlocksPerPeer;
+    const int remote_rank = peer_idx < Rank ? peer_idx : peer_idx + 1;
+    const int peer_tid = threadIdx.x + local_block_idx * NThreadsPerBlock;
+    constexpr int peer_total_threads = NThreadsPerBlock * NBlocksPerPeer;
+    constexpr uint64_t SCRATCH_INPUT_BYTES = NPkts * sizeof(PacketType);
+
+    // ----- Phase 1: putPackets to peer's scratch[Rank slot] -----
+    if (task_id < NumProcs) {
+        auto &chan = ARK_SM_CHANS[remote_rank];
+        uint64_t dst_off =
+            scratch_offset_remote + Rank * NPktsPerRank * sizeof(PacketType);
+        uint64_t src_off =
+            input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
+        chan.template putPackets<PacketType>(
+            dst_off, src_off, NelemsPerRank * sizeof(uint32_t), peer_tid,
+            peer_total_threads, Flag);
+    }
+
+    // ----- Phase 2: reduce local rank's shard, scatter result to peers -----
+    {
+        PacketType *scratch_input = reinterpret_cast<PacketType *>(scratch);
+        uint2 *src = reinterpret_cast<uint2 *>(input) + Rank * NPktsPerRank;
+        uint2 *dst = reinterpret_cast<uint2 *>(output) + Rank * NPktsPerRank;
+
+        for (int idx = threadIdx.x + task_id * NThreadsPerBlock;
+             idx < NPktsPerRank; idx += NThreadsPerBlock * NumProcs) {
+            uint2 data = src[idx];
+#pragma unroll
+            for (int i = 0; i < NPeers; ++i) {
+                int peer_rank = i < Rank ? i : i + 1;
+                PacketType *pkt =
+                    scratch_input + peer_rank * NPktsPerRank + idx;
+                uint2 val = pkt->read(Flag, -1);
+                ReduceTypeSum::template reduce<NelemsPerPacket, DataType>(
+                    reinterpret_cast<DataType *>(&data),
+                    reinterpret_cast<DataType *>(&data),
+                    reinterpret_cast<DataType *>(&val));
+            }
+            dst[idx] = data;
+#pragma unroll
+            for (int i = 0; i < NPeers; ++i) {
+                int peer_rank = i < Rank ? i : i + 1;
+                auto &chan = ARK_SM_CHANS[peer_rank];
+                char *remote_base = reinterpret_cast<char *>(chan.dst_);
+                PacketType *remote_pkt = reinterpret_cast<PacketType *>(
+                    remote_base + scratch_offset_remote + SCRATCH_INPUT_BYTES +
+                    Rank * NPktsPerRank * sizeof(PacketType));
+                (remote_pkt + idx)->write(data, Flag);
+            }
+        }
+    }
+
+    // ----- Phase 3: read result packets for this peer's shard -----
+    if (task_id < NumProcs) {
+        PacketType *result_base = reinterpret_cast<PacketType *>(
+            reinterpret_cast<char *>(scratch) + SCRATCH_INPUT_BYTES +
+            remote_rank * NPktsPerRank * sizeof(PacketType));
+        uint2 *dst =
+            reinterpret_cast<uint2 *>(output) + remote_rank * NPktsPerRank;
+        for (int idx = peer_tid; idx < NPktsPerRank;
+             idx += peer_total_threads) {
+            dst[idx] = result_base[idx].read(Flag, -1);
+        }
+    }
+}
+
 }  // namespace ark
 
 #endif  // ARK_KERNELS_COMM_H_

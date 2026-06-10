@@ -137,5 +137,8 @@ void register_model(py::module &m) {
              py::arg("remote_rank"), py::arg("tag"), py::arg("name"))
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
              py::arg("rank"), py::arg("world_size"), py::arg("output"),
-             py::arg("name"));
+             py::arg("name"))
+        .def("all_reduce_packet", &ark::Model::all_reduce_packet,
+             py::arg("input"), py::arg("rank"), py::arg("world_size"),
+             py::arg("output"), py::arg("name"));
 }
