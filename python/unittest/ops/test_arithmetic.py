@@ -65,7 +65,7 @@ def test_div_fp32():
     assert torch.allclose(ark.div(a, b).eval(), a / b, atol=0, rtol=0)
 
 
-# ─── Scalar operations ──────────────────────────────────────────────────────
+# Scalar operations
 
 FACTOR = 0.75
 
@@ -99,9 +99,8 @@ def test_scalar_div(shape):
     )
 
 
-# ─── Constant & scalar copy ─────────────────────────────────────────────────
-# Note: only scalar copy is tested here; tensor-to-tensor copy remains in the
-# C++ ops_copy_test.
+# Constant & scalar copy
+# Scalar copy only; tensor copy tested separately.
 
 
 def test_constant_fp16():

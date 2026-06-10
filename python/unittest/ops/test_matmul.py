@@ -21,6 +21,7 @@ def test_matmul_nn(dtype):
     b = torch.randn(K, N, dtype=dtype, device=DEVICE)
     result = ark.matmul(a, b).eval()
     expected = a @ b
+    # Empirical tolerance for fp16/bf16 K=512 matmul with randn inputs
     atol = 1e-3 if dtype == torch.float32 else 3e-1
     assert torch.allclose(
         result, expected, atol=atol, rtol=1e-2

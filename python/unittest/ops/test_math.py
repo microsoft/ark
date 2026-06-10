@@ -48,13 +48,24 @@ def test_sigmoid(dtype):
     )
 
 
-def test_sqrt_fp32():
-    a = torch.rand(4, 2, 1024, dtype=torch.float32, device=DEVICE) + 0.01
-    assert torch.allclose(ark.sqrt(a).eval(), torch.sqrt(a), atol=1e-6, rtol=0)
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+def test_sqrt(dtype):
+    a = torch.rand(4, 2, 1024, dtype=dtype, device=DEVICE) + 0.01
+    atol = 1e-6 if dtype == torch.float32 else 1e-3
+    assert torch.allclose(ark.sqrt(a).eval(), torch.sqrt(a), atol=atol, rtol=0)
 
 
-def test_rsqrt_fp32():
-    a = torch.rand(4, 2, 1024, dtype=torch.float32, device=DEVICE) + 0.01
+def test_sqrt_small_last_dim():
+    a = torch.rand(4, 2, 7, dtype=torch.float16, device=DEVICE) + 0.01
     assert torch.allclose(
-        ark.rsqrt(a).eval(), torch.rsqrt(a), atol=1e-4, rtol=0
+        ark.sqrt(a).eval(), torch.sqrt(a), atol=1e-3, rtol=0
+    )
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+def test_rsqrt(dtype):
+    a = torch.rand(4, 2, 1024, dtype=dtype, device=DEVICE) + 0.01
+    atol = 1e-4 if dtype == torch.float32 else 1e-3
+    assert torch.allclose(
+        ark.rsqrt(a).eval(), torch.rsqrt(a), atol=atol, rtol=0
     )
