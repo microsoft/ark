@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 #include "model/model_buffer.hpp"
-#include "model/model_tensor.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
+#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
 
 template <typename T, int NumGpus>
