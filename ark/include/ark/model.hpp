@@ -271,6 +271,14 @@ class Model : public ModelGraph {
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
+    // Packet-based all-reduce: uses LL packet channels (data + flag fused) for
+    // low-latency intra-node collective. Single-shot reduce-scatter +
+    // allgather, NOT a ring chain — avoids the (N-1)-step task accumulation of
+    // all_reduce() and is the recommended primitive for small messages on
+    // NVLink.
+    Tensor all_reduce_packet(Tensor input, int rank, int rank_num,
+                             Tensor output = NullTensor,
+                             const std::string &name = "");
     // Performs an all-gather operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`. Returns a vector of tensors, each

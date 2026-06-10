@@ -357,6 +357,19 @@ std::string Planner::Impl::plan(bool pretty) const {
                                              {"TaskRange", {0, num_tasks}},
                                              {"Granularity", granularity}}};
 
+            // Override NumProcs with the actual processor count from
+            // ProcessorRange. default_config sets NumProcs = NumTasks,
+            // but the planner may assign fewer processors.
+            if (task_infos.back()["Ops"][0].at("Type") ==
+                "AllReducePacketFused") {
+                auto &pr = resource_group["ProcessorRange"];
+                size_t pr_begin = pr[0].get<size_t>();
+                size_t pr_end = pr[1].get<size_t>();
+                size_t pr_step = (pr.size() >= 3) ? pr[2].get<size_t>() : 1;
+                size_t num_procs = (pr_end - pr_begin + pr_step - 1) / pr_step;
+                task_infos.back()["Ops"][0]["Config"]["NumProcs"] = num_procs;
+            }
+
             if (new_processor_group) {
                 processor_group["ResourceGroups"] = Json::array();
                 processor_group["ResourceGroups"].push_back(resource_group);
