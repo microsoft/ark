@@ -6,7 +6,7 @@ from typing import NewType
 from . import log
 from .core import CoreModel
 
-__all__ = ["Model", "set_model", "current_model", "use_model"]
+__all__ = ["Model", "current_model", "set_model", "use_model"]
 
 ModelState = NewType("ModelState", None)
 
