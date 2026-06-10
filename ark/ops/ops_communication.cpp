@@ -452,14 +452,8 @@ Json ModelOpRecvReduceSendPacket::default_config(
     return config;
 }
 
-// ============================================================================
-// ModelOpAllReducePacketFused — single-op intra-node packet allreduce.
-// Mirrors mscclpp's `allreducePacket` monolithic kernel (port via
-// `comm::allreduce_packet_fused` in include/kernels/comm.h). Replaces the
-// M36 three-op recursive-doubling chain (`send_packet`,
-// `recv_reduce_send_packet`, `recv_packet`) used by the old
-// `Model::all_reduce_packet`.
-// ============================================================================
+// Fused intra-node packet allreduce. Replaces the three-op chain
+// (send_packet → recv_reduce_send_packet → recv_packet) with a single op.
 ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
     ModelTensorRef input, ModelTensorRef output, int rank, int rank_num,
     uint32_t flag, ModelTensorRef scratch,
@@ -469,8 +463,9 @@ ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
     check_null(output);
     check_null(scratch);
     if (scratch->buffer()->rank() != rank && scratch->buffer()->rank() != -1) {
-        ERR(ModelError, "invalid local scratch buffer rank: ",
-            scratch->buffer()->rank(), ", expected: ", rank);
+        ERR(ModelError,
+            "invalid local scratch buffer rank: ", scratch->buffer()->rank(),
+            ", expected: ", rank);
     }
     uint32_t n_peers = rank_num - 1;
     if (peer_scratch_refs.size() != n_peers) {
@@ -499,7 +494,8 @@ ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
 
 std::string ModelOpAllReducePacketFused::impl_name(const Json &config) const {
     check_fields_config(config,
-                        {"NumProcs", "NumWarps", "PacketType", "NumTasks"});
+                        {"NumProcs", "NumWarps", "PacketType", "NumTasks",
+                         "SramBytes", "Tile"});
     auto &input = read_tensors_[0];
     uint32_t flag = args_.at("Flag").value<uint32_t>();
     uint32_t n_peers = args_.at("NPeers").value<uint32_t>();

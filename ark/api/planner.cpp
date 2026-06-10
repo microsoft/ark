@@ -365,12 +365,9 @@ std::string Planner::Impl::plan(bool pretty) const {
                 auto &pr = resource_group["ProcessorRange"];
                 size_t pr_begin = pr[0].get<size_t>();
                 size_t pr_end = pr[1].get<size_t>();
-                size_t pr_step =
-                    (pr.size() >= 3) ? pr[2].get<size_t>() : 1;
-                size_t num_procs =
-                    (pr_end - pr_begin + pr_step - 1) / pr_step;
-                task_infos.back()["Ops"][0]["Config"]["NumProcs"] =
-                    num_procs;
+                size_t pr_step = (pr.size() >= 3) ? pr[2].get<size_t>() : 1;
+                size_t num_procs = (pr_end - pr_begin + pr_step - 1) / pr_step;
+                task_infos.back()["Ops"][0]["Config"]["NumProcs"] = num_procs;
             }
 
             if (new_processor_group) {

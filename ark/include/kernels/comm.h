@@ -446,7 +446,7 @@ DEVICE void device_sync(int, int) {
 //
 // Template parameters:
 //   NPeers     — world_size - 1; this rank's peer count
-//   Rank       — this rank's world index (0..NPeers)
+//   Rank       — this rank's world index [0, NPeers]
 //   NumProcs   — number of blocks the planner gave this op
 //                (= (ProcEnd - ProcBegin) / ProcStep, supplied at codegen)
 //   NumWarps   — warps per block
@@ -456,7 +456,7 @@ DEVICE void device_sync(int, int) {
 //   NelemsTotal — total elements in the input tensor (compile-time, from
 //                 shape)
 //   Flag       — compile-time flag value used by the LL packet protocol
-//                (same caveat as M36: per-iter flag rotation is M43+ work)
+//                (per-iter flag rotation is deferred work)
 //
 // Runtime arguments:
 //   output / input / scratch  — base pointers
@@ -471,12 +471,8 @@ DEVICE void device_sync(int, int) {
 //
 // Block-to-peer mapping requirement (initial implementation):
 //   NumProcs >= NPeers AND NumProcs % NPeers == 0
-// The standard-with-tail and compact regimes described in the design doc
-// are deferred — they only matter for very-tight `processor_range`s and
-// can be added without changing the call signature.
-template <int NPeers, int Rank, int NumProcs, int NumWarps,
-          typename PacketType, typename DataType, int NelemsTotal,
-          uint32_t Flag = 1>
+template <int NPeers, int Rank, int NumProcs, int NumWarps, typename PacketType,
+          typename DataType, int NelemsTotal, uint32_t Flag = 1>
 DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
                                    void *scratch,
                                    uint64_t scratch_offset_remote,
@@ -494,8 +490,9 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
     constexpr int NThreadsPerBlock = NumWarps * 32;
     constexpr int WorldSize = NPeers + 1;
     constexpr int ElemsPerUint32 = sizeof(uint32_t) / sizeof(DataType);
-    static_assert(NelemsTotal % (ElemsPerUint32 * 2 * WorldSize) == 0,
-                  "NelemsTotal must be divisible by WorldSize * 2 * ElemsPerUint32");
+    static_assert(
+        NelemsTotal % (ElemsPerUint32 * 2 * WorldSize) == 0,
+        "NelemsTotal must be divisible by WorldSize * 2 * ElemsPerUint32");
     constexpr int NelemsInt32 = NelemsTotal / ElemsPerUint32;
     constexpr int NPkts = NelemsInt32 / 2;
     constexpr int NelemsPerRank = NelemsInt32 / WorldSize;
@@ -508,15 +505,15 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
     const int remote_rank = peer_idx < Rank ? peer_idx : peer_idx + 1;
     const int peer_tid = threadIdx.x + local_block_idx * NThreadsPerBlock;
     constexpr int peer_total_threads = NThreadsPerBlock * NBlocksPerPeer;
-    constexpr uint64_t SCRATCH_INPUT_BYTES =
-        NPkts * sizeof(PacketType);
+    constexpr uint64_t SCRATCH_INPUT_BYTES = NPkts * sizeof(PacketType);
 
     // ----- Phase 1: putPackets to peer's scratch[Rank slot] -----
     if (task_id < NumProcs) {
         auto &chan = ARK_SM_CHANS[remote_rank];
-        uint64_t dst_off = scratch_offset_remote +
-                           Rank * NPktsPerRank * sizeof(PacketType);
-        uint64_t src_off = input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
+        uint64_t dst_off =
+            scratch_offset_remote + Rank * NPktsPerRank * sizeof(PacketType);
+        uint64_t src_off =
+            input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
         chan.template putPackets<PacketType>(
             dst_off, src_off, NelemsPerRank * sizeof(uint32_t), peer_tid,
             peer_total_threads, Flag);
@@ -524,8 +521,7 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
 
     // ----- Phase 2: reduce local rank's shard, scatter result to peers -----
     {
-        PacketType *scratch_input =
-            reinterpret_cast<PacketType *>(scratch);
+        PacketType *scratch_input = reinterpret_cast<PacketType *>(scratch);
         uint2 *src = reinterpret_cast<uint2 *>(input) + Rank * NPktsPerRank;
         uint2 *dst = reinterpret_cast<uint2 *>(output) + Rank * NPktsPerRank;
 
@@ -550,8 +546,7 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
                 auto &chan = ARK_SM_CHANS[peer_rank];
                 char *remote_base = reinterpret_cast<char *>(chan.dst_);
                 PacketType *remote_pkt = reinterpret_cast<PacketType *>(
-                    remote_base + scratch_offset_remote +
-                    SCRATCH_INPUT_BYTES +
+                    remote_base + scratch_offset_remote + SCRATCH_INPUT_BYTES +
                     Rank * NPktsPerRank * sizeof(PacketType));
                 (remote_pkt + idx)->write(data, Flag);
             }
@@ -563,8 +558,8 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
         PacketType *result_base = reinterpret_cast<PacketType *>(
             reinterpret_cast<char *>(scratch) + SCRATCH_INPUT_BYTES +
             remote_rank * NPktsPerRank * sizeof(PacketType));
-        uint2 *dst = reinterpret_cast<uint2 *>(output) +
-                     remote_rank * NPktsPerRank;
+        uint2 *dst =
+            reinterpret_cast<uint2 *>(output) + remote_rank * NPktsPerRank;
         for (int idx = peer_tid; idx < NPktsPerRank;
              idx += peer_total_threads) {
             dst[idx] = result_base[idx].read(Flag, -1);

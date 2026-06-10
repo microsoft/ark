@@ -594,6 +594,68 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         }
         UNITTEST_TRUE(found);
     }
+    // Medium-size tensor (40000 bytes, 32KB <= x <= 153KB):
+    // exercises the blocks_per_peer=8, num_warps=16 config path.
+    {
+        // 20000 FP16 = 40000 bytes => 32KB < 40KB <= 153KB.
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({20000}, ark::FP16);
+        ark::Tensor result = model.all_reduce_packet(tns, 0, 2);
+
+        auto nodes = model.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            if (op->type() != ark::ModelOpT::from_name("AllReducePacketFused"))
+                continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_EQ(cfg.at("NumWarps").get<int>(), 16);
+            UNITTEST_EQ(cfg.at("NumTasks").get<int>(), 8);
+        }
+    }
+    // Large tensor (> 153600 bytes):
+    // exercises blocks_per_peer=8, num_warps=32 config path.
+    {
+        // 80000 FP16 = 160000 bytes > 153600.
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({80000}, ark::FP16);
+        ark::Tensor result = model.all_reduce_packet(tns, 0, 2);
+
+        auto nodes = model.nodes();
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            if (op->type() != ark::ModelOpT::from_name("AllReducePacketFused"))
+                continue;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            UNITTEST_EQ(cfg.at("NumWarps").get<int>(), 32);
+            UNITTEST_EQ(cfg.at("NumTasks").get<int>(), 8);
+        }
+    }
+    // Test Planner::plan() with AllReducePacketFused to exercise the
+    // NumProcs override branch in planner.cpp.
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        ark::Tensor result = model.all_reduce_packet(tns, 0, 2);
+
+        ark::Planner planner(model, 0);
+        auto plan = ark::Json::parse(planner.plan(false));
+        // The plan should contain at least one TaskInfo for the fused op.
+        UNITTEST_TRUE(plan.contains("TaskInfos"));
+        bool found_fused = false;
+        for (auto &ti : plan["TaskInfos"]) {
+            for (auto &op : ti["Ops"]) {
+                if (op.at("Type").get<std::string>() ==
+                    "AllReducePacketFused") {
+                    found_fused = true;
+                    // NumProcs should have been set by the planner.
+                    UNITTEST_TRUE(op["Config"].contains("NumProcs"));
+                }
+            }
+        }
+        UNITTEST_TRUE(found_fused);
+    }
     // Verify rank_num < 2 is rejected.
     {
         ark::Model model(0, 1);
@@ -605,6 +667,30 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         ark::Model model(0, 2);
         ark::Tensor tns = model.tensor({1023}, ark::FP16);
         UNITTEST_THROW(model.all_reduce_packet(tns, 0, 2), ark::ModelError);
+    }
+    // Multi-peer model test: rank_num=4, rank=2 exercises peer-index mapping.
+    {
+        ark::Model model(2, 4);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        ark::Tensor result = model.all_reduce_packet(tns, 2, 4);
+
+        auto nodes = model.nodes();
+        bool found = false;
+        for (auto &node : nodes) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            if (op->type() != ark::ModelOpT::from_name("AllReducePacketFused"))
+                continue;
+            found = true;
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            // 1024 FP16 = 2048 bytes < 32KB → blocks_per_peer=4, n_peers=3
+            UNITTEST_EQ(cfg.at("NumTasks").get<int>(), 12);
+            UNITTEST_EQ(cfg.at("NumWarps").get<int>(), 32);
+            auto name = op->impl_name(cfg);
+            UNITTEST_TRUE(name.find("allreduce_packet_fused") !=
+                          std::string::npos);
+        }
+        UNITTEST_TRUE(found);
     }
     return ark::unittest::SUCCESS;
 }

@@ -604,7 +604,7 @@ def all_reduce_packet(
     rank: int,
     world_size: int,
     output: Tensor = NullTensor,
-    name: str = "all_reduce_packet",
+    name: str = "",
 ) -> Tensor:
     """
     Packet-based intra-node all-reduce — single-shot reduce-scatter + allgather using
@@ -615,12 +615,12 @@ def all_reduce_packet(
     Args:
         input (Tensor): The input tensor to be reduced. Must be contiguous.
         rank (int): The rank of the current process.
-        world_size (int): The total number of processes (must divide
-            input.shape().nelems()).
+        world_size (int): The total number of processes. The tensor's
+            element count must be divisible by (4 * world_size) for FP16.
         output (Tensor, optional): The output tensor. If provided, the result
             will be stored in this tensor. Defaults to NullTensor.
         name (str, optional): The name of the operation. Defaults to
-            "all_reduce_packet".
+            "".
 
     Returns:
         Tensor: The reduced tensor.
