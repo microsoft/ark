@@ -21,6 +21,7 @@
 #include "noop.h"
 #include "reduce.h"
 #include "scalar.h"
+#include "softmax.h"
 #include "transpose.h"
 
 #endif  // ARK_KERNELS_H_

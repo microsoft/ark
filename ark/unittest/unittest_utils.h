@@ -22,6 +22,9 @@ namespace unittest {
 
 typedef enum { SUCCESS = 0, FAILURE, UNEXPECTED } State;
 
+// Return the number of visible GPUs (calls gpuGetDeviceCount).
+int get_gpu_count();
+
 void exit(State s, const std::string &errmsg);
 void fexit(const std::string &errmsg = "");
 void uexit(const std::string &errmsg = "");
@@ -239,5 +242,16 @@ std::string get_kernel_code(const std::string &name);
 
 // Log a message.
 #define UNITTEST_LOG(...) LOG(ark::INFO, __VA_ARGS__)
+
+// Skip the current test (exit with SUCCESS) if @p cond is true.
+// WARNING: calls std::exit(), which skips local destructors.
+// Only safe inside spawn_process() child lambdas.
+#define UNITTEST_SKIP(cond)                          \
+    do {                                             \
+        if (cond) {                                  \
+            LOG(ark::INFO, "unittest skip: " #cond); \
+            std::exit(ark::unittest::SUCCESS);       \
+        }                                            \
+    } while (0)
 
 #endif  // ARK_UNITTEST_UNITTEST_UTILS_H_
