@@ -4,6 +4,7 @@
 #include "model/model_buffer.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
+#include "model/model_tensor.hpp"
 #include "ops_test_common.hpp"
 
 template <typename T, int NumGpus>
@@ -27,6 +28,7 @@ template <int NumGpus>
 void test_all_reduce_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
@@ -118,6 +120,7 @@ template <int NumGpus>
 void test_all_reduce_packet_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
@@ -224,6 +227,7 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
     };
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem, config_rule]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
             // Each GPU's data is equal to its GPU ID + 1.
             ark::Model m(gpu_id, NumGpus);
             ark::Tensor ones = m.tensor({nelem}, ark::FP16);
@@ -242,6 +246,56 @@ void test_all_reduce_sm_internal(ark::DimType nelem) {
         });
     }
     ark::unittest::wait_all_processes();
+}
+
+template <int NumGpus>
+void test_all_reduce_inplace_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            // Each GPU's data is equal to its GPU ID + 1.
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor ones = m.tensor({nelem}, ark::FP16);
+            ark::Tensor data = m.mul(ones, float(gpu_id + 1));
+            // In-place: pass the same tensor as both input and output.
+            ark::Tensor output = m.all_reduce(data, gpu_id, NumGpus, data);
+
+            // Verify the output is truly in-place (same buffer as input).
+            UNITTEST_EQ(output.ref()->buffer()->id(),
+                        data.ref()->buffer()->id());
+
+            std::vector<ark::half_t> ones_vec(ones.shape().nelems(),
+                                              ark::half_t(1.0f));
+            auto result = ark::op_test(
+                "all_reduce_inplace", m, {ones}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>, {ones_vec.data()});
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+// The corruption was most visible with gpu_num >= 3 (multiple ring
+// iterations); this 2-GPU case validates the in-place copy path still
+// works for the simpler ring.
+ark::unittest::State test_all_reduce_inplace_2gpus() {
+    test_all_reduce_inplace_internal<2>(64);
+    test_all_reduce_inplace_internal<2>(8192);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_inplace_3gpus() {
+    test_all_reduce_inplace_internal<3>(64);
+    test_all_reduce_inplace_internal<3>(8192);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_inplace_4gpus() {
+    test_all_reduce_inplace_internal<4>(64);
+    test_all_reduce_inplace_internal<4>(8192);
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_4gpus() {
@@ -287,5 +341,8 @@ int main() {
     UNITTEST(test_all_reduce_packet_8gpus);
     UNITTEST(test_all_reduce_sm_4gpus);
     UNITTEST(test_all_reduce_sm_8gpus);
+    UNITTEST(test_all_reduce_inplace_2gpus);
+    UNITTEST(test_all_reduce_inplace_3gpus);
+    UNITTEST(test_all_reduce_inplace_4gpus);
     return 0;
 }

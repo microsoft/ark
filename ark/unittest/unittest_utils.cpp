@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "file_io.h"
+#include "gpu/gpu.hpp"
 #include "logging.hpp"
 
 // Grep SIGALRM and exit.
@@ -21,6 +22,14 @@ static void sigalrm_timeout_handler(int) {
 
 namespace ark {
 namespace unittest {
+
+int get_gpu_count() {
+    int count = 0;
+    if (gpuGetDeviceCount(&count) != gpuSuccess) {
+        return 0;
+    }
+    return count;
+}
 
 // Temporal unittest states.
 struct TempStates {

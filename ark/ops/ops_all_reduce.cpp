@@ -13,6 +13,12 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     }
     if (output.is_null()) {
         output = this->copy(input);
+    } else if (output.ref()->buffer()->id() == input.ref()->buffer()->id()) {
+        // In-place: copy input so the ring loop does not mutate send data.
+        // TODO: This catches the common case (output IS input). Sub-buffer
+        // offset aliasing or aliasing through different buffer objects backed
+        // by the same allocation is not currently detected.
+        input = this->copy(input);
     }
     Tensor prev_recv = NullTensor;
     Tensor cumulate = output;
