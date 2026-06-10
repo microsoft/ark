@@ -493,9 +493,8 @@ ModelOpAllReducePacketFused::ModelOpAllReducePacketFused(
 }
 
 std::string ModelOpAllReducePacketFused::impl_name(const Json &config) const {
-    check_fields_config(config,
-                        {"NumProcs", "NumWarps", "PacketType", "NumTasks",
-                         "SramBytes", "Tile"});
+    check_fields_config(config, {"NumProcs", "NumWarps", "PacketType",
+                                 "NumTasks", "SramBytes", "Tile"});
     auto &input = read_tensors_[0];
     uint32_t flag = args_.at("Flag").value<uint32_t>();
     uint32_t n_peers = args_.at("NPeers").value<uint32_t>();
