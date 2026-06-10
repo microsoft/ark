@@ -4,8 +4,12 @@
 """Numerical tests for transpose op."""
 
 import pytest
-import torch
-from conftest import ark, DEVICE
+
+from common import ark
+
+torch = pytest.importorskip("torch")
+
+DEVICE = "cuda:0"
 
 
 @pytest.mark.parametrize(

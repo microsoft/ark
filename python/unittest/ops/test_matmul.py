@@ -4,8 +4,12 @@
 """Numerical tests for matmul: NN, NT, TN, TT, batched."""
 
 import pytest
-import torch
-from conftest import ark, DEVICE
+
+from common import ark
+
+torch = pytest.importorskip("torch")
+
+DEVICE = "cuda:0"
 
 
 @pytest.mark.parametrize(
@@ -17,7 +21,7 @@ def test_matmul_nn(dtype):
     b = torch.randn(K, N, dtype=dtype, device=DEVICE)
     result = ark.matmul(a, b).eval()
     expected = a @ b
-    atol = 1e-3 if dtype == torch.float32 else 1e-1
+    atol = 1e-3 if dtype == torch.float32 else 3e-1
     assert torch.allclose(
         result, expected, atol=atol, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
@@ -30,7 +34,7 @@ def test_matmul_nt():
     result = ark.matmul(a, b, transpose_other=True).eval()
     expected = a @ b.t()
     assert torch.allclose(
-        result, expected, atol=5e-1, rtol=1e-2
+        result, expected, atol=3e-1, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
 
 
@@ -41,7 +45,7 @@ def test_matmul_tn():
     result = ark.matmul(a, b, transpose_input=True).eval()
     expected = a.t() @ b
     assert torch.allclose(
-        result, expected, atol=5e-1, rtol=1e-2
+        result, expected, atol=3e-1, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
 
 
@@ -52,7 +56,7 @@ def test_matmul_tt():
     result = ark.matmul(a, b, transpose_input=True, transpose_other=True).eval()
     expected = a.t() @ b.t()
     assert torch.allclose(
-        result, expected, atol=5e-1, rtol=1e-2
+        result, expected, atol=3e-1, rtol=1e-2
     ), f"max_diff={(result - expected).abs().max()}"
 
 

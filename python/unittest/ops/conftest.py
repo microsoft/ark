@@ -13,20 +13,11 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common import ark
 
-try:
-    import torch
 
-    _no_torch = False
-except ImportError:
-    _no_torch = True
-
-# Skip entire ops/ directory if torch is unavailable
-pytestmark = pytest.mark.skipif(_no_torch, reason="torch not available")
-
-DEVICE = "cuda:0"
-
-
+# Note: ops/ tests use an autouse fixture for ark.init() rather than the
+# @pytest_ark() decorator used in the parent directory. Both are equivalent;
+# the fixture approach avoids per-test decoration.
 @pytest.fixture(autouse=True)
 def _ark_init():
-    """Reset ARK state before each test so tests don't share models."""
+    """Initialize ARK state before each test so tests start fresh."""
     ark.init()

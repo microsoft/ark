@@ -4,8 +4,12 @@
 """Numerical tests for arithmetic ops: add, sub, mul, div (tensor and scalar)."""
 
 import pytest
-import torch
-from conftest import ark, DEVICE
+
+from common import ark
+
+torch = pytest.importorskip("torch")
+
+DEVICE = "cuda:0"
 
 
 @pytest.mark.parametrize(
@@ -29,8 +33,8 @@ def test_add_broadcast_3d():
     assert torch.allclose(ark.add(a, b).eval(), a + b, atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32])
-def test_sub(dtype):
+def test_sub():
+    dtype = torch.float32
     a = torch.randn(8192, dtype=dtype, device=DEVICE)
     b = torch.randn(8192, dtype=dtype, device=DEVICE)
     assert torch.allclose(ark.sub(a, b).eval(), a - b, atol=0, rtol=0)
@@ -96,6 +100,8 @@ def test_scalar_div(shape):
 
 
 # ─── Constant & scalar copy ─────────────────────────────────────────────────
+# Note: only scalar copy is tested here; tensor-to-tensor copy remains in the
+# C++ ops_copy_test.
 
 
 def test_constant_fp16():

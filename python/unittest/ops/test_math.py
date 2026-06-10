@@ -4,9 +4,13 @@
 """Numerical tests for unary math ops: exp, gelu, relu, sigmoid, sqrt, rsqrt."""
 
 import pytest
-import torch
+
+from common import ark
+
+torch = pytest.importorskip("torch")
 import torch.nn.functional as F
-from conftest import ark, DEVICE
+
+DEVICE = "cuda:0"
 
 
 @pytest.mark.parametrize(
