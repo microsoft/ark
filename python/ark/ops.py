@@ -49,6 +49,19 @@ __all__ = [
 ]
 
 
+def _ensure_ark(t):
+    """
+    If *t* is a ``torch.Tensor``, convert it to an ARK ``Tensor`` via
+    ``Tensor.from_torch()``. Otherwise return *t* unchanged.
+
+    When used on an ``output`` parameter, the returned ARK tensor shares memory
+    with the original torch tensor via ``Tensor.from_torch``.
+    """
+    if not _no_torch and isinstance(t, torch.Tensor):
+        return Tensor.from_torch(t)
+    return t
+
+
 def is_list_or_tuple(obj):
     return isinstance(obj, list) or isinstance(obj, tuple)
 
@@ -60,6 +73,9 @@ def add(
     name: str = "add",
 ) -> Union[Tensor, float]:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
+    output = _ensure_ark(output)
     if isinstance(input, Tensor) and isinstance(other, Tensor):
         a = input._tensor
         b = other._tensor
@@ -87,6 +103,8 @@ def cast(
     name: str = "cast",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -112,6 +130,8 @@ def copy(
     name: str = "copy",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(input, Tensor):
@@ -126,6 +146,9 @@ def div(
     name: str = "div",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -140,6 +163,9 @@ def embedding(
     name: str = "embedding",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    weight = _ensure_ark(weight)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -153,6 +179,8 @@ def exp(
     name: str = "exp",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().exp(input._tensor, output, name))
@@ -164,6 +192,8 @@ def gelu(
     name: str = "gelu",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().gelu(input._tensor, output, name))
@@ -173,6 +203,8 @@ def identity(
     input: Tensor, deps: List[Tensor] = [], name: str = "identity"
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    deps = [_ensure_ark(d) for d in deps]
     dep_tensors = []
     for dep in deps:
         if not isinstance(dep, Tensor):
@@ -190,6 +222,9 @@ def matmul(
     name: str = "matmul",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -211,6 +246,9 @@ def mul(
     name: str = "mul",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -220,6 +258,7 @@ def mul(
 
 def noop(input: Tensor, name: str = "noop"):
     """ """
+    input = _ensure_ark(input)
     Model.get_model().noop(input._tensor, name)
 
 
@@ -260,6 +299,8 @@ def reduce_max(
     name: str = "reduce_max",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -277,6 +318,8 @@ def reduce_mean(
     name: str = "reduce_mean",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -294,6 +337,8 @@ def reduce_sum(
     name: str = "reduce_sum",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -309,6 +354,8 @@ def relu(
     name: str = "relu",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().relu(input._tensor, output, name))
@@ -333,6 +380,7 @@ def reshape(
     # tensors shape is [128, 64]
     tensor = ark.reshape(tensor, [2, 64, 64])
     """
+    input = _ensure_ark(input)
     if not is_list_or_tuple(shape):
         raise log.InvalidUsageError(
             "shape should be a list or tuple of integers"
@@ -354,6 +402,9 @@ def rope(
     name: str = "rope",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -367,6 +418,8 @@ def rsqrt(
     name: str = "rsqrt",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().rsqrt(input._tensor, output, name))
@@ -376,6 +429,7 @@ def sharding(
     input: Tensor, axis: int, dim_per_shard: int, name: str = "sharding"
 ) -> List[Tensor]:
     """ """
+    input = _ensure_ark(input)
     _tensor_list = Model.get_model().sharding(
         input._tensor, axis, dim_per_shard, name
     )
@@ -388,6 +442,8 @@ def sigmoid(
     name: str = "sigmoid",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().sigmoid(input._tensor, output, name))
@@ -399,6 +455,8 @@ def sqrt(
     name: str = "sqrt",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(Model.get_model().sqrt(input._tensor, output, name))
@@ -411,6 +469,9 @@ def sub(
     name: str = "sub",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    other = _ensure_ark(other)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     if isinstance(other, Tensor):
@@ -442,6 +503,8 @@ def transpose(
     name: str = "transpose",
 ) -> Tensor:
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     if not is_list_or_tuple(perm):
@@ -467,6 +530,8 @@ def send(
     name: str = "send",
 ):
     """ """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     return Tensor(
@@ -479,6 +544,7 @@ def send_done(
     name: str = "send_done",
 ):
     """ """
+    input = _ensure_ark(input)
     return Tensor(Model.get_model().send_done(input._tensor, name))
 
 
@@ -489,6 +555,7 @@ def recv(
     name: str = "recv",
 ):
     """ """
+    output = _ensure_ark(output)
     return Tensor(
         Model.get_model().recv(output._tensor, remote_rank, tag, name)
     )
@@ -591,6 +658,8 @@ def all_reduce(
     Returns:
         Tensor: The reduced tensor.
     """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     _tensor = Model.get_model().all_reduce(
@@ -625,6 +694,8 @@ def all_reduce_packet(
     Returns:
         Tensor: The reduced tensor.
     """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
     if output is not NullTensor:
         output = output._tensor
     _tensor = Model.get_model().all_reduce_packet(

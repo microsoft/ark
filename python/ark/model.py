@@ -1,11 +1,12 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from contextlib import contextmanager
 from typing import NewType
 from . import log
 from .core import CoreModel
 
-__all__ = ["Model"]
+__all__ = ["Model", "current_model", "set_model", "use_model"]
 
 ModelState = NewType("ModelState", None)
 
@@ -114,3 +115,45 @@ class ModelState:
     rank: int = 0
     world_size: int = 1
     device_id: int = 0
+
+
+def set_model(model: Model) -> None:
+    """
+    Set the current model.
+
+    Args:
+        model: The model to set as current.
+    """
+    if not isinstance(model, Model):
+        raise log.InvalidUsageError("model must be a Model instance")
+    ModelState.model = model
+
+
+def current_model() -> Model:
+    """
+    Return the current model, creating one if none exists.
+    """
+    return Model.get_model()
+
+
+@contextmanager
+def use_model(model: Model = None):
+    """
+    Context manager that sets *model* as the current model on entry and
+    restores the previous model on exit. If *model* is ``None``, a fresh
+    model is created.
+
+    Args:
+        model: The model to use inside the context. If ``None``, a new
+            ``Model`` is created with the current rank and world size.
+    """
+    prev = ModelState.model
+    if model is None:
+        model = Model(ModelState.rank, ModelState.world_size)
+    elif not isinstance(model, Model):
+        raise log.InvalidUsageError("model must be a Model instance")
+    ModelState.model = model
+    try:
+        yield model
+    finally:
+        ModelState.model = prev
