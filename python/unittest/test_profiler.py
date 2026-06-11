@@ -3,6 +3,7 @@
 
 import subprocess
 import sys
+from unittest.mock import patch, MagicMock
 
 from common import ark, pytest_ark
 import pytest
@@ -30,6 +31,55 @@ def test_profiler_cli_missing_plan():
     )
     assert result.returncode == 2
     assert "--plan" in result.stderr
+
+
+def test_profiler_main_arg_parsing():
+    """Test main() parses args and delegates to Profiler.run."""
+    mock_plan = MagicMock()
+    mock_profiler = MagicMock()
+
+    with patch("ark.profiler.Plan") as MockPlan, \
+         patch("ark.profiler.Profiler") as MockProfiler, \
+         patch("sys.argv", ["arkprof", "--plan", "test.json",
+                            "--iter", "5", "--loop_mode",
+                            "--profile_processor_groups",
+                            "--target_processor_groups", "0,1"]):
+        MockPlan.from_file.return_value = mock_plan
+        MockProfiler.return_value = mock_profiler
+
+        ark.profiler.main()
+
+        MockPlan.from_file.assert_called_once_with("test.json")
+        MockProfiler.assert_called_once_with(mock_plan)
+        mock_profiler.run.assert_called_once_with(
+            iter=5,
+            loop_mode=True,
+            profile_processor_groups=True,
+            target_processor_groups=[0, 1],
+        )
+
+
+def test_profiler_main_defaults():
+    """Test main() uses default args when only --plan is given."""
+    mock_plan = MagicMock()
+    mock_profiler = MagicMock()
+
+    with patch("ark.profiler.Plan") as MockPlan, \
+         patch("ark.profiler.Profiler") as MockProfiler, \
+         patch("sys.argv", ["arkprof", "--plan", "plan.json"]):
+        MockPlan.from_file.return_value = mock_plan
+        MockProfiler.return_value = mock_profiler
+
+        ark.profiler.main()
+
+        MockPlan.from_file.assert_called_once_with("plan.json")
+        MockProfiler.assert_called_once_with(mock_plan)
+        mock_profiler.run.assert_called_once_with(
+            iter=1000,
+            loop_mode=False,
+            profile_processor_groups=False,
+            target_processor_groups=None,
+        )
 
 
 @pytest_ark()
