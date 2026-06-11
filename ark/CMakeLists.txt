@@ -79,7 +79,7 @@ if(ARK_BUILD_TESTS)
     endforeach()
 
     # Tests that call op_test() and require ARK_UT_CORRECTNESS=1 for real validation.
-    # Keep in sync: grep -l 'op_test(' ark/ops/*_test.cpp
+    # Remaining C++ correctness tests (most ops migrated to python/unittest/ops/).
     set(CORRECTNESS_TESTS
         ops_all_reduce_test
         ops_copy_test
