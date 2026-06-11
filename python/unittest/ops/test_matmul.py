@@ -15,9 +15,7 @@ DEVICE = "cuda:0"
 @pytest.mark.parametrize(
     "dtype", [torch.float32, torch.float16, torch.bfloat16]
 )
-@pytest.mark.parametrize(
-    "M,N,K", [(256, 256, 512), (64, 64, 64)]
-)
+@pytest.mark.parametrize("M,N,K", [(256, 256, 512), (64, 64, 64)])
 def test_matmul_nn(dtype, M, N, K):
     a = torch.randn(M, K, dtype=dtype, device=DEVICE)
     b = torch.randn(K, N, dtype=dtype, device=DEVICE)

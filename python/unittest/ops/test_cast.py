@@ -44,9 +44,7 @@ def test_cast_float(src_dtype, dst_dtype, ark_dst):
 )
 def test_cast_int(src_dtype, dst_dtype, ark_dst):
     a = (
-        torch.arange(4 * 2 * 1024, device=DEVICE)
-        .reshape(4, 2, 1024)
-        % 1000
+        torch.arange(4 * 2 * 1024, device=DEVICE).reshape(4, 2, 1024) % 1000
     ).to(src_dtype)
     result = ark.cast(a, ark_dst).eval()
     expected = a.to(dst_dtype)
