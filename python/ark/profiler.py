@@ -69,7 +69,7 @@ class Profiler:
             )
 
 
-if __name__ == "__main__":
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="ARK Profiler")
@@ -113,3 +113,7 @@ if __name__ == "__main__":
         profile_processor_groups=args.profile_processor_groups,
         target_processor_groups=target_processor_groups,
     )
+
+
+if __name__ == "__main__":
+    main()

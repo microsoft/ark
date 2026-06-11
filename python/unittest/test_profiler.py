@@ -1,8 +1,33 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import subprocess
+import sys
+
 from common import ark, pytest_ark
 import pytest
+
+
+def test_profiler_cli_help():
+    """Test that `python -m ark.profiler --help` exits 0 and shows usage."""
+    result = subprocess.run(
+        [sys.executable, "-m", "ark.profiler", "--help"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "ARK Profiler" in result.stdout
+
+
+def test_profiler_cli_missing_plan():
+    """Test that `python -m ark.profiler` without --plan exits non-zero."""
+    result = subprocess.run(
+        [sys.executable, "-m", "ark.profiler"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "--plan" in result.stderr
 
 
 @pytest_ark()
