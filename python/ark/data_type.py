@@ -11,6 +11,8 @@ __all__ = [
     "bf16",
     "fp16",
     "fp32",
+    "fp8_e4m3",
+    "fp8_e5m2",
     "int32",
     "uint32",
     "int8",
@@ -21,6 +23,8 @@ REGISTRY_DATA_TYPE = {
     "fp32": {"np": numpy.float32, "torch": torch.float32},
     "fp16": {"np": numpy.float16, "torch": torch.float16},
     "bf16": {"np": None, "torch": torch.bfloat16},
+    "fp8_e4m3": {"np": None, "torch": getattr(torch, "float8_e4m3fn", None)},
+    "fp8_e5m2": {"np": None, "torch": getattr(torch, "float8_e5m2", None)},
     "int32": {"np": numpy.int32, "torch": torch.int32},
     "uint32": {"np": numpy.uint32, "torch": None},
     "int8": {"np": numpy.int8, "torch": torch.int8},
@@ -190,6 +194,18 @@ class fp16(DataType):
 
 class bf16(DataType):
     """bfloat16 floating point."""
+
+    ...
+
+
+class fp8_e4m3(DataType):
+    """8-bit floating point with 4 exponent bits and 3 mantissa bits."""
+
+    ...
+
+
+class fp8_e5m2(DataType):
+    """8-bit floating point with 5 exponent bits and 2 mantissa bits."""
 
     ...
 
