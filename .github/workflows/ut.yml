@@ -72,24 +72,6 @@ jobs:
           cd build
           ARK_UT_CORRECTNESS=1 ARK_ROOT=$PWD ctest -L correctness --stop-on-failure --verbose --schedule-random
 
-      - name: C++ Coverage
-        if: github.event_name != 'schedule'
-        run: |
-          cd build
-          lcov --ignore-errors negative --capture --directory . --output-file cpp_coverage.info
-          lcov --ignore-errors unused --remove cpp_coverage.info \
-              '/usr/*' \
-              '/tmp/*' \
-              '*/build/*' \
-              '*/third_party/*' \
-              '*/ark/*_test.*' \
-              '*/examples/*' \
-              '*/python/*' \
-              '*/ark/unittest/unittest_utils.cpp' \
-              '*/ark/ops/ops_test_common.*' \
-              --output-file cpp_coverage.info
-          lcov --list cpp_coverage.info
-
       - name: Install Python Dependencies
         if: github.event_name != 'schedule'
         run: |
@@ -104,6 +86,24 @@ jobs:
               --cov-report lcov:py_coverage.info \
               --verbose \
               ../python/unittest/
+
+      - name: C++ Coverage
+        if: github.event_name != 'schedule'
+        run: |
+          cd build
+          lcov --ignore-errors negative,mismatch --capture --directory . --output-file cpp_coverage.info
+          lcov --ignore-errors unused --remove cpp_coverage.info \
+              '/usr/*' \
+              '/tmp/*' \
+              '*/build/*' \
+              '*/third_party/*' \
+              '*/ark/*_test.*' \
+              '*/examples/*' \
+              '*/python/*' \
+              '*/ark/unittest/unittest_utils.cpp' \
+              '*/ark/ops/ops_test_common.*' \
+              --output-file cpp_coverage.info
+          lcov --list cpp_coverage.info
 
       - name: Report Coverage
         if: github.event_name != 'schedule'
