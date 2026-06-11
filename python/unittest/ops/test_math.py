@@ -22,7 +22,9 @@ def test_exp(dtype):
     assert torch.allclose(ark.exp(a).eval(), torch.exp(a), atol=atol, rtol=0)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_gelu(dtype):
     a = torch.randn(4, 2, 1024, dtype=dtype, device=DEVICE)
     atol = 1e-5 if dtype == torch.float32 else 1e-2
@@ -39,7 +41,9 @@ def test_relu(dtype):
     assert torch.allclose(ark.relu(a).eval(), F.relu(a), atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_sigmoid(dtype):
     a = torch.randn(4, 2, 1024, dtype=dtype, device=DEVICE)
     atol = 1e-5 if dtype == torch.float32 else 1e-2

@@ -12,3 +12,10 @@ from test_runtime import *
 from test_tensor import *
 from test_conversion import *
 from test_eval import *
+from test_data_type_edges import *
+from test_model_edges import *
+from test_module import *
+from test_ops_edges import *
+from test_planner_edges import *
+from test_serialize import *
+from test_tensor_edges import *

@@ -101,9 +101,12 @@ def tensor_ops_tutorial():
     # Activations
     check("relu", a_relu, np.maximum(x_np, 0))
 
-    # GELU: approximate check (ARK uses erff-based GELU)
-
-    gelu_ref = 0.5 * x_np * (1 + np.vectorize(math.erf)(x_np / np.sqrt(2)))
+    # GELU: ARK uses the tanh approximation
+    gelu_ref = (
+        0.5
+        * x_np
+        * (1 + np.tanh(np.sqrt(2 / np.pi) * (x_np + 0.044715 * x_np**3)))
+    )
     check("gelu", a_gelu, gelu_ref, atol=1e-4)
 
     sig_ref = 1.0 / (1.0 + np.exp(-x_np))

@@ -29,7 +29,7 @@ def test_data_type_from_torch_unknown():
         ark.DataType.from_torch(torch.float64)
 
 
-@pytest_ark()
+@pytest_ark(need_torch=True)
 def test_data_type_bf16_torch_type():
     """bf16 to_torch returns bfloat16."""
     import torch

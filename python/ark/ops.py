@@ -673,7 +673,7 @@ def all_reduce_packet(
     rank: int,
     world_size: int,
     output: Tensor = NullTensor,
-    name: str = "",
+    name: str = "all_reduce_packet",
 ) -> Tensor:
     """
     Packet-based intra-node all-reduce — single-shot reduce-scatter + allgather using
