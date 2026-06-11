@@ -91,7 +91,7 @@ jobs:
         if: github.event_name != 'schedule'
         run: |
           cd build
-          lcov --ignore-errors negative --capture --directory . --output-file cpp_coverage.info
+          lcov --ignore-errors negative,mismatch --capture --directory . --output-file cpp_coverage.info
           lcov --ignore-errors unused --remove cpp_coverage.info \
               '/usr/*' \
               '/tmp/*' \
