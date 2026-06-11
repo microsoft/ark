@@ -38,12 +38,22 @@ def test_profiler_main_arg_parsing():
     mock_plan = MagicMock()
     mock_profiler = MagicMock()
 
-    with patch("ark.profiler.Plan") as MockPlan, \
-         patch("ark.profiler.Profiler") as MockProfiler, \
-         patch("sys.argv", ["arkprof", "--plan", "test.json",
-                            "--iter", "5", "--loop_mode",
-                            "--profile_processor_groups",
-                            "--target_processor_groups", "0,1"]):
+    with patch("ark.profiler.Plan") as MockPlan, patch(
+        "ark.profiler.Profiler"
+    ) as MockProfiler, patch(
+        "sys.argv",
+        [
+            "arkprof",
+            "--plan",
+            "test.json",
+            "--iter",
+            "5",
+            "--loop_mode",
+            "--profile_processor_groups",
+            "--target_processor_groups",
+            "0,1",
+        ],
+    ):
         MockPlan.from_file.return_value = mock_plan
         MockProfiler.return_value = mock_profiler
 
@@ -64,9 +74,9 @@ def test_profiler_main_defaults():
     mock_plan = MagicMock()
     mock_profiler = MagicMock()
 
-    with patch("ark.profiler.Plan") as MockPlan, \
-         patch("ark.profiler.Profiler") as MockProfiler, \
-         patch("sys.argv", ["arkprof", "--plan", "plan.json"]):
+    with patch("ark.profiler.Plan") as MockPlan, patch(
+        "ark.profiler.Profiler"
+    ) as MockProfiler, patch("sys.argv", ["arkprof", "--plan", "plan.json"]):
         MockPlan.from_file.return_value = mock_plan
         MockProfiler.return_value = mock_profiler
 
