@@ -19,21 +19,23 @@ import torch
 import ark
 
 # ---------- hyperparameters ----------
-BATCH = 1
-SEQ = 64
-D_MODEL = 128
-N_HEADS = 4
+batch_size = 1
+seq_len = 64
+d_model = 128
+n_heads = 4
 
 
 # ---------- ARK Module ----------
 class MultiHeadAttention(ark.Module):
     """Scaled dot-product multi-head attention (no bias, no mask)."""
 
-    def __init__(self, d_model: int, n_heads: int):
+    def __init__(self, d_model: int, n_heads: int, batch_size: int, seq_len: int):
         super().__init__()
         self.n_heads = n_heads
         self.d_k = d_model // n_heads
         self.scale = 1.0 / math.sqrt(self.d_k)
+        self.batch_size = batch_size
+        self.seq_len = seq_len
 
         # Projection weights: [d_model, d_model]
         self.wq = ark.parameter([d_model, d_model], ark.fp16)
@@ -42,33 +44,33 @@ class MultiHeadAttention(ark.Module):
         self.wo = ark.parameter([d_model, d_model], ark.fp16)
 
     def forward(self, x):
-        # x: [BATCH, SEQ, D_MODEL]
-        # Shape is fixed at graph-build time; use module-level constants.
+        # x: [batch_size, seq_len, d_model]
+        # Shape is fixed at graph-build time; stored as instance attributes.
         H = self.n_heads
         dk = self.d_k
 
         # Linear projections
-        q = ark.matmul(x, self.wq)  # [BATCH, SEQ, D_MODEL]
+        q = ark.matmul(x, self.wq)  # [batch_size, seq_len, d_model]
         k = ark.matmul(x, self.wk)
         v = ark.matmul(x, self.wv)
 
-        # Reshape to [BATCH, SEQ, H, dk] then transpose to [BATCH, H, SEQ, dk]
-        q = ark.transpose(ark.reshape(q, [BATCH, SEQ, H, dk]), [0, 2, 1, 3])
-        k = ark.transpose(ark.reshape(k, [BATCH, SEQ, H, dk]), [0, 2, 1, 3])
-        v = ark.transpose(ark.reshape(v, [BATCH, SEQ, H, dk]), [0, 2, 1, 3])
+        # Reshape to [batch_size, seq_len, H, dk] then transpose to [batch_size, H, seq_len, dk]
+        q = ark.transpose(ark.reshape(q, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3])
+        k = ark.transpose(ark.reshape(k, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3])
+        v = ark.transpose(ark.reshape(v, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3])
 
         # Scaled dot-product attention
-        # scores: [BATCH, H, SEQ, SEQ]
+        # scores: [batch_size, H, seq_len, seq_len]
         scores = ark.matmul(q, k, transpose_other=True)
         scores = ark.mul(scores, self.scale)
         attn = ark.softmax(scores)  # along last axis
-        # context: [BATCH, H, SEQ, dk]
+        # context: [batch_size, H, seq_len, dk]
         context = ark.matmul(attn, v)
 
-        # Transpose back and reshape: [BATCH, SEQ, D_MODEL]
+        # Transpose back and reshape: [batch_size, seq_len, d_model]
         context = ark.reshape(
             ark.transpose(context, [0, 2, 1, 3]),
-            [BATCH, SEQ, H * dk],
+            [self.batch_size, self.seq_len, H * dk],
         )
 
         # Output projection
@@ -81,8 +83,8 @@ def pytorch_mha(x_np, wq, wk, wv, wo):
     """Manual MHA in PyTorch matching the ARK implementation above."""
     x = torch.from_numpy(x_np).cuda()
     B, S, D = x.shape
-    H = N_HEADS
-    dk = D_MODEL // N_HEADS
+    H = n_heads
+    dk = d_model // n_heads
 
     q = x @ torch.from_numpy(wq).cuda()
     k = x @ torch.from_numpy(wk).cuda()
@@ -106,8 +108,8 @@ def main():
     ark.init()
 
     # Build graph
-    x_ark = ark.tensor([BATCH, SEQ, D_MODEL], ark.fp16)
-    model = MultiHeadAttention(D_MODEL, N_HEADS)
+    x_ark = ark.tensor([batch_size, seq_len, d_model], ark.fp16)
+    model = MultiHeadAttention(d_model, n_heads, batch_size, seq_len)
     y_ark = model(x_ark)
 
     # Launch runtime
@@ -116,11 +118,11 @@ def main():
 
     # Random inputs and weights (small magnitude for fp16 stability)
     rng = np.random.RandomState(42)
-    x_np = (rng.randn(BATCH, SEQ, D_MODEL) * 0.02).astype(np.float16)
-    wq_np = (rng.randn(D_MODEL, D_MODEL) * 0.02).astype(np.float16)
-    wk_np = (rng.randn(D_MODEL, D_MODEL) * 0.02).astype(np.float16)
-    wv_np = (rng.randn(D_MODEL, D_MODEL) * 0.02).astype(np.float16)
-    wo_np = (rng.randn(D_MODEL, D_MODEL) * 0.02).astype(np.float16)
+    x_np = (rng.randn(batch_size, seq_len, d_model) * 0.02).astype(np.float16)
+    wq_np = (rng.randn(d_model, d_model) * 0.02).astype(np.float16)
+    wk_np = (rng.randn(d_model, d_model) * 0.02).astype(np.float16)
+    wv_np = (rng.randn(d_model, d_model) * 0.02).astype(np.float16)
+    wo_np = (rng.randn(d_model, d_model) * 0.02).astype(np.float16)
 
     x_ark.from_numpy(x_np)
     model.load_state_dict({"wq": wq_np, "wk": wk_np, "wv": wv_np, "wo": wo_np})

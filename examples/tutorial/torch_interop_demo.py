@@ -9,7 +9,8 @@ Demonstrates:
   - ``Tensor.from_torch()`` — zero-copy ARK view of a CUDA torch tensor.
   - ``Tensor.to_torch()``   — zero-copy torch view of an ARK tensor.
   - Implicit torch→ARK conversion when passing torch tensors directly
-    to ``ark.*`` ops (no explicit conversion needed).
+    to ``ark.*`` ops (no explicit conversion needed). The torch tensor
+    must be contiguous and on a CUDA device.
   - ``Tensor.eval()``       — one-liner: build graph, run, return torch
     tensor.
 
