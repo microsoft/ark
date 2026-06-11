@@ -1,6 +1,5 @@
 # Default BASE_IMAGE allows standalone `docker build`.
-# When using build.sh, this is overridden via --build-arg
-# with the target-specific base image (e.g. ark:base-cuda12.1).
+# build.sh overrides this via --build-arg for each target.
 ARG BASE_IMAGE=ghcr.io/microsoft/ark/ark:base-cuda12.1
 FROM ${BASE_IMAGE}
 
