@@ -1,3 +1,5 @@
+# Default BASE_IMAGE allows standalone `docker build`.
+# build.sh overrides this via --build-arg for each target.
 ARG BASE_IMAGE=nvidia/cuda:12.1.1-devel-ubuntu20.04
 FROM ${BASE_IMAGE}
 
