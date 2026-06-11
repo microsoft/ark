@@ -29,7 +29,9 @@ n_heads = 4
 class MultiHeadAttention(ark.Module):
     """Scaled dot-product multi-head attention (no bias, no mask)."""
 
-    def __init__(self, d_model: int, n_heads: int, batch_size: int, seq_len: int):
+    def __init__(
+        self, d_model: int, n_heads: int, batch_size: int, seq_len: int
+    ):
         super().__init__()
         self.n_heads = n_heads
         self.d_k = d_model // n_heads
@@ -55,9 +57,15 @@ class MultiHeadAttention(ark.Module):
         v = ark.matmul(x, self.wv)
 
         # Reshape to [batch_size, seq_len, H, dk] then transpose to [batch_size, H, seq_len, dk]
-        q = ark.transpose(ark.reshape(q, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3])
-        k = ark.transpose(ark.reshape(k, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3])
-        v = ark.transpose(ark.reshape(v, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3])
+        q = ark.transpose(
+            ark.reshape(q, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3]
+        )
+        k = ark.transpose(
+            ark.reshape(k, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3]
+        )
+        v = ark.transpose(
+            ark.reshape(v, [self.batch_size, self.seq_len, H, dk]), [0, 2, 1, 3]
+        )
 
         # Scaled dot-product attention
         # scores: [batch_size, H, seq_len, seq_len]
