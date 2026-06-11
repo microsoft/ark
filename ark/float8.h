@@ -135,12 +135,14 @@ struct alignas(1) float8_base {
             return FP8_NAN;
         }
 
-        // Inf => preserve infinity for E5M2, saturate for E4M3
+        // Inf => satfinite for E4M3, preserve for E5M2
         if (isinf(flt)) {
             if constexpr (IS_E5M2) {
-                return sign | FP8_INFINITY_MASK;  // 0x7c — E5M2 has infinity
+                // E5M2 has infinity encoding
+                return sign | FP8_INFINITY_MASK;
             }
-            return sign | FP8_MAX_FLT;  // E4M3 — satfinite (no infinity encoding)
+            // E4M3 has no infinity; saturate
+            return sign | FP8_MAX_FLT;
         }
 
         // Special handling
