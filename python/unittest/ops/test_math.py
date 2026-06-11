@@ -57,9 +57,7 @@ def test_sqrt(dtype):
 
 def test_sqrt_small_last_dim():
     a = torch.rand(4, 2, 7, dtype=torch.float16, device=DEVICE) + 0.01
-    assert torch.allclose(
-        ark.sqrt(a).eval(), torch.sqrt(a), atol=1e-3, rtol=0
-    )
+    assert torch.allclose(ark.sqrt(a).eval(), torch.sqrt(a), atol=1e-3, rtol=0)
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float16])

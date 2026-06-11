@@ -15,15 +15,15 @@ DEVICE = "cuda:0"
 @pytest.mark.parametrize(
     "dtype", [torch.float32, torch.float16, torch.bfloat16]
 )
-@pytest.mark.parametrize(
-    "M,N,K", [(256, 256, 512), (64, 64, 64)]
-)
+@pytest.mark.parametrize("M,N,K", [(256, 256, 512), (64, 64, 64)])
 def test_matmul_nn(dtype, M, N, K):
     a = torch.randn(M, K, dtype=dtype, device=DEVICE)
     b = torch.randn(K, N, dtype=dtype, device=DEVICE)
     result = ark.matmul(a, b).eval()
     expected = a @ b
-    # Empirical tolerance for fp16/bf16 K=512 matmul with randn inputs
+    # fp16/bf16 matmul accumulates rounding error proportional to K.
+    # For unit-variance randn inputs: expected error ≈ K * eps ≈ 512 * 5e-4 ≈ 0.26.
+    # 3e-1 provides small headroom. Matches C++ test's reduction_abs_error_bound logic.
     atol = 1e-3 if dtype == torch.float32 else 3e-1
     assert torch.allclose(
         result, expected, atol=atol, rtol=1e-2

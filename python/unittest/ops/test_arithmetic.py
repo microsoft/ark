@@ -33,14 +33,18 @@ def test_add_broadcast_3d():
     assert torch.allclose(ark.add(a, b).eval(), a + b, atol=0, rtol=0)
 
 
-def test_sub():
-    dtype = torch.float32
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
+def test_sub(dtype):
     a = torch.randn(8192, dtype=dtype, device=DEVICE)
     b = torch.randn(8192, dtype=dtype, device=DEVICE)
     assert torch.allclose(ark.sub(a, b).eval(), a - b, atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_mul(dtype):
     a = torch.randn(8192, dtype=dtype, device=DEVICE)
     b = torch.randn(8192, dtype=dtype, device=DEVICE)
@@ -59,9 +63,12 @@ def test_mul_broadcast_3d():
     assert torch.allclose(ark.mul(a, b).eval(), a * b, atol=0, rtol=0)
 
 
-def test_div_fp32():
-    a = torch.randn(8192, dtype=torch.float32, device=DEVICE)
-    b = torch.randn(8192, dtype=torch.float32, device=DEVICE).abs() + 0.01
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
+def test_div(dtype):
+    a = torch.randn(8192, dtype=dtype, device=DEVICE)
+    b = torch.randn(8192, dtype=dtype, device=DEVICE).abs() + 0.01
     assert torch.allclose(ark.div(a, b).eval(), a / b, atol=0, rtol=0)
 
 
