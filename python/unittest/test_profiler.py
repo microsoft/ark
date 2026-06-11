@@ -14,19 +14,21 @@ def test_profiler_cli_help():
         [sys.executable, "-m", "ark.profiler", "--help"],
         capture_output=True,
         text=True,
+        timeout=30,
     )
     assert result.returncode == 0
     assert "ARK Profiler" in result.stdout
 
 
 def test_profiler_cli_missing_plan():
-    """Test that `python -m ark.profiler` without --plan exits non-zero."""
+    """Test that `python -m ark.profiler` without --plan exits with code 2."""
     result = subprocess.run(
         [sys.executable, "-m", "ark.profiler"],
         capture_output=True,
         text=True,
+        timeout=30,
     )
-    assert result.returncode != 0
+    assert result.returncode == 2
     assert "--plan" in result.stderr
 
 

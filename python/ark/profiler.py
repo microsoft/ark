@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import argparse
 import sys
 import time
 from typing import Optional, List
@@ -70,8 +71,7 @@ class Profiler:
 
 
 def main():
-    import argparse
-
+    """CLI entry point for the ARK profiler."""
     parser = argparse.ArgumentParser(description="ARK Profiler")
     parser.add_argument(
         "--iter",
