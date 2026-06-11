@@ -42,7 +42,9 @@ def test_sub(dtype):
     assert torch.allclose(ark.sub(a, b).eval(), a - b, atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize(
+    "dtype", [torch.float32, torch.float16, torch.bfloat16]
+)
 def test_mul(dtype):
     a = torch.randn(8192, dtype=dtype, device=DEVICE)
     b = torch.randn(8192, dtype=dtype, device=DEVICE)

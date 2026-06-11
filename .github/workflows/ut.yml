@@ -72,6 +72,21 @@ jobs:
           cd build
           ARK_UT_CORRECTNESS=1 ARK_ROOT=$PWD ctest -L correctness --stop-on-failure --verbose --schedule-random
 
+      - name: Install Python Dependencies
+        if: github.event_name != 'schedule'
+        run: |
+          python3 -m pip install -r requirements.txt
+
+      - name: Run Python UT
+        if: github.event_name != 'schedule'
+        run: |
+          cd build
+          PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
+              --cov=python/ark \
+              --cov-report lcov:py_coverage.info \
+              --verbose \
+              ../python/unittest/
+
       - name: C++ Coverage
         if: github.event_name != 'schedule'
         run: |
@@ -89,21 +104,6 @@ jobs:
               '*/ark/ops/ops_test_common.*' \
               --output-file cpp_coverage.info
           lcov --list cpp_coverage.info
-
-      - name: Install Python Dependencies
-        if: github.event_name != 'schedule'
-        run: |
-          python3 -m pip install -r requirements.txt
-
-      - name: Run Python UT
-        if: github.event_name != 'schedule'
-        run: |
-          cd build
-          PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest \
-              --cov=python/ark \
-              --cov-report lcov:py_coverage.info \
-              --verbose \
-              ../python/unittest/
 
       - name: Report Coverage
         if: github.event_name != 'schedule'
