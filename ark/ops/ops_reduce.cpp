@@ -67,6 +67,9 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
     int sram_bytes = config.at("SramBytes");
     std::string impl_type = config.at("ImplType");
     Dims unit_out_dims(config.at("Tile").get<std::vector<DimType>>());
+    if (unit_out_dims.ndims() != 4) {
+        ERR(PlanError, "Tile should have 4 elements");
+    }
     int axis = args_.at("Axis").value<int>();
     bool keep_dims = args_.at("KeepDim").value<bool>();
 

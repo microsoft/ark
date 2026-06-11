@@ -67,7 +67,10 @@ def test_reduce_mean(dtype):
 
 
 def test_reduce_sum_fused_tile():
-    """WarpWise reduce_sum with a multi-row Tile (rows > 1, reduce-axis dim = 1)."""
+    """WarpWise reduce_sum with a multi-row Tile.
+
+    rows > 1, reduce-axis dim = 1.
+    """
     shape = [1, 1, 4, 1024]
     a = torch.randn(shape, dtype=torch.float32, device=DEVICE) * 0.1
     with ark.PlannerContext(
@@ -107,10 +110,13 @@ def test_reduce_sum_fused_tile_elementwise():
 
 
 def test_reduce_tile_axis_validation():
-    """Tile dimension on the reduce axis != 1 must raise RuntimeError."""
+    """Tile dimension on the reduce axis != 1 must raise ark.PlanError."""
     shape = [1, 1, 4, 1024]
     a = torch.randn(shape, dtype=torch.float32, device=DEVICE) * 0.1
-    with pytest.raises(RuntimeError):
+    with pytest.raises(
+        ark.PlanError,
+        match="Tile dimension on the reduction axis must be 1",
+    ):
         with ark.PlannerContext(
             config={
                 "NumWarps": 1,
