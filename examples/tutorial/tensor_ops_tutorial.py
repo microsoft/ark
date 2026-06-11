@@ -67,9 +67,6 @@ def tensor_ops_tutorial():
         ark.reshape(x, [M, N // 2, 2]), [0, 2, 1]
     )  # [M, 2, N//2]
 
-    # ---- Identity (constant tensors) ----
-    a_one = ark.add(one, zero)  # should be all ones
-
     # ---- Launch runtime ----
     runtime = ark.Runtime()
     runtime.launch()
@@ -124,6 +121,7 @@ def tensor_ops_tutorial():
 
     # Layernorm
     mu = x_np.mean(axis=-1, keepdims=True)
+    # eps must match ark.layernorm default (1e-6)
     var = ((x_np - mu) ** 2).mean(axis=-1, keepdims=True)
     ln_ref = (x_np - mu) / np.sqrt(var + 1e-6)
     check("layernorm", a_ln, ln_ref, atol=1e-4)
@@ -137,7 +135,9 @@ def tensor_ops_tutorial():
     )
 
     # Constant tensors
-    check("ones", a_one, np.ones((M, N), dtype=np.float32))
+    check("ones", one, np.ones((M, N), dtype=np.float32))
+    check("zeros", zero, np.zeros((M, N), dtype=np.float32))
+    check("constant", c5, np.full((M, N), 5.0, dtype=np.float32))
 
     print("Tensor ops tutorial passed — all ops validated!")
 

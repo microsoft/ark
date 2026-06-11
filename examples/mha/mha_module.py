@@ -16,7 +16,6 @@ Run: ``python examples/mha/mha_module.py``
 import math
 import numpy as np
 import torch
-import torch.nn as nn
 import ark
 
 # ---------- hyperparameters ----------
@@ -24,7 +23,6 @@ BATCH = 1
 SEQ = 64
 D_MODEL = 128
 N_HEADS = 4
-D_K = D_MODEL // N_HEADS  # 32
 
 
 # ---------- ARK Module ----------
@@ -45,33 +43,32 @@ class MultiHeadAttention(ark.Module):
 
     def forward(self, x):
         # x: [BATCH, SEQ, D_MODEL]
-        B = BATCH
-        S = SEQ
+        # Shape is fixed at graph-build time; use module-level constants.
         H = self.n_heads
         dk = self.d_k
 
         # Linear projections
-        q = ark.matmul(x, self.wq)  # [B, S, D]
+        q = ark.matmul(x, self.wq)  # [BATCH, SEQ, D_MODEL]
         k = ark.matmul(x, self.wk)
         v = ark.matmul(x, self.wv)
 
-        # Reshape to [B, S, H, dk] then transpose to [B, H, S, dk]
-        q = ark.transpose(ark.reshape(q, [B, S, H, dk]), [0, 2, 1, 3])
-        k = ark.transpose(ark.reshape(k, [B, S, H, dk]), [0, 2, 1, 3])
-        v = ark.transpose(ark.reshape(v, [B, S, H, dk]), [0, 2, 1, 3])
+        # Reshape to [BATCH, SEQ, H, dk] then transpose to [BATCH, H, SEQ, dk]
+        q = ark.transpose(ark.reshape(q, [BATCH, SEQ, H, dk]), [0, 2, 1, 3])
+        k = ark.transpose(ark.reshape(k, [BATCH, SEQ, H, dk]), [0, 2, 1, 3])
+        v = ark.transpose(ark.reshape(v, [BATCH, SEQ, H, dk]), [0, 2, 1, 3])
 
         # Scaled dot-product attention
-        # scores: [B, H, S, S]
+        # scores: [BATCH, H, SEQ, SEQ]
         scores = ark.matmul(q, k, transpose_other=True)
         scores = ark.mul(scores, self.scale)
         attn = ark.softmax(scores)  # along last axis
-        # context: [B, H, S, dk]
+        # context: [BATCH, H, SEQ, dk]
         context = ark.matmul(attn, v)
 
-        # Transpose back and reshape: [B, S, D]
+        # Transpose back and reshape: [BATCH, SEQ, D_MODEL]
         context = ark.reshape(
             ark.transpose(context, [0, 2, 1, 3]),
-            [B, S, H * dk],
+            [BATCH, SEQ, H * dk],
         )
 
         # Output projection
@@ -85,7 +82,7 @@ def pytorch_mha(x_np, wq, wk, wv, wo):
     x = torch.from_numpy(x_np).cuda()
     B, S, D = x.shape
     H = N_HEADS
-    dk = D_K
+    dk = D_MODEL // N_HEADS
 
     q = x @ torch.from_numpy(wq).cuda()
     k = x @ torch.from_numpy(wk).cuda()
