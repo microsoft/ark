@@ -57,23 +57,20 @@ def _run(seq_len, label):
         cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
     ).cuda()[:, :, :seq_len, :]
 
-    # Build the ARK graph once, outside the timed region.
-    ark.init()
-    ark_result = ark_gqa_attention(
-        x,
-        attn.q_proj.weight.detach(),
-        attn.k_proj.weight.detach(),
-        attn.v_proj.weight.detach(),
-        attn.o_proj.weight.detach(),
-        attn.qk_norm.q_norm.weight.detach().half(),
-        attn.qk_norm.k_norm.weight.detach().half(),
-        ark_rf,
-        mask,
-        cfg,
-    )
+    q_w = attn.q_proj.weight.detach()
+    k_w = attn.k_proj.weight.detach()
+    v_w = attn.v_proj.weight.detach()
+    o_w = attn.o_proj.weight.detach()
+    qk_q_w = attn.qk_norm.q_norm.weight.detach().half()
+    qk_k_w = attn.qk_norm.k_norm.weight.detach().half()
+
+    def run_ark():
+        ark_gqa_attention(
+            x, q_w, k_w, v_w, o_w, qk_q_w, qk_k_w, ark_rf, mask, cfg
+        ).eval()
 
     ark_res = microbench(
-        lambda: ark_result.eval(),
+        run_ark,
         use_cuda_graph=False,
         flush_l2=False,
     )
