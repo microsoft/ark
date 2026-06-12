@@ -27,7 +27,10 @@ from typing import Any
 try:
     import requests
 except ImportError:
-    print("Error: 'requests' package required. Install: pip install requests", file=sys.stderr)
+    print(
+        "Error: 'requests' package required. Install: pip install requests",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 
@@ -89,6 +92,11 @@ def send_request(
     # Rough token count from meta if available, else estimate from spaces.
     meta = data.get("meta_info", {})
     output_tokens = meta.get("completion_tokens", len(output_text.split()))
+    if "completion_tokens" not in meta:
+        print(
+            "Warning: completion_tokens missing from meta_info, estimating from word count",
+            file=sys.stderr,
+        )
 
     return {
         "total_ms": total * 1000,
@@ -138,7 +146,9 @@ def run_trials(
         print(f"  warmup {i+1}/{num_warmup} done")
 
     # --- TTFT (prefill) ---
-    print(f"\nMeasuring TTFT ({num_trials} trials, prompt≈2048 tokens, max_new_tokens=1) ...")
+    print(
+        f"\nMeasuring TTFT ({num_trials} trials, prompt≈2048 tokens, max_new_tokens=1) ..."
+    )
     ttft_values = []
     for i in range(num_trials):
         ttft = measure_ttft(base_url, prompt)
@@ -146,7 +156,9 @@ def run_trials(
         print(f"  trial {i+1}/{num_trials}: TTFT = {ttft:.2f} ms")
 
     # --- Decode per-token ---
-    print(f"\nMeasuring decode latency ({num_trials} trials, prompt≈2048 tokens, max_new_tokens=128) ...")
+    print(
+        f"\nMeasuring decode latency ({num_trials} trials, prompt≈2048 tokens, max_new_tokens=128) ..."
+    )
     decode_values = []
     for i in range(num_trials):
         result = measure_decode(base_url, prompt, max_new_tokens=128)
@@ -169,22 +181,39 @@ def main() -> None:
         description="Measure SGLang Qwen3-8B prefill TTFT and decode latency."
     )
     parser.add_argument(
-        "--port", type=int, default=30000, help="SGLang server port (default: 30000)"
+        "--port",
+        type=int,
+        default=30000,
+        help="SGLang server port (default: 30000)",
     )
     parser.add_argument(
-        "--host", type=str, default="localhost", help="SGLang server host (default: localhost)"
+        "--host",
+        type=str,
+        default="localhost",
+        help="SGLang server host (default: localhost)",
     )
     parser.add_argument(
-        "--trials", type=int, default=5, help="Number of measurement trials (default: 5)"
+        "--trials",
+        type=int,
+        default=5,
+        help="Number of measurement trials (default: 5)",
     )
     parser.add_argument(
-        "--warmup", type=int, default=3, help="Number of warmup requests (default: 3)"
+        "--warmup",
+        type=int,
+        default=3,
+        help="Number of warmup requests (default: 3)",
     )
     parser.add_argument(
         "--prompt-tokens",
         type=int,
         default=2048,
         help="Approximate prompt length in tokens (default: 2048)",
+    )
+    parser.add_argument(
+        "--output",
+        default="baseline_results.json",
+        help="Path for JSON output file (default: baseline_results.json)",
     )
     args = parser.parse_args()
 
@@ -195,7 +224,11 @@ def main() -> None:
     try:
         resp = requests.get(f"{base_url}/health", timeout=5)
         resp.raise_for_status()
-    except (requests.ConnectionError, requests.Timeout) as e:
+    except (
+        requests.ConnectionError,
+        requests.Timeout,
+        requests.HTTPError,
+    ) as e:
         print(f"Error: cannot reach server at {base_url}: {e}", file=sys.stderr)
         sys.exit(1)
     print("Server is healthy.\n")
@@ -219,9 +252,15 @@ def main() -> None:
     print(f"Prompt length:           ~{args.prompt_tokens} tokens")
     print(f"Trials:                  {args.trials}")
     print(f"Prefill TTFT (median):   {results['ttft_median_ms']:.2f} ms")
-    print(f"  all:                   {[f'{v:.2f}' for v in results['ttft_all_ms']]}")
-    print(f"Decode per-token (median): {results['decode_per_token_median_ms']:.2f} ms/token")
-    print(f"  all:                   {[f'{v:.2f}' for v in results['decode_all_ms']]}")
+    print(
+        f"  all:                   {[f'{v:.2f}' for v in results['ttft_all_ms']]}"
+    )
+    print(
+        f"Decode per-token (median): {results['decode_per_token_median_ms']:.2f} ms/token"
+    )
+    print(
+        f"  all:                   {[f'{v:.2f}' for v in results['decode_all_ms']]}"
+    )
     print(f"GPU clocks:\n{gpu_clocks}")
     print("=" * 60)
 
@@ -235,10 +274,9 @@ def main() -> None:
         "decode_all_ms": results["decode_all_ms"],
         "gpu_clocks": gpu_clocks,
     }
-    results_file = "baseline_results.json"
-    with open(results_file, "w") as f:
+    with open(args.output, "w") as f:
         json.dump(output, f, indent=2)
-    print(f"\nJSON results written to {results_file}")
+    print(f"\nJSON results written to {args.output}")
 
 
 if __name__ == "__main__":

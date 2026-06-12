@@ -26,7 +26,7 @@ best config.
 ./launch_sglang.sh 8
 
 # Wait for "Server is ready" message, then measure:
-python measure_baseline.py --port 30000 --trials 5
+python measure_baseline.py --port 30000 --trials 5 --output baseline_results_tp8.json
 
 # Record results in BASELINE.md under "TP=8" section.
 # Save the image digest:
@@ -46,7 +46,7 @@ SGLang's best achievable latency for this model size.
 ./launch_sglang.sh 1
 
 # Wait for "Server is ready" message, then measure:
-python measure_baseline.py --port 30000 --trials 5
+python measure_baseline.py --port 30000 --trials 5 --output baseline_results_tp1.json
 
 # Record results in BASELINE.md under "TP=1" section.
 
@@ -103,7 +103,7 @@ Key behaviors:
 - Uses `/generate` endpoint with `ignore_eos: true` (not `/v1/chat/completions`).
 - Temperature 0.0 (greedy decoding).
 - Reports median over 5 trials.
-- Writes `baseline_results.json` with all trial data.
+- Writes results JSON; output path is configurable via `--output` (default: `baseline_results.json`).
 
 ## Troubleshooting
 

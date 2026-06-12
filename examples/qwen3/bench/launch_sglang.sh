@@ -21,9 +21,8 @@ PORT=30000
 CONTAINER_NAME="sglang-qwen3-bench"
 
 # Pinned SGLang image — CUDA 12.x, A100-compatible.
-# Update DIGEST after first pull: docker inspect --format='{{index .RepoDigests 0}}' <image>
+# To pin by digest: docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_TAG"
 IMAGE_TAG="lmsysorg/sglang:v0.4.6.post1-cu124"
-IMAGE_DIGEST="TBD (run: docker inspect --format='{{index .RepoDigests 0}}' ${IMAGE_TAG})"
 
 HF_HOME="${HF_HOME:-${HOME}/.cache/huggingface}"
 

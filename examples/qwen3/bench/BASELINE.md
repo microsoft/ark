@@ -80,6 +80,6 @@ python -m sglang.launch_server \
 - Prompt: ~2048 tokens (repeating pattern).
 - Warmup: 3 requests discarded before measurement.
 - TTFT: time for prompt=2048, max_new_tokens=1 (single request, not streaming).
-- Decode per-token: total_time / output_tokens for prompt=2048, max_new_tokens=128.
+- Decode per-token: total_time / max(output_tokens, 1) for prompt=2048, max_new_tokens=128.
 - Reported value: median over 5 trials.
 - Temperature: 0.0 (greedy).
