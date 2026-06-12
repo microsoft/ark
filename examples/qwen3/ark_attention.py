@@ -1,16 +1,16 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""ARK GQA attention for Qwen3: QKV projections, QK-norm, RoPE, GQA expand,
-scaled dot-product with causal mask, output projection.
+"""ARK GQA attention for Qwen3: QK-norm and RoPE via ARK, matmul via torch.
 
-Implementation note — no ark.transpose
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-``ark.transpose`` combined with other ops in a single eval graph triggers
-``cudaErrorMisalignedAddress`` on A100.  Individual ops (rmsnorm, rope,
-matmul) work in isolation.  As a workaround, all reshape/transpose logic
-uses torch; ARK handles matmul, composed RMSNorm, and RoPE via separate
-small eval() calls.
+This is a torch-dominant hybrid: torch handles all linear projections
+(QKV, attention scores, weighted sum, output projection) and
+reshape/transpose.  ARK handles only composed RMSNorm (QK-norm) and RoPE.
+
+Matmul via ``ark.matmul`` is deferred to Q10 (whole-model fusion) because
+the executor singleton does not fully reset between ``ark.init()`` calls
+when tensor shapes change (CUTLASS matmul at 2D/3D → element-wise at 4D).
+Mixing the two in one process triggers ``cudaErrorMisalignedAddress``.
 """
 
 import math
@@ -47,7 +47,7 @@ def ark_rmsnorm(x, weight, eps):
     """Composed RMSNorm using ARK primitives (fp32 accumulation).
 
     Args:
-        x: 3-D or 4-D ARK-compatible tensor ``(..., dim)``.
+        x: 4-D ARK tensor ``(batch, heads, seq, dim)``.
         weight: 1-D scale parameter ``(dim,)``.
         eps: epsilon for numerical stability.
 
@@ -87,7 +87,7 @@ def ark_gqa_attention(
     qk_k_w,
     rope_freqs,
     mask,
-    cfg,
+    cfg: Qwen3Config,
 ):
     """ARK GQA attention — staged evaluation.
 
@@ -101,13 +101,10 @@ def ark_gqa_attention(
     hd = cfg.head_dim
     n_rep = n_q // n_kv
 
-    # ---- Stage 1: QKV projections (ARK matmul) ----
-    ark.init()
-    q = ark.matmul(x, q_w, transpose_other=True).eval()
-    ark.init()
-    k = ark.matmul(x, k_w, transpose_other=True).eval()
-    ark.init()
-    v = ark.matmul(x, v_w, transpose_other=True).eval()
+    # ---- Stage 1: QKV projections (torch matmul) ----
+    q = torch.matmul(x, q_w.t())
+    k = torch.matmul(x, k_w.t())
+    v = torch.matmul(x, v_w.t())
 
     # ---- Reshape + transpose in torch ----
     q = q.reshape(batch, seq, n_q, hd).transpose(1, 2).contiguous()
@@ -131,34 +128,24 @@ def ark_gqa_attention(
         k = k.repeat_interleave(n_rep, dim=1)
         v = v.repeat_interleave(n_rep, dim=1)
 
-    # ---- Stage 4: Attention scores (ARK matmul + scale) ----
-    q3 = q.reshape(batch * n_q, seq, hd).contiguous()
-    k3 = k.reshape(batch * n_q, seq, hd).contiguous()
-    v3 = v.reshape(batch * n_q, seq, hd).contiguous()
-
-    ark.init()
-    scores = ark.matmul(q3, k3, transpose_other=True)
-    scores = ark.mul(scores, 1.0 / math.sqrt(hd))
-    scores = scores.eval()
+    # ---- Stage 4: Attention scores (torch matmul + scale) ----
+    scale = 1.0 / math.sqrt(hd)
+    scores = torch.matmul(q, k.transpose(-2, -1)) * scale
 
     # ---- Mask + softmax (torch) ----
     if mask is not None:
-        scores = scores.reshape(batch, n_q, seq, seq) + mask
-        scores = scores.reshape(batch * n_q, seq, seq)
+        scores = scores + mask
     attn_w = torch.softmax(scores.float(), dim=-1).half()
 
-    # ---- Stage 5: Weighted sum (ARK matmul) ----
-    ark.init()
-    out = ark.matmul(attn_w, v3).eval()
+    # ---- Stage 5: Weighted sum (torch matmul) ----
+    out = torch.matmul(attn_w, v)
 
     # ---- Output reshape (torch) ----
-    out = out.reshape(batch, n_q, seq, hd)
     out = out.transpose(1, 2).contiguous()
     out = out.reshape(batch, seq, n_q * hd)
 
-    # ---- Stage 6: Output projection (ARK matmul) ----
-    ark.init()
-    result = ark.matmul(out, o_w, transpose_other=True).eval()
+    # ---- Stage 6: Output projection (torch matmul) ----
+    result = torch.matmul(out, o_w.t())
 
     # Wrap as trivial ARK graph so callers can use .eval()
     ark.init()

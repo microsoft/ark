@@ -2,7 +2,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Microbenchmark: ARK GQA attention vs torch SDPA.
+"""Microbenchmark: hybrid ARK attention vs torch SDPA.
+
+Partial ARK coverage: torch matmul for all projections + ARK QK-norm and
+RoPE.  Full ARK matmul deferred to Q10 (whole-model fusion).
 
 Shapes: S=2048 (prefill) and S=1 (decode) at Qwen3-8B dimensions.
 Run out-of-band on A100:  ``python -m examples.qwen3.bench_attention``
@@ -79,15 +82,18 @@ def _run(seq_len, label):
 
 
 def main():
-    print(f"{'Shape':<20} {'Torch (us)':>16} {'ARK (us)':>16} {'Speedup':>10}")
-    print("-" * 66)
+    print("NOTE: ARK column is partial — torch matmul + ARK QK-norm/RoPE.")
+    print(
+        f"{'Shape':<20} {'Torch (us)':>16} {'ARK-partial (us)':>20} {'Speedup':>10}"
+    )
+    print("-" * 70)
     for seq, label in [(2048, "prefill S=2048"), (1, "decode  S=1")]:
         name, t, a = _run(seq, label)
         sp = t["mean_us"] / a["mean_us"] if a["mean_us"] > 0 else float("nan")
         print(
             f"{name:<20} "
             f"{t['mean_us']:>10.1f} ± {t['std_us']:<5.1f}"
-            f"{a['mean_us']:>10.1f} ± {a['std_us']:<5.1f}"
+            f"{a['mean_us']:>14.1f} ± {a['std_us']:<5.1f}"
             f"{sp:>8.2f}x"
         )
 

@@ -11,6 +11,8 @@ Follows the gpu-kernel-perf-bench methodology:
 - Returns structured dict: mean_us, std_us, n_iters.
 """
 
+from __future__ import annotations
+
 from typing import Callable, Dict
 
 import torch

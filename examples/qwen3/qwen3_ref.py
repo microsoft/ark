@@ -7,6 +7,8 @@ Implements: RMSNorm, RoPE, QK-norm, GQA attention, SwiGLU MLP,
 TransformerBlock, and Qwen3Model. No ARK dependency.
 """
 
+from __future__ import annotations
+
 import math
 from typing import Optional
 
