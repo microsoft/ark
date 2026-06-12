@@ -196,6 +196,24 @@ class TestClassifyKernel:
         )
         assert result == classify_kernels.GEMM_MLP
 
+    def test_gemm_tp1_hidden_is_not_attention(self) -> None:
+        """At TP=1 q_dim == HIDDEN; HIDDEN is discarded so this is 'other'."""
+        result = classify_kernels.classify_kernel(
+            "cutlass_80_tensorop_f16_gemm",
+            shapes=[[1, 4096], [4096, 4096]],
+            tp=1,
+        )
+        assert result == classify_kernels.OTHER
+
+    def test_gemm_tp1_fused_qkv_is_attention(self) -> None:
+        """At TP=1 fused_qkv = 4096 + 2*1024 = 6144, a distinctive dim."""
+        result = classify_kernels.classify_kernel(
+            "cutlass_80_tensorop_f16_gemm",
+            shapes=[[1, 4096], [4096, 6144]],
+            tp=1,
+        )
+        assert result == classify_kernels.GEMM_ATTENTION
+
 
 class TestClassifyTraceEvents:
     """Test classify_trace_events() aggregation."""

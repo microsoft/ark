@@ -30,7 +30,7 @@ shift
 TP=8
 while [ $# -gt 0 ]; do
     case "$1" in
-        --tp) TP="$2"; shift 2 ;;
+        --tp) if [ $# -lt 2 ]; then echo "Error: --tp requires a value" >&2; exit 1; fi; TP="$2"; shift 2 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done

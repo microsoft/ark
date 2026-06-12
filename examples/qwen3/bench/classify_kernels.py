@@ -147,8 +147,15 @@ def _classify_gemm_by_shape(
     # shared with MLP and therefore non-distinctive)
     q_dim = HIDDEN // tp  # 512 for TP=8
     kv_dim = (NUM_KV_HEADS * HEAD_DIM) // tp  # 128 for TP=8
+    # NOTE: kv_dim == 128 at TP=8, which collides with common tile/block
+    # sizes.  The classification order (vocab → MLP → attention) limits
+    # false positives: 128 only triggers attention when no more-distinctive
+    # dimension is present.  Accept this as a known limitation.
     fused_qkv = q_dim + 2 * kv_dim  # 768 for TP=8
     attn_dims = {q_dim, kv_dim, fused_qkv}
+    # Remove HIDDEN — it appears in both attention and MLP projections,
+    # so it is non-distinctive.
+    attn_dims.discard(HIDDEN)
 
     # MLP projection dimensions (per-GPU)
     mlp_dim = INTERMEDIATE // tp  # 1792 for TP=8
@@ -243,7 +250,7 @@ def classify_trace_events(
 
     for ev in events:
         name = ev.get("name", "")
-        dur_us = ev.get("dur", 0.0)
+        dur_us = float(ev.get("dur", 0.0))
         shapes = None
         if "args" in ev and "shapes" in ev["args"]:
             shapes = ev["args"]["shapes"]

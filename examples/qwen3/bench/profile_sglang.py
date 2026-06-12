@@ -86,9 +86,10 @@ def build_profiler_config(
 ) -> dict[str, Any]:
     """Return the ``torch.profiler.profile`` keyword arguments as a dict.
 
-    This dict is the *specification*; it can be passed directly to
-    ``torch.profiler.profile(**config)`` on the server side, or serialised
-    for documentation.
+    This dict is a *serialisable specification* for logging and documentation.
+    Values are JSON-friendly (strings / plain dicts) rather than live
+    ``torch.profiler`` objects, so it cannot be passed directly to
+    ``torch.profiler.profile()``.
 
     Returns:
         Dict with keys matching ``torch.profiler.profile`` kwargs.
