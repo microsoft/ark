@@ -1,6 +1,6 @@
 # Reproducing the Qwen3-8B SGLang Baseline
 
-Target node: `mscclpp-a100-dev` (8× A100-SXM4-80GB).
+Target node: `8×A100-80GB` (8× A100-SXM4-80GB).
 
 ## Prerequisites
 

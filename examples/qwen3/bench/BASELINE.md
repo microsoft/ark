@@ -9,7 +9,7 @@ Model: `Qwen/Qwen3-8B` (~16 GB fp16)
 | Field          | Value |
 |----------------|-------|
 | Image tag      | `lmsysorg/sglang:v0.4.6.post1-cu124` |
-| Image digest   | TBD (run on mscclpp-a100-dev) |
+| Image digest   | TBD (run on 8×A100-80GB) |
 | CUDA version   | 12.4 |
 | SGLang version | 0.4.6.post1 |
 
@@ -17,10 +17,10 @@ Model: `Qwen/Qwen3-8B` (~16 GB fp16)
 
 | Field             | Value |
 |-------------------|-------|
-| Node              | mscclpp-a100-dev |
+| Node              | 8×A100-80GB |
 | GPUs              | 8× NVIDIA A100-SXM4-80GB |
-| GPU clocks (gr)   | TBD (run on mscclpp-a100-dev) |
-| GPU clocks (mem)  | TBD (run on mscclpp-a100-dev) |
+| GPU clocks (gr)   | TBD (run on 8×A100-80GB) |
+| GPU clocks (mem)  | TBD (run on 8×A100-80GB) |
 | Interconnect      | NVLink + NVSwitch |
 
 ## TP=1 — SGLang natural best-latency config
@@ -44,8 +44,8 @@ python -m sglang.launch_server \
 
 | Metric                          | Value |
 |---------------------------------|-------|
-| Prefill TTFT (prompt=2048, gen=1) | TBD (run on mscclpp-a100-dev) |
-| Decode per-token (prompt=2048, gen=128) | TBD (run on mscclpp-a100-dev) |
+| Prefill TTFT (prompt=2048, gen=1) | TBD (run on 8×A100-80GB) |
+| Decode per-token (prompt=2048, gen=128) | TBD (run on 8×A100-80GB) |
 | Trials                          | 5 |
 
 ## TP=8 — Matched-regime comparison
@@ -70,8 +70,8 @@ python -m sglang.launch_server \
 
 | Metric                          | Value |
 |---------------------------------|-------|
-| Prefill TTFT (prompt=2048, gen=1) | TBD (run on mscclpp-a100-dev) |
-| Decode per-token (prompt=2048, gen=128) | TBD (run on mscclpp-a100-dev) |
+| Prefill TTFT (prompt=2048, gen=1) | TBD (run on 8×A100-80GB) |
+| Decode per-token (prompt=2048, gen=128) | TBD (run on 8×A100-80GB) |
 | Trials                          | 5 |
 
 ## Methodology
