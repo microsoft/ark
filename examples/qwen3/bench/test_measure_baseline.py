@@ -33,7 +33,10 @@ class TestCaptureGpuClocks:
         result = capture_gpu_clocks()
         assert result == "nvidia-smi not available"
 
-    @patch("measure_baseline.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="nvidia-smi", timeout=10))
+    @patch(
+        "measure_baseline.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd="nvidia-smi", timeout=10),
+    )
     def test_timeout_returns_fallback(self, mock_run):
         result = capture_gpu_clocks()
         assert result == "nvidia-smi not available"
@@ -47,7 +50,9 @@ class TestSendRequest:
         mock_resp.raise_for_status = MagicMock()
         mock_post.return_value = mock_resp
 
-        result = send_request("http://localhost:30000", "prompt", max_new_tokens=128)
+        result = send_request(
+            "http://localhost:30000", "prompt", max_new_tokens=128
+        )
 
         captured = capsys.readouterr()
         assert "completion_tokens missing" in captured.err
@@ -64,7 +69,9 @@ class TestSendRequest:
         mock_resp.raise_for_status = MagicMock()
         mock_post.return_value = mock_resp
 
-        result = send_request("http://localhost:30000", "prompt", max_new_tokens=128)
+        result = send_request(
+            "http://localhost:30000", "prompt", max_new_tokens=128
+        )
 
         captured = capsys.readouterr()
         assert captured.err == ""
