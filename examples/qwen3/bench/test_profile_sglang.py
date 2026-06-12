@@ -21,7 +21,6 @@ if _BENCH_DIR not in sys.path:
 import classify_kernels  # noqa: E402
 import profile_sglang  # noqa: E402
 
-
 # =========================================================================
 # classify_kernels tests
 # =========================================================================
@@ -43,7 +42,9 @@ class TestClassifyKernel:
         ],
     )
     def test_attention_kernels(self, name: str) -> None:
-        assert classify_kernels.classify_kernel(name) == classify_kernels.ATTENTION
+        assert (
+            classify_kernels.classify_kernel(name) == classify_kernels.ATTENTION
+        )
 
     # --- NCCL kernels ---
 
@@ -76,7 +77,10 @@ class TestClassifyKernel:
         ],
     )
     def test_norms_rope_kernels(self, name: str) -> None:
-        assert classify_kernels.classify_kernel(name) == classify_kernels.NORMS_ROPE
+        assert (
+            classify_kernels.classify_kernel(name)
+            == classify_kernels.NORMS_ROPE
+        )
 
     # --- GEMM kernels with shape disambiguation ---
 
@@ -173,7 +177,10 @@ class TestClassifyKernel:
     # --- Unknown kernels ---
 
     def test_unknown_kernel(self) -> None:
-        assert classify_kernels.classify_kernel("some_random_kernel") == classify_kernels.OTHER
+        assert (
+            classify_kernels.classify_kernel("some_random_kernel")
+            == classify_kernels.OTHER
+        )
 
     def test_empty_name(self) -> None:
         assert classify_kernels.classify_kernel("") == classify_kernels.OTHER
@@ -203,10 +210,14 @@ class TestClassifyTraceEvents:
         ]
         budgets = classify_kernels.classify_trace_events(events, tp=8)
 
-        assert budgets[classify_kernels.ATTENTION].total_us == pytest.approx(300.0)
+        assert budgets[classify_kernels.ATTENTION].total_us == pytest.approx(
+            300.0
+        )
         assert budgets[classify_kernels.ATTENTION].kernel_count == 2
         assert budgets[classify_kernels.NCCL].total_us == pytest.approx(50.0)
-        assert budgets[classify_kernels.NORMS_ROPE].total_us == pytest.approx(30.0)
+        assert budgets[classify_kernels.NORMS_ROPE].total_us == pytest.approx(
+            30.0
+        )
         assert budgets[classify_kernels.OTHER].total_us == pytest.approx(10.0)
 
     def test_empty_events(self) -> None:
@@ -224,7 +235,9 @@ class TestClassifyTraceEvents:
             },
         ]
         budgets = classify_kernels.classify_trace_events(events, tp=8)
-        assert budgets[classify_kernels.GEMM_MLP].total_us == pytest.approx(500.0)
+        assert budgets[classify_kernels.GEMM_MLP].total_us == pytest.approx(
+            500.0
+        )
 
 
 class TestComponentBudget:
@@ -281,15 +294,24 @@ class TestParseArgs:
         assert args.output_dir == "/tmp/sglang_profile"
 
     def test_custom_args(self) -> None:
-        args = profile_sglang.parse_args([
-            "--port", "8080",
-            "--host", "gpu-node",
-            "--phase", "prefill",
-            "--prompt-len", "1024",
-            "--decode-tokens", "64",
-            "--trials", "3",
-            "--output-dir", "/data/traces",
-        ])
+        args = profile_sglang.parse_args(
+            [
+                "--port",
+                "8080",
+                "--host",
+                "gpu-node",
+                "--phase",
+                "prefill",
+                "--prompt-len",
+                "1024",
+                "--decode-tokens",
+                "64",
+                "--trials",
+                "3",
+                "--output-dir",
+                "/data/traces",
+            ]
+        )
         assert args.port == 8080
         assert args.host == "gpu-node"
         assert args.phase == "prefill"
@@ -331,11 +353,11 @@ class TestBuildProfilerSchedule:
         schedule = profile_sglang.build_profiler_schedule()
         # wait=2 → NONE, NONE; warmup=1 → WARMUP; active=3 → RECORD x3
         expected = [
-            torch_profiler.ProfilerAction.NONE,        # step 0 (wait)
-            torch_profiler.ProfilerAction.NONE,        # step 1 (wait)
-            torch_profiler.ProfilerAction.WARMUP,      # step 2 (warmup)
-            torch_profiler.ProfilerAction.RECORD,      # step 3 (active)
-            torch_profiler.ProfilerAction.RECORD,      # step 4 (active)
+            torch_profiler.ProfilerAction.NONE,  # step 0 (wait)
+            torch_profiler.ProfilerAction.NONE,  # step 1 (wait)
+            torch_profiler.ProfilerAction.WARMUP,  # step 2 (warmup)
+            torch_profiler.ProfilerAction.RECORD,  # step 3 (active)
+            torch_profiler.ProfilerAction.RECORD,  # step 4 (active)
             torch_profiler.ProfilerAction.RECORD_AND_SAVE,  # step 5 (last active)
         ]
         for step, exp_action in enumerate(expected):
@@ -359,7 +381,9 @@ class TestBuildPrompt:
 class TestRequireRequests:
     """Test _require_requests() raises ImportError when requests is missing."""
 
-    def test_raises_when_requests_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_raises_when_requests_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(profile_sglang, "_requests", None)
         with pytest.raises(ImportError, match="requests"):
             profile_sglang._require_requests()
@@ -368,15 +392,23 @@ class TestRequireRequests:
 class TestClassifyKernelsMain:
     """Test classify_kernels.main() CLI entry point."""
 
-    def test_main_prints_budget_table(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_main_prints_budget_table(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         """main() loads a trace JSON, classifies events, and prints a budget table."""
         trace = {
             "traceEvents": [
-                {"ph": "X", "cat": "kernel", "name": "flash_fwd_kernel", "dur": 100.0},
+                {
+                    "ph": "X",
+                    "cat": "kernel",
+                    "name": "flash_fwd_kernel",
+                    "dur": 100.0,
+                },
             ]
         }
         trace_file = tmp_path / "trace.json"
         import json
+
         trace_file.write_text(json.dumps(trace))
 
         classify_kernels.main([str(trace_file), "--tp", "8"])
@@ -389,7 +421,9 @@ class TestClassifyKernelsMain:
 class TestBuildProfilerScheduleNoTorch:
     """Test build_profiler_schedule() when torch is absent."""
 
-    def test_raises_runtime_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_raises_runtime_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(profile_sglang, "_torch_profiler", None)
         with pytest.raises(RuntimeError, match="torch is required"):
             profile_sglang.build_profiler_schedule()
@@ -399,12 +433,17 @@ class TestConstants:
     """Verify module-level constants are consistent."""
 
     def test_sglang_image_tag(self) -> None:
-        assert profile_sglang.SGLANG_IMAGE_TAG == "lmsysorg/sglang:v0.4.6.post1-cu124"
+        assert (
+            profile_sglang.SGLANG_IMAGE_TAG
+            == "lmsysorg/sglang:v0.4.6.post1-cu124"
+        )
 
     def test_all_components_complete(self) -> None:
         assert len(classify_kernels.ALL_COMPONENTS) == 7
         assert classify_kernels.ATTENTION in classify_kernels.ALL_COMPONENTS
-        assert classify_kernels.GEMM_ATTENTION in classify_kernels.ALL_COMPONENTS
+        assert (
+            classify_kernels.GEMM_ATTENTION in classify_kernels.ALL_COMPONENTS
+        )
         assert classify_kernels.GEMM_MLP in classify_kernels.ALL_COMPONENTS
         assert classify_kernels.NCCL in classify_kernels.ALL_COMPONENTS
         assert classify_kernels.NORMS_ROPE in classify_kernels.ALL_COMPONENTS

@@ -81,7 +81,9 @@ def build_profiler_schedule() -> Any:
     )
 
 
-def build_profiler_config(output_dir: str = DEFAULT_OUTPUT_DIR) -> dict[str, Any]:
+def build_profiler_config(
+    output_dir: str = DEFAULT_OUTPUT_DIR,
+) -> dict[str, Any]:
     """Return the ``torch.profiler.profile`` keyword arguments as a dict.
 
     This dict is the *specification*; it can be passed directly to
@@ -127,7 +129,9 @@ def build_prompt(num_tokens: int) -> str:
 
 def _require_requests() -> None:
     if _requests is None:
-        raise ImportError("'requests' package required. Install: pip install requests")
+        raise ImportError(
+            "'requests' package required. Install: pip install requests"
+        )
 
 
 def start_server_profile(base_url: str) -> None:
@@ -194,8 +198,10 @@ def run_phase(
     start_server_profile(base_url)
 
     for i in range(trials):
-        print(f"[{phase}] Trial {i + 1}/{trials} "
-              f"(prompt≈{prompt_len}, max_new_tokens={max_new_tokens})")
+        print(
+            f"[{phase}] Trial {i + 1}/{trials} "
+            f"(prompt≈{prompt_len}, max_new_tokens={max_new_tokens})"
+        )
         result = send_generate(base_url, prompt, max_new_tokens)
         results.append(result)
         print(f"  elapsed: {result['elapsed_ms']:.1f} ms")
@@ -268,7 +274,9 @@ def main() -> None:
     base_url = f"http://{args.host}:{args.port}"
 
     print(f"SGLang server: {base_url}")
-    print(f"Profiler config: {json.dumps(build_profiler_config(args.output_dir), indent=2)}")
+    print(
+        f"Profiler config: {json.dumps(build_profiler_config(args.output_dir), indent=2)}"
+    )
     print()
 
     if args.phase in ("prefill", "both"):

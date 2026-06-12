@@ -276,9 +276,7 @@ def format_budget_table(
             f"| {b.component} | {b.total_ms:.2f} "
             f"| {b.pct_of(total_us):.1f}% | TBD | TBD |"
         )
-    lines.append(
-        f"| **Total** | **{total_us / 1000:.2f}** | **100%** | | |"
-    )
+    lines.append(f"| **Total** | **{total_us / 1000:.2f}** | **100%** | | |")
     lines.append("")
     return "\n".join(lines)
 
@@ -297,7 +295,12 @@ def main(argv: list[str] | None = None) -> None:
         description="Classify GPU kernels from a Chrome-trace JSON into component buckets.",
     )
     parser.add_argument("trace", help="Path to Chrome-trace JSON file")
-    parser.add_argument("--tp", type=int, default=8, help="Tensor-parallelism degree (default 8)")
+    parser.add_argument(
+        "--tp",
+        type=int,
+        default=8,
+        help="Tensor-parallelism degree (default 8)",
+    )
     args = parser.parse_args(argv)
 
     with open(args.trace) as f:
