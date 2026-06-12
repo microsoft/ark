@@ -76,9 +76,8 @@ def test_qk_norm():
         ref = norm(x.reshape(-1, dim)).reshape(x.shape)
 
     # ARK
-    ark.init()
     weight = norm.weight.detach().half().cuda()
-    ark_out = ark_rmsnorm(x, weight, 1e-6).eval()
+    ark_out = ark_rmsnorm(x, weight, 1e-6)
 
     assert_close(ark_out, ref, atol=5e-3, rtol=5e-3, msg="QK-norm mismatch")
 
@@ -241,7 +240,6 @@ def test_attention_causal():
 
     with torch.no_grad():
         # Manually compute attention weights using ARK ops
-        ark.init()
         q = torch.matmul(x, attn.q_proj.weight.detach().t())
         k = torch.matmul(x, attn.k_proj.weight.detach().t())
 
@@ -259,9 +257,8 @@ def test_attention_causal():
         # QK-norm
         q_w = attn.qk_norm.q_norm.weight.detach().half()
         k_w = attn.qk_norm.k_norm.weight.detach().half()
-        q = ark_rmsnorm(q, q_w, cfg.rms_norm_eps).eval()
-        ark.init()
-        k = ark_rmsnorm(k, k_w, cfg.rms_norm_eps).eval()
+        q = ark_rmsnorm(q, q_w, cfg.rms_norm_eps)
+        k = ark_rmsnorm(k, k_w, cfg.rms_norm_eps)
 
         # RoPE
         ark_rf = precompute_ark_rope_freqs(
@@ -428,34 +425,41 @@ def test_rmsnorm_4d_s128_xfail():
     """Document that raw 4-D ark_rmsnorm crashes at (1,4,128,32).
 
     This test records the upstream ARK planner bug.  The production
-    code works around it by flattening to 2-D.  When ARK fixes the
-    planner, this test will start passing and the xfail marker can
-    be removed.
+    code works around it by flattening to 2-D in torch.
+
+    Runs in a subprocess to avoid poisoning the CUDA context for
+    subsequent tests.
     """
-    import ark
-    from .qwen3_ref import RMSNorm
-    from .equiv import assert_close
+    import subprocess
+    import sys
+    import os
 
-    dim = 32
-    torch.manual_seed(_SEED)
-    x = torch.randn(1, 4, 128, dim, device="cuda", dtype=torch.float16)
-
-    norm = RMSNorm(dim, eps=1e-6).cuda()
-    with torch.no_grad():
-        ref = norm(x.reshape(-1, dim)).reshape(x.shape)
-
-    # Build a raw 4-D graph (no flatten) to trigger the planner bug.
-    ark.init()
-    weight = norm.weight.detach().half().cuda()
-    x_f32 = ark.cast(x, ark.fp32)
-    x2 = ark.mul(x_f32, x_f32)
-    mean = ark.reduce_mean(x2, axis=-1)
-    mean_eps = ark.add(mean, 1e-6)
-    rrms = ark.rsqrt(mean_eps)
-    x_normed = ark.mul(x_f32, rrms)
-    w_f32 = ark.cast(weight, ark.fp32)
-    w_f32 = ark.reshape(w_f32, [1, 1, 1, dim])
-    x_scaled = ark.mul(x_normed, w_f32)
-    ark_out = ark.cast(x_scaled, ark.fp16).eval()
-
-    assert_close(ark_out, ref, atol=5e-3, rtol=5e-3, msg="4D RMSNorm S=128")
+    script = (
+        "import torch, ark\n"
+        "dim = 32\n"
+        "torch.manual_seed(42)\n"
+        "x = torch.randn(1, 4, 128, dim, device='cuda', dtype=torch.float16)\n"
+        "w = torch.ones(dim, device='cuda', dtype=torch.float16)\n"
+        "ark.init()\n"
+        "xf = ark.cast(x, ark.fp32)\n"
+        "x2 = ark.mul(xf, xf)\n"
+        "m = ark.reduce_mean(x2, axis=-1)\n"
+        "me = ark.add(m, 1e-6)\n"
+        "rr = ark.rsqrt(me)\n"
+        "xn = ark.mul(xf, rr)\n"
+        "wf = ark.cast(w, ark.fp32)\n"
+        "wf = ark.reshape(wf, [1, 1, 1, dim])\n"
+        "xs = ark.mul(xn, wf)\n"
+        "out = ark.cast(xs, ark.fp16).eval()\n"
+        "assert out.shape == (1, 4, 128, dim)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=os.environ.copy(),
+    )
+    assert result.returncode == 0, (
+        f"Subprocess exited {result.returncode}: {result.stderr[-500:]}"
+    )

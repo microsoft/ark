@@ -46,32 +46,32 @@ def precompute_ark_rope_freqs(head_dim, max_seq_len, theta=1e6):
 def ark_rmsnorm(x, weight, eps):
     """Composed RMSNorm using ARK primitives (fp32 accumulation).
 
-    Input is flattened to 2-D ``(N, dim)`` before the composed graph to
-    avoid a shape-dependent planner/kernel bug that causes
-    ``cudaErrorMisalignedAddress`` on certain 4-D shapes (e.g.
-    ``(1,4,128,32)``).  The output is reshaped back to the original shape.
+    Flattens the input to 2-D in **torch** (a zero-copy view) so the ARK
+    graph contains no reshape ops.  This avoids a planner/kernel bug that
+    causes ``cudaErrorMisalignedAddress`` when ``ark.reshape`` appears in
+    the graph for certain shapes.
+
+    Handles ``ark.init()`` / ``.eval()`` internally.
 
     Args:
-        x: ARK-compatible tensor of any shape; the last dimension is *dim*.
-        weight: 1-D scale parameter ``(dim,)``.
+        x: ``torch.Tensor`` on CUDA, any shape; the last dimension is
+           the normalization dimension.
+        weight: 1-D ``torch.Tensor`` scale parameter ``(dim,)``.
         eps: epsilon for numerical stability.
 
     Returns:
-        ARK tensor (fp16) with the same shape as *x*.
+        ``torch.Tensor`` (fp16) with the same shape as *x*.
     """
-    # Determine original shape and dim.
-    if isinstance(x, torch.Tensor):
-        orig_shape = list(x.shape)
-    else:
-        orig_shape = list(x.shape())
+    orig_shape = list(x.shape)
     dim = orig_shape[-1]
-
-    # Flatten to 2-D: (N, dim).
     n = 1
     for s in orig_shape[:-1]:
         n *= s
-    x_2d = ark.reshape(x, [n, dim])
 
+    # Flatten in torch — no ARK reshape op in the graph.
+    x_2d = x.reshape(n, dim)
+
+    ark.init()
     x_f32 = ark.cast(x_2d, ark.fp32)
     x2 = ark.mul(x_f32, x_f32)
     mean = ark.reduce_mean(x2, axis=-1)
@@ -80,12 +80,12 @@ def ark_rmsnorm(x, weight, eps):
     x_normed = ark.mul(x_f32, rrms)
 
     w_f32 = ark.cast(weight, ark.fp32)
-    w_f32 = ark.reshape(w_f32, [1, dim])  # (1, dim) broadcasts over (N, dim)
+    w_f32 = ark.reshape(w_f32, [1, dim])
     x_scaled = ark.mul(x_normed, w_f32)
-    out_2d = ark.cast(x_scaled, ark.fp16)
+    result_2d = ark.cast(x_scaled, ark.fp16).eval()
 
-    # Restore original shape.
-    return ark.reshape(out_2d, orig_shape)
+    # Unflatten in torch.
+    return result_2d.reshape(orig_shape)
 
 
 # ---------------------------------------------------------------------------
@@ -129,10 +129,8 @@ def ark_gqa_attention(
     v = v.reshape(batch, seq, n_kv, hd).transpose(1, 2).contiguous()
 
     # ---- Stage 2: QK-norm (ARK composed RMSNorm) ----
-    ark.init()
-    q = ark_rmsnorm(q, qk_q_w, cfg.rms_norm_eps).eval()
-    ark.init()
-    k = ark_rmsnorm(k, qk_k_w, cfg.rms_norm_eps).eval()
+    q = ark_rmsnorm(q, qk_q_w, cfg.rms_norm_eps)
+    k = ark_rmsnorm(k, qk_k_w, cfg.rms_norm_eps)
 
     # ---- Stage 3: RoPE (ARK) ----
     ark.init()
