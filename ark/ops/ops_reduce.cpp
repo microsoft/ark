@@ -49,7 +49,7 @@ ModelOpReduce::ModelOpReduce(const std::string &type_name, ModelTensorRef input,
 }
 
 std::string ModelOpReduce::impl_name(const Json &config) const {
-    check_fields_config(config, {"NumWarps", "SramBytes", "ImplType"});
+    check_fields_config(config, {"NumWarps", "SramBytes", "ImplType", "Tile"});
     check_fields_args(args_, {"Axis", "KeepDim"});
 
     std::string red_type;
@@ -66,11 +66,20 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
     int num_warps = config.at("NumWarps");
     int sram_bytes = config.at("SramBytes");
     std::string impl_type = config.at("ImplType");
+    Dims unit_out_dims(config.at("Tile").get<std::vector<DimType>>());
+    if (unit_out_dims.ndims() != 4) {
+        ERR(PlanError, "Tile should have 4 elements");
+    }
     int axis = args_.at("Axis").value<int>();
     bool keep_dims = args_.at("KeepDim").value<bool>();
 
     // Translate the axis value into 4D representation.
     axis += 4 - read_tensors_[0]->shape().ndims();
+
+    auto udims4 = unit_out_dims.dims4();
+    if (udims4[axis] != 1) {
+        ERR(PlanError, "Tile dimension on the reduction axis must be 1");
+    }
 
     if (impl_type == "WarpWise") {
         impl_type = "w";
@@ -99,7 +108,7 @@ std::string ModelOpReduce::impl_name(const Json &config) const {
             vec_string(read_tensors_[0]->shape().dims4()),
             vec_string(output_strides.dims4()),
             vec_string(output_shape.dims4()),
-            vec_string(Dims(1, 1, 1, 1)),
+            vec_string(udims4),
             std::to_string(num_warps),
             std::to_string(sram_bytes),
             std::to_string(axis),
@@ -122,6 +131,7 @@ Json ModelOpReduce::default_config([[maybe_unused]] const ArchRef arch) const {
         config["ImplType"] = "ElementWise";
         config["SramBytes"] = 0;
     }
+    config["Tile"] = {1, 1, 1, 1};
     config["NumTasks"] = result_tensors_[0]->shape().nelems();
     return config;
 }
