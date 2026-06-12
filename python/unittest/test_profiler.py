@@ -8,7 +8,17 @@ from unittest.mock import patch, MagicMock
 from common import ark, pytest_ark
 import pytest
 
+try:
+    from ark import core as _ark_core  # noqa: F401
 
+    _has_ark_core = True
+except ImportError:
+    _has_ark_core = False
+
+
+@pytest.mark.skipif(
+    not _has_ark_core, reason="native _ark_core extension not available"
+)
 def test_profiler_cli_help():
     """Test that `python -m ark.profiler --help` exits 0 and shows usage."""
     result = subprocess.run(
@@ -21,8 +31,12 @@ def test_profiler_cli_help():
     assert "ARK Profiler" in result.stdout
 
 
+@pytest.mark.skipif(
+    not _has_ark_core, reason="native _ark_core extension not available"
+)
 def test_profiler_cli_missing_plan():
-    """Test that `python -m ark.profiler` without --plan exits with code 2."""
+    """Test that `python -m ark.profiler` without --plan exits with code 2.
+    Validates that --plan is configured as a required argument."""
     result = subprocess.run(
         [sys.executable, "-m", "ark.profiler"],
         capture_output=True,
@@ -40,24 +54,22 @@ def test_profiler_main_arg_parsing():
 
     with patch("ark.profiler.Plan") as MockPlan, patch(
         "ark.profiler.Profiler"
-    ) as MockProfiler, patch(
-        "sys.argv",
-        [
-            "arkprof",
-            "--plan",
-            "test.json",
-            "--iter",
-            "5",
-            "--loop_mode",
-            "--profile_processor_groups",
-            "--target_processor_groups",
-            "0,1",
-        ],
-    ):
+    ) as MockProfiler:
         MockPlan.from_file.return_value = mock_plan
         MockProfiler.return_value = mock_profiler
 
-        ark.profiler.main()
+        ark.profiler.main(
+            [
+                "--plan",
+                "test.json",
+                "--iter",
+                "5",
+                "--loop_mode",
+                "--profile_processor_groups",
+                "--target_processor_groups",
+                "0,1",
+            ]
+        )
 
         MockPlan.from_file.assert_called_once_with("test.json")
         MockProfiler.assert_called_once_with(mock_plan)
@@ -76,11 +88,11 @@ def test_profiler_main_defaults():
 
     with patch("ark.profiler.Plan") as MockPlan, patch(
         "ark.profiler.Profiler"
-    ) as MockProfiler, patch("sys.argv", ["arkprof", "--plan", "plan.json"]):
+    ) as MockProfiler:
         MockPlan.from_file.return_value = mock_plan
         MockProfiler.return_value = mock_profiler
 
-        ark.profiler.main()
+        ark.profiler.main(["--plan", "plan.json"])
 
         MockPlan.from_file.assert_called_once_with("plan.json")
         MockProfiler.assert_called_once_with(mock_plan)
@@ -89,6 +101,29 @@ def test_profiler_main_defaults():
             loop_mode=False,
             profile_processor_groups=False,
             target_processor_groups=None,
+        )
+
+
+def test_profiler_main_target_groups_whitespace():
+    """Test that target_processor_groups handles whitespace and empty segments."""
+    mock_plan = MagicMock()
+    mock_profiler = MagicMock()
+
+    with patch("ark.profiler.Plan") as MockPlan, patch(
+        "ark.profiler.Profiler"
+    ) as MockProfiler:
+        MockPlan.from_file.return_value = mock_plan
+        MockProfiler.return_value = mock_profiler
+
+        ark.profiler.main(
+            ["--plan", "t.json", "--target_processor_groups", "0, 1"]
+        )
+
+        mock_profiler.run.assert_called_once_with(
+            iter=1000,
+            loop_mode=False,
+            profile_processor_groups=False,
+            target_processor_groups=[0, 1],
         )
 
 
