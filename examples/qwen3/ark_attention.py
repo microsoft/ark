@@ -4,15 +4,13 @@
 """ARK GQA attention for Qwen3: QKV projections, QK-norm, RoPE, GQA expand,
 scaled dot-product with causal mask, output projection.
 
-Implementation note — staged eval
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Compiling the entire attention pipeline into a single ARK kernel triggers a
-``cudaErrorMisalignedAddress`` at runtime (observed on A100 CI with large
-op-count graphs mixing matmul, transpose, and element-wise ops).  The tested
-individual ops (rmsnorm, rope, matmul) work in isolation.  As a workaround
-the pipeline is split into stages, each evaluated separately.  This adds
-launch overhead but guarantees correctness; a single-kernel version can be
-revisited after the root cause is identified in the ARK runtime.
+Implementation note — no ark.transpose
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``ark.transpose`` combined with other ops in a single eval graph triggers
+``cudaErrorMisalignedAddress`` on A100.  Individual ops (rmsnorm, rope,
+matmul) work in isolation.  As a workaround, all reshape/transpose logic
+uses torch; ARK handles matmul, composed RMSNorm, and RoPE via separate
+small eval() calls.
 """
 
 import math
@@ -37,7 +35,7 @@ def precompute_ark_rope_freqs(head_dim, max_seq_len, theta=1e6):
         theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
     )
     t = torch.arange(max_seq_len, dtype=torch.float32)
-    angles = torch.outer(t, freqs)  # (seq, head_dim // 2)
+    angles = torch.outer(t, freqs)
     cos_vals = torch.cos(angles)
     sin_vals = torch.sin(angles)
     interleaved = torch.stack([cos_vals, sin_vals], dim=-1)
@@ -75,104 +73,7 @@ def ark_rmsnorm(x, weight, eps):
 
 
 # ---------------------------------------------------------------------------
-# Staged helpers — each builds a small graph and eval()s it
-# ---------------------------------------------------------------------------
-
-
-def _eval_qkv_proj(x, q_w, k_w, v_w):
-    """QKV linear projections.  Returns three torch tensors."""
-    ark.init()
-    q_out = ark.matmul(x, q_w, transpose_other=True).eval()
-    ark.init()
-    k_out = ark.matmul(x, k_w, transpose_other=True).eval()
-    ark.init()
-    v_out = ark.matmul(x, v_w, transpose_other=True).eval()
-    return q_out, k_out, v_out
-
-
-def _eval_qknorm_rope(q, k, qk_q_w, qk_k_w, rope_freqs, cfg):
-    """QK-norm + RoPE on Q and K.  Returns two torch tensors in (B,H,S,D)."""
-    B, S = q.shape[0], q.shape[1]
-    hd = cfg.head_dim
-
-    # Reshape (B,S,H,D) for both Q and K, apply QK-norm
-    ark.init()
-    q4 = ark.reshape(q, [B, S, cfg.n_q_heads, hd])
-    q4 = ark.transpose(q4, [0, 2, 1, 3])
-    q4 = ark_rmsnorm(q4, qk_q_w, cfg.rms_norm_eps)
-    q4 = ark.rope(q4, rope_freqs)
-    q_out = q4.eval()
-
-    ark.init()
-    k4 = ark.reshape(k, [B, S, cfg.n_kv_heads, hd])
-    k4 = ark.transpose(k4, [0, 2, 1, 3])
-    k4 = ark_rmsnorm(k4, qk_k_w, cfg.rms_norm_eps)
-    k4 = ark.rope(k4, rope_freqs)
-    k_out = k4.eval()
-
-    return q_out, k_out
-
-
-def _eval_attention(q, k, v, mask, cfg):
-    """Scaled dot-product attention.  All inputs/outputs are torch tensors.
-
-    q: (B, n_q, S, D), k: (B, n_kv, S, D), v: (B, n_kv, S, D)
-    Returns: (B, n_q, S, D)
-    """
-    B = q.shape[0]
-    S = q.shape[2]
-    n_q = cfg.n_q_heads
-    n_kv = cfg.n_kv_heads
-    hd = cfg.head_dim
-    n_rep = n_q // n_kv
-
-    # GQA expand (torch — simple and avoids ARK copy issues)
-    if n_rep > 1:
-        k = k.repeat_interleave(n_rep, dim=1)
-        v = v.repeat_interleave(n_rep, dim=1)
-
-    # Flatten to 3-D for matmul
-    q3 = q.reshape(B * n_q, S, hd)
-    k3 = k.reshape(B * n_q, S, hd)
-    v3 = v.reshape(B * n_q, S, hd)
-
-    # Scores
-    ark.init()
-    scores = ark.matmul(q3, k3, transpose_other=True)
-    scores = ark.mul(scores, 1.0 / math.sqrt(hd))
-    scores_out = scores.eval()  # (B*n_q, S, S)
-
-    # Add mask (torch — broadcast is trivial)
-    if mask is not None:
-        scores_4d = scores_out.reshape(B, n_q, S, S)
-        scores_4d = scores_4d + mask
-        scores_out = scores_4d.reshape(B * n_q, S, S)
-
-    # Softmax (torch — avoids fp16 precision issues in composed ARK softmax)
-    attn_w = torch.softmax(scores_out.float(), dim=-1).half()
-
-    # Weighted sum
-    ark.init()
-    out = ark.matmul(attn_w, v3)
-    return out.eval().reshape(B, n_q, S, hd)
-
-
-def _eval_output_proj(attn_out, o_w, cfg):
-    """Output projection.  attn_out: (B, n_q, S, D) → (B, S, hidden)."""
-    B = attn_out.shape[0]
-    S = attn_out.shape[2]
-
-    # Transpose (B,H,S,D) → (B,S,H,D) → (B,S,H*D) in torch
-    out = attn_out.transpose(1, 2).contiguous()
-    out = out.reshape(B, S, cfg.n_q_heads * cfg.head_dim)
-
-    ark.init()
-    result = ark.matmul(out, o_w, transpose_other=True)
-    return result.eval()
-
-
-# ---------------------------------------------------------------------------
-# Public API
+# Full GQA attention — staged eval, torch reshape/transpose
 # ---------------------------------------------------------------------------
 
 
@@ -192,29 +93,73 @@ def ark_gqa_attention(
 
     All weight/input arguments are **torch tensors on CUDA**.
 
-    Returns:
-        torch.Tensor of shape ``(B, S, hidden_dim)``.
+    Returns an ARK tensor; call ``.eval()`` to get a torch.Tensor.
     """
-    # Stage 1: QKV projections
-    q, k, v = _eval_qkv_proj(x, q_w, k_w, v_w)
+    batch, seq = x.shape[0], x.shape[1]
+    n_q = cfg.n_q_heads
+    n_kv = cfg.n_kv_heads
+    hd = cfg.head_dim
+    n_rep = n_q // n_kv
 
-    # Stage 2: QK-norm + RoPE (returns 4-D (B,H,S,D))
-    q, k = _eval_qknorm_rope(q, k, qk_q_w, qk_k_w, rope_freqs, cfg)
+    # ---- Stage 1: QKV projections (ARK matmul) ----
+    ark.init()
+    q = ark.matmul(x, q_w, transpose_other=True).eval()
+    ark.init()
+    k = ark.matmul(x, k_w, transpose_other=True).eval()
+    ark.init()
+    v = ark.matmul(x, v_w, transpose_other=True).eval()
 
-    # Stage 3: V also needs transpose (no norm/rope)
-    B, S = x.shape[0], x.shape[1]
-    v = (
-        v.reshape(B, S, cfg.n_kv_heads, cfg.head_dim)
-        .transpose(1, 2)
-        .contiguous()
-    )
+    # ---- Reshape + transpose in torch ----
+    q = q.reshape(batch, seq, n_q, hd).transpose(1, 2).contiguous()
+    k = k.reshape(batch, seq, n_kv, hd).transpose(1, 2).contiguous()
+    v = v.reshape(batch, seq, n_kv, hd).transpose(1, 2).contiguous()
 
-    # Stage 4: Attention (scores + softmax + weighted sum)
-    attn_out = _eval_attention(q, k, v, mask, cfg)
+    # ---- Stage 2: QK-norm (ARK composed RMSNorm) ----
+    ark.init()
+    q = ark_rmsnorm(q, qk_q_w, cfg.rms_norm_eps).eval()
+    ark.init()
+    k = ark_rmsnorm(k, qk_k_w, cfg.rms_norm_eps).eval()
 
-    # Stage 5: Output projection
-    result = _eval_output_proj(attn_out, o_w, cfg)
+    # ---- Stage 3: RoPE (ARK) ----
+    ark.init()
+    q = ark.rope(q, rope_freqs).eval()
+    ark.init()
+    k = ark.rope(k, rope_freqs).eval()
 
-    # Wrap as a trivial ARK graph so callers can use .eval()
+    # ---- GQA expand (torch) ----
+    if n_rep > 1:
+        k = k.repeat_interleave(n_rep, dim=1)
+        v = v.repeat_interleave(n_rep, dim=1)
+
+    # ---- Stage 4: Attention scores (ARK matmul + scale) ----
+    q3 = q.reshape(batch * n_q, seq, hd).contiguous()
+    k3 = k.reshape(batch * n_q, seq, hd).contiguous()
+    v3 = v.reshape(batch * n_q, seq, hd).contiguous()
+
+    ark.init()
+    scores = ark.matmul(q3, k3, transpose_other=True)
+    scores = ark.mul(scores, 1.0 / math.sqrt(hd))
+    scores = scores.eval()
+
+    # ---- Mask + softmax (torch) ----
+    if mask is not None:
+        scores = scores.reshape(batch, n_q, seq, seq) + mask
+        scores = scores.reshape(batch * n_q, seq, seq)
+    attn_w = torch.softmax(scores.float(), dim=-1).half()
+
+    # ---- Stage 5: Weighted sum (ARK matmul) ----
+    ark.init()
+    out = ark.matmul(attn_w, v3).eval()
+
+    # ---- Output reshape (torch) ----
+    out = out.reshape(batch, n_q, seq, hd)
+    out = out.transpose(1, 2).contiguous()
+    out = out.reshape(batch, seq, n_q * hd)
+
+    # ---- Stage 6: Output projection (ARK matmul) ----
+    ark.init()
+    result = ark.matmul(out, o_w, transpose_other=True).eval()
+
+    # Wrap as trivial ARK graph so callers can use .eval()
     ark.init()
     return ark.copy(result)
