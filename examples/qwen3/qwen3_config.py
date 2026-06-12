@@ -26,3 +26,10 @@ class Qwen3Config:
     rope_theta: float = 1e6
     max_seq_len: int = 4096
     dtype: str = "float16"
+
+    def __post_init__(self):
+        if self.n_q_heads % self.n_kv_heads != 0:
+            raise ValueError(
+                f"n_q_heads ({self.n_q_heads}) must be divisible by "
+                f"n_kv_heads ({self.n_kv_heads})"
+            )

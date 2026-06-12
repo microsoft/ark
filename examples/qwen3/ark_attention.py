@@ -46,30 +46,46 @@ def precompute_ark_rope_freqs(head_dim, max_seq_len, theta=1e6):
 def ark_rmsnorm(x, weight, eps):
     """Composed RMSNorm using ARK primitives (fp32 accumulation).
 
+    Input is flattened to 2-D ``(N, dim)`` before the composed graph to
+    avoid a shape-dependent planner/kernel bug that causes
+    ``cudaErrorMisalignedAddress`` on certain 4-D shapes (e.g.
+    ``(1,4,128,32)``).  The output is reshaped back to the original shape.
+
     Args:
-        x: 4-D ARK tensor ``(batch, heads, seq, dim)``.
+        x: ARK-compatible tensor of any shape; the last dimension is *dim*.
         weight: 1-D scale parameter ``(dim,)``.
         eps: epsilon for numerical stability.
 
     Returns:
         ARK tensor (fp16) with the same shape as *x*.
     """
-    x_f32 = ark.cast(x, ark.fp32)
+    # Determine original shape and dim.
+    if isinstance(x, torch.Tensor):
+        orig_shape = list(x.shape)
+    else:
+        orig_shape = list(x.shape())
+    dim = orig_shape[-1]
+
+    # Flatten to 2-D: (N, dim).
+    n = 1
+    for s in orig_shape[:-1]:
+        n *= s
+    x_2d = ark.reshape(x, [n, dim])
+
+    x_f32 = ark.cast(x_2d, ark.fp32)
     x2 = ark.mul(x_f32, x_f32)
     mean = ark.reduce_mean(x2, axis=-1)
     mean_eps = ark.add(mean, eps)
     rrms = ark.rsqrt(mean_eps)
     x_normed = ark.mul(x_f32, rrms)
 
-    dim = (
-        weight.shape[-1]
-        if isinstance(weight, torch.Tensor)
-        else weight.shape()[-1]
-    )
     w_f32 = ark.cast(weight, ark.fp32)
-    w_f32 = ark.reshape(w_f32, [1, 1, 1, dim])
+    w_f32 = ark.reshape(w_f32, [1, dim])  # (1, dim) broadcasts over (N, dim)
     x_scaled = ark.mul(x_normed, w_f32)
-    return ark.cast(x_scaled, ark.fp16)
+    out_2d = ark.cast(x_scaled, ark.fp16)
+
+    # Restore original shape.
+    return ark.reshape(out_2d, orig_shape)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +109,8 @@ def ark_gqa_attention(
 
     All weight/input arguments are **torch tensors on CUDA**.
 
-    Returns an ARK tensor; call ``.eval()`` to get a torch.Tensor.
+    Returns the result wrapped in a trivial ``ark.copy`` graph for
+    ``.eval()`` API consistency; all computation is eager (torch + ARK ops).
     """
     batch, seq = x.shape[0], x.shape[1]
     n_q = cfg.n_q_heads

@@ -89,7 +89,8 @@ def test_qk_norm():
 
 
 @requires_cuda
-def test_rope():
+@pytest.mark.parametrize("seq", [16, 128])
+def test_rope(seq):
     """ARK rope matches torch apply_rope on a 4-D head tensor."""
     import ark
     from .qwen3_ref import apply_rope, precompute_rope_freqs
@@ -97,7 +98,6 @@ def test_rope():
     from .equiv import assert_close
 
     head_dim = 32
-    seq = 16
     torch.manual_seed(_SEED)
     x = torch.randn(1, 4, seq, head_dim, device="cuda", dtype=torch.float16)
 
@@ -112,7 +112,7 @@ def test_rope():
     ark_freqs = ark_freqs[:, :, :seq, :]
     ark_out = ark.rope(x, ark_freqs).eval()
 
-    assert_close(ark_out, ref, atol=5e-3, rtol=5e-3, msg="RoPE mismatch")
+    assert_close(ark_out, ref, atol=5e-3, rtol=5e-3, msg=f"RoPE S={seq}")
 
 
 # ---------------------------------------------------------------------------
@@ -226,7 +226,6 @@ def test_attention_small():
 def test_attention_causal():
     """Future positions have zero attention weight in ARK attention."""
     import ark
-    from .qwen3_ref import precompute_rope_freqs
     from .ark_attention import (
         ark_rmsnorm,
         precompute_ark_rope_freqs,
@@ -240,39 +239,48 @@ def test_attention_causal():
     x = torch.randn(B, S, cfg.hidden_dim, device="cuda", dtype=torch.float16)
     mask = _causal_mask(S, "cuda", torch.float16)
 
-    # Manually compute attention weights using ARK ops
-    ark.init()
-    q = torch.matmul(x, attn.q_proj.weight.detach().t())
-    k = torch.matmul(x, attn.k_proj.weight.detach().t())
+    with torch.no_grad():
+        # Manually compute attention weights using ARK ops
+        ark.init()
+        q = torch.matmul(x, attn.q_proj.weight.detach().t())
+        k = torch.matmul(x, attn.k_proj.weight.detach().t())
 
-    q = q.reshape(B, S, cfg.n_q_heads, cfg.head_dim).transpose(1, 2)
-    k = k.reshape(B, S, cfg.n_kv_heads, cfg.head_dim).transpose(1, 2)
+        q = (
+            q.reshape(B, S, cfg.n_q_heads, cfg.head_dim)
+            .transpose(1, 2)
+            .contiguous()
+        )
+        k = (
+            k.reshape(B, S, cfg.n_kv_heads, cfg.head_dim)
+            .transpose(1, 2)
+            .contiguous()
+        )
 
-    # QK-norm
-    q_w = attn.qk_norm.q_norm.weight.detach().half()
-    k_w = attn.qk_norm.k_norm.weight.detach().half()
-    q = ark_rmsnorm(q, q_w, cfg.rms_norm_eps).eval()
-    ark.init()
-    k = ark_rmsnorm(k, k_w, cfg.rms_norm_eps).eval()
+        # QK-norm
+        q_w = attn.qk_norm.q_norm.weight.detach().half()
+        k_w = attn.qk_norm.k_norm.weight.detach().half()
+        q = ark_rmsnorm(q, q_w, cfg.rms_norm_eps).eval()
+        ark.init()
+        k = ark_rmsnorm(k, k_w, cfg.rms_norm_eps).eval()
 
-    # RoPE
-    ark_rf = precompute_ark_rope_freqs(
-        cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
-    ).cuda()[:, :, :S, :]
-    ark.init()
-    q = ark.rope(q, ark_rf).eval()
-    ark.init()
-    k = ark.rope(k, ark_rf).eval()
+        # RoPE
+        ark_rf = precompute_ark_rope_freqs(
+            cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
+        ).cuda()[:, :, :S, :]
+        ark.init()
+        q = ark.rope(q, ark_rf).eval()
+        ark.init()
+        k = ark.rope(k, ark_rf).eval()
 
-    # GQA expand
-    n_rep = cfg.n_q_heads // cfg.n_kv_heads
-    if n_rep > 1:
-        k = k.repeat_interleave(n_rep, dim=1)
+        # GQA expand
+        n_rep = cfg.n_q_heads // cfg.n_kv_heads
+        if n_rep > 1:
+            k = k.repeat_interleave(n_rep, dim=1)
 
-    # Compute attention weights
-    scale = 1.0 / math.sqrt(cfg.head_dim)
-    scores = torch.matmul(q, k.transpose(-2, -1)) * scale + mask
-    weights = torch.softmax(scores.float(), dim=-1)
+        # Compute attention weights
+        scale = 1.0 / math.sqrt(cfg.head_dim)
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale + mask
+        weights = torch.softmax(scores.float(), dim=-1)
 
     # Upper triangle (future) must be zero
     for h in range(weights.shape[1]):
@@ -404,3 +412,50 @@ def test_attention_batch_2():
 def test_attention_mha():
     """ARK attention matches torch when n_q_heads==n_kv_heads (MHA, n_rep=1)."""
     _run_attention_equivalence(_mha_cfg(), B=1, S=16, seed_offset=22)
+
+
+# ---------------------------------------------------------------------------
+# xfail: raw 4-D ark_rmsnorm at (1,4,128,32) — upstream ARK planner bug
+# ---------------------------------------------------------------------------
+
+
+@requires_cuda
+@pytest.mark.xfail(
+    reason="ARK planner bug: cudaErrorMisalignedAddress on 4-D shape (1,4,128,32)",
+    strict=False,
+)
+def test_rmsnorm_4d_s128_xfail():
+    """Document that raw 4-D ark_rmsnorm crashes at (1,4,128,32).
+
+    This test records the upstream ARK planner bug.  The production
+    code works around it by flattening to 2-D.  When ARK fixes the
+    planner, this test will start passing and the xfail marker can
+    be removed.
+    """
+    import ark
+    from .qwen3_ref import RMSNorm
+    from .equiv import assert_close
+
+    dim = 32
+    torch.manual_seed(_SEED)
+    x = torch.randn(1, 4, 128, dim, device="cuda", dtype=torch.float16)
+
+    norm = RMSNorm(dim, eps=1e-6).cuda()
+    with torch.no_grad():
+        ref = norm(x.reshape(-1, dim)).reshape(x.shape)
+
+    # Build a raw 4-D graph (no flatten) to trigger the planner bug.
+    ark.init()
+    weight = norm.weight.detach().half().cuda()
+    x_f32 = ark.cast(x, ark.fp32)
+    x2 = ark.mul(x_f32, x_f32)
+    mean = ark.reduce_mean(x2, axis=-1)
+    mean_eps = ark.add(mean, 1e-6)
+    rrms = ark.rsqrt(mean_eps)
+    x_normed = ark.mul(x_f32, rrms)
+    w_f32 = ark.cast(weight, ark.fp32)
+    w_f32 = ark.reshape(w_f32, [1, 1, 1, dim])
+    x_scaled = ark.mul(x_normed, w_f32)
+    ark_out = ark.cast(x_scaled, ark.fp16).eval()
+
+    assert_close(ark_out, ref, atol=5e-3, rtol=5e-3, msg="4D RMSNorm S=128")
