@@ -5,9 +5,9 @@ Uses the /generate endpoint with ignore_eos: true (the /v1/chat/completions
 endpoint silently ignores ignore_eos in sglang v0.4.x–v0.5.x).
 
 Metrics:
-  - Prefill TTFT: prompt=2048 tokens, max_new_tokens=1.
+  - Prefill TTFT: prompt≈2048 tokens (default), max_new_tokens=1.
     Time from request send to first (only) token received.
-  - Decode per-token latency: prompt=2048 tokens, max_new_tokens=128.
+  - Decode per-token latency: prompt≈2048 tokens (default), max_new_tokens=128.
     total_time / output_tokens (approximation; prefill << decode for 128 output tokens).
 
 Reports median over N trials (default 5).
@@ -60,7 +60,7 @@ def capture_gpu_clocks() -> str:
             timeout=10,
         )
         return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
         return "nvidia-smi not available"
 
 
@@ -111,7 +111,9 @@ def measure_ttft(base_url: str, prompt: str) -> float:
     return result["total_ms"]
 
 
-def measure_decode(base_url: str, prompt: str, max_new_tokens: int) -> dict:
+def measure_decode(
+    base_url: str, prompt: str, max_new_tokens: int
+) -> dict[str, Any]:
     """Measure decode per-token latency: prompt -> max_new_tokens tokens."""
     result = send_request(base_url, prompt, max_new_tokens=max_new_tokens)
 
@@ -138,7 +140,8 @@ def run_trials(
     prompt: str,
     num_trials: int,
     num_warmup: int,
-) -> dict:
+    prompt_tokens: int,
+) -> dict[str, Any]:
     """Run TTFT and decode measurements, return median results."""
     print(f"Running {num_warmup} warmup request(s) ...")
     for i in range(num_warmup):
@@ -147,7 +150,7 @@ def run_trials(
 
     # --- TTFT (prefill) ---
     print(
-        f"\nMeasuring TTFT ({num_trials} trials, prompt≈2048 tokens, max_new_tokens=1) ..."
+        f"\nMeasuring TTFT ({num_trials} trials, prompt≈{prompt_tokens} tokens, max_new_tokens=1) ..."
     )
     ttft_values = []
     for i in range(num_trials):
@@ -157,7 +160,7 @@ def run_trials(
 
     # --- Decode per-token ---
     print(
-        f"\nMeasuring decode latency ({num_trials} trials, prompt≈2048 tokens, max_new_tokens=128) ..."
+        f"\nMeasuring decode latency ({num_trials} trials, prompt≈{prompt_tokens} tokens, max_new_tokens=128) ..."
     )
     decode_values = []
     for i in range(num_trials):
@@ -217,6 +220,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.prompt_tokens < 1:
+        parser.error("--prompt-tokens must be >= 1")
+    if args.trials < 1:
+        parser.error("--trials must be >= 1")
+
     base_url = f"http://{args.host}:{args.port}"
 
     # Check server health
@@ -243,7 +251,9 @@ def main() -> None:
     prompt = build_prompt(args.prompt_tokens)
 
     # Run measurements
-    results = run_trials(base_url, prompt, args.trials, args.warmup)
+    results = run_trials(
+        base_url, prompt, args.trials, args.warmup, args.prompt_tokens
+    )
 
     # Print summary
     print("\n" + "=" * 60)

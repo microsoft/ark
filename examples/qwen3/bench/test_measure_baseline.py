@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Unit tests for measure_baseline pure functions."""
 
 from __future__ import annotations
@@ -5,7 +6,13 @@ from __future__ import annotations
 import subprocess
 from unittest.mock import MagicMock, patch
 
-from measure_baseline import build_prompt, capture_gpu_clocks, send_request
+from measure_baseline import (
+    build_prompt,
+    capture_gpu_clocks,
+    measure_decode,
+    measure_ttft,
+    send_request,
+)
 
 
 class TestBuildPrompt:
@@ -76,3 +83,40 @@ class TestSendRequest:
         captured = capsys.readouterr()
         assert captured.err == ""
         assert result["output_tokens"] == 10
+
+
+class TestMeasureTtft:
+    @patch("measure_baseline.send_request")
+    def test_returns_total_ms(self, mock_send):
+        mock_send.return_value = {"total_ms": 42.5}
+        result = measure_ttft("http://localhost:30000", "prompt")
+        assert result == 42.5
+        mock_send.assert_called_once_with(
+            "http://localhost:30000", "prompt", max_new_tokens=1
+        )
+
+
+class TestMeasureDecode:
+    @patch("measure_baseline.send_request")
+    def test_normal_path(self, mock_send):
+        mock_send.return_value = {
+            "total_ms": 1000.0,
+            "output_tokens": 10,
+            "output_text": "text",
+        }
+        result = measure_decode("http://localhost:30000", "prompt", 128)
+        assert result["total_ms"] == 1000.0
+        assert result["output_tokens"] == 10
+        assert result["per_token_ms"] == 100.0
+
+    @patch("measure_baseline.send_request")
+    def test_zero_output_tokens_uses_guard(self, mock_send, capsys):
+        mock_send.return_value = {
+            "total_ms": 500.0,
+            "output_tokens": 0,
+            "output_text": "",
+        }
+        result = measure_decode("http://localhost:30000", "prompt", 128)
+        assert result["per_token_ms"] == 500.0
+        captured = capsys.readouterr()
+        assert "0 output tokens" in captured.err
