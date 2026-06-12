@@ -15,6 +15,8 @@ extern const DataType NONE;
 extern const DataType FP32;
 extern const DataType FP16;
 extern const DataType BF16;
+extern const DataType FP8_E4M3;
+extern const DataType FP8_E5M2;
 extern const DataType INT32;
 extern const DataType UINT32;
 extern const DataType INT8;

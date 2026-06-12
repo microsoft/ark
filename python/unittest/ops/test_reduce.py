@@ -64,3 +64,65 @@ def test_reduce_mean(dtype):
     atol = 1e-4 if dtype == torch.float32 else 1e-2
     rtol = 1e-4 if dtype == torch.float32 else 1e-2
     assert torch.allclose(result, expected, atol=atol, rtol=rtol)
+
+
+def test_reduce_sum_fused_tile():
+    """WarpWise reduce_sum with a multi-row Tile.
+
+    rows > 1, reduce-axis dim = 1.
+    """
+    shape = [1, 1, 4, 1024]
+    a = torch.randn(shape, dtype=torch.float32, device=DEVICE) * 0.1
+    with ark.PlannerContext(
+        config={
+            "NumWarps": 1,
+            "SramBytes": 256,
+            "ImplType": "WarpWise",
+            "Tile": [1, 1, 2, 1],
+        }
+    ):
+        result = ark.reduce_sum(a, axis=3).eval()
+    expected = torch.sum(a, dim=3, keepdim=True)
+    atol = shape[3] * 1e-5
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-4
+    ), f"max_diff={(result - expected).abs().max()}"
+
+
+def test_reduce_sum_fused_tile_elementwise():
+    """ElementWise reduce_sum on axis 2 with a non-default Tile."""
+    shape = [1, 2, 8, 512]
+    a = torch.randn(shape, dtype=torch.float32, device=DEVICE) * 0.1
+    with ark.PlannerContext(
+        config={
+            "NumWarps": 1,
+            "SramBytes": 0,
+            "ImplType": "ElementWise",
+            "Tile": [1, 1, 1, 64],
+        }
+    ):
+        result = ark.reduce_sum(a, axis=2).eval()
+    expected = torch.sum(a, dim=2, keepdim=True)
+    atol = shape[2] * 1e-5
+    assert torch.allclose(
+        result, expected, atol=atol, rtol=1e-4
+    ), f"max_diff={(result - expected).abs().max()}"
+
+
+def test_reduce_tile_axis_validation():
+    """Tile dimension on the reduce axis != 1 must raise ark.PlanError."""
+    shape = [1, 1, 4, 1024]
+    a = torch.randn(shape, dtype=torch.float32, device=DEVICE) * 0.1
+    with pytest.raises(
+        ark.PlanError,
+        match="Tile dimension on the reduction axis must be 1",
+    ):
+        with ark.PlannerContext(
+            config={
+                "NumWarps": 1,
+                "SramBytes": 256,
+                "ImplType": "WarpWise",
+                "Tile": [1, 1, 1, 4],
+            }
+        ):
+            ark.reduce_sum(a, axis=3).eval()
