@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import argparse
 import sys
 import time
 from typing import Optional, List
@@ -69,9 +70,8 @@ class Profiler:
             )
 
 
-if __name__ == "__main__":
-    import argparse
-
+def main(argv=None):
+    """CLI entry point for the ARK profiler."""
     parser = argparse.ArgumentParser(description="ARK Profiler")
     parser.add_argument(
         "--iter",
@@ -97,13 +97,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--plan", type=str, help="Path to the plan file", required=True
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     target_processor_groups = None
     if args.target_processor_groups is not None:
-        target_processor_groups = list(
-            map(int, args.target_processor_groups.split(","))
-        )
+        target_processor_groups = [
+            int(s.strip())
+            for s in args.target_processor_groups.split(",")
+            if s.strip()
+        ]
 
     plan = Plan.from_file(args.plan)
     profiler = Profiler(plan)
@@ -113,3 +115,7 @@ if __name__ == "__main__":
         profile_processor_groups=args.profile_processor_groups,
         target_processor_groups=target_processor_groups,
     )
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()
