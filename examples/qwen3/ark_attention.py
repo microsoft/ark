@@ -6,6 +6,16 @@ scaled dot-product with causal mask, output projection.
 
 All functions build ARK computation graphs.  Call ``.eval()`` on the
 returned tensor to compile, execute, and retrieve a ``torch.Tensor``.
+
+Implementation note — 3-D matmul only
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ARK's default 4-D batched-GEMM batch-stride calculation (``ops_matmul.cpp``)
+does not match the ``(B, H, S, D)`` attention layout; the llama example works
+around this with explicit ``BatchStride*`` PlannerContext config.  To keep this
+module self-contained (no PlannerContext), all attention matmuls use 3-D
+tensors ``(B*H, S, D)`` so the batch stride is computed correctly by default.
+QK-norm and RoPE still operate on 4-D ``(B, H, S, D)`` tensors (element-wise
+/ reduce ops are unaffected by the batch-stride issue).
 """
 
 import math
@@ -43,7 +53,7 @@ def ark_rmsnorm(x, weight, eps):
     """Composed RMSNorm using ARK primitives (fp32 accumulation).
 
     Args:
-        x: 4-D ARK-compatible tensor ``(..., dim)``.
+        x: 3-D or 4-D ARK-compatible tensor ``(..., dim)``.
         weight: 1-D scale parameter ``(dim,)``.
         eps: epsilon for numerical stability.
 
@@ -57,7 +67,7 @@ def ark_rmsnorm(x, weight, eps):
     rrms = ark.rsqrt(mean_eps)
     x_normed = ark.mul(x_f32, rrms)
 
-    # Reshape weight for 4-D broadcast: (dim,) -> (1,1,1,dim)
+    # Determine the head dim from the weight tensor.
     dim = (
         weight.shape[-1]
         if isinstance(weight, torch.Tensor)
@@ -69,17 +79,18 @@ def ark_rmsnorm(x, weight, eps):
     return ark.cast(x_scaled, ark.fp16)
 
 
-def _gqa_expand(x, batch, n_kv, n_rep, seq, head_dim):
-    """Broadcast-copy KV heads: ``(B, n_kv, S, D)`` → ``(B, n_q, S, D)``.
+def _gqa_expand(x, total_kv, n_rep, seq, head_dim):
+    """Broadcast-copy KV heads in 3-D layout.
 
-    Uses ``ark.copy`` (inherits ``ModelOpBroadcast1``) to replicate each
-    KV head *n_rep* times along dim-1.
+    ``(B*n_kv, S, D)`` → ``(B*n_kv*n_rep, S, D)``
+
+    Each KV head is replicated *n_rep* times using ``ark.copy`` broadcast.
     """
-    n_q = n_kv * n_rep
-    x_src = ark.reshape(x, [batch * n_kv, 1, seq, head_dim])
-    x_dst = ark.tensor([batch * n_kv, n_rep, seq, head_dim], ark.fp16)
+    sd = seq * head_dim
+    x_src = ark.reshape(x, [total_kv, 1, sd])
+    x_dst = ark.tensor([total_kv, n_rep, sd], ark.fp16)
     x_copied = ark.copy(x_src, x_dst)
-    return ark.reshape(x_copied, [batch, n_q, seq, head_dim])
+    return ark.reshape(x_copied, [total_kv * n_rep, seq, head_dim])
 
 
 # ---------------------------------------------------------------------------
@@ -126,35 +137,45 @@ def ark_gqa_attention(
     hd = cfg.head_dim
     n_rep = n_q // n_kv
 
-    # --- QKV projections (x @ W^T) ---
+    # --- QKV projections (x @ W^T) — 3-D matmul ---
     q = ark.matmul(x, q_w, transpose_other=True)
     k = ark.matmul(x, k_w, transpose_other=True)
     v = ark.matmul(x, v_w, transpose_other=True)
 
     # --- Reshape (B, S, H, D) and transpose to (B, H, S, D) ---
+    # Transpose is a physical copy in ARK, producing a contiguous tensor.
     q = ark.transpose(ark.reshape(q, [batch, seq, n_q, hd]), [0, 2, 1, 3])
     k = ark.transpose(ark.reshape(k, [batch, seq, n_kv, hd]), [0, 2, 1, 3])
     v = ark.transpose(ark.reshape(v, [batch, seq, n_kv, hd]), [0, 2, 1, 3])
 
-    # --- QK-norm (per-head RMSNorm along head_dim) ---
+    # --- QK-norm (per-head RMSNorm along head_dim, 4-D) ---
     q = ark_rmsnorm(q, qk_q_w, cfg.rms_norm_eps)
     k = ark_rmsnorm(k, qk_k_w, cfg.rms_norm_eps)
 
-    # --- RoPE ---
+    # --- RoPE (4-D) ---
     q = ark.rope(q, rope_freqs)
     k = ark.rope(k, rope_freqs)
 
-    # --- GQA head expansion ---
-    if n_rep > 1:
-        k = _gqa_expand(k, batch, n_kv, n_rep, seq, hd)
-        v = _gqa_expand(v, batch, n_kv, n_rep, seq, hd)
+    # --- Flatten to 3-D (B*H, S, D) for matmul ---
+    q = ark.reshape(q, [batch * n_q, seq, hd])
+    k = ark.reshape(k, [batch * n_kv, seq, hd])
+    v = ark.reshape(v, [batch * n_kv, seq, hd])
 
-    # --- Scaled dot-product attention ---
+    # --- GQA head expansion (3-D) ---
+    if n_rep > 1:
+        k = _gqa_expand(k, batch * n_kv, n_rep, seq, hd)
+        v = _gqa_expand(v, batch * n_kv, n_rep, seq, hd)
+
+    # --- Scaled dot-product attention (3-D matmul) ---
     scale = 1.0 / math.sqrt(hd)
-    scores = ark.matmul(q, k, transpose_other=True)
+    scores = ark.matmul(q, k, transpose_other=True)  # (B*n_q, S, S)
     scores = ark.mul(scores, scale)
+
     if mask is not None:
+        # mask is (1, 1, S, S); reshape to (1, S, S) for 3-D broadcast.
+        scores = ark.reshape(scores, [batch, n_q, seq, seq])
         scores = ark.add(scores, mask)
+        scores = ark.reshape(scores, [batch * n_q, seq, seq])
 
     # Softmax in fp32 for numerical parity with torch reference.
     scores = ark.cast(scores, ark.fp32)
@@ -162,12 +183,13 @@ def ark_gqa_attention(
     attn_w = ark.cast(attn_w, ark.fp16)
 
     # Weighted sum over values.
-    out = ark.matmul(attn_w, v)
+    out = ark.matmul(attn_w, v)  # (B*n_q, S, D)
 
-    # --- Reshape back: (B, H, S, D) → (B, S, H*D) ---
-    out = ark.transpose(out, [0, 2, 1, 3])
+    # --- Reshape back: (B*H, S, D) → (B, S, H*D) ---
+    out = ark.reshape(out, [batch, n_q, seq, hd])
+    out = ark.transpose(out, [0, 2, 1, 3])  # (B, S, H, D)
     out = ark.reshape(out, [batch, seq, n_q * hd])
 
-    # --- Output projection ---
+    # --- Output projection (3-D matmul) ---
     out = ark.matmul(out, o_w, transpose_other=True)
     return out
