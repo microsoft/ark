@@ -153,5 +153,5 @@ def microbench(
     return {
         "mean_us": mean_us,
         "std_us": std_us,
-        "n_iters": total_invocations,
+        "n_iters": n_replays * per_graph,
     }

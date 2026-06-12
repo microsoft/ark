@@ -51,7 +51,7 @@ jobs:
 
       - name: Build
         run: |
-          apt-get update && apt-get install -y lcov
+          apt-get update && apt-get install -y --no-install-recommends lcov
           mkdir build && cd build
           CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug"
           if [ "${{ matrix.platform }}" = "rocm" ]; then
@@ -123,4 +123,11 @@ jobs:
         if: github.event_name != 'schedule'
         run: |
           python3 ./examples/tutorial/quickstart_tutorial.py
+
+      - name: Run Qwen3 Attention Tests
+        if: github.event_name != 'schedule'
+        run: |
+          cd build
+          PYTHONPATH=$PWD/python ARK_ROOT=$PWD python3 -m pytest --verbose \
+              ../examples/qwen3/test_attention.py ../examples/qwen3/test_harness.py
 
