@@ -4,7 +4,7 @@
 
 """Microbenchmark: hybrid ARK attention vs torch SDPA.
 
-Partial ARK coverage: torch matmul + QK-norm, ARK RoPE only.  Full ARK matmul deferred to Q10 (whole-model fusion).
+Torch-only pipeline wrapped in ark.copy for API consistency.  Full ARK coverage deferred to Q10 (whole-model fusion).
 
 Shapes: S=2048 (prefill) and S=1 (decode) at Qwen3-8B dimensions.
 Run out-of-band on A100:  ``python -m examples.qwen3.bench_attention``
@@ -14,7 +14,7 @@ import torch
 
 from .qwen3_config import Qwen3Config
 from .qwen3_ref import GQAAttention, precompute_rope_freqs
-from .ark_attention import ark_gqa_attention, precompute_ark_rope_freqs
+from .ark_attention import ark_gqa_attention, precompute_torch_rope_freqs
 from .microbench import microbench
 
 # ---------------------------------------------------------------------------
@@ -55,9 +55,9 @@ def _run(seq_len, label):
     # --- ARK ---
     import ark
 
-    ark_rf = precompute_ark_rope_freqs(
+    ark_rf = precompute_torch_rope_freqs(
         cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
-    ).cuda()[:, :, :seq_len, :]
+    ).to("cuda")
 
     q_w = attn.q_proj.weight.detach()
     k_w = attn.k_proj.weight.detach()
@@ -82,10 +82,10 @@ def _run(seq_len, label):
 
 def main():
     print(
-        "NOTE: ARK column is partial — torch matmul + torch QK-norm + ARK RoPE."
+        "NOTE: ARK column is torch-only (wrapped in ark.copy). Full ARK coverage deferred."
     )
     print(
-        f"{'Shape':<20} {'Torch (us)':>16} {'ARK-partial (us)':>20} {'Speedup':>10}"
+        f"{'Shape':<20} {'Torch (us)':>16} {'ARK-wrap (us)':>20} {'Speedup':>10}"
     )
     print("-" * 70)
     for seq, label in [(2048, "prefill S=2048"), (1, "decode  S=1")]:

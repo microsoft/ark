@@ -78,7 +78,7 @@ def test_qk_norm():
     weight = norm.weight.detach().half().cuda()
     out = torch_rmsnorm(x, weight, 1e-6)
 
-    assert_close(out, ref, atol=5e-3, rtol=5e-3, msg="QK-norm mismatch")
+    assert_close(out, ref, atol=1e-6, rtol=1e-6, msg="QK-norm mismatch")
 
 
 # ---------------------------------------------------------------------------
@@ -89,10 +89,9 @@ def test_qk_norm():
 @requires_cuda
 @pytest.mark.parametrize("seq", [16, 128])
 def test_rope(seq):
-    """ARK rope matches torch apply_rope on a 4-D head tensor."""
-    import ark
+    """torch_rope matches reference apply_rope on a 4-D head tensor."""
     from .qwen3_ref import apply_rope, precompute_rope_freqs
-    from .ark_attention import precompute_ark_rope_freqs
+    from .ark_attention import torch_rope
     from .equiv import assert_close
 
     head_dim = 32
@@ -104,13 +103,10 @@ def test_rope(seq):
     with torch.no_grad():
         ref = apply_rope(x, freqs)
 
-    # ARK (fp16 internal — some precision loss expected)
-    ark.init()
-    ark_freqs = precompute_ark_rope_freqs(head_dim, 256, theta=1e6).cuda()
-    ark_freqs = ark_freqs[:, :, :seq, :]
-    ark_out = ark.rope(x, ark_freqs).eval()
+    # torch_rope (fp32 internal — should match reference exactly)
+    out = torch_rope(x, freqs)
 
-    assert_close(ark_out, ref, atol=5e-3, rtol=5e-3, msg=f"RoPE S={seq}")
+    assert_close(out, ref, atol=1e-6, rtol=1e-6, msg=f"RoPE S={seq}")
 
 
 # ---------------------------------------------------------------------------
@@ -145,10 +141,10 @@ def test_attention_causal():
     """Future positions have zero attention weight in ARK attention."""
     # Intentionally replicates the pipeline inline to inspect intermediate
     # attention weights — not covered by _run_attention_equivalence.
-    import ark
     from .ark_attention import (
         torch_rmsnorm,
-        precompute_ark_rope_freqs,
+        torch_rope,
+        precompute_torch_rope_freqs,
     )
 
     cfg = _small_cfg()
@@ -182,13 +178,11 @@ def test_attention_causal():
         k = torch_rmsnorm(k, k_w, cfg.rms_norm_eps)
 
         # RoPE
-        ark_rf = precompute_ark_rope_freqs(
+        rope_freqs = precompute_torch_rope_freqs(
             cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
-        ).cuda()[:, :, :S, :]
-        ark.init()
-        q = ark.rope(q, ark_rf).eval()
-        ark.init()
-        k = ark.rope(k, ark_rf).eval()
+        ).to("cuda")
+        q = torch_rope(q, rope_freqs)
+        k = torch_rope(k, rope_freqs)
 
         # GQA expand
         n_rep = cfg.n_q_heads // cfg.n_kv_heads
@@ -217,8 +211,7 @@ def test_attention_causal():
 @requires_cuda
 def test_attention_output_shape():
     """ARK attention output has shape (B, S, hidden_dim)."""
-    from .qwen3_ref import precompute_rope_freqs
-    from .ark_attention import ark_gqa_attention, precompute_ark_rope_freqs
+    from .ark_attention import ark_gqa_attention, precompute_torch_rope_freqs
 
     cfg = _small_cfg()
     attn = _build_ref_attn(cfg)
@@ -228,9 +221,9 @@ def test_attention_output_shape():
     x = torch.randn(B, S, cfg.hidden_dim, device="cuda", dtype=torch.float16)
     mask = _causal_mask(S, "cuda", torch.float16)
 
-    ark_rf = precompute_ark_rope_freqs(
+    rope_freqs = precompute_torch_rope_freqs(
         cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
-    ).cuda()[:, :, :S, :]
+    ).to("cuda")
 
     ark_out = ark_gqa_attention(
         x,
@@ -240,7 +233,7 @@ def test_attention_output_shape():
         attn.o_proj.weight.detach(),
         attn.qk_norm.q_norm.weight.detach().half(),
         attn.qk_norm.k_norm.weight.detach().half(),
-        ark_rf,
+        rope_freqs,
         mask,
         cfg,
     ).eval()
@@ -273,12 +266,11 @@ def _mha_cfg():
 
 def _run_attention_equivalence(cfg, B, S, seed_offset=10, mask="causal"):
     """Run ARK vs torch attention equivalence for given cfg, B, S."""
-    from .qwen3_ref import precompute_rope_freqs
-    from .ark_attention import ark_gqa_attention, precompute_ark_rope_freqs
+    from .ark_attention import ark_gqa_attention, precompute_torch_rope_freqs
     from .equiv import assert_close
 
     attn = _build_ref_attn(cfg)
-    rope_freqs = precompute_rope_freqs(
+    rope_freqs = precompute_torch_rope_freqs(
         cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
     ).to("cuda")
 
@@ -291,10 +283,6 @@ def _run_attention_equivalence(cfg, B, S, seed_offset=10, mask="causal"):
     with torch.no_grad():
         ref = attn(x, rope_freqs, mask)
 
-    ark_rf = precompute_ark_rope_freqs(
-        cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
-    ).cuda()[:, :, :S, :]
-
     with torch.no_grad():
         ark_out = ark_gqa_attention(
             x,
@@ -304,7 +292,7 @@ def _run_attention_equivalence(cfg, B, S, seed_offset=10, mask="causal"):
             attn.o_proj.weight.detach(),
             attn.qk_norm.q_norm.weight.detach().half(),
             attn.qk_norm.k_norm.weight.detach().half(),
-            ark_rf,
+            rope_freqs,
             mask,
             cfg,
         ).eval()

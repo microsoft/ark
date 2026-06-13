@@ -1,16 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""ARK GQA attention for Qwen3: RoPE via ARK, QK-norm + matmul via torch.
+"""Qwen3 GQA attention: torch-only pipeline.
 
-This is a torch-dominant hybrid: torch handles all linear projections
-(QKV, attention scores, weighted sum, output projection) and
-reshape/transpose.  ARK handles only RoPE; QK-norm falls back to torch (ARK composed graph crashes).
-
-Matmul via ``ark.matmul`` is deferred to Q10 (whole-model fusion) because
-the executor singleton does not fully reset between ``ark.init()`` calls
-when tensor shapes change (CUTLASS matmul at 2D/3D → element-wise at 4D).
-Mixing the two in one process triggers ``cudaErrorMisalignedAddress``.
+All ops (QKV projection, QK-norm, RoPE, attention, output projection) use
+torch.  ARK ops (``ark_rmsnorm``, ``precompute_ark_rope_freqs``) are kept
+dormant for re-enablement after the upstream composed-graph fix lands (Q6).
 """
 
 import math
@@ -41,6 +36,45 @@ def precompute_ark_rope_freqs(head_dim, max_seq_len, theta=1e6):
     interleaved = torch.stack([cos_vals, sin_vals], dim=-1)
     interleaved = interleaved.reshape(max_seq_len, head_dim)
     return interleaved.unsqueeze(0).unsqueeze(0).half()
+
+
+# NOTE: Intentionally duplicates qwen3_ref.precompute_rope_freqs / apply_rope.
+# Kept as local copies so ARK ops can be swapped back in without coupling
+# to the reference module.
+def precompute_torch_rope_freqs(head_dim, max_seq_len, theta=1e6):
+    """Precompute complex RoPE frequencies for ``torch_rope``.
+
+    Returns:
+        complex64 tensor of shape ``(max_seq_len, head_dim // 2)`` on CPU.
+    """
+    freqs = 1.0 / (
+        theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
+    )
+    t = torch.arange(max_seq_len, dtype=torch.float32)
+    angles = torch.outer(t, freqs)
+    return torch.polar(torch.ones_like(angles), angles)
+
+
+def torch_rope(x, freqs):
+    """Apply rotary position embeddings using pure torch ops.
+
+    Replaces ``ark.rope`` which crashes with the upstream composed-graph
+    planner bug at 4-D shapes like ``(1, 4, 128, 32)``.
+
+    Args:
+        x: ``(batch, n_heads, seq, head_dim)`` real fp16 tensor on CUDA.
+        freqs: ``(max_seq_len, head_dim // 2)`` complex64 tensor.
+
+    Returns:
+        Rotated tensor, same shape and dtype as *x*.
+    """
+    batch, n_heads, seq, hd = x.shape
+    x_complex = torch.view_as_complex(
+        x.float().reshape(batch, n_heads, seq, hd // 2, 2)
+    )
+    freqs = freqs[:seq].unsqueeze(0).unsqueeze(0)
+    x_rotated = torch.view_as_real(x_complex * freqs)
+    return x_rotated.reshape(batch, n_heads, seq, hd).to(x.dtype)
 
 
 # NOTE: Dormant — torch_rmsnorm is used in production because even the
@@ -156,11 +190,9 @@ def ark_gqa_attention(
     q = torch_rmsnorm(q, qk_q_w, cfg.rms_norm_eps)
     k = torch_rmsnorm(k, qk_k_w, cfg.rms_norm_eps)
 
-    # ---- Stage 3: RoPE (ARK) ----
-    ark.init()
-    q = ark.rope(q, rope_freqs).eval()
-    ark.init()
-    k = ark.rope(k, rope_freqs).eval()
+    # ---- Stage 3: RoPE (torch — ARK composed graph crashes at 4D) ----
+    q = torch_rope(q, rope_freqs)
+    k = torch_rope(k, rope_freqs)
 
     # ---- GQA expand (torch) ----
     if n_rep > 1:
