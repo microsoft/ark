@@ -1,11 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""ARK GQA attention for Qwen3: QK-norm and RoPE via ARK, matmul via torch.
+"""ARK GQA attention for Qwen3: RoPE via ARK, QK-norm + matmul via torch.
 
 This is a torch-dominant hybrid: torch handles all linear projections
 (QKV, attention scores, weighted sum, output projection) and
-reshape/transpose.  ARK handles only composed RMSNorm (QK-norm) and RoPE.
+reshape/transpose.  ARK handles only RoPE; QK-norm falls back to torch (ARK composed graph crashes).
 
 Matmul via ``ark.matmul`` is deferred to Q10 (whole-model fusion) because
 the executor singleton does not fully reset between ``ark.init()`` calls
@@ -43,6 +43,9 @@ def precompute_ark_rope_freqs(head_dim, max_seq_len, theta=1e6):
     return interleaved.unsqueeze(0).unsqueeze(0).half()
 
 
+# NOTE: Dormant — torch_rmsnorm is used in production because even the
+# 2-D flatten workaround still hits planner bugs at certain shapes.
+# Kept for re-enablement when the upstream ARK fix lands.
 def ark_rmsnorm(x, weight, eps):
     """Composed RMSNorm using ARK primitives (fp32 accumulation).
 
@@ -88,6 +91,27 @@ def ark_rmsnorm(x, weight, eps):
     return result_2d.reshape(orig_shape)
 
 
+def torch_rmsnorm(x, weight, eps):
+    """RMSNorm via pure torch ops (fp32 accumulation).
+
+    Replaces the ARK composed graph which crashes with
+    ``cudaErrorMisalignedAddress`` at shapes >= ``(1,4,128,32)``.
+
+    Args:
+        x: ``torch.Tensor`` on CUDA, any shape; the last dimension is
+           the normalization dimension.
+        weight: 1-D ``torch.Tensor`` scale parameter ``(dim,)``.
+        eps: epsilon for numerical stability.
+
+    Returns:
+        ``torch.Tensor`` (fp16) with the same shape as *x*.
+    """
+    x_f32 = x.float()
+    rms = torch.sqrt(x_f32.pow(2).mean(dim=-1, keepdim=True) + eps)
+    x_normed = x_f32 / rms
+    return (x_normed * weight.float()).half()
+
+
 # ---------------------------------------------------------------------------
 # Full GQA attention — staged eval, torch reshape/transpose
 # ---------------------------------------------------------------------------
@@ -128,9 +152,9 @@ def ark_gqa_attention(
     k = k.reshape(batch, seq, n_kv, hd).transpose(1, 2).contiguous()
     v = v.reshape(batch, seq, n_kv, hd).transpose(1, 2).contiguous()
 
-    # ---- Stage 2: QK-norm (ARK composed RMSNorm) ----
-    q = ark_rmsnorm(q, qk_q_w, cfg.rms_norm_eps)
-    k = ark_rmsnorm(k, qk_k_w, cfg.rms_norm_eps)
+    # ---- Stage 2: QK-norm (torch RMSNorm — ARK composed graph crashes) ----
+    q = torch_rmsnorm(q, qk_q_w, cfg.rms_norm_eps)
+    k = torch_rmsnorm(k, qk_k_w, cfg.rms_norm_eps)
 
     # ---- Stage 3: RoPE (ARK) ----
     ark.init()

@@ -4,8 +4,7 @@
 
 """Microbenchmark: hybrid ARK attention vs torch SDPA.
 
-Partial ARK coverage: torch matmul for all projections + ARK QK-norm and
-RoPE.  Full ARK matmul deferred to Q10 (whole-model fusion).
+Partial ARK coverage: torch matmul + QK-norm, ARK RoPE only.  Full ARK matmul deferred to Q10 (whole-model fusion).
 
 Shapes: S=2048 (prefill) and S=1 (decode) at Qwen3-8B dimensions.
 Run out-of-band on A100:  ``python -m examples.qwen3.bench_attention``
@@ -82,7 +81,9 @@ def _run(seq_len, label):
 
 
 def main():
-    print("NOTE: ARK column is partial — torch matmul + ARK QK-norm/RoPE.")
+    print(
+        "NOTE: ARK column is partial — torch matmul + torch QK-norm + ARK RoPE."
+    )
     print(
         f"{'Shape':<20} {'Torch (us)':>16} {'ARK-partial (us)':>20} {'Speedup':>10}"
     )

@@ -76,7 +76,9 @@ def test_attention_is_causal():
     from .qwen3_config import Qwen3Config
     from .qwen3_ref import GQAAttention, precompute_rope_freqs
 
-    cfg = Qwen3Config(n_layers=1, n_q_heads=4, n_kv_heads=2, head_dim=32)
+    cfg = Qwen3Config(
+        n_layers=1, hidden_dim=128, n_q_heads=4, n_kv_heads=2, head_dim=32
+    )
     attn = GQAAttention(cfg).cuda().half()
     rope_freqs = precompute_rope_freqs(
         cfg.head_dim, cfg.max_seq_len, cfg.rope_theta
@@ -179,6 +181,14 @@ def test_get_dtype_invalid():
     cfg = Qwen3Config(dtype="not_a_dtype")
     with pytest.raises(ValueError, match="Invalid dtype"):
         _get_dtype(cfg)
+
+
+def test_config_invalid_head_ratio():
+    """Qwen3Config rejects n_q_heads not divisible by n_kv_heads."""
+    from .qwen3_config import Qwen3Config
+
+    with pytest.raises(ValueError):
+        Qwen3Config(n_layers=1, n_q_heads=5, n_kv_heads=2, head_dim=32)
 
 
 def test_equiv_shape_mismatch():
