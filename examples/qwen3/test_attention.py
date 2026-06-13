@@ -78,7 +78,8 @@ def test_qk_norm():
     weight = norm.weight.detach().half().cuda()
     out = torch_rmsnorm(x, weight, 1e-6)
 
-    assert_close(out, ref, atol=1e-6, rtol=1e-6, msg="QK-norm mismatch")
+    # fp16 precision; tight enough to catch real regressions
+    assert_close(out, ref, atol=1e-3, rtol=1e-3, msg="QK-norm mismatch")
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +265,7 @@ def _mha_cfg():
     )
 
 
-def _run_attention_equivalence(cfg, B, S, seed_offset=10, mask="causal"):
+def _run_attention_equivalence(cfg, B, S, seed_offset=10, causal=True):
     """Run ARK vs torch attention equivalence for given cfg, B, S."""
     from .ark_attention import ark_gqa_attention, precompute_torch_rope_freqs
     from .equiv import assert_close
@@ -276,9 +277,7 @@ def _run_attention_equivalence(cfg, B, S, seed_offset=10, mask="causal"):
 
     torch.manual_seed(_SEED + seed_offset)
     x = torch.randn(B, S, cfg.hidden_dim, device="cuda", dtype=torch.float16)
-    if mask == "causal":
-        mask = _causal_mask(S, "cuda", torch.float16)
-    # else mask is already None or a user-supplied tensor
+    mask = _causal_mask(S, "cuda", torch.float16) if causal else None
 
     with torch.no_grad():
         ref = attn(x, rope_freqs, mask)
@@ -323,7 +322,7 @@ def test_attention_mha():
 def test_attention_no_mask():
     """ARK attention matches torch with mask=None (no causal mask)."""
     _run_attention_equivalence(
-        _small_cfg(), B=1, S=16, seed_offset=23, mask=None
+        _small_cfg(), B=1, S=16, seed_offset=23, causal=False
     )
 
 

@@ -5,7 +5,8 @@
 
 All ops (QKV projection, QK-norm, RoPE, attention, output projection) use
 torch.  ARK ops (``ark_rmsnorm``, ``precompute_ark_rope_freqs``) are kept
-dormant for re-enablement after the upstream composed-graph fix lands (Q6).
+dormant for re-enablement after the upstream composed-graph fix lands.
+TODO(upstream): re-enable after ark planner composed-graph fix.
 """
 
 import math
@@ -138,12 +139,12 @@ def torch_rmsnorm(x, weight, eps):
         eps: epsilon for numerical stability.
 
     Returns:
-        ``torch.Tensor`` (fp16) with the same shape as *x*.
+        ``torch.Tensor`` with the same shape and dtype as *x*.
     """
     x_f32 = x.float()
     rms = torch.sqrt(x_f32.pow(2).mean(dim=-1, keepdim=True) + eps)
     x_normed = x_f32 / rms
-    return (x_normed * weight.float()).half()
+    return (x_normed * weight.float()).to(x.dtype)
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +207,7 @@ def ark_gqa_attention(
     # ---- Mask + softmax (torch) ----
     if mask is not None:
         scores = scores + mask
-    attn_w = torch.softmax(scores.float(), dim=-1).half()
+    attn_w = torch.softmax(scores.float(), dim=-1).to(x.dtype)
 
     # ---- Stage 5: Weighted sum (torch matmul) ----
     out = torch.matmul(attn_w, v)
