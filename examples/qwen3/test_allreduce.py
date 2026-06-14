@@ -20,7 +20,7 @@ import sys
 import pytest
 import torch
 
-from ark_allreduce import validate_allreduce_input
+from .ark_allreduce import validate_allreduce_input
 
 _CUDA = torch.cuda.is_available()
 _NUM_GPUS = torch.cuda.device_count() if _CUDA else 0
