@@ -29,6 +29,8 @@ def validate_allreduce_input(x: torch.Tensor, world_size: int) -> None:
     Raises:
         ValueError: on any failed check.
     """
+    if world_size < 1:
+        raise ValueError(f"world_size must be >= 1, got {world_size}")
     if x.dtype != torch.float16:
         raise ValueError(f"all_reduce_packet requires float16, got {x.dtype}")
     if not x.is_contiguous():
@@ -46,14 +48,14 @@ def ark_allreduce(
     rank: int,
     world_size: int,
 ) -> "ark.Tensor":
-    """All-reduce a 2-D tensor via ARK fused-packet API.
+    """All-reduce a contiguous fp16 tensor via ARK fused-packet API.
 
     Flattens *x* to 1-D, calls ``ark.all_reduce_packet``, and returns
     an ARK tensor whose ``.to_torch()`` yields a torch tensor with the
     original shape restored.
 
     Args:
-        x: (N, hidden_dim) fp16 contiguous CUDA tensor.
+        x: fp16 contiguous CUDA tensor (any shape).
         rank: Rank of the current process (0-indexed).
         world_size: Total number of TP ranks.
 
@@ -66,6 +68,8 @@ def ark_allreduce(
     orig_shape = x.shape
     x_flat = x.reshape(-1)
 
+    ark.set_rank(rank)
+    ark.set_world_size(world_size)
     ark.init()
     result = ark.all_reduce_packet(x_flat, rank, world_size)
     # Reshape back to original shape via ark.reshape

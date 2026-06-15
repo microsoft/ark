@@ -11,6 +11,8 @@ ModelOpRope::ModelOpRope(ModelTensorRef input, ModelTensorRef other,
                          ModelTensorRef output)
     : ModelOpBroadcast2("Rope", input, other, output) {}
 
+// NOTE: This body is intentionally identical to ModelOpCast::default_config
+// (ops_cast.cpp). If the heuristic changes, update both.
 Json ModelOpRope::default_config([[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;

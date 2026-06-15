@@ -92,6 +92,18 @@ class TestValidation:
         x = torch.randn(32, dtype=torch.float16)
         validate_allreduce_input(x, world_size=2)  # no exception
 
+    def test_rejects_world_size_zero(self):
+        """world_size=0 raises ValueError (avoids ZeroDivisionError)."""
+        x = torch.randn(4096, dtype=torch.float16)
+        with pytest.raises(ValueError, match="world_size"):
+            validate_allreduce_input(x, world_size=0)
+
+    def test_rejects_world_size_negative(self):
+        """Negative world_size raises ValueError."""
+        x = torch.randn(4096, dtype=torch.float16)
+        with pytest.raises(ValueError, match="world_size"):
+            validate_allreduce_input(x, world_size=-1)
+
 
 class TestFlattenReshapeLogic:
     """Verify flatten/reshape round-trip logic used by ark_allreduce (CPU tensors, no ARK dependency)."""
