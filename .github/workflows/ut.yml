@@ -51,7 +51,7 @@ jobs:
 
       - name: Build
         run: |
-          apt-get update && apt-get install -y lcov
+          apt-get update && apt-get install -y --no-install-recommends lcov
           mkdir build && cd build
           CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug"
           if [ "${{ matrix.platform }}" = "rocm" ]; then

@@ -13,6 +13,8 @@ class ModelOpRope : public ModelOpBroadcast2 {
     ModelOpRope() = default;
     ModelOpRope(ModelTensorRef input, ModelTensorRef weight,
                 ModelTensorRef output);
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
 }  // namespace ark
