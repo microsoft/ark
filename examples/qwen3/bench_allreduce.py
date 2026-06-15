@@ -25,7 +25,6 @@ _WORKER_SCRIPT = '''
 """Worker for all-reduce microbenchmark."""
 import sys
 import json
-sys.path.insert(0, ".")
 
 import torch
 import ark
