@@ -223,12 +223,20 @@ def _run_allreduce_subprocess(
 
 
 @requires_multi_gpu
+@pytest.mark.xfail(
+    reason="ARK codegen rejects OFFSET on external buffers from all_reduce_packet (codegen.cpp:318)",
+    strict=True,
+)
 def test_allreduce_decode_tp2():
     """All-reduce at decode shape (4096 elems) with TP=2."""
     _run_allreduce_subprocess(world_size=2, n_elements=4096)
 
 
 @requires_multi_gpu
+@pytest.mark.xfail(
+    reason="ARK codegen rejects OFFSET on external buffers from all_reduce_packet (codegen.cpp:318)",
+    strict=True,
+)
 def test_allreduce_prefill_tp2():
     """All-reduce at prefill shape (8,388,608 elems) with TP=2."""
     _run_allreduce_subprocess(world_size=2, n_elements=2048 * 4096)
@@ -239,6 +247,10 @@ def test_allreduce_prefill_tp2():
     _NUM_GPUS < 8,
     reason=f"Need >= 8 GPUs, have {_NUM_GPUS}",
 )
+@pytest.mark.xfail(
+    reason="ARK codegen rejects OFFSET on external buffers from all_reduce_packet (codegen.cpp:318)",
+    strict=True,
+)
 def test_allreduce_prefill_tp8():
     """All-reduce at prefill shape (8,388,608 elems) with TP=8."""
     _run_allreduce_subprocess(world_size=8, n_elements=2048 * 4096)
@@ -248,6 +260,10 @@ def test_allreduce_prefill_tp8():
 @pytest.mark.skipif(
     _NUM_GPUS < 8,
     reason=f"Need >= 8 GPUs, have {_NUM_GPUS}",
+)
+@pytest.mark.xfail(
+    reason="ARK codegen rejects OFFSET on external buffers from all_reduce_packet (codegen.cpp:318)",
+    strict=True,
 )
 def test_allreduce_decode_tp8():
     """All-reduce at decode shape (4096 elems) with TP=8."""
