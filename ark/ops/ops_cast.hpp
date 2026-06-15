@@ -14,6 +14,8 @@ class ModelOpCast : public ModelOpBroadcast1 {
     ModelOpCast() = default;
     ModelOpCast(ModelTensorRef input, ModelDataType data_type,
                 ModelTensorRef output);
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
 class ModelOpByteCast : public ModelOpTensor {
