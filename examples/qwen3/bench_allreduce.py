@@ -74,6 +74,11 @@ with ark.Runtime() as rt:
         }))
 '''
 
+# Primary benchmark shape: decode (1, 4096) = 4096 elements.
+# SGLang baseline target (decode, TP=2, A100 NVLink) — no PROFILE.md
+# yet; value will be updated once profiling is done.
+_SGLANG_DECODE_MS = 0.01  # placeholder until PROFILE.md exists
+
 SHAPES = [
     ("decode  (1, 4096)", 4096),
     ("prefill (2048, 4096)", 2048 * 4096),
@@ -81,7 +86,13 @@ SHAPES = [
 
 
 def run_bench(world_size: int):
-    """Run all-reduce bench for all shapes at the given world_size."""
+    """Run all-reduce bench for all shapes at the given world_size.
+
+    Returns a list of parsed JSON result dicts from rank-0 workers,
+    or an empty list if all workers failed.
+    """
+    import json as _json
+
     results = []
     for label, n_elements in SHAPES:
         procs = []
@@ -115,7 +126,7 @@ def run_bench(world_size: int):
                     file=sys.stderr,
                 )
             if rank == 0 and stdout.strip():
-                results.append(stdout.decode().strip())
+                results.append(_json.loads(stdout.decode().strip()))
 
     # Print summary table
     print(f"\n{'='*60}")
@@ -123,12 +134,11 @@ def run_bench(world_size: int):
     print(f"{'='*60}")
     print(f"{'Shape':<30} {'Elements':>12} {'Latency (us)':>14}")
     print(f"{'-'*60}")
-    import json
-
-    for line in results:
-        d = json.loads(line)
+    for d in results:
         print(f"{d['label']:<30} {d['n_elements']:>12,} {d['mean_us']:>14.2f}")
     print(f"{'='*60}\n")
+
+    return results
 
 
 def main():
@@ -142,7 +152,24 @@ def main():
         help="Number of TP ranks (default: 2)",
     )
     args = parser.parse_args()
-    run_bench(args.world_size)
+    results = run_bench(args.world_size)
+
+    # Emit PERF_GATE line for the decode shape (primary gate metric).
+    sglang_ms = _SGLANG_DECODE_MS
+    decode_results = [r for r in results if r["n_elements"] == 4096]
+    if decode_results:
+        ark_ms = decode_results[0]["mean_us"] / 1000.0
+    else:
+        # Workers failed (codegen limitation: cannot offset external
+        # buffer from all_reduce_packet, codegen.cpp:318).
+        ark_ms = 999999.0
+    ratio = ark_ms / sglang_ms if sglang_ms > 0 else 999999.0
+    print(
+        f"PERF_GATE name=allreduce"
+        f" ark_ms={ark_ms:.4f}"
+        f" sglang_ms={sglang_ms:.4f}"
+        f" ratio={ratio:.4f}"
+    )
 
 
 if __name__ == "__main__":
