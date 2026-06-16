@@ -30,12 +30,17 @@ _REPO_ROOT = os.path.normpath(
 def _subprocess_env(world_size: int) -> dict:
     """Build env dict for worker subprocesses.
 
-    Adds the repo's ``build/python`` and ``python`` dirs to PYTHONPATH so
-    ``import ark`` finds the real package even when CWD contains the C++
-    ``ark/`` source directory (which Python would treat as a namespace
-    package).
+    3-level PYTHONPATH fallback:
+      1. ``$ARK_ROOT/python`` (CI sets ``ARK_ROOT=$PWD``)
+      2. ``<repo>/build/python`` or ``<repo>/python``
+      3. inherited ``PYTHONPATH``
     """
     extra = []
+    ark_root = os.environ.get("ARK_ROOT", "")
+    if ark_root:
+        ark_root_py = os.path.join(ark_root, "python")
+        if os.path.isfile(os.path.join(ark_root_py, "ark", "__init__.py")):
+            extra.append(ark_root_py)
     for subdir in ("build/python", "python"):
         candidate = os.path.join(_REPO_ROOT, subdir)
         if os.path.isfile(os.path.join(candidate, "ark", "__init__.py")):
@@ -56,9 +61,11 @@ _WORKER_SCRIPT = '''
 """Worker for all-reduce microbenchmark."""
 import sys
 import json
+import os
 
 import torch
 import ark
+from ark.executor import Executor
 
 rank = int(sys.argv[1])
 world_size = int(sys.argv[2])
@@ -103,6 +110,11 @@ with ark.Runtime() as rt:
             "mean_us": round(mean_us, 2),
             "n_iters": n_iters,
         }))
+        sys.stdout.flush()
+
+# Force ordered teardown before mscclpp static destructors fire.
+Executor.reset()
+os._exit(0)
 '''
 
 # Primary benchmark shape: decode (1, 4096) = 4096 elements.
