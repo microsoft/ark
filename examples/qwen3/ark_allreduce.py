@@ -68,9 +68,9 @@ def ark_allreduce(
     orig_shape = x.shape
     x_flat = x.reshape(-1)
 
+    ark.init()
     ark.set_rank(rank)
     ark.set_world_size(world_size)
-    ark.init()
     result = ark.all_reduce_packet(x_flat, rank, world_size)
     # Reshape back to original shape via ark.reshape
     if len(orig_shape) > 1:

@@ -17,87 +17,16 @@ Uses torch.cuda.Event for steady-state timing.
 """
 
 import argparse
-import importlib.util
 import os
 import subprocess
 import sys
 
-# Repo root — used to locate the built ark Python package for subprocesses.
-_REPO_ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
-)
-
-# Directory containing this file — propagated so workers can import
-# sibling modules (microbench, qwen3_config, etc.) if needed.
-_EXAMPLES_QWEN3_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-def _subprocess_env(world_size: int) -> dict:
-    """Build env dict for worker subprocesses.
-
-    Resolution order for the ``ark`` package path:
-      1. ``importlib.util.find_spec("ark")`` — wherever the parent already
-         resolved ark (handles build-tree, install, and namespace packages).
-      2. ``$ARK_ROOT/python`` (CI sets ``ARK_ROOT=$PWD``).
-      3. ``<repo>/build/python`` or ``<repo>/python``.
-      4. inherited ``PYTHONPATH``.
-
-    Also propagates the ``examples/qwen3/`` directory so workers can
-    import sibling modules (microbench, qwen3_config) when needed.
-    """
-    extra = []  # type: list[str]
-
-    # --- Primary: resolve from the running interpreter's import state ---
-    try:
-        spec = importlib.util.find_spec("ark")
-        if spec is not None:
-            if spec.submodule_search_locations:
-                # Regular package: parent of the package directory.
-                ark_pkg_dir = next(iter(spec.submodule_search_locations))
-                ark_parent = os.path.dirname(ark_pkg_dir)
-            elif spec.origin:
-                # Single-file or namespace with origin.
-                ark_parent = os.path.dirname(os.path.dirname(spec.origin))
-            else:
-                ark_parent = None
-            if ark_parent and ark_parent not in extra:
-                extra.append(ark_parent)
-    except (ModuleNotFoundError, ValueError, TypeError):
-        pass
-
-    # --- Fallback: $ARK_ROOT/python ---
-    ark_root = os.environ.get("ARK_ROOT", "")
-    if ark_root:
-        ark_root_py = os.path.join(ark_root, "python")
-        if os.path.isfile(os.path.join(ark_root_py, "ark", "__init__.py")):
-            if ark_root_py not in extra:
-                extra.append(ark_root_py)
-
-    # --- Fallback: repo build/python or python ---
-    for subdir in ("build/python", "python"):
-        candidate = os.path.join(_REPO_ROOT, subdir)
-        if os.path.isfile(os.path.join(candidate, "ark", "__init__.py")):
-            if candidate not in extra:
-                extra.append(candidate)
-
-    # --- Propagate examples/qwen3 for sibling module imports ---
-    examples_parent = os.path.dirname(_EXAMPLES_QWEN3_DIR)
-    if examples_parent not in extra:
-        extra.append(examples_parent)
-
-    # --- Inherited PYTHONPATH ---
-    existing = os.environ.get("PYTHONPATH", "")
-    if existing:
-        extra.append(existing)
-
-    env = {
-        **os.environ,
-        "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(world_size)),
-    }
-    if extra:
-        env["PYTHONPATH"] = os.pathsep.join(extra)
-    return env
-
+try:
+    from ._env import _subprocess_env
+except ImportError:
+    # Standalone script mode (perf-gate invocation, not part of a package).
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from _env import _subprocess_env
 
 _WORKER_SCRIPT = '''
 """Worker for all-reduce microbenchmark."""
