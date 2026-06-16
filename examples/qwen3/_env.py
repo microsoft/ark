@@ -7,6 +7,7 @@ Used by both ``bench_allreduce.py`` and ``test_allreduce.py`` to build
 a consistent PYTHONPATH / CUDA_VISIBLE_DEVICES env for worker processes.
 """
 
+import glob
 import importlib.util
 import os
 
@@ -18,6 +19,23 @@ _REPO_ROOT = os.path.normpath(
 # Directory containing this file — propagated so workers can import
 # sibling modules (microbench, qwen3_config, etc.) if needed.
 _EXAMPLES_QWEN3_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _has_compiled_ark(parent_dir: str) -> bool:
+    """Return True if *parent_dir*/ark/ contains the compiled C++ extension.
+
+    The source tree's ``python/ark/`` has ``__init__.py`` but no compiled
+    ``core.cpython-*.so``.  Adding it to PYTHONPATH causes workers to fail
+    with ``ModuleNotFoundError: No module named 'ark.core'``.
+    """
+    ark_pkg = os.path.join(parent_dir, "ark")
+    if not os.path.isfile(os.path.join(ark_pkg, "__init__.py")):
+        return False
+    # Check for compiled extension (Linux .so, Windows .pyd)
+    return bool(
+        glob.glob(os.path.join(ark_pkg, "core*.so"))
+        or glob.glob(os.path.join(ark_pkg, "core*.pyd"))
+    )
 
 
 def _subprocess_env(world_size: int) -> dict:
@@ -48,8 +66,9 @@ def _subprocess_env(world_size: int) -> dict:
                 ark_parent = os.path.dirname(os.path.dirname(spec.origin))
             else:
                 ark_parent = None
-            if ark_parent and ark_parent not in extra:
-                extra.append(ark_parent)
+            if ark_parent and _has_compiled_ark(ark_parent):
+                if ark_parent not in extra:
+                    extra.append(ark_parent)
     except (ModuleNotFoundError, ValueError, TypeError):
         pass
 
@@ -57,14 +76,14 @@ def _subprocess_env(world_size: int) -> dict:
     ark_root = os.environ.get("ARK_ROOT", "")
     if ark_root:
         ark_root_py = os.path.join(ark_root, "python")
-        if os.path.isfile(os.path.join(ark_root_py, "ark", "__init__.py")):
+        if _has_compiled_ark(ark_root_py):
             if ark_root_py not in extra:
                 extra.append(ark_root_py)
 
     # --- Fallback: repo build/python or python ---
     for subdir in ("build/python", "python"):
         candidate = os.path.join(_REPO_ROOT, subdir)
-        if os.path.isfile(os.path.join(candidate, "ark", "__init__.py")):
+        if _has_compiled_ark(candidate):
             if candidate not in extra:
                 extra.append(candidate)
 
