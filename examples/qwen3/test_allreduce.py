@@ -10,7 +10,7 @@ Two tiers:
     correctness via ``multiprocessing`` — each rank fills its tensor with
     ``rank + 1``, runs all-reduce, asserts output == sum(1..world_size).
 
-The CI runner has 1 GPU, so multi-GPU tests skip cleanly.
+The 8-GPU CI runner executes both tiers.
 """
 
 import importlib.util
