@@ -13,6 +13,7 @@ Two tiers:
 The CI runner has 1 GPU, so multi-GPU tests skip cleanly.
 """
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -134,6 +135,58 @@ class TestFlattenReshapeLogic:
         assert torch.equal(x, x_back)
 
 
+class TestSubprocessEnv:
+    """CPU-only tests for ``_subprocess_env()`` — no GPU required."""
+
+    def test_pythonpath_contains_ark_package(self):
+        """Returned env PYTHONPATH includes a dir where ark is importable."""
+        env = _subprocess_env(world_size=2)
+        pythonpath = env.get("PYTHONPATH", "")
+        paths = pythonpath.split(os.pathsep)
+        # At least one path must contain ark/__init__.py or ark/core*.so
+        found = False
+        for p in paths:
+            ark_dir = os.path.join(p, "ark")
+            if os.path.isfile(os.path.join(ark_dir, "__init__.py")):
+                found = True
+                break
+            # Also check for compiled extension (namespace package case)
+            if os.path.isdir(ark_dir):
+                import glob
+
+                if glob.glob(os.path.join(ark_dir, "core*.so")):
+                    found = True
+                    break
+        assert found, (
+            f"No ark-importable path found in PYTHONPATH: {pythonpath}"
+        )
+
+    def test_pythonpath_no_duplicates(self):
+        """PYTHONPATH entries are not duplicated by the resolution logic."""
+        env = _subprocess_env(world_size=2)
+        pythonpath = env.get("PYTHONPATH", "")
+        paths = pythonpath.split(os.pathsep)
+        # Filter out inherited PYTHONPATH (may have dupes we don't control)
+        inherited = os.environ.get("PYTHONPATH", "")
+        inherited_parts = set(inherited.split(os.pathsep)) if inherited else set()
+        own_paths = [p for p in paths if p not in inherited_parts]
+        assert len(own_paths) == len(set(own_paths)), (
+            f"Duplicate entries in PYTHONPATH: {own_paths}"
+        )
+
+    def test_cuda_visible_devices(self):
+        """CUDA_VISIBLE_DEVICES matches requested world_size."""
+        env = _subprocess_env(world_size=4)
+        assert env["CUDA_VISIBLE_DEVICES"] == "0,1,2,3"
+
+    def test_examples_parent_in_pythonpath(self):
+        """examples/ parent dir is in PYTHONPATH for sibling imports."""
+        env = _subprocess_env(world_size=2)
+        pythonpath = env.get("PYTHONPATH", "")
+        examples_parent = os.path.dirname(_EXAMPLES_QWEN3_DIR)
+        assert examples_parent in pythonpath.split(os.pathsep)
+
+
 # -----------------------------------------------------------------------
 # Tier 2: Multi-GPU functional tests (skip on 1-GPU CI)
 # -----------------------------------------------------------------------
@@ -189,28 +242,69 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 )
 
+# Directory containing this file — propagated so workers can import
+# sibling modules (microbench, qwen3_config, etc.) if needed.
+_EXAMPLES_QWEN3_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def _subprocess_env(world_size: int) -> dict:
     """Build env dict for worker subprocesses.
 
-    3-level PYTHONPATH fallback:
-      1. ``$ARK_ROOT/python`` (CI sets ``ARK_ROOT=$PWD``)
-      2. ``<repo>/build/python`` or ``<repo>/python``
-      3. inherited ``PYTHONPATH``
+    Resolution order for the ``ark`` package path:
+      1. ``importlib.util.find_spec("ark")`` — wherever the parent already
+         resolved ark (handles build-tree, install, and namespace packages).
+      2. ``$ARK_ROOT/python`` (CI sets ``ARK_ROOT=$PWD``).
+      3. ``<repo>/build/python`` or ``<repo>/python``.
+      4. inherited ``PYTHONPATH``.
+
+    Also propagates the ``examples/qwen3/`` directory so workers can
+    import sibling modules (microbench, qwen3_config) when needed.
     """
-    extra = []
+    extra = []  # type: list[str]
+
+    # --- Primary: resolve from the running interpreter's import state ---
+    try:
+        spec = importlib.util.find_spec("ark")
+        if spec is not None:
+            if spec.submodule_search_locations:
+                # Regular package: parent of the package directory.
+                ark_pkg_dir = next(iter(spec.submodule_search_locations))
+                ark_parent = os.path.dirname(ark_pkg_dir)
+            elif spec.origin:
+                # Single-file or namespace with origin.
+                ark_parent = os.path.dirname(os.path.dirname(spec.origin))
+            else:
+                ark_parent = None
+            if ark_parent and ark_parent not in extra:
+                extra.append(ark_parent)
+    except (ModuleNotFoundError, ValueError, TypeError):
+        pass
+
+    # --- Fallback: $ARK_ROOT/python ---
     ark_root = os.environ.get("ARK_ROOT", "")
     if ark_root:
         ark_root_py = os.path.join(ark_root, "python")
         if os.path.isfile(os.path.join(ark_root_py, "ark", "__init__.py")):
-            extra.append(ark_root_py)
+            if ark_root_py not in extra:
+                extra.append(ark_root_py)
+
+    # --- Fallback: repo build/python or python ---
     for subdir in ("build/python", "python"):
         candidate = os.path.join(_REPO_ROOT, subdir)
         if os.path.isfile(os.path.join(candidate, "ark", "__init__.py")):
-            extra.append(candidate)
+            if candidate not in extra:
+                extra.append(candidate)
+
+    # --- Propagate examples/qwen3 for sibling module imports ---
+    examples_parent = os.path.dirname(_EXAMPLES_QWEN3_DIR)
+    if examples_parent not in extra:
+        extra.append(examples_parent)
+
+    # --- Inherited PYTHONPATH ---
     existing = os.environ.get("PYTHONPATH", "")
     if existing:
         extra.append(existing)
+
     env = {
         **os.environ,
         "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(world_size)),
