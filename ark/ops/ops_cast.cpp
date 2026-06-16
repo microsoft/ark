@@ -21,6 +21,37 @@ ModelOpCast::ModelOpCast(ModelTensorRef input, ModelDataType data_type,
     verify();
 }
 
+Json ModelOpCast::default_config([[maybe_unused]] const ArchRef arch) const {
+    Json config;
+    config["NumWarps"] = 1;
+    config["SramBytes"] = 0;
+    const auto &shape = result_tensors_[0]->shape().dims4();
+    size_t tile_x;
+    size_t tile_y;
+    if (shape[2] > shape[3]) {
+        tile_x = 64;
+        tile_y = 1;
+    } else {
+        tile_x = 1;
+        tile_y = 64;
+    }
+    // The cast kernel uses NelemPerThread=2 (processes element pairs).
+    // The tile's consecutive dimension must be >= 2 so that vectorized
+    // loads/stores land on aligned addresses. When the default tile
+    // yields tile_y=1 but the shape has W >= 2, widen tile_y to 2 and
+    // halve tile_x to keep the per-task element count unchanged.
+    if (tile_y < 2 && shape[3] >= 2) {
+        tile_y = 2;
+        tile_x = tile_x / 2;
+    }
+    config["Tile"] = {tile_x, tile_y};
+    size_t num_tasks = shape[0] * shape[1];
+    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
+    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
+    config["NumTasks"] = num_tasks;
+    return config;
+}
+
 static void byte_cast_helper(ModelTensorRef input, ModelDataType data_type,
                              Dims &new_shape, Dims &new_strides,
                              Dims &new_offsets, Dims &new_padded_shape) {
