@@ -22,7 +22,7 @@ ignore:
   - "*/dist-packages/*"
   - "*/third_party/*"
   - "*/ark/*_test.*"
-  - "*/examples/*"
+  - "examples/**"
   - "*/python/unittest/*"
   - "*/ark/unittest/*"
   - "*/ark/ops/ops_test_common.*"

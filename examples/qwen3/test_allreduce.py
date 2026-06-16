@@ -13,15 +13,17 @@ Two tiers:
 The CI runner has 1 GPU, so multi-GPU tests skip cleanly.
 """
 
+import importlib.util
 import os
 import subprocess
 import sys
+import tempfile
 
 import pytest
 import torch
 
 from .ark_allreduce import validate_allreduce_input
-from ._env import _EXAMPLES_QWEN3_DIR, _subprocess_env
+from ._env import _EXAMPLES_QWEN3_DIR, _has_compiled_ark, _subprocess_env
 
 _CUDA = torch.cuda.is_available()
 _NUM_GPUS = torch.cuda.device_count() if _CUDA else 0
@@ -135,6 +137,48 @@ class TestFlattenReshapeLogic:
         assert torch.equal(x, x_back)
 
 
+class TestHasCompiledArk:
+    """Edge-case tests for ``_has_compiled_ark()``."""
+
+    def test_no_ark_subdir(self):
+        """Directory with no ark/ subdir returns False."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            assert _has_compiled_ark(tmpdir) is False
+
+    def test_source_tree_no_so(self):
+        """ark/__init__.py exists but no compiled .so/.pyd returns False."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ark_dir = os.path.join(tmpdir, "ark")
+            os.makedirs(ark_dir)
+            with open(os.path.join(ark_dir, "__init__.py"), "w") as f:
+                f.write("")
+            assert _has_compiled_ark(tmpdir) is False
+
+    def test_fake_compiled_so(self):
+        """ark/__init__.py + fake core*.so returns True."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ark_dir = os.path.join(tmpdir, "ark")
+            os.makedirs(ark_dir)
+            with open(os.path.join(ark_dir, "__init__.py"), "w") as f:
+                f.write("")
+            # Create a fake compiled extension
+            fake_so = os.path.join(
+                ark_dir, "core.cpython-312-x86_64-linux-gnu.so"
+            )
+            with open(fake_so, "w") as f:
+                f.write("")
+            assert _has_compiled_ark(tmpdir) is True
+
+    def test_real_build_tree(self):
+        """Real build tree (via importlib) returns True."""
+        spec = importlib.util.find_spec("ark")
+        if spec is None or not spec.submodule_search_locations:
+            pytest.skip("ark not importable in this environment")
+        ark_pkg_dir = next(iter(spec.submodule_search_locations))
+        ark_parent = os.path.dirname(ark_pkg_dir)
+        assert _has_compiled_ark(ark_parent) is True
+
+
 class TestSubprocessEnv:
     """CPU-only tests for ``_subprocess_env()`` — no GPU required."""
 
@@ -187,6 +231,48 @@ class TestSubprocessEnv:
         pythonpath = env.get("PYTHONPATH", "")
         examples_parent = os.path.dirname(_EXAMPLES_QWEN3_DIR)
         assert examples_parent in pythonpath.split(os.pathsep)
+
+    def test_ark_root_fallback(self):
+        """ARK_ROOT env var adds $ARK_ROOT/python to PYTHONPATH when it has compiled ark."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a fake compiled ark under tmpdir/python/ark/
+            ark_dir = os.path.join(tmpdir, "python", "ark")
+            os.makedirs(ark_dir)
+            with open(os.path.join(ark_dir, "__init__.py"), "w") as f:
+                f.write("")
+            fake_so = os.path.join(
+                ark_dir, "core.cpython-312-x86_64-linux-gnu.so"
+            )
+            with open(fake_so, "w") as f:
+                f.write("")
+            old = os.environ.get("ARK_ROOT")
+            try:
+                os.environ["ARK_ROOT"] = tmpdir
+                env = _subprocess_env(world_size=2)
+                pythonpath = env.get("PYTHONPATH", "")
+                expected = os.path.join(tmpdir, "python")
+                assert expected in pythonpath.split(os.pathsep)
+            finally:
+                if old is None:
+                    os.environ.pop("ARK_ROOT", None)
+                else:
+                    os.environ["ARK_ROOT"] = old
+
+    def test_ark_root_without_compiled_ark(self):
+        """ARK_ROOT pointing to dir without compiled ark does not add to PYTHONPATH."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old = os.environ.get("ARK_ROOT")
+            try:
+                os.environ["ARK_ROOT"] = tmpdir
+                env = _subprocess_env(world_size=2)
+                pythonpath = env.get("PYTHONPATH", "")
+                bad_path = os.path.join(tmpdir, "python")
+                assert bad_path not in pythonpath.split(os.pathsep)
+            finally:
+                if old is None:
+                    os.environ.pop("ARK_ROOT", None)
+                else:
+                    os.environ["ARK_ROOT"] = old
 
 
 # -----------------------------------------------------------------------
