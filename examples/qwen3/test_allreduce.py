@@ -145,7 +145,7 @@ Launched as a subprocess to avoid CUDA context pollution in the test process.
 Each rank fills its tensor with (rank + 1), runs all-reduce, and checks
 that the result equals sum(1..world_size).
 """
-import sys
+import os, sys
 import torch
 import ark
 
@@ -177,7 +177,34 @@ print(f"PASS rank={rank}")
 '''
 
 
-def _run_allreduce_subprocess(world_size: int, n_elements: int, timeout: int = 120):
+# Repo root — used to locate the built ark Python package for subprocesses.
+_REPO_ROOT = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+)
+
+
+def _subprocess_env(world_size: int) -> dict:
+    """Build env dict for worker subprocesses."""
+    extra = []
+    for subdir in ("build/python", "python"):
+        candidate = os.path.join(_REPO_ROOT, subdir)
+        if os.path.isfile(os.path.join(candidate, "ark", "__init__.py")):
+            extra.append(candidate)
+    existing = os.environ.get("PYTHONPATH", "")
+    if existing:
+        extra.append(existing)
+    env = {
+        **os.environ,
+        "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(world_size)),
+    }
+    if extra:
+        env["PYTHONPATH"] = os.pathsep.join(extra)
+    return env
+
+
+def _run_allreduce_subprocess(
+    world_size: int, n_elements: int, timeout: int = 120
+):
     """Spawn *world_size* workers, each running the all-reduce script."""
     procs = []
     for rank in range(world_size):
@@ -192,10 +219,8 @@ def _run_allreduce_subprocess(world_size: int, n_elements: int, timeout: int = 1
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env={
-                **os.environ,
-                "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(world_size)),
-            },
+            cwd="/",
+            env=_subprocess_env(world_size),
         )
         procs.append(p)
 

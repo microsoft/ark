@@ -21,6 +21,37 @@ import os
 import subprocess
 import sys
 
+# Repo root — used to locate the built ark Python package for subprocesses.
+_REPO_ROOT = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+)
+
+
+def _subprocess_env(world_size: int) -> dict:
+    """Build env dict for worker subprocesses.
+
+    Adds the repo's ``build/python`` and ``python`` dirs to PYTHONPATH so
+    ``import ark`` finds the real package even when CWD contains the C++
+    ``ark/`` source directory (which Python would treat as a namespace
+    package).
+    """
+    extra = []
+    for subdir in ("build/python", "python"):
+        candidate = os.path.join(_REPO_ROOT, subdir)
+        if os.path.isfile(os.path.join(candidate, "ark", "__init__.py")):
+            extra.append(candidate)
+    existing = os.environ.get("PYTHONPATH", "")
+    if existing:
+        extra.append(existing)
+    env = {
+        **os.environ,
+        "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(world_size)),
+    }
+    if extra:
+        env["PYTHONPATH"] = os.pathsep.join(extra)
+    return env
+
+
 _WORKER_SCRIPT = '''
 """Worker for all-reduce microbenchmark."""
 import sys
@@ -34,12 +65,12 @@ world_size = int(sys.argv[2])
 n_elements = int(sys.argv[3])
 label = sys.argv[4]
 
+ark.init()
 ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 
-ark.init()
 result = ark.all_reduce_packet(x, rank, world_size)
 
 with ark.Runtime() as rt:
@@ -109,12 +140,8 @@ def run_bench(world_size: int):
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env={
-                    **os.environ,
-                    "CUDA_VISIBLE_DEVICES": ",".join(
-                        str(i) for i in range(world_size)
-                    ),
-                },
+                cwd="/",
+                env=_subprocess_env(world_size),
             )
             procs.append(p)
 
@@ -129,14 +156,14 @@ def run_bench(world_size: int):
                 results.append(_json.loads(stdout.decode().strip()))
 
     # Print summary table
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"ARK fused-packet all-reduce  |  TP={world_size}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"{'Shape':<30} {'Elements':>12} {'Latency (us)':>14}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     for d in results:
         print(f"{d['label']:<30} {d['n_elements']:>12,} {d['mean_us']:>14.2f}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return results
 

@@ -321,8 +321,7 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                     // allocation map: offset relative to its own base.
                     ss_desc << moff.value();
                 } else {
-                    size_t buffer_offset =
-                        buffer_id_to_offset_.at(buffer_id);
+                    size_t buffer_offset = buffer_id_to_offset_.at(buffer_id);
                     size_t offset = buffer_offset + moff.value();
                     ss_desc << offset;
                 }
