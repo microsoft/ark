@@ -315,16 +315,17 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                 size_t buffer_id = moff.buffer_id();
                 auto buf_info = buf_reg.get(buffer_id);
                 if (buf_info && buf_info->is_external) {
-                    ERR(InternalError, "cannot offset external buffer");
+                    // External buffer: offset relative to its own base.
+                    ss_desc << moff.value();
+                } else {
+                    auto it = buffer_id_to_offset_.find(buffer_id);
+                    if (it == buffer_id_to_offset_.end()) {
+                        ERR(InternalError, "buffer ID not found: ", buffer_id);
+                    }
+                    size_t buffer_offset = it->second;
+                    size_t offset = buffer_offset + moff.value();
+                    ss_desc << offset;
                 }
-                size_t buffer_offset;
-                auto it = buffer_id_to_offset_.find(buffer_id);
-                if (it == buffer_id_to_offset_.end()) {
-                    ERR(InternalError, "buffer ID not found: ", buffer_id);
-                }
-                buffer_offset = it->second;
-                size_t offset = buffer_offset + moff.value();
-                ss_desc << offset;
             } else {
                 ss_desc << arg.serialize().begin().value();
             }

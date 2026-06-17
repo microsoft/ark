@@ -50,6 +50,12 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
         ERR(ModelError, "all_reduce_packet requires rank_num >= 2");
     }
 
+    // Copy input into an internal buffer so it resides in mscclpp
+    // registered memory.  External buffers (e.g. from torch tensors)
+    // are not part of the registered allocation, and putPackets needs
+    // to read from a registered source.
+    input = this->copy(input);
+
     if (output.is_null()) {
         output = this->tensor(input.shape(), input.data_type());
     }
