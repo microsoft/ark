@@ -376,17 +376,16 @@ void test_all_reduce_packet_fused_ext_internal(ark::DimType nelem) {
             ark::half_t *d_input = nullptr;
             size_t nbytes = nelem * sizeof(ark::half_t);
             UNITTEST_EQ(ark::gpuMalloc(&d_input, nbytes), ark::gpuSuccess);
-            std::vector<ark::half_t> h_input(
-                nelem, ark::half_t(float(gpu_id + 1)));
+            std::vector<ark::half_t> h_input(nelem,
+                                             ark::half_t(float(gpu_id + 1)));
             UNITTEST_EQ(ark::gpuMemcpy(d_input, h_input.data(), nbytes,
                                        ark::gpuMemcpyHostToDevice),
                         ark::gpuSuccess);
 
             ark::Model m(gpu_id, NumGpus);
-            ark::Tensor input = m.placeholder({nelem}, ark::FP16, {}, {},
-                                              {}, -1, d_input);
-            ark::Tensor output =
-                m.all_reduce_packet(input, gpu_id, NumGpus);
+            ark::Tensor input =
+                m.placeholder({nelem}, ark::FP16, {}, {}, {}, -1, d_input);
+            ark::Tensor output = m.all_reduce_packet(input, gpu_id, NumGpus);
 
             ark::DefaultExecutor exe(m, gpu_id);
             exe.launch();

@@ -54,6 +54,9 @@ def ark_allreduce(
     an ARK tensor whose ``.to_torch()`` yields a torch tensor with the
     original shape restored.
 
+    Note: sets ARK global state (init/rank/world_size) on each call;
+    intended for single-use model graph construction, not iterative use.
+
     Args:
         x: fp16 contiguous CUDA tensor (any shape).
         rank: Rank of the current process (0-indexed).

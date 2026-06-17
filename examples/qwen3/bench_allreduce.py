@@ -91,7 +91,7 @@ os._exit(0)
 # Primary benchmark shape: decode (1, 4096) = 4096 elements.
 # SGLang baseline target (decode, TP=2, A100 NVLink) — no PROFILE.md
 # yet; value will be updated once profiling is done.
-_SGLANG_DECODE_MS = 0.01  # placeholder until PROFILE.md exists
+_SGLANG_DECODE_MS = 0.01  # PROVISIONAL: placeholder — ratio is meaningless until a real baseline is measured
 
 SHAPES = [
     ("decode  (1, 4096)", 4096),
@@ -128,15 +128,27 @@ def run_bench(world_size: int):
             )
             procs.append(p)
 
-        for rank, p in enumerate(procs):
-            stdout, stderr = p.communicate(timeout=300)
-            if p.returncode != 0:
-                print(
-                    f"ERROR rank={rank}: {stderr.decode().strip()[-500:]}",
-                    file=sys.stderr,
-                )
-            if rank == 0 and stdout.strip():
-                results.append(_json.loads(stdout.decode().strip()))
+        try:
+            for rank, p in enumerate(procs):
+                try:
+                    stdout, stderr = p.communicate(timeout=300)
+                except subprocess.TimeoutExpired:
+                    print(
+                        f"ERROR rank={rank}: timed out after 300s",
+                        file=sys.stderr,
+                    )
+                    break
+                if p.returncode != 0:
+                    print(
+                        f"ERROR rank={rank}: {stderr.decode().strip()[-500:]}",
+                        file=sys.stderr,
+                    )
+                if rank == 0 and stdout.strip():
+                    results.append(_json.loads(stdout.decode().strip()))
+        finally:
+            for p in procs:
+                p.kill()
+                p.wait()
 
     # Print summary table
     print(f"\n{'=' * 60}")

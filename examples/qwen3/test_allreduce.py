@@ -348,12 +348,21 @@ def _run_allreduce_subprocess(
         procs.append(p)
 
     failures = []
-    for rank, p in enumerate(procs):
-        stdout, stderr = p.communicate(timeout=timeout)
-        if p.returncode != 0:
-            failures.append(
-                f"rank {rank} exit={p.returncode}: {stderr.decode().strip()[-500:]}"
-            )
+    try:
+        for rank, p in enumerate(procs):
+            try:
+                stdout, stderr = p.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                failures.append(f"rank {rank} timed out after {timeout}s")
+                break
+            if p.returncode != 0:
+                failures.append(
+                    f"rank {rank} exit={p.returncode}: {stderr.decode().strip()[-500:]}"
+                )
+    finally:
+        for p in procs:
+            p.kill()
+            p.wait()
 
     if failures:
         raise AssertionError(
@@ -362,7 +371,10 @@ def _run_allreduce_subprocess(
         )
 
 
-# TODO: test ark_allreduce() wrapper end-to-end once subprocess import path is resolved
+# TODO(qwen3): test ark_allreduce() wrapper end-to-end.
+# The wrapper's init/validate/flatten/reduce/reshape pipeline is not yet
+# exercised by multi-GPU tests — workers call ark.all_reduce_packet()
+# directly for finer control over tensor construction and result checking.
 
 
 @requires_multi_gpu
