@@ -358,6 +358,38 @@ void test_all_reduce_packet_fused_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
+// Variant with external-buffer (placeholder) input — exercises the
+// codegen external-buffer OFFSET path added for all_reduce_packet's
+// internal copy.
+template <int NumGpus>
+void test_all_reduce_packet_fused_ext_internal(ark::DimType nelem) {
+    for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
+        ark::unittest::spawn_process([gpu_id, nelem]() {
+            UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+            ark::Model m(gpu_id, NumGpus);
+            ark::Tensor input = m.placeholder({nelem}, ark::FP16);
+            ark::Tensor output =
+                m.all_reduce_packet(input, gpu_id, NumGpus);
+
+            std::vector<ark::half_t> input_data(
+                nelem, ark::half_t(float(gpu_id + 1)));
+            auto result = ark::op_test(
+                "all_reduce_packet_fused_ext", m, {input}, {output},
+                baseline_all_reduce<ark::half_t, NumGpus>,
+                {input_data.data()});
+            UNITTEST_LOG(result);
+            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            return ark::unittest::SUCCESS;
+        });
+    }
+    ark::unittest::wait_all_processes();
+}
+
+ark::unittest::State test_all_reduce_packet_fused_ext_2gpus() {
+    test_all_reduce_packet_fused_ext_internal<2>(4096);
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_all_reduce_packet_fused_2gpus() {
     test_all_reduce_packet_fused_internal<2>(4096);
     test_all_reduce_packet_fused_internal<2>(8192);
@@ -381,6 +413,7 @@ int main() {
     UNITTEST(test_all_reduce_8gpus);
     UNITTEST(test_all_reduce_packet_4gpus);
     UNITTEST(test_all_reduce_packet_8gpus);
+    UNITTEST(test_all_reduce_packet_fused_ext_2gpus);
     UNITTEST(test_all_reduce_packet_fused_2gpus);
     UNITTEST(test_all_reduce_packet_fused_4gpus);
     UNITTEST(test_all_reduce_packet_fused_8gpus);
