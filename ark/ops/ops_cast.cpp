@@ -21,8 +21,6 @@ ModelOpCast::ModelOpCast(ModelTensorRef input, ModelDataType data_type,
     verify();
 }
 
-// NOTE: This body is intentionally identical to ModelOpRope::default_config
-// (ops_rope.cpp). If the heuristic changes, update both.
 Json ModelOpCast::default_config([[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["NumWarps"] = 1;
