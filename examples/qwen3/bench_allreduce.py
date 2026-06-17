@@ -83,7 +83,8 @@ with ark.Runtime() as rt:
         }))
         sys.stdout.flush()
 
-# Force ordered teardown before mscclpp static destructors fire.
+# Runtime.stop() only halts execution; Executor.reset() forces full mscclpp
+# teardown before os._exit() skips Python's normal cleanup.
 Executor.reset()
 os._exit(0)
 '''

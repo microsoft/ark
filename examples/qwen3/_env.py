@@ -10,6 +10,7 @@ a consistent PYTHONPATH / CUDA_VISIBLE_DEVICES env for worker processes.
 import glob
 import importlib.util
 import os
+import sys
 
 # Repo root — used to locate the built ark Python package for subprocesses.
 _REPO_ROOT = os.path.normpath(
@@ -71,6 +72,18 @@ def _subprocess_env(world_size: int) -> dict:
                     extra.append(ark_parent)
     except (ModuleNotFoundError, ValueError, TypeError):
         pass
+
+    # --- Secondary: scan sys.path for a compiled ark package ---
+    # When PYTHONPATH points at the source tree (e.g., /w/python),
+    # find_spec("ark") resolves to source-only ark/ (no core*.so).
+    # Keep searching for an installed/built ark with compiled extension.
+    for entry in sys.path:
+        if not entry:
+            continue
+        if _has_compiled_ark(entry):
+            if entry not in extra:
+                extra.append(entry)
+            break
 
     # --- Fallback: $ARK_ROOT/python ---
     ark_root = os.environ.get("ARK_ROOT", "")

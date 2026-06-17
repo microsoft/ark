@@ -309,7 +309,8 @@ with ark.Runtime() as rt:
     rt.run()
     out = result.to_torch()
 
-# Force ordered teardown before mscclpp static destructors fire.
+# Runtime.stop() only halts execution; Executor.reset() forces full mscclpp
+# teardown before os._exit() skips Python's normal cleanup.
 Executor.reset()
 
 # Expected: sum of (1 + 2 + ... + world_size)

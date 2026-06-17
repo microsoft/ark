@@ -147,6 +147,8 @@ ark::unittest::State test_codegen_normal_offset() {
 ark::unittest::State test_codegen_missing_buffer_id() {
     // Build a fresh model so its buffer IDs are new (not in BufferRegistry
     // from test 1).
+    // Safe because ModelBuffer::curr_id is a monotonically-increasing static
+    // counter — IDs allocated here will never collide with test 1's entries.
     ark::Model model(0, 2);
     ark::Tensor tns = model.tensor({512}, ark::FP16);
     model.send_packet(tns, 1, /*tag=*/0, /*flag=*/1);
