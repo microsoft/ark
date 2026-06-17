@@ -104,8 +104,8 @@ ark::unittest::State test_codegen_external_buffer_offset() {
 // Also exercises Model::all_reduce_packet which covers the new
 // `input = this->copy(input)` line in ops_all_reduce.cpp:57.
 ark::unittest::State test_codegen_normal_offset() {
-    // Build a 2-rank model using all_reduce_packet (exercises ops_all_reduce.cpp
-    // line 57: `input = this->copy(input)`).
+    // Build a 2-rank model using all_reduce_packet (exercises
+    // ops_all_reduce.cpp line 57: `input = this->copy(input)`).
     ark::Model model(0, 2);
     ark::Tensor tns = model.tensor({1024}, ark::FP16);
     model.all_reduce_packet(tns, 0, 2);
