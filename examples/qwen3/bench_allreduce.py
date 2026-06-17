@@ -109,11 +109,11 @@ os._exit(0)
 # SGLang amortized figure, which is a whole decode trace / 36 layers).
 _MSCCLPP_CEIL_US = {4096: 11.7, 2048 * 4096: 188.0}
 
-# SGLang per-call all-reduce latency (PROFILE.md: 214.69 ms / 657 calls at
-# TP=8, batch=1 decode-dominated trace on 8xA100).  Includes busy-wait
-# overhead of vllm::cross_device_reduce_1stage — this is the kernel wall-time
-# ARK must beat.
-_SGLANG_PER_CALL_MS = 214.69 / 657  # ≈ 0.327 ms
+# SGLang per-layer all-reduce budget (PROFILE.md: 214.69 ms total comm over
+# 36 Qwen3-8B layers, TP=8 batch=1 decode-dominated trace on 8xA100).
+# Each layer has ~2 all-reduce calls (attn + MLP); this is the layer-level
+# budget ARK must beat.
+_SGLANG_PER_LAYER_MS = 214.69 / 36  # ≈ 5.964 ms
 
 SHAPES = [
     ("decode  (1, 4096)", 4096),
@@ -206,19 +206,19 @@ def main():
 
     results = run_bench(args.world_size, args.warmup, args.iters, args.timeout)
 
-    # PERF_GATE on the decode shape vs SGLang per-call latency.
+    # PERF_GATE on the decode shape vs SGLang per-layer budget.
     decode = [r for r in results if r["n_elements"] == 4096]
     if decode:
         ark_ms = decode[0]["mean_us"] / 1000.0
     else:
         ark_ms = 999999.0  # workers failed
-    sglang_ms = _SGLANG_PER_CALL_MS
+    sglang_ms = _SGLANG_PER_LAYER_MS
     ratio = ark_ms / sglang_ms if sglang_ms > 0 else 999999.0
     print(
         f"PERF_GATE name=allreduce_decode"
-        f" ark_ms={ark_ms:.3f}"
-        f" sglang_ms={sglang_ms:.3f}"
-        f" ratio={ratio:.3f}"
+        f" ark_ms={ark_ms:.4f}"
+        f" sglang_ms={sglang_ms:.4f}"
+        f" ratio={ratio:.4f}"
     )
 
 
