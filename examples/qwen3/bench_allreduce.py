@@ -16,6 +16,11 @@ deferred to Q7.1.  The LATENCY measurement is valid regardless — the persisten
 kernel timing mechanism (host wall-clock around ARK's completion flags) is
 independent of per-iteration value correctness.
 
+**PREFILL CAVEAT:** The packet all-reduce path doubles payload (each element
+is sent as a header+data packet), so prefill (2048, 4096) is ~5× slower than
+the mscclpp bandwidth ceiling.  A bandwidth-optimal ring-based algorithm is
+planned in Q7P.
+
 TIMING METHOD (critical): ARK runs a PERSISTENT loop kernel that owns all SMs
 between ``rt.launch()`` and ``rt.stop()`` — by design. Any torch GPU op issued
 while the runtime is live (``torch.cuda.synchronize``, ``torch.cuda.Event``,
