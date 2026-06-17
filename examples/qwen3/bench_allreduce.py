@@ -89,9 +89,11 @@ os._exit(0)
 '''
 
 # Primary benchmark shape: decode (1, 4096) = 4096 elements.
-# SGLang baseline target (decode, TP=2, A100 NVLink) — no PROFILE.md
-# yet; value will be updated once profiling is done.
-_SGLANG_DECODE_MS = 0.01  # PROVISIONAL: placeholder — ratio is meaningless until a real baseline is measured
+# SGLang baseline: PROFILE.md total comm = 214.69 ms across a decode-dominated
+# trace for Qwen3-8B TP=8 batch=1. Per-layer amortized cost = 214.69 / 36
+# layers ≈ 5.964 ms. The bench measures one all_reduce_packet call (replacing
+# one layer's comm) and compares to this per-layer budget.
+_SGLANG_DECODE_MS = 214.69 / 36.0  # ≈ 5.964 ms per layer (from PROFILE.md)
 
 SHAPES = [
     ("decode  (1, 4096)", 4096),

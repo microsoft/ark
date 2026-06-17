@@ -3,6 +3,7 @@
 
 #include "codegen.hpp"
 
+#include <map>
 #include <nlohmann/json.hpp>
 #include <set>
 
@@ -98,7 +99,50 @@ ark::unittest::State test_codegen_external_buffer_offset() {
     return ark::unittest::State::SUCCESS;
 }
 
-// Test 2: CodeGenerator throws InternalError when an OFFSET arg's buffer ID
+// Test 2: CodeGenerator exercises the normal (non-external) OFFSET path
+// (codegen.cpp lines 320-325: buffer_id_to_offset_ lookup).
+// Also exercises Model::all_reduce_packet which covers the new
+// `input = this->copy(input)` line in ops_all_reduce.cpp:57.
+ark::unittest::State test_codegen_normal_offset() {
+    // Build a 2-rank model using all_reduce_packet (exercises ops_all_reduce.cpp
+    // line 57: `input = this->copy(input)`).
+    ark::Model model(0, 2);
+    ark::Tensor tns = model.tensor({1024}, ark::FP16);
+    model.all_reduce_packet(tns, 0, 2);
+
+    // Plan on GPU 0.
+    ark::Planner planner(model, 0);
+    auto plan = ark::Json::parse(planner.plan(false));
+    UNITTEST_TRUE(plan.contains("TaskInfos"));
+    UNITTEST_TRUE(plan["TaskInfos"].size() > 0);
+
+    // Collect ALL buffer IDs (OFFSET + TENSOR) from the plan.
+    auto offset_buf_ids = collect_offset_buffer_ids(plan);
+    auto tensor_buf_ids = collect_tensor_buffer_ids(plan);
+    UNITTEST_TRUE(offset_buf_ids.size() > 0);
+
+    // Put all buffer IDs in buffer_id_to_offset_ with offset 0.
+    // Do NOT register them as external in BufferRegistry.
+    std::map<size_t, size_t> buf_id_to_offset;
+    for (size_t id : offset_buf_ids) {
+        buf_id_to_offset[id] = 0;
+    }
+    for (size_t id : tensor_buf_ids) {
+        buf_id_to_offset[id] = 0;
+    }
+
+    // Construct CodeGenerator — exercises the normal OFFSET path
+    // (buffer_id_to_offset_ lookup, lines 320-325 of codegen.cpp).
+    ark::PlanJson pj(plan);
+    ark::CodeGenerator codegen(pj, buf_id_to_offset, {});
+
+    std::string code = codegen.code();
+    UNITTEST_TRUE(code.size() > 0);
+
+    return ark::unittest::State::SUCCESS;
+}
+
+// Test 3: CodeGenerator throws InternalError when an OFFSET arg's buffer ID
 // is neither external nor in buffer_id_to_offset (codegen.cpp line 323).
 ark::unittest::State test_codegen_missing_buffer_id() {
     // Build a fresh model so its buffer IDs are new (not in BufferRegistry
@@ -121,6 +165,7 @@ ark::unittest::State test_codegen_missing_buffer_id() {
 
 int main() {
     UNITTEST(test_codegen_external_buffer_offset);
+    UNITTEST(test_codegen_normal_offset);
     UNITTEST(test_codegen_missing_buffer_id);
     return 0;
 }
