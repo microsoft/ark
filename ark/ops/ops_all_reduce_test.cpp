@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/executor.hpp"
+#include "gpu/gpu.hpp"
 #include "model/model_buffer.hpp"
 #include "model/model_node.hpp"
 #include "model/model_op.hpp"
@@ -360,25 +362,46 @@ void test_all_reduce_packet_fused_internal(ark::DimType nelem) {
 
 // Variant with external-buffer (placeholder) input — exercises the
 // codegen external-buffer OFFSET path added for all_reduce_packet's
-// internal copy.
+// internal copy.  Cannot use op_test() because placeholders require
+// pre-allocated GPU memory; drive the executor manually instead.
 template <int NumGpus>
 void test_all_reduce_packet_fused_ext_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
         ark::unittest::spawn_process([gpu_id, nelem]() {
             UNITTEST_SKIP(ark::unittest::get_gpu_count() < NumGpus);
+
+            UNITTEST_EQ(ark::gpuSetDevice(gpu_id), ark::gpuSuccess);
+
+            // Allocate GPU memory and fill with (gpu_id + 1).
+            ark::half_t *d_input = nullptr;
+            size_t nbytes = nelem * sizeof(ark::half_t);
+            UNITTEST_EQ(ark::gpuMalloc(&d_input, nbytes), ark::gpuSuccess);
+            std::vector<ark::half_t> h_input(
+                nelem, ark::half_t(float(gpu_id + 1)));
+            UNITTEST_EQ(ark::gpuMemcpy(d_input, h_input.data(), nbytes,
+                                       ark::gpuMemcpyHostToDevice),
+                        ark::gpuSuccess);
+
             ark::Model m(gpu_id, NumGpus);
-            ark::Tensor input = m.placeholder({nelem}, ark::FP16);
+            ark::Tensor input = m.placeholder({nelem}, ark::FP16, {}, {},
+                                              {}, -1, d_input);
             ark::Tensor output =
                 m.all_reduce_packet(input, gpu_id, NumGpus);
 
-            std::vector<ark::half_t> input_data(
-                nelem, ark::half_t(float(gpu_id + 1)));
-            auto result = ark::op_test(
-                "all_reduce_packet_fused_ext", m, {input}, {output},
-                baseline_all_reduce<ark::half_t, NumGpus>,
-                {input_data.data()});
-            UNITTEST_LOG(result);
-            UNITTEST_EQ(result.max_diff[0], 0.0f);
+            ark::DefaultExecutor exe(m, gpu_id);
+            exe.launch();
+            exe.run(1);
+            exe.stop();
+
+            std::vector<ark::half_t> h_output(nelem);
+            exe.tensor_read(output, h_output);
+
+            float expected = float(NumGpus * (NumGpus + 1)) / 2.0f;
+            for (ark::DimType i = 0; i < nelem; ++i) {
+                UNITTEST_EQ(float(h_output[i]), expected);
+            }
+
+            UNITTEST_EQ(ark::gpuFree(d_input), ark::gpuSuccess);
             return ark::unittest::SUCCESS;
         });
     }
