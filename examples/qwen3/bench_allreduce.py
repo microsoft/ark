@@ -5,7 +5,7 @@
 
 Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
 (2048, 4096) shapes, including registered-memory staging when needed. Each
-rank runs as its own process.
+rank runs as its own process and the parent reports max-rank latency.
 
     python -m examples.qwen3.bench_allreduce --world-size 8
 
@@ -73,14 +73,14 @@ with ark.Runtime() as rt:
 
 latency_us = host_s * 1e6
 
-if rank == 0:
-    print(json.dumps({
-        "label": label,
-        "world_size": world_size,
-        "n_elements": n_elements,
-        "latency_us": round(latency_us, 3),
-    }))
-    sys.stdout.flush()
+print(json.dumps({
+    "rank": rank,
+    "label": label,
+    "world_size": world_size,
+    "n_elements": n_elements,
+    "latency_us": round(latency_us, 3),
+}))
+sys.stdout.flush()
 
 # Workaround: mscclpp's UnixSocketServer destructor races during normal
 # Python shutdown (static destruction order is undefined across TUs),
@@ -90,13 +90,27 @@ Executor.reset()
 os._exit(0)
 '''
 
-# mscclpp-NCCL ceiling from the local Q7 profile (8xA100, fp16, 8 KB).
-_DECODE_TARGET_MS = 11.7 / 1000.0
+# SGLang PROFILE.md Q7 nccl / comm target: 214.69 ms over 657 calls
+# on 8xA100 TP=8, batch=1 decode-dominated Qwen3-8B.
+_DECODE_TARGET_MS = 214.69 / 657.0
 
 SHAPES = [
     ("decode  (1, 4096)", 4096),
     ("prefill (2048, 4096)", 2048 * 4096),
 ]
+
+
+def _load_worker_result(stdout):
+    """Return the last JSON object from worker stdout, ignoring log lines."""
+    for line in reversed(stdout.decode().splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            continue
+    return None
 
 
 def run_bench(world_size, timeout):
@@ -122,7 +136,7 @@ def run_bench(world_size, timeout):
                 )
             )
         shape_failed = False
-        shape_result = None
+        rank_results = []
         try:
             for rank, p in enumerate(procs):
                 try:
@@ -142,12 +156,36 @@ def run_bench(world_size, timeout):
                         f"{err.decode().strip()[-500:]}",
                         file=sys.stderr,
                     )
-                if rank == 0 and out.strip():
-                    shape_result = json.loads(out.decode().strip())
-            if not shape_failed and shape_result is not None:
-                results.append(shape_result)
+                result = _load_worker_result(out)
+                if result is None:
+                    shape_failed = True
+                    print(
+                        f"ERROR rank={rank} {label}: no result",
+                        file=sys.stderr,
+                    )
+                else:
+                    rank_results.append(result)
+            if not shape_failed and len(rank_results) == world_size:
+                rank_results.sort(key=lambda d: d["rank"])
+                max_result = max(rank_results, key=lambda d: d["latency_us"])
+                results.append(
+                    {
+                        "label": max_result["label"],
+                        "world_size": world_size,
+                        "n_elements": max_result["n_elements"],
+                        "max_rank": max_result["rank"],
+                        "latency_us": max_result["latency_us"],
+                        "rank_latencies_us": [
+                            d["latency_us"] for d in rank_results
+                        ],
+                    }
+                )
             elif not shape_failed:
-                print(f"ERROR rank=0 {label}: no result", file=sys.stderr)
+                print(
+                    f"ERROR {label}: expected {world_size} rank results, "
+                    f"got {len(rank_results)}",
+                    file=sys.stderr,
+                )
         finally:
             for p in procs:
                 p.kill()
@@ -156,15 +194,15 @@ def run_bench(world_size, timeout):
     print(f"\n{'=' * 72}")
     print(
         f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
-        f"(single iteration, includes staging)"
+        f"(single iteration, max rank, includes staging)"
     )
     print(f"{'=' * 72}")
-    print(f"{'Shape':<24}{'Elements':>12}{'ARK us':>10}")
+    print(f"{'Shape':<24}{'Elements':>12}{'Max rank':>10}{'ARK us':>10}")
     print(f"{'-' * 72}")
     for d in results:
         print(
             f"{d['label']:<24}{d['n_elements']:>12,}"
-            f"{d['latency_us']:>10.2f}"
+            f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
         )
     print(f"{'=' * 72}\n")
     return results

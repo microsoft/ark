@@ -17,11 +17,6 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 )
 
-# Directory containing this file — used to propagate the examples parent for
-# package imports in subprocesses.
-_EXAMPLES_QWEN3_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
 def _has_compiled_ark(parent_dir: str) -> bool:
     """Return True if *parent_dir*/ark/ contains the compiled C++ extension.
 
@@ -39,6 +34,22 @@ def _has_compiled_ark(parent_dir: str) -> bool:
     )
 
 
+def _build_root_from_python_parent(parent_dir: str):
+    """Infer the CMake build root from a build-tree Python package path."""
+    if os.path.basename(parent_dir) != "python":
+        return None
+    build_root = os.path.dirname(parent_dir)
+    if os.path.isdir(build_root):
+        return build_root
+    return None
+
+
+def _append_unique(paths, path):
+    """Append *path* to *paths* once when it is non-empty."""
+    if path and path not in paths:
+        paths.append(path)
+
+
 def _subprocess_env(world_size: int) -> dict:
     """Build env dict for worker subprocesses.
 
@@ -49,9 +60,11 @@ def _subprocess_env(world_size: int) -> dict:
       3. ``<repo>/build/python`` or ``<repo>/python``.
       4. inherited ``PYTHONPATH``.
 
-    Also propagates the examples parent for package imports in workers.
+    Also propagates the repo root for package imports in workers and sets
+    ``ARK_ROOT`` / ``LD_LIBRARY_PATH`` when a build-tree package is found.
     """
     extra = []  # type: list[str]
+    resolved_ark_root = None
 
     # --- Primary: resolve from the running interpreter's import state ---
     try:
@@ -67,8 +80,11 @@ def _subprocess_env(world_size: int) -> dict:
             else:
                 ark_parent = None
             if ark_parent and _has_compiled_ark(ark_parent):
-                if ark_parent not in extra:
-                    extra.append(ark_parent)
+                _append_unique(extra, ark_parent)
+                if resolved_ark_root is None:
+                    resolved_ark_root = _build_root_from_python_parent(
+                        ark_parent
+                    )
     except (ModuleNotFoundError, ValueError, TypeError):
         pass
 
@@ -80,29 +96,31 @@ def _subprocess_env(world_size: int) -> dict:
         if not entry:
             continue
         if _has_compiled_ark(entry):
-            if entry not in extra:
-                extra.append(entry)
+            _append_unique(extra, entry)
+            if resolved_ark_root is None:
+                resolved_ark_root = _build_root_from_python_parent(entry)
             break
 
     # --- Fallback: $ARK_ROOT/python ---
     ark_root = os.environ.get("ARK_ROOT", "")
     if ark_root:
+        ark_root = os.path.abspath(ark_root)
         ark_root_py = os.path.join(ark_root, "python")
         if _has_compiled_ark(ark_root_py):
-            if ark_root_py not in extra:
-                extra.append(ark_root_py)
+            _append_unique(extra, ark_root_py)
+            if resolved_ark_root is None:
+                resolved_ark_root = ark_root
 
     # --- Fallback: repo build/python or python ---
     for subdir in ("build/python", "python"):
         candidate = os.path.join(_REPO_ROOT, subdir)
         if _has_compiled_ark(candidate):
-            if candidate not in extra:
-                extra.append(candidate)
+            _append_unique(extra, candidate)
+            if resolved_ark_root is None:
+                resolved_ark_root = _build_root_from_python_parent(candidate)
 
-    # --- Propagate examples parent for package imports ---
-    examples_parent = os.path.dirname(_EXAMPLES_QWEN3_DIR)
-    if examples_parent not in extra:
-        extra.append(examples_parent)
+    # --- Propagate repo root for examples.qwen3 package imports ---
+    _append_unique(extra, _REPO_ROOT)
 
     # --- Inherited PYTHONPATH ---
     existing = os.environ.get("PYTHONPATH", "")
@@ -127,4 +145,20 @@ def _subprocess_env(world_size: int) -> dict:
     }
     if extra:
         env["PYTHONPATH"] = os.pathsep.join(extra)
+    if resolved_ark_root is not None:
+        env["ARK_ROOT"] = resolved_ark_root
+
+    ld_paths = []
+    for root in (resolved_ark_root, ark_root):
+        if not root:
+            continue
+        for subdir in ("", "lib", "ark", os.path.join("python", "ark")):
+            candidate = os.path.join(root, subdir)
+            if os.path.isdir(candidate):
+                _append_unique(ld_paths, candidate)
+    existing_ld = os.environ.get("LD_LIBRARY_PATH", "")
+    if existing_ld:
+        _append_unique(ld_paths, existing_ld)
+    if ld_paths:
+        env["LD_LIBRARY_PATH"] = os.pathsep.join(ld_paths)
     return env
