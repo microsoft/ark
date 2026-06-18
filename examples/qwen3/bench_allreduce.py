@@ -21,6 +21,7 @@ NO torch device sync while launched, NO CUDA events.
 
 import argparse
 import os
+import pathlib
 import subprocess
 import sys
 
@@ -101,6 +102,19 @@ SHAPES = {
     "decode": ("decode  (1, 4096)", 4096),
     "prefill": ("prefill (2048, 4096)", 2048 * 4096),
 }
+
+
+def _current_git_sha():
+    """Return the source checkout SHA used for this benchmark."""
+    root = pathlib.Path(__file__).resolve().parents[2]
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
 
 
 def run_bench(world_size, timeout, shape):
@@ -222,6 +236,7 @@ def main():
 
     # Repeated-iteration timing is intentionally unsupported until packet flag
     # rotation/reset exists.
+    print(f"BENCH_SHA sha={_current_git_sha()}")
     results, any_failed = run_bench(args.world_size, args.timeout, args.shape)
 
     gate_shape = "prefill" if args.shape == "all" else args.shape

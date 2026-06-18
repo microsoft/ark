@@ -168,14 +168,14 @@ Json ModelOpRecv::default_config([[maybe_unused]] const ArchRef arch) const {
             {"Wait", true}};
 }
 
-Json ModelOpRecvNoWait::default_config(
+Json ModelOpAllReducePrefillRecvNoWait::default_config(
     [[maybe_unused]] const ArchRef arch) const {
     Json config = ModelOpRecv::default_config(arch);
     config["Wait"] = false;
     return config;
 }
 
-Json ModelOpSendSm::default_config([[maybe_unused]] const ArchRef arch) const {
+Json ModelOpAllReducePrefillSendSm::default_config([[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["ChannelType"] = "Sm";
     config["Signal"] = false;
@@ -664,7 +664,7 @@ Json ModelOpRecvReduceSend::default_config(
     return config;
 }
 
-Json ModelOpRecvReduceSendSm::default_config(
+Json ModelOpAllReducePrefillRecvReduceSendSm::default_config(
     [[maybe_unused]] const ArchRef arch) const {
     Json config = ModelOpRecvReduceSend::default_config(arch);
     config["NumWarps"] = 8;

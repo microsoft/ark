@@ -45,17 +45,21 @@ class ModelOpRecv : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
-class ModelOpRecvNoWait : public ModelOpRecv {
+// Internal default-config preset for large/prefill all-reduce; still emits
+// the underlying Recv op type.
+class ModelOpAllReducePrefillRecvNoWait : public ModelOpRecv {
    public:
-    ModelOpRecvNoWait() = default;
+    ModelOpAllReducePrefillRecvNoWait() = default;
     using ModelOpRecv::ModelOpRecv;
 
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
-class ModelOpSendSm : public ModelOpSend {
+// Internal default-config preset for large/prefill all-reduce; still emits
+// the underlying Send op type.
+class ModelOpAllReducePrefillSendSm : public ModelOpSend {
    public:
-    ModelOpSendSm() = default;
+    ModelOpAllReducePrefillSendSm() = default;
     using ModelOpSend::ModelOpSend;
 
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
@@ -119,9 +123,11 @@ class ModelOpRecvReduceSend : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
-class ModelOpRecvReduceSendSm : public ModelOpRecvReduceSend {
+// Internal default-config preset for large/prefill all-reduce; still emits
+// the underlying RecvReduceSend op type.
+class ModelOpAllReducePrefillRecvReduceSendSm : public ModelOpRecvReduceSend {
    public:
-    ModelOpRecvReduceSendSm() = default;
+    ModelOpAllReducePrefillRecvReduceSendSm() = default;
     using ModelOpRecvReduceSend::ModelOpRecvReduceSend;
 
     Json default_config(const ArchRef arch = ARCH_ANY) const override;

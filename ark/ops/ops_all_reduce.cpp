@@ -83,6 +83,12 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         return ring_all_reduce();
     }
 
+    constexpr size_t sm_tile_elems = 64 * 8 * 8;
+    size_t nelems_per_rank = nelems / gpu_num;
+    if ((nelems_per_rank % sm_tile_elems) != 0) {
+        return ring_all_reduce();
+    }
+
     if (is_registered_external(input)) {
         input = this->copy(input);
     }
@@ -100,16 +106,14 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     Tensor reshaped_input = this->reshape(input, {static_cast<DimType>(nelems)});
     Tensor reshaped_output =
         this->reshape(collective_output, {static_cast<DimType>(nelems)});
-    DimType nelems_per_rank = static_cast<DimType>(nelems / gpu_num);
+    DimType nelems_per_rank_dim = static_cast<DimType>(nelems_per_rank);
     std::vector<Tensor> sharded_inputs =
-        this->sharding(reshaped_input, 0, nelems_per_rank);
+        this->sharding(reshaped_input, 0, nelems_per_rank_dim);
     std::vector<Tensor> sharded_outputs =
-        this->sharding(reshaped_output, 0, nelems_per_rank);
+        this->sharding(reshaped_output, 0, nelems_per_rank_dim);
 
     int send_tag = this->unique_tag();
     int output_tag = this->unique_tag();
-    tags_.insert(send_tag);
-    tags_.insert(output_tag);
 
     std::vector<int> remote_ranks;
     for (int i = 0; i < gpu_num; ++i) {
@@ -119,19 +123,19 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     }
 
     int n_peers = gpu_num - 1;
-    Tensor scratch = this->tensor({nelems_per_rank * n_peers},
+    Tensor scratch = this->tensor({nelems_per_rank_dim * n_peers},
                                   reshaped_input.data_type());
     std::vector<Tensor> send_deps;
-    ark::Dims scratch_strides = {nelems_per_rank * n_peers};
-    ark::Dims scratch_padded = {nelems_per_rank};
+    ark::Dims scratch_strides = {nelems_per_rank_dim * n_peers};
+    ark::Dims scratch_padded = {nelems_per_rank_dim};
     for (int dst = 0; dst < gpu_num; ++dst) {
         if (dst == gpu_id) continue;
         int remote_slot = dst < gpu_id ? gpu_id - 1 : gpu_id;
         Tensor remote_scratch = this->tensor(
-            {nelems_per_rank}, reshaped_input.data_type(), scratch_strides,
-            ark::Dims(nelems_per_rank * remote_slot), scratch_padded, dst);
+            {nelems_per_rank_dim}, reshaped_input.data_type(), scratch_strides,
+            ark::Dims(nelems_per_rank_dim * remote_slot), scratch_padded, dst);
         Tensor send = impl_
-                          ->create_op<ModelOpSendSm>(
+                          ->create_op<ModelOpAllReducePrefillSendSm>(
                               "all_reduce_prefill_send",
                               sharded_inputs[dst].ref(), dst, send_tag,
                               remote_scratch.ref())
@@ -140,22 +144,24 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     }
 
     Tensor sends_done = this->identity(reshaped_input, send_deps);
+    // Use the default Proxy DeviceSync as an inter-rank barrier independent of
+    // the SM data movement in the large-message path.
     Tensor scatter_sync = this->device_sync(sends_done, gpu_id, gpu_num);
     Tensor local_input = this->identity(sharded_inputs[gpu_id], {scatter_sync});
 
     std::vector<ModelTensorRef> peer_output_refs;
     ark::Dims output_strides = {static_cast<DimType>(nelems)};
-    ark::Dims output_padded = {nelems_per_rank};
+    ark::Dims output_padded = {nelems_per_rank_dim};
     for (int peer : remote_ranks) {
         Tensor peer_output = this->tensor(
-            {nelems_per_rank}, reshaped_output.data_type(), output_strides,
-            ark::Dims(nelems_per_rank * gpu_id), output_padded, peer);
+            {nelems_per_rank_dim}, reshaped_output.data_type(), output_strides,
+            ark::Dims(nelems_per_rank_dim * gpu_id), output_padded, peer);
         peer_output_refs.push_back(peer_output.ref());
     }
 
     Tensor local_reduced =
         impl_
-            ->create_op<ModelOpRecvReduceSendSm>(
+            ->create_op<ModelOpAllReducePrefillRecvReduceSendSm>(
                 "all_reduce_prefill_reduce_scatter", local_input.ref(),
                 sharded_outputs[gpu_id].ref(), gpu_id, remote_ranks, send_tag,
                 output_tag, peer_output_refs, scratch.ref())
@@ -165,7 +171,7 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     recv_deps.push_back(local_reduced);
     for (int peer : remote_ranks) {
         Tensor recv = impl_
-                          ->create_op<ModelOpRecvNoWait>(
+                          ->create_op<ModelOpAllReducePrefillRecvNoWait>(
                               "all_reduce_prefill_recv",
                               sharded_outputs[peer].ref(), peer, output_tag)
                           ->result_tensors()[0];
