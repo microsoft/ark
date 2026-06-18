@@ -78,21 +78,46 @@ print(f"{214.69 / 657.0:.10f}")
 PY
 )
 
-tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
-status=0
-if [[ -n "$bench" ]]; then
-  python3 "$bench" --world-size 2 --shape decode \
-    >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-  python3 "$bench" --world-size 8 --shape decode \
-    >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
-else
-  : >"$tmpdir/tp2.log"
-  : >"$tmpdir/tp8.log"
-  status=1
+log_dir=${Q7P2_PERF_LOG_DIR:-}
+if [[ -z "$log_dir" ]]; then
+  if [[ -n "$repo_root" ]]; then
+    log_dir="$repo_root"
+  else
+    log_dir="$PWD"
+  fi
+fi
+mkdir -p "$log_dir"
+tp2_log="$log_dir/q7p2_allreduce_tp2.log"
+tp8_log="$log_dir/q7p2_allreduce_tp8.log"
+
+commit_sha="unknown"
+if [[ -n "$repo_root" ]] && \
+  git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  commit_sha=$(git -C "$repo_root" rev-parse HEAD)
 fi
 
-parse_out=$(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" <<'PY'
+run_decode() {
+  local world_size=$1
+  local log_path=$2
+  {
+    printf 'Q7.2 SHA: %s\n' "$commit_sha"
+    printf 'Command: python3 %s --world-size %s --shape decode\n' \
+      "$bench" "$world_size"
+    printf 'Timing: single iteration, max rank, decode no-copy gate\n'
+  } >"$log_path"
+  if [[ -z "$bench" ]]; then
+    printf 'ERROR: examples/qwen3/bench_allreduce.py not found\n' >>"$log_path"
+    return 1
+  fi
+  python3 "$bench" --world-size "$world_size" --shape decode \
+    >>"$log_path" 2>&1
+}
+
+status=0
+run_decode 2 "$tp2_log" || status=1
+run_decode 8 "$tp8_log" || status=1
+
+parse_out=$(python3 - "$tp2_log" "$tp8_log" <<'PY'
 import pathlib
 import re
 import sys
