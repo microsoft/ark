@@ -257,7 +257,8 @@ int main() {
     UNITTEST(test_codegen_external_buffer_offset_rejected);
     UNITTEST(test_codegen_normal_offset);
     UNITTEST(test_all_reduce_packet_external_input_is_staged);
-    UNITTEST(test_all_reduce_packet_invalid_external_input_does_not_mutate_graph);
+    UNITTEST(
+        test_all_reduce_packet_invalid_external_input_does_not_mutate_graph);
     UNITTEST(test_all_reduce_packet_internal_input_is_not_staged);
     UNITTEST(test_codegen_missing_buffer_id);
     return 0;
