@@ -4,6 +4,7 @@
 #include "codegen.hpp"
 
 #include <list>
+#include <set>
 #include <utility>
 
 #include "ark/data_type.hpp"
@@ -282,6 +283,12 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
     for (auto &op_json : task_json["Ops"]) {
         auto op = ModelOp::deserialize(op_json);
         auto impl_args = op->impl_args(op_json["Config"]);
+        std::set<size_t> external_offset_buffer_ids;
+        if (op->type()->type_name() == "AllReducePacketFused" &&
+            !op->read_tensors().empty()) {
+            external_offset_buffer_ids.insert(
+                op->read_tensors()[0]->buffer()->id());
+        }
         ss_desc << "  __op_" << std::hex << op_hash_list[op_idx++] << std::dec
                 << "(";
         for (auto &arg : impl_args) {
@@ -311,22 +318,28 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                 ss_desc << "(" << tns->data_type()->type_str() << "*)_"
                         << ptr_idx;
             } else if (arg.type_name() == "OFFSET") {
-                // OFFSET args are offsets into ARK registered memory; external
-                // placeholders must be passed through TENSOR-pointer kernels or
-                // staged into internal tensors before OFFSET-only kernels.
+                // OFFSET args are offsets into ARK registered memory. The
+                // fused packet all-reduce also accepts the external input
+                // tensor's offset because the kernel receives that tensor as a
+                // pointer argument and uses the offset only to detect the
+                // internal registered-buffer fast path.
                 auto moff = arg.value<ModelOffset>();
                 size_t buffer_id = moff.buffer_id();
                 auto buf_info = buf_reg.get(buffer_id);
                 if (buf_info && buf_info->is_external) {
-                    ERR(InternalError, "cannot offset external buffer");
+                    if (!external_offset_buffer_ids.count(buffer_id)) {
+                        ERR(InternalError, "cannot offset external buffer");
+                    }
+                    ss_desc << moff.value();
+                } else {
+                    auto it = buffer_id_to_offset_.find(buffer_id);
+                    if (it == buffer_id_to_offset_.end()) {
+                        ERR(InternalError, "buffer ID not found: ", buffer_id);
+                    }
+                    size_t buffer_offset = it->second;
+                    size_t offset = buffer_offset + moff.value();
+                    ss_desc << offset;
                 }
-                auto it = buffer_id_to_offset_.find(buffer_id);
-                if (it == buffer_id_to_offset_.end()) {
-                    ERR(InternalError, "buffer ID not found: ", buffer_id);
-                }
-                size_t buffer_offset = it->second;
-                size_t offset = buffer_offset + moff.value();
-                ss_desc << offset;
             } else {
                 ss_desc << arg.serialize().begin().value();
             }

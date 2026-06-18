@@ -4,8 +4,8 @@
 """Benchmark end-to-end ``ark.all_reduce_packet`` latency on torch input.
 
 Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
-(2048, 4096) shapes, including registered-memory staging when needed. Each
-rank runs as its own process and the parent reports max-rank latency.
+(2048, 4096) shapes. Decode torch inputs use the no-copy external-buffer path.
+Each rank runs as its own process and the parent reports max-rank latency.
 
     python -m examples.qwen3.bench_allreduce --world-size 8
 
@@ -51,7 +51,7 @@ ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 # Input is created and synchronized BEFORE launch, while no ARK loop kernel is
-# live (safe). The benchmark includes any staging done by ark.all_reduce_packet.
+# live (safe). Decode uses ark.all_reduce_packet's no-copy torch-input path.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 result = ark.all_reduce_packet(x, rank, world_size)
@@ -181,20 +181,25 @@ def run_bench(world_size, timeout, shape):
                 p.kill()
                 p.wait()
 
-    print(f"\n{'=' * 72}")
+    print(f"\n{'=' * 72}", file=sys.stderr)
     print(
         f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
-        f"(single iteration, max rank, includes staging)"
+        f"(single iteration, max rank, no-copy decode)",
+        file=sys.stderr,
     )
-    print(f"{'=' * 72}")
-    print(f"{'Shape':<24}{'Elements':>12}{'Max rank':>10}{'ARK us':>10}")
-    print(f"{'-' * 72}")
+    print(f"{'=' * 72}", file=sys.stderr)
+    print(
+        f"{'Shape':<24}{'Elements':>12}{'Max rank':>10}{'ARK us':>10}",
+        file=sys.stderr,
+    )
+    print(f"{'-' * 72}", file=sys.stderr)
     for d in results:
         print(
             f"{d['label']:<24}{d['n_elements']:>12,}"
-            f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
+            f"{d['max_rank']:>10}{d['latency_us']:>10.2f}",
+            file=sys.stderr,
         )
-    print(f"{'=' * 72}\n")
+    print(f"{'=' * 72}\n", file=sys.stderr)
     return results, any_failed
 
 
@@ -202,8 +207,7 @@ def main():
     ap = argparse.ArgumentParser(
         description=(
             "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
-            "at Qwen3 TP shapes, including registered-memory staging "
-            "when needed"
+            "at Qwen3 TP shapes; decode uses the no-copy external-buffer path"
         )
     )
     ap.add_argument("--world-size", type=int, default=2)

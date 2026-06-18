@@ -58,15 +58,31 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
             ") must be divisible by ", elems_per_uint32 * 2 * rank_num);
     }
 
-    // Copy external input into an internal buffer so it resides in mscclpp
-    // registered memory. Internal ARK tensors are already registered.
-    auto input_info =
-        BufferRegistry::get_instance().get(input.ref()->buffer()->id());
-    if (input.is_external() || (input_info && input_info->is_external)) {
-        input = this->copy(input);
+    auto &buf_reg = BufferRegistry::get_instance();
+    size_t input_id = input.ref()->buffer()->id();
+    auto input_info = buf_reg.get(input_id);
+    bool input_external =
+        input.is_external() || (input_info && input_info->is_external);
+    if (input_external && !input.offsets().is_no_dim() &&
+        !input.offsets().is_zeros()) {
+        ERR(ModelError,
+            "all_reduce_packet does not support external input offsets");
     }
 
-    if (output.is_null()) {
+    if (!output.is_null()) {
+        size_t output_id = output.ref()->buffer()->id();
+        auto output_info = buf_reg.get(output_id);
+        bool output_external =
+            output.is_external() || (output_info && output_info->is_external);
+        bool same_buffer = input_id == output_id;
+        bool same_data = input_info && output_info && input_info->data &&
+                         input_info->data == output_info->data;
+        if (input_external && output_external && (same_buffer || same_data)) {
+            ERR(ModelError,
+                "all_reduce_packet does not support aliased external "
+                "input/output");
+        }
+    } else {
         output = this->tensor(input.shape(), input.data_type());
     }
 

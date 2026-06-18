@@ -360,10 +360,9 @@ void test_all_reduce_packet_fused_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
-// Variant with external-buffer (placeholder) input — exercises staging the
-// external input into registered memory before the fused packet collective.
-// Cannot use op_test() because placeholders require pre-allocated GPU memory;
-// drive the executor manually instead.
+// Variant with external-buffer (placeholder) input — exercises the no-copy
+// fused packet collective path. Cannot use op_test() because placeholders
+// require pre-allocated GPU memory; drive the executor manually instead.
 template <int NumGpus>
 void test_all_reduce_packet_fused_ext_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {

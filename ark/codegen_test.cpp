@@ -118,18 +118,17 @@ ark::unittest::State test_codegen_normal_offset() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_all_reduce_packet_external_input_is_staged() {
+ark::unittest::State test_all_reduce_packet_external_input_uses_no_copy() {
     ark::Model model(0, 2);
     ark::Tensor input = model.placeholder({1024}, ark::FP16, {}, {}, {}, -1,
                                           reinterpret_cast<void *>(0x1));
     model.all_reduce_packet(input, 0, 2);
 
     size_t placeholder_id = input.ref()->buffer()->id();
-    auto placeholder_info =
-        ark::BufferRegistry::get_instance().get(placeholder_id);
+    auto &buf_reg = ark::BufferRegistry::get_instance();
+    auto placeholder_info = buf_reg.get(placeholder_id);
     UNITTEST_TRUE(placeholder_info && placeholder_info->is_external);
 
-    std::set<size_t> copy_output_ids;
     bool found_copy_from_placeholder = false;
     bool found_fused = false;
     for (auto &node : model.nodes()) {
@@ -139,11 +138,7 @@ ark::unittest::State test_all_reduce_packet_external_input_is_staged() {
         }
         if (op->type() == ark::ModelOpT::from_name("Copy")) {
             auto reads = op->read_tensors();
-            auto results = op->result_tensors();
             UNITTEST_TRUE(reads.size() > 0);
-            UNITTEST_TRUE(results.size() > 0);
-            size_t output_id = results[0]->buffer()->id();
-            copy_output_ids.insert(output_id);
             if (reads[0]->buffer()->id() == placeholder_id) {
                 found_copy_from_placeholder = true;
             }
@@ -153,15 +148,101 @@ ark::unittest::State test_all_reduce_packet_external_input_is_staged() {
             auto reads = op->read_tensors();
             UNITTEST_TRUE(reads.size() > 0);
             size_t fused_input_id = reads[0]->buffer()->id();
-            UNITTEST_TRUE(fused_input_id != placeholder_id);
-            UNITTEST_TRUE(copy_output_ids.count(fused_input_id) > 0);
-            auto fused_info =
-                ark::BufferRegistry::get_instance().get(fused_input_id);
-            UNITTEST_FALSE(fused_info && fused_info->is_external);
+            UNITTEST_EQ(fused_input_id, placeholder_id);
+            auto fused_info = buf_reg.get(fused_input_id);
+            UNITTEST_TRUE(fused_info && fused_info->is_external);
         }
     }
-    UNITTEST_TRUE(found_copy_from_placeholder);
+    UNITTEST_FALSE(found_copy_from_placeholder);
     UNITTEST_TRUE(found_fused);
+
+    ark::Planner planner(model, 0);
+    auto plan = ark::Json::parse(planner.plan(false));
+    auto offset_buf_ids = collect_offset_buffer_ids(plan);
+    auto tensor_buf_ids = collect_tensor_buffer_ids(plan);
+    std::map<size_t, size_t> buf_id_to_offset;
+    std::set<size_t> extra;
+    for (size_t id : offset_buf_ids) {
+        auto info = buf_reg.get(id);
+        if (info && info->is_external) {
+            extra.insert(id);
+        } else {
+            buf_id_to_offset[id] = 0;
+        }
+    }
+    for (size_t id : tensor_buf_ids) {
+        auto info = buf_reg.get(id);
+        if (info && info->is_external) {
+            extra.insert(id);
+        } else {
+            buf_id_to_offset[id] = 0;
+        }
+    }
+
+    ark::PlanJson pj(plan);
+    ark::CodeGenerator codegen(pj, buf_id_to_offset, extra);
+    UNITTEST_TRUE(codegen.code().size() > 0);
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_recv_packet_external_output_offset_rejected() {
+    ark::Model model(0, 2);
+    ark::Tensor output = model.placeholder({1024}, ark::FP16, {}, {}, {}, -1,
+                                           reinterpret_cast<void *>(0x1));
+    model.recv_packet(output, 1, /*tag=*/0, /*flag=*/1);
+
+    ark::Planner planner(model, 0);
+    auto plan = ark::Json::parse(planner.plan(false));
+    auto offset_buf_ids = collect_offset_buffer_ids(plan);
+    auto tensor_buf_ids = collect_tensor_buffer_ids(plan);
+    UNITTEST_TRUE(offset_buf_ids.size() > 0);
+
+    auto &buf_reg = ark::BufferRegistry::get_instance();
+    std::map<size_t, size_t> buf_id_to_offset;
+    std::set<size_t> extra;
+    for (size_t id : offset_buf_ids) {
+        auto info = buf_reg.get(id);
+        if (info && info->is_external) {
+            extra.insert(id);
+        } else {
+            buf_id_to_offset[id] = 0;
+        }
+    }
+    for (size_t id : tensor_buf_ids) {
+        auto info = buf_reg.get(id);
+        if (info && info->is_external) {
+            extra.insert(id);
+        } else {
+            buf_id_to_offset[id] = 0;
+        }
+    }
+
+    ark::PlanJson pj(plan);
+    UNITTEST_THROW(ark::CodeGenerator(pj, buf_id_to_offset, extra),
+                   ark::InternalError);
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_packet_aliased_external_output_rejected() {
+    ark::Model model(0, 2);
+    void *data = reinterpret_cast<void *>(0x1);
+    ark::Tensor input =
+        model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, data);
+    ark::Tensor output =
+        model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, data);
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2, output),
+                   ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
 
     return ark::unittest::SUCCESS;
 }
@@ -256,7 +337,9 @@ ark::unittest::State test_codegen_missing_buffer_id() {
 int main() {
     UNITTEST(test_codegen_external_buffer_offset_rejected);
     UNITTEST(test_codegen_normal_offset);
-    UNITTEST(test_all_reduce_packet_external_input_is_staged);
+    UNITTEST(test_all_reduce_packet_external_input_uses_no_copy);
+    UNITTEST(test_recv_packet_external_output_offset_rejected);
+    UNITTEST(test_all_reduce_packet_aliased_external_output_rejected);
     UNITTEST(
         test_all_reduce_packet_invalid_external_input_does_not_mutate_graph);
     UNITTEST(test_all_reduce_packet_internal_input_is_not_staged);

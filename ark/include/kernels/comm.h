@@ -512,11 +512,25 @@ DEVICE void allreduce_packet_fused(DataType *output, DataType *input,
         auto &chan = ARK_SM_CHANS[remote_rank];
         uint64_t dst_off =
             scratch_offset_remote + Rank * NPktsPerRank * sizeof(PacketType);
-        uint64_t src_off =
-            input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
-        chan.template putPackets<PacketType>(
-            dst_off, src_off, NelemsPerRank * sizeof(uint32_t), peer_tid,
-            peer_total_threads, Flag);
+        char *registered_input =
+            reinterpret_cast<char *>(chan.src_) + input_offset;
+        if (reinterpret_cast<char *>(input) == registered_input) {
+            uint64_t src_off =
+                input_offset + remote_rank * NelemsPerRank * sizeof(uint32_t);
+            chan.template putPackets<PacketType>(
+                dst_off, src_off, NelemsPerRank * sizeof(uint32_t), peer_tid,
+                peer_total_threads, Flag);
+        } else {
+            char *remote_base = reinterpret_cast<char *>(chan.dst_);
+            PacketType *remote_pkt =
+                reinterpret_cast<PacketType *>(remote_base + dst_off);
+            uint2 *src =
+                reinterpret_cast<uint2 *>(input) + remote_rank * NPktsPerRank;
+            for (int idx = peer_tid; idx < NPktsPerRank;
+                 idx += peer_total_threads) {
+                remote_pkt[idx].write(src[idx], Flag);
+            }
+        }
     }
 
     // ----- Phase 2: reduce local rank's shard, scatter result to peers -----
