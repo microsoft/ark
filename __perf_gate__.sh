@@ -100,12 +100,12 @@ if [[ -z "$commit_sha" ]]; then
 fi
 
 # Tuned Q7.2 decode no-copy schedule from A100 TP sweep:
-# 2 blocks per peer, 16 warps per block. Each trial is still one ARK runtime
+# 2 blocks per peer, 1 warp per block. Each trial is still one ARK runtime
 # iteration and reports max-rank latency; the gate uses the median across
 # independent trial processes to reject transient node jitter, not failed ranks.
 trials=${Q7P2_PERF_TRIALS:-3}
 blocks_per_peer=${Q7P2_BLOCKS_PER_PEER:-2}
-num_warps=${Q7P2_NUM_WARPS:-16}
+num_warps=${Q7P2_NUM_WARPS:-1}
 
 decode_config() {
   local world_size=$1
