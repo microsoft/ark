@@ -114,11 +114,10 @@ os._exit(0)
 # SGLang amortized figure, which is a whole decode trace / 36 layers).
 _MSCCLPP_CEIL_US = {4096: 11.7, 2048 * 4096: 188.0}
 
-# SGLang per-layer all-reduce budget (PROFILE.md: 214.69 ms total comm over
-# 36 Qwen3-8B layers, TP=8 batch=1 decode-dominated trace on 8xA100).
-# Each layer has ~2 all-reduce calls (attn + MLP); this is the layer-level
-# budget ARK must beat.
-_SGLANG_PER_LAYER_MS = 214.69 / 36  # ≈ 5.964 ms
+# Q7 decode target: the mscclpp-NCCL 8 KB all-reduce ceiling above.
+# The PERF_GATE field is named sglang_ms by convention, but this component's
+# accepted target is the local PROFILE-derived 11.7 us comm ceiling.
+_DECODE_TARGET_MS = _MSCCLPP_CEIL_US[4096] / 1000.0
 
 SHAPES = [
     ("decode  (1, 4096)", 4096),
@@ -152,11 +151,14 @@ def run_bench(world_size, warmup, n_iters, timeout):
                     env=_subprocess_env(world_size),
                 )
             )
+        shape_failed = False
+        shape_result = None
         try:
             for rank, p in enumerate(procs):
                 try:
                     out, err = p.communicate(timeout=timeout)
                 except subprocess.TimeoutExpired:
+                    shape_failed = True
                     print(
                         f"ERROR rank={rank} {label}: timed out after "
                         f"{timeout}s",
@@ -164,13 +166,18 @@ def run_bench(world_size, warmup, n_iters, timeout):
                     )
                     break
                 if p.returncode != 0:
+                    shape_failed = True
                     print(
                         f"ERROR rank={rank} {label}: "
                         f"{err.decode().strip()[-500:]}",
                         file=sys.stderr,
                     )
                 if rank == 0 and out.strip():
-                    results.append(json.loads(out.decode().strip()))
+                    shape_result = json.loads(out.decode().strip())
+            if not shape_failed and shape_result is not None:
+                results.append(shape_result)
+            elif not shape_failed:
+                print(f"ERROR rank=0 {label}: no result", file=sys.stderr)
         finally:
             for p in procs:
                 p.kill()
@@ -211,13 +218,13 @@ def main():
 
     results = run_bench(args.world_size, args.warmup, args.iters, args.timeout)
 
-    # PERF_GATE on the decode shape vs SGLang per-layer budget.
+    # PERF_GATE on the decode shape vs the recorded 11.7 us comm ceiling.
     decode = [r for r in results if r["n_elements"] == 4096]
     if decode:
         ark_ms = decode[0]["mean_us"] / 1000.0
     else:
         ark_ms = 999999.0  # workers failed
-    sglang_ms = _SGLANG_PER_LAYER_MS
+    sglang_ms = _DECODE_TARGET_MS
     ratio = ark_ms / sglang_ms if sglang_ms > 0 else 999999.0
     print(
         f"PERF_GATE name=allreduce_decode"

@@ -56,8 +56,10 @@ ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 # --- Input: deterministic per-rank values (BEFORE ARK launch) ---
+# Generate on CPU first so the host reference uses the exact same values.
 torch.manual_seed(42 + rank)
-x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
+x_cpu = torch.randn(n_elements, dtype=torch.float16)
+x = x_cpu.to(device=f"cuda:{rank}")
 
 # Build ARK graph (no GPU kernel launched yet).
 result = ark.all_reduce_packet(x, rank, world_size)
@@ -72,7 +74,7 @@ with ark.Runtime() as rt:
 result_cpu = result.to_torch().cpu()
 
 # --- Expected: sum of all ranks' inputs ---
-# Regenerate all ranks' inputs on CPU and sum them.
+# Regenerate all ranks' CPU inputs and sum them.
 expected = torch.zeros(n_elements, dtype=torch.float16)
 for r in range(world_size):
     torch.manual_seed(42 + r)
