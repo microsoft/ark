@@ -66,14 +66,20 @@ ark.set_world_size(world_size)
 torch.manual_seed(42 + rank)
 x_cpu = torch.randn(n_elements, dtype=torch.float16)
 x = x_cpu.to(device=f"cuda:{rank}")
+# Safe: ARK has not launched yet, so the GPU copy can be synchronized.
+torch.cuda.synchronize(rank)
 
 # Build ARK graph (no GPU kernel launched yet).
 result = ark.all_reduce_packet(x, rank, world_size)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
+    if world_size > 1:
+        rt.barrier()
     # Single iteration — correctness, not throughput.
     rt.run(iter=1)
+    if world_size > 1:
+        rt.barrier()
     rt.stop()
 
 # --- D2H transfer AFTER runtime stopped (safe: no ARK loop kernel live) ---
@@ -108,6 +114,24 @@ if rank == 0:
 Executor.reset()
 os._exit(0 if close else 1)
 '''
+
+
+def _load_worker_result(stdout):
+    """Return the last JSON object from worker stdout, ignoring log lines."""
+    for line in reversed(stdout.decode().splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _tail(data, limit=500):
+    """Return a short decoded tail for subprocess diagnostics."""
+    return data.decode(errors="replace").strip()[-limit:]
 
 
 def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
@@ -145,10 +169,15 @@ def _run_allreduce_test(world_size: int, n_elements: int, timeout: int = 120):
             if p.returncode != 0:
                 errors.append(
                     f"rank {rank}: exit={p.returncode} "
-                    f"stderr={err.decode().strip()[-300:]}"
+                    f"stderr={_tail(err, 300)}"
                 )
             if rank == 0 and out.strip():
-                result_json = json.loads(out.decode().strip())
+                result_json = _load_worker_result(out)
+                if result_json is None:
+                    errors.append(
+                        "rank 0: stdout contained no JSON result "
+                        f"stdout_tail={_tail(out)} stderr_tail={_tail(err)}"
+                    )
     finally:
         for p in procs:
             p.kill()

@@ -5,6 +5,10 @@
 
 Used by both ``bench_allreduce.py`` and ``test_allreduce.py`` to build
 a consistent PYTHONPATH / CUDA_VISIBLE_DEVICES env for worker processes.
+Workers are launched from ``cwd="/"``, so a simple relative path prepend is
+not enough. Prefer the checkout/build under ``ARK_ROOT`` while also supporting
+an already-imported or build-tree ``ark`` package, and synthesize
+``LD_LIBRARY_PATH`` only when a build root can be inferred.
 """
 
 import glob
@@ -16,6 +20,7 @@ import sys
 _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 )
+
 
 def _has_compiled_ark(parent_dir: str) -> bool:
     """Return True if *parent_dir*/ark/ contains the compiled C++ extension.
@@ -54,19 +59,30 @@ def _subprocess_env(world_size: int) -> dict:
     """Build env dict for worker subprocesses.
 
     Resolution order for the ``ark`` package path:
-      1. ``importlib.util.find_spec("ark")`` — wherever the parent already
+      1. ``$ARK_ROOT/python`` (CI sets ``ARK_ROOT=$PWD``).
+      2. ``importlib.util.find_spec("ark")`` — wherever the parent already
          resolved ark (handles build-tree, install, and namespace packages).
-      2. ``$ARK_ROOT/python`` (CI sets ``ARK_ROOT=$PWD``).
-      3. ``<repo>/build/python`` or ``<repo>/python``.
-      4. inherited ``PYTHONPATH``.
+      3. ``sys.path`` entries for any other compiled ``ark`` package.
+      4. ``<repo>/build/python`` or ``<repo>/python``.
+      5. inherited ``PYTHONPATH``.
 
     Also propagates the repo root for package imports in workers and sets
     ``ARK_ROOT`` / ``LD_LIBRARY_PATH`` when a build-tree package is found.
     """
     extra = []  # type: list[str]
     resolved_ark_root = None
+    ark_root = os.environ.get("ARK_ROOT", "")
 
-    # --- Primary: resolve from the running interpreter's import state ---
+    # --- Primary: $ARK_ROOT/python ---
+    # Prefer the checkout under test over inherited PYTHONPATH entries.
+    if ark_root:
+        ark_root = os.path.abspath(ark_root)
+        ark_root_py = os.path.join(ark_root, "python")
+        if _has_compiled_ark(ark_root_py):
+            _append_unique(extra, ark_root_py)
+            resolved_ark_root = ark_root
+
+    # --- Secondary: resolve from the running interpreter's import state ---
     try:
         spec = importlib.util.find_spec("ark")
         if spec is not None:
@@ -88,7 +104,7 @@ def _subprocess_env(world_size: int) -> dict:
     except (ModuleNotFoundError, ValueError, TypeError):
         pass
 
-    # --- Secondary: scan sys.path for a compiled ark package ---
+    # --- Tertiary: scan sys.path for a compiled ark package ---
     # When PYTHONPATH points at the source tree (e.g., /w/python),
     # find_spec("ark") resolves to source-only ark/ (no core*.so).
     # Keep searching for an installed/built ark with compiled extension.
@@ -100,16 +116,6 @@ def _subprocess_env(world_size: int) -> dict:
             if resolved_ark_root is None:
                 resolved_ark_root = _build_root_from_python_parent(entry)
             break
-
-    # --- Fallback: $ARK_ROOT/python ---
-    ark_root = os.environ.get("ARK_ROOT", "")
-    if ark_root:
-        ark_root = os.path.abspath(ark_root)
-        ark_root_py = os.path.join(ark_root, "python")
-        if _has_compiled_ark(ark_root_py):
-            _append_unique(extra, ark_root_py)
-            if resolved_ark_root is None:
-                resolved_ark_root = ark_root
 
     # --- Fallback: repo build/python or python ---
     for subdir in ("build/python", "python"):

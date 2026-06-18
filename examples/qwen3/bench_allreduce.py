@@ -94,10 +94,10 @@ os._exit(0)
 # on 8xA100 TP=8, batch=1 decode-dominated Qwen3-8B.
 _DECODE_TARGET_MS = 214.69 / 657.0
 
-SHAPES = [
-    ("decode  (1, 4096)", 4096),
-    ("prefill (2048, 4096)", 2048 * 4096),
-]
+SHAPES = {
+    "decode": ("decode  (1, 4096)", 4096),
+    "prefill": ("prefill (2048, 4096)", 2048 * 4096),
+}
 
 
 def _load_worker_result(stdout):
@@ -113,9 +113,11 @@ def _load_worker_result(stdout):
     return None
 
 
-def run_bench(world_size, timeout):
+def run_bench(world_size, timeout, shape):
     results = []
-    for label, n_elements in SHAPES:
+    any_failed = False
+    shapes = SHAPES.values() if shape == "all" else [SHAPES[shape]]
+    for label, n_elements in shapes:
         procs = []
         for rank in range(world_size):
             procs.append(
@@ -180,12 +182,14 @@ def run_bench(world_size, timeout):
                         ],
                     }
                 )
-            elif not shape_failed:
-                print(
-                    f"ERROR {label}: expected {world_size} rank results, "
-                    f"got {len(rank_results)}",
-                    file=sys.stderr,
-                )
+            else:
+                any_failed = True
+                if not shape_failed:
+                    print(
+                        f"ERROR {label}: expected {world_size} rank results, "
+                        f"got {len(rank_results)}",
+                        file=sys.stderr,
+                    )
         finally:
             for p in procs:
                 p.kill()
@@ -205,25 +209,32 @@ def run_bench(world_size, timeout):
             f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
         )
     print(f"{'=' * 72}\n")
-    return results
+    return results, any_failed
 
 
 def main():
     ap = argparse.ArgumentParser(
         description=(
             "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
-            "at Qwen3 TP shapes, including registered-memory staging when needed"
+            "at Qwen3 TP shapes, including registered-memory staging "
+            "when needed"
         )
     )
     ap.add_argument("--world-size", type=int, default=2)
     ap.add_argument("--timeout", type=int, default=120)
+    ap.add_argument(
+        "--shape",
+        choices=("decode", "prefill", "all"),
+        default="all",
+        help="Qwen3 shape to benchmark; the perf gate uses decode",
+    )
     args = ap.parse_args()
 
     # Repeated-iteration timing is intentionally unsupported until packet flag
     # rotation/reset exists.
-    results = run_bench(args.world_size, args.timeout)
+    results, any_failed = run_bench(args.world_size, args.timeout, args.shape)
 
-    decode = [r for r in results if r["n_elements"] == 4096]
+    decode = [r for r in results if r["n_elements"] == SHAPES["decode"][1]]
     if decode:
         ark_ms = decode[0]["latency_us"] / 1000.0
     else:
@@ -235,6 +246,12 @@ def main():
         f" sglang_ms={_DECODE_TARGET_MS:.4f}"
         f" ratio={ratio:.4f}"
     )
+    if any_failed:
+        print("ERROR: one or more benchmark workers failed", file=sys.stderr)
+        raise SystemExit(1)
+    if not decode:
+        print("ERROR: decode benchmark produced no result", file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
