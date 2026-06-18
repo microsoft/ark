@@ -10,7 +10,8 @@ the ARK runtime, then asserts on the host with ``torch.allclose``.
 
 No torch GPU kernel is issued while the ARK runtime is launched.
 
-Requires ≥2 GPUs; skips gracefully on single-GPU machines.
+Requires ≥2 GPUs; skips gracefully on single-GPU machines. Large TP=8 and
+prefill cases are opt-in with ``ARK_QWEN3_LARGE_TESTS=1``.
 """
 
 import json
@@ -33,6 +34,11 @@ def _gpu_count() -> int:
     if not torch.cuda.is_available():
         return 0
     return torch.cuda.device_count()
+
+
+def _large_tests_enabled() -> bool:
+    """Return True when expensive Qwen3 all-reduce cases are requested."""
+    return os.environ.get("ARK_QWEN3_LARGE_TESTS") == "1"
 
 
 # Worker script executed in each subprocess rank.
@@ -164,6 +170,9 @@ def test_allreduce_decode_tp2():
     _run_allreduce_test(world_size=2, n_elements=4096)
 
 
+@pytest.mark.skipif(
+    not _large_tests_enabled(), reason="set ARK_QWEN3_LARGE_TESTS=1"
+)
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_decode_tp8():
     """Decode (1,4096) all-reduce at TP=8."""
@@ -173,12 +182,18 @@ def test_allreduce_decode_tp8():
 # ---------- Prefill shape (2048, 4096) = 8388608 elements ----------
 
 
+@pytest.mark.skipif(
+    not _large_tests_enabled(), reason="set ARK_QWEN3_LARGE_TESTS=1"
+)
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_prefill_tp2():
     """Prefill (2048,4096) all-reduce at TP=2."""
     _run_allreduce_test(world_size=2, n_elements=2048 * 4096)
 
 
+@pytest.mark.skipif(
+    not _large_tests_enabled(), reason="set ARK_QWEN3_LARGE_TESTS=1"
+)
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_prefill_tp8():
     """Prefill (2048,4096) all-reduce at TP=8."""

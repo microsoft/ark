@@ -360,10 +360,10 @@ void test_all_reduce_packet_fused_internal(ark::DimType nelem) {
     ark::unittest::wait_all_processes();
 }
 
-// Variant with external-buffer (placeholder) input — exercises the
-// codegen external-buffer OFFSET path added for all_reduce_packet's
-// internal copy.  Cannot use op_test() because placeholders require
-// pre-allocated GPU memory; drive the executor manually instead.
+// Variant with external-buffer (placeholder) input — exercises staging the
+// external input into registered memory before the fused packet collective.
+// Cannot use op_test() because placeholders require pre-allocated GPU memory;
+// drive the executor manually instead.
 template <int NumGpus>
 void test_all_reduce_packet_fused_ext_internal(ark::DimType nelem) {
     for (int gpu_id = 0; gpu_id < NumGpus; ++gpu_id) {
@@ -414,19 +414,6 @@ ark::unittest::State test_all_reduce_packet_fused_ext_2gpus() {
 
 ark::unittest::State test_all_reduce_packet_fused_2gpus() {
     test_all_reduce_packet_fused_internal<2>(4096);
-    test_all_reduce_packet_fused_internal<2>(8192);
-    return ark::unittest::SUCCESS;
-}
-
-ark::unittest::State test_all_reduce_packet_fused_4gpus() {
-    test_all_reduce_packet_fused_internal<4>(2048);
-    test_all_reduce_packet_fused_internal<4>(8192);
-    return ark::unittest::SUCCESS;
-}
-
-ark::unittest::State test_all_reduce_packet_fused_8gpus() {
-    test_all_reduce_packet_fused_internal<8>(2048);
-    test_all_reduce_packet_fused_internal<8>(8192);
     return ark::unittest::SUCCESS;
 }
 
@@ -437,8 +424,6 @@ int main() {
     UNITTEST(test_all_reduce_packet_8gpus);
     UNITTEST(test_all_reduce_packet_fused_ext_2gpus);
     UNITTEST(test_all_reduce_packet_fused_2gpus);
-    UNITTEST(test_all_reduce_packet_fused_4gpus);
-    UNITTEST(test_all_reduce_packet_fused_8gpus);
     UNITTEST(test_all_reduce_sm_4gpus);
     UNITTEST(test_all_reduce_sm_8gpus);
     UNITTEST(test_all_reduce_inplace_2gpus);

@@ -17,8 +17,8 @@ _REPO_ROOT = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 )
 
-# Directory containing this file — propagated so workers can import
-# sibling modules (microbench, qwen3_config, etc.) if needed.
+# Directory containing this file — used to propagate the examples parent for
+# package imports in subprocesses.
 _EXAMPLES_QWEN3_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -49,8 +49,7 @@ def _subprocess_env(world_size: int) -> dict:
       3. ``<repo>/build/python`` or ``<repo>/python``.
       4. inherited ``PYTHONPATH``.
 
-    Also propagates the ``examples/qwen3/`` directory so workers can
-    import sibling modules (microbench, qwen3_config) when needed.
+    Also propagates the examples parent for package imports in workers.
     """
     extra = []  # type: list[str]
 
@@ -100,7 +99,7 @@ def _subprocess_env(world_size: int) -> dict:
             if candidate not in extra:
                 extra.append(candidate)
 
-    # --- Propagate examples/qwen3 for sibling module imports ---
+    # --- Propagate examples parent for package imports ---
     examples_parent = os.path.dirname(_EXAMPLES_QWEN3_DIR)
     if examples_parent not in extra:
         extra.append(examples_parent)
@@ -110,9 +109,21 @@ def _subprocess_env(world_size: int) -> dict:
     if existing:
         extra.append(existing)
 
+    if "CUDA_VISIBLE_DEVICES" in os.environ:
+        visible = os.environ["CUDA_VISIBLE_DEVICES"]
+        devices = [d.strip() for d in visible.split(",") if d.strip()]
+        if len(devices) < world_size:
+            raise RuntimeError(
+                "CUDA_VISIBLE_DEVICES exposes fewer devices "
+                f"({len(devices)}) than world_size ({world_size})"
+            )
+        cuda_visible_devices = ",".join(devices[:world_size])
+    else:
+        cuda_visible_devices = ",".join(str(i) for i in range(world_size))
+
     env = {
         **os.environ,
-        "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(world_size)),
+        "CUDA_VISIBLE_DEVICES": cuda_visible_devices,
     }
     if extra:
         env["PYTHONPATH"] = os.pathsep.join(extra)

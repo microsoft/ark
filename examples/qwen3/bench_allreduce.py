@@ -1,33 +1,22 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Microbenchmark: ARK fused-packet all-reduce at Qwen3 TP shapes.
+"""Benchmark end-to-end ``ark.all_reduce_packet`` latency on torch input.
 
-Measures steady-state latency for decode (1, 4096) and prefill (2048, 4096)
-at TP=2 / TP=8. Each rank runs as its own process.
+Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
+(2048, 4096) shapes, including registered-memory staging when needed. Each
+rank runs as its own process.
 
     python -m examples.qwen3.bench_allreduce --world-size 8
 
-**REPEATED-CALL CAVEAT:** This bench times ``rt.run(iter=N)`` which re-executes
-the persistent loop kernel N times.  Single-call VALUE correctness is verified
-by ``test_allreduce.py``; multi-iteration value correctness (i.e., that repeated
-executions still produce correct results with the same registered buffers) is
-deferred to Q7.1.  The LATENCY measurement is valid regardless — the persistent-
-kernel timing mechanism (host wall-clock around ARK's completion flags) is
-independent of per-iteration value correctness.
-
-**PREFILL CAVEAT:** The packet all-reduce path doubles payload (each element
-is sent as a header+data packet), so prefill (2048, 4096) is ~5× slower than
-the mscclpp bandwidth ceiling.  A bandwidth-optimal ring-based algorithm is
-planned in Q7P.
-
 TIMING METHOD (critical): ARK runs a PERSISTENT loop kernel that owns all SMs
-between ``rt.launch()`` and ``rt.stop()`` — by design. Any torch GPU op issued
-while the runtime is live (``torch.cuda.synchronize``, ``torch.cuda.Event``,
-``torch.allclose``, ...) can never be scheduled and deadlocks. So we time with
-plain host wall-clock around ``rt.run(iter=N)`` (which host-blocks on ARK's own
-completion flags, not ``cudaDeviceSynchronize``) and align ranks with
-``rt.barrier()``. NO torch device sync, NO CUDA events.
+between ``rt.launch()`` and ``rt.stop()`` — by design. Torch synchronization is
+safe before ``rt.launch()``, but any torch GPU op issued while the runtime is
+live (``torch.cuda.synchronize``, ``torch.cuda.Event``, ``torch.allclose``, ...)
+can never be scheduled and deadlocks. So we time with plain host wall-clock
+around a single ``rt.run(iter=1)`` (which host-blocks on ARK's own completion
+flags, not ``cudaDeviceSynchronize``) and align ranks with ``rt.barrier()``.
+NO torch device sync while launched, NO CUDA events.
 """
 
 import argparse
@@ -43,7 +32,7 @@ except ImportError:
     from _env import _subprocess_env
 
 _WORKER_SCRIPT = '''
-"""Worker: time ARK all-reduce without any torch GPU op while launched."""
+"""Worker: time torch-input ARK all-reduce without torch ops while launched."""
 import json
 import os
 import sys
@@ -57,45 +46,39 @@ rank = int(sys.argv[1])
 world_size = int(sys.argv[2])
 n_elements = int(sys.argv[3])
 label = sys.argv[4]
-warmup = int(sys.argv[5])
-n_iters = int(sys.argv[6])
 
 ark.init()
 ark.set_rank(rank)
 ark.set_world_size(world_size)
 
-# Input is created BEFORE launch, while no ARK loop kernel is live (safe).
+# Input is created and synchronized BEFORE launch, while no ARK loop kernel is
+# live (safe). The benchmark includes any staging done by ark.all_reduce_packet.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
+torch.cuda.synchronize(rank)
 result = ark.all_reduce_packet(x, rank, world_size)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
 
-    # Warm up (blocks on ARK completion flags, not cudaDeviceSynchronize).
-    rt.run(iter=warmup)
     if world_size > 1:
         rt.barrier()
 
-    # Steady-state: one batched run of n_iters, host wall-clock around it.
     t0 = time.perf_counter()
-    rt.run(iter=n_iters)
+    rt.run(iter=1)
     host_s = time.perf_counter() - t0
     if world_size > 1:
         rt.barrier()
 
-    # Cross-check: ARK's own device-measured elapsed since launch (ms).
-    dev_ms = rt.stop()
+    rt.stop()
 
-mean_us = host_s * 1e6 / n_iters
+latency_us = host_s * 1e6
 
 if rank == 0:
     print(json.dumps({
         "label": label,
         "world_size": world_size,
         "n_elements": n_elements,
-        "mean_us": round(mean_us, 3),
-        "n_iters": n_iters,
-        "dev_ms_since_launch": round(dev_ms, 3),
+        "latency_us": round(latency_us, 3),
     }))
     sys.stdout.flush()
 
@@ -107,27 +90,16 @@ Executor.reset()
 os._exit(0)
 '''
 
-# mscclpp-NCCL ceiling (8xA100, fp16, measured nccl-tests all_reduce_perf):
-#   decode  (1,4096)  8KB : ~11.7 us   (plain NCCL ~21-24 us)
-#   prefill (2048,4096)16MB: ~188 us   (plain NCCL ~219-222 us)
-# These are the real per-call targets ARK must beat (NOT the 5.96 ms/layer
-# SGLang amortized figure, which is a whole decode trace / 36 layers).
-_MSCCLPP_CEIL_US = {4096: 11.7, 2048 * 4096: 188.0}
-
-# Q7 decode target: the mscclpp-NCCL 8 KB all-reduce ceiling above.
-# The PERF_GATE field is named sglang_ms by convention, but this component's
-# accepted target is the local PROFILE-derived 11.7 us comm ceiling.
-_DECODE_TARGET_MS = _MSCCLPP_CEIL_US[4096] / 1000.0
+# mscclpp-NCCL ceiling from the local Q7 profile (8xA100, fp16, 8 KB).
+_DECODE_TARGET_MS = 11.7 / 1000.0
 
 SHAPES = [
     ("decode  (1, 4096)", 4096),
-    # Prefill uses the same packet path as decode; bandwidth-optimal algo
-    # (ring/pipeline) is deferred to Q7P.
     ("prefill (2048, 4096)", 2048 * 4096),
 ]
 
 
-def run_bench(world_size, warmup, n_iters, timeout):
+def run_bench(world_size, timeout):
     results = []
     for label, n_elements in SHAPES:
         procs = []
@@ -142,8 +114,6 @@ def run_bench(world_size, warmup, n_iters, timeout):
                         str(world_size),
                         str(n_elements),
                         label,
-                        str(warmup),
-                        str(n_iters),
                     ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -185,22 +155,16 @@ def run_bench(world_size, warmup, n_iters, timeout):
 
     print(f"\n{'=' * 72}")
     print(
-        f"ARK fused-packet all-reduce  |  TP={world_size}  "
-        f"(warmup={warmup}, iters={n_iters})"
+        f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
+        f"(single iteration, includes staging)"
     )
     print(f"{'=' * 72}")
-    print(
-        f"{'Shape':<24}{'Elements':>12}{'ARK us':>10}"
-        f"{'mscclpp us':>12}{'ARK/ceil':>10}"
-    )
+    print(f"{'Shape':<24}{'Elements':>12}{'ARK us':>10}")
     print(f"{'-' * 72}")
     for d in results:
-        ceil = _MSCCLPP_CEIL_US.get(d["n_elements"])
-        ratio = f"{d['mean_us'] / ceil:.2f}x" if ceil else "-"
-        ceil_s = f"{ceil:.1f}" if ceil else "-"
         print(
-            f"{d['label']:<24}{d['n_elements']:>12,}{d['mean_us']:>10.2f}"
-            f"{ceil_s:>12}{ratio:>10}"
+            f"{d['label']:<24}{d['n_elements']:>12,}"
+            f"{d['latency_us']:>10.2f}"
         )
     print(f"{'=' * 72}\n")
     return results
@@ -208,28 +172,29 @@ def run_bench(world_size, warmup, n_iters, timeout):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Benchmark ARK fused-packet all-reduce at Qwen3 TP shapes"
+        description=(
+            "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
+            "at Qwen3 TP shapes, including registered-memory staging when needed"
+        )
     )
     ap.add_argument("--world-size", type=int, default=2)
-    ap.add_argument("--warmup", type=int, default=20)
-    ap.add_argument("--iters", type=int, default=200)
     ap.add_argument("--timeout", type=int, default=120)
     args = ap.parse_args()
 
-    results = run_bench(args.world_size, args.warmup, args.iters, args.timeout)
+    # Repeated-iteration timing is intentionally unsupported until packet flag
+    # rotation/reset exists.
+    results = run_bench(args.world_size, args.timeout)
 
-    # PERF_GATE on the decode shape vs the recorded 11.7 us comm ceiling.
     decode = [r for r in results if r["n_elements"] == 4096]
     if decode:
-        ark_ms = decode[0]["mean_us"] / 1000.0
+        ark_ms = decode[0]["latency_us"] / 1000.0
     else:
-        ark_ms = 999999.0  # workers failed
-    sglang_ms = _DECODE_TARGET_MS
-    ratio = ark_ms / sglang_ms if sglang_ms > 0 else 999999.0
+        ark_ms = 999999.0
+    ratio = ark_ms / _DECODE_TARGET_MS
     print(
         f"PERF_GATE name=allreduce_decode"
         f" ark_ms={ark_ms:.4f}"
-        f" sglang_ms={sglang_ms:.4f}"
+        f" sglang_ms={_DECODE_TARGET_MS:.4f}"
         f" ratio={ratio:.4f}"
     )
 
