@@ -1,9 +1,9 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Equivalence tests for ARK fused-packet all-reduce at Qwen3 TP shapes.
+"""Equivalence tests for ARK all-reduce at Qwen3 TP shapes.
 
-Verifies that ``ark.all_reduce_packet`` produces the same result as a
+Verifies that ``ark.all_reduce`` produces the same result as a
 torch all-reduce (sum) across ranks. Tests are d2h-safe: each worker
 copies the result to CPU (``result.to_torch().cpu()``) AFTER stopping
 the ARK runtime, then asserts on the host with ``torch.allclose``.
@@ -73,7 +73,9 @@ x = x_cpu.to(device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 
 # Build ARK graph (no GPU kernel launched yet).
-result = ark.all_reduce_packet(x, rank, world_size)
+# Decode-sized inputs dispatch to the packet path; prefill-sized inputs dispatch
+# to reduce-scatter plus all-gather.
+result = ark.all_reduce(x, rank, world_size)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)

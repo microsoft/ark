@@ -168,6 +168,30 @@ Json ModelOpRecv::default_config([[maybe_unused]] const ArchRef arch) const {
             {"Wait", true}};
 }
 
+Json ModelOpRecvNoWait::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
+    Json config = ModelOpRecv::default_config(arch);
+    config["Wait"] = false;
+    return config;
+}
+
+Json ModelOpSendSm::default_config([[maybe_unused]] const ArchRef arch) const {
+    Json config;
+    config["ChannelType"] = "Sm";
+    config["Signal"] = false;
+    config["NumWarps"] = 8;
+    config["SramBytes"] = 0;
+    const auto &shape = result_tensors_[0]->shape().dims4();
+    size_t tile_x = 1;
+    size_t tile_y = 64 * 8 * 8;
+    config["Tile"] = {tile_x, tile_y};
+    size_t num_tasks = shape[0] * shape[1];
+    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
+    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
+    config["NumTasks"] = num_tasks;
+    return config;
+}
+
 ModelOpSendPacket::ModelOpSendPacket(ModelTensorRef input, int remote_rank,
                                      int tag, uint32_t flag,
                                      ModelTensorRef output)
@@ -633,6 +657,21 @@ Json ModelOpRecvReduceSend::default_config(
     size_t tile_x = 1;
     size_t tile_y = 128;
     config["Tile"] = {tile_x, tile_y};
+    size_t num_tasks = shape[0] * shape[1];
+    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
+    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
+    config["NumTasks"] = num_tasks;
+    return config;
+}
+
+Json ModelOpRecvReduceSendSm::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
+    Json config = ModelOpRecvReduceSend::default_config(arch);
+    config["NumWarps"] = 8;
+    size_t tile_x = 1;
+    size_t tile_y = 64 * 8 * 8;
+    config["Tile"] = {tile_x, tile_y};
+    const auto &shape = result_tensors_[0]->shape().dims4();
     size_t num_tasks = shape[0] * shape[1];
     num_tasks *= (shape[2] + tile_x - 1) / tile_x;
     num_tasks *= (shape[3] + tile_y - 1) / tile_y;

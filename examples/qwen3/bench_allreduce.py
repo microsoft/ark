@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Benchmark end-to-end ``ark.all_reduce_packet`` latency on torch input.
+"""Benchmark end-to-end ``ark.all_reduce`` latency on torch input.
 
 Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
 (2048, 4096) shapes, including registered-memory staging when needed. Each
@@ -51,10 +51,10 @@ ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 # Input is created and synchronized BEFORE launch, while no ARK loop kernel is
-# live (safe). The benchmark includes any staging done by ark.all_reduce_packet.
+# live (safe). The benchmark includes any staging done by ark.all_reduce.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
-result = ark.all_reduce_packet(x, rank, world_size)
+result = ark.all_reduce(x, rank, world_size)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -92,6 +92,10 @@ os._exit(0)
 # SGLang PROFILE.md Q7 nccl / comm target: 214.69 ms over 657 calls
 # on 8xA100 TP=8, batch=1 decode-dominated Qwen3-8B.
 _DECODE_TARGET_MS = 214.69 / 657.0
+# SGLang PROFILE.md Q7P prefill all-reduce component target.
+_PREFILL_TARGET_MS = 0.188
+_TARGETS_MS = {"decode": _DECODE_TARGET_MS, "prefill": _PREFILL_TARGET_MS}
+_GATE_NAMES = {"decode": "allreduce", "prefill": "allreduce_prefill"}
 
 SHAPES = {
     "decode": ("decode  (1, 4096)", 4096),
@@ -183,7 +187,7 @@ def run_bench(world_size, timeout, shape):
 
     print(f"\n{'=' * 72}")
     print(
-        f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
+        f"ARK all_reduce torch-input latency  |  TP={world_size}  "
         f"(single iteration, max rank, includes staging)"
     )
     print(f"{'=' * 72}")
@@ -201,7 +205,7 @@ def run_bench(world_size, timeout, shape):
 def main():
     ap = argparse.ArgumentParser(
         description=(
-            "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
+            "Benchmark end-to-end ark.all_reduce latency on torch input "
             "at Qwen3 TP shapes, including registered-memory staging "
             "when needed"
         )
@@ -212,7 +216,7 @@ def main():
         "--shape",
         choices=("decode", "prefill", "all"),
         default="all",
-        help="Qwen3 shape to benchmark; the perf gate uses decode",
+        help="Qwen3 shape to benchmark; the Q7P perf gate uses prefill",
     )
     args = ap.parse_args()
 
@@ -220,23 +224,30 @@ def main():
     # rotation/reset exists.
     results, any_failed = run_bench(args.world_size, args.timeout, args.shape)
 
-    decode = [r for r in results if r["n_elements"] == SHAPES["decode"][1]]
-    if decode:
-        ark_ms = decode[0]["latency_us"] / 1000.0
+    gate_shape = "prefill" if args.shape == "all" else args.shape
+    gate_result = [
+        r for r in results if r["n_elements"] == SHAPES[gate_shape][1]
+    ]
+    if gate_result:
+        ark_ms = gate_result[0]["latency_us"] / 1000.0
     else:
         ark_ms = 999999.0
-    ratio = ark_ms / _DECODE_TARGET_MS
+    sglang_ms = _TARGETS_MS[gate_shape]
+    ratio = ark_ms / sglang_ms
     print(
-        f"PERF_GATE name=allreduce"
+        f"PERF_GATE name={_GATE_NAMES[gate_shape]}"
         f" ark_ms={ark_ms:.4f}"
-        f" sglang_ms={_DECODE_TARGET_MS:.4f}"
+        f" sglang_ms={sglang_ms:.4f}"
         f" ratio={ratio:.4f}"
     )
     if any_failed:
         print("ERROR: one or more benchmark workers failed", file=sys.stderr)
         raise SystemExit(1)
-    if not decode:
-        print("ERROR: decode benchmark produced no result", file=sys.stderr)
+    if not gate_result:
+        print(
+            f"ERROR: {gate_shape} benchmark produced no result",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
 
 

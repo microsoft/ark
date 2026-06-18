@@ -45,6 +45,22 @@ class ModelOpRecv : public ModelOp {
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
 
+class ModelOpRecvNoWait : public ModelOpRecv {
+   public:
+    ModelOpRecvNoWait() = default;
+    using ModelOpRecv::ModelOpRecv;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
+class ModelOpSendSm : public ModelOpSend {
+   public:
+    ModelOpSendSm() = default;
+    using ModelOpSend::ModelOpSend;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
 class ModelOpSendPacket : public ModelOp {
    public:
     ModelOpSendPacket() = default;
@@ -99,6 +115,14 @@ class ModelOpRecvReduceSend : public ModelOp {
     std::string impl_name(const Json &config) const override;
 
     std::vector<ModelOpArg> impl_args(const Json &config) const override;
+
+    Json default_config(const ArchRef arch = ARCH_ANY) const override;
+};
+
+class ModelOpRecvReduceSendSm : public ModelOpRecvReduceSend {
+   public:
+    ModelOpRecvReduceSendSm() = default;
+    using ModelOpRecvReduceSend::ModelOpRecvReduceSend;
 
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };

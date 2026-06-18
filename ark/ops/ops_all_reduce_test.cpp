@@ -417,6 +417,63 @@ ark::unittest::State test_all_reduce_packet_fused_2gpus() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_all_reduce_size_dispatch_model() {
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({4096}, ark::FP16);
+        ark::Tensor result = model.all_reduce(tns, 0, 2);
+
+        bool found_packet = false;
+        for (auto &node : model.nodes()) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            found_packet |=
+                op->type() == ark::ModelOpT::from_name("AllReducePacketFused");
+        }
+        UNITTEST_TRUE(found_packet);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({131072}, ark::FP16);
+        ark::Tensor result = model.all_reduce(tns, 0, 2);
+
+        bool found_packet = false;
+        bool found_sm_send = false;
+        bool found_sm_reduce = false;
+        for (auto &node : model.nodes()) {
+            auto &op = node->op;
+            if (op->is_virtual()) continue;
+            if (op->type() ==
+                ark::ModelOpT::from_name("AllReducePacketFused")) {
+                found_packet = true;
+            }
+            auto cfg = op->default_config(ark::ARCH_CUDA_80);
+            if (op->type() == ark::ModelOpT::from_name("Send") &&
+                cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
+                found_sm_send = true;
+            }
+            if (op->type() == ark::ModelOpT::from_name("RecvReduceSend") &&
+                cfg.at("NumWarps").get<int>() == 8) {
+                found_sm_reduce = true;
+            }
+        }
+        UNITTEST_FALSE(found_packet);
+        UNITTEST_TRUE(found_sm_send);
+        UNITTEST_TRUE(found_sm_reduce);
+    }
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_large_dispatch_2gpus() {
+    test_all_reduce_internal<2>(131072);
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_large_dispatch_8gpus() {
+    test_all_reduce_internal<8>(131072);
+    return ark::unittest::SUCCESS;
+}
+
 int main() {
     UNITTEST(test_all_reduce_4gpus);
     UNITTEST(test_all_reduce_8gpus);
@@ -424,6 +481,9 @@ int main() {
     UNITTEST(test_all_reduce_packet_8gpus);
     UNITTEST(test_all_reduce_packet_fused_ext_2gpus);
     UNITTEST(test_all_reduce_packet_fused_2gpus);
+    UNITTEST(test_all_reduce_size_dispatch_model);
+    UNITTEST(test_all_reduce_large_dispatch_2gpus);
+    UNITTEST(test_all_reduce_large_dispatch_8gpus);
     UNITTEST(test_all_reduce_sm_4gpus);
     UNITTEST(test_all_reduce_sm_8gpus);
     UNITTEST(test_all_reduce_inplace_2gpus);
