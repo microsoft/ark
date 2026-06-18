@@ -145,7 +145,7 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
 
     std::vector<ModelTensorRef> peer_output_refs;
     ark::Dims output_strides = {static_cast<DimType>(nelems)};
-    ark::Dims output_padded = {static_cast<DimType>(nelems)};
+    ark::Dims output_padded = {nelems_per_rank};
     for (int peer : remote_ranks) {
         Tensor peer_output = this->tensor(
             {nelems_per_rank}, reshaped_output.data_type(), output_strides,
