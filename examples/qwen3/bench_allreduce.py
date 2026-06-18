@@ -241,7 +241,7 @@ def main():
         ark_ms = 999999.0
     ratio = ark_ms / _DECODE_TARGET_MS
     print(
-        f"PERF_GATE name=allreduce_decode"
+        f"PERF_GATE name=allreduce"
         f" ark_ms={ark_ms:.4f}"
         f" sglang_ms={_DECODE_TARGET_MS:.4f}"
         f" ratio={ratio:.4f}"
