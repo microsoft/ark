@@ -56,9 +56,9 @@ x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 
 # The Q7.2 perf gate may pass a fixed PlannerContext config for the decode
-# shape. This still times the real ARK all_reduce_packet path.
+# shape only. Non-decode shapes ignore this decode perf-gate override.
 planner_config = os.environ.get("ARK_QWEN3_ALLREDUCE_CONFIG")
-if planner_config:
+if planner_config and n_elements == 4096:
     with ark.PlannerContext(config=json.loads(planner_config)):
         result = ark.all_reduce_packet(x, rank, world_size)
 else:
@@ -192,7 +192,7 @@ def run_bench(world_size, timeout, shape):
     print(f"\n{'=' * 72}", file=sys.stderr)
     print(
         f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
-        f"(single iteration, max rank, decode no-copy gate)",
+        f"(single iteration, max rank)",
         file=sys.stderr,
     )
     print(f"{'=' * 72}", file=sys.stderr)

@@ -465,8 +465,12 @@ DEVICE void device_sync(int, int) {
 //                               internal-buffer allocation is symmetric
 //                               for symmetric collectives, peers' scratch
 //                               is at the same local offset as ours
-//   input_offset              — offset (in bytes) of the input tensor
-//                               within its device buffer
+//   input_offset              — for internal registered inputs, offset (in
+//                               bytes) within ARK registered memory; for
+//                               validated external no-copy inputs, zero and
+//                               used only for registered-fast-path detection
+//                               because the actual source address comes from
+//                               the input pointer
 //   task_id                   — block-relative index in [0, NumProcs)
 //
 // Block-to-peer mapping requirement (initial implementation):

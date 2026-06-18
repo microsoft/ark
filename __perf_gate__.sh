@@ -22,6 +22,11 @@ if [[ -n "$bench" ]]; then
   repo_root=$(realpath "$(dirname "$bench")/../..")
 fi
 
+qwen3_test=""
+if [[ -n "$repo_root" && -f "$repo_root/examples/qwen3/test_allreduce.py" ]]; then
+  qwen3_test=$(realpath "$repo_root/examples/qwen3/test_allreduce.py")
+fi
+
 has_compiled_ark() {
   compgen -G "$1/ark/core*.so" >/dev/null || \
     compgen -G "$1/ark/core*.pyd" >/dev/null
@@ -120,6 +125,8 @@ fi
 mkdir -p "$log_dir"
 tp2_log="$log_dir/q7p2_allreduce_tp2.log"
 tp8_log="$log_dir/q7p2_allreduce_tp8.log"
+tp2_correctness_log="$log_dir/q7p2_allreduce_tp2_correctness.log"
+tp8_correctness_log="$log_dir/q7p2_allreduce_tp8_correctness.log"
 
 commit_sha=${Q7P2_COMMIT_SHA:-}
 if [[ -z "$commit_sha" && -n "$repo_root" ]] && \
@@ -201,6 +208,35 @@ raise SystemExit(status)
 PY
 }
 
+run_decode_correctness() {
+  local world_size=$1
+  local test_name=$2
+  local log_path=$3
+  local cfg
+  cfg=$(decode_config "$world_size")
+  {
+    printf 'Q7.2 SHA: %s\n' "$commit_sha"
+    printf 'Command: python3 -m pytest -q %s::%s\n' \
+      "$qwen3_test" "$test_name"
+    printf 'Planner config: %s\n' "$cfg"
+  } >"$log_path"
+  if [[ -z "$qwen3_test" ]]; then
+    printf 'ERROR: examples/qwen3/test_allreduce.py not found\n' \
+      >>"$log_path"
+    return 1
+  fi
+
+  if [[ "$world_size" == "8" ]]; then
+    ARK_QWEN3_ALLREDUCE_CONFIG="$cfg" ARK_QWEN3_LARGE_TESTS=1 \
+      python3 -m pytest -q "$qwen3_test::$test_name" \
+      >>"$log_path" 2>&1
+  else
+    ARK_QWEN3_ALLREDUCE_CONFIG="$cfg" \
+      python3 -m pytest -q "$qwen3_test::$test_name" \
+      >>"$log_path" 2>&1
+  fi
+}
+
 run_decode() {
   local world_size=$1
   local log_path=$2
@@ -238,7 +274,11 @@ run_decode() {
 }
 
 status=0
+run_decode_correctness 2 test_allreduce_decode_tp2 \
+  "$tp2_correctness_log" || status=1
 run_decode 2 "$tp2_log" || status=1
+run_decode_correctness 8 test_allreduce_decode_tp8 \
+  "$tp8_correctness_log" || status=1
 run_decode 8 "$tp8_log" || status=1
 
 parse_out=$(python3 - "$tp2_log" "$tp8_log" <<'PY'

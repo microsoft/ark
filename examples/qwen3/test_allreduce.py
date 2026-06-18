@@ -72,10 +72,10 @@ x = x_cpu.to(device=f"cuda:{rank}")
 # Safe: ARK has not launched yet, so the GPU copy can be synchronized.
 torch.cuda.synchronize(rank)
 
-# Build ARK graph (no GPU kernel launched yet). The perf gate can pass the
-# measured decode PlannerContext config; correctness should cover that plan.
+# Build ARK graph (no GPU kernel launched yet). The perf gate can pass its
+# decode PlannerContext override; non-decode shapes ignore that override.
 planner_config = os.environ.get("ARK_QWEN3_ALLREDUCE_CONFIG")
-if planner_config:
+if planner_config and n_elements == 4096:
     with ark.PlannerContext(config=json.loads(planner_config)):
         result = ark.all_reduce_packet(x, rank, world_size)
 else:

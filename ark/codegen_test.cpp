@@ -315,6 +315,72 @@ ark::unittest::State test_all_reduce_packet_external_input_offset_rejected() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State test_all_reduce_packet_external_output_offset_rejected() {
+    ark::Model model(0, 2);
+    ark::Tensor input = model.tensor({1024}, ark::FP16);
+    ark::Tensor output =
+        model.placeholder({1024}, ark::FP16, {1025}, {1}, {1024}, -1,
+                          reinterpret_cast<void *>(0x2000));
+
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2, output),
+                   ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_packet_padded_external_output_rejected() {
+    ark::Model model(0, 2);
+    ark::Tensor input = model.tensor({2, 512}, ark::FP16);
+    ark::Tensor output =
+        model.placeholder({2, 512}, ark::FP16, {2, 640}, {}, {2, 640}, -1,
+                          reinterpret_cast<void *>(0x3000));
+
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2, output),
+                   ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_packet_strided_external_output_rejected() {
+    ark::Model model(0, 2);
+    ark::Tensor input = model.tensor({2, 512}, ark::FP16);
+    ark::Tensor output =
+        model.placeholder({2, 512}, ark::FP16, {2, 640}, {}, {2, 512}, -1,
+                          reinterpret_cast<void *>(0x4000));
+
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2, output),
+                   ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State
 test_all_reduce_packet_invalid_external_input_does_not_mutate_graph() {
     ark::Model model(0, 2);
@@ -411,6 +477,9 @@ int main() {
     UNITTEST(test_all_reduce_packet_exact_external_alias_rejected);
     UNITTEST(test_all_reduce_packet_overlap_external_alias_rejected);
     UNITTEST(test_all_reduce_packet_external_input_offset_rejected);
+    UNITTEST(test_all_reduce_packet_external_output_offset_rejected);
+    UNITTEST(test_all_reduce_packet_padded_external_output_rejected);
+    UNITTEST(test_all_reduce_packet_strided_external_output_rejected);
     UNITTEST(
         test_all_reduce_packet_invalid_external_input_does_not_mutate_graph);
     UNITTEST(test_all_reduce_packet_internal_input_is_not_staged);

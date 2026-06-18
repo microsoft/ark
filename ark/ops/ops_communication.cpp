@@ -514,6 +514,11 @@ std::string ModelOpAllReducePacketFused::impl_name(const Json &config) const {
 
 std::vector<ModelOpArg> ModelOpAllReducePacketFused::impl_args(
     [[maybe_unused]] const Json &config) const {
+    // The fifth argument is the input-buffer offset used by the kernel to
+    // detect the registered-buffer fast path. For external no-copy inputs,
+    // Model::all_reduce_packet rejects nonzero offsets, so codegen may pass
+    // zero for this specific input offset; other external OFFSET args remain
+    // invalid.
     // (output, input, scratch_ptr, scratch_offset_remote, input_offset)
     return {write_tensors_[0], read_tensors_[0], read_tensors_[1],
             ModelOffset(read_tensors_[1]), ModelOffset(read_tensors_[0])};

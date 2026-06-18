@@ -81,6 +81,16 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
         auto output_info = buf_reg.get(output_id);
         bool output_external =
             output.is_external() || (output_info && output_info->is_external);
+        if (output_external && !output.offsets().is_no_dim() &&
+            !output.offsets().is_zeros()) {
+            ERR(ModelError,
+                "all_reduce_packet does not support external output offsets");
+        }
+        if (output_external && (output.padded_shape() != output.shape() ||
+                                output.strides() != output.padded_shape())) {
+            ERR(ModelError,
+                "all_reduce_packet supports only dense external output");
+        }
         if (input_external && output_external) {
             bool same_buffer = input_id == output_id;
             bool ranges_overlap = false;
