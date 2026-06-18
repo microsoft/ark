@@ -73,8 +73,7 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
 
     if (input_external && (input.padded_shape() != input.shape() ||
                            input.strides() != input.padded_shape())) {
-        ERR(ModelError,
-            "all_reduce_packet supports only dense external input");
+        ERR(ModelError, "all_reduce_packet supports only dense external input");
     }
 
     if (!output.is_null()) {

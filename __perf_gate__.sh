@@ -12,10 +12,47 @@ for p in \
   "$ARK_ROOT/../examples/qwen3/bench_allreduce.py" \
   "$ARK_ROOT/examples/qwen3/bench_allreduce.py"; do
   if [[ -f "$p" ]]; then
-    bench="$p"
+    bench=$(realpath "$p")
     break
   fi
 done
+
+repo_root=""
+if [[ -n "$bench" ]]; then
+  repo_root=$(realpath "$(dirname "$bench")/../..")
+fi
+
+has_compiled_ark() {
+  compgen -G "$1/ark/core*.so" >/dev/null || \
+    compgen -G "$1/ark/core*.pyd" >/dev/null
+}
+
+py_paths=()
+add_py_path() {
+  if [[ -n "$1" && -d "$1" ]]; then
+    py_paths+=("$1")
+  fi
+}
+
+build_root=""
+for root in "$ARK_ROOT" "$PWD" "$PWD/build" "$repo_root/build"; do
+  if [[ -n "$root" ]] && has_compiled_ark "$root/python"; then
+    add_py_path "$root/python"
+    if [[ -z "$build_root" ]]; then
+      build_root=$(realpath "$root")
+    fi
+  fi
+done
+if [[ -n "$repo_root" ]]; then
+  add_py_path "$repo_root"
+fi
+if [[ ${#py_paths[@]} -gt 0 ]]; then
+  joined=$(IFS=:; echo "${py_paths[*]}")
+  export PYTHONPATH="$joined${PYTHONPATH:+:$PYTHONPATH}"
+fi
+if [[ -n "$build_root" ]]; then
+  export ARK_ROOT="$build_root"
+fi
 
 # PROFILE.md target cited by examples/qwen3/bench_allreduce.py:
 # 214.69 ms over 657 decode-dominated Qwen3 comm calls.

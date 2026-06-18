@@ -187,12 +187,11 @@ ark::unittest::State test_all_reduce_packet_external_input_uses_no_copy() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State
-test_all_reduce_packet_padded_external_input_rejected() {
+ark::unittest::State test_all_reduce_packet_padded_external_input_rejected() {
     ark::Model model(0, 2);
-    ark::Tensor input = model.placeholder(
-        {2, 512}, ark::FP16, {2, 640}, {}, {2, 640}, -1,
-        reinterpret_cast<void *>(0x1));
+    ark::Tensor input =
+        model.placeholder({2, 512}, ark::FP16, {2, 640}, {}, {2, 640}, -1,
+                          reinterpret_cast<void *>(0x1));
 
     UNITTEST_THROW(model.all_reduce_packet(input, 0, 2), ark::ModelError);
 
@@ -274,8 +273,8 @@ ark::unittest::State test_all_reduce_packet_overlap_external_alias_rejected() {
     ark::Model model(0, 2);
     constexpr std::uintptr_t base = 0x1000;
     void *input_data = reinterpret_cast<void *>(base);
-    void *output_data = reinterpret_cast<void *>(
-        base + 512 * sizeof(std::uint16_t));
+    void *output_data =
+        reinterpret_cast<void *>(base + 512 * sizeof(std::uint16_t));
     ark::Tensor input =
         model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, input_data);
     ark::Tensor output =
@@ -298,9 +297,9 @@ ark::unittest::State test_all_reduce_packet_overlap_external_alias_rejected() {
 
 ark::unittest::State test_all_reduce_packet_external_input_offset_rejected() {
     ark::Model model(0, 2);
-    ark::Tensor input = model.placeholder(
-        {1024}, ark::FP16, {1025}, {1}, {1024}, -1,
-        reinterpret_cast<void *>(0x1));
+    ark::Tensor input =
+        model.placeholder({1024}, ark::FP16, {1025}, {1}, {1024}, -1,
+                          reinterpret_cast<void *>(0x1));
 
     UNITTEST_THROW(model.all_reduce_packet(input, 0, 2), ark::ModelError);
 
