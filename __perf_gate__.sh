@@ -46,12 +46,43 @@ done
 if [[ -n "$repo_root" ]]; then
   add_py_path "$repo_root"
 fi
-if [[ ${#py_paths[@]} -gt 0 ]]; then
-  joined=$(IFS=:; echo "${py_paths[*]}")
-  export PYTHONPATH="$joined${PYTHONPATH:+:$PYTHONPATH}"
-fi
 if [[ -n "$build_root" ]]; then
+  if [[ ${#py_paths[@]} -gt 0 ]]; then
+    joined=$(IFS=:; echo "${py_paths[*]}")
+    export PYTHONPATH="$joined${PYTHONPATH:+:$PYTHONPATH}"
+  fi
   export ARK_ROOT="$build_root"
+else
+  # Source-only python/ark shadows the wheel installed by the perf harness.
+  # Drop that path when no build-tree extension exists, but keep the repo root
+  # so examples.qwen3 imports still work.
+  filtered_py_paths=()
+  source_py=""
+  if [[ -n "$repo_root" && -d "$repo_root/python" ]]; then
+    source_py=$(realpath "$repo_root/python")
+  fi
+  if [[ -n "$repo_root" ]]; then
+    filtered_py_paths+=("$repo_root")
+  fi
+  if [[ -n "${PYTHONPATH:-}" ]]; then
+    IFS=: read -r -a existing_py_paths <<<"$PYTHONPATH"
+    for py_path in "${existing_py_paths[@]}"; do
+      if [[ -z "$py_path" ]]; then
+        continue
+      fi
+      if [[ -n "$source_py" && -e "$py_path" &&
+            $(realpath "$py_path") == "$source_py" ]]; then
+        continue
+      fi
+      filtered_py_paths+=("$py_path")
+    done
+  fi
+  if [[ ${#filtered_py_paths[@]} -gt 0 ]]; then
+    joined=$(IFS=:; echo "${filtered_py_paths[*]}")
+    export PYTHONPATH="$joined"
+  else
+    unset PYTHONPATH
+  fi
 fi
 
 # PROFILE.md target cited by examples/qwen3/bench_allreduce.py:
