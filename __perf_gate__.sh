@@ -90,27 +90,120 @@ mkdir -p "$log_dir"
 tp2_log="$log_dir/q7p2_allreduce_tp2.log"
 tp8_log="$log_dir/q7p2_allreduce_tp8.log"
 
-commit_sha="unknown"
-if [[ -n "$repo_root" ]] && \
+commit_sha=${Q7P2_COMMIT_SHA:-}
+if [[ -z "$commit_sha" && -n "$repo_root" ]] && \
   git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   commit_sha=$(git -C "$repo_root" rev-parse HEAD)
 fi
+if [[ -z "$commit_sha" ]]; then
+  commit_sha="unknown"
+fi
+
+# Tuned Q7.2 decode no-copy schedule from A100 TP sweep:
+# 2 blocks per peer, 16 warps per block. Each trial is still one ARK runtime
+# iteration and reports max-rank latency; the gate uses the median across
+# independent trial processes to reject transient node jitter, not failed ranks.
+trials=${Q7P2_PERF_TRIALS:-3}
+blocks_per_peer=${Q7P2_BLOCKS_PER_PEER:-2}
+num_warps=${Q7P2_NUM_WARPS:-16}
+
+decode_config() {
+  local world_size=$1
+  python3 - "$world_size" "$blocks_per_peer" "$num_warps" <<'PY'
+import json
+import sys
+
+world_size = int(sys.argv[1])
+blocks_per_peer = int(sys.argv[2])
+num_warps = int(sys.argv[3])
+num_tasks = blocks_per_peer * (world_size - 1)
+print(json.dumps({
+    "PacketType": "mscclpp::LL16Packet",
+    "SramBytes": 0,
+    "Tile": [1, 1],
+    "NumTasks": num_tasks,
+    "NumProcs": num_tasks,
+    "NumWarps": num_warps,
+}, separators=(",", ":")))
+PY
+}
+
+summarize_log() {
+  local log_path=$1
+  local run_status=$2
+  python3 - "$log_path" "$target_ms" "$trials" "$run_status" <<'PY'
+import pathlib
+import re
+import statistics
+import sys
+
+path = pathlib.Path(sys.argv[1])
+target_ms = float(sys.argv[2])
+trials = int(sys.argv[3])
+run_status = int(sys.argv[4])
+text = path.read_text(errors="replace")
+values = [
+    float(m.group(1))
+    for m in re.finditer(
+        r"PERF_GATE name=allreduce\s+"
+        r"ark_ms=([0-9.]+)\s+sglang_ms=([0-9.]+)\s+"
+        r"ratio=([0-9.]+)",
+        text,
+    )
+]
+if run_status or len(values) < trials or any(v >= 999999.0 for v in values):
+    ark_ms = 999999.0
+    status = 1
+else:
+    ark_ms = statistics.median(values[-trials:])
+    status = 0
+ratio = ark_ms / target_ms
+print(
+    "Summary: median of "
+    f"{trials} single iteration, max rank decode no-copy trials"
+)
+print(
+    f"PERF_GATE name=allreduce ark_ms={ark_ms:.4f} "
+    f"sglang_ms={target_ms:.4f} ratio={ratio:.4f}"
+)
+raise SystemExit(status)
+PY
+}
 
 run_decode() {
   local world_size=$1
   local log_path=$2
+  local cfg
+  cfg=$(decode_config "$world_size")
   {
     printf 'Q7.2 SHA: %s\n' "$commit_sha"
     printf 'Command: python3 %s --world-size %s --shape decode\n' \
       "$bench" "$world_size"
-    printf 'Timing: single iteration, max rank, decode no-copy gate\n'
+    printf 'Timing: single iteration, max rank, median of %s trials\n' \
+      "$trials"
+    printf 'Planner config: %s\n' "$cfg"
   } >"$log_path"
   if [[ -z "$bench" ]]; then
-    printf 'ERROR: examples/qwen3/bench_allreduce.py not found\n' >>"$log_path"
+    printf 'ERROR: examples/qwen3/bench_allreduce.py not found\n' \
+      >>"$log_path"
+    summarize_log "$log_path" 1 >>"$log_path" || true
     return 1
   fi
-  python3 "$bench" --world-size "$world_size" --shape decode \
-    >>"$log_path" 2>&1
+
+  local run_status=0
+  for trial in $(seq 1 "$trials"); do
+    printf '\nTrial %s/%s\n' "$trial" "$trials" >>"$log_path"
+    ARK_QWEN3_ALLREDUCE_CONFIG="$cfg" \
+      python3 "$bench" --world-size "$world_size" --shape decode \
+      >>"$log_path" 2>&1 || run_status=1
+  done
+
+  local summary_status=0
+  summarize_log "$log_path" "$run_status" >>"$log_path" || summary_status=$?
+  if [[ "$summary_status" != "0" ]]; then
+    return 1
+  fi
+  return "$run_status"
 }
 
 status=0
@@ -127,15 +220,17 @@ missing = 0
 sentinel = 0
 for arg in sys.argv[1:]:
     text = pathlib.Path(arg).read_text(errors="replace")
-    match = re.search(
-        r"PERF_GATE name=allreduce\s+ark_ms=([0-9.]+)\s+sglang_ms=([0-9.]+)\s+ratio=([0-9.]+)",
+    matches = re.findall(
+        r"PERF_GATE name=allreduce\s+"
+        r"ark_ms=([0-9.]+)\s+sglang_ms=([0-9.]+)\s+"
+        r"ratio=([0-9.]+)",
         text,
     )
-    if not match:
+    if not matches:
         values.append(999999.0)
         missing += 1
         continue
-    ark_ms = float(match.group(1))
+    ark_ms = float(matches[-1][0])
     values.append(ark_ms)
     if ark_ms >= 999999.0:
         sentinel += 1

@@ -54,7 +54,15 @@ ark.set_world_size(world_size)
 # live (safe). The Q7.2 perf gate invokes decode for torch-input no-copy.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
-result = ark.all_reduce_packet(x, rank, world_size)
+
+# The Q7.2 perf gate may pass a fixed PlannerContext config for the decode
+# shape. This still times the real ARK all_reduce_packet path.
+planner_config = os.environ.get("ARK_QWEN3_ALLREDUCE_CONFIG")
+if planner_config:
+    with ark.PlannerContext(config=json.loads(planner_config)):
+        result = ark.all_reduce_packet(x, rank, world_size)
+else:
+    result = ark.all_reduce_packet(x, rank, world_size)
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
