@@ -3,6 +3,7 @@
 
 #include "codegen.hpp"
 
+#include <cstdint>
 #include <map>
 #include <nlohmann/json.hpp>
 #include <set>
@@ -186,6 +187,27 @@ ark::unittest::State test_all_reduce_packet_external_input_uses_no_copy() {
     return ark::unittest::SUCCESS;
 }
 
+ark::unittest::State
+test_all_reduce_packet_padded_external_input_rejected() {
+    ark::Model model(0, 2);
+    ark::Tensor input = model.placeholder(
+        {2, 512}, ark::FP16, {2, 640}, {}, {2, 640}, -1,
+        reinterpret_cast<void *>(0x1));
+
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2), ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
 ark::unittest::State test_recv_packet_external_output_offset_rejected() {
     ark::Model model(0, 2);
     ark::Tensor output = model.placeholder({1024}, ark::FP16, {}, {}, {}, -1,
@@ -225,15 +247,62 @@ ark::unittest::State test_recv_packet_external_output_offset_rejected() {
     return ark::unittest::SUCCESS;
 }
 
-ark::unittest::State test_all_reduce_packet_aliased_external_output_rejected() {
+ark::unittest::State test_all_reduce_packet_exact_external_alias_rejected() {
     ark::Model model(0, 2);
-    void *data = reinterpret_cast<void *>(0x1);
+    void *data = reinterpret_cast<void *>(0x1000);
     ark::Tensor input =
         model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, data);
     ark::Tensor output =
         model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, data);
+
     UNITTEST_THROW(model.all_reduce_packet(input, 0, 2, output),
                    ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_packet_overlap_external_alias_rejected() {
+    ark::Model model(0, 2);
+    constexpr std::uintptr_t base = 0x1000;
+    void *input_data = reinterpret_cast<void *>(base);
+    void *output_data = reinterpret_cast<void *>(
+        base + 512 * sizeof(std::uint16_t));
+    ark::Tensor input =
+        model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, input_data);
+    ark::Tensor output =
+        model.placeholder({1024}, ark::FP16, {}, {}, {}, -1, output_data);
+
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2, output),
+                   ark::ModelError);
+
+    for (auto &node : model.nodes()) {
+        auto &op = node->op;
+        if (op->is_virtual()) {
+            continue;
+        }
+        UNITTEST_TRUE(op->type() !=
+                      ark::ModelOpT::from_name("AllReducePacketFused"));
+    }
+
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State test_all_reduce_packet_external_input_offset_rejected() {
+    ark::Model model(0, 2);
+    ark::Tensor input = model.placeholder(
+        {1024}, ark::FP16, {1025}, {1}, {1024}, -1,
+        reinterpret_cast<void *>(0x1));
+
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2), ark::ModelError);
 
     for (auto &node : model.nodes()) {
         auto &op = node->op;
@@ -338,8 +407,11 @@ int main() {
     UNITTEST(test_codegen_external_buffer_offset_rejected);
     UNITTEST(test_codegen_normal_offset);
     UNITTEST(test_all_reduce_packet_external_input_uses_no_copy);
+    UNITTEST(test_all_reduce_packet_padded_external_input_rejected);
     UNITTEST(test_recv_packet_external_output_offset_rejected);
-    UNITTEST(test_all_reduce_packet_aliased_external_output_rejected);
+    UNITTEST(test_all_reduce_packet_exact_external_alias_rejected);
+    UNITTEST(test_all_reduce_packet_overlap_external_alias_rejected);
+    UNITTEST(test_all_reduce_packet_external_input_offset_rejected);
     UNITTEST(
         test_all_reduce_packet_invalid_external_input_does_not_mutate_graph);
     UNITTEST(test_all_reduce_packet_internal_input_is_not_staged);

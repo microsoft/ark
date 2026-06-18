@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <cstdint>
+
 #include "buffer_registry.hpp"
 #include "ops_common.hpp"
 #include "ops_communication.hpp"
@@ -69,18 +71,36 @@ Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
             "all_reduce_packet does not support external input offsets");
     }
 
+    if (input_external && (input.padded_shape() != input.shape() ||
+                           input.strides() != input.padded_shape())) {
+        ERR(ModelError,
+            "all_reduce_packet supports only dense external input");
+    }
+
     if (!output.is_null()) {
         size_t output_id = output.ref()->buffer()->id();
         auto output_info = buf_reg.get(output_id);
         bool output_external =
             output.is_external() || (output_info && output_info->is_external);
-        bool same_buffer = input_id == output_id;
-        bool same_data = input_info && output_info && input_info->data &&
-                         input_info->data == output_info->data;
-        if (input_external && output_external && (same_buffer || same_data)) {
-            ERR(ModelError,
-                "all_reduce_packet does not support aliased external "
-                "input/output");
+        if (input_external && output_external) {
+            bool same_buffer = input_id == output_id;
+            bool ranges_overlap = false;
+            if (input_info && output_info && input_info->data &&
+                output_info->data) {
+                auto input_begin =
+                    reinterpret_cast<std::uintptr_t>(input_info->data);
+                auto output_begin =
+                    reinterpret_cast<std::uintptr_t>(output_info->data);
+                auto input_end = input_begin + input.ref()->shape_bytes();
+                auto output_end = output_begin + output.ref()->shape_bytes();
+                ranges_overlap =
+                    input_begin < output_end && output_begin < input_end;
+            }
+            if (same_buffer || ranges_overlap) {
+                ERR(ModelError,
+                    "all_reduce_packet does not support aliased external "
+                    "input/output");
+            }
         }
     } else {
         output = this->tensor(input.shape(), input.data_type());

@@ -283,11 +283,12 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
     for (auto &op_json : task_json["Ops"]) {
         auto op = ModelOp::deserialize(op_json);
         auto impl_args = op->impl_args(op_json["Config"]);
-        std::set<size_t> external_offset_buffer_ids;
+        bool allow_external_offset_buffer = false;
+        size_t external_offset_buffer_id = 0;
         if (op->type()->type_name() == "AllReducePacketFused" &&
             !op->read_tensors().empty()) {
-            external_offset_buffer_ids.insert(
-                op->read_tensors()[0]->buffer()->id());
+            allow_external_offset_buffer = true;
+            external_offset_buffer_id = op->read_tensors()[0]->buffer()->id();
         }
         ss_desc << "  __op_" << std::hex << op_hash_list[op_idx++] << std::dec
                 << "(";
@@ -327,7 +328,8 @@ std::string CodeGenerator::Impl::def_task(const Json &task_json) {
                 size_t buffer_id = moff.buffer_id();
                 auto buf_info = buf_reg.get(buffer_id);
                 if (buf_info && buf_info->is_external) {
-                    if (!external_offset_buffer_ids.count(buffer_id)) {
+                    if (!allow_external_offset_buffer ||
+                        buffer_id != external_offset_buffer_id) {
                         ERR(InternalError, "cannot offset external buffer");
                     }
                     ss_desc << moff.value();

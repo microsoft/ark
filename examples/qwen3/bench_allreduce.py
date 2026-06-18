@@ -4,8 +4,8 @@
 """Benchmark end-to-end ``ark.all_reduce_packet`` latency on torch input.
 
 Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
-(2048, 4096) shapes. Decode torch inputs use the no-copy external-buffer path.
-Each rank runs as its own process and the parent reports max-rank latency.
+(2048, 4096) shapes. Q7.2 gates decode torch-input no-copy only. Each rank
+runs as its own process and the parent reports max-rank latency.
 
     python -m examples.qwen3.bench_allreduce --world-size 8
 
@@ -51,7 +51,7 @@ ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 # Input is created and synchronized BEFORE launch, while no ARK loop kernel is
-# live (safe). Decode uses ark.all_reduce_packet's no-copy torch-input path.
+# live (safe). The Q7.2 perf gate invokes decode for torch-input no-copy.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 result = ark.all_reduce_packet(x, rank, world_size)
@@ -184,7 +184,7 @@ def run_bench(world_size, timeout, shape):
     print(f"\n{'=' * 72}", file=sys.stderr)
     print(
         f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
-        f"(single iteration, max rank, no-copy decode)",
+        f"(single iteration, max rank, decode no-copy gate)",
         file=sys.stderr,
     )
     print(f"{'=' * 72}", file=sys.stderr)
@@ -207,7 +207,7 @@ def main():
     ap = argparse.ArgumentParser(
         description=(
             "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
-            "at Qwen3 TP shapes; decode uses the no-copy external-buffer path"
+            "at Qwen3 TP shapes; Q7.2 gates decode no-copy only"
         )
     )
     ap.add_argument("--world-size", type=int, default=2)
