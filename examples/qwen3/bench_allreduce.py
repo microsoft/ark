@@ -20,16 +20,15 @@ NO torch device sync while launched, NO CUDA events.
 """
 
 import argparse
-import json
 import os
 import subprocess
 import sys
 
 try:
-    from ._env import _subprocess_env
+    from ._env import _load_worker_result, _subprocess_env
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from _env import _subprocess_env
+    from _env import _load_worker_result, _subprocess_env
 
 _WORKER_SCRIPT = '''
 """Worker: time torch-input ARK all-reduce without torch ops while launched."""
@@ -98,19 +97,6 @@ SHAPES = {
     "decode": ("decode  (1, 4096)", 4096),
     "prefill": ("prefill (2048, 4096)", 2048 * 4096),
 }
-
-
-def _load_worker_result(stdout):
-    """Return the last JSON object from worker stdout, ignoring log lines."""
-    for line in reversed(stdout.decode().splitlines()):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError:
-            continue
-    return None
 
 
 def run_bench(world_size, timeout, shape):

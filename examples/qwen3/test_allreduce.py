@@ -14,19 +14,22 @@ Requires ≥2 GPUs; skips gracefully on single-GPU machines. Large TP=8 and
 prefill cases are opt-in with ``ARK_QWEN3_LARGE_TESTS=1``.
 """
 
-import json
 import os
 import subprocess
 import sys
 
 import pytest
-import torch
 
 try:
-    from ._env import _subprocess_env
+    import torch
+except ImportError:
+    pytest.skip("torch is not installed", allow_module_level=True)
+
+try:
+    from ._env import _load_worker_result, _subprocess_env
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from _env import _subprocess_env
+    from _env import _load_worker_result, _subprocess_env
 
 
 def _gpu_count() -> int:
@@ -114,19 +117,6 @@ if rank == 0:
 Executor.reset()
 os._exit(0 if close else 1)
 '''
-
-
-def _load_worker_result(stdout):
-    """Return the last JSON object from worker stdout, ignoring log lines."""
-    for line in reversed(stdout.decode().splitlines()):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError:
-            continue
-    return None
 
 
 def _tail(data, limit=500):

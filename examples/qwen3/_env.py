@@ -9,10 +9,17 @@ Workers are launched from ``cwd="/"``, so a simple relative path prepend is
 not enough. Prefer the checkout/build under ``ARK_ROOT`` while also supporting
 an already-imported or build-tree ``ark`` package, and synthesize
 ``LD_LIBRARY_PATH`` only when a build root can be inferred.
+
+This is intentionally not a general Python package resolver. It is constrained
+to making rank subprocesses import the same compiled ``ark`` package as the
+parent/CI build while preserving ``cwd="/"``; the fallbacks are kept because
+workers cannot rely on the parent process's current directory, and source-only
+``python/ark`` checkouts lack the compiled ``core`` extension.
 """
 
 import glob
 import importlib.util
+import json
 import os
 import sys
 
@@ -53,6 +60,19 @@ def _append_unique(paths, path):
     """Append *path* to *paths* once when it is non-empty."""
     if path and path not in paths:
         paths.append(path)
+
+
+def _load_worker_result(stdout):
+    """Return the last JSON object from worker stdout, ignoring log lines."""
+    for line in reversed(stdout.decode().splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            continue
+    return None
 
 
 def _subprocess_env(world_size: int) -> dict:

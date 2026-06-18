@@ -6,6 +6,7 @@
 #include <map>
 #include <nlohmann/json.hpp>
 #include <set>
+#include <utility>
 
 #include "ark/model.hpp"
 #include "ark/planner.hpp"
@@ -82,7 +83,7 @@ ark::unittest::State test_codegen_external_buffer_offset_rejected() {
     UNITTEST_THROW(ark::CodeGenerator(pj, /*buffer_id_to_offset=*/{}, extra),
                    ark::InternalError);
 
-    return ark::unittest::State::SUCCESS;
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_codegen_normal_offset() {
@@ -114,7 +115,7 @@ ark::unittest::State test_codegen_normal_offset() {
     std::string code = codegen.code();
     UNITTEST_TRUE(code.size() > 0);
 
-    return ark::unittest::State::SUCCESS;
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_packet_external_input_is_staged() {
@@ -133,7 +134,9 @@ ark::unittest::State test_all_reduce_packet_external_input_is_staged() {
     bool found_fused = false;
     for (auto &node : model.nodes()) {
         auto &op = node->op;
-        if (op->is_virtual()) continue;
+        if (op->is_virtual()) {
+            continue;
+        }
         if (op->type() == ark::ModelOpT::from_name("Copy")) {
             auto reads = op->read_tensors();
             auto results = op->result_tensors();
@@ -160,7 +163,39 @@ ark::unittest::State test_all_reduce_packet_external_input_is_staged() {
     UNITTEST_TRUE(found_copy_from_placeholder);
     UNITTEST_TRUE(found_fused);
 
-    return ark::unittest::State::SUCCESS;
+    return ark::unittest::SUCCESS;
+}
+
+ark::unittest::State
+test_all_reduce_packet_invalid_external_input_does_not_mutate_graph() {
+    ark::Model model(0, 2);
+    ark::Tensor input = model.placeholder({1025}, ark::FP16, {}, {}, {}, -1,
+                                          reinterpret_cast<void *>(0x1));
+
+    auto count_ops = [&model]() {
+        std::pair<size_t, size_t> counts{0, 0};
+        for (auto &node : model.nodes()) {
+            auto &op = node->op;
+            if (op->is_virtual()) {
+                continue;
+            }
+            if (op->type() == ark::ModelOpT::from_name("Copy")) {
+                counts.first++;
+            } else if (op->type() ==
+                       ark::ModelOpT::from_name("AllReducePacketFused")) {
+                counts.second++;
+            }
+        }
+        return counts;
+    };
+
+    auto before = count_ops();
+    UNITTEST_THROW(model.all_reduce_packet(input, 0, 2), ark::ModelError);
+    auto after = count_ops();
+    UNITTEST_EQ(before.first, after.first);
+    UNITTEST_EQ(before.second, after.second);
+
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_all_reduce_packet_internal_input_is_not_staged() {
@@ -173,7 +208,9 @@ ark::unittest::State test_all_reduce_packet_internal_input_is_not_staged() {
     bool found_fused = false;
     for (auto &node : model.nodes()) {
         auto &op = node->op;
-        if (op->is_virtual()) continue;
+        if (op->is_virtual()) {
+            continue;
+        }
         if (op->type() == ark::ModelOpT::from_name("Copy")) {
             auto reads = op->read_tensors();
             UNITTEST_TRUE(reads.size() > 0);
@@ -191,7 +228,7 @@ ark::unittest::State test_all_reduce_packet_internal_input_is_not_staged() {
     UNITTEST_FALSE(found_copy_from_input);
     UNITTEST_TRUE(found_fused);
 
-    return ark::unittest::State::SUCCESS;
+    return ark::unittest::SUCCESS;
 }
 
 ark::unittest::State test_codegen_missing_buffer_id() {
@@ -213,13 +250,14 @@ ark::unittest::State test_codegen_missing_buffer_id() {
     ark::PlanJson pj(plan);
     UNITTEST_THROW(ark::CodeGenerator(pj, {}, {}), ark::InternalError);
 
-    return ark::unittest::State::SUCCESS;
+    return ark::unittest::SUCCESS;
 }
 
 int main() {
     UNITTEST(test_codegen_external_buffer_offset_rejected);
     UNITTEST(test_codegen_normal_offset);
     UNITTEST(test_all_reduce_packet_external_input_is_staged);
+    UNITTEST(test_all_reduce_packet_invalid_external_input_does_not_mutate_graph);
     UNITTEST(test_all_reduce_packet_internal_input_is_not_staged);
     UNITTEST(test_codegen_missing_buffer_id);
     return 0;
