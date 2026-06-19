@@ -194,7 +194,9 @@ def run_bench(world_size, timeout, shape):
                         file=sys.stderr,
                     )
                 else:
-                    max_result = max(rank_results, key=lambda d: d["latency_us"])
+                    max_result = max(
+                        rank_results, key=lambda d: d["latency_us"]
+                    )
                     shape_name = (
                         "decode"
                         if max_result["n_elements"] == SHAPES["decode"][1]

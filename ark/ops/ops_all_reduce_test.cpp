@@ -521,8 +521,8 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
     {
         ark::Model model(0, 2);
         ark::Tensor base = model.tensor({129, 1024}, ark::FP16);
-        ark::Tensor tns = model.refer(base, {128, 1024}, {129, 1024},
-                                      {0, 0}, {128, 1024});
+        ark::Tensor tns =
+            model.refer(base, {128, 1024}, {129, 1024}, {0, 0}, {128, 1024});
         model.all_reduce(tns, 0, 2);
 
         AllReduceRouteCounts counts = count_all_reduce_routes(model);
@@ -532,8 +532,8 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
     {
         ark::Model model(0, 2);
         ark::Tensor base = model.tensor({65, 1024}, ark::FP16);
-        ark::Tensor tns = model.refer(base, {64, 1024}, {65, 1024}, {0, 0},
-                                      {64, 1024});
+        ark::Tensor tns =
+            model.refer(base, {64, 1024}, {65, 1024}, {0, 0}, {64, 1024});
         model.all_reduce(tns, 0, 2);
 
         AllReduceRouteCounts counts = count_all_reduce_routes(model);

@@ -14,8 +14,8 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         if (tensor.is_null()) {
             return false;
         }
-        auto info = BufferRegistry::get_instance().get(
-            tensor.ref()->buffer()->id());
+        auto info =
+            BufferRegistry::get_instance().get(tensor.ref()->buffer()->id());
         return tensor.is_external() || (info && info->is_external);
     };
 
@@ -29,7 +29,8 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         }
         if (output.is_null()) {
             output = this->copy(input);
-        } else if (output.ref()->buffer()->id() == input.ref()->buffer()->id()) {
+        } else if (output.ref()->buffer()->id() ==
+                   input.ref()->buffer()->id()) {
             // In-place: copy input so the ring loop does not mutate send data.
             // TODO: This catches the common case (output IS input). Sub-buffer
             // offset aliasing or aliasing through different buffer objects
@@ -81,16 +82,15 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
     size_t packet_alignment = elems_per_uint32 * 2 * gpu_num;
     constexpr size_t kLargeMessageThresholdBytes = 153600;
-    bool packet_supported = packet_alignment != 0 &&
-                            (nelems % packet_alignment) == 0 &&
-                            has_flattenable_layout(input) &&
-                            (output.is_null() ||
-                             has_flattenable_layout(output)) &&
-                            !is_registered_external(output);
+    bool packet_supported =
+        packet_alignment != 0 && (nelems % packet_alignment) == 0 &&
+        has_flattenable_layout(input) &&
+        (output.is_null() || has_flattenable_layout(output)) &&
+        !is_registered_external(output);
     if (input.ref()->shape_bytes() <= kLargeMessageThresholdBytes) {
         if (packet_supported) {
-            if (!output.is_null() && output.ref()->buffer()->id() ==
-                                         input.ref()->buffer()->id()) {
+            if (!output.is_null() &&
+                output.ref()->buffer()->id() == input.ref()->buffer()->id()) {
                 input = this->copy(input);
             }
             return this->all_reduce_packet(input, gpu_id, gpu_num, output);
@@ -135,7 +135,8 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         return ring_all_reduce();
     }
 
-    Tensor reshaped_input = this->reshape(input, {static_cast<DimType>(nelems)});
+    Tensor reshaped_input =
+        this->reshape(input, {static_cast<DimType>(nelems)});
     Tensor reshaped_output =
         this->reshape(collective_output, {static_cast<DimType>(nelems)});
     DimType nelems_per_rank_dim = static_cast<DimType>(nelems_per_rank);
@@ -186,8 +187,7 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         ark::PlannerContext ctx(*this);
         ctx.config(prefill_send_config.dump());
         Tensor send = this->send(sharded_inputs[dst], dst, send_tag,
-                                 remote_scratch,
-                                 "all_reduce_prefill_send");
+                                 remote_scratch, "all_reduce_prefill_send");
         send_deps.push_back(send);
     }
 
@@ -230,8 +230,9 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     Tensor gather_done = this->identity(local_reduced, recv_deps);
     Tensor gather_sync = this->device_sync(gather_done, gpu_id, gpu_num);
     Tensor result = this->identity(collective_output, {gather_sync});
-    if (!final_output.is_null() && final_output.ref()->buffer()->id() !=
-                                      collective_output.ref()->buffer()->id()) {
+    if (!final_output.is_null() &&
+        final_output.ref()->buffer()->id() !=
+            collective_output.ref()->buffer()->id()) {
         result = this->copy(result, final_output);
     }
     return result;
