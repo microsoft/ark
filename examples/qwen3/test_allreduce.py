@@ -86,14 +86,18 @@ else:
     route = "fallback"
 route_ok = expected_route == "any" or route == expected_route
 
-with ark.Runtime() as rt:
-    rt.launch(device_id=rank)
+# Avoid Runtime as a context manager here: stop() leaves the state as
+# LaunchedNotRunning, so __exit__ would call stop() a second time.
+rt = ark.Runtime()
+rt.launch(device_id=rank)
+try:
     if world_size > 1:
         rt.barrier()
     # Single iteration — correctness, not throughput.
     rt.run(iter=1)
     if world_size > 1:
         rt.barrier()
+finally:
     rt.stop()
 
 # --- D2H transfer AFTER runtime stopped (safe: no ARK loop kernel live) ---

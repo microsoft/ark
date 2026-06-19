@@ -64,9 +64,11 @@ elif "all_reduce_prefill_reduce_scatter" in model_text:
 else:
     route = "fallback"
 
-with ark.Runtime() as rt:
-    rt.launch(device_id=rank)
-
+# Avoid Runtime as a context manager here: stop() leaves the state as
+# LaunchedNotRunning, so __exit__ would call stop() a second time.
+rt = ark.Runtime()
+rt.launch(device_id=rank)
+try:
     if world_size > 1:
         rt.barrier()
 
@@ -75,7 +77,7 @@ with ark.Runtime() as rt:
     host_s = time.perf_counter() - t0
     if world_size > 1:
         rt.barrier()
-
+finally:
     rt.stop()
 
 latency_us = host_s * 1e6

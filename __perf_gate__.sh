@@ -66,6 +66,15 @@ status=0
 python3 "$bench_py" --world-size 2 --shape all >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
 python3 "$bench_py" --world-size 8 --shape all >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
+if [[ "$status" -ne 0 ]]; then
+  for tp in 2 8; do
+    if [[ -s "$tmpdir/tp${tp}.err" ]]; then
+      printf 'ERROR: TP=%s benchmark stderr tail:\n' "$tp" >&2
+      tail -n 80 "$tmpdir/tp${tp}.err" >&2
+    fi
+  done
+fi
+
 read -r ark_ms parse_status < <(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" "$head_sha" "$target_ms" <<'PY'
 import re
 import sys
