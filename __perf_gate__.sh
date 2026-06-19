@@ -1,31 +1,15 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 : "${ARK_ROOT:=$PWD}"
-if ! compgen -G "$ARK_ROOT/python/ark/core*.so" >/dev/null; then
-    if compgen -G "$PWD/build/python/ark/core*.so" >/dev/null; then
-        ARK_ROOT="$PWD/build"
-    fi
-fi
 export ARK_ROOT
-export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
 
-bench=../examples/qwen3/bench_allreduce.py
-if [[ ! -f "$bench" ]]; then
-    bench=examples/qwen3/bench_allreduce.py
-fi
-if [[ ! -f "$bench" ]]; then
-    printf 'PERF_GATE name=allreduce ark_ms=999999.0000 sglang_ms=0.3268 ratio=3059972.4602\n'
-    exit 1
-fi
-
-target_ms=$(python3 - "$bench" <<'PY'
+target_ms=$(python3 - <<'PY'
 import importlib.util
 import pathlib
-import sys
 
-# bench_allreduce.py records PROFILE.md Q7 comm target: 214.69 ms / 657 calls.
-path = pathlib.Path(sys.argv[1])
+path = pathlib.Path("../examples/qwen3/bench_allreduce.py")
 spec = importlib.util.spec_from_file_location("bench_allreduce", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -36,8 +20,8 @@ PY
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 status=0
-python3 "$bench" --world-size 2 --shape decode >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-python3 "$bench" --world-size 8 --shape decode >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
+python3 ../examples/qwen3/bench_allreduce.py --world-size 2 --shape decode >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
+python3 ../examples/qwen3/bench_allreduce.py --world-size 8 --shape decode >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
 ark_ms=$(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" <<'PY'
 import re
