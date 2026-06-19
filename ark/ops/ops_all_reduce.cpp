@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include "ark/planner.hpp"
 #include "buffer_registry.hpp"
 #include "ops_common.hpp"
 #include "ops_communication.hpp"
@@ -82,6 +83,9 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     constexpr size_t kLargeMessageThresholdBytes = 153600;
     bool packet_supported = packet_alignment != 0 &&
                             (nelems % packet_alignment) == 0 &&
+                            has_flattenable_layout(input) &&
+                            (output.is_null() ||
+                             has_flattenable_layout(output)) &&
                             !is_registered_external(output);
     if (input.ref()->shape_bytes() <= kLargeMessageThresholdBytes) {
         if (packet_supported) {
@@ -105,8 +109,9 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     if ((nelems_per_rank % kPrefillSmTileElems) != 0) {
         return ring_all_reduce();
     }
-    // Large route peers: RecvReduceSend kernels support at most 7 peers.
-    if (gpu_num - 1 > kMaxRecvReduceSendPeers) {
+    // Large route peers: RecvReduceSend kernels accept at most 7 peers.
+    constexpr int kMaxPrefillRecvReduceSendPeers = 7;
+    if (gpu_num - 1 > kMaxPrefillRecvReduceSendPeers) {
         return ring_all_reduce();
     }
 
@@ -149,6 +154,23 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         }
     }
 
+    size_t prefill_num_tasks = nelems_per_rank / kPrefillSmTileElems;
+    Json prefill_send_config = {{"ChannelType", "Sm"},
+                                {"Signal", false},
+                                {"NumWarps", 8},
+                                {"SramBytes", 0},
+                                {"Tile", {1, kPrefillSmTileElems}},
+                                {"NumTasks", prefill_num_tasks}};
+    Json prefill_reduce_config = {{"NumWarps", 8},
+                                  {"SramBytes", 0},
+                                  {"Tile", {1, kPrefillSmTileElems}},
+                                  {"NumTasks", prefill_num_tasks}};
+    Json prefill_recv_config = {{"ChannelType", "Proxy"},
+                                {"NumTasks", 1},
+                                {"NumWarps", 1},
+                                {"SramBytes", 0},
+                                {"Wait", false}};
+
     int n_peers = gpu_num - 1;
     Tensor scratch = this->tensor({nelems_per_rank_dim * n_peers},
                                   reshaped_input.data_type());
@@ -161,12 +183,11 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
         Tensor remote_scratch = this->tensor(
             {nelems_per_rank_dim}, reshaped_input.data_type(), scratch_strides,
             ark::Dims(nelems_per_rank_dim * remote_slot), scratch_padded, dst);
-        Tensor send = impl_
-                          ->create_op<ModelOpAllReducePrefillSendSm>(
-                              "all_reduce_prefill_send",
-                              sharded_inputs[dst].ref(), dst, send_tag,
-                              remote_scratch.ref())
-                          ->result_tensors()[0];
+        ark::PlannerContext ctx(*this);
+        ctx.config(prefill_send_config.dump());
+        Tensor send = this->send(sharded_inputs[dst], dst, send_tag,
+                                 remote_scratch,
+                                 "all_reduce_prefill_send");
         send_deps.push_back(send);
     }
 
@@ -176,32 +197,33 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     Tensor scatter_sync = this->device_sync(sends_done, gpu_id, gpu_num);
     Tensor local_input = this->identity(sharded_inputs[gpu_id], {scatter_sync});
 
-    std::vector<ModelTensorRef> peer_output_refs;
+    std::vector<Tensor> peer_outputs;
     ark::Dims output_strides = {static_cast<DimType>(nelems)};
     ark::Dims output_padded = {nelems_per_rank_dim};
     for (int peer : remote_ranks) {
         Tensor peer_output = this->tensor(
             {nelems_per_rank_dim}, reshaped_output.data_type(), output_strides,
             ark::Dims(nelems_per_rank_dim * gpu_id), output_padded, peer);
-        peer_output_refs.push_back(peer_output.ref());
+        peer_outputs.push_back(peer_output);
     }
 
-    Tensor local_reduced =
-        impl_
-            ->create_op<ModelOpAllReducePrefillRecvReduceSendSm>(
-                "all_reduce_prefill_reduce_scatter", local_input.ref(),
-                sharded_outputs[gpu_id].ref(), gpu_id, remote_ranks, send_tag,
-                output_tag, peer_output_refs, scratch.ref())
-            ->result_tensors()[0];
+    Tensor local_reduced;
+    {
+        ark::PlannerContext ctx(*this);
+        ctx.config(prefill_reduce_config.dump());
+        local_reduced = this->recv_reduce_send(
+            local_input, remote_ranks, send_tag, output_tag,
+            sharded_outputs[gpu_id], peer_outputs, scratch,
+            "all_reduce_prefill_reduce_scatter");
+    }
 
     std::vector<Tensor> recv_deps;
     recv_deps.push_back(local_reduced);
     for (int peer : remote_ranks) {
-        Tensor recv = impl_
-                          ->create_op<ModelOpAllReducePrefillRecvNoWait>(
-                              "all_reduce_prefill_recv",
-                              sharded_outputs[peer].ref(), peer, output_tag)
-                          ->result_tensors()[0];
+        ark::PlannerContext ctx(*this);
+        ctx.config(prefill_recv_config.dump());
+        Tensor recv = this->recv(sharded_outputs[peer], peer, output_tag,
+                                 "all_reduce_prefill_recv");
         recv_deps.push_back(recv);
     }
 

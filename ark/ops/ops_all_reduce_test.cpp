@@ -417,25 +417,63 @@ ark::unittest::State test_all_reduce_packet_fused_2gpus() {
     return ark::unittest::SUCCESS;
 }
 
-struct PrefillRouteCounts {
+struct AllReduceRouteCounts {
+    int packet_count = 0;
     int sm_send_count = 0;
     int sm_reduce_count = 0;
+    int recv_nowait_count = 0;
+    int proxy_device_sync_count = 0;
 };
 
-PrefillRouteCounts count_prefill_routes(ark::Model &model) {
-    PrefillRouteCounts counts;
+ark::Json effective_config(const ark::ModelNodeRef &node) {
+    auto &op = node->op;
+    ark::Json cfg = op->default_config(ark::ARCH_CUDA_80);
+    if (!node->context.contains("Config")) {
+        return cfg;
+    }
+
+    cfg = ark::Json::object();
+    for (auto &ctx_config : node->context.at("Config")) {
+        auto &items = ctx_config.at(1);
+        for (auto &item : items.items()) {
+            cfg[item.key()] = item.value();
+        }
+    }
+    return cfg;
+}
+
+void count_all_reduce_route_node(const ark::ModelNodeRef &node,
+                                 AllReduceRouteCounts &counts) {
+    auto &op = node->op;
+    if (op->is_virtual()) return;
+    if (op->type() == ark::ModelOpT::from_name("AllReducePacketFused")) {
+        ++counts.packet_count;
+    }
+    auto cfg = effective_config(node);
+    if (op->type() == ark::ModelOpT::from_name("Send") &&
+        cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
+        ++counts.sm_send_count;
+    }
+    if (op->type() == ark::ModelOpT::from_name("RecvReduceSend") &&
+        cfg.contains("NumWarps") && cfg.at("NumWarps").get<int>() == 8 &&
+        cfg.contains("Tile") && cfg.at("Tile").at(0).get<int>() == 1 &&
+        cfg.at("Tile").at(1).get<int>() == 64 * 8 * 8) {
+        ++counts.sm_reduce_count;
+    }
+    if (op->type() == ark::ModelOpT::from_name("Recv") &&
+        cfg.contains("Wait") && cfg.at("Wait") == false) {
+        ++counts.recv_nowait_count;
+    }
+    if (op->type() == ark::ModelOpT::from_name("DeviceSync") &&
+        cfg.contains("ChannelType") && cfg.at("ChannelType") == "Proxy") {
+        ++counts.proxy_device_sync_count;
+    }
+}
+
+AllReduceRouteCounts count_all_reduce_routes(ark::Model &model) {
+    AllReduceRouteCounts counts;
     for (auto &node : model.nodes()) {
-        auto &op = node->op;
-        if (op->is_virtual()) continue;
-        auto cfg = op->default_config(ark::ARCH_CUDA_80);
-        if (op->type() == ark::ModelOpT::from_name("Send") &&
-            cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
-            ++counts.sm_send_count;
-        }
-        if (op->type() == ark::ModelOpT::from_name("RecvReduceSend") &&
-            cfg.contains("NumWarps") && cfg.at("NumWarps").get<int>() == 8) {
-            ++counts.sm_reduce_count;
-        }
+        count_all_reduce_route_node(node, counts);
     }
     return counts;
 }
@@ -446,92 +484,37 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
         ark::Tensor tns = model.tensor({4096}, ark::FP16);
         model.all_reduce(tns, 0, 2);
 
-        bool found_packet = false;
-        for (auto &node : model.nodes()) {
-            auto &op = node->op;
-            if (op->is_virtual()) continue;
-            found_packet |=
-                op->type() == ark::ModelOpT::from_name("AllReducePacketFused");
-        }
-        UNITTEST_TRUE(found_packet);
+        AllReduceRouteCounts counts = count_all_reduce_routes(model);
+        UNITTEST_EQ(counts.packet_count, 1);
     }
     {
         ark::Model model(0, 2);
         ark::Tensor tns = model.tensor({131072}, ark::FP16);
         model.all_reduce(tns, 0, 2);
 
-        int packet_count = 0;
-        int sm_send_count = 0;
-        int sm_reduce_count = 0;
-        int recv_nowait_count = 0;
-        int proxy_device_sync_count = 0;
-        for (auto &node : model.nodes()) {
-            auto &op = node->op;
-            if (op->is_virtual()) continue;
-            if (op->type() ==
-                ark::ModelOpT::from_name("AllReducePacketFused")) {
-                ++packet_count;
-            }
-            auto cfg = op->default_config(ark::ARCH_CUDA_80);
-            if (op->type() == ark::ModelOpT::from_name("Send") &&
-                cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
-                ++sm_send_count;
-            }
-            if (op->type() == ark::ModelOpT::from_name("RecvReduceSend") &&
-                cfg.at("NumWarps").get<int>() == 8) {
-                ++sm_reduce_count;
-            }
-            if (op->type() == ark::ModelOpT::from_name("Recv") &&
-                cfg.at("Wait") == false) {
-                ++recv_nowait_count;
-            }
-            if (op->type() == ark::ModelOpT::from_name("DeviceSync") &&
-                cfg.at("ChannelType") == "Proxy") {
-                ++proxy_device_sync_count;
-            }
-        }
-        UNITTEST_EQ(packet_count, 0);
-        UNITTEST_EQ(sm_send_count, 1);
-        UNITTEST_EQ(sm_reduce_count, 1);
-        UNITTEST_EQ(recv_nowait_count, 1);
-        UNITTEST_EQ(proxy_device_sync_count, 2);
+        AllReduceRouteCounts counts = count_all_reduce_routes(model);
+        UNITTEST_EQ(counts.packet_count, 0);
+        UNITTEST_EQ(counts.sm_send_count, 1);
+        UNITTEST_EQ(counts.sm_reduce_count, 1);
+        UNITTEST_EQ(counts.recv_nowait_count, 1);
+        UNITTEST_EQ(counts.proxy_device_sync_count, 2);
     }
     {
         ark::Model model(0, 2);
         ark::Tensor tns = model.tensor({77824}, ark::FP16);
         model.all_reduce(tns, 0, 2);
 
-        int packet_count = 0;
-        int sm_send_count = 0;
-        int sm_reduce_count = 0;
-        for (auto &node : model.nodes()) {
-            auto &op = node->op;
-            if (op->is_virtual()) continue;
-            if (op->type() ==
-                ark::ModelOpT::from_name("AllReducePacketFused")) {
-                ++packet_count;
-            }
-            auto cfg = op->default_config(ark::ARCH_CUDA_80);
-            if (op->type() == ark::ModelOpT::from_name("Send") &&
-                cfg.contains("ChannelType") && cfg.at("ChannelType") == "Sm") {
-                ++sm_send_count;
-            }
-            if (op->type() == ark::ModelOpT::from_name("RecvReduceSend") &&
-                cfg.contains("NumWarps") &&
-                cfg.at("NumWarps").get<int>() == 8) {
-                ++sm_reduce_count;
-            }
-        }
-        UNITTEST_EQ(packet_count, 0);
-        UNITTEST_EQ(sm_send_count, 0);
-        UNITTEST_EQ(sm_reduce_count, 0);
+        AllReduceRouteCounts counts = count_all_reduce_routes(model);
+        UNITTEST_EQ(counts.packet_count, 0);
+        UNITTEST_EQ(counts.sm_send_count, 0);
+        UNITTEST_EQ(counts.sm_reduce_count, 0);
     }
     {
         ark::Model model(0, 9);
         ark::Tensor tns = model.tensor({110592}, ark::FP16);
         model.all_reduce(tns, 0, 9);
 
-        PrefillRouteCounts counts = count_prefill_routes(model);
+        AllReduceRouteCounts counts = count_all_reduce_routes(model);
         UNITTEST_EQ(counts.sm_send_count, 0);
         UNITTEST_EQ(counts.sm_reduce_count, 0);
     }
@@ -542,7 +525,19 @@ ark::unittest::State test_all_reduce_size_dispatch_model() {
                                       {0, 0}, {128, 1024});
         model.all_reduce(tns, 0, 2);
 
-        PrefillRouteCounts counts = count_prefill_routes(model);
+        AllReduceRouteCounts counts = count_all_reduce_routes(model);
+        UNITTEST_EQ(counts.sm_send_count, 0);
+        UNITTEST_EQ(counts.sm_reduce_count, 0);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor base = model.tensor({65, 1024}, ark::FP16);
+        ark::Tensor tns = model.refer(base, {64, 1024}, {65, 1024}, {0, 0},
+                                      {64, 1024});
+        model.all_reduce(tns, 0, 2);
+
+        AllReduceRouteCounts counts = count_all_reduce_routes(model);
+        UNITTEST_EQ(counts.packet_count, 0);
         UNITTEST_EQ(counts.sm_send_count, 0);
         UNITTEST_EQ(counts.sm_reduce_count, 0);
     }

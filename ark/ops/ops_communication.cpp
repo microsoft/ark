@@ -10,6 +10,7 @@ static const std::map<std::string, size_t> packet_payload_size_map = {
     {"mscclpp::LL8Packet", 4},
     {"mscclpp::LL16Packet", 8},
 };
+static const int MAX_NUM_PEERS = 7;
 }  // namespace
 
 namespace ark {
@@ -165,31 +166,6 @@ Json ModelOpRecv::default_config([[maybe_unused]] const ArchRef arch) const {
             {"NumWarps", 1},
             {"SramBytes", 0},
             {"Wait", true}};
-}
-
-Json ModelOpAllReducePrefillRecvNoWait::default_config(
-    [[maybe_unused]] const ArchRef arch) const {
-    Json config = ModelOpRecv::default_config(arch);
-    config["Wait"] = false;
-    return config;
-}
-
-Json ModelOpAllReducePrefillSendSm::default_config(
-    [[maybe_unused]] const ArchRef arch) const {
-    Json config;
-    config["ChannelType"] = "Sm";
-    config["Signal"] = false;
-    config["NumWarps"] = 8;
-    config["SramBytes"] = 0;
-    const auto &shape = result_tensors_[0]->shape().dims4();
-    size_t tile_x = 1;
-    size_t tile_y = 64 * 8 * 8;
-    config["Tile"] = {tile_x, tile_y};
-    size_t num_tasks = shape[0] * shape[1];
-    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
-    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
-    config["NumTasks"] = num_tasks;
-    return config;
 }
 
 ModelOpSendPacket::ModelOpSendPacket(ModelTensorRef input, int remote_rank,
@@ -382,10 +358,6 @@ ModelOpRecvReduceSendPacket::ModelOpRecvReduceSendPacket(
     : ModelOp("RecvReduceSendPacket") {
     check_null(input);
     uint32_t n_remote_ranks = remote_ranks.size();
-    if (n_remote_ranks > kMaxRecvReduceSendPeers) {
-        ERR(ModelError, "too many RecvReduceSend peers: ", n_remote_ranks,
-            ", maximum: ", kMaxRecvReduceSendPeers);
-    }
     // Need to check the scratch buffers are contiguous
     if (scratch) {
         if (scratch->buffer()->rank() != rank &&
@@ -453,7 +425,7 @@ std::vector<ModelOpArg> ModelOpRecvReduceSendPacket::impl_args(
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
         args.push_back(ModelOffset(write_tensors_[i]));
     }
-    for (int i = write_tensors_.size() - 1; i < kMaxRecvReduceSendPeers; ++i) {
+    for (int i = write_tensors_.size() - 1; i < MAX_NUM_PEERS; ++i) {
         args.push_back(0L);
     }
     return args;
@@ -581,10 +553,6 @@ ModelOpRecvReduceSend::ModelOpRecvReduceSend(
     : ModelOp("RecvReduceSend") {
     check_null(input);
     uint32_t n_remote_ranks = remote_ranks.size();
-    if (n_remote_ranks > kMaxRecvReduceSendPeers) {
-        ERR(ModelError, "too many RecvReduceSend peers: ", n_remote_ranks,
-            ", maximum: ", kMaxRecvReduceSendPeers);
-    }
     // Need to check the scratch buffers are contiguous
     if (scratch) {
         if (scratch->buffer()->rank() != rank &&
@@ -650,7 +618,7 @@ std::vector<ModelOpArg> ModelOpRecvReduceSend::impl_args(
     for (size_t i = 1; i < write_tensors_.size(); ++i) {
         args.push_back(ModelOffset(write_tensors_[i]));
     }
-    for (int i = write_tensors_.size() - 1; i < kMaxRecvReduceSendPeers; ++i) {
+    for (int i = write_tensors_.size() - 1; i < MAX_NUM_PEERS; ++i) {
         args.push_back(0L);
     }
     return args;
@@ -665,21 +633,6 @@ Json ModelOpRecvReduceSend::default_config(
     size_t tile_x = 1;
     size_t tile_y = 128;
     config["Tile"] = {tile_x, tile_y};
-    size_t num_tasks = shape[0] * shape[1];
-    num_tasks *= (shape[2] + tile_x - 1) / tile_x;
-    num_tasks *= (shape[3] + tile_y - 1) / tile_y;
-    config["NumTasks"] = num_tasks;
-    return config;
-}
-
-Json ModelOpAllReducePrefillRecvReduceSendSm::default_config(
-    [[maybe_unused]] const ArchRef arch) const {
-    Json config = ModelOpRecvReduceSend::default_config(arch);
-    config["NumWarps"] = 8;
-    size_t tile_x = 1;
-    size_t tile_y = 64 * 8 * 8;
-    config["Tile"] = {tile_x, tile_y};
-    const auto &shape = result_tensors_[0]->shape().dims4();
     size_t num_tasks = shape[0] * shape[1];
     num_tasks *= (shape[2] + tile_x - 1) / tile_x;
     num_tasks *= (shape[3] + tile_y - 1) / tile_y;

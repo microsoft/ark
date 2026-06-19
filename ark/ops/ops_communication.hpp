@@ -8,8 +8,6 @@
 
 namespace ark {
 
-inline constexpr int kMaxRecvReduceSendPeers = 7;
-
 class ModelOpSend : public ModelOp {
    public:
     ModelOpSend() = default;
@@ -43,26 +41,6 @@ class ModelOpRecv : public ModelOp {
     std::string impl_name(const Json &config) const override;
 
     std::vector<ModelOpArg> impl_args(const Json &config) const override;
-
-    Json default_config(const ArchRef arch = ARCH_ANY) const override;
-};
-
-// Internal default-config preset for large/prefill all-reduce; still emits
-// the underlying Recv op type.
-class ModelOpAllReducePrefillRecvNoWait : public ModelOpRecv {
-   public:
-    ModelOpAllReducePrefillRecvNoWait() = default;
-    using ModelOpRecv::ModelOpRecv;
-
-    Json default_config(const ArchRef arch = ARCH_ANY) const override;
-};
-
-// Internal default-config preset for large/prefill all-reduce; still emits
-// the underlying Send op type.
-class ModelOpAllReducePrefillSendSm : public ModelOpSend {
-   public:
-    ModelOpAllReducePrefillSendSm() = default;
-    using ModelOpSend::ModelOpSend;
 
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };
@@ -121,16 +99,6 @@ class ModelOpRecvReduceSend : public ModelOp {
     std::string impl_name(const Json &config) const override;
 
     std::vector<ModelOpArg> impl_args(const Json &config) const override;
-
-    Json default_config(const ArchRef arch = ARCH_ANY) const override;
-};
-
-// Internal default-config preset for large/prefill all-reduce; still emits
-// the underlying RecvReduceSend op type.
-class ModelOpAllReducePrefillRecvReduceSendSm : public ModelOpRecvReduceSend {
-   public:
-    ModelOpAllReducePrefillRecvReduceSendSm() = default;
-    using ModelOpRecvReduceSend::ModelOpRecvReduceSend;
 
     Json default_config(const ArchRef arch = ARCH_ANY) const override;
 };

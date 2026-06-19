@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${ARK_ROOT:=$PWD}"
+source_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+: "${ARK_ROOT:=$source_root}"
 export ARK_ROOT
 export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 
-source_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 bench_py="$source_root/examples/qwen3/bench_allreduce.py"
 
+# Verify the benchmark code was loaded from this checkout, not another ARK tree.
 head_sha=$(git -C "$source_root" rev-parse HEAD)
 target_ms=$(python3 - "$bench_py" <<'PY'
 import importlib.util
@@ -35,6 +36,8 @@ log_paths = [(2, sys.argv[1]), (8, sys.argv[2])]
 status = int(sys.argv[3])
 head_sha = sys.argv[4]
 target_ms = float(sys.argv[5])
+# Gate both the new prefill route and the decode-sized packet fallback within a
+# bounded regression window, preserving the all-reduce dispatch contract.
 decode_baselines_ms = {2: 0.0588, 8: 0.0637}
 decode_limit_factor = 1.20
 errors = []
