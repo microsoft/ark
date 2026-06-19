@@ -271,6 +271,14 @@ class Model : public ModelGraph {
     // total number of ranks `rank_num`.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
+    // Route selector for all-reduce. "auto" returns "packet" for small
+    // packet-compatible tensors and "ring" otherwise.
+    std::string all_reduce_route(Tensor input, int rank, int rank_num,
+                                 const std::string &route = "auto");
+    Tensor all_reduce_routed(Tensor input, int rank, int rank_num,
+                             Tensor output = NullTensor,
+                             const std::string &route = "auto",
+                             const std::string &name = "");
     // Packet-based all-reduce: uses LL packet channels (data + flag fused) for
     // low-latency intra-node collective. Single-shot reduce-scatter +
     // allgather, NOT a ring chain — avoids the (N-1)-step task accumulation of

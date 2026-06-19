@@ -6,12 +6,84 @@
 #include "ops_communication.hpp"
 
 namespace ark {
+namespace {
+
+constexpr size_t kAutoPacketMaxBytes = 32 << 10;
+
+void require_valid_all_reduce_rank(int rank, int rank_num,
+                                   const char *op_name) {
+    if (rank_num < 2) {
+        ERR(ModelError, op_name, " requires rank_num >= 2");
+    }
+    if (rank < 0 || rank >= rank_num) {
+        ERR(ModelError, op_name,
+            " requires rank to satisfy 0 <= rank < rank_num");
+    }
+}
+
+bool all_reduce_packet_layout_supported(Tensor input) {
+    if (input.strides() != input.padded_shape()) {
+        return false;
+    }
+    for (auto offset : input.offsets().vector()) {
+        if (offset != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool all_reduce_packet_supported(Tensor input, int rank_num) {
+    if (rank_num < 2 || !all_reduce_packet_layout_supported(input)) {
+        return false;
+    }
+    size_t dtype_bytes = input.data_type().bytes();
+    if (dtype_bytes == 0 || sizeof(uint32_t) % dtype_bytes != 0) {
+        return false;
+    }
+    size_t elems_per_uint32 = sizeof(uint32_t) / dtype_bytes;
+    size_t divisor = elems_per_uint32 * 2 * rank_num;
+    return divisor != 0 && input.shape().nelems() % divisor == 0;
+}
+
+void require_all_reduce_packet_supported(Tensor input, int rank,
+                                         int rank_num) {
+    require_valid_all_reduce_rank(rank, rank_num, "all_reduce_packet");
+    if (!all_reduce_packet_layout_supported(input)) {
+        ERR(ModelError, "all_reduce_packet requires a contiguous tensor");
+    }
+    size_t dtype_bytes = input.data_type().bytes();
+    if (dtype_bytes == 0 || sizeof(uint32_t) % dtype_bytes != 0) {
+        ERR(ModelError, "all_reduce_packet: unsupported data type ",
+            input.data_type().type_str());
+    }
+    size_t elems_per_uint32 = sizeof(uint32_t) / dtype_bytes;
+    size_t divisor = elems_per_uint32 * 2 * rank_num;
+    size_t nelems = input.shape().nelems();
+    if (nelems % divisor != 0) {
+        ERR(ModelError, "all_reduce_packet: nelems (", nelems,
+            ") must be divisible by ", divisor);
+    }
+}
+
+bool is_registered_external(Tensor tensor) {
+    if (tensor.is_null()) {
+        return false;
+    }
+    auto info = BufferRegistry::get_instance().get(tensor.ref()->buffer()->id());
+    return tensor.is_external() || (info && info->is_external);
+}
+
+}  // namespace
 
 Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
                          const std::string &) {
     std::vector<int> tags(gpu_num);
     for (int i = 0; i < gpu_num; i++) {
         tags[i] = this->unique_tag();
+    }
+    if (is_registered_external(input)) {
+        input = this->copy(input);
     }
     if (output.is_null()) {
         output = this->copy(input);
@@ -44,19 +116,46 @@ Tensor Model::all_reduce(Tensor input, int gpu_id, int gpu_num, Tensor output,
     return cumulate;
 }
 
+std::string Model::all_reduce_route(Tensor input, int rank, int rank_num,
+                                    const std::string &route) {
+    require_valid_all_reduce_rank(rank, rank_num, "all_reduce_route");
+
+    std::string requested = route.empty() ? "auto" : route;
+    if (requested == "auto") {
+        size_t bytes = input.shape().nelems() * input.data_type().bytes();
+        if (bytes <= kAutoPacketMaxBytes &&
+            all_reduce_packet_supported(input, rank_num)) {
+            return "packet";
+        }
+        return "ring";
+    }
+    if (requested == "packet") {
+        require_all_reduce_packet_supported(input, rank, rank_num);
+        return "packet";
+    }
+    if (requested == "ring") {
+        return "ring";
+    }
+    ERR(ModelError, "unknown all_reduce route: ", requested);
+}
+
+Tensor Model::all_reduce_routed(Tensor input, int rank, int rank_num,
+                                Tensor output, const std::string &route,
+                                const std::string &name) {
+    std::string selected = all_reduce_route(input, rank, rank_num, route);
+    if (selected == "packet") {
+        return this->all_reduce_packet(input, rank, rank_num, output, name);
+    }
+    return this->all_reduce(input, rank, rank_num, output, name);
+}
+
 Tensor Model::all_reduce_packet(Tensor input, int rank, int rank_num,
                                 Tensor output, const std::string &) {
-    int n_peers = rank_num - 1;
-    if (n_peers < 1) {
-        ERR(ModelError, "all_reduce_packet requires rank_num >= 2");
-    }
+    require_all_reduce_packet_supported(input, rank, rank_num);
 
+    int n_peers = rank_num - 1;
     size_t nelems = input.shape().nelems();
     size_t elems_per_uint32 = sizeof(uint32_t) / input.data_type().bytes();
-    if (nelems % (elems_per_uint32 * 2 * rank_num) != 0) {
-        ERR(ModelError, "all_reduce_packet: nelems (", nelems,
-            ") must be divisible by ", elems_per_uint32 * 2 * rank_num);
-    }
 
     // Copy external input into an internal buffer so it resides in mscclpp
     // registered memory. Internal ARK tensors are already registered.

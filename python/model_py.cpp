@@ -138,6 +138,12 @@ void register_model(py::module &m) {
         .def("all_reduce", &ark::Model::all_reduce, py::arg("input"),
              py::arg("rank"), py::arg("world_size"), py::arg("output"),
              py::arg("name"))
+        .def("all_reduce_route", &ark::Model::all_reduce_route,
+             py::arg("input"), py::arg("rank"), py::arg("world_size"),
+             py::arg("route"))
+        .def("all_reduce_routed", &ark::Model::all_reduce_routed,
+             py::arg("input"), py::arg("rank"), py::arg("world_size"),
+             py::arg("output"), py::arg("route"), py::arg("name"))
         .def("all_reduce_packet", &ark::Model::all_reduce_packet,
              py::arg("input"), py::arg("rank"), py::arg("world_size"),
              py::arg("output"), py::arg("name"));

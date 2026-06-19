@@ -36,6 +36,8 @@ __all__ = [
     "mul",
     "div",
     "all_reduce",
+    "all_reduce_route",
+    "all_reduce_routed",
     "all_reduce_packet",
     "embedding",
     "cast",
@@ -664,6 +666,50 @@ def all_reduce(
         output = output._tensor
     _tensor = Model.get_model().all_reduce(
         input._tensor, rank, world_size, output, name
+    )
+    return Tensor(_tensor)
+
+
+def all_reduce_route(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    route: str = "auto",
+) -> str:
+    """
+    Return the selected all-reduce route without adding a communication op.
+
+    ``route`` may be ``auto``, ``packet``, or ``ring``. ``auto`` returns
+    ``packet`` for small packet-compatible tensors and ``ring`` otherwise.
+    Explicit ``packet`` requests fail closed when the tensor shape cannot use
+    the packet kernel.
+    """
+    input = _ensure_ark(input)
+    return Model.get_model().all_reduce_route(
+        input._tensor, rank, world_size, route
+    )
+
+
+def all_reduce_routed(
+    input: Tensor,
+    rank: int,
+    world_size: int,
+    output: Tensor = NullTensor,
+    route: str = "auto",
+    name: str = "",
+) -> Tensor:
+    """
+    Perform all-reduce using the selected route.
+
+    ``auto`` preserves the packet route for supported small messages and uses
+    the ring route as the safe fallback for other shapes.
+    """
+    input = _ensure_ark(input)
+    output = _ensure_ark(output)
+    if output is not NullTensor:
+        output = output._tensor
+    _tensor = Model.get_model().all_reduce_routed(
+        input._tensor, rank, world_size, output, route, name
     )
     return Tensor(_tensor)
 

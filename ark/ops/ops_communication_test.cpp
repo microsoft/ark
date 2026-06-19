@@ -566,6 +566,64 @@ ark::unittest::State test_communication_send_recv_reduce() {
 }
 
 ark::unittest::State test_communication_allreduce_packet_fused_model() {
+    auto count_ops = [](ark::Model &model, const std::string &type) {
+        int count = 0;
+        for (auto &node : model.nodes()) {
+            auto &op = node->op;
+            if (!op->is_virtual() &&
+                op->type() == ark::ModelOpT::from_name(type)) {
+                ++count;
+            }
+        }
+        return count;
+    };
+
+    // Route selection is observable without running the graph.
+    {
+        ark::Model model(0, 8);
+        ark::Tensor tns = model.tensor({4096}, ark::FP16);
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 8), "packet");
+        ark::Tensor result = model.all_reduce_routed(tns, 0, 8);
+        UNITTEST_EQ(count_ops(model, "AllReducePacketFused"), 1);
+    }
+    {
+        ark::Model model(0, 8);
+        ark::Tensor tns = model.tensor({2048 * 4096}, ark::FP16);
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 8), "ring");
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 8, "ring"), "ring");
+        ark::Tensor result = model.all_reduce_routed(tns, 0, 8);
+        UNITTEST_EQ(count_ops(model, "AllReducePacketFused"), 0);
+        UNITTEST_TRUE(count_ops(model, "Send") > 0);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1023}, ark::FP16);
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 2), "ring");
+        UNITTEST_THROW(model.all_reduce_route(tns, 0, 2, "packet"),
+                       ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_route(tns, 0, 2, "unknown"),
+                       ark::ModelError);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor base = model.tensor({65, 64}, ark::FP16);
+        ark::Tensor tns =
+            model.refer(base, {64, 64}, {65, 64}, {0, 0}, {64, 64});
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 2), "ring");
+        UNITTEST_THROW(model.all_reduce_route(tns, 0, 2, "packet"),
+                       ark::ModelError);
+    }
+    {
+        ark::Model model(0, 2);
+        ark::Tensor tns = model.tensor({1024}, ark::FP16);
+        UNITTEST_THROW(model.all_reduce_route(tns, -1, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_route(tns, 2, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_routed(tns, -1, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_routed(tns, 2, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_packet(tns, -1, 2), ark::ModelError);
+        UNITTEST_THROW(model.all_reduce_packet(tns, 2, 2), ark::ModelError);
+    }
+
     // Single-GPU model-level test: construct the fused allreduce op and
     // verify impl_name / impl_args / default_config produce valid output.
     {

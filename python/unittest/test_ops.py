@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+import pytest
+
 from common import ark, pytest_ark
 
 
@@ -224,3 +226,21 @@ def test_ops_all_reduce_packet():
     a = ark.tensor([1024], ark.fp16)
     b = ark.all_reduce_packet(a, rank=0, world_size=2)
     assert b.shape() == [1024]
+
+
+@pytest_ark()
+def test_ops_all_reduce_route():
+    ark.set_world_size(8)
+    decode = ark.tensor([4096], ark.fp16)
+    assert ark.all_reduce_route(decode, rank=0, world_size=8) == "packet"
+
+    prefill = ark.tensor([2048 * 4096], ark.fp16)
+    assert ark.all_reduce_route(prefill, rank=0, world_size=8) == "ring"
+
+    odd = ark.tensor([1023], ark.fp16)
+    assert ark.all_reduce_route(odd, rank=0, world_size=2) == "ring"
+    with pytest.raises(ark.ModelError):
+        ark.all_reduce_route(odd, rank=0, world_size=2, route="packet")
+
+    routed = ark.all_reduce_routed(prefill, rank=0, world_size=8)
+    assert routed.shape() == [2048 * 4096]
