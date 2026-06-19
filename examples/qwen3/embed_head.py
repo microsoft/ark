@@ -62,30 +62,32 @@ def qwen3_final_rmsnorm(
     out_dtype=None,
 ):
     """Apply final RMSNorm with fp32 reduction and dtype-restored output."""
+    input_dtype = _ark_dtype_from_tensor(hidden)
     dst_dtype = _ark_dtype_from_tensor(hidden, out_dtype)
     original_shape = _tensor_shape(hidden)
     hidden_shape = original_shape
     hidden_for_norm = hidden
-    matmul_decode = False
+    duplicate_decode = False
     norm_dim = original_shape[-1]
     if len(original_shape) > 2:
         prefix_nelems = _prod(original_shape[:-1])
         hidden_shape = [prefix_nelems, norm_dim]
-        matmul_decode = prefix_nelems == 1
+        duplicate_decode = prefix_nelems == 1
         hidden_for_norm = ark.reshape(hidden, hidden_shape)
+    if duplicate_decode:
+        # Avoid ARK's one-row RMSNorm path for decode tensors.
+        zeros = ark.zeros([2, norm_dim], dtype=input_dtype)
+        hidden_for_norm = ark.add(hidden_for_norm, zeros)
     hidden_fp32 = ark.cast(hidden_for_norm, ark.fp32)
+    hidden_sq = ark.mul(hidden_fp32, hidden_fp32)
+    mean_sq = ark.reduce_mean(hidden_sq, axis=-1)
+    if duplicate_decode:
+        hidden_fp32 = hidden_fp32[0:1, :]
+        mean_sq = mean_sq[0:1, :]
     weight_fp32 = ark.cast(norm_weight, ark.fp32)
     if weight_fp32.shape() == [norm_dim] and len(hidden_shape) > 1:
         weight_shape = [1] * (len(hidden_shape) - 1) + [norm_dim]
         weight_fp32 = ark.reshape(weight_fp32, weight_shape)
-    hidden_sq = ark.mul(hidden_fp32, hidden_fp32)
-    if matmul_decode:
-        # Avoid ARK's one-row W-wise reduce path for decode tensors.
-        ones = ark.add(ark.mul(weight_fp32, 0.0), 1.0)
-        summed = ark.matmul(hidden_sq, ark.reshape(ones, [norm_dim, 1]))
-        mean_sq = ark.mul(summed, 1.0 / norm_dim)
-    else:
-        mean_sq = ark.reduce_mean(hidden_sq, axis=-1)
     rms_inv = ark.rsqrt(ark.add(mean_sq, eps))
     normalized = ark.mul(ark.mul(hidden_fp32, rms_inv), weight_fp32)
     if dst_dtype != ark.fp32:
