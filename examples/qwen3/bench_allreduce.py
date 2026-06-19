@@ -56,6 +56,13 @@ ark.set_world_size(world_size)
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
 result = ark.all_reduce(x, rank, world_size)
+model_text = ark.Model.get_model().serialize(False)
+if "AllReducePacketFused" in model_text:
+    route = "packet"
+elif "all_reduce_prefill_reduce_scatter" in model_text:
+    route = "prefill"
+else:
+    route = "fallback"
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -73,13 +80,18 @@ with ark.Runtime() as rt:
 
 latency_us = host_s * 1e6
 
-print(json.dumps({
-    "rank": rank,
-    "label": label,
-    "world_size": world_size,
-    "n_elements": n_elements,
-    "latency_us": round(latency_us, 3),
-}))
+print(
+    json.dumps(
+        {
+            "rank": rank,
+            "label": label,
+            "world_size": world_size,
+            "n_elements": n_elements,
+            "route": route,
+            "latency_us": round(latency_us, 3),
+        }
+    )
+)
 sys.stdout.flush()
 
 # Workaround: mscclpp's UnixSocketServer destructor races during normal
@@ -173,19 +185,35 @@ def run_bench(world_size, timeout, shape):
                     rank_results.append(result)
             if not shape_failed and len(rank_results) == world_size:
                 rank_results.sort(key=lambda d: d["rank"])
-                max_result = max(rank_results, key=lambda d: d["latency_us"])
-                results.append(
-                    {
-                        "label": max_result["label"],
-                        "world_size": world_size,
-                        "n_elements": max_result["n_elements"],
-                        "max_rank": max_result["rank"],
-                        "latency_us": max_result["latency_us"],
-                        "rank_latencies_us": [
-                            d["latency_us"] for d in rank_results
-                        ],
-                    }
-                )
+                routes = {d.get("route", "unknown") for d in rank_results}
+                if len(routes) != 1:
+                    any_failed = True
+                    print(
+                        f"ERROR {label}: inconsistent routes "
+                        f"{sorted(routes)}",
+                        file=sys.stderr,
+                    )
+                else:
+                    max_result = max(rank_results, key=lambda d: d["latency_us"])
+                    shape_name = (
+                        "decode"
+                        if max_result["n_elements"] == SHAPES["decode"][1]
+                        else "prefill"
+                    )
+                    results.append(
+                        {
+                            "shape": shape_name,
+                            "label": max_result["label"],
+                            "world_size": world_size,
+                            "n_elements": max_result["n_elements"],
+                            "route": routes.pop(),
+                            "max_rank": max_result["rank"],
+                            "latency_us": max_result["latency_us"],
+                            "rank_latencies_us": [
+                                d["latency_us"] for d in rank_results
+                            ],
+                        }
+                    )
             else:
                 any_failed = True
                 if not shape_failed:
@@ -205,12 +233,20 @@ def run_bench(world_size, timeout, shape):
         f"(single iteration, max rank, includes staging)"
     )
     print(f"{'=' * 72}")
-    print(f"{'Shape':<24}{'Elements':>12}{'Max rank':>10}{'ARK us':>10}")
+    print(
+        f"{'Shape':<24}{'Route':>10}{'Elements':>12}"
+        f"{'Max rank':>10}{'ARK us':>10}"
+    )
     print(f"{'-' * 72}")
     for d in results:
         print(
-            f"{d['label']:<24}{d['n_elements']:>12,}"
+            f"{d['label']:<24}{d['route']:>10}{d['n_elements']:>12,}"
             f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
+        )
+        print(
+            f"BENCH_RESULT shape={d['shape']} world_size={world_size}"
+            f" max_rank={d['max_rank']} route={d['route']}"
+            f" latency_us={d['latency_us']:.3f}"
         )
     print(f"{'=' * 72}\n")
     return results, any_failed

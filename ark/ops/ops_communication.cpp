@@ -175,7 +175,8 @@ Json ModelOpAllReducePrefillRecvNoWait::default_config(
     return config;
 }
 
-Json ModelOpAllReducePrefillSendSm::default_config([[maybe_unused]] const ArchRef arch) const {
+Json ModelOpAllReducePrefillSendSm::default_config(
+    [[maybe_unused]] const ArchRef arch) const {
     Json config;
     config["ChannelType"] = "Sm";
     config["Signal"] = false;
