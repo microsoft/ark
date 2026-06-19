@@ -34,9 +34,10 @@ except ImportError:
         qwen3_embed_head,
     )
 
-# PROFILE.md records Q8-relevant remaining model work as "other" = 0.57 ms
-# and notes "embed/lm_head <0.2%" for TP=8 batch=1 decode-dominated Qwen3-8B.
-_SGLANG_TARGET_MS = 0.57
+# PROFILE.md records total decode-dominated kernel time as 277.67 ms
+# and lists embed/lm_head as <0.2%, so the strict upper-bound target is
+# 277.67 * 0.002 = 0.55534 ms.
+_SGLANG_TARGET_MS = 0.55534
 _FAILURE_MS = 999999.0
 
 SHAPES = {

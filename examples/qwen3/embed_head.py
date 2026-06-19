@@ -47,7 +47,12 @@ def qwen3_final_rmsnorm(
     """Apply final RMSNorm with fp32 reduction and dtype-restored output."""
     dst_dtype = _ark_dtype_from_tensor(hidden, out_dtype)
     hidden_fp32 = ark.cast(hidden, ark.fp32)
+    hidden_shape = hidden_fp32.shape()
     weight_fp32 = ark.cast(norm_weight, ark.fp32)
+    if weight_fp32.shape() == [hidden_shape[-1]] and len(hidden_shape) > 1:
+        weight_fp32 = ark.reshape(
+            weight_fp32, [1] * (len(hidden_shape) - 1) + [hidden_shape[-1]]
+        )
     hidden_sq = ark.mul(hidden_fp32, hidden_fp32)
     mean_sq = ark.reduce_mean(hidden_sq, axis=-1)
     rms_inv = ark.rsqrt(ark.add(mean_sq, eps))
