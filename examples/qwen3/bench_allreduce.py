@@ -300,18 +300,6 @@ def main():
     gate_result = [
         r for r in results if r["n_elements"] == SHAPES[gate_shape][1]
     ]
-    if gate_result:
-        ark_ms = gate_result[0]["latency_us"] / 1000.0
-    else:
-        ark_ms = 999999.0
-    sglang_ms = _TARGETS_MS[gate_shape]
-    ratio = ark_ms / sglang_ms
-    print(
-        f"PERF_GATE name={_GATE_NAMES[gate_shape]}"
-        f" ark_ms={ark_ms:.4f}"
-        f" sglang_ms={sglang_ms:.4f}"
-        f" ratio={ratio:.4f}"
-    )
     if any_failed:
         print("ERROR: one or more benchmark workers failed", file=sys.stderr)
         raise SystemExit(1)
@@ -321,6 +309,16 @@ def main():
             file=sys.stderr,
         )
         raise SystemExit(1)
+
+    ark_ms = gate_result[0]["latency_us"] / 1000.0
+    sglang_ms = _TARGETS_MS[gate_shape]
+    ratio = ark_ms / sglang_ms
+    print(
+        f"PERF_GATE name={_GATE_NAMES[gate_shape]}"
+        f" ark_ms={ark_ms:.4f}"
+        f" sglang_ms={sglang_ms:.4f}"
+        f" ratio={ratio:.4f}"
+    )
 
 
 if __name__ == "__main__":

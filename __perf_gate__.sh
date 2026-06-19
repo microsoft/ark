@@ -10,33 +10,8 @@ for candidate in "$script_dir" "$PWD" .. ../ark; do
   fi
 done
 
-emit_sentinel() {
-  local target_ms="0.1880"
-  if [[ -n "${source_root:-}" ]]; then
-    target_ms=$(python3 - "$source_root/examples/qwen3/bench_allreduce.py" <<'PY'
-import importlib.util
-import sys
-
-path = sys.argv[1]
-spec = importlib.util.spec_from_file_location("bench_allreduce", path)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-print(f"{module._PREFILL_TARGET_MS:.4f}")
-PY
-)
-  fi
-  local ratio
-  ratio=$(python3 - "$target_ms" <<'PY'
-import sys
-
-print(f"{999999.0 / float(sys.argv[1]):.4f}")
-PY
-)
-  printf 'PERF_GATE name=allreduce_prefill ark_ms=999999.0000 sglang_ms=%s ratio=%s\n' "$target_ms" "$ratio"
-}
-
 if [[ -z "$source_root" ]]; then
-  emit_sentinel
+  echo "ERROR: could not locate examples/qwen3/bench_allreduce.py" >&2
   exit 1
 fi
 
@@ -121,6 +96,7 @@ def is_under(path, roots):
 decode_baselines_ms = {2: 0.0588, 8: 0.0637}
 decode_limit_factor = 1.20
 errors = []
+perf_errors = []
 prefill_values = []
 all_ark_paths = set()
 
@@ -149,7 +125,7 @@ for world_size, path in log_paths:
         if ark_ms >= 999999.0:
             errors.append(f"TP={world_size}: sentinel prefill latency")
         if ark_ms > target_ms:
-            errors.append(
+            perf_errors.append(
                 f"TP={world_size}: prefill ark_ms {ark_ms:.4f} > "
                 f"{target_ms:.4f}"
             )
@@ -195,7 +171,7 @@ for world_size, path in log_paths:
     if decode_ms >= 999999.0:
         errors.append(f"TP={world_size}: sentinel decode latency")
     if decode_ms > decode_limit:
-        errors.append(
+        perf_errors.append(
             f"TP={world_size}: decode ark_ms {decode_ms:.4f} > "
             f"{decode_limit:.4f}"
         )
@@ -214,9 +190,11 @@ else:
 for error in errors:
     print(f"ERROR: {error}", file=sys.stderr)
 if errors or len(prefill_values) != 2:
-    print("999999.0000 1")
-else:
-    print(f"{max(prefill_values):.4f} 0")
+    raise SystemExit(1)
+
+for error in perf_errors:
+    print(f"ERROR: {error}", file=sys.stderr)
+print(f"{max(prefill_values):.4f} {1 if perf_errors else 0}")
 PY
 )
 ratio=$(python3 - "$ark_ms" "$target_ms" <<'PY'
