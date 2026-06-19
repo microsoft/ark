@@ -641,7 +641,7 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
         ark::Model model(0, 2);
         ark::Tensor base = model.tensor({64, 64}, ark::FP16);
         ark::Tensor tns =
-            model.refer(base, {63, 64}, {64, 64}, {1, 0}, {64, 64});
+            model.refer(base, {63, 64}, {64, 64}, {1, 0}, {63, 64});
         UNITTEST_EQ(model.all_reduce_route(tns, 0, 2), "ring");
         UNITTEST_THROW(model.all_reduce_route(tns, 0, 2, "packet"),
                        ark::ModelError);
