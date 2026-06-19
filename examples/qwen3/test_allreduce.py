@@ -224,7 +224,9 @@ def test_allreduce_decode_tp8():
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_fallback_tp2():
     """Fallback all-reduce at TP=2 for a tile-misaligned large tensor."""
-    _run_allreduce_test(world_size=2, n_elements=77824, expected_route="fallback")
+    _run_allreduce_test(
+        world_size=2, n_elements=77824, expected_route="fallback"
+    )
 
 
 # ---------- Prefill shape (2048, 4096) = 8388608 elements ----------

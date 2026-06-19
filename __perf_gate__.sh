@@ -1,7 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+source_root=""
+for candidate in "$script_dir" "$PWD" .. ../ark; do
+  if [[ -f "$candidate/examples/qwen3/bench_allreduce.py" ]]; then
+    source_root=$(cd "$candidate" && pwd)
+    break
+  fi
+done
+
+emit_sentinel() {
+  local target_ms="0.1880"
+  if [[ -n "${source_root:-}" ]]; then
+    target_ms=$(python3 - "$source_root/examples/qwen3/bench_allreduce.py" <<'PY'
+import importlib.util
+import sys
+
+path = sys.argv[1]
+spec = importlib.util.spec_from_file_location("bench_allreduce", path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+print(f"{module._PREFILL_TARGET_MS:.4f}")
+PY
+)
+  fi
+  local ratio
+  ratio=$(python3 - "$target_ms" <<'PY'
+import sys
+
+print(f"{999999.0 / float(sys.argv[1]):.4f}")
+PY
+)
+  printf 'PERF_GATE name=allreduce_prefill ark_ms=999999.0000 sglang_ms=%s ratio=%s\n' "$target_ms" "$ratio"
+}
+
+if [[ -z "$source_root" ]]; then
+  emit_sentinel
+  exit 1
+fi
+
 : "${ARK_ROOT:=$source_root}"
 export ARK_ROOT
 export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
@@ -9,7 +47,7 @@ export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 bench_py="$source_root/examples/qwen3/bench_allreduce.py"
 
 # Verify the benchmark code was loaded from this checkout, not another ARK tree.
-head_sha=$(git -C "$source_root" rev-parse HEAD)
+head_sha=$(git -C "$source_root" rev-parse HEAD 2>/dev/null || echo unknown)
 target_ms=$(python3 - "$bench_py" <<'PY'
 import importlib.util
 import sys
