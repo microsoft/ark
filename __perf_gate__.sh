@@ -28,12 +28,20 @@ import re
 import sys
 
 values = []
+valid_evidence = True
 for name in sys.argv[1:3]:
     text = open(name, encoding="utf-8").read()
-    match = re.search(r"PERF_GATE name=allreduce\s+ark_ms=([0-9.]+)", text)
-    if match:
-        values.append(float(match.group(1)))
-if int(sys.argv[3]) or len(values) != 2:
+    perf = re.search(r"PERF_GATE name=allreduce_decode\s+ark_ms=([0-9.]+)", text)
+    bench = re.search(
+        r"BENCH_RESULT name=allreduce_decode\s+head_sha=(\S+)\s+"
+        r"route=(\S+)\s+.*?\s+ark_ms=([0-9.]+)",
+        text,
+    )
+    if perf:
+        values.append(float(perf.group(1)))
+    if not bench or bench.group(1) == "unknown" or bench.group(2) != "packet":
+        valid_evidence = False
+if int(sys.argv[3]) or len(values) != 2 or not valid_evidence:
     print("999999.0000")
 else:
     print(f"{max(values):.4f}")
