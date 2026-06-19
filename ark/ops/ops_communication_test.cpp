@@ -589,6 +589,18 @@ ark::unittest::State test_communication_allreduce_packet_fused_model() {
     }
     {
         ark::Model model(0, 8);
+        ark::Tensor tns = model.tensor({4096}, ark::FP16);
+        ark::Tensor output = model.tensor(tns.shape(), tns.data_type());
+        UNITTEST_EQ(model.all_reduce_route(tns, 0, 8), "packet");
+        ark::Tensor result = model.all_reduce_routed(tns, 0, 8, output);
+        // ARK ops return a versioned tensor ref. The explicit output tensor is
+        // correct when the returned version writes the same backing buffer.
+        UNITTEST_EQ(result.ref()->buffer()->id(), output.ref()->buffer()->id());
+        UNITTEST_EQ(result.shape(), output.shape());
+        UNITTEST_EQ(count_ops(model, "AllReducePacketFused"), 1);
+    }
+    {
+        ark::Model model(0, 8);
         ark::Tensor tns = model.tensor({2048 * 4096}, ark::FP16);
         UNITTEST_EQ(model.all_reduce_route(tns, 0, 8), "ring");
         UNITTEST_EQ(model.all_reduce_route(tns, 0, 8, "ring"), "ring");
