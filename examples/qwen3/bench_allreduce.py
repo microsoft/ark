@@ -40,7 +40,14 @@ import time
 
 import torch
 import ark
+import ark.core as ark_core
 from ark.executor import Executor
+
+
+def _resolved_ark_path():
+    return os.path.realpath(
+        getattr(ark_core, "__file__", getattr(ark, "__file__", ""))
+    )
 
 rank = int(sys.argv[1])
 world_size = int(sys.argv[2])
@@ -90,6 +97,7 @@ print(
             "world_size": world_size,
             "n_elements": n_elements,
             "route": route,
+            "ark_path": _resolved_ark_path(),
             "latency_us": round(latency_us, 3),
         }
     )
@@ -188,11 +196,19 @@ def run_bench(world_size, timeout, shape):
             if not shape_failed and len(rank_results) == world_size:
                 rank_results.sort(key=lambda d: d["rank"])
                 routes = {d.get("route", "unknown") for d in rank_results}
+                ark_paths = {d.get("ark_path", "") for d in rank_results}
                 if len(routes) != 1:
                     any_failed = True
                     print(
                         f"ERROR {label}: inconsistent routes "
                         f"{sorted(routes)}",
+                        file=sys.stderr,
+                    )
+                elif len(ark_paths) != 1 or "" in ark_paths:
+                    any_failed = True
+                    print(
+                        f"ERROR {label}: inconsistent ark paths "
+                        f"{sorted(ark_paths)}",
                         file=sys.stderr,
                     )
                 else:
@@ -211,6 +227,7 @@ def run_bench(world_size, timeout, shape):
                             "world_size": world_size,
                             "n_elements": max_result["n_elements"],
                             "route": routes.pop(),
+                            "ark_path": ark_paths.pop(),
                             "max_rank": max_result["rank"],
                             "latency_us": max_result["latency_us"],
                             "rank_latencies_us": [
@@ -250,7 +267,7 @@ def run_bench(world_size, timeout, shape):
         print(
             f"BENCH_RESULT shape={d['shape']} world_size={world_size}"
             f" max_rank={d['max_rank']} route={d['route']}"
-            f" latency_us={d['latency_us']:.3f}"
+            f" ark_path={d['ark_path']} latency_us={d['latency_us']:.3f}"
         )
     print(f"{'=' * 72}\n")
     return results, any_failed

@@ -40,7 +40,20 @@ if [[ -z "$source_root" ]]; then
   exit 1
 fi
 
-: "${ARK_ROOT:=$PWD}"
+has_compiled_ark() {
+  compgen -G "$1/python/ark/core*.so" >/dev/null || \
+    compgen -G "$1/python/ark/core*.pyd" >/dev/null
+}
+
+if [[ -z "${ARK_ROOT:-}" ]]; then
+  if has_compiled_ark "$PWD"; then
+    ARK_ROOT=$(cd "$PWD" && pwd)
+  elif has_compiled_ark "$source_root/build"; then
+    ARK_ROOT=$(cd "$source_root/build" && pwd)
+  else
+    ARK_ROOT=$(cd "$PWD" && pwd)
+  fi
+fi
 export ARK_ROOT
 export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 
@@ -75,7 +88,8 @@ if [[ "$status" -ne 0 ]]; then
   done
 fi
 
-read -r ark_ms parse_status < <(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" "$head_sha" "$target_ms" <<'PY'
+read -r ark_ms parse_status < <(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" "$head_sha" "$target_ms" "$source_root" "$ARK_ROOT" <<'PY'
+import os
 import re
 import sys
 
@@ -83,13 +97,35 @@ log_paths = [(2, sys.argv[1]), (8, sys.argv[2])]
 status = int(sys.argv[3])
 head_sha = sys.argv[4]
 target_ms = float(sys.argv[5])
+source_root = os.path.realpath(sys.argv[6])
+ark_root = os.path.realpath(sys.argv[7])
+expected_ark_roots = [
+    os.path.join(source_root, "python"),
+    os.path.join(source_root, "build", "python"),
+    ark_root,
+    os.path.join(ark_root, "python"),
+]
+
+
+def is_under(path, roots):
+    for root in roots:
+        try:
+            if os.path.commonpath([path, root]) == root:
+                return True
+        except ValueError:
+            continue
+    return False
+
 # Gate both the new prefill route and the decode-sized packet fallback within a
 # bounded regression window, preserving the all-reduce dispatch contract.
 decode_baselines_ms = {2: 0.0588, 8: 0.0637}
 decode_limit_factor = 1.20
 errors = []
 prefill_values = []
+all_ark_paths = set()
 
+if head_sha == "unknown":
+    errors.append("source checkout SHA is unknown")
 if status:
     errors.append("one or more benchmark workers failed")
 
@@ -121,13 +157,22 @@ for world_size, path in log_paths:
 
     bench_results = re.findall(
         rf"BENCH_RESULT shape=(decode|prefill) world_size={world_size}\s+"
-        r"max_rank=([0-9]+)\s+route=([a-z_]+)\s+latency_us=([0-9.]+)",
+        r"max_rank=([0-9]+)\s+route=([a-z_]+)\s+ark_path=(\S+)\s+"
+        r"latency_us=([0-9.]+)",
         text,
     )
     by_shape = {
-        shape: (int(rank), route, float(us))
-        for shape, rank, route, us in bench_results
+        shape: (int(rank), route, ark_path, float(us))
+        for shape, rank, route, ark_path, us in bench_results
     }
+    ark_paths = {
+        os.path.realpath(ark_path)
+        for _, _, ark_path, _ in by_shape.values()
+        if ark_path
+    }
+    all_ark_paths.update(ark_paths)
+    if len(ark_paths) != 1 or "" in ark_paths:
+        errors.append(f"TP={world_size}: missing or inconsistent ark_path")
 
     if "prefill" not in by_shape:
         errors.append(f"TP={world_size}: missing prefill BENCH_RESULT")
@@ -140,7 +185,7 @@ for world_size, path in log_paths:
     if "decode" not in by_shape:
         errors.append(f"TP={world_size}: missing decode BENCH_RESULT")
         continue
-    _, decode_route, decode_us = by_shape["decode"]
+    _, decode_route, _, decode_us = by_shape["decode"]
     decode_ms = decode_us / 1000.0
     decode_limit = decode_baselines_ms[world_size] * decode_limit_factor
     if decode_route != "packet":
@@ -153,6 +198,17 @@ for world_size, path in log_paths:
         errors.append(
             f"TP={world_size}: decode ark_ms {decode_ms:.4f} > "
             f"{decode_limit:.4f}"
+        )
+
+all_ark_paths = {os.path.realpath(path) for path in all_ark_paths if path}
+if len(all_ark_paths) != 1:
+    errors.append("missing or inconsistent ark_path across TP runs")
+else:
+    ark_path = next(iter(all_ark_paths))
+    if not is_under(ark_path, expected_ark_roots):
+        errors.append(
+            "ark_path is outside expected checkout/build roots: "
+            f"{ark_path}"
         )
 
 for error in errors:
