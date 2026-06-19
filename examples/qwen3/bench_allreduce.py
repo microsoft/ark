@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Benchmark end-to-end ``ark.all_reduce_packet`` latency on torch input.
+"""Benchmark end-to-end ``ark.all_reduce_routed`` latency on torch input.
 
 Measures single-iteration latency for Qwen3 TP decode (1, 4096) and prefill
 (2048, 4096) shapes, including registered-memory staging when needed. Each
@@ -51,10 +51,12 @@ ark.set_rank(rank)
 ark.set_world_size(world_size)
 
 # Input is created and synchronized BEFORE launch, while no ARK loop kernel is
-# live (safe). The benchmark includes any staging done by ark.all_reduce_packet.
+# live (safe). The benchmark includes any staging done by the selected route.
 x = torch.randn(n_elements, dtype=torch.float16, device=f"cuda:{rank}")
 torch.cuda.synchronize(rank)
-result = ark.all_reduce_packet(x, rank, world_size)
+x_ark = ark.Tensor.from_torch(x)
+selected_route = ark.all_reduce_route(x_ark, rank, world_size, route="auto")
+result = ark.all_reduce_routed(x_ark, rank, world_size, route="auto")
 
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
@@ -78,6 +80,7 @@ print(json.dumps({
     "world_size": world_size,
     "n_elements": n_elements,
     "latency_us": round(latency_us, 3),
+    "route": selected_route,
 }))
 sys.stdout.flush()
 
@@ -163,6 +166,7 @@ def run_bench(world_size, timeout, shape):
                         "n_elements": max_result["n_elements"],
                         "max_rank": max_result["rank"],
                         "latency_us": max_result["latency_us"],
+                        "route": max_result["route"],
                         "rank_latencies_us": [
                             d["latency_us"] for d in rank_results
                         ],
@@ -183,16 +187,20 @@ def run_bench(world_size, timeout, shape):
 
     print(f"\n{'=' * 72}")
     print(
-        f"ARK all_reduce_packet torch-input latency  |  TP={world_size}  "
+        f"ARK all_reduce_routed torch-input latency  |  TP={world_size}  "
         f"(single iteration, max rank, includes staging)"
     )
     print(f"{'=' * 72}")
-    print(f"{'Shape':<24}{'Elements':>12}{'Max rank':>10}{'ARK us':>10}")
+    print(
+        f"{'Shape':<24}{'Elements':>12}{'Route':>10}"
+        f"{'Max rank':>10}{'ARK us':>10}"
+    )
     print(f"{'-' * 72}")
     for d in results:
         print(
             f"{d['label']:<24}{d['n_elements']:>12,}"
-            f"{d['max_rank']:>10}{d['latency_us']:>10.2f}"
+            f"{d['route']:>10}{d['max_rank']:>10}"
+            f"{d['latency_us']:>10.2f}"
         )
     print(f"{'=' * 72}\n")
     return results, any_failed
@@ -201,7 +209,7 @@ def run_bench(world_size, timeout, shape):
 def main():
     ap = argparse.ArgumentParser(
         description=(
-            "Benchmark end-to-end ark.all_reduce_packet latency on torch input "
+            "Benchmark end-to-end ark.all_reduce_routed latency on torch input "
             "at Qwen3 TP shapes, including registered-memory staging "
             "when needed"
         )
