@@ -40,7 +40,7 @@ if [[ -z "$source_root" ]]; then
   exit 1
 fi
 
-: "${ARK_ROOT:=$source_root}"
+: "${ARK_ROOT:=$PWD}"
 export ARK_ROOT
 export PYTHONPATH="$ARK_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 
