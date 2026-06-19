@@ -21,8 +21,7 @@ class Model : public ModelGraph {
     std::set<int> tags_;
 
     Tensor all_reduce_packet_impl(Tensor input, int rank, int rank_num,
-                                  Tensor output,
-                                  const std::string &op_name);
+                                  Tensor output, const std::string &op_name);
 
    public:
     Model(int rank = 0, int world_size = 1);
@@ -273,6 +272,11 @@ class Model : public ModelGraph {
     // Performs an all-reduce operator across all ranks, aggregating the input
     // tensors. Takes the `input` tensor, the current GPU's rank, and the
     // total number of ranks `rank_num`.
+    //
+    // Packet/Qwen3 fused routes expect `rank` to match this Model's rank.
+    // all_reduce_prefill() validates that explicitly; all_reduce() only
+    // auto-dispatches those fused routes on a matching rank and otherwise uses
+    // the existing ring fallback.
     Tensor all_reduce(Tensor input, int rank, int rank_num,
                       Tensor output = NullTensor, const std::string &name = "");
     // Packet-based all-reduce: uses LL packet channels (data + flag fused) for

@@ -245,22 +245,24 @@ def main():
     # rotation/reset exists.
     results, any_failed = run_bench(args.world_size, args.timeout, args.shape)
 
+    decode_required = args.shape in ("decode", "all")
     decode = [r for r in results if r["n_elements"] == SHAPES["decode"][1]]
-    if decode:
-        ark_ms = decode[0]["latency_us"] / 1000.0
-    else:
-        ark_ms = 999999.0
-    ratio = ark_ms / _DECODE_TARGET_MS
-    print(
-        f"PERF_GATE name=allreduce"
-        f" ark_ms={ark_ms:.4f}"
-        f" sglang_ms={_DECODE_TARGET_MS:.4f}"
-        f" ratio={ratio:.4f}"
-    )
+    if decode_required:
+        if decode:
+            ark_ms = decode[0]["latency_us"] / 1000.0
+        else:
+            ark_ms = 999999.0
+        ratio = ark_ms / _DECODE_TARGET_MS
+        print(
+            f"PERF_GATE name=allreduce"
+            f" ark_ms={ark_ms:.4f}"
+            f" sglang_ms={_DECODE_TARGET_MS:.4f}"
+            f" ratio={ratio:.4f}"
+        )
     if any_failed:
         print("ERROR: one or more benchmark workers failed", file=sys.stderr)
         raise SystemExit(1)
-    if not decode:
+    if decode_required and not decode:
         print("ERROR: decode benchmark produced no result", file=sys.stderr)
         raise SystemExit(1)
 

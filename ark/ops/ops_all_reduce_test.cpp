@@ -477,31 +477,47 @@ ark::unittest::State test_all_reduce_qwen3_route_selection() {
     {
         ark::Model m(0, 2);
         ark::Tensor data = m.tensor({1, 4096}, ark::FP16);
-        ark::Tensor output = m.all_reduce(data, 0, 2);
-        UNITTEST_TRUE(has_op_named(m, "AllReducePacketFused",
-                                   "all_reduce_packet"));
-        UNITTEST_FALSE(has_op_named(m, "AllReducePacketFused",
-                                    "all_reduce_prefill"));
+        m.all_reduce(data, 0, 2);
+        UNITTEST_TRUE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_packet"));
+        UNITTEST_FALSE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_prefill"));
     }
     {
         ark::Model m(0, 2);
         ark::Tensor data = m.tensor({2048, 4096}, ark::FP16);
-        ark::Tensor output = m.all_reduce(data, 0, 2);
-        UNITTEST_TRUE(has_op_named(m, "AllReducePacketFused",
-                                   "all_reduce_prefill"));
+        m.all_reduce(data, 0, 2);
+        UNITTEST_TRUE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_prefill"));
+    }
+    {
+        ark::Model m(1, 2);
+        ark::Tensor data = m.tensor({1, 4096}, ark::FP16);
+        m.all_reduce(data, 1, 2);
+        UNITTEST_TRUE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_packet"));
+        UNITTEST_FALSE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_prefill"));
+    }
+    {
+        ark::Model m(1, 2);
+        ark::Tensor data = m.tensor({2048, 4096}, ark::FP16);
+        m.all_reduce(data, 1, 2);
+        UNITTEST_TRUE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_prefill"));
     }
     {
         ark::Model m(0, 2);
         ark::Tensor data = m.tensor({2048 * 4096}, ark::FP16);
         ark::Tensor output = m.all_reduce_prefill(data, 0, 2, data);
-        UNITTEST_TRUE(has_op_named(m, "AllReducePacketFused",
-                                   "all_reduce_prefill"));
+        UNITTEST_TRUE(
+            has_op_named(m, "AllReducePacketFused", "all_reduce_prefill"));
         UNITTEST_EQ(output.ref()->buffer()->id(), data.ref()->buffer()->id());
     }
     {
         ark::Model m(0, 2);
         ark::Tensor data = m.tensor({4097}, ark::FP16);
-        ark::Tensor output = m.all_reduce(data, 0, 2);
+        m.all_reduce(data, 0, 2);
         UNITTEST_FALSE(has_op_type(m, "AllReducePacketFused"));
         UNITTEST_TRUE(has_op_type(m, "Send"));
         UNITTEST_TRUE(has_op_type(m, "Recv"));

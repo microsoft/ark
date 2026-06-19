@@ -84,6 +84,19 @@ elif route == "prefill":
 else:
     raise ValueError(f"unknown route: {route}")
 
+graph = json.loads(ark.Model.get_model().compress().serialize())
+route_names = [
+    node["Op"]["Name"]
+    for node in graph["Nodes"]
+    if node["Op"]["Type"] == "AllReducePacketFused"
+]
+if "all_reduce_prefill" in route_names:
+    selected_route = "prefill"
+elif "all_reduce_packet" in route_names:
+    selected_route = "packet"
+else:
+    selected_route = "other"
+
 with ark.Runtime() as rt:
     rt.launch(device_id=rank)
     if world_size > 1:
@@ -115,6 +128,7 @@ if rank == 0:
         "world_size": world_size,
         "n_elements": n_elements,
         "route": route,
+        "selected_route": selected_route,
         "pass": close,
         "max_diff": max_diff,
     }))
@@ -193,6 +207,20 @@ def _run_allreduce_test(
         "pass"
     ], f"allclose failed: max_diff={result_json['max_diff']}"
 
+    expected_selected_route = None
+    if route == "auto":
+        if n_elements == 4096:
+            expected_selected_route = "packet"
+        elif n_elements == 2048 * 4096:
+            expected_selected_route = "prefill"
+    elif route in ("packet", "prefill"):
+        expected_selected_route = route
+    if expected_selected_route is not None:
+        assert result_json["selected_route"] == expected_selected_route, (
+            f"expected selected_route={expected_selected_route}, "
+            f"got {result_json['selected_route']}"
+        )
+
 
 # ---------- Decode shape (1, 4096) = 4096 elements ----------
 
@@ -219,11 +247,18 @@ def test_allreduce_decode_tp8():
     not _large_tests_enabled(), reason="set ARK_QWEN3_LARGE_TESTS=1"
 )
 @pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
+def test_allreduce_prefill_auto_tp2():
+    """Auto-dispatched prefill (2048,4096) all-reduce at TP=2."""
+    _run_allreduce_test(world_size=2, n_elements=2048 * 4096, route="auto")
+
+
+@pytest.mark.skipif(
+    not _large_tests_enabled(), reason="set ARK_QWEN3_LARGE_TESTS=1"
+)
+@pytest.mark.skipif(_gpu_count() < 2, reason="need ≥2 GPUs")
 def test_allreduce_prefill_tp2():
     """Explicit prefill (2048,4096) all-reduce at TP=2."""
-    _run_allreduce_test(
-        world_size=2, n_elements=2048 * 4096, route="prefill"
-    )
+    _run_allreduce_test(world_size=2, n_elements=2048 * 4096, route="prefill")
 
 
 @pytest.mark.skipif(
@@ -232,6 +267,4 @@ def test_allreduce_prefill_tp2():
 @pytest.mark.skipif(_gpu_count() < 8, reason="need ≥8 GPUs")
 def test_allreduce_prefill_tp8():
     """Explicit prefill (2048,4096) all-reduce at TP=8."""
-    _run_allreduce_test(
-        world_size=8, n_elements=2048 * 4096, route="prefill"
-    )
+    _run_allreduce_test(world_size=8, n_elements=2048 * 4096, route="prefill")

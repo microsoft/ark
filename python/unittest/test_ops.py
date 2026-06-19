@@ -262,6 +262,16 @@ def test_ops_all_reduce_qwen3_prefill_routes_to_prefill():
 
 
 @pytest_ark()
+def test_ops_all_reduce_qwen3_rank1_prefill_routes_to_prefill():
+    ark.set_rank(1)
+    ark.set_world_size(2)
+    a = ark.tensor([2048, 4096], ark.fp16)
+    b = ark.all_reduce(a, rank=1, world_size=2)
+    assert b.shape() == [2048, 4096]
+    assert "all_reduce_prefill" in _op_names("AllReducePacketFused")
+
+
+@pytest_ark()
 def test_ops_all_reduce_prefill_api_and_rejection():
     ark.set_world_size(2)
     a = ark.tensor([2048 * 4096], ark.fp16)
@@ -270,7 +280,9 @@ def test_ops_all_reduce_prefill_api_and_rejection():
     assert "all_reduce_prefill" in _op_names("AllReducePacketFused")
 
     with pytest.raises(ark.ModelError):
-        ark.all_reduce_prefill(ark.tensor([4097], ark.fp16), rank=0, world_size=2)
+        ark.all_reduce_prefill(
+            ark.tensor([4097], ark.fp16), rank=0, world_size=2
+        )
 
 
 @pytest_ark()

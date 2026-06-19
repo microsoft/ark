@@ -1,15 +1,29 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
 : "${ARK_ROOT:=$PWD}"
 export ARK_ROOT
 export PYTHONPATH="${PYTHONPATH:-$ARK_ROOT/python}"
 
-target_ms=$(python3 - <<'PY'
-import importlib.util
-import pathlib
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+if [[ -f "$script_dir/examples/qwen3/bench_allreduce.py" ]]; then
+    repo_root=$script_dir
+elif [[ -f "$script_dir/../examples/qwen3/bench_allreduce.py" ]]; then
+    repo_root=$(cd -- "$script_dir/.." && pwd)
+elif [[ -f "$PWD/../examples/qwen3/bench_allreduce.py" ]]; then
+    repo_root=$(cd -- "$PWD/.." && pwd)
+else
+    echo "ERROR: cannot locate examples/qwen3/bench_allreduce.py" >&2
+    exit 1
+fi
+bench="$repo_root/examples/qwen3/bench_allreduce.py"
 
-path = pathlib.Path("../examples/qwen3/bench_allreduce.py")
+# bench_allreduce._DECODE_TARGET_MS cites PROFILE.md: 214.69 ms / 657 calls.
+target_ms=$(python3 - "$bench" <<'PY'
+import importlib.util
+import sys
+
+path = sys.argv[1]
 spec = importlib.util.spec_from_file_location("bench_allreduce", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -20,8 +34,8 @@ PY
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 status=0
-python3 ../examples/qwen3/bench_allreduce.py --world-size 2 --shape decode >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
-python3 ../examples/qwen3/bench_allreduce.py --world-size 8 --shape decode >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
+python3 "$bench" --world-size 2 --shape decode >"$tmpdir/tp2.log" 2>"$tmpdir/tp2.err" || status=1
+python3 "$bench" --world-size 8 --shape decode >"$tmpdir/tp8.log" 2>"$tmpdir/tp8.err" || status=1
 
 ark_ms=$(python3 - "$tmpdir/tp2.log" "$tmpdir/tp8.log" "$status" <<'PY'
 import re

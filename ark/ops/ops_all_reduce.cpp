@@ -86,8 +86,7 @@ Tensor Model::all_reduce_packet_impl(Tensor input, int rank, int rank_num,
         ERR(ModelError, op_name, " requires rank_num >= 2");
     }
     if (rank < 0 || rank >= rank_num) {
-        ERR(ModelError, op_name, ": rank ", rank,
-            " must be in [0, rank_num)");
+        ERR(ModelError, op_name, ": rank ", rank, " must be in [0, rank_num)");
     }
 
     size_t nelems = input.shape().nelems();
@@ -174,7 +173,8 @@ Tensor Model::all_reduce_prefill(Tensor input, int rank, int rank_num,
         ERR(ModelError,
             "all_reduce_prefill supports only FP16 Qwen3 prefill tensors with ",
             kQwen3PrefillElements,
-            " elements, rank_num in [2, 8], and packet-aligned shards; got dtype=",
+            " elements, rank_num in [2, 8], and packet-aligned shards; got "
+            "dtype=",
             input.data_type().name(), ", nelems=", input.shape().nelems(),
             ", rank_num=", rank_num);
     }
