@@ -66,30 +66,24 @@ def qwen3_final_rmsnorm(
     original_shape = _tensor_shape(hidden)
     hidden_shape = original_shape
     hidden_for_norm = hidden
-    grouped_decode = False
+    matmul_decode = False
     norm_dim = original_shape[-1]
     if len(original_shape) > 2:
         prefix_nelems = _prod(original_shape[:-1])
-        if prefix_nelems == 1:
-            # Split decode rows so RMSNorm avoids ARK's one-row W-wise reduce.
-            group_size = 8 if norm_dim % 8 == 0 else 1
-            hidden_shape = [norm_dim // group_size, group_size]
-            grouped_decode = True
-        else:
-            hidden_shape = [prefix_nelems, norm_dim]
+        hidden_shape = [prefix_nelems, norm_dim]
+        matmul_decode = prefix_nelems == 1
         hidden_for_norm = ark.reshape(hidden, hidden_shape)
     hidden_fp32 = ark.cast(hidden_for_norm, ark.fp32)
     weight_fp32 = ark.cast(norm_weight, ark.fp32)
     if weight_fp32.shape() == [norm_dim] and len(hidden_shape) > 1:
-        if grouped_decode:
-            weight_shape = hidden_shape
-        else:
-            weight_shape = [1] * (len(hidden_shape) - 1) + [norm_dim]
+        weight_shape = [1] * (len(hidden_shape) - 1) + [norm_dim]
         weight_fp32 = ark.reshape(weight_fp32, weight_shape)
     hidden_sq = ark.mul(hidden_fp32, hidden_fp32)
-    if grouped_decode:
-        group_mean = ark.reduce_mean(hidden_sq, axis=-1)
-        mean_sq = ark.reduce_mean(group_mean, axis=0)
+    if matmul_decode:
+        # Avoid ARK's one-row W-wise reduce path for decode tensors.
+        ones = ark.add(ark.mul(weight_fp32, 0.0), 1.0)
+        summed = ark.matmul(hidden_sq, ark.reshape(ones, [norm_dim, 1]))
+        mean_sq = ark.mul(summed, 1.0 / norm_dim)
     else:
         mean_sq = ark.reduce_mean(hidden_sq, axis=-1)
     rms_inv = ark.rsqrt(ark.add(mean_sq, eps))
