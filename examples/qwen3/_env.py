@@ -62,6 +62,18 @@ def _append_unique(paths, path):
         paths.append(path)
 
 
+def _append_pythonpath(paths, value):
+    """Append PYTHONPATH entries individually, preserving first use."""
+    for entry in value.split(os.pathsep):
+        if not entry:
+            continue
+        if not os.path.isabs(entry):
+            entry = os.path.abspath(entry)
+        else:
+            entry = os.path.normpath(entry)
+        _append_unique(paths, entry)
+
+
 def _load_worker_result(stdout):
     """Return the last JSON object from worker stdout, ignoring log lines."""
     for line in reversed(stdout.decode().splitlines()):
@@ -90,6 +102,7 @@ def _subprocess_env(world_size: int) -> dict:
     ``ARK_ROOT`` / ``LD_LIBRARY_PATH`` when a build-tree package is found.
     """
     extra = []  # type: list[str]
+    compiled_ark_parent = None
     resolved_ark_root = None
     ark_root = os.environ.get("ARK_ROOT", "")
 
@@ -100,6 +113,7 @@ def _subprocess_env(world_size: int) -> dict:
         ark_root_py = os.path.join(ark_root, "python")
         if _has_compiled_ark(ark_root_py):
             _append_unique(extra, ark_root_py)
+            compiled_ark_parent = ark_root_py
             resolved_ark_root = ark_root
 
     # --- Secondary: resolve from the running interpreter's import state ---
@@ -117,6 +131,8 @@ def _subprocess_env(world_size: int) -> dict:
                 ark_parent = None
             if ark_parent and _has_compiled_ark(ark_parent):
                 _append_unique(extra, ark_parent)
+                if compiled_ark_parent is None:
+                    compiled_ark_parent = ark_parent
                 if resolved_ark_root is None:
                     resolved_ark_root = _build_root_from_python_parent(
                         ark_parent
@@ -131,8 +147,14 @@ def _subprocess_env(world_size: int) -> dict:
     for entry in sys.path:
         if not entry:
             continue
+        if not os.path.isabs(entry):
+            entry = os.path.abspath(entry)
+        else:
+            entry = os.path.normpath(entry)
         if _has_compiled_ark(entry):
             _append_unique(extra, entry)
+            if compiled_ark_parent is None:
+                compiled_ark_parent = entry
             if resolved_ark_root is None:
                 resolved_ark_root = _build_root_from_python_parent(entry)
             break
@@ -142,8 +164,16 @@ def _subprocess_env(world_size: int) -> dict:
         candidate = os.path.join(_REPO_ROOT, subdir)
         if _has_compiled_ark(candidate):
             _append_unique(extra, candidate)
+            if compiled_ark_parent is None:
+                compiled_ark_parent = candidate
             if resolved_ark_root is None:
                 resolved_ark_root = _build_root_from_python_parent(candidate)
+
+    if compiled_ark_parent is None:
+        raise RuntimeError(
+            "no compiled ark package found for worker PYTHONPATH; "
+            "expected ark/core*.so under $ARK_ROOT/python or a build path"
+        )
 
     # --- Propagate repo root for examples.qwen3 package imports ---
     _append_unique(extra, _REPO_ROOT)
@@ -151,7 +181,7 @@ def _subprocess_env(world_size: int) -> dict:
     # --- Inherited PYTHONPATH ---
     existing = os.environ.get("PYTHONPATH", "")
     if existing:
-        extra.append(existing)
+        _append_pythonpath(extra, existing)
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         visible = os.environ["CUDA_VISIBLE_DEVICES"]
